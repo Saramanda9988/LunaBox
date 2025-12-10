@@ -17,8 +17,10 @@ type AppConfig struct {
 
 func LoadConfig() (*AppConfig, error) {
 	config := &AppConfig{
-		Theme:    "light",
-		Language: "zh",
+		BangumiAccessToken: "",
+		VNDBAccessToken:    "",
+		Theme:              "light",
+		Language:           "zh",
 	}
 
 	// 获取配置文件路径

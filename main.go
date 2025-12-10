@@ -34,7 +34,6 @@ func main() {
 	aiService := service.NewAiService()
 	backupService := service.NewBackupService()
 	homeService := service.NewHomeService()
-	metaDataService := service.NewMetaDataService()
 	statsService := service.NewStatsService()
 	timerService := service.NewTimerService()
 	categoryService := service.NewCategoryService()
@@ -65,7 +64,6 @@ func main() {
 			aiService.Init(ctx, db, config)
 			backupService.Init(ctx, db, config)
 			homeService.Init(ctx, db, config)
-			metaDataService.Init(ctx, db, config)
 			statsService.Init(ctx, db, config)
 			timerService.Init(ctx, db, config)
 		},
@@ -86,7 +84,6 @@ func main() {
 			aiService,
 			backupService,
 			homeService,
-			metaDataService,
 			statsService,
 			timerService,
 			categoryService,
