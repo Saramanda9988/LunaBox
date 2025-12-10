@@ -5,3 +5,4 @@ frontend/dist
 frontend/pnpm-lock.yaml
 *.db
 go.sum
+appconf.json

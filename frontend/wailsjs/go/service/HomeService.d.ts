@@ -4,9 +4,10 @@ import {vo} from '../models';
 import {models} from '../models';
 import {context} from '../models';
 import {sql} from '../models';
+import {appconf} from '../models';
 
 export function GetHomePageData():Promise<vo.HomePageData>;
 
 export function GetOrCreateCurrentUser():Promise<models.User>;
 
-export function Init(arg1:context.Context,arg2:sql.DB):Promise<void>;
+export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;

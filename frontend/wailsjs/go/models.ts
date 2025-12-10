@@ -1,3 +1,26 @@
+export namespace appconf {
+	
+	export class AppConfig {
+	    access_token?: string;
+	    vndb_access_token?: string;
+	    theme: string;
+	    language: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AppConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.access_token = source["access_token"];
+	        this.vndb_access_token = source["vndb_access_token"];
+	        this.theme = source["theme"];
+	        this.language = source["language"];
+	    }
+	}
+
+}
+
 export namespace enums {
 	
 	export enum SourceType {
@@ -35,6 +58,7 @@ export namespace models {
 	    cover_url: string;
 	    company: string;
 	    summary: string;
+	    path: string;
 	    source_type: enums.SourceType;
 	    // Go type: time
 	    cached_at: any;
@@ -54,6 +78,7 @@ export namespace models {
 	        this.cover_url = source["cover_url"];
 	        this.company = source["company"];
 	        this.summary = source["summary"];
+	        this.path = source["path"];
 	        this.source_type = source["source_type"];
 	        this.cached_at = this.convertValues(source["cached_at"], null);
 	        this.source_id = source["source_id"];

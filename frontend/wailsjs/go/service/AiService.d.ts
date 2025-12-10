@@ -3,7 +3,8 @@
 import {vo} from '../models';
 import {context} from '../models';
 import {sql} from '../models';
+import {appconf} from '../models';
 
 export function AISummarize(arg1:vo.AISummaryRequest):Promise<string>;
 
-export function Init(arg1:context.Context,arg2:sql.DB):Promise<void>;
+export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;

@@ -6,6 +6,6 @@ export function AISummarize(arg1) {
   return window['go']['service']['AiService']['AISummarize'](arg1);
 }
 
-export function Init(arg1, arg2) {
-  return window['go']['service']['AiService']['Init'](arg1, arg2);
+export function Init(arg1, arg2, arg3) {
+  return window['go']['service']['AiService']['Init'](arg1, arg2, arg3);
 }

@@ -10,6 +10,6 @@ export function GetOrCreateCurrentUser() {
   return window['go']['service']['HomeService']['GetOrCreateCurrentUser']();
 }
 
-export function Init(arg1, arg2) {
-  return window['go']['service']['HomeService']['Init'](arg1, arg2);
+export function Init(arg1, arg2, arg3) {
+  return window['go']['service']['HomeService']['Init'](arg1, arg2, arg3);
 }

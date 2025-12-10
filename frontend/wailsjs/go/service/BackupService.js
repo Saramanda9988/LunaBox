@@ -6,6 +6,6 @@ export function GetBackupPresignedURL(arg1) {
   return window['go']['service']['BackupService']['GetBackupPresignedURL'](arg1);
 }
 
-export function Init(arg1, arg2) {
-  return window['go']['service']['BackupService']['Init'](arg1, arg2);
+export function Init(arg1, arg2, arg3) {
+  return window['go']['service']['BackupService']['Init'](arg1, arg2, arg3);
 }

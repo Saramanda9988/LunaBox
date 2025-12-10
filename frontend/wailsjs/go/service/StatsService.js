@@ -6,6 +6,6 @@ export function GetStats() {
   return window['go']['service']['StatsService']['GetStats']();
 }
 
-export function Init(arg1, arg2) {
-  return window['go']['service']['StatsService']['Init'](arg1, arg2);
+export function Init(arg1, arg2, arg3) {
+  return window['go']['service']['StatsService']['Init'](arg1, arg2, arg3);
 }
