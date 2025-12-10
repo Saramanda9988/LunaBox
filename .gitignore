@@ -3,3 +3,5 @@ node_modules
 frontend/dist
 .idea
 frontend/pnpm-lock.yaml
+*.db
+go.sum

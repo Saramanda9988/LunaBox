@@ -2,7 +2,10 @@ module lunabox
 
 go 1.24
 
-require github.com/wailsapp/wails/v2 v2.11.0
+require (
+	github.com/duckdb/duckdb-go/v2 v2.5.3
+	github.com/wailsapp/wails/v2 v2.11.0
+)
 
 require (
 	github.com/apache/arrow-go/v18 v18.4.1 // indirect
@@ -15,7 +18,6 @@ require (
 	github.com/duckdb/duckdb-go-bindings/windows-amd64 v0.1.23 // indirect
 	github.com/duckdb/duckdb-go/arrowmapping v0.0.26 // indirect
 	github.com/duckdb/duckdb-go/mapping v0.0.25 // indirect
-	github.com/duckdb/duckdb-go/v2 v2.5.3 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect

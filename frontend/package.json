@@ -14,16 +14,15 @@
     "daisyui": "^5.5.8",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "tailwindcss": "^4.1.17",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@types/react": "^18.0.17",
     "@types/react-dom": "^18.0.6",
+    "@unocss/preset-wind3": "^66.5.10",
     "@vitejs/plugin-react": "^2.0.1",
-    "autoprefixer": "^10.4.22",
-    "postcss": "^8.5.6",
     "typescript": "^4.6.4",
+    "unocss": "^66.5.10",
     "vite": "^3.0.7"
   }
 }
