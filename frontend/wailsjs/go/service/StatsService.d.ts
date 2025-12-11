@@ -5,6 +5,8 @@ import {context} from '../models';
 import {sql} from '../models';
 import {appconf} from '../models';
 
-export function GetStats():Promise<vo.Stats>;
+export function GetGameStats(arg1:string):Promise<vo.GameDetailStats>;
+
+export function GetGlobalStats():Promise<vo.GlobalStats>;
 
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;

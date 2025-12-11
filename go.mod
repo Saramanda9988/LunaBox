@@ -4,6 +4,7 @@ go 1.24
 
 require (
 	github.com/duckdb/duckdb-go/v2 v2.5.3
+	github.com/google/uuid v1.6.0
 	github.com/labstack/gommon v0.4.2
 	github.com/wailsapp/wails/v2 v2.11.0
 )
@@ -24,7 +25,6 @@ require (
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/google/flatbuffers v25.2.10+incompatible // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/jchv/go-winloader v0.0.0-20210711035445-715c2860da7e // indirect
 	github.com/klauspost/compress v1.18.0 // indirect

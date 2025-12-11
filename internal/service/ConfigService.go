@@ -23,8 +23,8 @@ func (s *ConfigService) Init(ctx context.Context, db *sql.DB, config *appconf.Ap
 	s.config = config
 }
 
-func (s *ConfigService) GetAppConfig() appconf.AppConfig {
-	return *s.config
+func (s *ConfigService) GetAppConfig() (appconf.AppConfig, error) {
+	return *s.config, nil
 }
 
 func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {

@@ -3,8 +3,7 @@
 import {context} from '../models';
 import {sql} from '../models';
 import {appconf} from '../models';
-import {models} from '../models';
 
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;
 
-export function ReportPlaySession(arg1:models.PlaySession):Promise<void>;
+export function StartGameWithTracking(arg1:string,arg2:string):Promise<void>;
