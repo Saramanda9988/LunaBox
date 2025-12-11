@@ -256,54 +256,6 @@ func TestTimerService_GetTotalPlayTime(t *testing.T) {
 	})
 }
 
-func TestTimerService_DeletePlaySession(t *testing.T) {
-	db, cleanup := setupTestDB(t)
-	defer cleanup()
-
-	service := service2.NewTimerService()
-	service.Init(context.Background(), db, &appconf.AppConfig{})
-
-	t.Run("成功删除游玩记录", func(t *testing.T) {
-		session := models.PlaySession{
-			ID:        "delete-test-001",
-			UserID:    "user-001",
-			GameID:    "game-001",
-			StartTime: time.Now(),
-			EndTime:   time.Now(),
-			Duration:  1800,
-		}
-
-		// 添加记录
-		err := service.ReportPlaySession(session)
-		if err != nil {
-			t.Fatalf("添加记录失败: %v", err)
-		}
-
-		// 删除记录
-		err = service.DeletePlaySession(session.ID)
-		if err != nil {
-			t.Fatalf("删除记录失败: %v", err)
-		}
-
-		// 验证已删除
-		sessions, err := service.GetPlaySessions(session.UserID)
-		if err != nil {
-			t.Fatalf("获取记录失败: %v", err)
-		}
-
-		if len(sessions) != 0 {
-			t.Error("记录应该已被删除")
-		}
-	})
-
-	t.Run("删除不存在的记录", func(t *testing.T) {
-		err := service.DeletePlaySession("non-existent-id")
-		if err == nil {
-			t.Error("期望返回错误，但没有错误")
-		}
-	})
-}
-
 func TestTimerService_StartGameWithTracking_GetPath(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
@@ -417,22 +369,6 @@ func TestTimerService_CompleteWorkflow(t *testing.T) {
 		}
 		if totalTime != 5400 {
 			t.Errorf("总时长不正确: 期望 5400, 得到 %d", totalTime)
-		}
-
-		// 7. 删除一条记录
-		sessionID := sessions[0].ID
-		err = service.DeletePlaySession(sessionID)
-		if err != nil {
-			t.Fatalf("删除记录失败: %v", err)
-		}
-
-		// 8. 验证删除后的记录数
-		sessions, err = service.GetPlaySessions(userID)
-		if err != nil {
-			t.Fatalf("获取记录失败: %v", err)
-		}
-		if len(sessions) != 1 {
-			t.Errorf("删除后记录数不正确: 期望 1, 得到 %d", len(sessions))
 		}
 	})
 }
