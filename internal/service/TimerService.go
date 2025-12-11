@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"lunabox/internal/appconf"
-	"lunabox/internal/models"
 	"os/exec"
 	"time"
 
@@ -33,7 +32,7 @@ func (s *TimerService) Init(ctx context.Context, db *sql.DB, config *appconf.App
 // 当游戏进程退出时，自动保存游玩记录到数据库
 func (s *TimerService) StartGameWithTracking(userID, gameID string) error {
 	//获取游戏路径
-	path, err := s.GetGamePath(gameID)
+	path, err := s.getGamePath(gameID)
 	if err != nil {
 		return fmt.Errorf("failed to get game path: %w", err)
 	}
@@ -91,7 +90,7 @@ func (s *TimerService) waitForGameExit(cmd *exec.Cmd, sessionID string, startTim
 	}
 }
 
-func (s *TimerService) GetGamePath(gameID string) (string, error) {
+func (s *TimerService) getGamePath(gameID string) (string, error) {
 	var path string
 	err := s.db.QueryRowContext(
 		s.ctx,
@@ -107,128 +106,4 @@ func (s *TimerService) GetGamePath(gameID string) (string, error) {
 	}
 
 	return path, nil
-}
-
-// ReportPlaySession 手动上报一条完整的游玩记录
-// 用于测试
-func (s *TimerService) ReportPlaySession(session models.PlaySession) error {
-	// 如果没有提供 ID，生成一个新的
-	if session.ID == "" {
-		session.ID = uuid.New().String()
-	}
-
-	// 如果没有提供时长，根据开始和结束时间计算
-	if session.Duration == 0 && !session.EndTime.IsZero() && !session.StartTime.IsZero() {
-		session.Duration = int(session.EndTime.Sub(session.StartTime).Seconds())
-	}
-
-	query := `INSERT INTO play_sessions (id, user_id, game_id, start_time, end_time, duration)
-		      VALUES (?, ?, ?, ?, ?, ?)`
-
-	_, err := s.db.ExecContext(s.ctx, query,
-		session.ID,
-		session.UserID,
-		session.GameID,
-		session.StartTime,
-		session.EndTime,
-		session.Duration,
-	)
-
-	if err != nil {
-		return fmt.Errorf("failed to report play session: %w", err)
-	}
-
-	return nil
-}
-
-func (s *TimerService) GetPlaySessions(userID string) ([]models.PlaySession, error) {
-	query := `SELECT id, user_id, game_id, start_time, end_time, duration
-			  FROM play_sessions
-			  WHERE user_id = ?
-			  ORDER BY start_time DESC`
-
-	rows, err := s.db.QueryContext(s.ctx, query, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query play sessions: %w", err)
-	}
-	defer rows.Close()
-
-	var sessions []models.PlaySession
-	for rows.Next() {
-		var session models.PlaySession
-		err := rows.Scan(
-			&session.ID,
-			&session.UserID,
-			&session.GameID,
-			&session.StartTime,
-			&session.EndTime,
-			&session.Duration,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan play session: %w", err)
-		}
-		sessions = append(sessions, session)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating play sessions: %w", err)
-	}
-
-	return sessions, nil
-}
-
-func (s *TimerService) GetPlaySessionsByGameID(gameID string) ([]models.PlaySession, error) {
-	query := `SELECT id, user_id, game_id, start_time, end_time, duration
-			  FROM play_sessions
-			  WHERE game_id = ?
-			  ORDER BY start_time DESC`
-
-	rows, err := s.db.QueryContext(s.ctx, query, gameID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query play sessions: %w", err)
-	}
-	defer rows.Close()
-
-	var sessions []models.PlaySession
-	for rows.Next() {
-		var session models.PlaySession
-		err := rows.Scan(
-			&session.ID,
-			&session.UserID,
-			&session.GameID,
-			&session.StartTime,
-			&session.EndTime,
-			&session.Duration,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan play session: %w", err)
-		}
-		sessions = append(sessions, session)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating play sessions: %w", err)
-	}
-
-	return sessions, nil
-}
-
-// GetTotalPlayTime 获取指定游戏的总游玩时长（秒）
-func (s *TimerService) GetTotalPlayTime(gameID string) (int, error) {
-	var totalDuration sql.NullInt64
-	err := s.db.QueryRowContext(
-		s.ctx,
-		`SELECT SUM(duration) FROM play_sessions WHERE game_id = ?`,
-		gameID,
-	).Scan(&totalDuration)
-
-	if err != nil {
-		return 0, fmt.Errorf("failed to get total play time: %w", err)
-	}
-
-	if !totalDuration.Valid {
-		return 0, nil
-	}
-
-	return int(totalDuration.Int64), nil
 }
