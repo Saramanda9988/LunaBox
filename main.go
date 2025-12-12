@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 	"log"
 	"lunabox/internal/appconf"
 	"lunabox/internal/enums"
@@ -42,12 +43,18 @@ func main() {
 	// Create application with options
 	bootstrapErr := wails.Run(&options.App{
 		Title:  "lunabox",
-		Width:  1024,
+		Width:  1230,
 		Height: 768,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
+		// 样式完全交由wails前端控制
+		Windows: &windows.Options{
+			WebviewIsTransparent: false,
+			WindowIsTranslucent:  false,
+			Theme:                windows.SystemDefault,
+		},
 		OnStartup: func(ctx context.Context) {
 			var err error
 			db, err = sql.Open("duckdb", "lunabox.db")

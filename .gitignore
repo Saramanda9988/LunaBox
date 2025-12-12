@@ -3,6 +3,7 @@ node_modules
 frontend/dist
 .idea
 frontend/pnpm-lock.yaml
+frontend/package.json.md5
 *.db
 go.sum
 appconf.json
