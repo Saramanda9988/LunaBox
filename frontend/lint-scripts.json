@@ -1,0 +1,8 @@
+// 用于前端项目的 ESLint 检查脚本
+// 运行：pnpm exec eslint "src/**/*.{ts,tsx,js,jsx}" --fix
+{
+  "scripts": {
+    "lint": "eslint \"src/**/*.{ts,tsx,js,jsx}\"",
+    "lint:fix": "eslint \"src/**/*.{ts,tsx,js,jsx}\" --fix"
+  }
+}

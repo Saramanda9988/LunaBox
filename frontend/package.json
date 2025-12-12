@@ -18,12 +18,20 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@antfu/eslint-config": "^6.6.1",
     "@iconify-json/mdi": "^1.2.3",
+    "@tanstack/eslint-plugin-query": "^5.91.2",
     "@types/react": "^18.0.17",
     "@types/react-dom": "^18.0.6",
+    "@typescript-eslint/eslint-plugin": "^8.49.0",
+    "@typescript-eslint/parser": "^8.49.0",
     "@unocss/preset-icons": "^66.5.10",
     "@unocss/preset-wind3": "^66.5.10",
     "@vitejs/plugin-react": "^2.0.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-perfectionist": "^4.15.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-unicorn": "^62.0.0",
     "typescript": "^5.9.3",
     "unocss": "^66.5.10",
     "vite": "^3.0.7"
