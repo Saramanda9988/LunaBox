@@ -29,6 +29,14 @@ func setupTestDB(t *testing.T) (*sql.DB, func()) {
 // initTestSchema 初始化测试表结构
 func initTestSchema(t *testing.T, db *sql.DB) {
 	queries := []string{
+		`CREATE TABLE IF NOT EXISTS categories (
+			id TEXT PRIMARY KEY,
+			user_id TEXT,
+			name TEXT,
+			created_at TIMESTAMP,
+			updated_at TIMESTAMP,
+			is_system BOOLEAN
+		)`,
 		`CREATE TABLE IF NOT EXISTS games (
 			id TEXT PRIMARY KEY,
 			user_id TEXT,

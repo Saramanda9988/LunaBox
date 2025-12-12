@@ -113,6 +113,8 @@ func initSchema(db *sql.DB) error {
 			id TEXT PRIMARY KEY,
 			user_id TEXT,
 			name TEXT,
+			created_at TIMESTAMP,
+			updated_at TIMESTAMP,
 			is_system BOOLEAN
 		)`,
 		`CREATE TABLE IF NOT EXISTS games (
