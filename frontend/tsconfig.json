@@ -24,9 +24,4 @@
     "src",
     "wailsjs"
   ],
-  "references": [
-    {
-      "path": "./tsconfig.node.json"
-    }
-  ]
 }
