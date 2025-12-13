@@ -214,6 +214,21 @@ func (s *GameService) UpdateGame(game models.Game) error {
 	return nil
 }
 
+func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWebVO, error) {
+	var games []vo.GameMetadataFromWebVO
+
+	// 这里暂不处理任何错误，直接尝试从两个来源获取数据，空就是网络问题或未找到，不管它
+	bgmGetter := info.NewBangumiInfoGetter()
+	bgm, _ := bgmGetter.FetchMetadataByName(name, s.config.BangumiAccessToken)
+	games = append(games, vo.GameMetadataFromWebVO{Source: enums.Bangumi, Game: bgm})
+
+	vndbGetter := info.NewVNDBInfoGetter()
+	vndb, _ := vndbGetter.FetchMetadataByName(name, s.config.VNDBAccessToken)
+	games = append(games, vo.GameMetadataFromWebVO{Source: enums.VNDB, Game: vndb})
+
+	return games, nil
+}
+
 func (s *GameService) FetchMetadata(req vo.MetadataRequest) (models.Game, error) {
 	var game = models.Game{}
 	var e error
