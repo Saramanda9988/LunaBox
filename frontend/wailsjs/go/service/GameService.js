@@ -14,6 +14,10 @@ export function FetchMetadata(arg1) {
   return window['go']['service']['GameService']['FetchMetadata'](arg1);
 }
 
+export function FetchMetadataByName(arg1) {
+  return window['go']['service']['GameService']['FetchMetadataByName'](arg1);
+}
+
 export function GetGameByID(arg1) {
   return window['go']['service']['GameService']['GetGameByID'](arg1);
 }
