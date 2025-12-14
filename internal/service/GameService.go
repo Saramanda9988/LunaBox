@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type GameService struct {
@@ -29,6 +30,23 @@ func (s *GameService) Init(ctx context.Context, db *sql.DB, config *appconf.AppC
 	s.ctx = ctx
 	s.db = db
 	s.config = config
+}
+
+func (s *GameService) SelectGameExecutable() (string, error) {
+	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+		Title: "Select Game Executable",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "Executables",
+				Pattern:     "*.exe;*.bat;*.cmd;*.lnk",
+			},
+			{
+				DisplayName: "All Files",
+				Pattern:     "*.*",
+			},
+		},
+	})
+	return selection, err
 }
 
 func (s *GameService) AddGame(game models.Game) error {
@@ -220,11 +238,15 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 	// 这里暂不处理任何错误，直接尝试从两个来源获取数据，空就是网络问题或未找到，不管它
 	bgmGetter := info.NewBangumiInfoGetter()
 	bgm, _ := bgmGetter.FetchMetadataByName(name, s.config.BangumiAccessToken)
-	games = append(games, vo.GameMetadataFromWebVO{Source: enums.Bangumi, Game: bgm})
+	if bgm != (models.Game{}) {
+		games = append(games, vo.GameMetadataFromWebVO{Source: enums.Bangumi, Game: bgm})
+	}
 
 	vndbGetter := info.NewVNDBInfoGetter()
 	vndb, _ := vndbGetter.FetchMetadataByName(name, s.config.VNDBAccessToken)
-	games = append(games, vo.GameMetadataFromWebVO{Source: enums.VNDB, Game: vndb})
+	if vndb != (models.Game{}) {
+		games = append(games, vo.GameMetadataFromWebVO{Source: enums.VNDB, Game: vndb})
+	}
 
 	return games, nil
 }

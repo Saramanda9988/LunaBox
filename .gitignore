@@ -7,3 +7,5 @@ frontend/package.json.md5
 *.db
 go.sum
 appconf.json
+.vscode
+*.db.wal
