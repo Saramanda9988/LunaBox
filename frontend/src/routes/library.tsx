@@ -4,6 +4,7 @@ import { Route as rootRoute } from './__root'
 import { GetGames } from '../../wailsjs/go/service/GameService'
 import { models } from '../../wailsjs/go/models'
 import { GameCard } from '../components/GameCard'
+import { AddGameModal } from '../components/AddGameModal'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -14,6 +15,7 @@ export const Route = createRoute({
 function LibraryComponent() {
   const [games, setGames] = useState<models.Game[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false)
 
   useEffect(() => {
     loadGames()
@@ -36,8 +38,15 @@ function LibraryComponent() {
 
   return (
     <div className="h-full w-full flex flex-col">
-      <div className="flex flex-col space-y-2">
+      <div className="flex items-center justify-between mb-6">
         <h1 className="text-4xl font-bold text-gray-900 dark:text-white">游戏库</h1>
+        <button
+          onClick={() => setIsAddGameModalOpen(true)}
+          className="flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+        >
+          <div className="i-mdi-plus mr-2 text-lg" />
+          添加游戏
+        </button>
       </div>
 
       {games.length === 0 ? (
@@ -46,6 +55,12 @@ function LibraryComponent() {
             <div className="i-mdi-gamepad-variant-outline text-6xl mb-4" />
             <p className="text-xl">暂无游戏</p>
             <p className="text-sm mt-2">添加一些游戏开始吧</p>
+            <button
+              onClick={() => setIsAddGameModalOpen(true)}
+              className="mt-4 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            >
+              立即添加
+            </button>
           </div>
         </div>
       ) : (
@@ -57,6 +72,12 @@ function LibraryComponent() {
           ))}
         </div>
       )}
+
+      <AddGameModal
+        isOpen={isAddGameModalOpen}
+        onClose={() => setIsAddGameModalOpen(false)}
+        onGameAdded={loadGames}
+      />
     </div>
   )
 }
