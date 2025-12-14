@@ -58,8 +58,7 @@ func TestTimerService_Integration_RealProcess(t *testing.T) {
 
 	// 6. 启动游戏（开始计时）
 	t.Log("Starting game with tracking...")
-	userID := "test-user"
-	err = svc.StartGameWithTracking(userID, gameID)
+	err = svc.StartGameWithTracking(gameID)
 	if err != nil {
 		t.Fatalf("StartGameWithTracking failed: %v", err)
 	}

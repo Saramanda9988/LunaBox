@@ -30,7 +30,7 @@ func (s *TimerService) Init(ctx context.Context, db *sql.DB, config *appconf.App
 
 // StartGameWithTracking 启动游戏并自动追踪游玩时长
 // 当游戏进程退出时，自动保存游玩记录到数据库
-func (s *TimerService) StartGameWithTracking(userID, gameID string) error {
+func (s *TimerService) StartGameWithTracking(gameID string) error {
 	//获取游戏路径
 	path, err := s.getGamePath(gameID)
 	if err != nil {
@@ -49,12 +49,12 @@ func (s *TimerService) StartGameWithTracking(userID, gameID string) error {
 	sessionID := uuid.New().String()
 	startTime := time.Now()
 
+	// TODO: userId 暂时未实现用户系统，先不记录
 	_, err = s.db.ExecContext(
 		s.ctx,
-		`INSERT INTO play_sessions (id, user_id, game_id, start_time, end_time, duration)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO play_sessions (id, game_id, start_time, end_time, duration)
+		 VALUES (?, ?, ?, ?, ?)`,
 		sessionID,
-		userID,
 		gameID,
 		startTime,
 		startTime, // 临时占位，等游戏结束后更新
