@@ -64,11 +64,9 @@ function LibraryComponent() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-6">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(max(8rem,11%),1fr))] gap-3">
           {games.map((game) => (
-            <div key={game.id} className="flex justify-center">
-              <GameCard game={game} />
-            </div>
+            <GameCard key={game.id} game={game} />
           ))}
         </div>
       )}
