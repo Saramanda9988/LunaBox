@@ -97,11 +97,14 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl dark:bg-gray-800">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">添加游戏</h2>
-          <button onClick={resetAndClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-            <div className="i-mdi-close text-2xl" />
-          </button>
+        <div className="flex items-center justify-between">
+          <h2 className="text-4xl font-bold text-gray-900 dark:text-white">添加游戏</h2>
+          <button
+              onClick={resetAndClose}
+              className="i-mdi-close text-2xl text-gray-500 p-1 rounded-lg
+              hover:bg-gray-100 hover:text-gray-700 focus:outline-none
+              dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+          />
         </div>
 
         {step === 1 && (
@@ -120,7 +123,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
                 value={executablePath}
                 readOnly
                 placeholder="请选择一个可执行程序"
-                className="w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="box-border block w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
               />
             </div>
 
@@ -130,17 +133,11 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
                 type="text"
                 value={gameName}
                 onChange={(e) => setGameName(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="box-border block w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
               />
             </div>
 
             <div className="flex justify-end space-x-4">
-              <button
-                onClick={resetAndClose}
-                className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-              >
-                取消
-              </button>
               <button
                 onClick={handleSearchByName}
                 disabled={!executablePath || !gameName || isLoading}
@@ -156,13 +153,13 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
           <div className="space-y-6">
             <p className="text-gray-600 dark:text-gray-300">哪个结果是您期望的？</p>
             
-            <div className="grid max-h-[400px] grid-cols-2 gap-4 overflow-y-auto p-1">
+            <div className="flex max-h-[400px] flex-wrap justify-center gap-4 overflow-y-auto p-1">
               {metadataResults.filter(item => item.Game)
                 .map((item, index) => (
                   <div
                     key={index}
                     onClick={() => saveGame(item.Game!)} // 使用非空断言，因为上面已过滤
-                    className="cursor-pointer rounded-lg border border-gray-200 p-4 transition hover:border-blue-500 hover:shadow-md dark:border-gray-700 dark:hover:border-blue-400"
+                    className="w-44 cursor-pointer rounded-lg border border-gray-200 p-3 transition hover:border-blue-500 hover:shadow-md dark:border-gray-700 dark:hover:border-blue-400"
                   >
                     <div className="aspect-[3/4] w-full overflow-hidden rounded-md bg-gray-200 dark:bg-gray-700">
                       {item.Game!.cover_url ? (
@@ -173,8 +170,8 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
                         </div>
                       )}
                     </div>
-                    <h3 className="mt-2 truncate text-lg font-bold text-gray-900 dark:text-white">{item.Game!.name}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <h3 className="mt-2 truncate text-sm font-bold text-gray-900 dark:text-white" title={item.Game!.name}>{item.Game!.name}</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       来自 {item.Source}
                     </p>
                   </div>
@@ -219,7 +216,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
                 value={manualId}
                 onChange={(e) => setManualId(e.target.value)}
                 placeholder="请输入游戏 ID"
-                className="w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="box-border block w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
               />
             </div>
 
