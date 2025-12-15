@@ -27,13 +27,14 @@
     "@typescript-eslint/parser": "^8.49.0",
     "@unocss/preset-icons": "^66.5.10",
     "@unocss/preset-wind3": "^66.5.10",
-    "@vitejs/plugin-react": "^2.0.1",
+    "@unocss/vite": "^66.5.10",
+    "@vitejs/plugin-react": "^5.1.2",
     "eslint": "^9.39.1",
     "eslint-plugin-perfectionist": "^4.15.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-unicorn": "^62.0.0",
     "typescript": "^5.9.3",
     "unocss": "^66.5.10",
-    "vite": "^3.0.7"
+    "vite": "^7.2.7"
   }
 }

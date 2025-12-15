@@ -7,10 +7,11 @@
       "DOM.Iterable",
       "ESNext"
     ],
+    "types": ["vite/client"],
     "allowJs": false,
     "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
+//    "esModuleInterop": true,
+//    "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
@@ -22,6 +23,8 @@
   },
   "include": [
     "src",
-    "wailsjs"
+    "wailsjs",
+    "vite.config.ts",
+    "uno.config.ts"
   ],
 }
