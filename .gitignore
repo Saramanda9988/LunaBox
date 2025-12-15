@@ -9,3 +9,4 @@ go.sum
 appconf.json
 .vscode
 *.db.wal
+SaveData

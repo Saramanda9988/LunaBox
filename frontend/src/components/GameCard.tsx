@@ -1,11 +1,14 @@
 import { models } from '../../wailsjs/go/models'
 import { StartGameWithTracking } from '../../wailsjs/go/service/TimerService'
+import { useNavigate } from '@tanstack/react-router'
 
 interface GameCardProps {
   game: models.Game
 }
 
 export function GameCard({ game }: GameCardProps) {
+  const navigate = useNavigate()
+
   const handleStartGame = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (game.id) {
@@ -15,6 +18,10 @@ export function GameCard({ game }: GameCardProps) {
         console.error('Failed to start game:', error)
       }
     }
+  }
+
+  const handleViewDetails = () => {
+    navigate({ to: `/game/${game.id}` })
   }
 
   return (
@@ -42,6 +49,7 @@ export function GameCard({ game }: GameCardProps) {
             <div className="i-mdi-play text-lg" />
           </button>
           <button
+            onClick={handleViewDetails}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-md transition-transform hover:scale-110 hover:bg-white/30 active:scale-95"
             title="查看详情"
           >
