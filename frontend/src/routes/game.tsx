@@ -134,13 +134,15 @@ function GameDetailComponent() {
 
   const handleDeleteGame = async () => {
     if (!game) return
-    
+
+    // TODO: pop window使用专门的样式
     if (window.confirm(`确定要删除游戏 "${game.name}" 吗？此操作无法撤销。`)) {
       try {
         await DeleteGame(game.id)
         alert('删除成功')
         navigate({ to: '/library' })
       } catch (error) {
+        // TODO: 弹窗
         console.error('Failed to delete game:', error)
         alert('删除失败')
       }

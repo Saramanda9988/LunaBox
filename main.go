@@ -99,6 +99,7 @@ func main() {
 		},
 		EnumBind: []interface{}{
 			enums.AllSourceTypes,
+			enums.AllPeriodTypes,
 		},
 	})
 

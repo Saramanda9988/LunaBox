@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"lunabox/internal/appconf"
+	"lunabox/internal/enums"
 	"lunabox/internal/vo"
 )
 
@@ -77,58 +79,148 @@ func (s *StatsService) GetGameStats(gameID string) (vo.GameDetailStats, error) {
 	return stats, nil
 }
 
-func (s *StatsService) GetGlobalStats() (vo.GlobalStats, error) {
-	var stats vo.GlobalStats
+func (s *StatsService) GetGlobalPeriodStats(dimension enums.Period) (vo.PeriodStats, error) {
+	var stats vo.PeriodStats
+	stats.Dimension = dimension
 
-	// 1. Total Play Time
-	err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(SUM(duration), 0) FROM play_sessions").Scan(&stats.TotalPlayTime)
+	var (
+		startDateExpr string
+		seriesStart   string
+		seriesEnd     string
+		stepInterval  string
+		dateFormat    string
+		truncUnit     string
+	)
+
+	switch dimension {
+	case "week":
+		startDateExpr = "current_date - INTERVAL 6 DAY"
+		seriesStart = "current_date - INTERVAL 6 DAY"
+		seriesEnd = "current_date"
+		stepInterval = "INTERVAL 1 DAY"
+		dateFormat = "%Y-%m-%d"
+		truncUnit = "day"
+	case "month":
+		startDateExpr = "current_date - INTERVAL 29 DAY"
+		seriesStart = "current_date - INTERVAL 29 DAY"
+		seriesEnd = "current_date"
+		stepInterval = "INTERVAL 1 DAY"
+		dateFormat = "%Y-%m-%d"
+		truncUnit = "day"
+	case "year":
+		startDateExpr = "date_trunc('month', current_date) - INTERVAL 11 MONTH"
+		seriesStart = "date_trunc('month', current_date) - INTERVAL 11 MONTH"
+		seriesEnd = "date_trunc('month', current_date)"
+		stepInterval = "INTERVAL 1 MONTH"
+		dateFormat = "%Y-%m"
+		truncUnit = "month"
+	default:
+		return stats, fmt.Errorf("invalid dimension: %s", dimension)
+	}
+
+	// 1. Total Play Count & Duration
+	queryTotal := fmt.Sprintf("SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions WHERE start_time >= %s", startDateExpr)
+	err := s.db.QueryRowContext(s.ctx, queryTotal).Scan(&stats.TotalPlayCount, &stats.TotalPlayDuration)
 	if err != nil {
 		return stats, err
 	}
 
-	// 2. Weekly Play Time (Last 7 days)
-	err = s.db.QueryRowContext(s.ctx, "SELECT COALESCE(SUM(duration), 0) FROM play_sessions WHERE start_time >= current_date - INTERVAL 6 DAY").Scan(&stats.WeeklyPlayTime)
-	if err != nil {
-		return stats, err
-	}
-
-	// 3. Play Time Leaderboard (Top 10)
+	// 2. Leaderboard (Top 5)
 	stats.PlayTimeLeaderboard = make([]vo.GamePlayStats, 0)
-	rows, err := s.db.QueryContext(s.ctx, `
+	queryLeaderboard := fmt.Sprintf(`
 		SELECT ps.game_id, g.name, SUM(ps.duration) as total 
 		FROM play_sessions ps 
 		JOIN games g ON ps.game_id = g.id 
+		WHERE ps.start_time >= %s
 		GROUP BY ps.game_id, g.name 
 		ORDER BY total DESC 
-		LIMIT 10
-	`)
+		LIMIT 5
+	`, startDateExpr)
+
+	rows, err := s.db.QueryContext(s.ctx, queryLeaderboard)
 	if err != nil {
 		return stats, err
 	}
-	defer rows.Close()
 
 	for rows.Next() {
 		var item vo.GamePlayStats
 		if err := rows.Scan(&item.GameID, &item.GameName, &item.TotalDuration); err != nil {
-			continue
+			rows.Close()
+			return stats, err
 		}
 		stats.PlayTimeLeaderboard = append(stats.PlayTimeLeaderboard, item)
 	}
+	rows.Close()
 
-	// 4. Most Played Game (by count)
-	err = s.db.QueryRowContext(s.ctx, `
-		SELECT ps.game_id, g.name, COUNT(*) as cnt 
-		FROM play_sessions ps 
-		JOIN games g ON ps.game_id = g.id 
-		GROUP BY ps.game_id, g.name 
-		ORDER BY cnt DESC 
-		LIMIT 1
-	`).Scan(&stats.MostPlayedGame.GameID, &stats.MostPlayedGame.GameName, &stats.MostPlayedGame.PlayCount)
+	// 3. Timeline (Total)
+	stats.Timeline = make([]vo.TimePoint, 0)
+	queryTimeline := fmt.Sprintf(`
+		WITH dates AS (
+			SELECT generate_series AS day 
+			FROM generate_series(%s, %s, %s)
+		)
+		SELECT 
+			strftime(d.day, '%s'), 
+			COALESCE(SUM(ps.duration), 0)
+		FROM dates d
+		LEFT JOIN play_sessions ps ON date_trunc('%s', ps.start_time) = d.day
+		GROUP BY d.day
+		ORDER BY d.day ASC
+	`, seriesStart, seriesEnd, stepInterval, dateFormat, truncUnit)
 
-	if err == sql.ErrNoRows {
-		stats.MostPlayedGame = vo.GamePlayCount{}
-	} else if err != nil {
+	rows, err = s.db.QueryContext(s.ctx, queryTimeline)
+	if err != nil {
 		return stats, err
+	}
+
+	for rows.Next() {
+		var item vo.TimePoint
+		if err := rows.Scan(&item.Label, &item.Duration); err != nil {
+			rows.Close()
+			return stats, err
+		}
+		stats.Timeline = append(stats.Timeline, item)
+	}
+	rows.Close()
+
+	// 4. Leaderboard Series
+	stats.LeaderboardSeries = make([]vo.GameTrendSeries, 0)
+	for _, game := range stats.PlayTimeLeaderboard {
+		series := vo.GameTrendSeries{
+			GameID:   game.GameID,
+			GameName: game.GameName,
+			Points:   make([]vo.TimePoint, 0),
+		}
+
+		queryGameSeries := fmt.Sprintf(`
+			WITH dates AS (
+				SELECT generate_series AS day 
+				FROM generate_series(%s, %s, %s)
+			)
+			SELECT 
+				strftime(d.day, '%s'), 
+				COALESCE(SUM(ps.duration), 0)
+			FROM dates d
+			LEFT JOIN play_sessions ps ON ps.game_id = ? AND date_trunc('%s', ps.start_time) = d.day
+			GROUP BY d.day
+			ORDER BY d.day ASC
+		`, seriesStart, seriesEnd, stepInterval, dateFormat, truncUnit)
+
+		rows, err := s.db.QueryContext(s.ctx, queryGameSeries, game.GameID)
+		if err != nil {
+			return stats, err
+		}
+
+		for rows.Next() {
+			var p vo.TimePoint
+			if err := rows.Scan(&p.Label, &p.Duration); err != nil {
+				rows.Close()
+				return stats, err
+			}
+			series.Points = append(series.Points, p)
+		}
+		rows.Close()
+		stats.LeaderboardSeries = append(stats.LeaderboardSeries, series)
 	}
 
 	return stats, nil
