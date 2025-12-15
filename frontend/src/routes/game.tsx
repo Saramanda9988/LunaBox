@@ -1,7 +1,7 @@
 import { createRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Route as rootRoute } from './__root'
-import { GetGameByID } from '../../wailsjs/go/service/GameService'
+import { GetGameByID, UpdateGame, SelectGameExecutable } from '../../wailsjs/go/service/GameService'
 import { GetGameStats } from '../../wailsjs/go/service/StatsService'
 import { models, vo } from '../../wailsjs/go/models'
 import {
@@ -106,6 +106,32 @@ function GameDetailComponent() {
     },
   }
 
+  const handleUpdateGame = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!game) return
+    
+    try {
+      await UpdateGame(game)
+      const updatedGame = await GetGameByID(game.id)
+      setGame(updatedGame)
+      alert('更新成功')
+    } catch (error) {
+      console.error('Failed to update game:', error)
+      alert('更新失败')
+    }
+  }
+
+  const handleSelectExecutable = async () => {
+    try {
+      const path = await SelectGameExecutable()
+      if (path && game) {
+        setGame({ ...game, path } as models.Game)
+      }
+    } catch (error) {
+      console.error('Failed to select executable:', error)
+    }
+  }
+
   return (
     <div className="space-y-8 max-w-8xl mx-auto">
       {/* Back Button */}
@@ -150,7 +176,7 @@ function GameDetailComponent() {
 
           <div className="mt-4">
             <div className="font-semibold mb-2 text-gray-900 dark:text-white">简介</div>
-            <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed line-clamp-4">
+            <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed line-clamp-10">
               {game.summary || '暂无简介'}
             </p>
           </div>
@@ -160,7 +186,7 @@ function GameDetailComponent() {
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="-mb-px flex space-x-8">
-          {['stats', 'intro', 'edit', 'backup'].map((tab) => (
+          {['stats', 'edit', 'backup'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -172,7 +198,6 @@ function GameDetailComponent() {
               `}
             >
               {tab === 'stats' && '游戏统计'}
-              {tab === 'intro' && '简介'}
               {tab === 'edit' && '编辑'}
               {tab === 'backup' && '备份'}
             </button>
@@ -183,8 +208,6 @@ function GameDetailComponent() {
       {/* Content */}
       {activeTab === 'stats' && (
         <div className="space-y-8">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">游戏统计</h2>
-          
           <div className="grid grid-cols-3 gap-6">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
               <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">累计游戏次数</div>
@@ -214,7 +237,91 @@ function GameDetailComponent() {
         </div>
       )}
       
-      {activeTab !== 'stats' && (
+      {activeTab === 'edit' && game && (
+        <div className="mx-auto bg-white dark:bg-gray-800 p-8 rounded-lg shadow-sm">
+          <form onSubmit={handleUpdateGame} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                游戏名称
+              </label>
+              <input
+                type="text"
+                value={game.name}
+                onChange={(e) => setGame({ ...game, name: e.target.value } as models.Game)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                封面图片 URL
+              </label>
+              <input
+                type="text"
+                value={game.cover_url}
+                onChange={(e) => setGame({ ...game, cover_url: e.target.value } as models.Game)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                开发商
+              </label>
+              <input
+                type="text"
+                value={game.company}
+                onChange={(e) => setGame({ ...game, company: e.target.value } as models.Game)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                游戏路径
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={game.path}
+                  onChange={(e) => setGame({ ...game, path: e.target.value } as models.Game)}
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleSelectExecutable}
+                  className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  选择
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                简介
+              </label>
+              <textarea
+                value={game.summary}
+                onChange={(e) => setGame({ ...game, summary: e.target.value } as models.Game)}
+                rows={6}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+              />
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <button
+                type="submit"
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                保存更改
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {(activeTab === 'backup') && (
         <div className="text-center py-12 text-gray-500">
           功能开发中...
         </div>
