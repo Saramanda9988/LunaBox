@@ -8,7 +8,7 @@ import (
 	"lunabox/internal/appconf"
 	"lunabox/internal/enums"
 	"lunabox/internal/models"
-	"lunabox/internal/utils/info"
+	"lunabox/internal/utils"
 	"lunabox/internal/vo"
 	"time"
 
@@ -236,13 +236,13 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 	var games []vo.GameMetadataFromWebVO
 
 	// 这里暂不处理任何错误，直接尝试从两个来源获取数据，空就是网络问题或未找到，不管它
-	bgmGetter := info.NewBangumiInfoGetter()
+	bgmGetter := utils.NewBangumiInfoGetter()
 	bgm, _ := bgmGetter.FetchMetadataByName(name, s.config.BangumiAccessToken)
 	if bgm != (models.Game{}) {
 		games = append(games, vo.GameMetadataFromWebVO{Source: enums.Bangumi, Game: bgm})
 	}
 
-	vndbGetter := info.NewVNDBInfoGetter()
+	vndbGetter := utils.NewVNDBInfoGetter()
 	vndb, _ := vndbGetter.FetchMetadataByName(name, s.config.VNDBAccessToken)
 	if vndb != (models.Game{}) {
 		games = append(games, vo.GameMetadataFromWebVO{Source: enums.VNDB, Game: vndb})
@@ -261,10 +261,10 @@ func (s *GameService) FetchMetadata(req vo.MetadataRequest) (models.Game, error)
 
 	switch req.Source {
 	case enums.Bangumi:
-		bgmGetter := info.NewBangumiInfoGetter()
+		bgmGetter := utils.NewBangumiInfoGetter()
 		game, e = bgmGetter.FetchMetadata(req.ID, s.config.BangumiAccessToken)
 	case enums.VNDB:
-		vndbGetter := info.NewVNDBInfoGetter()
+		vndbGetter := utils.NewVNDBInfoGetter()
 		game, e = vndbGetter.FetchMetadata(req.ID, s.config.VNDBAccessToken)
 	}
 	return game, e
