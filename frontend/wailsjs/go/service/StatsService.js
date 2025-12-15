@@ -6,8 +6,8 @@ export function GetGameStats(arg1) {
   return window['go']['service']['StatsService']['GetGameStats'](arg1);
 }
 
-export function GetGlobalStats() {
-  return window['go']['service']['StatsService']['GetGlobalStats']();
+export function GetGlobalPeriodStats(arg1) {
+  return window['go']['service']['StatsService']['GetGlobalPeriodStats'](arg1);
 }
 
 export function Init(arg1, arg2, arg3) {

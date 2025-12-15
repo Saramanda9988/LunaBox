@@ -28,6 +28,11 @@ export namespace enums {
 	    BANGUMI = "bangumi",
 	    VNDB = "vndb",
 	}
+	export enum Period {
+	    YEAR = "year",
+	    MONTH = "month",
+	    WEEK = "week",
+	}
 
 }
 
@@ -280,22 +285,6 @@ export namespace vo {
 		    return a;
 		}
 	}
-	export class GamePlayCount {
-	    game_id: string;
-	    game_name: string;
-	    play_count: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new GamePlayCount(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.game_id = source["game_id"];
-	        this.game_name = source["game_name"];
-	        this.play_count = source["play_count"];
-	    }
-	}
 	export class GamePlayStats {
 	    game_id: string;
 	    game_name: string;
@@ -312,22 +301,34 @@ export namespace vo {
 	        this.total_duration = source["total_duration"];
 	    }
 	}
-	export class GlobalStats {
-	    total_play_time: number;
-	    weekly_play_time: number;
-	    play_time_leaderboard: GamePlayStats[];
-	    most_played_game: GamePlayCount;
+	export class TimePoint {
+	    label: string;
+	    duration: number;
 	
 	    static createFrom(source: any = {}) {
-	        return new GlobalStats(source);
+	        return new TimePoint(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.total_play_time = source["total_play_time"];
-	        this.weekly_play_time = source["weekly_play_time"];
-	        this.play_time_leaderboard = this.convertValues(source["play_time_leaderboard"], GamePlayStats);
-	        this.most_played_game = this.convertValues(source["most_played_game"], GamePlayCount);
+	        this.label = source["label"];
+	        this.duration = source["duration"];
+	    }
+	}
+	export class GameTrendSeries {
+	    game_id: string;
+	    game_name: string;
+	    points: TimePoint[];
+	
+	    static createFrom(source: any = {}) {
+	        return new GameTrendSeries(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.game_id = source["game_id"];
+	        this.game_name = source["game_name"];
+	        this.points = this.convertValues(source["points"], TimePoint);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -397,6 +398,46 @@ export namespace vo {
 	        this.source = source["source"];
 	        this.id = source["id"];
 	    }
+	}
+	export class PeriodStats {
+	    dimension: enums.Period;
+	    total_play_count: number;
+	    total_play_duration: number;
+	    play_time_leaderboard: GamePlayStats[];
+	    timeline: TimePoint[];
+	    leaderboard_series: GameTrendSeries[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PeriodStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dimension = source["dimension"];
+	        this.total_play_count = source["total_play_count"];
+	        this.total_play_duration = source["total_play_duration"];
+	        this.play_time_leaderboard = this.convertValues(source["play_time_leaderboard"], GamePlayStats);
+	        this.timeline = this.convertValues(source["timeline"], TimePoint);
+	        this.leaderboard_series = this.convertValues(source["leaderboard_series"], GameTrendSeries);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }
