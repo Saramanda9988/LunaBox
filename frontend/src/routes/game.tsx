@@ -188,7 +188,9 @@ function GameDetailComponent() {
           <div className="grid grid-cols-3 gap-6">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
               <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">累计游戏次数</div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">-</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                {stats?.total_play_count || 0}
+              </div>
             </div>
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
               <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">今日游戏时长</div>

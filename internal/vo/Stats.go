@@ -6,6 +6,7 @@ type DailyPlayTime struct {
 }
 
 type GameDetailStats struct {
+	TotalPlayCount    int             `json:"total_play_count"`
 	TotalPlayTime     int             `json:"total_play_time"`
 	TodayPlayTime     int             `json:"today_play_time"`
 	RecentPlayHistory []DailyPlayTime `json:"recent_play_history"`

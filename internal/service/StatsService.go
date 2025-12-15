@@ -54,6 +54,11 @@ func (s *StatsService) GetGameStats(gameID string) (vo.GameDetailStats, error) {
 		ORDER BY d.day ASC
 	`
 
+	err = s.db.QueryRowContext(s.ctx, "SELECT COALESCE(COUNT(*), 0) FROM play_sessions WHERE game_id = ?", gameID).Scan(&stats.TotalPlayCount)
+	if err != nil {
+		return vo.GameDetailStats{}, err
+	}
+
 	rows, err := s.db.QueryContext(s.ctx, query, gameID)
 	if err != nil {
 		return stats, err

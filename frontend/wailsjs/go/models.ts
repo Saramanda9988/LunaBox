@@ -213,6 +213,7 @@ export namespace vo {
 	    }
 	}
 	export class GameDetailStats {
+	    total_play_count: number;
 	    total_play_time: number;
 	    today_play_time: number;
 	    recent_play_history: DailyPlayTime[];
@@ -223,6 +224,7 @@ export namespace vo {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.total_play_count = source["total_play_count"];
 	        this.total_play_time = source["total_play_time"];
 	        this.today_play_time = source["today_play_time"];
 	        this.recent_play_history = this.convertValues(source["recent_play_history"], DailyPlayTime);
