@@ -1,7 +1,7 @@
 import { createRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Route as rootRoute } from './__root'
-import { GetGameByID, UpdateGame, SelectGameExecutable } from '../../wailsjs/go/service/GameService'
+import { GetGameByID, UpdateGame, SelectGameExecutable, DeleteGame } from '../../wailsjs/go/service/GameService'
 import { GetGameStats } from '../../wailsjs/go/service/StatsService'
 import { models, vo } from '../../wailsjs/go/models'
 import {
@@ -129,6 +129,21 @@ function GameDetailComponent() {
       }
     } catch (error) {
       console.error('Failed to select executable:', error)
+    }
+  }
+
+  const handleDeleteGame = async () => {
+    if (!game) return
+    
+    if (window.confirm(`确定要删除游戏 "${game.name}" 吗？此操作无法撤销。`)) {
+      try {
+        await DeleteGame(game.id)
+        alert('删除成功')
+        navigate({ to: '/library' })
+      } catch (error) {
+        console.error('Failed to delete game:', error)
+        alert('删除失败')
+      }
     }
   }
 
@@ -311,8 +326,15 @@ function GameDetailComponent() {
 
             <div className="flex justify-end pt-4">
               <button
+                type="button"
+                onClick={handleDeleteGame}
+                className="px-6 py-2 mx-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                删除游戏
+              </button>
+              <button
                 type="submit"
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="px-6 py-2 mx-1  bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 保存更改
               </button>
