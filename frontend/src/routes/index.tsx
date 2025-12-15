@@ -69,7 +69,7 @@ function HomeComponent() {
 
       <section>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">最近游玩</h2>
-        <div className="flex flex-wrap gap-6">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(max(8rem,11%),1fr))] gap-3">
           {homeData.recent_games && homeData.recent_games.length > 0 ? (
             homeData.recent_games.map((game: models.Game) => (
               <GameCard key={game.id} game={game} />
@@ -83,7 +83,7 @@ function HomeComponent() {
       {/* Can add Recently Added section if needed, based on models */}
        <section>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">最近添加</h2>
-        <div className="flex flex-wrap gap-6">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(max(8rem,11%),1fr))] gap-3">
           {homeData.recently_added && homeData.recently_added.length > 0 ? (
             homeData.recently_added.map((game: models.Game) => (
               <GameCard key={game.id} game={game} />
