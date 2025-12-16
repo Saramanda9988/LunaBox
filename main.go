@@ -74,6 +74,7 @@ func main() {
 			homeService.Init(ctx, db, config)
 			statsService.Init(ctx, db, config)
 			timerService.Init(ctx, db, config)
+			categoryService.Init(ctx, db, config)
 		},
 		OnShutdown: func(ctx context.Context) {
 			var err error

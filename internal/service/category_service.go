@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"lunabox/internal/appconf"
+	"lunabox/internal/models"
 	"lunabox/internal/vo"
 	"time"
 
@@ -74,6 +75,22 @@ func (s *CategoryService) GetCategories() ([]vo.CategoryVO, error) {
 	return categories, nil
 }
 
+func (s *CategoryService) GetCategoryByID(id string) (vo.CategoryVO, error) {
+	var c vo.CategoryVO
+	query := `
+		SELECT c.id, c.user_id, c.name, c.is_system, c.created_at, c.updated_at, COUNT(gc.game_id) as game_count
+		FROM categories c
+		LEFT JOIN game_categories gc ON c.id = gc.category_id
+		WHERE c.id = ?
+		GROUP BY c.id, c.user_id, c.name, c.is_system, c.created_at, c.updated_at
+	`
+	err := s.db.QueryRow(query, id).Scan(&c.ID, &c.UserID, &c.Name, &c.IsSystem, &c.CreatedAt, &c.UpdatedAt, &c.GameCount)
+	if err != nil {
+		return c, err
+	}
+	return c, nil
+}
+
 func (s *CategoryService) AddCategory(name string) error {
 	id := uuid.New().String()
 	now := time.Now()
@@ -121,4 +138,29 @@ func (s *CategoryService) DeleteCategory(id string) error {
 	}
 
 	return tx.Commit()
+}
+
+func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, error) {
+	query := `
+		SELECT g.id, g.user_id, g.name, g.cover_url, g.company, g.summary, g.path, g.source_type, g.cached_at, g.source_id, g.created_at
+		FROM games g
+		JOIN game_categories gc ON g.id = gc.game_id
+		WHERE gc.category_id = ?
+		ORDER BY g.created_at DESC
+	`
+	rows, err := s.db.Query(query, categoryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var games []models.Game
+	for rows.Next() {
+		var g models.Game
+		if err := rows.Scan(&g.ID, &g.UserID, &g.Name, &g.CoverURL, &g.Company, &g.Summary, &g.Path, &g.SourceType, &g.CachedAt, &g.SourceID, &g.CreatedAt); err != nil {
+			return nil, err
+		}
+		games = append(games, g)
+	}
+	return games, nil
 }
