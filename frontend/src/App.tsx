@@ -1,4 +1,6 @@
 import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { useEffect } from 'react'
+import { useAppStore } from './store'
 import { Route as rootRoute } from './routes/__root'
 import { Route as indexRoute } from './routes/index'
 import { Route as libraryRoute } from './routes/library'
@@ -19,6 +21,36 @@ declare module '@tanstack/react-router' {
 }
 
 function App() {
+  const { config, fetchConfig } = useAppStore()
+
+  useEffect(() => {
+    fetchConfig()
+  }, [fetchConfig])
+
+  useEffect(() => {
+    if (!config) return
+
+    const root = window.document.documentElement
+    const applyTheme = (theme: string) => {
+      root.classList.remove('light', 'dark')
+      root.classList.add(theme)
+    }
+
+    if (config.theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+      applyTheme(mediaQuery.matches ? 'dark' : 'light')
+
+      const handler = (e: MediaQueryListEvent) => {
+        applyTheme(e.matches ? 'dark' : 'light')
+      }
+
+      mediaQuery.addEventListener('change', handler)
+      return () => mediaQuery.removeEventListener('change', handler)
+    } else {
+      applyTheme(config.theme)
+    }
+  }, [config?.theme])
+
   return <RouterProvider router={router} />
 }
 
