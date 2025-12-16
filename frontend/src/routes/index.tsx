@@ -8,10 +8,10 @@ import { models } from '../../wailsjs/go/models'
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: HomeComponent,
+  component: HomePage,
 })
 
-function HomeComponent() {
+function HomePage() {
   const { homeData, fetchHomeData, isLoading } = useAppStore()
   const [showWeekly, setShowWeekly] = useState(false)
 

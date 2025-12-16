@@ -9,10 +9,10 @@ import { AddGameModal } from '../components/AddGameModal'
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: '/library',
-  component: LibraryComponent,
+  component: LibraryPage,
 })
 
-function LibraryComponent() {
+function LibraryPage() {
   const [games, setGames] = useState<models.Game[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false)

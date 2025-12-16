@@ -29,10 +29,10 @@ ChartJS.register(
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: '/game/$gameId',
-  component: GameDetailComponent,
+  component: GameDetailPage,
 })
 
-function GameDetailComponent() {
+function GameDetailPage() {
   const navigate = useNavigate()
   const { gameId } = Route.useParams()
   const [game, setGame] = useState<models.Game | null>(null)
