@@ -8,7 +8,7 @@ export function Sidebar() {
     { to: '/', label: '首页', icon: 'i-mdi-home' },
     { to: '/library', label: '游戏库', icon: 'i-mdi-gamepad-variant' },
     { to: '/stats', label: '统计', icon: 'i-mdi-chart-bar' },
-    { to: '/categories', label: '分类', icon: 'i-mdi-format-list-bulleted' },
+    { to: '/categories', label: '收藏', icon: 'i-mdi-format-list-bulleted' },
   ]
 
   return (
