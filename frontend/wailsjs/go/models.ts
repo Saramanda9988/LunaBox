@@ -23,15 +23,15 @@ export namespace appconf {
 
 export namespace enums {
 	
-	export enum SourceType {
-	    LOCAL = "local",
-	    BANGUMI = "bangumi",
-	    VNDB = "vndb",
-	}
 	export enum Period {
 	    YEAR = "year",
 	    MONTH = "month",
 	    WEEK = "week",
+	}
+	export enum SourceType {
+	    LOCAL = "local",
+	    BANGUMI = "bangumi",
+	    VNDB = "vndb",
 	}
 
 }
