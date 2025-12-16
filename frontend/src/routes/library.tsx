@@ -5,6 +5,7 @@ import { GetGames } from '../../wailsjs/go/service/GameService'
 import { models } from '../../wailsjs/go/models'
 import { GameCard } from '../components/card/GameCard'
 import { AddGameModal } from '../components/modal/AddGameModal'
+import { FilterBar } from '../components/FilterBar'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -63,38 +64,19 @@ function LibraryPage() {
         <h1 className="text-4xl font-bold text-gray-900 dark:text-white">游戏库</h1>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 my-4">
-        <div className="relative flex-1 max-w-md">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <div className="i-mdi-magnify text-gray-500" />
-          </div>
-          <input
-            type="text"
-            className="block w-auto p-2 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-            placeholder="搜索游戏..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-          >
-            <option value="name">名称</option>
-            <option value="created_at">添加时间</option>
-          </select>
-
-          <button
-            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-            className="p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-            title={sortOrder === 'asc' ? '升序' : '降序'}
-          >
-            <div className={sortOrder === 'asc' ? "i-mdi-sort-ascending text-xl" : "i-mdi-sort-descending text-xl"} />
-          </button>
-
+      <FilterBar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="搜索游戏..."
+        sortBy={sortBy}
+        onSortByChange={(val) => setSortBy(val as any)}
+        sortOptions={[
+          { label: '名称', value: 'name' },
+          { label: '添加时间', value: 'created_at' },
+        ]}
+        sortOrder={sortOrder}
+        onSortOrderChange={setSortOrder}
+        extraButtons={
           <button
             className="p-2 text-gray-400 cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
             title="筛选 (即将推出)"
@@ -102,7 +84,8 @@ function LibraryPage() {
           >
             <div className="i-mdi-filter text-xl" />
           </button>
-
+        }
+        actionButton={
           <button
             onClick={() => setIsAddGameModalOpen(true)}
             className="flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
@@ -110,8 +93,8 @@ function LibraryPage() {
             <div className="i-mdi-plus mr-2 text-lg" />
             添加游戏
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {games.length === 0 ? (
         <div className="flex-1 flex items-center justify-center w-full">
