@@ -1,6 +1,7 @@
 import { createFileRoute, createRoute, RootRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Route as rootRoute } from './__root'
+import { useChartTheme } from '../hooks/useChartTheme'
 import {
   CategoryScale,
   Chart as ChartJS,
@@ -32,6 +33,7 @@ export const Route = createRoute({
 })
 
 function StatsPage() {
+  const { textColor, gridColor } = useChartTheme()
   const [dimension, setDimension] = useState<enums.Period>(enums.Period.WEEK)
   const [stats, setStats] = useState<vo.PeriodStats | null>(null)
   const [loading, setLoading] = useState(false)
@@ -112,14 +114,32 @@ function StatsPage() {
     plugins: {
       legend: {
         position: 'top' as const,
+        labels: {
+          color: textColor,
+        },
       },
     },
     scales: {
+      x: {
+        grid: {
+          color: gridColor,
+        },
+        ticks: {
+          color: textColor,
+        },
+      },
       y: {
         beginAtZero: true,
         title: {
           display: true,
           text: '小时',
+          color: textColor,
+        },
+        grid: {
+          color: gridColor,
+        },
+        ticks: {
+          color: textColor,
         },
       },
     },

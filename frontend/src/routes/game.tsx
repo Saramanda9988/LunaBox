@@ -1,6 +1,7 @@
 import { createRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Route as rootRoute } from './__root'
+import { useChartTheme } from '../hooks/useChartTheme'
 import { GetGameByID, UpdateGame, SelectGameExecutable, DeleteGame } from '../../wailsjs/go/service/GameService'
 import { GetGameStats } from '../../wailsjs/go/service/StatsService'
 import { models, vo } from '../../wailsjs/go/models'
@@ -33,6 +34,7 @@ export const Route = createRoute({
 })
 
 function GameDetailPage() {
+  const { textColor, gridColor } = useChartTheme()
   const navigate = useNavigate()
   const { gameId } = Route.useParams()
   const [game, setGame] = useState<models.Game | null>(null)
@@ -100,8 +102,22 @@ function GameDetailPage() {
       },
     },
     scales: {
+      x: {
+        grid: {
+          color: gridColor,
+        },
+        ticks: {
+          color: textColor,
+        },
+      },
       y: {
         beginAtZero: true,
+        grid: {
+          color: gridColor,
+        },
+        ticks: {
+          color: textColor,
+        },
       },
     },
   }
