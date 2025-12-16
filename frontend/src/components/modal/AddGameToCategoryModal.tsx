@@ -17,12 +17,12 @@ export function AddGameToCategoryModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-2xl h-[80vh] rounded-xl bg-white flex flex-col shadow-xl dark:bg-gray-800">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">添加游戏到收藏夹</h3>
+      <div className="w-full max-w-2xl h-[80vh] rounded-xl bg-white flex flex-col shadow-xl dark:bg-brand-800">
+        <div className="p-6 border-b border-brand-200 dark:border-brand-700 flex justify-between items-center">
+          <h3 className="text-xl font-bold text-brand-900 dark:text-white">添加游戏到收藏夹</h3>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
+            className="text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-white"
           >
             <div className="i-mdi-close text-xl" />
           </button>
@@ -35,13 +35,13 @@ export function AddGameToCategoryModal({
                 <button
                   key={game.id}
                   onClick={() => onAddGame(game.id)}
-                  className="flex flex-col items-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left group"
+                  className="flex flex-col items-center p-2 rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 transition-colors text-left group"
                 >
-                  <div className="w-full aspect-[3/4] rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 mb-2 relative">
+                  <div className="w-full aspect-[3/4] rounded-lg overflow-hidden bg-brand-200 dark:bg-brand-700 mb-2 relative">
                     {game.cover_url ? (
                       <img src={game.cover_url} alt={game.name} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <div className="w-full h-full flex items-center justify-center text-brand-400">
                         <div className="i-mdi-image-off text-2xl" />
                       </div>
                     )}
@@ -49,14 +49,14 @@ export function AddGameToCategoryModal({
                       <div className="i-mdi-plus text-white text-3xl" />
                     </div>
                   </div>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 w-full">
+                  <span className="text-sm font-medium text-brand-900 dark:text-white line-clamp-2 w-full">
                     {game.name}
                   </span>
                 </button>
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-gray-500">
+            <div className="flex flex-col items-center justify-center h-full text-brand-500">
               <p>没有可添加的游戏</p>
             </div>
           )}

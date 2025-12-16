@@ -25,8 +25,8 @@ export function GameCard({ game }: GameCardProps) {
   }
 
   return (
-    <div className="group relative flex w-full flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all duration-300 hover:shadow-xl dark:border-gray-700 dark:bg-gray-800">
-      <div className="relative aspect-[3/3.6] w-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+    <div className="group relative flex w-full flex-col overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm transition-all duration-300 hover:shadow-xl dark:border-brand-700 dark:bg-brand-800">
+      <div className="relative aspect-[3/3.6] w-full overflow-hidden bg-brand-200 dark:bg-brand-700">
         {game.cover_url ? (
           <img
             src={game.cover_url}
@@ -34,7 +34,7 @@ export function GameCard({ game }: GameCardProps) {
             className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-gray-400">
+          <div className="flex h-full items-center justify-center text-brand-400">
             <div className="i-mdi-image-off text-4xl" />
           </div>
         )}
@@ -59,10 +59,10 @@ export function GameCard({ game }: GameCardProps) {
       </div>
       
       <div className="px-2 pt-1 pb-2">
-        <h3 className="truncate text-sm font-bold text-gray-900 dark:text-white leading-tight" title={game.name}>
+        <h3 className="truncate text-sm font-bold text-brand-900 dark:text-white leading-tight" title={game.name}>
           {game.name}
         </h3>
-        <p className="truncate text-xs text-gray-500 dark:text-gray-400 leading-tight">
+        <p className="truncate text-xs text-brand-500 dark:text-brand-400 leading-tight">
           {game.company || 'Unknown Developer'}
         </p>
       </div>

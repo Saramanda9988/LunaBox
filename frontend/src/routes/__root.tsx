@@ -3,7 +3,7 @@ import { SideBar } from '../components/SideBar'
 
 export const Route = createRootRoute({
   component: () => (
-    <div className="flex h-screen w-full bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
+    <div className="flex h-screen w-full bg-brand-100 dark:bg-brand-900 text-brand-900 dark:text-brand-100 overflow-hidden">
       <SideBar />
       <main className="flex-1 overflow-auto">
         <Outlet />

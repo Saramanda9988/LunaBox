@@ -20,8 +20,8 @@ export function useChartTheme() {
     return () => observer.disconnect()
   }, [])
 
-  const textColor = isDark ? '#e5e7eb' : '#374151' // gray-200 : gray-700
-  const gridColor = isDark ? '#374151' : '#e5e7eb' // gray-700 : gray-200
+  const textColor = isDark ? '#e5e7eb' : '#374151' // brand-200 : brand-700
+  const gridColor = isDark ? '#374151' : '#e5e7eb' // brand-700 : brand-200
 
   return {
     isDark,

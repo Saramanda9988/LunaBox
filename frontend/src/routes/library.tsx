@@ -61,7 +61,7 @@ function LibraryPage() {
   return (
     <div className="h-full w-full flex flex-col p-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-white">游戏库</h1>
+        <h1 className="text-4xl font-bold text-brand-900 dark:text-white">游戏库</h1>
       </div>
 
       <FilterBar
@@ -78,7 +78,7 @@ function LibraryPage() {
         onSortOrderChange={setSortOrder}
         extraButtons={
           <button
-            className="p-2 text-gray-400 cursor-not-allowed rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="p-2 text-brand-400 cursor-not-allowed rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700"
             title="筛选 (即将推出)"
             disabled
           >
@@ -98,7 +98,7 @@ function LibraryPage() {
 
       {games.length === 0 ? (
         <div className="flex-1 flex items-center justify-center w-full">
-          <div className="flex flex-col items-center justify-center py-20 text-gray-500 dark:text-gray-400">
+          <div className="flex flex-col items-center justify-center py-20 text-brand-500 dark:text-brand-400">
             <div className="i-mdi-gamepad-variant-outline text-6xl mb-4" />
             <p className="text-xl">暂无游戏</p>
             <p className="text-sm mt-2">添加一些游戏开始吧</p>
@@ -111,7 +111,7 @@ function LibraryPage() {
           </div>
         </div>
       ) : filteredGames.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center w-full text-gray-500 dark:text-gray-400">
+        <div className="flex-1 flex items-center justify-center w-full text-brand-500 dark:text-brand-400">
           <div className="flex flex-col items-center">
             <div className="i-mdi-magnify text-4xl mb-2" />
             <p>未找到匹配的游戏</p>

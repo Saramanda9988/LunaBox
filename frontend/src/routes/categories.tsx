@@ -95,7 +95,7 @@ function CategoriesPage() {
   return (
     <div className="h-full w-full overflow-y-auto p-8">
       <div className="flex items-center justify-between">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">收藏</h1>
+          <h1 className="text-4xl font-bold text-brand-900 dark:text-white">收藏</h1>
       </div>
       
       <FilterBar

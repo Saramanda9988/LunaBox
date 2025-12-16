@@ -170,7 +170,7 @@ function GameDetailPage() {
       {/* Back Button */}
       <button
         onClick={() => window.history.back()}
-        className="flex rounded-md items-center text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+        className="flex rounded-md items-center text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-200 transition-colors"
       >
         <div className="i-mdi-arrow-left text-2xl mr-1" />
         <span>返回</span>
@@ -178,20 +178,20 @@ function GameDetailPage() {
 
       {/* Header Section */}
       <div className="flex gap-6 items-center">
-        <div className="w-60 flex-shrink-0 rounded-lg overflow-hidden shadow-lg bg-gray-200 dark:bg-gray-800">
+        <div className="w-60 flex-shrink-0 rounded-lg overflow-hidden shadow-lg bg-brand-200 dark:bg-brand-800">
           {game.cover_url ? (
             <img src={game.cover_url} alt={game.name} className="w-full h-auto block" />
           ) : (
-            <div className="w-full h-64 flex items-center justify-center text-gray-400">
+            <div className="w-full h-64 flex items-center justify-center text-brand-400">
               No Cover
             </div>
           )}
         </div>
         
         <div className="flex-1 space-y-4">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">{game.name}</h1>
+          <h1 className="text-4xl font-bold text-brand-900 dark:text-white">{game.name}</h1>
           
-          <div className="grid grid-cols-4 gap-4 text-sm text-gray-600 dark:text-gray-400">
+          <div className="grid grid-cols-4 gap-4 text-sm text-brand-600 dark:text-brand-400">
             <div>
               <div className="font-semibold mb-1">数据来源</div>
               <div>{game.source_type}</div>
@@ -208,8 +208,8 @@ function GameDetailPage() {
           </div>
 
           <div className="mt-4">
-            <div className="font-semibold mb-2 text-gray-900 dark:text-white">简介</div>
-            <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed line-clamp-10">
+            <div className="font-semibold mb-2 text-brand-900 dark:text-white">简介</div>
+            <p className="text-brand-600 dark:text-brand-400 text-sm leading-relaxed line-clamp-10">
               {game.summary || '暂无简介'}
             </p>
           </div>
@@ -217,7 +217,7 @@ function GameDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
+      <div className="border-b border-brand-200 dark:border-brand-700">
         <nav className="-mb-px flex space-x-8">
           {['stats', 'edit', 'backup'].map((tab) => (
             <button
@@ -227,7 +227,7 @@ function GameDetailPage() {
                 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
                 ${activeTab === tab
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}
+                  : 'border-transparent text-brand-500 hover:text-brand-700 hover:border-brand-300 dark:text-brand-400 dark:hover:text-brand-300'}
               `}
             >
               {tab === 'stats' && '游戏统计'}
@@ -242,27 +242,27 @@ function GameDetailPage() {
       {activeTab === 'stats' && (
         <div className="space-y-8">
           <div className="grid grid-cols-3 gap-6">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">累计游戏次数</div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+            <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
+              <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">累计游戏次数</div>
+              <div className="text-2xl font-bold text-brand-900 dark:text-white">
                 {stats?.total_play_count || 0}
               </div>
             </div>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">今日游戏时长</div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+            <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
+              <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">今日游戏时长</div>
+              <div className="text-2xl font-bold text-brand-900 dark:text-white">
                 {formatDuration(stats?.today_play_time || 0)}
               </div>
             </div>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">累计总时长</div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+            <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
+              <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">累计总时长</div>
+              <div className="text-2xl font-bold text-brand-900 dark:text-white">
                 {formatDuration(stats?.total_play_time || 0)}
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+          <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
             <div className="h-80">
               <Line options={chartOptions} data={chartData} />
             </div>
@@ -271,46 +271,46 @@ function GameDetailPage() {
       )}
       
       {activeTab === 'edit' && game && (
-        <div className="mx-auto bg-white dark:bg-gray-800 p-8 rounded-lg shadow-sm">
+        <div className="mx-auto bg-white dark:bg-brand-800 p-8 rounded-lg shadow-sm">
           <form onSubmit={handleUpdateGame} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
                 游戏名称
               </label>
               <input
                 type="text"
                 value={game.name}
                 onChange={(e) => setGame({ ...game, name: e.target.value } as models.Game)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
                 封面图片 URL
               </label>
               <input
                 type="text"
                 value={game.cover_url}
                 onChange={(e) => setGame({ ...game, cover_url: e.target.value } as models.Game)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
                 开发商
               </label>
               <input
                 type="text"
                 value={game.company}
                 onChange={(e) => setGame({ ...game, company: e.target.value } as models.Game)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
                 游戏路径
               </label>
               <div className="flex gap-2">
@@ -318,12 +318,12 @@ function GameDetailPage() {
                   type="text"
                   value={game.path}
                   onChange={(e) => setGame({ ...game, path: e.target.value } as models.Game)}
-                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                 />
                 <button
                   type="button"
                   onClick={handleSelectExecutable}
-                  className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  className="px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
                 >
                   选择
                 </button>
@@ -331,14 +331,14 @@ function GameDetailPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
                 简介
               </label>
               <textarea
                 value={game.summary}
                 onChange={(e) => setGame({ ...game, summary: e.target.value } as models.Game)}
                 rows={6}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none"
               />
             </div>
 
@@ -362,7 +362,7 @@ function GameDetailPage() {
       )}
 
       {(activeTab === 'backup') && (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-brand-500">
           功能开发中...
         </div>
       )}

@@ -96,14 +96,14 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl dark:bg-gray-800">
+      <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl dark:bg-brand-800">
         <div className="flex items-center justify-between">
-          <h2 className="text-4xl font-bold text-gray-900 dark:text-white">添加游戏</h2>
+          <h2 className="text-4xl font-bold text-brand-900 dark:text-white">添加游戏</h2>
           <button
               onClick={resetAndClose}
-              className="i-mdi-close text-2xl text-gray-500 p-1 rounded-lg
-              hover:bg-gray-100 hover:text-gray-700 focus:outline-none
-              dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+              className="i-mdi-close text-2xl text-brand-500 p-1 rounded-lg
+              hover:bg-brand-100 hover:text-brand-700 focus:outline-none
+              dark:text-brand-400 dark:hover:bg-brand-700 dark:hover:text-brand-200"
           />
         </div>
 
@@ -123,17 +123,17 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
                 value={executablePath}
                 readOnly
                 placeholder="请选择一个可执行程序"
-                className="box-border block w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">游戏名称 *</label>
+              <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">游戏名称 *</label>
               <input
                 type="text"
                 value={gameName}
                 onChange={(e) => setGameName(e.target.value)}
-                className="box-border block w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               />
             </div>
 
@@ -151,7 +151,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
 
         {step === 2 && (
           <div className="space-y-6">
-            <p className="text-gray-600 dark:text-gray-300">哪个结果是您期望的？</p>
+            <p className="text-brand-600 dark:text-brand-300">哪个结果是您期望的？</p>
             
             <div className="flex max-h-[400px] flex-wrap justify-center gap-4 overflow-y-auto p-1">
               {metadataResults.filter(item => item.Game)
@@ -159,29 +159,29 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
                   <div
                     key={index}
                     onClick={() => saveGame(item.Game!)} // 使用非空断言，因为上面已过滤
-                    className="w-44 cursor-pointer rounded-lg border border-gray-200 p-3 transition hover:border-blue-500 hover:shadow-md dark:border-gray-700 dark:hover:border-blue-400"
+                    className="w-44 cursor-pointer rounded-lg border border-brand-200 p-3 transition hover:border-blue-500 hover:shadow-md dark:border-brand-700 dark:hover:border-blue-400"
                   >
-                    <div className="aspect-[3/4] w-full overflow-hidden rounded-md bg-gray-200 dark:bg-gray-700">
+                    <div className="aspect-[3/4] w-full overflow-hidden rounded-md bg-brand-200 dark:bg-brand-700">
                       {item.Game!.cover_url ? (
                         <img src={item.Game!.cover_url} alt={item.Game!.name} className="h-full w-full object-cover" />
                       ) : (
-                        <div className="flex h-full items-center justify-center text-gray-400">
+                        <div className="flex h-full items-center justify-center text-brand-400">
                           <div className="i-mdi-image-off text-4xl" />
                         </div>
                       )}
                     </div>
-                    <h3 className="mt-2 truncate text-sm font-bold text-gray-900 dark:text-white" title={item.Game!.name}>{item.Game!.name}</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <h3 className="mt-2 truncate text-sm font-bold text-brand-900 dark:text-white" title={item.Game!.name}>{item.Game!.name}</h3>
+                    <p className="text-xs text-brand-500 dark:text-brand-400">
                       来自 {item.Source}
                     </p>
                   </div>
                 ))}
             </div>
 
-            <div className="flex items-center justify-between border-t border-gray-200 pt-4 dark:border-gray-700">
+            <div className="flex items-center justify-between border-t border-brand-200 pt-4 dark:border-brand-700">
                <button
                 onClick={() => setStep(1)}
-                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                className="text-sm text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-200"
               >
                 &larr; 返回上一步
               </button>
@@ -198,11 +198,11 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
         {step === 3 && (
           <div className="space-y-6">
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">数据源</label>
+              <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">数据源</label>
               <select
                 value={manualSource}
                 onChange={(e) => setManualSource(e.target.value as enums.SourceType)}
-                className="w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               >
                 <option value={enums.SourceType.BANGUMI}>Bangumi</option>
                 <option value={enums.SourceType.VNDB}>VNDB</option>
@@ -210,20 +210,20 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">游戏 ID</label>
+              <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">游戏 ID</label>
               <input
                 type="text"
                 value={manualId}
                 onChange={(e) => setManualId(e.target.value)}
                 placeholder="请输入游戏 ID"
-                className="box-border block w-full rounded-lg border border-gray-300 bg-gray-50 p-3 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               />
             </div>
 
             <div className="flex justify-end space-x-4">
               <button
                 onClick={() => setStep(2)}
-                className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                className="rounded-lg border border-brand-300 px-5 py-2.5 text-sm font-medium text-brand-700 hover:bg-brand-100 dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-700"
               >
                 返回
               </button>

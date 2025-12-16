@@ -120,7 +120,7 @@ function CategoryDetailPage() {
         {/* Back Button */}
         <button
             onClick={onBack}
-            className="flex rounded-md items-center text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors mb-6"
+            className="flex rounded-md items-center text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-200 transition-colors mb-6"
         >
           <div className="i-mdi-arrow-left text-2xl mr-1" />
           <span>返回</span>
@@ -129,11 +129,11 @@ function CategoryDetailPage() {
         <div className="flex flex-col gap-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-4xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <h1 className="text-4xl font-bold text-brand-900 dark:text-white flex items-center gap-3">
                 {category.name}
                 {category.is_system && <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-md dark:bg-blue-900 dark:text-blue-300 align-middle">系统</span>}
               </h1>
-              <p className="text-gray-500 dark:text-gray-400 mt-2">
+              <p className="text-brand-500 dark:text-brand-400 mt-2">
                 共 {games.length} 个游戏
               </p>
             </div>
@@ -184,13 +184,13 @@ function CategoryDetailPage() {
                     ))}
                   </div>
               ) : (
-                  <div className="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400">
+                  <div className="flex flex-col items-center justify-center h-64 text-brand-500 dark:text-brand-400">
                     <div className="i-mdi-magnify text-6xl mb-4" />
                     <p className="text-lg">未找到匹配的游戏</p>
                   </div>
               )
           ) : (
-              <div className="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400">
+              <div className="flex flex-col items-center justify-center h-64 text-brand-500 dark:text-brand-400">
                 <div className="i-mdi-gamepad-variant-outline text-6xl mb-4" />
                 <p className="text-lg">这个收藏夹还没有游戏</p>
                 <button
