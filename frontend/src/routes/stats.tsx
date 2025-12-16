@@ -126,7 +126,7 @@ function StatsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-8xl mx-auto">
+    <div className="space-y-6 max-w-8xl mx-auto p-8">
       <div className="flex items-center justify-between">
         <h1 className="text-4xl font-bold text-gray-900 dark:text-white">统计</h1>
       </div>

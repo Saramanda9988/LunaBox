@@ -150,7 +150,7 @@ function GameDetailPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-8xl mx-auto">
+    <div className="space-y-8 max-w-8xl mx-auto p-8">
       {/* Back Button */}
       <button
         onClick={() => window.history.back()}

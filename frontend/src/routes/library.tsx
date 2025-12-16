@@ -58,7 +58,7 @@ function LibraryPage() {
   }
 
   return (
-    <div className="h-full w-full flex flex-col">
+    <div className="h-full w-full flex flex-col p-8">
       <div className="flex items-center justify-between">
         <h1 className="text-4xl font-bold text-gray-900 dark:text-white">游戏库</h1>
       </div>

@@ -44,7 +44,7 @@ function HomePage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-8">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white">首页</h1>
