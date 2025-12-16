@@ -1,5 +1,5 @@
-import { models } from '../../wailsjs/go/models'
-import { StartGameWithTracking } from '../../wailsjs/go/service/TimerService'
+import { models } from '../../../wailsjs/go/models'
+import { StartGameWithTracking } from '../../../wailsjs/go/service/TimerService'
 import { useNavigate } from '@tanstack/react-router'
 
 interface GameCardProps {

@@ -1,4 +1,4 @@
-import { vo } from '../../wailsjs/go/models'
+import { vo } from '../../../wailsjs/go/models'
 import {Link, useNavigate} from '@tanstack/react-router'
 
 interface CategoryCardProps {

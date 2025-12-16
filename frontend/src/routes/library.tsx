@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react'
 import { Route as rootRoute } from './__root'
 import { GetGames } from '../../wailsjs/go/service/GameService'
 import { models } from '../../wailsjs/go/models'
-import { GameCard } from '../components/GameCard'
-import { AddGameModal } from '../components/AddGameModal'
+import { GameCard } from '../components/card/GameCard'
+import { AddGameModal } from '../components/modal/AddGameModal'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,

@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { models, vo, enums } from '../../wailsjs/go/models'
-import { SelectGameExecutable, FetchMetadataByName, FetchMetadata, AddGame } from '../../wailsjs/go/service/GameService'
+import { models, vo, enums } from '../../../wailsjs/go/models'
+import { SelectGameExecutable, FetchMetadataByName, FetchMetadata, AddGame } from '../../../wailsjs/go/service/GameService'
 
 interface AddGameModalProps {
   isOpen: boolean

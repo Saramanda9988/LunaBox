@@ -7,7 +7,7 @@ import {
   DeleteCategory,
 } from '../../wailsjs/go/service/CategoryService'
 import { vo } from '../../wailsjs/go/models'
-import { CategoryCard } from '../components/CategoryCard'
+import { CategoryCard } from '../components/card/CategoryCard'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,

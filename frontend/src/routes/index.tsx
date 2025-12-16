@@ -1,7 +1,7 @@
 import { createRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { useAppStore } from '../store'
-import { GameCard } from '../components/GameCard'
+import { GameCard } from '../components/card/GameCard'
 import { Route as rootRoute } from './__root'
 import { models } from '../../wailsjs/go/models'
 
