@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { useAppStore } from '../store'
 
-export function Sidebar() {
+export function SideBar() {
   const { isSidebarOpen, toggleSidebar } = useAppStore()
 
   const navItems = [

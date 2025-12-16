@@ -1,10 +1,10 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router'
-import { Sidebar } from '../components/Sidebar'
+import { SideBar } from '../components/SideBar'
 
 export const Route = createRootRoute({
   component: () => (
     <div className="flex h-screen w-full bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden">
-      <Sidebar />
+      <SideBar />
       <main className="flex-1 overflow-auto">
         <Outlet />
       </main>
