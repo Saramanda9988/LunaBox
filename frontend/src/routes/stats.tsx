@@ -197,7 +197,7 @@ function StatsPage() {
               <img
                 src={stats.play_time_leaderboard[0].cover_url}
                 alt={stats.play_time_leaderboard[0].game_name}
-                className="w-40 h-56 object-cover rounded-lg shadow-md mb-4 transition-transform group-hover:scale-105 bg-brand-200 dark:bg-brand-700"
+                className="w-full h-auto block object-cover rounded-lg shadow-md mb-4 transition-transform group-hover:scale-105 bg-brand-200 dark:bg-brand-700"
               />
             </div>
             <h3 className="text-lg font-bold text-brand-900 dark:text-white mb-2 line-clamp-2 px-2">
@@ -266,7 +266,7 @@ function StatsPage() {
           </div>
         </div>
         <div className="bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
-          <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">热门游戏趋势</h3>
+          <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">常玩游戏趋势</h3>
           <div className="h-96 w-full">
             <Line options={chartOptions} data={gameTrendData} />
           </div>

@@ -43,13 +43,19 @@ export function SideBar() {
         </ul>
       </nav>
 
-      <div className={`p-4 border-t border-brand-200 dark:border-brand-700 ${isSidebarOpen ? '' : 'flex justify-center'}`}>
+      <div className={`p-4 border-brand-200 dark:border-brand-700 flex ${isSidebarOpen ? 'flex-row gap-2' : 'flex-col gap-2 items-center'}`}>
+        <button
+          className="flex items-center justify-center rounded hover:bg-brand-100 dark:hover:bg-brand-700 p-2 text-brand-700 dark:text-brand-300"
+          title="云同步"
+        >
+          <div className="i-mdi-cloud-sync text-xl" />
+        </button>
         <Link
           to="/settings"
-          className={`flex items-center rounded hover:bg-brand-100 dark:hover:bg-brand-700 p-2 text-brand-700 dark:text-brand-300 no-underline [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100 ${isSidebarOpen ? 'w-full' : ''}`}
+          className="flex items-center justify-center rounded hover:bg-brand-100 dark:hover:bg-brand-700 p-2 text-brand-700 dark:text-brand-300 no-underline [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100"
+          title="设置"
         >
           <div className="i-mdi-cog text-xl" />
-          {isSidebarOpen && <span className="ml-3">设置</span>}
         </Link>
       </div>
     </aside>
