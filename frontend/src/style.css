@@ -1,0 +1,29 @@
+:root {
+  --scrollbar-thumb: #ccc;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb-hover: #aaa;
+}
+
+.dark {
+  --scrollbar-thumb: #4b5563;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb-hover: #6b7280;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
