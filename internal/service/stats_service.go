@@ -3,10 +3,17 @@ package service
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"fmt"
+	"io"
 	"lunabox/internal/appconf"
 	"lunabox/internal/enums"
 	"lunabox/internal/vo"
+	"net/http"
+	"os"
+	"strings"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type StatsService struct {
@@ -23,6 +30,69 @@ func (s *StatsService) Init(ctx context.Context, db *sql.DB, config *appconf.App
 	s.ctx = ctx
 	s.db = db
 	s.config = config
+}
+
+// ExportStatsImage TODO:不是好做法，应该使用wails本地缓存机制缓存图片到本地，而不是现获取
+func (s *StatsService) ExportStatsImage(base64Data string) error {
+	// Remove header if present (e.g., "data:image/png;base64,")
+	if idx := strings.Index(base64Data, ","); idx != -1 {
+		base64Data = base64Data[idx+1:]
+	}
+
+	data, err := base64.StdEncoding.DecodeString(base64Data)
+	if err != nil {
+		return fmt.Errorf("failed to decode base64 data: %w", err)
+	}
+
+	filename, err := runtime.SaveFileDialog(s.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: "lunabox-stats.png",
+		Title:           "Save Stats Image",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "PNG Images (*.png)",
+				Pattern:     "*.png",
+			},
+		},
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to open save dialog: %w", err)
+	}
+
+	if filename == "" {
+		return nil // User cancelled
+	}
+
+	if err := os.WriteFile(filename, data, 0644); err != nil {
+		return fmt.Errorf("failed to save file: %w", err)
+	}
+
+	return nil
+}
+
+func (s *StatsService) FetchImageAsBase64(url string) (string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch image: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to fetch image, status code: %d", resp.StatusCode)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read image body: %w", err)
+	}
+
+	contentType := resp.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "image/jpeg" // Default fallback
+	}
+
+	base64Data := base64.StdEncoding.EncodeToString(data)
+	return fmt.Sprintf("data:%s;base64,%s", contentType, base64Data), nil
 }
 
 func (s *StatsService) GetGameStats(gameID string) (vo.GameDetailStats, error) {

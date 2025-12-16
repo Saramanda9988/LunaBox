@@ -6,6 +6,10 @@ import {context} from '../models';
 import {sql} from '../models';
 import {appconf} from '../models';
 
+export function ExportStatsImage(arg1:string):Promise<void>;
+
+export function FetchImageAsBase64(arg1:string):Promise<string>;
+
 export function GetGameStats(arg1:string):Promise<vo.GameDetailStats>;
 
 export function GetGlobalPeriodStats(arg1:enums.Period):Promise<vo.PeriodStats>;
