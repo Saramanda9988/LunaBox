@@ -288,6 +288,7 @@ export namespace vo {
 	export class GamePlayStats {
 	    game_id: string;
 	    game_name: string;
+	    cover_url: string;
 	    total_duration: number;
 	
 	    static createFrom(source: any = {}) {
@@ -298,6 +299,7 @@ export namespace vo {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.game_id = source["game_id"];
 	        this.game_name = source["game_name"];
+	        this.cover_url = source["cover_url"];
 	        this.total_duration = source["total_duration"];
 	    }
 	}

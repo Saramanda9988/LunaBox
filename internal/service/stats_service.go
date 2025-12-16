@@ -128,11 +128,11 @@ func (s *StatsService) GetGlobalPeriodStats(dimension enums.Period) (vo.PeriodSt
 	// 2. Leaderboard (Top 5)
 	stats.PlayTimeLeaderboard = make([]vo.GamePlayStats, 0)
 	queryLeaderboard := fmt.Sprintf(`
-		SELECT ps.game_id, g.name, SUM(ps.duration) as total 
+		SELECT ps.game_id, g.name, g.cover_url, SUM(ps.duration) as total 
 		FROM play_sessions ps 
 		JOIN games g ON ps.game_id = g.id 
 		WHERE ps.start_time >= %s
-		GROUP BY ps.game_id, g.name 
+		GROUP BY ps.game_id, g.name, g.cover_url 
 		ORDER BY total DESC 
 		LIMIT 5
 	`, startDateExpr)
@@ -144,7 +144,7 @@ func (s *StatsService) GetGlobalPeriodStats(dimension enums.Period) (vo.PeriodSt
 
 	for rows.Next() {
 		var item vo.GamePlayStats
-		if err := rows.Scan(&item.GameID, &item.GameName, &item.TotalDuration); err != nil {
+		if err := rows.Scan(&item.GameID, &item.GameName, &item.CoverUrl, &item.TotalDuration); err != nil {
 			rows.Close()
 			return stats, err
 		}
