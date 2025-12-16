@@ -6,8 +6,9 @@ import { Route as gameRoute } from './routes/game'
 import { Route as statsRoute } from './routes/stats'
 import { Route as categoriesRoute } from './routes/categories'
 import { Route as categoryRoute } from "./routes/category";
+import { Route as settingsRoute } from './routes/settings'
 
-const routeTree = rootRoute.addChildren([indexRoute, libraryRoute, gameRoute, statsRoute, categoriesRoute, categoryRoute])
+const routeTree = rootRoute.addChildren([indexRoute, libraryRoute, gameRoute, statsRoute, categoriesRoute, categoryRoute, settingsRoute])
 
 const router = createRouter({ routeTree })
 

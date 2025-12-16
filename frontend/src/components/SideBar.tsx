@@ -44,10 +44,13 @@ export function SideBar() {
       </nav>
 
       <div className={`p-4 border-t border-gray-200 dark:border-gray-700 ${isSidebarOpen ? '' : 'flex justify-center'}`}>
-        <button className={`flex items-center rounded hover:bg-gray-100 dark:hover:bg-gray-700 p-2 ${isSidebarOpen ? 'w-full' : ''}`}>
+        <Link
+          to="/settings"
+          className={`flex items-center rounded hover:bg-gray-100 dark:hover:bg-gray-700 p-2 text-gray-700 dark:text-gray-300 no-underline [&.active]:bg-gray-200 [&.active]:text-gray-900 dark:[&.active]:bg-gray-700 dark:[&.active]:text-gray-100 ${isSidebarOpen ? 'w-full' : ''}`}
+        >
           <div className="i-mdi-cog text-xl" />
           {isSidebarOpen && <span className="ml-3">设置</span>}
-        </button>
+        </Link>
       </div>
     </aside>
   )
