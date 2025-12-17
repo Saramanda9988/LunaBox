@@ -91,3 +91,18 @@ type Choice struct {
 type APIError struct {
 	Message string `json:"message"`
 }
+
+// CloudBackupStatus 云备份状态
+type CloudBackupStatus struct {
+	Enabled    bool   `json:"enabled"`    // 是否启用
+	Configured bool   `json:"configured"` // 是否已配置
+	UserID     string `json:"user_id"`    // 用户标识
+}
+
+// CloudBackupItem 云端备份项
+type CloudBackupItem struct {
+	Key       string    `json:"key"`        // S3 对象 key
+	Name      string    `json:"name"`       // 显示名称
+	Size      int64     `json:"size"`       // 文件大小
+	CreatedAt time.Time `json:"created_at"` // 创建时间
+}

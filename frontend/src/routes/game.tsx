@@ -4,7 +4,7 @@ import { Route as rootRoute } from './__root'
 import { useChartTheme } from '../hooks/useChartTheme'
 import { GetGameByID, UpdateGame, SelectGameExecutable, DeleteGame, SelectSaveDirectory } from '../../wailsjs/go/service/GameService'
 import { GetGameStats } from '../../wailsjs/go/service/StatsService'
-import { GetGameBackups, CreateBackup, RestoreBackup, DeleteBackup, OpenBackupFolder } from '../../wailsjs/go/service/BackupService'
+import { GetGameBackups, CreateBackup, RestoreBackup, DeleteBackup, OpenBackupFolder, GetCloudBackupStatus, UploadGameBackupToCloud, GetCloudGameBackups, RestoreFromCloud } from '../../wailsjs/go/service/BackupService'
 import { models, vo } from '../../wailsjs/go/models'
 import {
   Chart as ChartJS,
@@ -45,18 +45,33 @@ function GameDetailPage() {
   const [activeTab, setActiveTab] = useState('stats')
   const [backups, setBackups] = useState<models.GameBackup[]>([])
   const [isBackingUp, setIsBackingUp] = useState(false)
+  const [cloudBackups, setCloudBackups] = useState<vo.CloudBackupItem[]>([])
+  const [cloudStatus, setCloudStatus] = useState<vo.CloudBackupStatus | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [gameData, statsData, backupsData] = await Promise.all([
+        const [gameData, statsData, backupsData, cloudStatusData] = await Promise.all([
           GetGameByID(gameId),
           GetGameStats(gameId),
           GetGameBackups(gameId),
+          GetCloudBackupStatus(),
         ])
         setGame(gameData)
         setStats(statsData)
         setBackups(backupsData || [])
+        setCloudStatus(cloudStatusData)
+
+        // 如果云备份已配置，加载云端备份列表
+        if (cloudStatusData.configured && cloudStatusData.enabled) {
+          try {
+            const cloudBackupsData = await GetCloudGameBackups(gameId)
+            setCloudBackups(cloudBackupsData || [])
+          } catch {
+            // 云端备份加载失败不影响主流程
+          }
+        }
       } catch (error) {
         console.error('Failed to load game data:', error)
         toast.error('加载游戏数据失败')
@@ -243,6 +258,35 @@ function GameDetailPage() {
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  }
+
+  const handleUploadToCloud = async (backupId: string) => {
+    if (!game) return
+    setIsUploading(true)
+    try {
+      await UploadGameBackupToCloud(game.id, backupId)
+      const cloudBackupsData = await GetCloudGameBackups(game.id)
+      setCloudBackups(cloudBackupsData || [])
+      toast.success('上传成功')
+    } catch (error: any) {
+      console.error('Failed to upload to cloud:', error)
+      toast.error(error?.message || '上传失败')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleRestoreFromCloud = async (cloudKey: string, name: string) => {
+    if (!game) return
+    if (window.confirm(`确定要从云端恢复 ${name} 的备份吗？当前存档将被覆盖。`)) {
+      try {
+        await RestoreFromCloud(cloudKey, game.id)
+        toast.success('恢复成功')
+      } catch (error: any) {
+        console.error('Failed to restore from cloud:', error)
+        toast.error(error?.message || '恢复失败')
+      }
+    }
   }
 
   return (
@@ -494,12 +538,12 @@ function GameDetailPage() {
             </div>
           </div>
 
-          {/* 备份历史列表 */}
+          {/* 本地备份历史列表 */}
           <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-            <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">备份历史</h3>
+            <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">本地备份</h3>
             {backups.length === 0 ? (
               <div className="text-center py-8 text-brand-500">
-                暂无备份记录
+                暂无本地备份记录
               </div>
             ) : (
               <div className="space-y-3">
@@ -520,17 +564,29 @@ function GameDetailPage() {
                       </div>
                     </div>
                     <div className="flex gap-2">
+                      {cloudStatus?.configured && cloudStatus?.enabled && (
+                        <button
+                          onClick={() => handleUploadToCloud(backup.id)}
+                          disabled={isUploading}
+                          title="上传到云端"
+                          className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900 rounded transition-colors disabled:opacity-50"
+                        >
+                          <div className={`i-mdi-cloud-upload text-xl ${isUploading ? 'animate-pulse' : ''}`} />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleRestoreBackup(backup.id, backup.created_at)}
                         title="恢复备份"
-                        className="i-mdi-backup-restore text-2xl bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                        className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900 rounded transition-colors"
                       >
+                        <div className="i-mdi-backup-restore text-xl" />
                       </button>
                       <button
                         onClick={() => handleDeleteBackup(backup.id)}
                         title="删除备份"
-                        className="i-mdi-delete text-2xl bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                        className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900 rounded transition-colors"
                       >
+                        <div className="i-mdi-delete text-xl" />
                       </button>
                     </div>
                   </div>
@@ -538,6 +594,64 @@ function GameDetailPage() {
               </div>
             )}
           </div>
+
+          {/* 云端备份列表 */}
+          {cloudStatus?.configured && cloudStatus?.enabled && (
+            <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
+              <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4 flex items-center gap-2">
+                <div className="i-mdi-cloud text-xl text-blue-500" />
+                云端备份
+              </h3>
+              {cloudBackups.length === 0 ? (
+                <div className="text-center py-8 text-brand-500">
+                  暂无云端备份记录
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {cloudBackups.map((backup) => (
+                    <div
+                      key={backup.key}
+                      className="flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-700 rounded-lg"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="i-mdi-cloud-check text-2xl text-blue-500" />
+                        <div>
+                          <div className="font-medium text-brand-900 dark:text-white">
+                            {backup.name || new Date(backup.created_at).toLocaleString()}
+                          </div>
+                          <div className="text-sm text-brand-500">
+                            {new Date(backup.created_at).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleRestoreFromCloud(backup.key, backup.name)}
+                          title="从云端恢复"
+                          className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900 rounded transition-colors"
+                        >
+                          <div className="i-mdi-cloud-download text-xl" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 云备份未配置提示 */}
+          {(!cloudStatus?.configured || !cloudStatus?.enabled) && (
+            <div className="bg-brand-50 dark:bg-brand-800 p-4 rounded-lg border border-brand-200 dark:border-brand-700">
+              <div className="flex items-center gap-3">
+                <div className="i-mdi-cloud-off-outline text-2xl text-brand-400" />
+                <div>
+                  <div className="font-medium text-brand-700 dark:text-brand-300">云备份未启用</div>
+                  <div className="text-sm text-brand-500">前往设置页面配置云备份，将存档同步到云端</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

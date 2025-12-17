@@ -10,8 +10,20 @@ export function DeleteBackup(arg1) {
   return window['go']['service']['BackupService']['DeleteBackup'](arg1);
 }
 
+export function DownloadCloudBackup(arg1, arg2) {
+  return window['go']['service']['BackupService']['DownloadCloudBackup'](arg1, arg2);
+}
+
 export function GetBackupDir() {
   return window['go']['service']['BackupService']['GetBackupDir']();
+}
+
+export function GetCloudBackupStatus() {
+  return window['go']['service']['BackupService']['GetCloudBackupStatus']();
+}
+
+export function GetCloudGameBackups(arg1) {
+  return window['go']['service']['BackupService']['GetCloudGameBackups'](arg1);
 }
 
 export function GetGameBackups(arg1) {
@@ -28,4 +40,20 @@ export function OpenBackupFolder(arg1) {
 
 export function RestoreBackup(arg1) {
   return window['go']['service']['BackupService']['RestoreBackup'](arg1);
+}
+
+export function RestoreFromCloud(arg1, arg2) {
+  return window['go']['service']['BackupService']['RestoreFromCloud'](arg1, arg2);
+}
+
+export function SetupCloudBackup(arg1) {
+  return window['go']['service']['BackupService']['SetupCloudBackup'](arg1);
+}
+
+export function TestS3Connection() {
+  return window['go']['service']['BackupService']['TestS3Connection']();
+}
+
+export function UploadGameBackupToCloud(arg1, arg2) {
+  return window['go']['service']['BackupService']['UploadGameBackupToCloud'](arg1, arg2);
 }

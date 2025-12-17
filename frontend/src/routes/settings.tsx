@@ -110,6 +110,133 @@ function SettingsPage() {
           </select>
         </div>
 
+        {/* 云备份配置 */}
+        <div className="pt-6 border-t border-brand-200 dark:border-brand-700">
+          <h2 className="text-lg font-semibold text-brand-900 dark:text-white mb-4 flex items-center gap-2">
+            <span className="i-mdi-cloud-upload text-xl"/>
+            云备份配置
+          </h2>
+          
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="cloud_backup_enabled"
+                name="cloud_backup_enabled"
+                checked={formData.cloud_backup_enabled || false}
+                onChange={(e) => setFormData({ ...formData, cloud_backup_enabled: e.target.checked } as appconf.AppConfig)}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="cloud_backup_enabled" className="text-sm font-medium text-brand-700 dark:text-brand-300">
+                启用云备份
+              </label>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                备份密码
+              </label>
+              <input
+                type="password"
+                name="backup_password"
+                value={formData.backup_password || ''}
+                onChange={handleChange}
+                placeholder="用于生成用户标识和加密备份"
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
+              />
+              <p className="text-xs text-brand-500 dark:text-brand-400">
+                重要：请牢记此密码，忘记将无法恢复云端备份
+                {formData.backup_user_id && <span className="ml-2">用户ID: {formData.backup_user_id.substring(0, 8)}...</span>}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                S3 端点 (Endpoint)
+              </label>
+              <input
+                type="text"
+                name="s3_endpoint"
+                value={formData.s3_endpoint || ''}
+                onChange={handleChange}
+                placeholder="https://s3.example.com"
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                  区域 (Region)
+                </label>
+                <input
+                  type="text"
+                  name="s3_region"
+                  value={formData.s3_region || ''}
+                  onChange={handleChange}
+                  placeholder="us-east-1"
+                  className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                  存储桶 (Bucket)
+                </label>
+                <input
+                  type="text"
+                  name="s3_bucket"
+                  value={formData.s3_bucket || ''}
+                  onChange={handleChange}
+                  placeholder="lunabox-backup"
+                  className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                Access Key
+              </label>
+              <input
+                type="text"
+                name="s3_access_key"
+                value={formData.s3_access_key || ''}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                Secret Key
+              </label>
+              <input
+                type="password"
+                name="s3_secret_key"
+                value={formData.s3_secret_key || ''}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                保留备份数量
+              </label>
+              <input
+                type="number"
+                name="cloud_backup_retention"
+                value={formData.cloud_backup_retention || 20}
+                onChange={(e) => setFormData({ ...formData, cloud_backup_retention: parseInt(e.target.value) || 20 } as appconf.AppConfig)}
+                min={1}
+                max={100}
+                className="w-32 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
+              />
+              <p className="text-xs text-brand-500 dark:text-brand-400">云端每个游戏保留的最大备份数量</p>
+            </div>
+          </div>
+        </div>
+
         {/* AI 配置 */}
         <div className="pt-6 border-t border-brand-200 dark:border-brand-700">
           <h2 className="text-lg font-semibold text-brand-900 dark:text-white mb-4 flex items-center gap-2">

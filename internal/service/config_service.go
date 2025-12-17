@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"lunabox/internal/appconf"
+	"lunabox/internal/utils"
 )
 
 type ConfigService struct {
@@ -31,10 +32,17 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	if newConfig.Theme == "" || newConfig.Language == "" {
 		return fmt.Errorf("invalid config")
 	}
+
+	// 如果备份密码有变化，重新生成 user-id
+	if newConfig.BackupPassword != "" && newConfig.BackupPassword != s.config.BackupPassword {
+		newConfig.BackupUserID = utils.GenerateUserID(newConfig.BackupPassword)
+	}
+
 	err := appconf.SaveConfig(&newConfig)
 	if err != nil {
 		return err
 	}
+
 	// 更新应用配置 in-memory
 	s.config.BangumiAccessToken = newConfig.BangumiAccessToken
 	s.config.VNDBAccessToken = newConfig.VNDBAccessToken
@@ -44,5 +52,15 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.AIBaseURL = newConfig.AIBaseURL
 	s.config.AIAPIKey = newConfig.AIAPIKey
 	s.config.AIModel = newConfig.AIModel
+	// 云备份配置
+	s.config.CloudBackupEnabled = newConfig.CloudBackupEnabled
+	s.config.BackupPassword = newConfig.BackupPassword
+	s.config.BackupUserID = newConfig.BackupUserID
+	s.config.S3Endpoint = newConfig.S3Endpoint
+	s.config.S3Region = newConfig.S3Region
+	s.config.S3Bucket = newConfig.S3Bucket
+	s.config.S3AccessKey = newConfig.S3AccessKey
+	s.config.S3SecretKey = newConfig.S3SecretKey
+	s.config.CloudBackupRetention = newConfig.CloudBackupRetention
 	return nil
 }

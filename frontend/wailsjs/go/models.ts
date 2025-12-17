@@ -9,6 +9,15 @@ export namespace appconf {
 	    ai_base_url?: string;
 	    ai_api_key?: string;
 	    ai_model?: string;
+	    cloud_backup_enabled: boolean;
+	    backup_password?: string;
+	    backup_user_id?: string;
+	    s3_endpoint?: string;
+	    s3_region?: string;
+	    s3_bucket?: string;
+	    s3_access_key?: string;
+	    s3_secret_key?: string;
+	    cloud_backup_retention?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -24,6 +33,15 @@ export namespace appconf {
 	        this.ai_base_url = source["ai_base_url"];
 	        this.ai_api_key = source["ai_api_key"];
 	        this.ai_model = source["ai_model"];
+	        this.cloud_backup_enabled = source["cloud_backup_enabled"];
+	        this.backup_password = source["backup_password"];
+	        this.backup_user_id = source["backup_user_id"];
+	        this.s3_endpoint = source["s3_endpoint"];
+	        this.s3_region = source["s3_region"];
+	        this.s3_bucket = source["s3_bucket"];
+	        this.s3_access_key = source["s3_access_key"];
+	        this.s3_secret_key = source["s3_secret_key"];
+	        this.cloud_backup_retention = source["cloud_backup_retention"];
 	    }
 	}
 
@@ -265,6 +283,59 @@ export namespace vo {
 		    }
 		    return a;
 		}
+	}
+	export class CloudBackupItem {
+	    key: string;
+	    name: string;
+	    size: number;
+	    // Go type: time
+	    created_at: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new CloudBackupItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.name = source["name"];
+	        this.size = source["size"];
+	        this.created_at = this.convertValues(source["created_at"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CloudBackupStatus {
+	    enabled: boolean;
+	    configured: boolean;
+	    user_id: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CloudBackupStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enabled = source["enabled"];
+	        this.configured = source["configured"];
+	        this.user_id = source["user_id"];
+	    }
 	}
 	export class DailyPlayTime {
 	    date: string;
