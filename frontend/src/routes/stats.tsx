@@ -67,8 +67,7 @@ function StatsPage() {
             img.src = base64
           } catch (e) {
             console.warn('Failed to convert image to base64:', img.src, e)
-            // If conversion fails, we might want to leave it or set a placeholder
-            // For now, we leave it, but html-to-image might still fail.
+            toast.error('图片转换失败，请检查网络连接')
           }
         }
       }
@@ -123,6 +122,7 @@ function StatsPage() {
       setStats(data)
     } catch (error) {
       console.error('Failed to load stats:', error)
+      toast.error('加载统计数据失败')
     } finally {
       setLoading(false)
     }

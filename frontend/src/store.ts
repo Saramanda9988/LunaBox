@@ -29,11 +29,9 @@ export const useAppStore = create<AppState>((set) => ({
   config: null,
   isLoading: false,
   fetchHomeData: async () => {
-    console.log('Start fetching home data...')
     set({ isLoading: true })
     try {
       const data = await GetHomePageData()
-      console.log('Fetched home data:', data)
       set({ homeData: data })
     } catch (error) {
       console.error('Failed to fetch home data:', error)

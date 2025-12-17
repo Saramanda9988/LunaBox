@@ -12,6 +12,7 @@ import {GetGames} from "../../wailsjs/go/service/GameService";
 import {GameCard} from "../components/card/GameCard";
 import {AddGameToCategoryModal} from "../components/modal/AddGameToCategoryModal";
 import { FilterBar } from '../components/FilterBar'
+import { toast } from 'react-hot-toast'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -43,6 +44,7 @@ function CategoryDetailPage() {
       setCategory(result)
     } catch (error) {
       console.error('Failed to load category:', error)
+      toast.error('加载收藏夹失败')
     }
   }
 
@@ -52,6 +54,7 @@ function CategoryDetailPage() {
       setGames(result || [])
     } catch (error) {
       console.error('Failed to load games for category:', error)
+      toast.error('加载文件夹中游戏失败')
     }
   }
 
@@ -67,6 +70,7 @@ function CategoryDetailPage() {
       await loadCategory(category.id)
     } catch (error) {
       console.error('Failed to remove game from category:', error)
+      toast.error('从收藏夹中移除游戏失败')
     }
   }
 
@@ -78,6 +82,7 @@ function CategoryDetailPage() {
       setIsAddGameModalOpen(true)
     } catch (error) {
       console.error('Failed to load all games:', error)
+      toast.error('加载库中所有游戏失败')
     }
   }
 
@@ -90,6 +95,7 @@ function CategoryDetailPage() {
       await loadCategory(category.id)
     } catch (error) {
       console.error('Failed to add game to category:', error)
+      toast.error('添加游戏到收藏夹失败')
     }
   }
 

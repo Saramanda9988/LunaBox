@@ -16,6 +16,7 @@ import {
   Legend,
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
+import { toast } from 'react-hot-toast'
 
 ChartJS.register(
   CategoryScale,
@@ -53,6 +54,7 @@ function GameDetailPage() {
         setStats(statsData)
       } catch (error) {
         console.error('Failed to load game data:', error)
+        toast.error('加载游戏数据失败')
       } finally {
         setIsLoading(false)
       }
@@ -130,10 +132,10 @@ function GameDetailPage() {
       await UpdateGame(game)
       const updatedGame = await GetGameByID(game.id)
       setGame(updatedGame)
-      alert('更新成功')
+      toast.success('更新成功')
     } catch (error) {
       console.error('Failed to update game:', error)
-      alert('更新失败')
+      toast.error('更新失败')
     }
   }
 
@@ -145,6 +147,7 @@ function GameDetailPage() {
       }
     } catch (error) {
       console.error('Failed to select executable:', error)
+      toast.error('选择可执行文件失败')
     }
   }
 
@@ -155,12 +158,12 @@ function GameDetailPage() {
     if (window.confirm(`确定要删除游戏 "${game.name}" 吗？此操作无法撤销。`)) {
       try {
         await DeleteGame(game.id)
-        alert('删除成功')
+        toast.success('删除成功')
         navigate({ to: '/library' })
       } catch (error) {
         // TODO: 弹窗
         console.error('Failed to delete game:', error)
-        alert('删除失败')
+        toast.error('删除失败')
       }
     }
   }

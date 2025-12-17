@@ -6,6 +6,7 @@ import { models } from '../../wailsjs/go/models'
 import { GameCard } from '../components/card/GameCard'
 import { AddGameModal } from '../components/modal/AddGameModal'
 import { FilterBar } from '../components/FilterBar'
+import toast from 'react-hot-toast'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -30,7 +31,7 @@ function LibraryPage() {
       const result = await GetGames()
       setGames(result || [])
     } catch (error) {
-      console.error('Failed to load games:', error)
+      
     } finally {
       setIsLoading(false)
     }

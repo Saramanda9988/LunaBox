@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { models, vo, enums } from '../../../wailsjs/go/models'
 import { SelectGameExecutable, FetchMetadataByName, FetchMetadata, AddGame } from '../../../wailsjs/go/service/GameService'
+import { toast } from 'react-hot-toast'
 
 interface AddGameModalProps {
   isOpen: boolean
@@ -36,6 +37,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
       }
     } catch (error) {
       console.error('Failed to select executable:', error)
+      toast.error('打开系统选择器失败')
     }
   }
 
@@ -48,6 +50,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
       setStep(2)
     } catch (error) {
       console.error('Failed to fetch metadata:', error)
+      toast.error('获取元信息失败,请检查网络或token的有效性')
     } finally {
       setIsLoading(false)
     }
@@ -67,6 +70,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
       }
     } catch (error) {
       console.error('Failed to fetch metadata by ID:', error)
+      toast.error('通过id获取元信息失败, 请检查网络或token的有效性')
     } finally {
       setIsLoading(false)
     }
@@ -82,6 +86,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
       resetAndClose()
     } catch (error) {
       console.error('Failed to save game:', error)
+      toast.error('保存游戏失败')
     }
   }
 

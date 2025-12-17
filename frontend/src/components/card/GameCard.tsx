@@ -1,6 +1,7 @@
 import { models } from '../../../wailsjs/go/models'
 import { StartGameWithTracking } from '../../../wailsjs/go/service/TimerService'
 import { useNavigate } from '@tanstack/react-router'
+import { toast } from 'react-hot-toast'
 
 interface GameCardProps {
   game: models.Game
@@ -16,6 +17,8 @@ export function GameCard({ game }: GameCardProps) {
         await StartGameWithTracking(game.id)
       } catch (error) {
         console.error('Failed to start game:', error)
+        var notyfication = game.name + "启动失败, 查询日志获得帮助"
+        toast.error(notyfication)
       }
     }
   }
