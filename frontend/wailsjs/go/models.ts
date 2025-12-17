@@ -5,6 +5,10 @@ export namespace appconf {
 	    vndb_access_token?: string;
 	    theme: string;
 	    language: string;
+	    ai_provider?: string;
+	    ai_base_url?: string;
+	    ai_api_key?: string;
+	    ai_model?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -16,6 +20,10 @@ export namespace appconf {
 	        this.vndb_access_token = source["vndb_access_token"];
 	        this.theme = source["theme"];
 	        this.language = source["language"];
+	        this.ai_provider = source["ai_provider"];
+	        this.ai_base_url = source["ai_base_url"];
+	        this.ai_api_key = source["ai_api_key"];
+	        this.ai_model = source["ai_model"];
 	    }
 	}
 
@@ -148,7 +156,7 @@ export namespace sql {
 export namespace vo {
 	
 	export class AISummaryRequest {
-	    chat_ids: string[];
+	    dimension: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AISummaryRequest(source);
@@ -156,7 +164,21 @@ export namespace vo {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.chat_ids = source["chat_ids"];
+	        this.dimension = source["dimension"];
+	    }
+	}
+	export class AISummaryResponse {
+	    summary: string;
+	    dimension: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AISummaryResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.summary = source["summary"];
+	        this.dimension = source["dimension"];
 	    }
 	}
 	export class CategoryVO {

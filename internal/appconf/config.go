@@ -13,6 +13,11 @@ type AppConfig struct {
 	VNDBAccessToken    string `json:"vndb_access_token,omitempty"`
 	Theme              string `json:"theme"`    // light or dark
 	Language           string `json:"language"` // zh, en, etc.
+	// AI 配置
+	AIProvider string `json:"ai_provider,omitempty"` // openai, deepseek, etc.
+	AIBaseURL  string `json:"ai_base_url,omitempty"` // API base URL
+	AIAPIKey   string `json:"ai_api_key,omitempty"`  // API key
+	AIModel    string `json:"ai_model,omitempty"`    // model name
 }
 
 func LoadConfig() (*AppConfig, error) {
@@ -21,6 +26,10 @@ func LoadConfig() (*AppConfig, error) {
 		VNDBAccessToken:    "",
 		Theme:              "light",
 		Language:           "zh",
+		AIProvider:         "",
+		AIBaseURL:          "",
+		AIAPIKey:           "",
+		AIModel:            "",
 	}
 
 	// 获取配置文件路径

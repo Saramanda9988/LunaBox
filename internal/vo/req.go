@@ -3,7 +3,7 @@ package vo
 import "lunabox/internal/enums"
 
 type AISummaryRequest struct {
-	ChatIDs []string `json:"chat_ids"`
+	Dimension string `json:"dimension"` // week, month, year
 }
 
 type MetadataRequest struct {

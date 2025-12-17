@@ -105,6 +105,77 @@ function SettingsPage() {
           </select>
         </div>
 
+        {/* AI 配置 */}
+        <div className="pt-6 border-t border-brand-200 dark:border-brand-700">
+          <h2 className="text-lg font-semibold text-brand-900 dark:text-white mb-4 flex items-center gap-2">
+            <span className="i-mdi-robot-happy text-xl"/>
+            AI 锐评配置
+          </h2>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                AI 服务商
+              </label>
+              <select
+                name="ai_provider"
+                value={formData.ai_provider || ''}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
+              >
+                <option value="">请选择</option>
+                <option value="openai">OpenAI</option>
+                <option value="deepseek">DeepSeek</option>
+                <option value="custom">自定义 (OpenAI兼容)</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                API Base URL
+              </label>
+              <input
+                type="text"
+                name="ai_base_url"
+                value={formData.ai_base_url || ''}
+                onChange={handleChange}
+                placeholder="https://api.openai.com/v1"
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
+              />
+              <p className="text-xs text-brand-500 dark:text-brand-400">留空则使用默认地址</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                API Key
+              </label>
+              <input
+                type="password"
+                name="ai_api_key"
+                value={formData.ai_api_key || ''}
+                onChange={handleChange}
+                placeholder="sk-..."
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                模型名称
+              </label>
+              <input
+                type="text"
+                name="ai_model"
+                value={formData.ai_model || ''}
+                onChange={handleChange}
+                placeholder="gpt-3.5-turbo"
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
+              />
+              <p className="text-xs text-brand-500 dark:text-brand-400">留空则使用默认模型</p>
+            </div>
+          </div>
+        </div>
+
         <div className="pt-4">
           <button
             type="submit"

@@ -72,3 +72,9 @@ type PeriodStats struct {
 	Timeline            []TimePoint       `json:"timeline"`
 	LeaderboardSeries   []GameTrendSeries `json:"leaderboard_series"`
 }
+
+// AISummaryResponse AI总结响应
+type AISummaryResponse struct {
+	Summary   string `json:"summary"`
+	Dimension string `json:"dimension"`
+}

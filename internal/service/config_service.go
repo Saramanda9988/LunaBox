@@ -40,5 +40,9 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.VNDBAccessToken = newConfig.VNDBAccessToken
 	s.config.Theme = newConfig.Theme
 	s.config.Language = newConfig.Language
+	s.config.AIProvider = newConfig.AIProvider
+	s.config.AIBaseURL = newConfig.AIBaseURL
+	s.config.AIAPIKey = newConfig.AIAPIKey
+	s.config.AIModel = newConfig.AIModel
 	return nil
 }
