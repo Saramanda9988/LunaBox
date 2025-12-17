@@ -2,8 +2,9 @@ import { createRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Route as rootRoute } from './__root'
 import { useChartTheme } from '../hooks/useChartTheme'
-import { GetGameByID, UpdateGame, SelectGameExecutable, DeleteGame } from '../../wailsjs/go/service/GameService'
+import { GetGameByID, UpdateGame, SelectGameExecutable, DeleteGame, SelectSaveDirectory } from '../../wailsjs/go/service/GameService'
 import { GetGameStats } from '../../wailsjs/go/service/StatsService'
+import { GetGameBackups, CreateBackup, RestoreBackup, DeleteBackup, OpenBackupFolder } from '../../wailsjs/go/service/BackupService'
 import { models, vo } from '../../wailsjs/go/models'
 import {
   Chart as ChartJS,
@@ -42,16 +43,20 @@ function GameDetailPage() {
   const [stats, setStats] = useState<vo.GameDetailStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('stats')
+  const [backups, setBackups] = useState<models.GameBackup[]>([])
+  const [isBackingUp, setIsBackingUp] = useState(false)
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [gameData, statsData] = await Promise.all([
+        const [gameData, statsData, backupsData] = await Promise.all([
           GetGameByID(gameId),
           GetGameStats(gameId),
+          GetGameBackups(gameId),
         ])
         setGame(gameData)
         setStats(statsData)
+        setBackups(backupsData || [])
       } catch (error) {
         console.error('Failed to load game data:', error)
         toast.error('加载游戏数据失败')
@@ -166,6 +171,78 @@ function GameDetailPage() {
         toast.error('删除失败')
       }
     }
+  }
+
+  const handleSelectSaveDirectory = async () => {
+    try {
+      const path = await SelectSaveDirectory()
+      if (path && game) {
+        setGame({ ...game, save_path: path } as models.Game)
+      }
+    } catch (error) {
+      console.error('Failed to select save directory:', error)
+      toast.error('选择存档目录失败')
+    }
+  }
+
+  const handleCreateBackup = async () => {
+    if (!game) return
+    if (!game.save_path) {
+      toast.error('请先设置存档目录')
+      return
+    }
+    setIsBackingUp(true)
+    try {
+      await CreateBackup(game.id)
+      const backupsData = await GetGameBackups(game.id)
+      setBackups(backupsData || [])
+      toast.success('备份成功')
+    } catch (error: any) {
+      console.error('Failed to create backup:', error)
+      toast.error(error?.message || '备份失败')
+    } finally {
+      setIsBackingUp(false)
+    }
+  }
+
+  const handleRestoreBackup = async (backupId: string, createdAt: string) => {
+    if (window.confirm(`确定要恢复到 ${new Date(createdAt).toLocaleString()} 的备份吗？当前存档将被覆盖。`)) {
+      try {
+        await RestoreBackup(backupId)
+        toast.success('恢复成功')
+      } catch (error: any) {
+        console.error('Failed to restore backup:', error)
+        toast.error(error?.message || '恢复失败')
+      }
+    }
+  }
+
+  const handleDeleteBackup = async (backupId: string) => {
+    if (window.confirm('确定要删除此备份吗？')) {
+      try {
+        await DeleteBackup(backupId)
+        const backupsData = await GetGameBackups(gameId)
+        setBackups(backupsData || [])
+        toast.success('删除成功')
+      } catch (error) {
+        console.error('Failed to delete backup:', error)
+        toast.error('删除失败')
+      }
+    }
+  }
+
+  const handleOpenBackupFolder = async () => {
+    try {
+      await OpenBackupFolder(gameId)
+    } catch (error) {
+      console.error('Failed to open backup folder:', error)
+    }
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`
   }
 
   return (
@@ -335,6 +412,29 @@ function GameDetailPage() {
 
             <div>
               <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
+                存档目录
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={game.save_path || ''}
+                  onChange={(e) => setGame({ ...game, save_path: e.target.value } as models.Game)}
+                  placeholder="选择游戏存档所在目录"
+                  className="flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleSelectSaveDirectory}
+                  className="px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
+                >
+                  选择
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-brand-500">设置存档目录后可使用备份功能</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
                 简介
               </label>
               <textarea
@@ -365,8 +465,79 @@ function GameDetailPage() {
       )}
 
       {(activeTab === 'backup') && (
-        <div className="text-center py-12 text-brand-500">
-          功能开发中...
+        <div className="space-y-6">
+          {/* 备份操作区 */}
+          <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-brand-900 dark:text-white">存档备份</h3>
+                <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">
+                  {game?.save_path ? `存档目录: ${game.save_path}` : '请先在编辑页面设置存档目录'}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleOpenBackupFolder}
+                  className="px-4 py-2 text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-700 rounded-md transition-colors"
+                >
+                  打开备份文件夹
+                </button>
+                <button
+                  onClick={handleCreateBackup}
+                  disabled={isBackingUp || !game?.save_path}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isBackingUp && <div className="i-mdi-loading animate-spin" />}
+                  {isBackingUp ? '备份中...' : '立即备份'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 备份历史列表 */}
+          <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
+            <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">备份历史</h3>
+            {backups.length === 0 ? (
+              <div className="text-center py-8 text-brand-500">
+                暂无备份记录
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {backups.map((backup) => (
+                  <div
+                    key={backup.id}
+                    className="flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-700 rounded-lg"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="i-mdi-archive text-2xl text-brand-500" />
+                      <div>
+                        <div className="font-medium text-brand-900 dark:text-white">
+                          {new Date(backup.created_at).toLocaleString()}
+                        </div>
+                        <div className="text-sm text-brand-500">
+                          大小: {formatFileSize(backup.size)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleRestoreBackup(backup.id, backup.created_at)}
+                        className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                      >
+                        恢复
+                      </button>
+                      <button
+                        onClick={() => handleDeleteBackup(backup.id)}
+                        className="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                      >
+                        删除
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

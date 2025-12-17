@@ -153,6 +153,15 @@ func initSchema(db *sql.DB) error {
 			end_time TIMESTAMP,
 			duration INTEGER
 		)`,
+		`CREATE TABLE IF NOT EXISTS game_backups (
+			id TEXT PRIMARY KEY,
+			game_id TEXT,
+			backup_path TEXT,
+			size INTEGER,
+			created_at TIMESTAMP
+		)`,
+		// 添加 save_path 列（如果不存在）
+		`ALTER TABLE games ADD COLUMN IF NOT EXISTS save_path TEXT`,
 	}
 
 	for _, query := range queries {

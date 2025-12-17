@@ -54,6 +54,7 @@ export namespace models {
 	    company: string;
 	    summary: string;
 	    path: string;
+	    save_path: string;
 	    source_type: enums.SourceType;
 	    // Go type: time
 	    cached_at: any;
@@ -74,9 +75,49 @@ export namespace models {
 	        this.company = source["company"];
 	        this.summary = source["summary"];
 	        this.path = source["path"];
+	        this.save_path = source["save_path"];
 	        this.source_type = source["source_type"];
 	        this.cached_at = this.convertValues(source["cached_at"], null);
 	        this.source_id = source["source_id"];
+	        this.created_at = this.convertValues(source["created_at"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class GameBackup {
+	    id: string;
+	    game_id: string;
+	    backup_path: string;
+	    size: number;
+	    // Go type: time
+	    created_at: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new GameBackup(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.game_id = source["game_id"];
+	        this.backup_path = source["backup_path"];
+	        this.size = source["size"];
 	        this.created_at = this.convertValues(source["created_at"], null);
 	    }
 	

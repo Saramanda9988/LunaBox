@@ -112,6 +112,7 @@ func (s *GameService) DeleteGame(id string) error {
 func (s *GameService) GetGames() ([]models.Game, error) {
 	query := `SELECT 
 		id, user_id, name, cover_url, company, summary, path, 
+		COALESCE(save_path, '') as save_path,
 		source_type, cached_at, source_id, created_at 
 	FROM games 
 	ORDER BY created_at DESC`
@@ -135,6 +136,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 			&game.Company,
 			&game.Summary,
 			&game.Path,
+			&game.SavePath,
 			&sourceType,
 			&game.CachedAt,
 			&game.SourceID,
@@ -158,6 +160,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 func (s *GameService) GetGameByID(id string) (models.Game, error) {
 	query := `SELECT 
 		id, user_id, name, cover_url, company, summary, path, 
+		COALESCE(save_path, '') as save_path,
 		source_type, cached_at, source_id, created_at 
 	FROM games 
 	WHERE id = ?`
@@ -173,6 +176,7 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		&game.Company,
 		&game.Summary,
 		&game.Path,
+		&game.SavePath,
 		&sourceType,
 		&game.CachedAt,
 		&game.SourceID,
@@ -198,6 +202,7 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		company = ?,
 		summary = ?,
 		path = ?,
+		save_path = ?,
 		source_type = ?,
 		cached_at = ?,
 		source_id = ?
@@ -210,6 +215,7 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		game.Company,
 		game.Summary,
 		game.Path,
+		game.SavePath,
 		string(game.SourceType),
 		game.CachedAt,
 		game.SourceID,
@@ -230,6 +236,14 @@ func (s *GameService) UpdateGame(game models.Game) error {
 	}
 
 	return nil
+}
+
+// SelectSaveDirectory 选择存档目录
+func (s *GameService) SelectSaveDirectory() (string, error) {
+	selection, err := runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{
+		Title: "选择存档目录",
+	})
+	return selection, err
 }
 
 func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWebVO, error) {

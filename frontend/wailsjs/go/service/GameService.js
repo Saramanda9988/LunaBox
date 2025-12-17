@@ -34,6 +34,10 @@ export function SelectGameExecutable() {
   return window['go']['service']['GameService']['SelectGameExecutable']();
 }
 
+export function SelectSaveDirectory() {
+  return window['go']['service']['GameService']['SelectSaveDirectory']();
+}
+
 export function UpdateGame(arg1) {
   return window['go']['service']['GameService']['UpdateGame'](arg1);
 }
