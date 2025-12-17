@@ -1,5 +1,6 @@
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { useEffect } from 'react'
+import { Toaster } from 'react-hot-toast'
 import { useAppStore } from './store'
 import { Route as rootRoute } from './routes/__root'
 import { Route as indexRoute } from './routes/index'
@@ -51,7 +52,33 @@ function App() {
     }
   }, [config?.theme])
 
-  return <RouterProvider router={router} />
+  return (
+    <>
+      <RouterProvider router={router} />
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: 'var(--toast-bg, #fff)',
+            color: 'var(--toast-color, #374151)',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
+    </>
+  )
 }
 
 export default App

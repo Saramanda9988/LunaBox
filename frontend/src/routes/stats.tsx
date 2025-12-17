@@ -1,6 +1,7 @@
-import { createFileRoute, createRoute, RootRoute } from '@tanstack/react-router'
+import { createRoute } from '@tanstack/react-router'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { toPng } from 'html-to-image'
+import toast from 'react-hot-toast'
 import { Route as rootRoute } from './__root'
 import { useChartTheme } from '../hooks/useChartTheme'
 import {
@@ -88,8 +89,10 @@ function StatsPage() {
       }
 
       await ExportStatsImage(dataUrl)
+      toast.success('图片已保存')
     } catch (err) {
       console.error('Failed to export image:', err)
+      toast.error('导出图片失败')
     }
   }, [ref])
 
@@ -101,11 +104,12 @@ function StatsPage() {
       setAISummary(dimension, result.summary)
     } catch (err) {
       console.error('AI summarize failed:', err)
-      setAISummary(dimension, 'AI总结失败，请检查AI配置是否正确。')
+      setAISummary(dimension, '')
+      toast.error('AI总结失败，请检查AI配置是否正确')
     } finally {
       setAiLoading(false)
     }
-  }, [dimension])
+  }, [dimension, setAISummary])
 
   useEffect(() => {
     loadStats(dimension)

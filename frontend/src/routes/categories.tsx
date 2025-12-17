@@ -1,5 +1,6 @@
 import { createRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
 import { Route as rootRoute } from './__root'
 import {
   GetCategories,
@@ -36,6 +37,7 @@ function CategoriesPage() {
       setCategories(result || [])
     } catch (error) {
       console.error('Failed to load categories:', error)
+      toast.error('加载收藏夹失败')
     } finally {
       setIsLoading(false)
     }
@@ -48,8 +50,10 @@ function CategoriesPage() {
       setNewCategoryName('')
       setIsAddCategoryModalOpen(false)
       await loadCategories()
+      toast.success('收藏夹创建成功')
     } catch (error) {
       console.error('Failed to add category:', error)
+      toast.error('创建收藏夹失败')
     }
   }
 
@@ -59,8 +63,10 @@ function CategoriesPage() {
     try {
       await DeleteCategory(category.id)
       await loadCategories()
+      toast.success('收藏夹已删除')
     } catch (error) {
       console.error('Failed to delete category:', error)
+      toast.error('删除收藏夹失败')
     }
   }
 

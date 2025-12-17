@@ -1,5 +1,6 @@
 import { createRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
 import { useAppStore } from '../store'
 import { Route as rootRoute } from './__root'
 import { appconf } from '../../wailsjs/go/models'
@@ -33,8 +34,12 @@ function SettingsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (formData) {
-      await updateConfig(formData)
-      alert('设置已保存')
+      try {
+        await updateConfig(formData)
+        toast.success('设置已保存')
+      } catch {
+        toast.error('保存设置失败')
+      }
     }
   }
 

@@ -2,12 +2,16 @@
   --scrollbar-thumb: #ccc;
   --scrollbar-track: transparent;
   --scrollbar-thumb-hover: #aaa;
+  --toast-bg: #fff;
+  --toast-color: #374151;
 }
 
 .dark {
   --scrollbar-thumb: #4b5563;
   --scrollbar-track: transparent;
   --scrollbar-thumb-hover: #6b7280;
+  --toast-bg: #1f2937;
+  --toast-color: #f3f4f6;
 }
 
 ::-webkit-scrollbar {
