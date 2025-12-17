@@ -30,6 +30,6 @@ export function RestoreFromCloud(arg1:string,arg2:string):Promise<void>;
 
 export function SetupCloudBackup(arg1:string):Promise<string>;
 
-export function TestS3Connection():Promise<void>;
+export function TestS3Connection(arg1:appconf.AppConfig):Promise<void>;
 
 export function UploadGameBackupToCloud(arg1:string,arg2:string):Promise<void>;

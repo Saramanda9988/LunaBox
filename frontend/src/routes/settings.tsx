@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { useAppStore } from '../store'
 import { Route as rootRoute } from './__root'
 import { appconf } from '../../wailsjs/go/models'
+import { TestS3Connection } from '../../wailsjs/go/service/BackupService'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -14,6 +15,7 @@ export const Route = createRoute({
 function SettingsPage() {
   const { config, fetchConfig, updateConfig } = useAppStore()
   const [formData, setFormData] = useState<appconf.AppConfig | null>(null)
+  const [testingS3, setTestingS3] = useState(false)
 
   useEffect(() => {
     fetchConfig()
@@ -29,6 +31,19 @@ function SettingsPage() {
     if (!formData) return
     const { name, value } = e.target
     setFormData({ ...formData, [name]: value } as appconf.AppConfig)
+  }
+
+  const handleTestS3 = async () => {
+    if (!formData) return
+    setTestingS3(true)
+    try {
+      await TestS3Connection(formData)
+      toast.success('S3 连接测试成功')
+    } catch (err: any) {
+      toast.error('S3 连接测试失败: ' + err)
+    } finally {
+      setTestingS3(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -217,6 +232,17 @@ function SettingsPage() {
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
               />
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleTestS3}
+                disabled={testingS3}
+                className="px-3 py-1.5 text-sm bg-brand-100 text-brand-700 rounded-md hover:bg-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {testingS3 ? '测试中...' : '测试连接'}
+              </button>
             </div>
 
             <div className="space-y-2">

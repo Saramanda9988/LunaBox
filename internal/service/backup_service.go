@@ -90,16 +90,16 @@ func (s *BackupService) SetupCloudBackup(password string) (string, error) {
 }
 
 // TestS3Connection 测试 S3 连接
-func (s *BackupService) TestS3Connection() error {
-	if s.config.S3Endpoint == "" {
+func (s *BackupService) TestS3Connection(config appconf.AppConfig) error {
+	if config.S3Endpoint == "" {
 		return fmt.Errorf("S3 端点未配置")
 	}
 	client, err := utils.NewS3Client(utils.S3Config{
-		Endpoint:  s.config.S3Endpoint,
-		Region:    s.config.S3Region,
-		Bucket:    s.config.S3Bucket,
-		AccessKey: s.config.S3AccessKey,
-		SecretKey: s.config.S3SecretKey,
+		Endpoint:  config.S3Endpoint,
+		Region:    config.S3Region,
+		Bucket:    config.S3Bucket,
+		AccessKey: config.S3AccessKey,
+		SecretKey: config.S3SecretKey,
 	})
 	if err != nil {
 		return err
@@ -107,7 +107,6 @@ func (s *BackupService) TestS3Connection() error {
 	if err := client.TestConnection(s.ctx); err != nil {
 		return fmt.Errorf("连接测试失败: %w", err)
 	}
-	s.s3Client = client
 	return nil
 }
 

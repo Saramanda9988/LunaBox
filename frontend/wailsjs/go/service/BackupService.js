@@ -50,8 +50,8 @@ export function SetupCloudBackup(arg1) {
   return window['go']['service']['BackupService']['SetupCloudBackup'](arg1);
 }
 
-export function TestS3Connection() {
-  return window['go']['service']['BackupService']['TestS3Connection']();
+export function TestS3Connection(arg1) {
+  return window['go']['service']['BackupService']['TestS3Connection'](arg1);
 }
 
 export function UploadGameBackupToCloud(arg1, arg2) {
