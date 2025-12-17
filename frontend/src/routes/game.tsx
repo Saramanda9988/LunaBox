@@ -522,15 +522,15 @@ function GameDetailPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleRestoreBackup(backup.id, backup.created_at)}
-                        className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                        title="恢复备份"
+                        className="i-mdi-backup-restore text-2xl bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
                       >
-                        恢复
                       </button>
                       <button
                         onClick={() => handleDeleteBackup(backup.id)}
-                        className="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                        title="删除备份"
+                        className="i-mdi-delete text-2xl bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
                       >
-                        删除
                       </button>
                     </div>
                   </div>
