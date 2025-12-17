@@ -3,6 +3,10 @@ import { vo, appconf } from '../wailsjs/go/models'
 import { GetHomePageData } from '../wailsjs/go/service/HomeService'
 import { GetAppConfig, UpdateAppConfig } from '../wailsjs/go/service/ConfigService'
 
+interface AISummaryCache {
+  [dimension: string]: string
+}
+
 interface AppState {
   isSidebarOpen: boolean
   toggleSidebar: () => void
@@ -12,6 +16,10 @@ interface AppState {
   fetchHomeData: () => Promise<void>
   fetchConfig: () => Promise<void>
   updateConfig: (config: appconf.AppConfig) => Promise<void>
+  // AI Summary 缓存
+  aiSummaryCache: AISummaryCache
+  setAISummary: (dimension: string, summary: string) => void
+  getAISummary: (dimension: string) => string | undefined
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -48,5 +56,15 @@ export const useAppStore = create<AppState>((set) => ({
     } catch (error) {
       console.error('Failed to update config:', error)
     }
+  },
+  // AI Summary 缓存
+  aiSummaryCache: {},
+  setAISummary: (dimension: string, summary: string) => {
+    set((state) => ({
+      aiSummaryCache: { ...state.aiSummaryCache, [dimension]: summary },
+    }))
+  },
+  getAISummary: (dimension: string) => {
+    return undefined // 这个方法不需要，直接用 selector 访问
   },
 }))

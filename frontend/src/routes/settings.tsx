@@ -109,7 +109,7 @@ function SettingsPage() {
         <div className="pt-6 border-t border-brand-200 dark:border-brand-700">
           <h2 className="text-lg font-semibold text-brand-900 dark:text-white mb-4 flex items-center gap-2">
             <span className="i-mdi-robot-happy text-xl"/>
-            AI 锐评配置
+            AI 配置
           </h2>
           
           <div className="space-y-4">

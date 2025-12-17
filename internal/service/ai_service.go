@@ -9,6 +9,7 @@ import (
 	"io"
 	"lunabox/internal/appconf"
 	"lunabox/internal/enums"
+	"lunabox/internal/utils"
 	"lunabox/internal/vo"
 	"net/http"
 	"strings"
@@ -47,7 +48,8 @@ func (s *AiService) AISummarize(req vo.AISummaryRequest) (vo.AISummaryResponse, 
 	prompt := s.buildPrompt(statsData)
 
 	// 调用AI API
-	summary, err := s.callAIAPI(prompt)
+	// TODO: 支持用户自定义系统提示语
+	summary, err := s.callAIAPI(utils.MeowZakoPrompt, prompt)
 	if err != nil {
 		return vo.AISummaryResponse{}, fmt.Errorf("AI调用失败: %w", err)
 	}
@@ -139,8 +141,8 @@ func (s *AiService) buildPrompt(data *AIStatsData) string {
 	case "year":
 		periodName = "今年"
 	}
-
-	sb.WriteString(fmt.Sprintf("请根据以下%s游戏统计数据，用幽默风趣的语气写一段锐评总结（100-200字）：\n\n", periodName))
+	sb.WriteString(fmt.Sprintf("这一部分是对环境的提醒：用户使用的程序是LunaBox，一款本地游戏管理和启动器软件。\n\n"))
+	sb.WriteString(fmt.Sprintf("以下是%s游戏统计数据，根据上面你的系统人设要求写一段总结（100-200字）：\n\n", periodName))
 	sb.WriteString(fmt.Sprintf("时间范围：%s\n", periodName))
 	sb.WriteString(fmt.Sprintf("总游玩次数：%d 次\n", data.TotalPlayCount))
 	sb.WriteString(fmt.Sprintf("总游玩时长：%.1f 小时\n\n", float64(data.TotalPlayDuration)/3600))
@@ -152,36 +154,10 @@ func (s *AiService) buildPrompt(data *AIStatsData) string {
 		}
 	}
 
-	sb.WriteString("\n请用轻松幽默的方式点评这位玩家的游戏习惯，可以适当调侃但不要太过分。")
-
 	return sb.String()
 }
 
-// OpenAI兼容的API请求/响应结构
-type ChatCompletionRequest struct {
-	Model    string    `json:"model"`
-	Messages []Message `json:"messages"`
-}
-
-type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-type ChatCompletionResponse struct {
-	Choices []Choice  `json:"choices"`
-	Error   *APIError `json:"error,omitempty"`
-}
-
-type Choice struct {
-	Message Message `json:"message"`
-}
-
-type APIError struct {
-	Message string `json:"message"`
-}
-
-func (s *AiService) callAIAPI(prompt string) (string, error) {
+func (s *AiService) callAIAPI(systemPrompt string, userPrompt string) (string, error) {
 	baseURL := s.appConfig.AIBaseURL
 	if baseURL == "" {
 		baseURL = "https://api.openai.com/v1"
@@ -191,12 +167,12 @@ func (s *AiService) callAIAPI(prompt string) (string, error) {
 	if model == "" {
 		model = "gpt-3.5-turbo"
 	}
-
-	reqBody := ChatCompletionRequest{
+	//TODO:最好模型支持websearch，能够获取游戏的上下文消息，或者在systemPrompt中加入更多信息，我们根据本地搜索构建
+	reqBody := vo.ChatCompletionRequest{
 		Model: model,
-		Messages: []Message{
-			{Role: "system", Content: "你是一个幽默风趣的游戏评论员，擅长用轻松的语气点评玩家的游戏习惯。"},
-			{Role: "user", Content: prompt},
+		Messages: []vo.Message{
+			{Role: "system", Content: systemPrompt},
+			{Role: "user", Content: userPrompt},
 		},
 	}
 
@@ -230,7 +206,7 @@ func (s *AiService) callAIAPI(prompt string) (string, error) {
 		return "", fmt.Errorf("API请求失败: %s", string(body))
 	}
 
-	var result ChatCompletionResponse
+	var result vo.ChatCompletionResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		return "", err
 	}

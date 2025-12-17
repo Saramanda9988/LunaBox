@@ -78,3 +78,16 @@ type AISummaryResponse struct {
 	Summary   string `json:"summary"`
 	Dimension string `json:"dimension"`
 }
+
+type ChatCompletionResponse struct {
+	Choices []Choice  `json:"choices"`
+	Error   *APIError `json:"error,omitempty"`
+}
+
+type Choice struct {
+	Message Message `json:"message"`
+}
+
+type APIError struct {
+	Message string `json:"message"`
+}

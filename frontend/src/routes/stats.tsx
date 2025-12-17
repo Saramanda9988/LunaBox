@@ -17,6 +17,7 @@ import { Line } from 'react-chartjs-2'
 import { ExportStatsImage, FetchImageAsBase64, GetGlobalPeriodStats } from '../../wailsjs/go/service/StatsService'
 import { AISummarize } from '../../wailsjs/go/service/AiService'
 import { enums, vo } from '../../wailsjs/go/models'
+import { useAppStore } from '../store'
 
 ChartJS.register(
   CategoryScale,
@@ -40,8 +41,11 @@ function StatsPage() {
   const [dimension, setDimension] = useState<enums.Period>(enums.Period.WEEK)
   const [stats, setStats] = useState<vo.PeriodStats | null>(null)
   const [loading, setLoading] = useState(false)
-  const [aiSummary, setAiSummary] = useState<string>('')
   const [aiLoading, setAiLoading] = useState(false)
+  
+  // 从 store 获取缓存的 AI 总结
+  const { aiSummaryCache, setAISummary } = useAppStore()
+  const aiSummary = aiSummaryCache[dimension] || ''
 
   // TODO: 使用离屏canvas来避免CORS问题，先clone dom再进行操作
   const handleShare = useCallback(async () => {
@@ -91,13 +95,13 @@ function StatsPage() {
 
   const handleAISummarize = useCallback(async () => {
     setAiLoading(true)
-    setAiSummary('')
+    setAISummary(dimension, '')
     try {
       const result = await AISummarize({ dimension })
-      setAiSummary(result.summary)
+      setAISummary(dimension, result.summary)
     } catch (err) {
       console.error('AI summarize failed:', err)
-      setAiSummary('AI总结失败，请检查AI配置是否正确。')
+      setAISummary(dimension, 'AI总结失败，请检查AI配置是否正确。')
     } finally {
       setAiLoading(false)
     }
@@ -105,7 +109,7 @@ function StatsPage() {
 
   useEffect(() => {
     loadStats(dimension)
-    setAiSummary('') // 切换维度时清空AI总结
+    // AI总结已缓存在store中，切换维度时不清空，保留各维度的缓存
   }, [dimension])
 
   const loadStats = async (dim: enums.Period) => {
@@ -238,7 +242,7 @@ function StatsPage() {
         </div>
         <div className={'flex space-x-2 items-center'}>
           <button onClick={handleShare} className='flex justify-end i-mdi-share text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors' title="分享"/>
-          <button onClick={handleAISummarize} className='flex justify-end i-mdi-robot-happy text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors' title="AI锐评"/>
+          <button onClick={handleAISummarize} className='flex justify-end i-mdi-robot-happy text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors' title="AI总结"/>
         </div>
       </div>
 
@@ -247,7 +251,7 @@ function StatsPage() {
         <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 p-6 rounded-xl shadow-sm border border-purple-200 dark:border-purple-700">
           <div className="flex items-center gap-2 mb-3">
             <span className="i-mdi-robot-happy text-xl text-purple-600 dark:text-purple-400"/>
-            <h3 className="text-lg font-semibold text-purple-900 dark:text-purple-100">AI 锐评</h3>
+            <h3 className="text-lg font-semibold text-purple-900 dark:text-purple-100">AI 总结</h3>
           </div>
           {aiLoading ? (
             <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
