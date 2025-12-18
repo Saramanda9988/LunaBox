@@ -18,6 +18,8 @@ export namespace appconf {
 	    s3_access_key?: string;
 	    s3_secret_key?: string;
 	    cloud_backup_retention?: number;
+	    last_db_backup_time?: string;
+	    pending_db_restore?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -42,6 +44,8 @@ export namespace appconf {
 	        this.s3_access_key = source["s3_access_key"];
 	        this.s3_secret_key = source["s3_secret_key"];
 	        this.cloud_backup_retention = source["cloud_backup_retention"];
+	        this.last_db_backup_time = source["last_db_backup_time"];
+	        this.pending_db_restore = source["pending_db_restore"];
 	    }
 	}
 
@@ -67,7 +71,6 @@ export namespace models {
 	
 	export class Game {
 	    id: string;
-	    user_id: string;
 	    name: string;
 	    cover_url: string;
 	    company: string;
@@ -88,7 +91,6 @@ export namespace models {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
-	        this.user_id = source["user_id"];
 	        this.name = source["name"];
 	        this.cover_url = source["cover_url"];
 	        this.company = source["company"];
@@ -243,7 +245,6 @@ export namespace vo {
 	}
 	export class CategoryVO {
 	    id: string;
-	    user_id: string;
 	    name: string;
 	    is_system: boolean;
 	    // Go type: time
@@ -259,7 +260,6 @@ export namespace vo {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
-	        this.user_id = source["user_id"];
 	        this.name = source["name"];
 	        this.is_system = source["is_system"];
 	        this.created_at = this.convertValues(source["created_at"], null);
@@ -337,6 +337,75 @@ export namespace vo {
 	        this.configured = source["configured"];
 	        this.user_id = source["user_id"];
 	    }
+	}
+	export class DBBackupInfo {
+	    path: string;
+	    name: string;
+	    size: number;
+	    // Go type: time
+	    created_at: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new DBBackupInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.size = source["size"];
+	        this.created_at = this.convertValues(source["created_at"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class DBBackupStatus {
+	    last_backup_time: string;
+	    backups: DBBackupInfo[];
+	
+	    static createFrom(source: any = {}) {
+	        return new DBBackupStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.last_backup_time = source["last_backup_time"];
+	        this.backups = this.convertValues(source["backups"], DBBackupInfo);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class DailyPlayTime {
 	    date: string;

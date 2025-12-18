@@ -8,7 +8,11 @@ import {appconf} from '../models';
 
 export function CreateBackup(arg1:string):Promise<models.GameBackup>;
 
+export function CreateDBBackup():Promise<vo.DBBackupInfo>;
+
 export function DeleteBackup(arg1:string):Promise<void>;
+
+export function DeleteDBBackup(arg1:string):Promise<void>;
 
 export function DownloadCloudBackup(arg1:string,arg2:string):Promise<string>;
 
@@ -17,6 +21,10 @@ export function GetBackupDir():Promise<string>;
 export function GetCloudBackupStatus():Promise<vo.CloudBackupStatus>;
 
 export function GetCloudGameBackups(arg1:string):Promise<Array<vo.CloudBackupItem>>;
+
+export function GetDBBackupDir():Promise<string>;
+
+export function GetDBBackups():Promise<vo.DBBackupStatus>;
 
 export function GetGameBackups(arg1:string):Promise<Array<models.GameBackup>>;
 
@@ -27,6 +35,8 @@ export function OpenBackupFolder(arg1:string):Promise<void>;
 export function RestoreBackup(arg1:string):Promise<void>;
 
 export function RestoreFromCloud(arg1:string,arg2:string):Promise<void>;
+
+export function ScheduleDBRestore(arg1:string):Promise<void>;
 
 export function SetupCloudBackup(arg1:string):Promise<string>;
 
