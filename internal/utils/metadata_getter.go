@@ -538,6 +538,7 @@ func (y YmgalInfoGetter) FetchMetadata(id string, token string) (models.Game, er
 	req.Header.Set("User-Agent", "Saramanda9988/lunabox")
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("version", "1")
+	req.Header.Set("Accept", "application/json;charset=utf-8")
 
 	resp, err := y.client.Do(req)
 	if err != nil {
@@ -614,7 +615,7 @@ func (y YmgalInfoGetter) FetchMetadataByName(name string, token string) (models.
 	req.Header.Set("User-Agent", "Saramanda9988/lunabox")
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("version", "1")
-
+	req.Header.Set("Accept", "application/json;charset=utf-8")
 	resp, err := y.client.Do(req)
 	if err != nil {
 		return models.Game{}, err
