@@ -168,7 +168,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
                   >
                     <div className="aspect-[3/4] w-full overflow-hidden rounded-md bg-brand-200 dark:bg-brand-700">
                       {item.Game!.cover_url ? (
-                        <img src={item.Game!.cover_url} alt={item.Game!.name} className="h-full w-full object-cover" />
+                        <img src={item.Game!.cover_url} alt={item.Game!.name} className="h-full w-full object-cover" referrerPolicy="no-referrer"/>
                       ) : (
                         <div className="flex h-full items-center justify-center text-brand-400">
                           <div className="i-mdi-image-off text-4xl" />
@@ -211,6 +211,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
               >
                 <option value={enums.SourceType.BANGUMI}>Bangumi</option>
                 <option value={enums.SourceType.VNDB}>VNDB</option>
+                <option value={enums.SourceType.YMGAL}>月幕gal</option>
               </select>
             </div>
 

@@ -293,6 +293,7 @@ function StatsPage() {
               <img
                 src={stats.play_time_leaderboard[0].cover_url}
                 alt={stats.play_time_leaderboard[0].game_name}
+                referrerPolicy="no-referrer"
                 className="w-full h-auto block object-cover rounded-lg shadow-md mb-4 transition-transform group-hover:scale-105 bg-brand-200 dark:bg-brand-700"
               />
             </div>
@@ -330,6 +331,7 @@ function StatsPage() {
                         <img
                           src={game.cover_url}
                           alt={game.game_name}
+                          referrerPolicy="no-referrer"
                           className="w-10 h-14 object-cover rounded shadow-sm mr-4 bg-brand-200 dark:bg-brand-700"
                         />
                         <span className="font-medium text-brand-900 dark:text-white line-clamp-1">{game.game_name}</span>

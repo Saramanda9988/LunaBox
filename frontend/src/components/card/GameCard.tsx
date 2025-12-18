@@ -34,6 +34,7 @@ export function GameCard({ game }: GameCardProps) {
           <img
             src={game.cover_url}
             alt={game.name}
+            referrerPolicy="no-referrer"
             className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
           />
         ) : (

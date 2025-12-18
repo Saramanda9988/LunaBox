@@ -39,7 +39,7 @@ export function AddGameToCategoryModal({
                 >
                   <div className="w-full aspect-[3/4] rounded-lg overflow-hidden bg-brand-200 dark:bg-brand-700 mb-2 relative">
                     {game.cover_url ? (
-                      <img src={game.cover_url} alt={game.name} className="w-full h-full object-cover" />
+                      <img src={game.cover_url} alt={game.name} className="w-full h-full object-cover" referrerPolicy="no-referrer"/>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-brand-400">
                         <div className="i-mdi-image-off text-2xl" />

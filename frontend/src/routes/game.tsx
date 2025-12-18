@@ -304,7 +304,12 @@ function GameDetailPage() {
       <div className="flex gap-6 items-center">
         <div className="w-60 flex-shrink-0 rounded-lg overflow-hidden shadow-lg bg-brand-200 dark:bg-brand-800">
           {game.cover_url ? (
-            <img src={game.cover_url} alt={game.name} className="w-full h-auto block" />
+            <img
+              src={game.cover_url}
+              alt={game.name}
+              className="w-full h-auto block"
+              referrerPolicy="no-referrer"
+            />
           ) : (
             <div className="w-full h-64 flex items-center justify-center text-brand-400">
               No Cover
