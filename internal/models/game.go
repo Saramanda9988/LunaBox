@@ -7,7 +7,6 @@ import (
 
 type Game struct {
 	ID         string           `json:"id"`
-	UserID     string           `json:"user_id"`
 	Name       string           `json:"name"`
 	CoverURL   string           `json:"cover_url"`
 	Company    string           `json:"company"`

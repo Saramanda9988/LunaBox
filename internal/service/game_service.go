@@ -63,13 +63,12 @@ func (s *GameService) AddGame(game models.Game) error {
 	}
 
 	query := `INSERT INTO games (
-		id, user_id, name, cover_url, company, summary, path, 
+		id, name, cover_url, company, summary, path, 
 		source_type, cached_at, source_id, created_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := s.db.ExecContext(s.ctx, query,
 		game.ID,
-		game.UserID,
 		game.Name,
 		game.CoverURL,
 		game.Company,
@@ -111,7 +110,7 @@ func (s *GameService) DeleteGame(id string) error {
 
 func (s *GameService) GetGames() ([]models.Game, error) {
 	query := `SELECT 
-		id, user_id, name, cover_url, company, summary, path, 
+		id, name, cover_url, company, summary, path, 
 		COALESCE(save_path, '') as save_path,
 		source_type, cached_at, source_id, created_at 
 	FROM games 
@@ -130,7 +129,6 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 
 		err := rows.Scan(
 			&game.ID,
-			&game.UserID,
 			&game.Name,
 			&game.CoverURL,
 			&game.Company,
@@ -159,7 +157,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 
 func (s *GameService) GetGameByID(id string) (models.Game, error) {
 	query := `SELECT 
-		id, user_id, name, cover_url, company, summary, path, 
+		id, name, cover_url, company, summary, path, 
 		COALESCE(save_path, '') as save_path,
 		source_type, cached_at, source_id, created_at 
 	FROM games 
@@ -170,7 +168,6 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 
 	err := s.db.QueryRowContext(s.ctx, query, id).Scan(
 		&game.ID,
-		&game.UserID,
 		&game.Name,
 		&game.CoverURL,
 		&game.Company,
@@ -196,7 +193,6 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 
 func (s *GameService) UpdateGame(game models.Game) error {
 	query := `UPDATE games SET 
-		user_id = ?,
 		name = ?,
 		cover_url = ?,
 		company = ?,
@@ -209,7 +205,6 @@ func (s *GameService) UpdateGame(game models.Game) error {
 	WHERE id = ?`
 
 	result, err := s.db.ExecContext(s.ctx, query,
-		game.UserID,
 		game.Name,
 		game.CoverURL,
 		game.Company,

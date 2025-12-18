@@ -41,9 +41,9 @@ func (s *CategoryService) ensureSystemCategories() {
 		id := uuid.New().String()
 		now := time.Now()
 		_, err := s.db.Exec(`
-			INSERT INTO categories (id, user_id, name, is_system, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?)
-		`, id, "default", "最喜欢的游戏", true, now, now)
+			INSERT INTO categories (id, name, is_system, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, id, "最喜欢的游戏", true, now, now)
 		if err != nil {
 			fmt.Printf("Error creating system category: %v\n", err)
 		}
@@ -52,10 +52,10 @@ func (s *CategoryService) ensureSystemCategories() {
 
 func (s *CategoryService) GetCategories() ([]vo.CategoryVO, error) {
 	query := `
-		SELECT c.id, c.user_id, c.name, c.is_system, c.created_at, c.updated_at, COUNT(gc.game_id) as game_count
+		SELECT c.id, c.name, c.is_system, c.created_at, c.updated_at, COUNT(gc.game_id) as game_count
 		FROM categories c
 		LEFT JOIN game_categories gc ON c.id = gc.category_id
-		GROUP BY c.id, c.user_id, c.name, c.is_system, c.created_at, c.updated_at
+		GROUP BY c.id, c.name, c.is_system, c.created_at, c.updated_at
 		ORDER BY c.created_at
 	`
 	rows, err := s.db.Query(query)
@@ -67,7 +67,7 @@ func (s *CategoryService) GetCategories() ([]vo.CategoryVO, error) {
 	var categories []vo.CategoryVO
 	for rows.Next() {
 		var c vo.CategoryVO
-		if err := rows.Scan(&c.ID, &c.UserID, &c.Name, &c.IsSystem, &c.CreatedAt, &c.UpdatedAt, &c.GameCount); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.IsSystem, &c.CreatedAt, &c.UpdatedAt, &c.GameCount); err != nil {
 			return nil, err
 		}
 		categories = append(categories, c)
@@ -78,13 +78,13 @@ func (s *CategoryService) GetCategories() ([]vo.CategoryVO, error) {
 func (s *CategoryService) GetCategoryByID(id string) (vo.CategoryVO, error) {
 	var c vo.CategoryVO
 	query := `
-		SELECT c.id, c.user_id, c.name, c.is_system, c.created_at, c.updated_at, COUNT(gc.game_id) as game_count
+		SELECT c.id, c.name, c.is_system, c.created_at, c.updated_at, COUNT(gc.game_id) as game_count
 		FROM categories c
 		LEFT JOIN game_categories gc ON c.id = gc.category_id
 		WHERE c.id = ?
-		GROUP BY c.id, c.user_id, c.name, c.is_system, c.created_at, c.updated_at
+		GROUP BY c.id, c.name, c.is_system, c.created_at, c.updated_at
 	`
-	err := s.db.QueryRow(query, id).Scan(&c.ID, &c.UserID, &c.Name, &c.IsSystem, &c.CreatedAt, &c.UpdatedAt, &c.GameCount)
+	err := s.db.QueryRow(query, id).Scan(&c.ID, &c.Name, &c.IsSystem, &c.CreatedAt, &c.UpdatedAt, &c.GameCount)
 	if err != nil {
 		return c, err
 	}
@@ -95,9 +95,9 @@ func (s *CategoryService) AddCategory(name string) error {
 	id := uuid.New().String()
 	now := time.Now()
 	_, err := s.db.Exec(`
-		INSERT INTO categories (id, user_id, name, is_system, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, id, "default", name, false, now, now)
+		INSERT INTO categories (id, name, is_system, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?)
+	`, id, name, false, now, now)
 	return err
 }
 
@@ -142,7 +142,7 @@ func (s *CategoryService) DeleteCategory(id string) error {
 
 func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, error) {
 	query := `
-		SELECT g.id, g.user_id, g.name, g.cover_url, g.company, g.summary, g.path, g.source_type, g.cached_at, g.source_id, g.created_at
+		SELECT g.id, g.name, g.cover_url, g.company, g.summary, g.path, g.source_type, g.cached_at, g.source_id, g.created_at
 		FROM games g
 		JOIN game_categories gc ON g.id = gc.game_id
 		WHERE gc.category_id = ?
@@ -157,7 +157,7 @@ func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, 
 	var games []models.Game
 	for rows.Next() {
 		var g models.Game
-		if err := rows.Scan(&g.ID, &g.UserID, &g.Name, &g.CoverURL, &g.Company, &g.Summary, &g.Path, &g.SourceType, &g.CachedAt, &g.SourceID, &g.CreatedAt); err != nil {
+		if err := rows.Scan(&g.ID, &g.Name, &g.CoverURL, &g.Company, &g.Summary, &g.Path, &g.SourceType, &g.CachedAt, &g.SourceID, &g.CreatedAt); err != nil {
 			return nil, err
 		}
 		games = append(games, g)

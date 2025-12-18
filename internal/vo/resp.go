@@ -8,7 +8,6 @@ import (
 
 type CategoryVO struct {
 	ID        string    `json:"id"`
-	UserID    string    `json:"user_id"`
 	Name      string    `json:"name"`
 	IsSystem  bool      `json:"is_system"`
 	CreatedAt time.Time `json:"created_at"`
@@ -105,4 +104,18 @@ type CloudBackupItem struct {
 	Name      string    `json:"name"`       // 显示名称
 	Size      int64     `json:"size"`       // 文件大小
 	CreatedAt time.Time `json:"created_at"` // 创建时间
+}
+
+// DBBackupInfo 数据库备份信息
+type DBBackupInfo struct {
+	Path      string    `json:"path"`       // 备份文件路径
+	Name      string    `json:"name"`       // 显示名称
+	Size      int64     `json:"size"`       // 文件大小
+	CreatedAt time.Time `json:"created_at"` // 创建时间
+}
+
+// DBBackupStatus 数据库备份状态
+type DBBackupStatus struct {
+	LastBackupTime string         `json:"last_backup_time"` // 上次备份时间
+	Backups        []DBBackupInfo `json:"backups"`          // 备份列表
 }

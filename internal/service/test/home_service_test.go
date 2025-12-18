@@ -34,8 +34,8 @@ func TestHomeService_GetHomePageData(t *testing.T) {
 
 	for _, g := range games {
 		_, err := db.Exec(`
-			INSERT INTO games (id, name, user_id, cover_url, company, summary, path, source_type, cached_at, source_id, created_at) 
-			VALUES (?, ?, 'user1', '', 'Company', 'Summary', 'path', 'local', CURRENT_TIMESTAMP, 'src1', CURRENT_TIMESTAMP)`,
+			INSERT INTO games (id, name, cover_url, company, summary, path, source_type, cached_at, source_id, created_at) 
+			VALUES (?, ?, '', 'Company', 'Summary', 'path', 'local', CURRENT_TIMESTAMP, 'src1', CURRENT_TIMESTAMP)`,
 			g.id, g.name)
 		if err != nil {
 			t.Fatalf("Failed to insert game %s: %v", g.id, err)

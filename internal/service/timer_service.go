@@ -49,7 +49,6 @@ func (s *TimerService) StartGameWithTracking(gameID string) error {
 	sessionID := uuid.New().String()
 	startTime := time.Now()
 
-	// TODO: userId 暂时未实现用户系统，先不记录
 	_, err = s.db.ExecContext(
 		s.ctx,
 		`INSERT INTO play_sessions (id, game_id, start_time, end_time, duration)

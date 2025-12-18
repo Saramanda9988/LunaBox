@@ -31,7 +31,6 @@ func initTestSchema(t *testing.T, db *sql.DB) {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS categories (
 			id TEXT PRIMARY KEY,
-			user_id TEXT,
 			name TEXT,
 			created_at TIMESTAMP,
 			updated_at TIMESTAMP,
@@ -39,7 +38,6 @@ func initTestSchema(t *testing.T, db *sql.DB) {
 		)`,
 		`CREATE TABLE IF NOT EXISTS games (
 			id TEXT PRIMARY KEY,
-			user_id TEXT,
 			name TEXT,
 			cover_url TEXT,
 			company TEXT,
@@ -57,7 +55,6 @@ func initTestSchema(t *testing.T, db *sql.DB) {
 		)`,
 		`CREATE TABLE IF NOT EXISTS play_sessions (
 			id TEXT PRIMARY KEY,
-			user_id TEXT,
 			game_id TEXT,
 			start_time TIMESTAMP,
 			end_time TIMESTAMP,

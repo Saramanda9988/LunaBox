@@ -16,7 +16,6 @@ import (
 func createTestGame() models.Game {
 	return models.Game{
 		ID:         "test-game-001",
-		UserID:     "test-user-001",
 		Name:       "测试游戏",
 		CoverURL:   "https://example.com/cover.jpg",
 		Company:    "测试公司",
