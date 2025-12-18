@@ -262,6 +262,12 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 		games = append(games, vo.GameMetadataFromWebVO{Source: enums.VNDB, Game: vndb})
 	}
 
+	ymgalGetter := utils.NewYmgalInfoGetter()
+	ymgal, _ := ymgalGetter.FetchMetadataByName(name, "")
+	if ymgal != (models.Game{}) {
+		games = append(games, vo.GameMetadataFromWebVO{Source: enums.Ymgal, Game: ymgal})
+	}
+
 	return games, nil
 }
 
@@ -280,6 +286,9 @@ func (s *GameService) FetchMetadata(req vo.MetadataRequest) (models.Game, error)
 	case enums.VNDB:
 		vndbGetter := utils.NewVNDBInfoGetter()
 		game, e = vndbGetter.FetchMetadata(req.ID, s.config.VNDBAccessToken)
+	case enums.Ymgal:
+		ymgalGetter := utils.NewYmgalInfoGetter()
+		game, e = ymgalGetter.FetchMetadata(req.ID, "")
 	}
 	return game, e
 }

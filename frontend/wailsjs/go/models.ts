@@ -53,6 +53,7 @@ export namespace enums {
 	    LOCAL = "local",
 	    BANGUMI = "bangumi",
 	    VNDB = "vndb",
+	    YMGAL = "ymgal",
 	}
 	export enum Period {
 	    YEAR = "year",

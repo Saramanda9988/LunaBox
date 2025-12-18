@@ -6,6 +6,7 @@ const (
 	Local   SourceType = "local"
 	Bangumi SourceType = "bangumi"
 	VNDB    SourceType = "vndb"
+	Ymgal   SourceType = "ymgal"
 )
 
 var AllSourceTypes = []struct {
@@ -15,4 +16,5 @@ var AllSourceTypes = []struct {
 	{Local, "LOCAL"},
 	{Bangumi, "BANGUMI"},
 	{VNDB, "VNDB"},
+	{Ymgal, "YMGAL"},
 }
