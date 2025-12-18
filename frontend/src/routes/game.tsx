@@ -604,7 +604,7 @@ function GameDetailPage() {
           {cloudStatus?.configured && cloudStatus?.enabled && (
             <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
               <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4 flex items-center gap-2">
-                <div className="i-mdi-cloud text-xl text-blue-500" />
+                <div className="text-xl text-blue-500" />
                 云端备份
               </h3>
               {cloudBackups.length === 0 ? (

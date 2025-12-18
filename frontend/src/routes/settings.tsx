@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../store'
 import { Route as rootRoute } from './__root'
-import { appconf } from '../../wailsjs/go/models'
-import { TestS3Connection } from '../../wailsjs/go/service/BackupService'
+import { appconf, vo } from '../../wailsjs/go/models'
+import { TestS3Connection, GetDBBackups, ScheduleDBRestore, DeleteDBBackup } from '../../wailsjs/go/service/BackupService'
+import { Quit } from '../../wailsjs/runtime/runtime'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -16,10 +17,52 @@ function SettingsPage() {
   const { config, fetchConfig, updateConfig } = useAppStore()
   const [formData, setFormData] = useState<appconf.AppConfig | null>(null)
   const [testingS3, setTestingS3] = useState(false)
+  const [dbBackups, setDbBackups] = useState<vo.DBBackupStatus | null>(null)
+  const [restoringBackup, setRestoringBackup] = useState<string | null>(null)
 
   useEffect(() => {
     fetchConfig()
+    loadDBBackups()
   }, [fetchConfig])
+
+  const loadDBBackups = async () => {
+    try {
+      const backups = await GetDBBackups()
+      setDbBackups(backups)
+    } catch (err) {
+      console.error('Failed to load DB backups:', err)
+    }
+  }
+
+  const handleRestoreDB = async (backupPath: string) => {
+    if (!confirm('确定要恢复到此备份吗？程序将退出并在下次启动时完成恢复。')) return
+    setRestoringBackup(backupPath)
+    try {
+      await ScheduleDBRestore(backupPath)
+      toast.success('已安排恢复，程序即将退出...')
+      setTimeout(() => Quit(), 1500)
+    } catch (err: any) {
+      toast.error('安排恢复失败: ' + err)
+      setRestoringBackup(null)
+    }
+  }
+
+  const handleDeleteDBBackup = async (backupPath: string) => {
+    if (!confirm('确定要删除此备份吗？')) return
+    try {
+      await DeleteDBBackup(backupPath)
+      await loadDBBackups()
+      toast.success('备份已删除')
+    } catch (err: any) {
+      toast.error('删除失败: ' + err)
+    }
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  }
 
   useEffect(() => {
     if (config) {
@@ -67,6 +110,10 @@ function SettingsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-4xl font-bold text-brand-900 dark:text-white">设置</h1>
       </div>
+      <h2 className="text-lg font-semibold text-brand-900 dark:text-white flex items-center">
+        <span className="i-mdi-database-settings text-xl"/>
+        基础配置
+      </h2>
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2">
           <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
@@ -343,6 +390,60 @@ function SettingsPage() {
           </button>
         </div>
       </form>
+
+      {/* 数据库备份恢复 */}
+      <div className="pt-6 border-t border-brand-200 dark:border-brand-700">
+        <h2 className="text-lg font-semibold text-brand-900 dark:text-white mb-4 flex items-center gap-2">
+          <span className="i-mdi-database-refresh text-xl"/>
+          数据库备份恢复
+        </h2>
+        
+        {dbBackups?.last_backup_time && (
+          <p className="text-sm text-brand-600 dark:text-brand-400 mb-4">
+            上次备份: {new Date(dbBackups.last_backup_time).toLocaleString('zh-CN')}
+          </p>
+        )}
+
+        {dbBackups?.backups && dbBackups.backups.length > 0 ? (
+          <div className="space-y-2">
+            {dbBackups.backups.map((backup) => (
+              <div
+                key={backup.path}
+                className="flex items-center justify-between p-3 bg-brand-50 dark:bg-brand-700 rounded-lg"
+              >
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-brand-900 dark:text-white">
+                    {backup.name}
+                  </p>
+                  <p className="text-xs text-brand-500 dark:text-brand-400">
+                    {new Date(backup.created_at).toLocaleString('zh-CN')} · {formatFileSize(backup.size)}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleRestoreDB(backup.path)}
+                    disabled={restoringBackup !== null}
+                    className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900 rounded transition-colors"
+                  >
+                    {restoringBackup === backup.path ? <div className="i-mdi-loading text-xl animate-spin" /> : <div className="i-mdi-backup-restore text-xl" />}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteDBBackup(backup.path)}
+                    disabled={restoringBackup !== null}
+                    className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900 rounded transition-colors"
+                  >
+                    <div className="i-mdi-delete text-xl" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-brand-500 dark:text-brand-400">
+            暂无备份，点击侧边栏的云同步按钮创建备份
+          </p>
+        )}
+      </div>
     </div>
   )
 }
