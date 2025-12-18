@@ -28,6 +28,9 @@ type AppConfig struct {
 	S3AccessKey          string `json:"s3_access_key,omitempty"`          // S3 Access Key
 	S3SecretKey          string `json:"s3_secret_key,omitempty"`          // S3 Secret Key
 	CloudBackupRetention int    `json:"cloud_backup_retention,omitempty"` // 云端保留备份数量
+	// 数据库备份
+	LastDBBackupTime string `json:"last_db_backup_time,omitempty"` // 上次数据库备份时间
+	PendingDBRestore string `json:"pending_db_restore,omitempty"`  // 待恢复的数据库备份路径（重启后执行）
 }
 
 func LoadConfig() (*AppConfig, error) {
@@ -49,6 +52,8 @@ func LoadConfig() (*AppConfig, error) {
 		S3AccessKey:          "",
 		S3SecretKey:          "",
 		CloudBackupRetention: 20,
+		LastDBBackupTime:     "",
+		PendingDBRestore:     "",
 	}
 
 	// 获取配置文件路径

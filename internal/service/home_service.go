@@ -32,7 +32,7 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 
 	// 1. 上一次游玩的游戏（前三个）
 	recentGamesQuery := `
-		SELECT g.id, g.user_id, g.name, g.cover_url, g.company, g.summary, g.path, g.source_type, g.cached_at, g.source_id, g.created_at
+		SELECT g.id, g.name, g.cover_url, g.company, g.summary, g.path, g.source_type, g.cached_at, g.source_id, g.created_at
 		FROM games g
 		JOIN (
 			SELECT game_id, MAX(start_time) as last_played
@@ -52,7 +52,7 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 	for rows.Next() {
 		var g models.Game
 		err := rows.Scan(
-			&g.ID, &g.UserID, &g.Name, &g.CoverURL, &g.Company, &g.Summary, &g.Path, &g.SourceType, &g.CachedAt, &g.SourceID, &g.CreatedAt,
+			&g.ID, &g.Name, &g.CoverURL, &g.Company, &g.Summary, &g.Path, &g.SourceType, &g.CachedAt, &g.SourceID, &g.CreatedAt,
 		)
 		if err != nil {
 			return data, err

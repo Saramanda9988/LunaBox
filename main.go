@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"os"
+	"path/filepath"
+
 	"log"
 	"lunabox/internal/appconf"
 	"lunabox/internal/enums"
@@ -58,7 +61,23 @@ func main() {
 		},
 		OnStartup: func(ctx context.Context) {
 			var err error
-			db, err = sql.Open("duckdb", "lunabox.db")
+
+			// 检查是否有待恢复的数据库备份（在打开数据库前执行）
+			if config.PendingDBRestore != "" {
+				restored, restoreErr := service.ExecuteDBRestore(config)
+				if restoreErr != nil {
+					log.Printf("恢复数据库失败: %v", restoreErr)
+				} else if restored {
+					log.Println("数据库恢复成功")
+				}
+			}
+
+			execPath, err := os.Executable()
+			if err != nil {
+				log.Fatal(err)
+			}
+			dbPath := filepath.Join(filepath.Dir(execPath), "lunabox.db")
+			db, err = sql.Open("duckdb", dbPath)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -77,15 +96,14 @@ func main() {
 			categoryService.Init(ctx, db, config)
 		},
 		OnShutdown: func(ctx context.Context) {
-			var err error
-			err = appconf.SaveConfig(config)
-			if err != nil {
-				log.Fatal(err)
+			// 关闭数据库连接
+			if err := db.Close(); err != nil {
+				log.Printf("关闭数据库失败: %v", err)
 			}
 
-			err = db.Close()
-			if err != nil {
-				log.Fatal(err)
+			// 保存配置
+			if err := appconf.SaveConfig(config); err != nil {
+				log.Printf("保存配置失败: %v", err)
 			}
 		},
 		Bind: []interface{}{
@@ -121,7 +139,6 @@ func initSchema(db *sql.DB) error {
 		)`,
 		`CREATE TABLE IF NOT EXISTS categories (
 			id TEXT PRIMARY KEY,
-			user_id TEXT,
 			name TEXT,
 			created_at TIMESTAMP,
 			updated_at TIMESTAMP,
@@ -129,7 +146,6 @@ func initSchema(db *sql.DB) error {
 		)`,
 		`CREATE TABLE IF NOT EXISTS games (
 			id TEXT PRIMARY KEY,
-			user_id TEXT,
 			name TEXT,
 			cover_url TEXT,
 			company TEXT,
@@ -147,7 +163,6 @@ func initSchema(db *sql.DB) error {
 		)`,
 		`CREATE TABLE IF NOT EXISTS play_sessions (
 			id TEXT PRIMARY KEY,
-			user_id TEXT,
 			game_id TEXT,
 			start_time TIMESTAMP,
 			end_time TIMESTAMP,

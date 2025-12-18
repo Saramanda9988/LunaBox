@@ -564,3 +564,275 @@ func (s *BackupService) cleanupOldCloudBackups(gameID string) {
 		s3Client.DeleteObject(s.ctx, items[i].Key)
 	}
 }
+
+// ========== 数据库备份相关方法 ==========
+
+// GetDBBackupDir 获取数据库备份目录
+func (s *BackupService) GetDBBackupDir() (string, error) {
+	execPath, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	backupDir := filepath.Join(filepath.Dir(execPath), "backups", "database")
+	if err := os.MkdirAll(backupDir, 0755); err != nil {
+		return "", err
+	}
+	return backupDir, nil
+}
+
+// CreateDBBackup 创建数据库备份
+func (s *BackupService) CreateDBBackup() (*vo.DBBackupInfo, error) {
+	// 创建备份目录
+	backupDir, err := s.GetDBBackupDir()
+	if err != nil {
+		return nil, err
+	}
+
+	// 生成备份文件名和导出目录
+	timestamp := time.Now().Format("2006-01-02T15-04-05")
+	exportDir := filepath.Join(backupDir, fmt.Sprintf("export_%s", timestamp))
+	backupFileName := fmt.Sprintf("lunabox_%s.zip", timestamp)
+	backupPath := filepath.Join(backupDir, backupFileName)
+
+	// 使用 DuckDB 的 EXPORT DATABASE 命令安全导出
+	// 这样可以避免文件锁问题
+	exportPath := strings.ReplaceAll(exportDir, "\\", "/")
+	_, err = s.db.ExecContext(s.ctx, fmt.Sprintf("EXPORT DATABASE '%s'", exportPath))
+	if err != nil {
+		return nil, fmt.Errorf("导出数据库失败: %w", err)
+	}
+
+	// 将导出的目录压缩为 zip 文件
+	_, err = s.zipDirectory(exportDir, backupPath)
+	if err != nil {
+		os.RemoveAll(exportDir)
+		return nil, fmt.Errorf("压缩备份失败: %w", err)
+	}
+
+	// 删除临时导出目录
+	os.RemoveAll(exportDir)
+
+	// 获取文件大小
+	stat, err := os.Stat(backupPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// 更新上次备份时间
+	s.config.LastDBBackupTime = time.Now().Format(time.RFC3339)
+
+	// 清理旧备份（保留最近 10 个）
+	s.cleanupOldDBBackups(10)
+
+	return &vo.DBBackupInfo{
+		Path:      backupPath,
+		Name:      backupFileName,
+		Size:      stat.Size(),
+		CreatedAt: time.Now(),
+	}, nil
+}
+
+// GetDBBackups 获取数据库备份列表
+func (s *BackupService) GetDBBackups() (*vo.DBBackupStatus, error) {
+	backupDir, err := s.GetDBBackupDir()
+	if err != nil {
+		return nil, err
+	}
+
+	entries, err := os.ReadDir(backupDir)
+	if err != nil {
+		return nil, err
+	}
+
+	var backups []vo.DBBackupInfo
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".zip") {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		backups = append(backups, vo.DBBackupInfo{
+			Path:      filepath.Join(backupDir, entry.Name()),
+			Name:      entry.Name(),
+			Size:      info.Size(),
+			CreatedAt: info.ModTime(),
+		})
+	}
+
+	// 按时间倒序
+	sort.Slice(backups, func(i, j int) bool {
+		return backups[i].CreatedAt.After(backups[j].CreatedAt)
+	})
+
+	return &vo.DBBackupStatus{
+		LastBackupTime: s.config.LastDBBackupTime,
+		Backups:        backups,
+	}, nil
+}
+
+// ScheduleDBRestore 安排数据库恢复（下次启动时执行）
+func (s *BackupService) ScheduleDBRestore(backupPath string) error {
+	// 检查备份文件是否存在
+	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+		return fmt.Errorf("备份文件不存在: %s", backupPath)
+	}
+
+	// 设置待恢复路径
+	s.config.PendingDBRestore = backupPath
+	return nil
+}
+
+// DeleteDBBackup 删除数据库备份
+func (s *BackupService) DeleteDBBackup(backupPath string) error {
+	// 安全检查：确保是在备份目录内
+	backupDir, err := s.GetDBBackupDir()
+	if err != nil {
+		return err
+	}
+	if !strings.HasPrefix(backupPath, backupDir) {
+		return fmt.Errorf("无效的备份路径")
+	}
+	return os.Remove(backupPath)
+}
+
+// copyFile 复制文件
+func (s *BackupService) copyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	return err
+}
+
+// cleanupOldDBBackups 清理旧的数据库备份
+func (s *BackupService) cleanupOldDBBackups(retention int) {
+	status, err := s.GetDBBackups()
+	if err != nil || len(status.Backups) <= retention {
+		return
+	}
+
+	// 删除超出保留数量的旧备份
+	for i := retention; i < len(status.Backups); i++ {
+		os.Remove(status.Backups[i].Path)
+	}
+}
+
+// ExecuteDBRestore 执行数据库恢复（在 OnStartup 中、打开数据库前调用）
+// 返回值: 是否执行了恢复操作
+func ExecuteDBRestore(config *appconf.AppConfig) (bool, error) {
+	if config.PendingDBRestore == "" {
+		return false, nil
+	}
+
+	backupPath := config.PendingDBRestore
+
+	// 检查备份文件是否存在
+	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+		config.PendingDBRestore = ""
+		appconf.SaveConfig(config)
+		return false, fmt.Errorf("备份文件不存在: %s", backupPath)
+	}
+
+	// 获取数据库文件路径
+	execPath, err := os.Executable()
+	if err != nil {
+		return false, err
+	}
+	execDir := filepath.Dir(execPath)
+	dbPath := filepath.Join(execDir, "lunabox.db")
+
+	// 解压备份到临时目录
+	tempDir := filepath.Join(execDir, "backups", "database", "restore_temp")
+	os.RemoveAll(tempDir)
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return false, fmt.Errorf("创建临时目录失败: %w", err)
+	}
+
+	// 解压 zip 文件
+	if err := unzipForRestore(backupPath, tempDir); err != nil {
+		os.RemoveAll(tempDir)
+		return false, fmt.Errorf("解压备份失败: %w", err)
+	}
+
+	// 删除旧数据库文件
+	os.Remove(dbPath)
+	// 同时删除 WAL 文件（如果存在）
+	os.Remove(dbPath + ".wal")
+
+	// 打开新数据库并导入
+	db, err := sql.Open("duckdb", dbPath)
+	if err != nil {
+		os.RemoveAll(tempDir)
+		return false, fmt.Errorf("打开数据库失败: %w", err)
+	}
+
+	// 使用 IMPORT DATABASE 恢复数据
+	importPath := strings.ReplaceAll(tempDir, "\\", "/")
+	_, err = db.Exec(fmt.Sprintf("IMPORT DATABASE '%s'", importPath))
+	db.Close()
+
+	// 清理临时目录
+	os.RemoveAll(tempDir)
+
+	if err != nil {
+		return false, fmt.Errorf("导入数据库失败: %w", err)
+	}
+
+	// 清除待恢复标记
+	config.PendingDBRestore = ""
+	appconf.SaveConfig(config)
+
+	return true, nil
+}
+
+// unzipForRestore 解压文件用于恢复
+func unzipForRestore(src, dest string) error {
+	reader, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+
+	for _, file := range reader.File {
+		path := filepath.Join(dest, file.Name)
+
+		if file.FileInfo().IsDir() {
+			os.MkdirAll(path, file.Mode())
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return err
+		}
+
+		dstFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+		if err != nil {
+			return err
+		}
+
+		srcFile, err := file.Open()
+		if err != nil {
+			dstFile.Close()
+			return err
+		}
+
+		_, err = io.Copy(dstFile, srcFile)
+		srcFile.Close()
+		dstFile.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
