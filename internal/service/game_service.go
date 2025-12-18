@@ -10,6 +10,7 @@ import (
 	"lunabox/internal/models"
 	"lunabox/internal/utils"
 	"lunabox/internal/vo"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -243,25 +244,46 @@ func (s *GameService) SelectSaveDirectory() (string, error) {
 
 func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWebVO, error) {
 	var games []vo.GameMetadataFromWebVO
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 
-	// 这里暂不处理任何错误，直接尝试从两个来源获取数据，空就是网络问题或未找到，不管它
-	bgmGetter := utils.NewBangumiInfoGetter()
-	bgm, _ := bgmGetter.FetchMetadataByName(name, s.config.BangumiAccessToken)
-	if bgm != (models.Game{}) {
-		games = append(games, vo.GameMetadataFromWebVO{Source: enums.Bangumi, Game: bgm})
-	}
+	// 这里暂不处理任何错误，直接尝试从多个来源并发获取数据，空就是网络问题或未找到，不管它
+	wg.Add(3)
 
-	vndbGetter := utils.NewVNDBInfoGetter()
-	vndb, _ := vndbGetter.FetchMetadataByName(name, s.config.VNDBAccessToken)
-	if vndb != (models.Game{}) {
-		games = append(games, vo.GameMetadataFromWebVO{Source: enums.VNDB, Game: vndb})
-	}
+	go func() {
+		defer wg.Done()
+		bgmGetter := utils.NewBangumiInfoGetter()
+		bgm, _ := bgmGetter.FetchMetadataByName(name, s.config.BangumiAccessToken)
+		if bgm != (models.Game{}) {
+			mu.Lock()
+			games = append(games, vo.GameMetadataFromWebVO{Source: enums.Bangumi, Game: bgm})
+			mu.Unlock()
+		}
+	}()
 
-	ymgalGetter := utils.NewYmgalInfoGetter()
-	ymgal, _ := ymgalGetter.FetchMetadataByName(name, "")
-	if ymgal != (models.Game{}) {
-		games = append(games, vo.GameMetadataFromWebVO{Source: enums.Ymgal, Game: ymgal})
-	}
+	go func() {
+		defer wg.Done()
+		vndbGetter := utils.NewVNDBInfoGetter()
+		vndb, _ := vndbGetter.FetchMetadataByName(name, s.config.VNDBAccessToken)
+		if vndb != (models.Game{}) {
+			mu.Lock()
+			games = append(games, vo.GameMetadataFromWebVO{Source: enums.VNDB, Game: vndb})
+			mu.Unlock()
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		ymgalGetter := utils.NewYmgalInfoGetter()
+		ymgal, _ := ymgalGetter.FetchMetadataByName(name, "")
+		if ymgal != (models.Game{}) {
+			mu.Lock()
+			games = append(games, vo.GameMetadataFromWebVO{Source: enums.Ymgal, Game: ymgal})
+			mu.Unlock()
+		}
+	}()
+
+	wg.Wait()
 
 	return games, nil
 }
