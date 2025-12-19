@@ -48,30 +48,20 @@ function GameDetailPage() {
   const [cloudBackups, setCloudBackups] = useState<vo.CloudBackupItem[]>([])
   const [cloudStatus, setCloudStatus] = useState<vo.CloudBackupStatus | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [isBackupsLoading, setIsBackupsLoading] = useState(false)
+  const [isCloudBackupsLoading, setIsCloudBackupsLoading] = useState(false)
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [gameData, statsData, backupsData, cloudStatusData] = await Promise.all([
+        const [gameData, statsData, cloudStatusData] = await Promise.all([
           GetGameByID(gameId),
           GetGameStats(gameId),
-          GetGameBackups(gameId),
           GetCloudBackupStatus(),
         ])
         setGame(gameData)
         setStats(statsData)
-        setBackups(backupsData || [])
         setCloudStatus(cloudStatusData)
-
-        // 如果云备份已配置，加载云端备份列表
-        if (cloudStatusData.configured && cloudStatusData.enabled) {
-          try {
-            const cloudBackupsData = await GetCloudGameBackups(gameId)
-            setCloudBackups(cloudBackupsData || [])
-          } catch {
-            // 云端备份加载失败不影响主流程
-          }
-        }
       } catch (error) {
         console.error('Failed to load game data:', error)
         toast.error('加载游戏数据失败')
@@ -81,6 +71,41 @@ function GameDetailPage() {
     }
     loadData()
   }, [gameId])
+
+  useEffect(() => {
+    if (activeTab === 'backup' && gameId) {
+      const loadLocalBackups = async () => {
+        setIsBackupsLoading(true)
+        try {
+          const backupsData = await GetGameBackups(gameId)
+          setBackups(backupsData || [])
+        } catch (error) {
+          console.error('Failed to load local backups:', error)
+          toast.error('加载本地备份失败')
+        } finally {
+          setIsBackupsLoading(false)
+        }
+      }
+
+      const loadCloudBackups = async () => {
+        if (cloudStatus?.configured && cloudStatus?.enabled) {
+          setIsCloudBackupsLoading(true)
+          try {
+            const cloudBackupsData = await GetCloudGameBackups(gameId)
+            setCloudBackups(cloudBackupsData || [])
+          } catch (error) {
+            console.error('Failed to load cloud backups:', error)
+            // 云端备份加载失败不影响主流程，可以不弹窗或者给个轻提示
+          } finally {
+            setIsCloudBackupsLoading(false)
+          }
+        }
+      }
+
+      loadLocalBackups()
+      loadCloudBackups()
+    }
+  }, [activeTab, gameId, cloudStatus])
 
   if (isLoading) {
     return <div className="flex h-full items-center justify-center">Loading...</div>
@@ -546,7 +571,11 @@ function GameDetailPage() {
           {/* 本地备份历史列表 */}
           <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
             <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">本地备份</h3>
-            {backups.length === 0 ? (
+            {isBackupsLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="i-mdi-loading animate-spin text-2xl text-brand-500" />
+              </div>
+            ) : backups.length === 0 ? (
               <div className="text-center py-8 text-brand-500">
                 暂无本地备份记录
               </div>
@@ -607,7 +636,11 @@ function GameDetailPage() {
                 <div className="text-xl text-blue-500" />
                 云端备份
               </h3>
-              {cloudBackups.length === 0 ? (
+              {isCloudBackupsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="i-mdi-loading animate-spin text-2xl text-brand-500" />
+                </div>
+              ) : cloudBackups.length === 0 ? (
                 <div className="text-center py-8 text-brand-500">
                   暂无云端备份记录
                 </div>
