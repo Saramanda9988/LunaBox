@@ -64,7 +64,7 @@ func (s *ImportService) SelectZipFile() (string, error) {
 }
 
 // ImportFromPotatoVN 从 PotatoVN 导出的 ZIP 文件导入数据
-func (s *ImportService) ImportFromPotatoVN(zipPath string) (ImportResult, error) {
+func (s *ImportService) ImportFromPotatoVN(zipPath string, skipNoPath bool) (ImportResult, error) {
 	result := ImportResult{
 		FailedNames:  []string{},
 		SkippedNames: []string{},
@@ -114,11 +114,19 @@ func (s *ImportService) ImportFromPotatoVN(zipPath string) (ImportResult, error)
 	// 导入每个游戏
 	for _, galgame := range galgames {
 		gameName := galgame.GetDisplayName()
+		hasPath := galgame.GetExePath() != ""
 
 		// 检查是否已存在
 		if existingNames[strings.ToLower(gameName)] {
 			result.Skipped++
 			result.SkippedNames = append(result.SkippedNames, gameName)
+			continue
+		}
+
+		// 如果设置跳过无路径的游戏，且当前游戏无路径，则跳过
+		if skipNoPath && !hasPath {
+			result.Skipped++
+			result.SkippedNames = append(result.SkippedNames, gameName+" (无路径)")
 			continue
 		}
 
@@ -194,7 +202,7 @@ func (s *ImportService) convertToGame(galgame potatovn.Galgame, tempDir string) 
 		SavePath:   galgame.GetSavePath(),
 		SourceType: s.mapRssTypeToSourceType(galgame.RssType),
 		SourceID:   galgame.GetSourceID(),
-		CreatedAt:  galgame.AddTime,
+		CreatedAt:  galgame.AddTime.ToTime(),
 		CachedAt:   time.Now(),
 	}
 
@@ -379,7 +387,8 @@ func (s *ImportService) PreviewImport(zipPath string) ([]PreviewGame, error) {
 			Developer:  galgame.Developer.Value,
 			SourceType: string(s.mapRssTypeToSourceType(galgame.RssType)),
 			Exists:     existingNames[strings.ToLower(name)],
-			AddTime:    galgame.AddTime,
+			AddTime:    galgame.AddTime.ToTime(),
+			HasPath:    galgame.GetExePath() != "",
 		}
 		previews = append(previews, preview)
 	}

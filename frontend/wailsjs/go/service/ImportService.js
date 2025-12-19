@@ -6,8 +6,8 @@ export function ImportFromPlaynite(arg1, arg2) {
   return window['go']['service']['ImportService']['ImportFromPlaynite'](arg1, arg2);
 }
 
-export function ImportFromPotatoVN(arg1) {
-  return window['go']['service']['ImportService']['ImportFromPotatoVN'](arg1);
+export function ImportFromPotatoVN(arg1, arg2) {
+  return window['go']['service']['ImportService']['ImportFromPotatoVN'](arg1, arg2);
 }
 
 export function Init(arg1, arg2, arg3, arg4) {

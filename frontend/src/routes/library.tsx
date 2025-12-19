@@ -5,8 +5,7 @@ import { GetGames } from '../../wailsjs/go/service/GameService'
 import { models } from '../../wailsjs/go/models'
 import { GameCard } from '../components/card/GameCard'
 import { AddGameModal } from '../components/modal/AddGameModal'
-import { ImportModal } from '../components/modal/ImportModal'
-import { PlayniteImportModal } from '../components/modal/PlayniteImportModal'
+import { GameImportModal, ImportSource } from '../components/modal/GameImportModal'
 import { FilterBar } from '../components/FilterBar'
 import toast from 'react-hot-toast'
 
@@ -20,8 +19,7 @@ function LibraryPage() {
   const [games, setGames] = useState<models.Game[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false)
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
-  const [isPlayniteImportModalOpen, setIsPlayniteImportModalOpen] = useState(false)
+  const [importSource, setImportSource] = useState<ImportSource | null>(null)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'name' | 'created_at'>('created_at')
@@ -135,7 +133,7 @@ function LibraryPage() {
                   </button>
                   <button
                     onClick={() => {
-                      setIsImportModalOpen(true)
+                      setImportSource('potatovn')
                       setIsDropdownOpen(false)
                     }}
                     className="flex w-full items-center px-4 py-3 text-sm text-brand-700 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-600"
@@ -150,7 +148,7 @@ function LibraryPage() {
                   </button>
                   <button
                     onClick={() => {
-                      setIsPlayniteImportModalOpen(true)
+                      setImportSource('playnite')
                       setIsDropdownOpen(false)
                     }}
                     className="flex w-full items-center px-4 py-3 text-sm text-brand-700 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-600"
@@ -178,13 +176,13 @@ function LibraryPage() {
             <p className="text-sm mt-2">添加一些游戏开始吧</p>
             <div className="flex flex-col gap-3 mt-4">
               <button
-                onClick={() => setIsImportModalOpen(true)}
+                onClick={() => setImportSource('potatovn')}
                 className="rounded-lg border border-green-600 px-5 py-2.5 text-sm font-medium text-green-600 hover:bg-green-50 focus:outline-none focus:ring-4 focus:ring-green-300 dark:border-green-500 dark:text-green-500 dark:hover:bg-green-900/20"
               >
                 从 PotatoVN 导入
               </button>
               <button
-                onClick={() => setIsPlayniteImportModalOpen(true)}
+                onClick={() => setImportSource('playnite')}
                 className="rounded-lg border border-purple-600 px-5 py-2.5 text-sm font-medium text-purple-600 hover:bg-purple-50 focus:outline-none focus:ring-4 focus:ring-purple-300 dark:border-purple-500 dark:text-purple-500 dark:hover:bg-purple-900/20"
               >
                 从 Playnite 导入
@@ -213,15 +211,10 @@ function LibraryPage() {
         onGameAdded={loadGames}
       />
 
-      <ImportModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        onImportComplete={loadGames}
-      />
-
-      <PlayniteImportModal
-        isOpen={isPlayniteImportModalOpen}
-        onClose={() => setIsPlayniteImportModalOpen(false)}
+      <GameImportModal
+        isOpen={importSource !== null}
+        source={importSource || 'potatovn'}
+        onClose={() => setImportSource(null)}
         onImportComplete={loadGames}
       />
     </div>
