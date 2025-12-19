@@ -30,20 +30,20 @@ func (s *TimerService) Init(ctx context.Context, db *sql.DB, config *appconf.App
 
 // StartGameWithTracking 启动游戏并自动追踪游玩时长
 // 当游戏进程退出时，自动保存游玩记录到数据库
-func (s *TimerService) StartGameWithTracking(gameID string) error {
+func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 	//获取游戏路径
 	path, err := s.getGamePath(gameID)
 	if err != nil {
-		return fmt.Errorf("failed to get game path: %w", err)
+		return false, fmt.Errorf("failed to get game path: %w", err)
 	}
 
 	if path == "" {
-		return fmt.Errorf("game path is empty for game: %s", gameID)
+		return false, fmt.Errorf("game path is empty for game: %s", gameID)
 	}
 
 	cmd := exec.Command(path)
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start game: %w", err)
+		return false, fmt.Errorf("failed to start game: %w", err)
 	}
 
 	sessionID := uuid.New().String()
@@ -60,12 +60,13 @@ func (s *TimerService) StartGameWithTracking(gameID string) error {
 		0,         // 初始时长为 0
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create play session: %w", err)
+		return false, fmt.Errorf("failed to create play session: %w", err)
 	}
 
 	go s.waitForGameExit(cmd, sessionID, startTime)
 
-	return nil
+	// 启动成功，返回 true 给前端
+	return true, nil
 }
 
 // waitForGameExit 等待游戏进程退出并更新游玩记录
@@ -74,6 +75,19 @@ func (s *TimerService) waitForGameExit(cmd *exec.Cmd, sessionID string, startTim
 
 	endTime := time.Now()
 	duration := int(endTime.Sub(startTime).Seconds())
+
+	// If play time is less than 1 minute, remove the temporary session record
+	if duration < 60 {
+		_, err := s.db.ExecContext(
+			s.ctx,
+			`DELETE FROM play_sessions WHERE id = ?`,
+			sessionID,
+		)
+		if err != nil {
+			fmt.Printf("Failed to delete short play session %s: %v\n", sessionID, err)
+		}
+		return
+	}
 
 	_, err := s.db.ExecContext(
 		s.ctx,

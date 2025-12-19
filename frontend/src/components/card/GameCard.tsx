@@ -14,10 +14,15 @@ export function GameCard({ game }: GameCardProps) {
     e.stopPropagation()
     if (game.id) {
       try {
-        await StartGameWithTracking(game.id)
+        const started = await StartGameWithTracking(game.id)
+        if (started) {
+          toast.success(game.name + " 启动成功")
+        } else {
+          toast.error(game.name + " 启动失败（未能启动）")
+        }
       } catch (error) {
         console.error('Failed to start game:', error)
-        var notyfication = game.name + "启动失败, 查询日志获得帮助"
+        var notyfication = game.name + " 启动失败, 查询日志获得帮助"
         toast.error(notyfication)
       }
     }

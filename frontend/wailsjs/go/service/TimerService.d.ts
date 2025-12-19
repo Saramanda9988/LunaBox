@@ -6,4 +6,4 @@ import {appconf} from '../models';
 
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;
 
-export function StartGameWithTracking(arg1:string):Promise<void>;
+export function StartGameWithTracking(arg1:string):Promise<boolean>;
