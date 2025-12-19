@@ -2,6 +2,7 @@ package service
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -392,4 +393,194 @@ type PreviewGame struct {
 	SourceType string    `json:"source_type"`
 	Exists     bool      `json:"exists"`
 	AddTime    time.Time `json:"add_time"`
+	HasPath    bool      `json:"has_path"` // 用于 Playnite 导入，标记是否有路径
+}
+
+// PlayniteGame Playnite 导出的游戏数据结构（与 Game model 一致）
+type PlayniteGame struct {
+	ID         string    `json:"id"`
+	Name       string    `json:"name"`
+	CoverURL   string    `json:"cover_url"`
+	Company    string    `json:"company"`
+	Summary    string    `json:"summary"`
+	Path       string    `json:"path"`
+	SavePath   *string   `json:"save_path"`
+	SourceType string    `json:"source_type"`
+	SourceID   string    `json:"source_id"`
+	CachedAt   time.Time `json:"cached_at"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+// SelectJSONFile 选择要导入的 JSON 文件
+func (s *ImportService) SelectJSONFile() (string, error) {
+	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+		Title: "选择 Playnite 导出的 JSON 文件",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "JSON 文件",
+				Pattern:     "*.json",
+			},
+		},
+	})
+	return selection, err
+}
+
+// PreviewPlayniteImport 预览 Playnite 导入内容（不实际导入）
+func (s *ImportService) PreviewPlayniteImport(jsonPath string) ([]PreviewGame, error) {
+	// 读取 JSON 文件
+	jsonData, err := os.ReadFile(jsonPath)
+	if err != nil {
+		return nil, fmt.Errorf("无法读取 JSON 文件: %w", err)
+	}
+
+	// 移除 UTF-8 BOM（如果存在）
+	utf8BOM := []byte{0xEF, 0xBB, 0xBF}
+	jsonData = bytes.TrimPrefix(jsonData, utf8BOM)
+
+	var playniteGames []PlayniteGame
+	if err := json.Unmarshal(jsonData, &playniteGames); err != nil {
+		return nil, fmt.Errorf("解析 JSON 文件失败: %w", err)
+	}
+
+	// 获取现有游戏列表，用于去重检查
+	existingGames, err := s.gameService.GetGames()
+	if err != nil {
+		return nil, fmt.Errorf("获取现有游戏列表失败: %w", err)
+	}
+	existingNames := make(map[string]bool)
+	for _, g := range existingGames {
+		existingNames[strings.ToLower(g.Name)] = true
+	}
+
+	// 构建预览列表
+	var previews []PreviewGame
+	for _, pg := range playniteGames {
+		preview := PreviewGame{
+			Name:       pg.Name,
+			Developer:  pg.Company,
+			SourceType: pg.SourceType,
+			Exists:     existingNames[strings.ToLower(pg.Name)],
+			AddTime:    pg.CreatedAt,
+			HasPath:    pg.Path != "",
+		}
+		previews = append(previews, preview)
+	}
+
+	return previews, nil
+}
+
+// ImportFromPlaynite 从 Playnite 导出的 JSON 文件导入数据
+func (s *ImportService) ImportFromPlaynite(jsonPath string, skipNoPath bool) (ImportResult, error) {
+	result := ImportResult{
+		FailedNames:  []string{},
+		SkippedNames: []string{},
+	}
+
+	// 读取 JSON 文件
+	jsonData, err := os.ReadFile(jsonPath)
+	if err != nil {
+		return result, fmt.Errorf("无法读取 JSON 文件: %w", err)
+	}
+
+	// 移除 UTF-8 BOM（如果存在）
+	utf8BOM := []byte{0xEF, 0xBB, 0xBF}
+	jsonData = bytes.TrimPrefix(jsonData, utf8BOM)
+
+	var playniteGames []PlayniteGame
+	if err := json.Unmarshal(jsonData, &playniteGames); err != nil {
+		return result, fmt.Errorf("解析 JSON 文件失败: %w", err)
+	}
+
+	// 获取现有游戏列表，用于去重检查
+	existingGames, err := s.gameService.GetGames()
+	if err != nil {
+		return result, fmt.Errorf("获取现有游戏列表失败: %w", err)
+	}
+	existingNames := make(map[string]bool)
+	for _, g := range existingGames {
+		existingNames[strings.ToLower(g.Name)] = true
+	}
+
+	// 导入每个游戏
+	for _, pg := range playniteGames {
+		// 检查是否已存在
+		if existingNames[strings.ToLower(pg.Name)] {
+			result.Skipped++
+			result.SkippedNames = append(result.SkippedNames, pg.Name)
+			continue
+		}
+
+		// 如果设置跳过无路径的游戏，且当前游戏无路径，则跳过
+		if skipNoPath && pg.Path == "" {
+			result.Skipped++
+			result.SkippedNames = append(result.SkippedNames, pg.Name+" (无路径)")
+			continue
+		}
+
+		// 转换并导入游戏
+		game := s.convertPlayniteToGame(pg)
+
+		if err := s.gameService.AddGame(game); err != nil {
+			result.Failed++
+			result.FailedNames = append(result.FailedNames, pg.Name)
+			continue
+		}
+
+		existingNames[strings.ToLower(pg.Name)] = true
+		result.Success++
+	}
+
+	return result, nil
+}
+
+// convertPlayniteToGame 将 Playnite 的游戏数据转换为本地的 Game 模型
+func (s *ImportService) convertPlayniteToGame(pg PlayniteGame) models.Game {
+	game := models.Game{
+		ID:         pg.ID,
+		Name:       pg.Name,
+		Company:    pg.Company,
+		Summary:    pg.Summary,
+		Path:       pg.Path,
+		SourceType: s.stringToSourceType(pg.SourceType),
+		SourceID:   pg.SourceID,
+		CreatedAt:  pg.CreatedAt,
+		CachedAt:   time.Now(),
+	}
+
+	// 处理 SavePath
+	if pg.SavePath != nil {
+		game.SavePath = *pg.SavePath
+	}
+
+	// 处理封面图片 - 从 Playnite 缓存目录复制到本地
+	if pg.CoverURL != "" {
+		savedPath, err := s.saveCoverImage(pg.CoverURL, game.ID)
+		if err == nil {
+			game.CoverURL = savedPath
+		} else {
+			// 如果复制失败，保留原路径
+			game.CoverURL = pg.CoverURL
+		}
+	}
+
+	// 如果 CreatedAt 是零值，使用当前时间
+	if game.CreatedAt.IsZero() {
+		game.CreatedAt = time.Now()
+	}
+
+	return game
+}
+
+// stringToSourceType 将字符串转换为 SourceType
+func (s *ImportService) stringToSourceType(sourceType string) enums.SourceType {
+	switch strings.ToLower(sourceType) {
+	case "bangumi":
+		return enums.Bangumi
+	case "vndb":
+		return enums.VNDB
+	case "ymgal":
+		return enums.Ymgal
+	default:
+		return enums.Local
+	}
 }

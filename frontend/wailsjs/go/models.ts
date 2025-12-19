@@ -239,6 +239,7 @@ export namespace service {
 	    exists: boolean;
 	    // Go type: time
 	    add_time: any;
+	    has_path: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new PreviewGame(source);
@@ -251,6 +252,7 @@ export namespace service {
 	        this.source_type = source["source_type"];
 	        this.exists = source["exists"];
 	        this.add_time = this.convertValues(source["add_time"], null);
+	        this.has_path = source["has_path"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

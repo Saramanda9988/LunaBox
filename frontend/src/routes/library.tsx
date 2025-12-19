@@ -6,6 +6,7 @@ import { models } from '../../wailsjs/go/models'
 import { GameCard } from '../components/card/GameCard'
 import { AddGameModal } from '../components/modal/AddGameModal'
 import { ImportModal } from '../components/modal/ImportModal'
+import { PlayniteImportModal } from '../components/modal/PlayniteImportModal'
 import { FilterBar } from '../components/FilterBar'
 import toast from 'react-hot-toast'
 
@@ -20,6 +21,7 @@ function LibraryPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [isPlayniteImportModalOpen, setIsPlayniteImportModalOpen] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'name' | 'created_at'>('created_at')
@@ -146,6 +148,21 @@ function LibraryPage() {
                       </div>
                     </div>
                   </button>
+                  <button
+                    onClick={() => {
+                      setIsPlayniteImportModalOpen(true)
+                      setIsDropdownOpen(false)
+                    }}
+                    className="flex w-full items-center px-4 py-3 text-sm text-brand-700 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-600"
+                  >
+                    <div className="i-mdi-application-import mr-3 text-xl text-purple-500" />
+                    <div className="text-left">
+                      <div className="font-medium">从 Playnite 导入</div>
+                      <div className="text-xs text-brand-400 dark:text-brand-400">
+                        导入 Playnite 导出的 JSON 文件
+                      </div>
+                    </div>
+                  </button>
                 </div>
               </div>
             )}
@@ -159,18 +176,18 @@ function LibraryPage() {
             <div className="i-mdi-gamepad-variant-outline text-6xl mb-4" />
             <p className="text-xl">暂无游戏</p>
             <p className="text-sm mt-2">添加一些游戏开始吧</p>
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={() => setIsAddGameModalOpen(true)}
-                className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-              >
-                手动添加
-              </button>
+            <div className="flex flex-col gap-3 mt-4">
               <button
                 onClick={() => setIsImportModalOpen(true)}
                 className="rounded-lg border border-green-600 px-5 py-2.5 text-sm font-medium text-green-600 hover:bg-green-50 focus:outline-none focus:ring-4 focus:ring-green-300 dark:border-green-500 dark:text-green-500 dark:hover:bg-green-900/20"
               >
                 从 PotatoVN 导入
+              </button>
+              <button
+                onClick={() => setIsPlayniteImportModalOpen(true)}
+                className="rounded-lg border border-purple-600 px-5 py-2.5 text-sm font-medium text-purple-600 hover:bg-purple-50 focus:outline-none focus:ring-4 focus:ring-purple-300 dark:border-purple-500 dark:text-purple-500 dark:hover:bg-purple-900/20"
+              >
+                从 Playnite 导入
               </button>
             </div>
           </div>
@@ -199,6 +216,12 @@ function LibraryPage() {
       <ImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
+        onImportComplete={loadGames}
+      />
+
+      <PlayniteImportModal
+        isOpen={isPlayniteImportModalOpen}
+        onClose={() => setIsPlayniteImportModalOpen(false)}
         onImportComplete={loadGames}
       />
     </div>

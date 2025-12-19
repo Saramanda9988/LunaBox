@@ -5,10 +5,16 @@ import {context} from '../models';
 import {sql} from '../models';
 import {appconf} from '../models';
 
+export function ImportFromPlaynite(arg1:string,arg2:boolean):Promise<service.ImportResult>;
+
 export function ImportFromPotatoVN(arg1:string):Promise<service.ImportResult>;
 
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig,arg4:service.GameService):Promise<void>;
 
 export function PreviewImport(arg1:string):Promise<Array<service.PreviewGame>>;
+
+export function PreviewPlayniteImport(arg1:string):Promise<Array<service.PreviewGame>>;
+
+export function SelectJSONFile():Promise<string>;
 
 export function SelectZipFile():Promise<string>;
