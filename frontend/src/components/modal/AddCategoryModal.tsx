@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom'
+
 interface AddCategoryModalProps {
   isOpen: boolean
   value: string
@@ -15,7 +17,7 @@ export function AddCategoryModal({
 }: AddCategoryModalProps) {
   if (!isOpen) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-brand-800">
         <h3 className="text-xl font-bold text-brand-900 dark:text-white mb-4">新建收藏夹</h3>
@@ -43,6 +45,7 @@ export function AddCategoryModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

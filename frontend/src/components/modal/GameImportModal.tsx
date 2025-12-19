@@ -1,34 +1,91 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
-import { SelectJSONFile, PreviewPlayniteImport, ImportFromPlaynite } from '../../../wailsjs/go/service/ImportService'
+import {
+    SelectJSONFile,
+    SelectZipFile,
+    PreviewPlayniteImport,
+    PreviewImport,
+    ImportFromPlaynite,
+    ImportFromPotatoVN
+} from '../../../wailsjs/go/service/ImportService'
 import { service } from '../../../wailsjs/go/models'
 
-interface PlayniteImportModalProps {
+export type ImportSource = 'playnite' | 'potatovn'
+
+interface GameImportModalProps {
     isOpen: boolean
+    source: ImportSource
     onClose: () => void
     onImportComplete: () => void
 }
 
 type Step = 'select' | 'preview' | 'importing' | 'result'
 
-export function PlayniteImportModal({ isOpen, onClose, onImportComplete }: PlayniteImportModalProps) {
+// 配置类型
+interface ImportConfig {
+    title: string
+    icon: string
+    fileType: string
+    fileDescription: string
+    fileHint: string
+    buttonText: string
+    primaryColor: string
+    hoverColor: string
+    selectFile: () => Promise<string>
+    previewImport: (path: string) => Promise<service.PreviewGame[]>
+    doImport: (path: string, skipNoPath: boolean) => Promise<service.ImportResult>
+}
+
+const importConfigs: Record<ImportSource, ImportConfig> = {
+    playnite: {
+        title: '从 Playnite 导入',
+        icon: 'i-mdi-application-import',
+        fileType: 'JSON',
+        fileDescription: '选择 Playnite 导出的 JSON 文件',
+        fileHint: '支持通过 Playnite 导出脚本生成的游戏数据文件',
+        buttonText: '选择 JSON 文件',
+        primaryColor: 'bg-purple-500',
+        hoverColor: 'hover:bg-purple-600',
+        selectFile: SelectJSONFile,
+        previewImport: PreviewPlayniteImport,
+        doImport: ImportFromPlaynite,
+    },
+    potatovn: {
+        title: '从 PotatoVN 导入',
+        icon: 'i-mdi-database-import',
+        fileType: 'ZIP',
+        fileDescription: '选择 PotatoVN 导出的 ZIP 文件',
+        fileHint: '支持包含 data.galgames.json 的 PotatoVN 备份文件',
+        buttonText: '选择 ZIP 文件',
+        primaryColor: 'bg-blue-500',
+        hoverColor: 'hover:bg-blue-600',
+        selectFile: SelectZipFile,
+        previewImport: PreviewImport,
+        doImport: ImportFromPotatoVN,
+    },
+}
+
+export function GameImportModal({ isOpen, source, onClose, onImportComplete }: GameImportModalProps) {
     const [step, setStep] = useState<Step>('select')
-    const [jsonPath, setJsonPath] = useState('')
+    const [filePath, setFilePath] = useState('')
     const [previewGames, setPreviewGames] = useState<service.PreviewGame[]>([])
     const [importResult, setImportResult] = useState<service.ImportResult | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [skipNoPath, setSkipNoPath] = useState(true)
 
+    const config = importConfigs[source]
+
     if (!isOpen) return null
 
     const handleSelectFile = async () => {
         try {
-            const path = await SelectJSONFile()
+            const path = await config.selectFile()
             if (path) {
-                setJsonPath(path)
+                setFilePath(path)
                 setIsLoading(true)
                 try {
-                    const games = await PreviewPlayniteImport(path)
+                    const games = await config.previewImport(path)
                     setPreviewGames(games || [])
                     setStep('preview')
                 } catch (error) {
@@ -45,13 +102,13 @@ export function PlayniteImportModal({ isOpen, onClose, onImportComplete }: Playn
     }
 
     const handleImport = async () => {
-        if (!jsonPath) return
+        if (!filePath) return
 
         setStep('importing')
         setIsLoading(true)
 
         try {
-            const result = await ImportFromPlaynite(jsonPath, skipNoPath)
+            const result = await config.doImport(filePath, skipNoPath)
             setImportResult(result)
             setStep('result')
 
@@ -70,7 +127,7 @@ export function PlayniteImportModal({ isOpen, onClose, onImportComplete }: Playn
 
     const resetAndClose = () => {
         setStep('select')
-        setJsonPath('')
+        setFilePath('')
         setPreviewGames([])
         setImportResult(null)
         setSkipNoPath(true)
@@ -81,15 +138,26 @@ export function PlayniteImportModal({ isOpen, onClose, onImportComplete }: Playn
     const existingGamesCount = previewGames.filter(g => g.exists).length
     const noPathGamesCount = previewGames.filter(g => !g.has_path && !g.exists).length
 
-    return (
+    // 动态颜色类
+    const buttonPrimaryClass = `${config.primaryColor} ${config.hoverColor}`
+    const iconColorClass = source === 'playnite' ? 'text-purple-500' : 'text-blue-500'
+    const spinnerColorClass = source === 'playnite' ? 'text-purple-500' : 'text-blue-500'
+    const resultButtonClass = source === 'playnite'
+        ? 'bg-purple-600 hover:bg-purple-700'
+        : 'bg-blue-600 hover:bg-blue-700'
+    const importButtonClass = source === 'playnite'
+        ? 'bg-purple-600 hover:bg-purple-700'
+        : 'bg-blue-600 hover:bg-blue-700'
+
+    return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className="w-full max-w-3xl max-h-[90vh] rounded-xl bg-white shadow-2xl dark:bg-brand-800 flex flex-col">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-brand-200 dark:border-brand-700">
                     <div className="flex items-center gap-3">
-                        <div className="i-mdi-application-import text-3xl text-purple-500" />
+                        <div className={`${config.icon} text-3xl ${iconColorClass}`} />
                         <h2 className="text-2xl font-bold text-brand-900 dark:text-white">
-                            从 Playnite 导入
+                            {config.title}
                         </h2>
                     </div>
                     <button
@@ -106,19 +174,19 @@ export function PlayniteImportModal({ isOpen, onClose, onImportComplete }: Playn
                     {step === 'select' && (
                         <div className="space-y-6">
                             <div className="text-center py-8">
-                                <div className="i-mdi-file-document text-6xl text-brand-400 mx-auto mb-4" />
+                                <div className={`${source === 'playnite' ? 'i-mdi-file-document' : 'i-mdi-folder-zip'} text-6xl text-brand-400 mx-auto mb-4`} />
                                 <p className="text-brand-600 dark:text-brand-300 mb-2">
-                                    选择 Playnite 导出的 JSON 文件
+                                    {config.fileDescription}
                                 </p>
                                 <p className="text-sm text-brand-400 dark:text-brand-500">
-                                    支持通过 Playnite 导出脚本生成的游戏数据文件
+                                    {config.fileHint}
                                 </p>
                             </div>
 
                             <button
                                 onClick={handleSelectFile}
                                 disabled={isLoading}
-                                className="flex w-full items-center justify-center rounded-lg bg-purple-500 py-4 text-white transition hover:bg-purple-600 disabled:opacity-50"
+                                className={`flex w-full items-center justify-center rounded-lg py-4 text-white transition disabled:opacity-50 ${buttonPrimaryClass}`}
                             >
                                 {isLoading ? (
                                     <>
@@ -128,7 +196,7 @@ export function PlayniteImportModal({ isOpen, onClose, onImportComplete }: Playn
                                 ) : (
                                     <>
                                         <div className="i-mdi-file-find mr-2 text-xl" />
-                                        选择 JSON 文件
+                                        {config.buttonText}
                                     </>
                                 )}
                             </button>
@@ -184,7 +252,9 @@ export function PlayniteImportModal({ isOpen, onClose, onImportComplete }: Playn
                                             </div>
                                             <div className="text-xs text-orange-600 dark:text-orange-400 mt-1">
                                                 有 {noPathGamesCount} 个游戏没有本地路径，这些可能是网络游戏或已删除的游戏。
-                                                建议跳过这些游戏。
+                                                {skipNoPath
+                                                    ? '取消勾选以导入这些游戏（不含启动路径）。'
+                                                    : '勾选此项将跳过这些游戏。'}
                                             </div>
                                         </div>
                                     </label>
@@ -219,8 +289,8 @@ export function PlayniteImportModal({ isOpen, onClose, onImportComplete }: Playn
                                                     <tr
                                                         key={index}
                                                         className={`${willBeSkipped
-                                                                ? 'opacity-50'
-                                                                : 'hover:bg-brand-50 dark:hover:bg-brand-750'
+                                                            ? 'opacity-50'
+                                                            : 'hover:bg-brand-50 dark:hover:bg-brand-750'
                                                             }`}
                                                     >
                                                         <td className="px-4 py-3 text-sm text-brand-900 dark:text-white">
@@ -271,7 +341,7 @@ export function PlayniteImportModal({ isOpen, onClose, onImportComplete }: Playn
                                 <button
                                     onClick={handleImport}
                                     disabled={newGamesCount === 0}
-                                    className="rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
+                                    className={`rounded-lg px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50 ${importButtonClass}`}
                                 >
                                     导入 {newGamesCount} 个游戏
                                 </button>
@@ -282,7 +352,7 @@ export function PlayniteImportModal({ isOpen, onClose, onImportComplete }: Playn
                     {/* Step: Importing */}
                     {step === 'importing' && (
                         <div className="py-12 text-center">
-                            <div className="i-mdi-loading animate-spin text-5xl text-purple-500 mx-auto mb-4" />
+                            <div className={`i-mdi-loading animate-spin text-5xl mx-auto mb-4 ${spinnerColorClass}`} />
                             <p className="text-lg text-brand-600 dark:text-brand-300">
                                 正在导入游戏...
                             </p>
@@ -358,7 +428,7 @@ export function PlayniteImportModal({ isOpen, onClose, onImportComplete }: Playn
                             <div className="flex justify-center">
                                 <button
                                     onClick={resetAndClose}
-                                    className="rounded-lg bg-purple-600 px-8 py-2.5 text-sm font-medium text-white hover:bg-purple-700"
+                                    className={`rounded-lg px-8 py-2.5 text-sm font-medium text-white ${resultButtonClass}`}
                                 >
                                     完成
                                 </button>
@@ -367,6 +437,7 @@ export function PlayniteImportModal({ isOpen, onClose, onImportComplete }: Playn
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     )
 }

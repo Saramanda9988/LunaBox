@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import {models} from "../../../wailsjs/go/models";
 
 interface AddGameToCategoryModalProps {
@@ -15,7 +16,7 @@ export function AddGameToCategoryModal({
 }: AddGameToCategoryModalProps) {
   if (!isOpen) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="w-full max-w-2xl h-[80vh] rounded-xl bg-white flex flex-col shadow-xl dark:bg-brand-800">
         <div className="p-6 border-b border-brand-200 dark:border-brand-700 flex justify-between items-center">
@@ -62,6 +63,7 @@ export function AddGameToCategoryModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
