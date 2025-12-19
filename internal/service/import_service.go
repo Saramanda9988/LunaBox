@@ -11,6 +11,7 @@ import (
 	"lunabox/internal/appconf"
 	"lunabox/internal/enums"
 	"lunabox/internal/models"
+	"lunabox/internal/models/playnite"
 	"lunabox/internal/models/potatovn"
 	"os"
 	"path/filepath"
@@ -396,21 +397,6 @@ type PreviewGame struct {
 	HasPath    bool      `json:"has_path"` // 用于 Playnite 导入，标记是否有路径
 }
 
-// PlayniteGame Playnite 导出的游戏数据结构（与 Game model 一致）
-type PlayniteGame struct {
-	ID         string    `json:"id"`
-	Name       string    `json:"name"`
-	CoverURL   string    `json:"cover_url"`
-	Company    string    `json:"company"`
-	Summary    string    `json:"summary"`
-	Path       string    `json:"path"`
-	SavePath   *string   `json:"save_path"`
-	SourceType string    `json:"source_type"`
-	SourceID   string    `json:"source_id"`
-	CachedAt   time.Time `json:"cached_at"`
-	CreatedAt  time.Time `json:"created_at"`
-}
-
 // SelectJSONFile 选择要导入的 JSON 文件
 func (s *ImportService) SelectJSONFile() (string, error) {
 	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
@@ -437,7 +423,7 @@ func (s *ImportService) PreviewPlayniteImport(jsonPath string) ([]PreviewGame, e
 	utf8BOM := []byte{0xEF, 0xBB, 0xBF}
 	jsonData = bytes.TrimPrefix(jsonData, utf8BOM)
 
-	var playniteGames []PlayniteGame
+	var playniteGames []playnite.PlayniteGame
 	if err := json.Unmarshal(jsonData, &playniteGames); err != nil {
 		return nil, fmt.Errorf("解析 JSON 文件失败: %w", err)
 	}
@@ -486,7 +472,7 @@ func (s *ImportService) ImportFromPlaynite(jsonPath string, skipNoPath bool) (Im
 	utf8BOM := []byte{0xEF, 0xBB, 0xBF}
 	jsonData = bytes.TrimPrefix(jsonData, utf8BOM)
 
-	var playniteGames []PlayniteGame
+	var playniteGames []playnite.PlayniteGame
 	if err := json.Unmarshal(jsonData, &playniteGames); err != nil {
 		return result, fmt.Errorf("解析 JSON 文件失败: %w", err)
 	}
@@ -534,7 +520,7 @@ func (s *ImportService) ImportFromPlaynite(jsonPath string, skipNoPath bool) (Im
 }
 
 // convertPlayniteToGame 将 Playnite 的游戏数据转换为本地的 Game 模型
-func (s *ImportService) convertPlayniteToGame(pg PlayniteGame) models.Game {
+func (s *ImportService) convertPlayniteToGame(pg playnite.PlayniteGame) models.Game {
 	game := models.Game{
 		ID:         pg.ID,
 		Name:       pg.Name,
