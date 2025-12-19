@@ -43,6 +43,7 @@ func initTestSchema(t *testing.T, db *sql.DB) {
 			company TEXT,
 			summary TEXT,
 			path TEXT,
+			save_path TEXT,
 			source_type TEXT,
 			cached_at TIMESTAMP,
 			source_id TEXT,

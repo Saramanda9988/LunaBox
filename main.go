@@ -4,8 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"lunabox/internal/utils"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"log"
 	"lunabox/internal/appconf"
@@ -43,6 +46,13 @@ func main() {
 	timerService := service.NewTimerService()
 	categoryService := service.NewCategoryService()
 	configService := service.NewConfigService()
+	importService := service.NewImportService()
+
+	// 创建本地文件处理器
+	localFileHandler, err := utils.NewLocalFileHandler()
+	if err != nil {
+		log.Printf("Warning: Failed to create local file handler: %v", err)
+	}
 
 	// Create application with options
 	bootstrapErr := wails.Run(&options.App{
@@ -51,6 +61,26 @@ func main() {
 		Height: 768,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
+			Middleware: func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					// 跨域处理
+					w.Header().Set("Access-Control-Allow-Origin", "*")
+					w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+					w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+					if r.Method == "OPTIONS" {
+						w.WriteHeader(http.StatusOK)
+						return
+					}
+
+					if strings.HasPrefix(r.URL.Path, "/local/") {
+						localFileHandler.ServeHTTP(w, r)
+						return
+					}
+
+					next.ServeHTTP(w, r)
+				})
+			},
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		// 样式完全交由wails前端控制
@@ -94,6 +124,7 @@ func main() {
 			statsService.Init(ctx, db, config)
 			timerService.Init(ctx, db, config)
 			categoryService.Init(ctx, db, config)
+			importService.Init(ctx, db, config, gameService)
 		},
 		OnShutdown: func(ctx context.Context) {
 			// 关闭数据库连接
@@ -115,6 +146,7 @@ func main() {
 			timerService,
 			categoryService,
 			configService,
+			importService,
 		},
 		EnumBind: []interface{}{
 			enums.AllSourceTypes,

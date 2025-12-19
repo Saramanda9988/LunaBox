@@ -111,6 +111,7 @@ func (s *BackupService) TestS3Connection(config appconf.AppConfig) error {
 }
 
 // GetCloudBackupStatus 获取云备份状态
+// TODO:快速失败？
 func (s *BackupService) GetCloudBackupStatus() vo.CloudBackupStatus {
 	status := vo.CloudBackupStatus{
 		Enabled:    s.config.CloudBackupEnabled,

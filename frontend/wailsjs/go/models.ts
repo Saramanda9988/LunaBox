@@ -198,6 +198,82 @@ export namespace models {
 
 }
 
+export namespace service {
+	
+	export class GameService {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new GameService(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+	export class ImportResult {
+	    success: number;
+	    skipped: number;
+	    failed: number;
+	    failed_names: string[];
+	    skipped_names: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ImportResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.skipped = source["skipped"];
+	        this.failed = source["failed"];
+	        this.failed_names = source["failed_names"];
+	        this.skipped_names = source["skipped_names"];
+	    }
+	}
+	export class PreviewGame {
+	    name: string;
+	    developer: string;
+	    source_type: string;
+	    exists: boolean;
+	    // Go type: time
+	    add_time: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new PreviewGame(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.developer = source["developer"];
+	        this.source_type = source["source_type"];
+	        this.exists = source["exists"];
+	        this.add_time = this.convertValues(source["add_time"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace sql {
 	
 	export class DB {
