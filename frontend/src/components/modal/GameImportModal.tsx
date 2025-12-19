@@ -269,7 +269,7 @@ export function GameImportModal({ isOpen, source, onClose, onImportComplete }: G
                                     </div>
                                 ) : (
                                     <table className="w-full">
-                                        <thead className="sticky top-0 bg-brand-50 dark:bg-brand-700">
+                                        <thead className="top-0 bg-brand-50 dark:bg-brand-700">
                                             <tr>
                                                 <th className="px-4 py-2 text-left text-sm font-medium text-brand-600 dark:text-brand-300">
                                                     游戏名称
