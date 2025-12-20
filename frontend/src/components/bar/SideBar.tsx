@@ -1,12 +1,8 @@
 import { Link } from '@tanstack/react-router'
-import { useState } from 'react'
-import toast from 'react-hot-toast'
-import { useAppStore } from '../store'
-import { CreateDBBackup, GetDBBackups } from '../../wailsjs/go/service/BackupService'
+import { useAppStore } from '../../store'
 
 export function SideBar() {
-  const { isSidebarOpen, toggleSidebar, config, fetchConfig } = useAppStore()
-  const [isBackingUp, setIsBackingUp] = useState(false)
+  const { isSidebarOpen, toggleSidebar } = useAppStore()
 
   const navItems = [
     { to: '/', label: '首页', icon: 'i-mdi-home' },
@@ -14,30 +10,6 @@ export function SideBar() {
     { to: '/stats', label: '统计', icon: 'i-mdi-chart-bar' },
     { to: '/categories', label: '收藏', icon: 'i-mdi-format-list-bulleted' },
   ]
-
-  const handleBackup = async () => {
-    if (isBackingUp) return
-    setIsBackingUp(true)
-    try {
-      await CreateDBBackup()
-      await fetchConfig()
-      toast.success('数据库备份成功')
-    } catch (err: any) {
-      toast.error('备份失败: ' + err)
-    } finally {
-      setIsBackingUp(false)
-    }
-  }
-
-  const formatLastBackupTime = () => {
-    if (!config?.last_db_backup_time) return '从未备份'
-    try {
-      const date = new Date(config.last_db_backup_time)
-      return date.toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-    } catch {
-      return '从未备份'
-    }
-  }
 
   return (
     <aside
@@ -72,25 +44,13 @@ export function SideBar() {
       </nav>
 
       <div className={`p-4 border-brand-200 dark:border-brand-700 flex ${isSidebarOpen ? 'flex-col gap-2' : 'flex-col gap-2 items-center'}`}>
-        <button
-          onClick={handleBackup}
-          disabled={isBackingUp}
-          className="flex items-center justify-center rounded hover:bg-brand-100 dark:hover:bg-brand-700 p-2 text-brand-700 dark:text-brand-300 disabled:opacity-50"
-          title={`数据库备份\n上次: ${formatLastBackupTime()}`}
-        >
-          <div className={`i-mdi-cloud-sync text-xl ${isBackingUp ? 'animate-spin' : ''}`} />
-          {isSidebarOpen && (
-            <span className="ml-2 text-xs text-brand-500 dark:text-brand-400">
-              {isBackingUp ? '备份中...' : formatLastBackupTime()}
-            </span>
-          )}
-        </button>
         <Link
           to="/settings"
           className="flex items-center justify-center rounded hover:bg-brand-100 dark:hover:bg-brand-700 p-2 text-brand-700 dark:text-brand-300 no-underline [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100"
           title="设置"
         >
           <div className="i-mdi-cog text-xl" />
+          {isSidebarOpen && <span className="ml-3">设置</span>}
         </Link>
       </div>
     </aside>

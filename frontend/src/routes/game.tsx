@@ -4,7 +4,6 @@ import { Route as rootRoute } from './__root'
 import { useChartTheme } from '../hooks/useChartTheme'
 import { GetGameByID, UpdateGame, SelectGameExecutable, DeleteGame, SelectSaveDirectory } from '../../wailsjs/go/service/GameService'
 import { GetGameStats } from '../../wailsjs/go/service/StatsService'
-import { GetGameBackups, CreateBackup, RestoreBackup, DeleteBackup, OpenBackupFolder, GetCloudBackupStatus, UploadGameBackupToCloud, GetCloudGameBackups, RestoreFromCloud } from '../../wailsjs/go/service/BackupService'
 import { models, vo } from '../../wailsjs/go/models'
 import {
   Chart as ChartJS,
@@ -18,6 +17,7 @@ import {
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
 import { toast } from 'react-hot-toast'
+import { GameBackupPanel } from '../components/panel/GameBackupPanel'
 
 ChartJS.register(
   CategoryScale,
@@ -43,25 +43,16 @@ function GameDetailPage() {
   const [stats, setStats] = useState<vo.GameDetailStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('stats')
-  const [backups, setBackups] = useState<models.GameBackup[]>([])
-  const [isBackingUp, setIsBackingUp] = useState(false)
-  const [cloudBackups, setCloudBackups] = useState<vo.CloudBackupItem[]>([])
-  const [cloudStatus, setCloudStatus] = useState<vo.CloudBackupStatus | null>(null)
-  const [isUploading, setIsUploading] = useState(false)
-  const [isBackupsLoading, setIsBackupsLoading] = useState(false)
-  const [isCloudBackupsLoading, setIsCloudBackupsLoading] = useState(false)
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [gameData, statsData, cloudStatusData] = await Promise.all([
+        const [gameData, statsData] = await Promise.all([
           GetGameByID(gameId),
           GetGameStats(gameId),
-          GetCloudBackupStatus(),
         ])
         setGame(gameData)
         setStats(statsData)
-        setCloudStatus(cloudStatusData)
       } catch (error) {
         console.error('Failed to load game data:', error)
         toast.error('加载游戏数据失败')
@@ -71,41 +62,6 @@ function GameDetailPage() {
     }
     loadData()
   }, [gameId])
-
-  useEffect(() => {
-    if (activeTab === 'backup' && gameId) {
-      const loadLocalBackups = async () => {
-        setIsBackupsLoading(true)
-        try {
-          const backupsData = await GetGameBackups(gameId)
-          setBackups(backupsData || [])
-        } catch (error) {
-          console.error('Failed to load local backups:', error)
-          toast.error('加载本地备份失败')
-        } finally {
-          setIsBackupsLoading(false)
-        }
-      }
-
-      const loadCloudBackups = async () => {
-        if (cloudStatus?.configured && cloudStatus?.enabled) {
-          setIsCloudBackupsLoading(true)
-          try {
-            const cloudBackupsData = await GetCloudGameBackups(gameId)
-            setCloudBackups(cloudBackupsData || [])
-          } catch (error) {
-            console.error('Failed to load cloud backups:', error)
-            // 云端备份加载失败不影响主流程，可以不弹窗或者给个轻提示
-          } finally {
-            setIsCloudBackupsLoading(false)
-          }
-        }
-      }
-
-      loadLocalBackups()
-      loadCloudBackups()
-    }
-  }, [activeTab, gameId, cloudStatus])
 
   if (isLoading) {
     return <div className="flex h-full items-center justify-center">Loading...</div>
@@ -222,95 +178,6 @@ function GameDetailPage() {
     } catch (error) {
       console.error('Failed to select save directory:', error)
       toast.error('选择存档目录失败')
-    }
-  }
-
-  const handleCreateBackup = async () => {
-    if (!game) return
-    if (!game.save_path) {
-      toast.error('请先设置存档目录')
-      return
-    }
-    setIsBackingUp(true)
-    try {
-      await CreateBackup(game.id)
-      const backupsData = await GetGameBackups(game.id)
-      setBackups(backupsData || [])
-      toast.success('备份成功')
-    } catch (error: any) {
-      console.error('Failed to create backup:', error)
-      toast.error(error?.message || '备份失败')
-    } finally {
-      setIsBackingUp(false)
-    }
-  }
-
-  const handleRestoreBackup = async (backupId: string, createdAt: string) => {
-    if (window.confirm(`确定要恢复到 ${new Date(createdAt).toLocaleString()} 的备份吗？当前存档将被覆盖。`)) {
-      try {
-        await RestoreBackup(backupId)
-        toast.success('恢复成功')
-      } catch (error: any) {
-        console.error('Failed to restore backup:', error)
-        toast.error(error?.message || '恢复失败')
-      }
-    }
-  }
-
-  const handleDeleteBackup = async (backupId: string) => {
-    if (window.confirm('确定要删除此备份吗？')) {
-      try {
-        await DeleteBackup(backupId)
-        const backupsData = await GetGameBackups(gameId)
-        setBackups(backupsData || [])
-        toast.success('删除成功')
-      } catch (error) {
-        console.error('Failed to delete backup:', error)
-        toast.error('删除失败')
-      }
-    }
-  }
-
-  const handleOpenBackupFolder = async () => {
-    try {
-      await OpenBackupFolder(gameId)
-    } catch (error) {
-      console.error('Failed to open backup folder:', error)
-    }
-  }
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-  }
-
-  const handleUploadToCloud = async (backupId: string) => {
-    if (!game) return
-    setIsUploading(true)
-    try {
-      await UploadGameBackupToCloud(game.id, backupId)
-      const cloudBackupsData = await GetCloudGameBackups(game.id)
-      setCloudBackups(cloudBackupsData || [])
-      toast.success('上传成功')
-    } catch (error: any) {
-      console.error('Failed to upload to cloud:', error)
-      toast.error(error?.message || '上传失败')
-    } finally {
-      setIsUploading(false)
-    }
-  }
-
-  const handleRestoreFromCloud = async (cloudKey: string, name: string) => {
-    if (!game) return
-    if (window.confirm(`确定要从云端恢复 ${name} 的备份吗？当前存档将被覆盖。`)) {
-      try {
-        await RestoreFromCloud(cloudKey, game.id)
-        toast.success('恢复成功')
-      } catch (error: any) {
-        console.error('Failed to restore from cloud:', error)
-        toast.error(error?.message || '恢复失败')
-      }
     }
   }
 
@@ -538,159 +405,8 @@ function GameDetailPage() {
         </div>
       )}
 
-      {(activeTab === 'backup') && (
-        <div className="space-y-6">
-          {/* 备份操作区 */}
-          <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-semibold text-brand-900 dark:text-white">存档备份</h3>
-                <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">
-                  {game?.save_path ? `存档目录: ${game.save_path}` : '请先在编辑页面设置存档目录'}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleOpenBackupFolder}
-                  className="px-4 py-2 text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-700 rounded-md transition-colors"
-                >
-                  打开备份文件夹
-                </button>
-                <button
-                  onClick={handleCreateBackup}
-                  disabled={isBackingUp || !game?.save_path}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isBackingUp && <div className="i-mdi-loading animate-spin" />}
-                  {isBackingUp ? '备份中...' : '立即备份'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* 本地备份历史列表 */}
-          <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-            <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">本地备份</h3>
-            {isBackupsLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="i-mdi-loading animate-spin text-2xl text-brand-500" />
-              </div>
-            ) : backups.length === 0 ? (
-              <div className="text-center py-8 text-brand-500">
-                暂无本地备份记录
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {backups.map((backup) => (
-                  <div
-                    key={backup.id}
-                    className="flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-700 rounded-lg"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="i-mdi-archive text-2xl text-brand-500" />
-                      <div>
-                        <div className="font-medium text-brand-900 dark:text-white">
-                          {new Date(backup.created_at).toLocaleString()}
-                        </div>
-                        <div className="text-sm text-brand-500">
-                          大小: {formatFileSize(backup.size)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      {cloudStatus?.configured && cloudStatus?.enabled && (
-                        <button
-                          onClick={() => handleUploadToCloud(backup.id)}
-                          disabled={isUploading}
-                          title="上传到云端"
-                          className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900 rounded transition-colors disabled:opacity-50"
-                        >
-                          <div className={`i-mdi-cloud-upload text-xl ${isUploading ? 'animate-pulse' : ''}`} />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleRestoreBackup(backup.id, backup.created_at)}
-                        title="恢复备份"
-                        className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900 rounded transition-colors"
-                      >
-                        <div className="i-mdi-backup-restore text-xl" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteBackup(backup.id)}
-                        title="删除备份"
-                        className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900 rounded transition-colors"
-                      >
-                        <div className="i-mdi-delete text-xl" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 云端备份列表 */}
-          {cloudStatus?.configured && cloudStatus?.enabled && (
-            <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-              <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4 flex items-center gap-2">
-                <div className="text-xl text-blue-500" />
-                云端备份
-              </h3>
-              {isCloudBackupsLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="i-mdi-loading animate-spin text-2xl text-brand-500" />
-                </div>
-              ) : cloudBackups.length === 0 ? (
-                <div className="text-center py-8 text-brand-500">
-                  暂无云端备份记录
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {cloudBackups.map((backup) => (
-                    <div
-                      key={backup.key}
-                      className="flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-700 rounded-lg"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="i-mdi-cloud-check text-2xl text-blue-500" />
-                        <div>
-                          <div className="font-medium text-brand-900 dark:text-white">
-                            {backup.name || new Date(backup.created_at).toLocaleString()}
-                          </div>
-                          <div className="text-sm text-brand-500">
-                            {new Date(backup.created_at).toLocaleString()}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleRestoreFromCloud(backup.key, backup.name)}
-                          title="从云端恢复"
-                          className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900 rounded transition-colors"
-                        >
-                          <div className="i-mdi-cloud-download text-xl" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 云备份未配置提示 */}
-          {(!cloudStatus?.configured || !cloudStatus?.enabled) && (
-            <div className="bg-brand-50 dark:bg-brand-800 p-4 rounded-lg border border-brand-200 dark:border-brand-700">
-              <div className="flex items-center gap-3">
-                <div className="i-mdi-cloud-off-outline text-2xl text-brand-400" />
-                <div>
-                  <div className="font-medium text-brand-700 dark:text-brand-300">云备份未启用</div>
-                  <div className="text-sm text-brand-500">前往设置页面配置云备份，将存档同步到云端</div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+      {activeTab === 'backup' && (
+        <GameBackupPanel gameId={gameId} savePath={game?.save_path} />
       )}
     </div>
   )

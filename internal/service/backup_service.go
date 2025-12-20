@@ -1040,3 +1040,276 @@ func unzipForRestore(src, dest string) error {
 	}
 	return nil
 }
+
+// ========== 数据库云备份相关方法 ==========
+
+// UploadDBBackupToCloud 上传数据库备份到云端
+func (s *BackupService) UploadDBBackupToCloud(backupPath string) error {
+	if s.config.BackupUserID == "" {
+		return fmt.Errorf("备份用户 ID 未设置")
+	}
+
+	// 检查备份文件是否存在
+	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+		return fmt.Errorf("备份文件不存在: %s", backupPath)
+	}
+
+	// 获取文件名作为云端文件名
+	fileName := filepath.Base(backupPath)
+
+	// 根据提供商选择上传方式
+	if s.config.CloudBackupProvider == "onedrive" {
+		return s.uploadDBToOneDrive(backupPath, fileName)
+	}
+	return s.uploadDBToS3(backupPath, fileName)
+}
+
+// uploadDBToS3 上传数据库备份到 S3
+func (s *BackupService) uploadDBToS3(backupPath, fileName string) error {
+	s3Client, err := s.getS3Client()
+	if err != nil {
+		return err
+	}
+
+	// 生成云端路径: v1/{user_id}/database/{filename}
+	cloudKey := s.getCloudPath(fmt.Sprintf("database/%s", fileName))
+
+	// 上传文件
+	if err := s3Client.UploadFile(s.ctx, cloudKey, backupPath); err != nil {
+		return fmt.Errorf("上传失败: %w", err)
+	}
+
+	// 更新 latest
+	latestKey := s.getCloudPath("database/latest.zip")
+	if err := s3Client.UploadFile(s.ctx, latestKey, backupPath); err != nil {
+		// latest 更新失败不影响主流程
+	}
+
+	// 清理旧版本
+	s.cleanupOldCloudDBBackups()
+
+	return nil
+}
+
+// uploadDBToOneDrive 上传数据库备份到 OneDrive
+func (s *BackupService) uploadDBToOneDrive(backupPath, fileName string) error {
+	client, err := s.getOneDriveClient()
+	if err != nil {
+		return err
+	}
+
+	// 生成云端路径
+	cloudPath := s.getOneDriveCloudPath(fmt.Sprintf("database/%s", fileName))
+
+	// 确保文件夹存在
+	folderPath := s.getOneDriveCloudPath("database")
+	if err := client.CreateFolder(s.ctx, folderPath); err != nil {
+		// 文件夹可能已存在，忽略错误
+	}
+
+	// 上传文件
+	if err := client.UploadFile(s.ctx, cloudPath, backupPath); err != nil {
+		return fmt.Errorf("上传失败: %w", err)
+	}
+
+	// 更新 latest
+	latestPath := s.getOneDriveCloudPath("database/latest.zip")
+	if err := client.UploadFile(s.ctx, latestPath, backupPath); err != nil {
+		// latest 更新失败不影响主流程
+	}
+
+	// 清理旧版本
+	s.cleanupOldCloudDBBackups()
+
+	return nil
+}
+
+// GetCloudDBBackups 获取云端数据库备份列表
+func (s *BackupService) GetCloudDBBackups() ([]vo.CloudBackupItem, error) {
+	if s.config.BackupUserID == "" {
+		return nil, fmt.Errorf("备份用户 ID 未设置")
+	}
+
+	if s.config.CloudBackupProvider == "onedrive" {
+		return s.getOneDriveDBBackups()
+	}
+	return s.getS3DBBackups()
+}
+
+// getS3DBBackups 获取 S3 云端数据库备份列表
+func (s *BackupService) getS3DBBackups() ([]vo.CloudBackupItem, error) {
+	s3Client, err := s.getS3Client()
+	if err != nil {
+		return nil, err
+	}
+
+	prefix := s.getCloudPath("database/")
+	keys, err := s3Client.ListObjects(s.ctx, prefix)
+	if err != nil {
+		return nil, err
+	}
+
+	var items []vo.CloudBackupItem
+	for _, key := range keys {
+		// 跳过 latest
+		if strings.HasSuffix(key, "latest.zip") {
+			continue
+		}
+		// 解析时间戳
+		name := filepath.Base(key)
+		// 文件名格式: lunabox_2006-01-02T15-04-05.zip
+		name = strings.TrimPrefix(name, "lunabox_")
+		name = strings.TrimSuffix(name, ".zip")
+		t, _ := time.Parse("2006-01-02T15-04-05", name)
+
+		items = append(items, vo.CloudBackupItem{
+			Key:       key,
+			Name:      filepath.Base(key),
+			CreatedAt: t,
+		})
+	}
+
+	// 按时间倒序
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].CreatedAt.After(items[j].CreatedAt)
+	})
+
+	return items, nil
+}
+
+// getOneDriveDBBackups 获取 OneDrive 云端数据库备份列表
+func (s *BackupService) getOneDriveDBBackups() ([]vo.CloudBackupItem, error) {
+	client, err := s.getOneDriveClient()
+	if err != nil {
+		return nil, err
+	}
+
+	folderPath := s.getOneDriveCloudPath("database")
+	keys, err := client.ListObjects(s.ctx, folderPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var items []vo.CloudBackupItem
+	for _, key := range keys {
+		// 跳过 latest
+		if strings.HasSuffix(key, "latest.zip") {
+			continue
+		}
+		// 解析时间戳
+		name := filepath.Base(key)
+		// 文件名格式: lunabox_2006-01-02T15-04-05.zip
+		displayName := name
+		name = strings.TrimPrefix(name, "lunabox_")
+		name = strings.TrimSuffix(name, ".zip")
+		t, _ := time.Parse("2006-01-02T15-04-05", name)
+
+		items = append(items, vo.CloudBackupItem{
+			Key:       key,
+			Name:      displayName,
+			CreatedAt: t,
+		})
+	}
+
+	// 按时间倒序
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].CreatedAt.After(items[j].CreatedAt)
+	})
+
+	return items, nil
+}
+
+// DownloadCloudDBBackup 从云端下载数据库备份
+func (s *BackupService) DownloadCloudDBBackup(cloudKey string) (string, error) {
+	// 创建下载目录
+	backupDir, err := s.GetDBBackupDir()
+	if err != nil {
+		return "", err
+	}
+	cloudDownloadDir := filepath.Join(backupDir, "cloud_download")
+	os.MkdirAll(cloudDownloadDir, 0755)
+
+	// 下载文件
+	destPath := filepath.Join(cloudDownloadDir, filepath.Base(cloudKey))
+
+	if s.config.CloudBackupProvider == "onedrive" {
+		client, err := s.getOneDriveClient()
+		if err != nil {
+			return "", err
+		}
+		if err := client.DownloadFile(s.ctx, cloudKey, destPath); err != nil {
+			return "", fmt.Errorf("下载失败: %w", err)
+		}
+	} else {
+		s3Client, err := s.getS3Client()
+		if err != nil {
+			return "", err
+		}
+		if err := s3Client.DownloadFile(s.ctx, cloudKey, destPath); err != nil {
+			return "", fmt.Errorf("下载失败: %w", err)
+		}
+	}
+
+	return destPath, nil
+}
+
+// ScheduleDBRestoreFromCloud 从云端下载并安排数据库恢复
+func (s *BackupService) ScheduleDBRestoreFromCloud(cloudKey string) error {
+	// 下载云端备份
+	localPath, err := s.DownloadCloudDBBackup(cloudKey)
+	if err != nil {
+		return err
+	}
+
+	// 安排恢复
+	return s.ScheduleDBRestore(localPath)
+}
+
+// cleanupOldCloudDBBackups 清理旧的云端数据库备份
+func (s *BackupService) cleanupOldCloudDBBackups() {
+	retention := s.config.CloudBackupRetention
+	if retention <= 0 {
+		retention = 10
+	}
+
+	items, err := s.GetCloudDBBackups()
+	if err != nil || len(items) <= retention {
+		return
+	}
+
+	// 删除超出保留数量的旧备份
+	for i := retention; i < len(items); i++ {
+		if s.config.CloudBackupProvider == "onedrive" {
+			client, err := s.getOneDriveClient()
+			if err != nil {
+				return
+			}
+			client.DeleteObject(s.ctx, items[i].Key)
+		} else {
+			s3Client, err := s.getS3Client()
+			if err != nil {
+				return
+			}
+			s3Client.DeleteObject(s.ctx, items[i].Key)
+		}
+	}
+}
+
+// CreateAndUploadDBBackup 创建数据库备份并上传到云端
+func (s *BackupService) CreateAndUploadDBBackup() (*vo.DBBackupInfo, error) {
+	// 先创建本地备份
+	backup, err := s.CreateDBBackup()
+	if err != nil {
+		return nil, err
+	}
+
+	// 如果云备份已启用，上传到云端
+	if s.config.CloudBackupEnabled && s.config.BackupUserID != "" {
+		if err := s.UploadDBBackupToCloud(backup.Path); err != nil {
+			// 云端上传失败不影响本地备份，只记录错误
+			return backup, fmt.Errorf("本地备份成功，但云端上传失败: %w", err)
+		}
+	}
+
+	return backup, nil
+}
