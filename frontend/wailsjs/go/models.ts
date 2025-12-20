@@ -10,6 +10,7 @@ export namespace appconf {
 	    ai_api_key?: string;
 	    ai_model?: string;
 	    cloud_backup_enabled: boolean;
+	    cloud_backup_provider?: string;
 	    backup_password?: string;
 	    backup_user_id?: string;
 	    s3_endpoint?: string;
@@ -18,6 +19,7 @@ export namespace appconf {
 	    s3_access_key?: string;
 	    s3_secret_key?: string;
 	    cloud_backup_retention?: number;
+	    onedrive_refresh_token?: string;
 	    last_db_backup_time?: string;
 	    pending_db_restore?: string;
 	
@@ -36,6 +38,7 @@ export namespace appconf {
 	        this.ai_api_key = source["ai_api_key"];
 	        this.ai_model = source["ai_model"];
 	        this.cloud_backup_enabled = source["cloud_backup_enabled"];
+	        this.cloud_backup_provider = source["cloud_backup_provider"];
 	        this.backup_password = source["backup_password"];
 	        this.backup_user_id = source["backup_user_id"];
 	        this.s3_endpoint = source["s3_endpoint"];
@@ -44,6 +47,7 @@ export namespace appconf {
 	        this.s3_access_key = source["s3_access_key"];
 	        this.s3_secret_key = source["s3_secret_key"];
 	        this.cloud_backup_retention = source["cloud_backup_retention"];
+	        this.onedrive_refresh_token = source["onedrive_refresh_token"];
 	        this.last_db_backup_time = source["last_db_backup_time"];
 	        this.pending_db_restore = source["pending_db_restore"];
 	    }
@@ -53,16 +57,16 @@ export namespace appconf {
 
 export namespace enums {
 	
+	export enum Period {
+	    YEAR = "year",
+	    MONTH = "month",
+	    WEEK = "week",
+	}
 	export enum SourceType {
 	    LOCAL = "local",
 	    BANGUMI = "bangumi",
 	    VNDB = "vndb",
 	    YMGAL = "ymgal",
-	}
-	export enum Period {
-	    YEAR = "year",
-	    MONTH = "month",
-	    WEEK = "week",
 	}
 
 }
@@ -450,6 +454,7 @@ export namespace vo {
 	    enabled: boolean;
 	    configured: boolean;
 	    user_id: string;
+	    provider: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new CloudBackupStatus(source);
@@ -460,6 +465,7 @@ export namespace vo {
 	        this.enabled = source["enabled"];
 	        this.configured = source["configured"];
 	        this.user_id = source["user_id"];
+	        this.provider = source["provider"];
 	    }
 	}
 	export class DBBackupInfo {

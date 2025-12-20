@@ -16,6 +16,8 @@ export function DeleteDBBackup(arg1:string):Promise<void>;
 
 export function DownloadCloudBackup(arg1:string,arg2:string):Promise<string>;
 
+export function ExchangeOneDriveCode(arg1:string):Promise<string>;
+
 export function GetBackupDir():Promise<string>;
 
 export function GetCloudBackupStatus():Promise<vo.CloudBackupStatus>;
@@ -28,6 +30,8 @@ export function GetDBBackups():Promise<vo.DBBackupStatus>;
 
 export function GetGameBackups(arg1:string):Promise<Array<models.GameBackup>>;
 
+export function GetOneDriveAuthURL():Promise<string>;
+
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;
 
 export function OpenBackupFolder(arg1:string):Promise<void>;
@@ -39,6 +43,10 @@ export function RestoreFromCloud(arg1:string,arg2:string):Promise<void>;
 export function ScheduleDBRestore(arg1:string):Promise<void>;
 
 export function SetupCloudBackup(arg1:string):Promise<string>;
+
+export function StartOneDriveAuth():Promise<string>;
+
+export function TestOneDriveConnection(arg1:appconf.AppConfig):Promise<void>;
 
 export function TestS3Connection(arg1:appconf.AppConfig):Promise<void>;
 

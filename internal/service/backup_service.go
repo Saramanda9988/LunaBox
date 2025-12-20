@@ -41,7 +41,7 @@ func (s *BackupService) Init(ctx context.Context, db *sql.DB, config *appconf.Ap
 }
 
 func (s *BackupService) initS3Client() {
-	if s.config.CloudBackupEnabled && s.config.S3Endpoint != "" {
+	if s.config.CloudBackupEnabled && s.config.CloudBackupProvider == "s3" && s.config.S3Endpoint != "" {
 		client, err := utils.NewS3Client(utils.S3Config{
 			Endpoint:  s.config.S3Endpoint,
 			Region:    s.config.S3Region,
@@ -60,6 +60,9 @@ func (s *BackupService) getS3Client() (*utils.S3Client, error) {
 	if !s.config.CloudBackupEnabled {
 		return nil, fmt.Errorf("云备份未启用")
 	}
+	if s.config.CloudBackupProvider != "s3" {
+		return nil, fmt.Errorf("当前云备份提供商不是 S3")
+	}
 	if s.config.S3Endpoint == "" || s.config.S3AccessKey == "" || s.config.S3SecretKey == "" {
 		return nil, fmt.Errorf("S3 配置不完整")
 	}
@@ -76,6 +79,40 @@ func (s *BackupService) getS3Client() (*utils.S3Client, error) {
 		return nil, fmt.Errorf("创建 S3 客户端失败: %w", err)
 	}
 	return client, nil
+}
+
+// checkOneDriveConfigured 检查 OneDrive 是否已配置
+func (s *BackupService) checkOneDriveConfigured() error {
+	if !s.config.CloudBackupEnabled {
+		return fmt.Errorf("云备份未启用")
+	}
+	if s.config.CloudBackupProvider != "onedrive" {
+		return fmt.Errorf("当前云备份提供商不是 OneDrive")
+	}
+	if s.config.OneDriveRefreshToken == "" {
+		return fmt.Errorf("OneDrive 未授权")
+	}
+	return nil
+}
+
+// getOneDriveClient 获取 OneDrive 客户端
+func (s *BackupService) getOneDriveClient() (*utils.OneDriveClient, error) {
+	if err := s.checkOneDriveConfigured(); err != nil {
+		return nil, err
+	}
+
+	client, err := utils.NewOneDriveClient(utils.OneDriveConfig{
+		RefreshToken: s.config.OneDriveRefreshToken,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("创建 OneDrive 客户端失败: %w", err)
+	}
+	return client, nil
+}
+
+// getOneDriveCloudPath 获取 OneDrive 云端路径
+func (s *BackupService) getOneDriveCloudPath(subPath string) string {
+	return fmt.Sprintf("/LunaBox/v1/%s/%s", s.config.BackupUserID, subPath)
 }
 
 // SetupCloudBackup 设置云备份（生成 user-id）
@@ -110,13 +147,65 @@ func (s *BackupService) TestS3Connection(config appconf.AppConfig) error {
 	return nil
 }
 
+// TestOneDriveConnection 测试 OneDrive 连接
+func (s *BackupService) TestOneDriveConnection(config appconf.AppConfig) error {
+	if config.OneDriveRefreshToken == "" {
+		return fmt.Errorf("OneDrive 未授权")
+	}
+	client, err := utils.NewOneDriveClient(utils.OneDriveConfig{
+		RefreshToken: config.OneDriveRefreshToken,
+	})
+	if err != nil {
+		return err
+	}
+	return client.TestConnection(s.ctx)
+}
+
+// GetOneDriveAuthURL 获取 OneDrive 授权 URL
+func (s *BackupService) GetOneDriveAuthURL() string {
+	return utils.GetOneDriveAuthURL("")
+}
+
+// StartOneDriveAuth 启动 OneDrive 授权流程（使用本地回调服务器）
+// 返回 refresh token
+func (s *BackupService) StartOneDriveAuth() (string, error) {
+	// 启动本地回调服务器，等待授权码（超时 5 分钟）
+	code, err := utils.StartOneDriveAuthServer(s.ctx, 5*time.Minute)
+	if err != nil {
+		return "", err
+	}
+
+	// 用授权码换取 token
+	tokenResp, err := utils.ExchangeOneDriveCodeForToken(s.ctx, "", code)
+	if err != nil {
+		return "", err
+	}
+	return tokenResp.RefreshToken, nil
+}
+
+// ExchangeOneDriveCode 用授权码换取 OneDrive token
+func (s *BackupService) ExchangeOneDriveCode(code string) (string, error) {
+	tokenResp, err := utils.ExchangeOneDriveCodeForToken(s.ctx, "", code)
+	if err != nil {
+		return "", err
+	}
+	return tokenResp.RefreshToken, nil
+}
+
 // GetCloudBackupStatus 获取云备份状态
 // TODO:快速失败？
 func (s *BackupService) GetCloudBackupStatus() vo.CloudBackupStatus {
+	var configured bool
+	if s.config.CloudBackupProvider == "onedrive" {
+		configured = s.config.OneDriveRefreshToken != "" && s.config.BackupUserID != ""
+	} else {
+		configured = s.config.S3Endpoint != "" && s.config.S3AccessKey != "" && s.config.BackupUserID != ""
+	}
 	status := vo.CloudBackupStatus{
 		Enabled:    s.config.CloudBackupEnabled,
-		Configured: s.config.S3Endpoint != "" && s.config.S3AccessKey != "" && s.config.BackupUserID != "",
+		Configured: configured,
 		UserID:     s.config.BackupUserID,
+		Provider:   s.config.CloudBackupProvider,
 	}
 	return status
 }
@@ -401,25 +490,41 @@ func (s *BackupService) getCloudPath(subPath string) string {
 	return fmt.Sprintf("v1/%s/%s", s.config.BackupUserID, subPath)
 }
 
+// getOneDrivePath 获取 OneDrive 云端路径
+func (s *BackupService) getOneDrivePath(subPath string) string {
+	return s.getOneDriveCloudPath(subPath)
+}
+
 // UploadGameBackupToCloud 上传游戏存档到云端
 func (s *BackupService) UploadGameBackupToCloud(gameID string, backupID string) error {
-	s3Client, err := s.getS3Client()
-	if err != nil {
-		return err
-	}
 	if s.config.BackupUserID == "" {
 		return fmt.Errorf("备份用户 ID 未设置")
 	}
 
 	// 获取本地备份信息
 	var backupPath string
-	err = s.db.QueryRowContext(s.ctx, "SELECT backup_path FROM game_backups WHERE id = ?", backupID).Scan(&backupPath)
+	err := s.db.QueryRowContext(s.ctx, "SELECT backup_path FROM game_backups WHERE id = ?", backupID).Scan(&backupPath)
 	if err != nil {
 		return fmt.Errorf("备份记录不存在")
 	}
 
-	// 生成云端路径
 	timestamp := time.Now().Format("2006-01-02T15-04-05")
+
+	// 根据提供商选择上传方式
+	if s.config.CloudBackupProvider == "onedrive" {
+		return s.uploadToOneDrive(gameID, backupPath, timestamp)
+	}
+	return s.uploadToS3(gameID, backupPath, timestamp)
+}
+
+// uploadToS3 上传到 S3
+func (s *BackupService) uploadToS3(gameID, backupPath, timestamp string) error {
+	s3Client, err := s.getS3Client()
+	if err != nil {
+		return err
+	}
+
+	// 生成云端路径
 	cloudKey := s.getCloudPath(fmt.Sprintf("saves/%s/%s.zip", gameID, timestamp))
 
 	// 上传文件
@@ -439,14 +544,56 @@ func (s *BackupService) UploadGameBackupToCloud(gameID string, backupID string) 
 	return nil
 }
 
+// uploadToOneDrive 上传到 OneDrive（OAuth API）
+func (s *BackupService) uploadToOneDrive(gameID, backupPath, timestamp string) error {
+	client, err := s.getOneDriveClient()
+	if err != nil {
+		return err
+	}
+
+	// 生成云端路径
+	cloudPath := s.getOneDriveCloudPath(fmt.Sprintf("saves/%s/%s.zip", gameID, timestamp))
+
+	// 确保文件夹存在
+	folderPath := s.getOneDriveCloudPath(fmt.Sprintf("saves/%s", gameID))
+	if err := client.CreateFolder(s.ctx, folderPath); err != nil {
+		// 文件夹可能已存在，忽略错误
+	}
+
+	// 上传文件
+	if err := client.UploadFile(s.ctx, cloudPath, backupPath); err != nil {
+		return fmt.Errorf("上传失败: %w", err)
+	}
+
+	// 更新 latest
+	latestPath := s.getOneDriveCloudPath(fmt.Sprintf("saves/%s/latest.zip", gameID))
+	if err := client.UploadFile(s.ctx, latestPath, backupPath); err != nil {
+		// latest 更新失败不影响主流程
+	}
+
+	// 清理旧版本
+	s.cleanupOldCloudBackups(gameID)
+
+	return nil
+}
+
 // GetCloudGameBackups 获取云端游戏备份列表
 func (s *BackupService) GetCloudGameBackups(gameID string) ([]vo.CloudBackupItem, error) {
+	if s.config.BackupUserID == "" {
+		return nil, fmt.Errorf("备份用户 ID 未设置")
+	}
+
+	if s.config.CloudBackupProvider == "onedrive" {
+		return s.getOneDriveGameBackups(gameID)
+	}
+	return s.getS3GameBackups(gameID)
+}
+
+// getS3GameBackups 获取 S3 云端游戏备份列表
+func (s *BackupService) getS3GameBackups(gameID string) ([]vo.CloudBackupItem, error) {
 	s3Client, err := s.getS3Client()
 	if err != nil {
 		return nil, err
-	}
-	if s.config.BackupUserID == "" {
-		return nil, fmt.Errorf("备份用户 ID 未设置")
 	}
 
 	prefix := s.getCloudPath(fmt.Sprintf("saves/%s/", gameID))
@@ -481,13 +628,47 @@ func (s *BackupService) GetCloudGameBackups(gameID string) ([]vo.CloudBackupItem
 	return items, nil
 }
 
-// DownloadCloudBackup 从云端下载备份
-func (s *BackupService) DownloadCloudBackup(cloudKey string, gameID string) (string, error) {
-	s3Client, err := s.getS3Client()
+// getOneDriveGameBackups 获取 OneDrive 云端游戏备份列表（OAuth API）
+func (s *BackupService) getOneDriveGameBackups(gameID string) ([]vo.CloudBackupItem, error) {
+	client, err := s.getOneDriveClient()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
+	folderPath := s.getOneDriveCloudPath(fmt.Sprintf("saves/%s", gameID))
+	keys, err := client.ListObjects(s.ctx, folderPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var items []vo.CloudBackupItem
+	for _, key := range keys {
+		// 跳过 latest
+		if strings.HasSuffix(key, "latest.zip") {
+			continue
+		}
+		// 解析时间戳
+		name := filepath.Base(key)
+		name = strings.TrimSuffix(name, ".zip")
+		t, _ := time.Parse("2006-01-02T15-04-05", name)
+
+		items = append(items, vo.CloudBackupItem{
+			Key:       key,
+			Name:      name,
+			CreatedAt: t,
+		})
+	}
+
+	// 按时间倒序
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].CreatedAt.After(items[j].CreatedAt)
+	})
+
+	return items, nil
+}
+
+// DownloadCloudBackup 从云端下载备份
+func (s *BackupService) DownloadCloudBackup(cloudKey string, gameID string) (string, error) {
 	// 创建临时目录
 	backupDir, err := s.GetBackupDir()
 	if err != nil {
@@ -498,8 +679,23 @@ func (s *BackupService) DownloadCloudBackup(cloudKey string, gameID string) (str
 
 	// 下载文件
 	destPath := filepath.Join(cloudDownloadDir, filepath.Base(cloudKey))
-	if err := s3Client.DownloadFile(s.ctx, cloudKey, destPath); err != nil {
-		return "", fmt.Errorf("下载失败: %w", err)
+
+	if s.config.CloudBackupProvider == "onedrive" {
+		client, err := s.getOneDriveClient()
+		if err != nil {
+			return "", err
+		}
+		if err := client.DownloadFile(s.ctx, cloudKey, destPath); err != nil {
+			return "", fmt.Errorf("下载失败: %w", err)
+		}
+	} else {
+		s3Client, err := s.getS3Client()
+		if err != nil {
+			return "", err
+		}
+		if err := s3Client.DownloadFile(s.ctx, cloudKey, destPath); err != nil {
+			return "", fmt.Errorf("下载失败: %w", err)
+		}
 	}
 
 	return destPath, nil
@@ -555,14 +751,21 @@ func (s *BackupService) cleanupOldCloudBackups(gameID string) {
 		return
 	}
 
-	s3Client, err := s.getS3Client()
-	if err != nil {
-		return
-	}
-
 	// 删除超出保留数量的旧备份
 	for i := retention; i < len(items); i++ {
-		s3Client.DeleteObject(s.ctx, items[i].Key)
+		if s.config.CloudBackupProvider == "onedrive" {
+			client, err := s.getOneDriveClient()
+			if err != nil {
+				return
+			}
+			client.DeleteObject(s.ctx, items[i].Key)
+		} else {
+			s3Client, err := s.getS3Client()
+			if err != nil {
+				return
+			}
+			s3Client.DeleteObject(s.ctx, items[i].Key)
+		}
 	}
 }
 

@@ -96,6 +96,7 @@ type CloudBackupStatus struct {
 	Enabled    bool   `json:"enabled"`    // 是否启用
 	Configured bool   `json:"configured"` // 是否已配置
 	UserID     string `json:"user_id"`    // 用户标识
+	Provider   string `json:"provider"`   // 云备份提供商: s3, onedrive
 }
 
 // CloudBackupItem 云端备份项

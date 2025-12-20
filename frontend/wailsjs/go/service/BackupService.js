@@ -22,6 +22,10 @@ export function DownloadCloudBackup(arg1, arg2) {
   return window['go']['service']['BackupService']['DownloadCloudBackup'](arg1, arg2);
 }
 
+export function ExchangeOneDriveCode(arg1) {
+  return window['go']['service']['BackupService']['ExchangeOneDriveCode'](arg1);
+}
+
 export function GetBackupDir() {
   return window['go']['service']['BackupService']['GetBackupDir']();
 }
@@ -46,6 +50,10 @@ export function GetGameBackups(arg1) {
   return window['go']['service']['BackupService']['GetGameBackups'](arg1);
 }
 
+export function GetOneDriveAuthURL() {
+  return window['go']['service']['BackupService']['GetOneDriveAuthURL']();
+}
+
 export function Init(arg1, arg2, arg3) {
   return window['go']['service']['BackupService']['Init'](arg1, arg2, arg3);
 }
@@ -68,6 +76,14 @@ export function ScheduleDBRestore(arg1) {
 
 export function SetupCloudBackup(arg1) {
   return window['go']['service']['BackupService']['SetupCloudBackup'](arg1);
+}
+
+export function StartOneDriveAuth() {
+  return window['go']['service']['BackupService']['StartOneDriveAuth']();
+}
+
+export function TestOneDriveConnection(arg1) {
+  return window['go']['service']['BackupService']['TestOneDriveConnection'](arg1);
 }
 
 export function TestS3Connection(arg1) {

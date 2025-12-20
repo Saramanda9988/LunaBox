@@ -54,6 +54,7 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.AIModel = newConfig.AIModel
 	// 云备份配置
 	s.config.CloudBackupEnabled = newConfig.CloudBackupEnabled
+	s.config.CloudBackupProvider = newConfig.CloudBackupProvider
 	s.config.BackupPassword = newConfig.BackupPassword
 	s.config.BackupUserID = newConfig.BackupUserID
 	s.config.S3Endpoint = newConfig.S3Endpoint
@@ -62,5 +63,7 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.S3AccessKey = newConfig.S3AccessKey
 	s.config.S3SecretKey = newConfig.S3SecretKey
 	s.config.CloudBackupRetention = newConfig.CloudBackupRetention
+	// OneDrive OAuth
+	s.config.OneDriveRefreshToken = newConfig.OneDriveRefreshToken
 	return nil
 }
