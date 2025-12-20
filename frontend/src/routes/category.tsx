@@ -11,7 +11,7 @@ import {models, vo} from '../../wailsjs/go/models'
 import {GetGames} from "../../wailsjs/go/service/GameService";
 import {GameCard} from "../components/card/GameCard";
 import {AddGameToCategoryModal} from "../components/modal/AddGameToCategoryModal";
-import { FilterBar } from '../components/FilterBar'
+import { FilterBar } from '../components/bar/FilterBar'
 import { toast } from 'react-hot-toast'
 
 export const Route = createRoute({

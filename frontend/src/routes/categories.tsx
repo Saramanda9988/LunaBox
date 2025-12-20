@@ -10,7 +10,7 @@ import {
 import { vo } from '../../wailsjs/go/models'
 import { CategoryCard } from '../components/card/CategoryCard'
 import { AddCategoryModal } from '../components/modal/AddCategoryModal'
-import { FilterBar } from '../components/FilterBar'
+import { FilterBar } from '../components/bar/FilterBar'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,

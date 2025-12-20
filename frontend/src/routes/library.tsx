@@ -7,7 +7,7 @@ import { GameCard } from '../components/card/GameCard'
 import { AddGameModal } from '../components/modal/AddGameModal'
 import { GameImportModal, ImportSource } from '../components/modal/GameImportModal'
 import { BatchImportModal } from '../components/modal/BatchImportModal'
-import { FilterBar } from '../components/FilterBar'
+import { FilterBar } from '../components/bar/FilterBar'
 import toast from 'react-hot-toast'
 
 export const Route = createRoute({

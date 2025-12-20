@@ -1,5 +1,5 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router'
-import { SideBar } from '../components/SideBar'
+import { SideBar } from '../components/bar/SideBar'
 
 export const Route = createRootRoute({
   component: () => (
