@@ -10,3 +10,4 @@ appconf.json
 .vscode
 *.db.wal
 SaveData
+docs
