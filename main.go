@@ -56,9 +56,11 @@ func main() {
 
 	// Create application with options
 	bootstrapErr := wails.Run(&options.App{
-		Title:  "lunabox",
-		Width:  1230,
-		Height: 768,
+		Title:     "lunabox",
+		Width:     1230,
+		Height:    800,
+		MinWidth:  1230,
+		MinHeight: 800,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 			Middleware: func(next http.Handler) http.Handler {
