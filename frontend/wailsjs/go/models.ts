@@ -53,16 +53,16 @@ export namespace appconf {
 
 export namespace enums {
 	
-	export enum Period {
-	    YEAR = "year",
-	    MONTH = "month",
-	    WEEK = "week",
-	}
 	export enum SourceType {
 	    LOCAL = "local",
 	    BANGUMI = "bangumi",
 	    VNDB = "vndb",
 	    YMGAL = "ymgal",
+	}
+	export enum Period {
+	    YEAR = "year",
+	    MONTH = "month",
+	    WEEK = "week",
 	}
 
 }
@@ -320,6 +320,52 @@ export namespace vo {
 	        this.summary = source["summary"];
 	        this.dimension = source["dimension"];
 	    }
+	}
+	export class BatchImportCandidate {
+	    folder_path: string;
+	    folder_name: string;
+	    executables: string[];
+	    selected_exe: string;
+	    search_name: string;
+	    is_selected: boolean;
+	    matched_game?: models.Game;
+	    match_source?: enums.SourceType;
+	    match_status: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BatchImportCandidate(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.folder_path = source["folder_path"];
+	        this.folder_name = source["folder_name"];
+	        this.executables = source["executables"];
+	        this.selected_exe = source["selected_exe"];
+	        this.search_name = source["search_name"];
+	        this.is_selected = source["is_selected"];
+	        this.matched_game = this.convertValues(source["matched_game"], models.Game);
+	        this.match_source = source["match_source"];
+	        this.match_status = source["match_status"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class CategoryVO {
 	    id: string;

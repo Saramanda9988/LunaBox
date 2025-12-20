@@ -6,6 +6,7 @@ import { models } from '../../wailsjs/go/models'
 import { GameCard } from '../components/card/GameCard'
 import { AddGameModal } from '../components/modal/AddGameModal'
 import { GameImportModal, ImportSource } from '../components/modal/GameImportModal'
+import { BatchImportModal } from '../components/modal/BatchImportModal'
 import { FilterBar } from '../components/FilterBar'
 import toast from 'react-hot-toast'
 
@@ -19,6 +20,7 @@ function LibraryPage() {
   const [games, setGames] = useState<models.Game[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false)
+  const [isBatchImportOpen, setIsBatchImportOpen] = useState(false)
   const [importSource, setImportSource] = useState<ImportSource | null>(null)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -133,12 +135,28 @@ function LibraryPage() {
                   </button>
                   <button
                     onClick={() => {
+                      setIsBatchImportOpen(true)
+                      setIsDropdownOpen(false)
+                    }}
+                    className="flex w-full items-center px-4 py-3 text-sm text-brand-700 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-600"
+                  >
+                    <div className="i-mdi-folder-multiple mr-3 text-xl text-green-500" />
+                    <div className="text-left">
+                      <div className="font-medium">批量导入</div>
+                      <div className="text-xs text-brand-400 dark:text-brand-400">
+                        扫描游戏库目录批量添加
+                      </div>
+                    </div>
+                  </button>
+                  <div className="border-t border-brand-200 dark:border-brand-600 my-1" />
+                  <button
+                    onClick={() => {
                       setImportSource('potatovn')
                       setIsDropdownOpen(false)
                     }}
                     className="flex w-full items-center px-4 py-3 text-sm text-brand-700 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-600"
                   >
-                    <div className="i-mdi-database-import mr-3 text-xl text-green-500" />
+                    <div className="i-mdi-database-import mr-3 text-xl text-orange-500" />
                     <div className="text-left">
                       <div className="font-medium">从 PotatoVN 导入</div>
                       <div className="text-xs text-brand-400 dark:text-brand-400">
@@ -215,6 +233,12 @@ function LibraryPage() {
         isOpen={importSource !== null}
         source={importSource || 'potatovn'}
         onClose={() => setImportSource(null)}
+        onImportComplete={loadGames}
+      />
+
+      <BatchImportModal
+        isOpen={isBatchImportOpen}
+        onClose={() => setIsBatchImportOpen(false)}
         onImportComplete={loadGames}
       />
     </div>

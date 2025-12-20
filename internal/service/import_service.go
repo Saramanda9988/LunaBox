@@ -13,8 +13,11 @@ import (
 	"lunabox/internal/models"
 	"lunabox/internal/models/playnite"
 	"lunabox/internal/models/potatovn"
+	"lunabox/internal/utils"
+	"lunabox/internal/vo"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -578,4 +581,250 @@ func (s *ImportService) stringToSourceType(sourceType string) enums.SourceType {
 	default:
 		return enums.Local
 	}
+}
+
+// ==================== 批量导入功能 ====================
+
+// SelectLibraryDirectory 选择游戏库目录
+func (s *ImportService) SelectLibraryDirectory() (string, error) {
+	selection, err := runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{
+		Title: "选择游戏库目录",
+	})
+	return selection, err
+}
+
+// ScanLibraryDirectory 扫描游戏库目录，返回候选游戏列表
+func (s *ImportService) ScanLibraryDirectory(libraryPath string) ([]vo.BatchImportCandidate, error) {
+	var candidates []vo.BatchImportCandidate
+
+	// 需要排除的可执行文件关键词
+	excludeKeywords := []string{
+		"unins", "setup", "config", "patch", "update", "crashpad",
+		"vc_redist", "dxwebsetup", "directx", "vcredist", "dotnet",
+		"redistributable", "installer", "launcher_helper", "crashreporter",
+		"updater", "uninstall", "删除", "卸载",
+	}
+
+	// 遍历一级子目录
+	entries, err := os.ReadDir(libraryPath)
+	if err != nil {
+		return nil, fmt.Errorf("无法读取目录: %w", err)
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		folderPath := filepath.Join(libraryPath, entry.Name())
+		folderName := entry.Name()
+
+		// 扫描该文件夹下的可执行文件
+		executables := s.findExecutables(folderPath, excludeKeywords)
+
+		if len(executables) == 0 {
+			continue // 没有可执行文件，跳过此文件夹
+		}
+
+		// 选择推荐的可执行文件
+		selectedExe := s.selectBestExecutable(executables, folderName)
+
+		candidate := vo.BatchImportCandidate{
+			FolderPath:  folderPath,
+			FolderName:  folderName,
+			Executables: executables,
+			SelectedExe: selectedExe,
+			SearchName:  folderName,
+			IsSelected:  true,
+			MatchStatus: "pending",
+		}
+
+		candidates = append(candidates, candidate)
+	}
+
+	return candidates, nil
+}
+
+// findExecutables 在指定目录下查找可执行文件
+func (s *ImportService) findExecutables(folderPath string, excludeKeywords []string) []string {
+	var executables []string
+
+	// 仅扫描一级目录
+	entries, err := os.ReadDir(folderPath)
+	if err != nil {
+		return executables
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		lowerName := strings.ToLower(name)
+
+		// 检查是否是可执行文件
+		if !strings.HasSuffix(lowerName, ".exe") &&
+			!strings.HasSuffix(lowerName, ".bat") &&
+			!strings.HasSuffix(lowerName, ".lnk") {
+			continue
+		}
+
+		// 检查是否应该排除
+		excluded := false
+		for _, keyword := range excludeKeywords {
+			if strings.Contains(lowerName, keyword) {
+				excluded = true
+				break
+			}
+		}
+
+		if !excluded {
+			executables = append(executables, filepath.Join(folderPath, name))
+		}
+	}
+
+	return executables
+}
+
+// selectBestExecutable 选择最佳可执行文件
+func (s *ImportService) selectBestExecutable(executables []string, folderName string) string {
+	if len(executables) == 0 {
+		return ""
+	}
+	if len(executables) == 1 {
+		return executables[0]
+	}
+
+	lowerFolderName := strings.ToLower(folderName)
+
+	// 优先选择与文件夹名相似的
+	for _, exe := range executables {
+		exeName := strings.ToLower(filepath.Base(exe))
+		exeName = strings.TrimSuffix(exeName, filepath.Ext(exeName))
+		if strings.Contains(exeName, lowerFolderName) || strings.Contains(lowerFolderName, exeName) {
+			return exe
+		}
+	}
+
+	// 否则按文件大小排序，选择最大的
+	type exeInfo struct {
+		path string
+		size int64
+	}
+	var exeInfos []exeInfo
+
+	for _, exe := range executables {
+		info, err := os.Stat(exe)
+		if err == nil {
+			exeInfos = append(exeInfos, exeInfo{path: exe, size: info.Size()})
+		}
+	}
+
+	if len(exeInfos) > 0 {
+		sort.Slice(exeInfos, func(i, j int) bool {
+			return exeInfos[i].size > exeInfos[j].size
+		})
+		return exeInfos[0].path
+	}
+
+	return executables[0]
+}
+
+// FetchMetadataForCandidate 为单个候选项获取元数据（带限流）
+func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchImportCandidate, error) {
+	result := vo.BatchImportCandidate{
+		SearchName:  searchName,
+		MatchStatus: "not_found",
+	}
+
+	// 优先级顺序：Bangumi > VNDB > Ymgal
+	sources := []struct {
+		getter utils.Getter
+		source enums.SourceType
+		token  string
+	}{
+		{utils.NewBangumiInfoGetter(), enums.Bangumi, s.config.BangumiAccessToken},
+		{utils.NewVNDBInfoGetter(), enums.VNDB, s.config.VNDBAccessToken},
+		{utils.NewYmgalInfoGetter(), enums.Ymgal, ""},
+	}
+
+	for _, src := range sources {
+		game, err := src.getter.FetchMetadataByName(searchName, src.token)
+		if err == nil && game.Name != "" {
+			result.MatchedGame = &game
+			result.MatchSource = src.source
+			result.MatchStatus = "matched"
+			return result, nil
+		}
+		// 每个源之间添加短暂延迟以避免触发限流
+		time.Sleep(300 * time.Millisecond)
+	}
+
+	return result, nil
+}
+
+// BatchImportGames 批量导入游戏
+func (s *ImportService) BatchImportGames(candidates []vo.BatchImportCandidate) (ImportResult, error) {
+	result := ImportResult{
+		FailedNames:  []string{},
+		SkippedNames: []string{},
+	}
+
+	// 获取现有游戏列表用于去重
+	existingGames, err := s.gameService.GetGames()
+	if err != nil {
+		return result, fmt.Errorf("获取现有游戏列表失败: %w", err)
+	}
+	existingNames := make(map[string]bool)
+	for _, g := range existingGames {
+		existingNames[strings.ToLower(g.Name)] = true
+	}
+
+	for _, candidate := range candidates {
+		if !candidate.IsSelected {
+			continue
+		}
+
+		// 检查游戏名是否已存在
+		gameName := candidate.SearchName
+		if candidate.MatchedGame != nil && candidate.MatchedGame.Name != "" {
+			gameName = candidate.MatchedGame.Name
+		}
+
+		if existingNames[strings.ToLower(gameName)] {
+			result.Skipped++
+			result.SkippedNames = append(result.SkippedNames, gameName+" (已存在)")
+			continue
+		}
+
+		// 构建游戏对象
+		var game models.Game
+		if candidate.MatchedGame != nil {
+			game = *candidate.MatchedGame
+		} else {
+			// 没有匹配到元数据，创建基本游戏信息
+			game = models.Game{
+				Name:       candidate.SearchName,
+				SourceType: enums.Local,
+			}
+		}
+
+		game.ID = uuid.New().String()
+		game.Path = candidate.SelectedExe
+		game.CreatedAt = time.Now()
+		game.CachedAt = time.Now()
+
+		// 保存游戏
+		if err := s.gameService.AddGame(game); err != nil {
+			result.Failed++
+			result.FailedNames = append(result.FailedNames, gameName)
+			continue
+		}
+
+		existingNames[strings.ToLower(gameName)] = true
+		result.Success++
+	}
+
+	return result, nil
 }
