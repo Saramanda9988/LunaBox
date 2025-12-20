@@ -19,7 +19,7 @@
 - **多维度统计** - 支持按日/周/月/年等多维度统计游玩数据，一键导出统计卡片分享保存
 - **AI 分析** - AI 分析游玩数据，生成个性化趣味报告
 - **便捷的数据导入** - 支持从 PotatoVN, Playnite中导入数据，支持选择文件夹批量导入游戏
-- **云端备份** 支持 AWS S3、七牛云、阿里云 OSS 等兼容 S3 协议的存储服务与 OneDrive 云端备份
+- **多渠道备份** 支持本地备份, AWS S3、七牛云、阿里云 OSS 等兼容 S3 协议的存储服务与 OneDrive 云端备份
 - **隐私与安全** 所有敏感数据均保存在本地中
 
 ## 🛠️ 技术栈
@@ -143,17 +143,38 @@ lunabox/
 └── build/               # 构建输出
 ```
 
+## RoadMap
+
+- [ ] 支持自定义背景图片
+
+- [ ] 更漂亮的默认首页，首页自定义
+
+- [ ] 支持 i18n
+
+- [ ] 自部署 docker 服务端
+
+- [ ] im 平台机器人插件
+
+- [ ] 更多的统计导出模板
+
+- [ ] 更丰富的ai prompt预设
+
 ## 😀 从开源到开源
 
-灵感来源：
-- [ReinaManager](https://github.com/huoshen80/ReinaManager)一款轻量化的galgame和视觉小说管理工具
+灵感来源:
+
+- [ReinaManager](https://github.com/huoshen80/ReinaManager)- 一款轻量化的galgame和视觉小说管理工具
 - [PotatoVN](https://github.com/GoldenPotato137/PotatoVN) - Galgame 管理工具
 - [Playnite](https://github.com/JosefNemec/Playnite) - an open source video game library manager with one simple goal: To provide a unified interface for all of your games.
 
 ## 🙏 感谢
 
-api提供
+游戏数据搜索api提供:
 
 - [Bangumi](https://github.com/bangumi) - Bangumi番组计划
 - [VNDB](https://vndb.org/) - The Visual Novel Database
 - [月幕gal](https://www.ymgal.games/) - 请感受这绝妙的文艺体裁
+
+## 📄 开源协议
+
+本项目采用 [AGPL v3](LICENSE) 协议开源。
