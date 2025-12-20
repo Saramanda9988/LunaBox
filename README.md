@@ -10,7 +10,6 @@
 
 </div>
 
----
 
 ## ✨ 特性
 
@@ -22,8 +21,6 @@
 - **便捷的数据导入** - 支持从 PotatoVN, Playnite中导入数据，支持选择文件夹批量导入游戏
 - **云端备份** 支持 AWS S3、七牛云、阿里云 OSS 等兼容 S3 协议的存储服务与 OneDrive 云端备份
 - **隐私与安全** 所有敏感数据均保存在本地中
-
----
 
 ## 🛠️ 技术栈
 
@@ -39,7 +36,6 @@
 | **状态管理** | [Zustand](https://zustand-demo.pmnd.rs/) |
 | **图表** | [Chart.js](https://www.chartjs.org/) + [react-chartjs-2](https://react-chartjs-2.js.org/) |
 
----
 
 ## 📦 安装
 
@@ -79,7 +75,6 @@ wails dev
 wails build
 ```
 
----
 
 ## 🚀 快速开始
 
@@ -90,7 +85,6 @@ wails build
 5. **AI 分析** - 使用 AI 功能生成个性化游玩报告
 6. **导出分享** - 导出统计卡片，与朋友分享你的游戏历程
 
----
 
 ## ⚙️ 配置
 
@@ -121,7 +115,6 @@ wails build
 
 在设置页面登录 Microsoft 账号并授权即可。
 
----
 
 ## 🤝 贡献
 
