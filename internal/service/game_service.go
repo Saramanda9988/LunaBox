@@ -91,6 +91,11 @@ func (s *GameService) DeleteGame(id string) error {
 		return fmt.Errorf("failed to delete game categories: %w", err)
 	}
 
+	// 删除关联的游玩会话记录
+	_, err = s.db.ExecContext(s.ctx, "DELETE FROM play_sessions WHERE game_id = ?", id)
+	if err != nil {
+		return fmt.Errorf("failed to delete play sessions: %w", err)
+	}
 	// 删除游戏记录
 	result, err := s.db.ExecContext(s.ctx, "DELETE FROM games WHERE id = ?", id)
 	if err != nil {
