@@ -13,6 +13,7 @@ import {GameCard} from "../components/card/GameCard";
 import {AddGameToCategoryModal} from "../components/modal/AddGameToCategoryModal";
 import { FilterBar } from '../components/bar/FilterBar'
 import { toast } from 'react-hot-toast'
+import { CategorySkeleton } from '../components/skeleton/CategorySkeleton'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -25,6 +26,8 @@ function CategoryDetailPage() {
   const { categoryId } = Route.useParams()
   const [category, setCategory] = useState<vo.CategoryVO | null>(null)
   const [games, setGames] = useState<models.Game[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showSkeleton, setShowSkeleton] = useState(false)
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false)
   const [allGames, setAllGames] = useState<models.Game[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -33,10 +36,27 @@ function CategoryDetailPage() {
 
   useEffect(() => {
     if (categoryId) {
-      loadCategory(categoryId)
-      loadGames(categoryId)
+      const init = async () => {
+        setLoading(true)
+        await Promise.all([loadCategory(categoryId), loadGames(categoryId)])
+        setLoading(false)
+      }
+      init()
     }
   }, [categoryId])
+
+  // 延迟显示骨架屏
+  useEffect(() => {
+    let timer: number
+    if (loading) {
+      timer = window.setTimeout(() => {
+        setShowSkeleton(true)
+      }, 300)
+    } else {
+      setShowSkeleton(false)
+    }
+    return () => clearTimeout(timer)
+  }, [loading])
 
   const loadCategory = async (id: string) => {
     try {
@@ -117,12 +137,25 @@ function CategoryDetailPage() {
         return sortOrder === 'asc' ? comparison : -comparison
       })
 
+  if (loading && !category) {
+    if (!showSkeleton) {
+      return <div className="min-h-screen bg-brand-100 dark:bg-brand-900" />
+    }
+    return <CategorySkeleton />
+  }
+
   if (!category) {
-    return <div className="flex h-full items-center justify-center">Loading...</div>
+    return (
+      <div className="flex flex-col items-center justify-center h-full space-y-4 text-brand-500">
+        <div className="i-mdi-alert-circle-outline text-6xl" />
+        <p className="text-xl">未找到该分类</p>
+        <button onClick={onBack} className="text-blue-600 hover:underline">返回列表</button>
+      </div>
+    )
   }
 
   return (
-      <div className="h-full w-full overflow-y-auto p-8">
+      <div className={`h-full w-full overflow-y-auto p-8 transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
         {/* Back Button */}
         <button
             onClick={onBack}

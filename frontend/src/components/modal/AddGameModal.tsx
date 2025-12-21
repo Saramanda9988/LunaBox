@@ -104,10 +104,10 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl dark:bg-brand-800">
         <div className="flex items-center justify-between">
-          <h2 className="text-4xl font-bold text-brand-900 dark:text-white">添加游戏</h2>
+          <h2 className="text-4xl font-bold text-brand-900 dark:text-white mb-6">添加游戏</h2>
           <button
               onClick={resetAndClose}
-              className="i-mdi-close text-2xl text-brand-500 p-1 rounded-lg
+              className="i-mdi-close text-2xl text-brand-500 p-1 rounded-lg mb-6
               hover:bg-brand-100 hover:text-brand-700 focus:outline-none
               dark:text-brand-400 dark:hover:bg-brand-700 dark:hover:text-brand-200"
           />

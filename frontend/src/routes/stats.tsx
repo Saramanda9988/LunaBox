@@ -19,6 +19,7 @@ import { ExportStatsImage, FetchImageAsBase64, GetGlobalPeriodStats } from '../.
 import { AISummarize } from '../../wailsjs/go/service/AiService'
 import { enums, vo } from '../../wailsjs/go/models'
 import { useAppStore } from '../store'
+import { StatsSkeleton } from '../components/skeleton/StatsSkeleton'
 
 ChartJS.register(
   CategoryScale,
@@ -41,9 +42,23 @@ function StatsPage() {
   const { textColor, gridColor } = useChartTheme()
   const [dimension, setDimension] = useState<enums.Period>(enums.Period.WEEK)
   const [stats, setStats] = useState<vo.PeriodStats | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [showSkeleton, setShowSkeleton] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
   
+  // 延迟显示骨架屏，避免闪烁
+  useEffect(() => {
+    let timer: number
+    if (loading) {
+      timer = window.setTimeout(() => {
+        setShowSkeleton(true)
+      }, 300) // 300ms 内加载完成则不显示骨架屏
+    } else {
+      setShowSkeleton(false)
+    }
+    return () => clearTimeout(timer)
+  }, [loading])
+
   // 从 store 获取缓存的 AI 总结
   const { aiSummaryCache, setAISummary } = useAppStore()
   const aiSummary = aiSummaryCache[dimension] || ''
@@ -138,12 +153,15 @@ function StatsPage() {
     return Number((seconds / 3600).toFixed(1))
   }
 
-  if (!stats && loading) {
-    return <div className="p-6">Loading...</div>
+  if (loading && !stats) {
+    if (!showSkeleton) {
+      return <div className="min-h-screen bg-brand-100 dark:bg-brand-900" />
+    }
+    return <StatsSkeleton />
   }
 
   if (!stats) {
-    return <div className="p-6">No data available</div>
+    return null
   }
 
   // Chart 1: Total Play Duration Trend
@@ -220,7 +238,11 @@ function StatsPage() {
   }
 
   return (
-    <div id="stats-container" ref={ref} className="space-y-6 max-w-8xl mx-auto p-8 bg-brand-100 dark:bg-brand-900">
+    <div 
+      id="stats-container" 
+      ref={ref} 
+      className={`space-y-6 max-w-8xl mx-auto p-8 bg-brand-100 dark:bg-brand-900 transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}
+    >
       <div className="flex items-center justify-between">
         <h1 className="text-4xl font-bold text-brand-900 dark:text-white">统计</h1>
       </div>

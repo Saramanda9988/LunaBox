@@ -8,7 +8,7 @@ import { AddGameModal } from '../components/modal/AddGameModal'
 import { GameImportModal, ImportSource } from '../components/modal/GameImportModal'
 import { BatchImportModal } from '../components/modal/BatchImportModal'
 import { FilterBar } from '../components/bar/FilterBar'
-import toast from 'react-hot-toast'
+import { LibrarySkeleton } from '../components/skeleton/LibrarySkeleton'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -19,6 +19,7 @@ export const Route = createRoute({
 function LibraryPage() {
   const [games, setGames] = useState<models.Game[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [showSkeleton, setShowSkeleton] = useState(false)
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false)
   const [isBatchImportOpen, setIsBatchImportOpen] = useState(false)
   const [importSource, setImportSource] = useState<ImportSource | null>(null)
@@ -31,6 +32,19 @@ function LibraryPage() {
   useEffect(() => {
     loadGames()
   }, [])
+
+  // 延迟显示骨架屏
+  useEffect(() => {
+    let timer: number
+    if (isLoading) {
+      timer = window.setTimeout(() => {
+        setShowSkeleton(true)
+      }, 300)
+    } else {
+      setShowSkeleton(false)
+    }
+    return () => clearTimeout(timer)
+  }, [isLoading])
 
   // 点击外部关闭下拉菜单
   useEffect(() => {
@@ -72,12 +86,15 @@ function LibraryPage() {
       return sortOrder === 'asc' ? comparison : -comparison
     })
 
-  if (isLoading) {
-    return <div className="flex h-full items-center justify-center">Loading...</div>
+  if (isLoading && games.length === 0) {
+    if (!showSkeleton) {
+      return <div className="min-h-screen bg-brand-100 dark:bg-brand-900" />
+    }
+    return <LibrarySkeleton />
   }
 
   return (
-    <div className="space-y-6 max-w-8xl mx-auto p-8">
+    <div className={`space-y-6 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
       <div className="flex items-center justify-between">
         <h1 className="text-4xl font-bold text-brand-900 dark:text-white">游戏库</h1>
       </div>

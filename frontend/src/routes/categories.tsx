@@ -12,6 +12,7 @@ import { CategoryCard } from '../components/card/CategoryCard'
 import { AddCategoryModal } from '../components/modal/AddCategoryModal'
 import { FilterBar } from '../components/bar/FilterBar'
 import { ConfirmModal } from '../components/modal/ConfirmModal'
+import { CategoriesSkeleton } from '../components/skeleton/CategoriesSkeleton'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -22,6 +23,7 @@ export const Route = createRoute({
 function CategoriesPage() {
   const [categories, setCategories] = useState<vo.CategoryVO[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [showSkeleton, setShowSkeleton] = useState(false)
   const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -46,6 +48,19 @@ function CategoriesPage() {
   useEffect(() => {
     loadCategories()
   }, [])
+
+  // 延迟显示骨架屏
+  useEffect(() => {
+    let timer: number
+    if (isLoading) {
+      timer = window.setTimeout(() => {
+        setShowSkeleton(true)
+      }, 300)
+    } else {
+      setShowSkeleton(false)
+    }
+    return () => clearTimeout(timer)
+  }, [isLoading])
 
   const loadCategories = async () => {
     try {
@@ -117,12 +132,15 @@ function CategoriesPage() {
       return sortOrder === 'asc' ? comparison : -comparison
     })
 
-  if (isLoading) {
-    return <div className="flex h-full items-center justify-center">Loading...</div>
+  if (isLoading && categories.length === 0) {
+    if (!showSkeleton) {
+      return <div className="min-h-screen bg-brand-100 dark:bg-brand-900" />
+    }
+    return <CategoriesSkeleton />
   }
 
   return (
-    <div className="h-full w-full overflow-y-auto p-8">
+    <div className={`h-full w-full overflow-y-auto p-8 transition-opacity duration-300 ${isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
       <div className="flex items-center justify-between">
           <h1 className="text-4xl font-bold text-brand-900 dark:text-white">收藏</h1>
       </div>

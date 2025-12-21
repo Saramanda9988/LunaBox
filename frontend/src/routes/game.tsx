@@ -19,6 +19,7 @@ import { Line } from 'react-chartjs-2'
 import { toast } from 'react-hot-toast'
 import { GameBackupPanel } from '../components/panel/GameBackupPanel'
 import { ConfirmModal } from '../components/modal/ConfirmModal'
+import { GameDetailSkeleton } from '../components/skeleton/GameDetailSkeleton'
 
 ChartJS.register(
   CategoryScale,
@@ -43,6 +44,7 @@ function GameDetailPage() {
   const [game, setGame] = useState<models.Game | null>(null)
   const [stats, setStats] = useState<vo.GameDetailStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [showSkeleton, setShowSkeleton] = useState(false)
   const [activeTab, setActiveTab] = useState('stats')
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
 
@@ -65,12 +67,34 @@ function GameDetailPage() {
     loadData()
   }, [gameId])
 
-  if (isLoading) {
-    return <div className="flex h-full items-center justify-center">Loading...</div>
+  // 延迟显示骨架屏
+  useEffect(() => {
+    let timer: number
+    if (isLoading) {
+      timer = window.setTimeout(() => {
+        setShowSkeleton(true)
+      }, 300)
+    } else {
+      setShowSkeleton(false)
+    }
+    return () => clearTimeout(timer)
+  }, [isLoading])
+
+  if (isLoading && !game) {
+    if (!showSkeleton) {
+      return <div className="min-h-screen bg-brand-100 dark:bg-brand-900" />
+    }
+    return <GameDetailSkeleton />
   }
 
   if (!game) {
-    return <div className="flex h-full items-center justify-center">Game not found</div>
+    return (
+      <div className="flex flex-col items-center justify-center h-full space-y-4 text-brand-500">
+        <div className="i-mdi-gamepad-variant-outline text-6xl" />
+        <p className="text-xl">未找到该游戏</p>
+        <button onClick={() => navigate({ to: '/library' })} className="text-blue-600 hover:underline">返回库</button>
+      </div>
+    )
   }
 
   const formatDuration = (seconds: number) => {
@@ -184,7 +208,7 @@ function GameDetailPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-8xl mx-auto p-8">
+    <div className={`space-y-8 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
       {/* Back Button */}
       <button
         onClick={() => window.history.back()}

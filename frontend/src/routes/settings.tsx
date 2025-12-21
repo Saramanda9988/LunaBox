@@ -7,6 +7,7 @@ import { appconf } from '../../wailsjs/go/models'
 import { TestS3Connection, TestOneDriveConnection, GetOneDriveAuthURL, StartOneDriveAuth } from '../../wailsjs/go/service/BackupService'
 import { BrowserOpenURL } from '../../wailsjs/runtime/runtime'
 import { DBBackupPanel } from '../components/panel/DBBackupPanel'
+import { SettingsSkeleton } from '../components/skeleton/SettingsSkeleton'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -17,14 +18,34 @@ export const Route = createRoute({
 function SettingsPage() {
   const { config, fetchConfig, updateConfig } = useAppStore()
   const [formData, setFormData] = useState<appconf.AppConfig | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [showSkeleton, setShowSkeleton] = useState(false)
   const [testingS3, setTestingS3] = useState(false)
   const [testingOneDrive, setTestingOneDrive] = useState(false)
   const [authorizingOneDrive, setAuthorizingOneDrive] = useState(false)
   const isInitialMount = useRef(true)
 
   useEffect(() => {
-    fetchConfig()
+    const init = async () => {
+      setIsLoading(true)
+      await fetchConfig()
+      setIsLoading(false)
+    }
+    init()
   }, [fetchConfig])
+
+  // 延迟显示骨架屏
+  useEffect(() => {
+    let timer: number
+    if (isLoading) {
+      timer = window.setTimeout(() => {
+        setShowSkeleton(true)
+      }, 300)
+    } else {
+      setShowSkeleton(false)
+    }
+    return () => clearTimeout(timer)
+  }, [isLoading])
 
   useEffect(() => {
     if (config && isInitialMount.current) {
@@ -96,12 +117,24 @@ function SettingsPage() {
     }
   }
 
+  if (isLoading && (!config || !formData)) {
+    if (!showSkeleton) {
+      return <div className="min-h-screen bg-brand-100 dark:bg-brand-900" />
+    }
+    return <SettingsSkeleton />
+  }
+
   if (!config || !formData) {
-    return <div className="p-8">Loading...</div>
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[80vh] space-y-4 text-brand-500">
+        <div className="i-mdi-cog-outline text-6xl animate-spin-slow" />
+        <p className="text-xl">正在准备设置...</p>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-8 max-w-8xl mx-auto p-8">
+    <div className={`space-y-8 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
       <div className="flex items-center justify-between">
         <h1 className="text-4xl font-bold text-brand-900 dark:text-white">设置</h1>
       </div>
@@ -113,7 +146,7 @@ function SettingsPage() {
       
       <div className="space-y-6">
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">Access Token</label>
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">Bangumi Access Token</label>
           <input
             type="text"
             name="access_token"
@@ -121,6 +154,7 @@ function SettingsPage() {
             onChange={handleChange}
             className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
           />
+          <p className="text-xs text-brand-500 dark:text-brand-400">如果您想使用Bangumi数据源，请一定填写</p>
         </div>
 
         <div className="space-y-2">
@@ -313,7 +347,6 @@ function SettingsPage() {
             <div className="space-y-2">
               <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">API Base URL</label>
               <input type="text" name="ai_base_url" value={formData.ai_base_url || ''} onChange={handleChange} placeholder="https://api.openai.com/v1" className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white" />
-              <p className="text-xs text-brand-500 dark:text-brand-400">留空则使用默认地址</p>
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">API Key</label>
@@ -322,7 +355,6 @@ function SettingsPage() {
             <div className="space-y-2">
               <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">模型名称</label>
               <input type="text" name="ai_model" value={formData.ai_model || ''} onChange={handleChange} placeholder="gpt-3.5-turbo" className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white" />
-              <p className="text-xs text-brand-500 dark:text-brand-400">留空则使用默认模型</p>
             </div>
           </div>
         </div>
@@ -335,6 +367,12 @@ function SettingsPage() {
           数据库备份
         </h2>
         <DBBackupPanel />
+      </div>
+
+      <div>
+        <p className="text-xs text-brand-500 dark:text-brand-400">
+          Lunabox made with LunaRain_079 &amp; Contributors.
+        </p>
       </div>
     </div>
   )
