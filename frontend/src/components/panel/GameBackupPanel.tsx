@@ -276,10 +276,20 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
       {/* 云端备份列表 */}
       {cloudEnabled && (
         <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4 flex items-center gap-2">
-            <div className="i-mdi-cloud text-xl text-blue-500" />
-            云端备份
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-brand-900 dark:text-white flex items-center gap-2">
+              <div className="i-mdi-cloud text-xl text-blue-500" />
+              云端备份
+            </h3>
+            <button
+              onClick={loadBackups}
+              disabled={loadingCloud || !cloudEnabled}
+              title="刷新云端备份列表"
+              className="p-2 text-brand-600 hover:bg-brand-100 dark:hover:bg-brand-700 rounded transition-colors disabled:opacity-50"
+            >
+              <div className={`i-mdi-refresh text-xl ${loadingCloud ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
           {loadingCloud ? (
             <div className="flex justify-center py-8">
               <div className="i-mdi-loading animate-spin text-2xl text-brand-500" />
