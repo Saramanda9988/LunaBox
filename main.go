@@ -6,7 +6,6 @@ import (
 	"embed"
 	"lunabox/internal/utils"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -108,11 +107,11 @@ func main() {
 				}
 			}
 
-			execPath, err := os.Executable()
+			execPath, err := utils.GetDataDir()
 			if err != nil {
 				appLogger.Fatal(err.Error())
 			}
-			dbPath := filepath.Join(filepath.Dir(execPath), "lunabox.db")
+			dbPath := filepath.Join(execPath, "lunabox.db")
 			db, err = sql.Open("duckdb", dbPath)
 			if err != nil {
 				appLogger.Fatal(err.Error())

@@ -102,6 +102,12 @@ Section "uninstall"
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
 
+    # 询问用户是否删除用户数据
+    MessageBox MB_YESNO "是否删除 LunaBox 的用户数据（配置、数据库、备份等）？$\n$\n数据位置:$\n$APPDATA\LunaBox$\n$LOCALAPPDATA\LunaBox" IDNO skip_userdata
+        RMDir /r "$APPDATA\LunaBox"
+        RMDir /r "$LOCALAPPDATA\LunaBox"
+    skip_userdata:
+
     RMDir /r $INSTDIR
 
     Delete "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk"
@@ -112,3 +118,4 @@ Section "uninstall"
 
     !insertmacro wails.deleteUninstaller
 SectionEnd
+

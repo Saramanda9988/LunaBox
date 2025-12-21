@@ -115,28 +115,12 @@ func (s *BackupService) GetCloudBackupStatus() vo.CloudBackupStatus {
 
 // GetBackupDir 获取备份根目录
 func (s *BackupService) GetBackupDir() (string, error) {
-	execPath, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-	backupDir := filepath.Join(filepath.Dir(execPath), "backups")
-	if err := os.MkdirAll(backupDir, 0755); err != nil {
-		return "", err
-	}
-	return backupDir, nil
+	return utils.GetSubDir("backups")
 }
 
 // GetDBBackupDir 获取数据库备份目录
 func (s *BackupService) GetDBBackupDir() (string, error) {
-	execPath, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-	backupDir := filepath.Join(filepath.Dir(execPath), "backups", "database")
-	if err := os.MkdirAll(backupDir, 0755); err != nil {
-		return "", err
-	}
-	return backupDir, nil
+	return utils.GetSubDir(filepath.Join("backups", "database"))
 }
 
 // OpenBackupFolder 打开备份文件夹
@@ -708,11 +692,10 @@ func ExecuteDBRestore(config *appconf.AppConfig) (bool, error) {
 		return false, fmt.Errorf("备份文件不存在: %s", backupPath)
 	}
 
-	execPath, err := os.Executable()
+	execDir, err := utils.GetDataDir()
 	if err != nil {
 		return false, err
 	}
-	execDir := filepath.Dir(execPath)
 	dbPath := filepath.Join(execDir, "lunabox.db")
 
 	tempDir := filepath.Join(execDir, "backups", "database", "restore_temp")

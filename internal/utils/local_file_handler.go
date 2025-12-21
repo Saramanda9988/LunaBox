@@ -14,12 +14,12 @@ type LocalFileHandler struct {
 
 // NewLocalFileHandler 创建本地文件处理器
 func NewLocalFileHandler() (*LocalFileHandler, error) {
-	execPath, err := os.Executable()
+	appDir, err := GetDataDir()
 	if err != nil {
 		return nil, err
 	}
 	return &LocalFileHandler{
-		appDir: filepath.Dir(execPath),
+		appDir: appDir,
 	}, nil
 }
 

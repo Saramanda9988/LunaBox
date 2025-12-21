@@ -11,11 +11,10 @@ import (
 // SaveCoverImage 保存封面图片到应用的封面目录
 func SaveCoverImage(srcPath string, gameID string) (string, error) {
 	// 获取应用程序目录
-	execPath, err := os.Executable()
+	appDir, err := GetDataDir()
 	if err != nil {
 		return "", err
 	}
-	appDir := filepath.Dir(execPath)
 
 	// 获取封面保存目录
 	coverDir := filepath.Join(appDir, "covers")

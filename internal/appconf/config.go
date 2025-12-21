@@ -3,6 +3,7 @@ package appconf
 import (
 	"encoding/json"
 	"log"
+	"lunabox/internal/utils"
 	"os"
 	"path/filepath"
 )
@@ -37,6 +38,15 @@ type AppConfig struct {
 	PendingDBRestore string `json:"pending_db_restore,omitempty"`  // 待恢复的数据库备份路径（重启后执行）
 }
 
+// getConfigPath 获取配置文件路径
+func getConfigPath() (string, error) {
+	configDir, err := utils.GetConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(configDir, "appconf.json"), nil
+}
+
 func LoadConfig() (*AppConfig, error) {
 	config := &AppConfig{
 		BangumiAccessToken:   "",
@@ -64,7 +74,10 @@ func LoadConfig() (*AppConfig, error) {
 	}
 
 	// 获取配置文件路径
-	configPath := filepath.Join(".", "appconf.json")
+	configPath, err := getConfigPath()
+	if err != nil {
+		return config, err
+	}
 
 	// 检查配置文件是否存在
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
@@ -88,7 +101,10 @@ func LoadConfig() (*AppConfig, error) {
 }
 
 func SaveConfig(config *AppConfig) error {
-	configPath := filepath.Join(".", "appconf.json")
+	configPath, err := getConfigPath()
+	if err != nil {
+		return err
+	}
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return err
