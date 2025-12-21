@@ -11,6 +11,7 @@ import { vo } from '../../wailsjs/go/models'
 import { CategoryCard } from '../components/card/CategoryCard'
 import { AddCategoryModal } from '../components/modal/AddCategoryModal'
 import { FilterBar } from '../components/bar/FilterBar'
+import { ConfirmModal } from '../components/modal/ConfirmModal'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -26,6 +27,21 @@ function CategoriesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'name' | 'game_count' | 'created_at' | 'updated_at'>('name')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+
+  // 确认弹窗状态
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    type: 'danger' | 'info'
+    onConfirm: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: () => {},
+  })
 
   useEffect(() => {
     loadCategories()
@@ -59,15 +75,22 @@ function CategoriesPage() {
 
   const handleDeleteCategory = async (e: React.MouseEvent, category: vo.CategoryVO) => {
     e.stopPropagation()
-    if (!confirm(`确定要删除收藏夹 "${category.name}" 吗？`)) return
-    try {
-      await DeleteCategory(category.id)
-      await loadCategories()
-      toast.success('收藏夹已删除')
-    } catch (error) {
-      console.error('Failed to delete category:', error)
-      toast.error('删除收藏夹失败')
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: '删除收藏夹',
+      message: `确定要删除收藏夹 "${category.name}" 吗？此操作无法撤销。`,
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await DeleteCategory(category.id)
+          await loadCategories()
+          toast.success('收藏夹已删除')
+        } catch (error) {
+          console.error('Failed to delete category:', error)
+          toast.error('删除收藏夹失败')
+        }
+      },
+    })
   }
 
   const filteredCategories = categories
@@ -145,6 +168,15 @@ function CategoriesPage() {
         onChange={setNewCategoryName}
         onClose={() => setIsAddCategoryModalOpen(false)}
         onSubmit={handleAddCategory}
+      />
+
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        type={confirmConfig.type}
+        onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+        onConfirm={confirmConfig.onConfirm}
       />
     </div>
   )

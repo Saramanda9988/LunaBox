@@ -12,6 +12,7 @@ import {
 } from '../../../wailsjs/go/service/BackupService'
 import { Quit } from '../../../wailsjs/runtime/runtime'
 import { useAppStore } from '../../store'
+import { ConfirmModal } from '../modal/ConfirmModal'
 
 export function DBBackupPanel() {
   const { config } = useAppStore()
@@ -22,6 +23,21 @@ export function DBBackupPanel() {
   const [uploadingBackup, setUploadingBackup] = useState<string | null>(null)
   const [loadingLocal, setLoadingLocal] = useState(true)
   const [loadingCloud, setLoadingCloud] = useState(false)
+
+  // 确认弹窗状态
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    type: 'danger' | 'info'
+    onConfirm: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: () => {},
+  })
 
   const cloudEnabled = config?.cloud_backup_enabled && config?.backup_user_id
 
@@ -82,27 +98,41 @@ export function DBBackupPanel() {
   }
 
   const handleRestoreDB = async (backupPath: string) => {
-    if (!confirm('确定要恢复到此备份吗？程序将退出并在下次启动时完成恢复。')) return
-    setRestoringBackup(backupPath)
-    try {
-      await ScheduleDBRestore(backupPath)
-      toast.success('已安排恢复，程序即将退出...')
-      setTimeout(() => Quit(), 1500)
-    } catch (err: any) {
-      toast.error('安排恢复失败: ' + err)
-      setRestoringBackup(null)
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: '恢复数据库',
+      message: '确定要恢复到此备份吗？程序将退出并在下次启动时完成恢复。',
+      type: 'info',
+      onConfirm: async () => {
+        setRestoringBackup(backupPath)
+        try {
+          await ScheduleDBRestore(backupPath)
+          toast.success('已安排恢复，程序即将退出...')
+          setTimeout(() => Quit(), 1500)
+        } catch (err: any) {
+          toast.error('安排恢复失败: ' + err)
+          setRestoringBackup(null)
+        }
+      },
+    })
   }
 
   const handleDeleteDBBackup = async (backupPath: string) => {
-    if (!confirm('确定要删除此备份吗？')) return
-    try {
-      await DeleteDBBackup(backupPath)
-      await loadDBBackups()
-      toast.success('备份已删除')
-    } catch (err: any) {
-      toast.error('删除失败: ' + err)
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: '删除备份',
+      message: '确定要删除此本地备份吗？此操作无法撤销。',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await DeleteDBBackup(backupPath)
+          await loadDBBackups()
+          toast.success('备份已删除')
+        } catch (err: any) {
+          toast.error('删除失败: ' + err)
+        }
+      },
+    })
   }
 
   const handleUploadDBBackup = async (backupPath: string) => {
@@ -119,16 +149,23 @@ export function DBBackupPanel() {
   }
 
   const handleRestoreFromCloud = async (cloudKey: string) => {
-    if (!confirm('确定要从云端恢复此备份吗？程序将退出并在下次启动时完成恢复。')) return
-    setRestoringBackup(cloudKey)
-    try {
-      await ScheduleDBRestoreFromCloud(cloudKey)
-      toast.success('已安排恢复，程序即将退出...')
-      setTimeout(() => Quit(), 1500)
-    } catch (err: any) {
-      toast.error('安排恢复失败: ' + err)
-      setRestoringBackup(null)
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: '从云端恢复',
+      message: '确定要从云端恢复此备份吗？程序将退出并在下次启动时完成恢复。',
+      type: 'info',
+      onConfirm: async () => {
+        setRestoringBackup(cloudKey)
+        try {
+          await ScheduleDBRestoreFromCloud(cloudKey)
+          toast.success('已安排恢复，程序即将退出...')
+          setTimeout(() => Quit(), 1500)
+        } catch (err: any) {
+          toast.error('安排恢复失败: ' + err)
+          setRestoringBackup(null)
+        }
+      },
+    })
   }
 
   const formatFileSize = (bytes: number) => {
@@ -295,6 +332,15 @@ export function DBBackupPanel() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        type={confirmConfig.type}
+        onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+        onConfirm={confirmConfig.onConfirm}
+      />
     </div>
   )
 }

@@ -18,6 +18,7 @@ import {
 import { Line } from 'react-chartjs-2'
 import { toast } from 'react-hot-toast'
 import { GameBackupPanel } from '../components/panel/GameBackupPanel'
+import { ConfirmModal } from '../components/modal/ConfirmModal'
 
 ChartJS.register(
   CategoryScale,
@@ -43,6 +44,7 @@ function GameDetailPage() {
   const [stats, setStats] = useState<vo.GameDetailStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('stats')
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
 
   useEffect(() => {
     const loadData = async () => {
@@ -154,18 +156,18 @@ function GameDetailPage() {
 
   const handleDeleteGame = async () => {
     if (!game) return
+    setIsDeleteModalOpen(true)
+  }
 
-    // TODO: pop window使用专门的样式
-    if (window.confirm(`确定要删除游戏 "${game.name}" 吗？此操作无法撤销。`)) {
-      try {
-        await DeleteGame(game.id)
-        toast.success('删除成功')
-        navigate({ to: '/library' })
-      } catch (error) {
-        // TODO: 弹窗
-        console.error('Failed to delete game:', error)
-        toast.error('删除失败')
-      }
+  const confirmDeleteGame = async () => {
+    if (!game) return
+    try {
+      await DeleteGame(game.id)
+      toast.success('删除成功')
+      navigate({ to: '/library' })
+    } catch (error) {
+      console.error('Failed to delete game:', error)
+      toast.error('删除失败')
     }
   }
 
@@ -408,6 +410,16 @@ function GameDetailPage() {
       {activeTab === 'backup' && (
         <GameBackupPanel gameId={gameId} savePath={game?.save_path} />
       )}
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        title="删除游戏"
+        message={`确定要删除游戏 "${game.name}" 吗？此操作将从库中移除该游戏，但不会删除本地游戏文件。`}
+        confirmText="确认删除"
+        type="danger"
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteGame}
+      />
     </div>
   )
 }

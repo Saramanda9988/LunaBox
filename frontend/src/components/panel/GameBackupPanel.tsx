@@ -12,6 +12,7 @@ import {
   UploadGameBackupToCloud,
   RestoreFromCloud,
 } from '../../../wailsjs/go/service/BackupService'
+import { ConfirmModal } from '../modal/ConfirmModal'
 
 interface GameBackupPanelProps {
   gameId: string
@@ -26,6 +27,21 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [loadingLocal, setLoadingLocal] = useState(true)
   const [loadingCloud, setLoadingCloud] = useState(false)
+
+  // 确认弹窗状态
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    type: 'danger' | 'info'
+    onConfirm: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: () => {},
+  })
 
   useEffect(() => {
     loadBackups()
@@ -90,24 +106,38 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
 
   const handleRestoreBackup = async (backupId: string, createdAt: string) => {
     const time = new Date(createdAt).toLocaleString()
-    if (!confirm(`确定要恢复到 ${time} 的备份吗？当前存档将被覆盖。`)) return
-    try {
-      await RestoreBackup(backupId)
-      toast.success('存档已恢复')
-    } catch (err: any) {
-      toast.error('恢复失败: ' + err)
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: '恢复存档',
+      message: `确定要恢复到 ${time} 的备份吗？当前存档将被覆盖。`,
+      type: 'info',
+      onConfirm: async () => {
+        try {
+          await RestoreBackup(backupId)
+          toast.success('存档已恢复')
+        } catch (err: any) {
+          toast.error('恢复失败: ' + err)
+        }
+      },
+    })
   }
 
   const handleDeleteBackup = async (backupId: string) => {
-    if (!confirm('确定要删除此备份吗？')) return
-    try {
-      await DeleteBackup(backupId)
-      await loadBackups()
-      toast.success('备份已删除')
-    } catch (err: any) {
-      toast.error('删除失败: ' + err)
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: '删除备份',
+      message: '确定要删除此本地备份吗？此操作无法撤销。',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await DeleteBackup(backupId)
+          await loadBackups()
+          toast.success('备份已删除')
+        } catch (err: any) {
+          toast.error('删除失败: ' + err)
+        }
+      },
+    })
   }
 
   const handleOpenBackupFolder = async () => {
@@ -132,13 +162,20 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
   }
 
   const handleRestoreFromCloud = async (cloudKey: string, name: string) => {
-    if (!confirm(`确定要从云端恢复 ${name} 吗？当前存档将被覆盖。`)) return
-    try {
-      await RestoreFromCloud(cloudKey, gameId)
-      toast.success('存档已从云端恢复')
-    } catch (err: any) {
-      toast.error('恢复失败: ' + err)
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: '从云端恢复',
+      message: `确定要从云端恢复 ${name} 吗？当前存档将被覆盖。`,
+      type: 'info',
+      onConfirm: async () => {
+        try {
+          await RestoreFromCloud(cloudKey, gameId)
+          toast.success('存档已从云端恢复')
+        } catch (err: any) {
+          toast.error('恢复失败: ' + err)
+        }
+      },
+    })
   }
 
   const formatFileSize = (bytes: number) => {
@@ -295,6 +332,15 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        type={confirmConfig.type}
+        onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+        onConfirm={confirmConfig.onConfirm}
+      />
     </div>
   )
 }
