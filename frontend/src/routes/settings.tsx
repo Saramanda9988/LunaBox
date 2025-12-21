@@ -1,5 +1,5 @@
 import { createRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../store'
 import { Route as rootRoute } from './__root'
@@ -20,16 +20,33 @@ function SettingsPage() {
   const [testingS3, setTestingS3] = useState(false)
   const [testingOneDrive, setTestingOneDrive] = useState(false)
   const [authorizingOneDrive, setAuthorizingOneDrive] = useState(false)
+  const isInitialMount = useRef(true)
 
   useEffect(() => {
     fetchConfig()
   }, [fetchConfig])
 
   useEffect(() => {
-    if (config) {
+    if (config && isInitialMount.current) {
       setFormData({ ...config } as appconf.AppConfig)
+      isInitialMount.current = false
     }
   }, [config])
+
+  // 自动保存逻辑
+  useEffect(() => {
+    if (!formData || isInitialMount.current) return
+
+    // 检查是否有实际变化，避免无意义的保存
+    const hasChanges = JSON.stringify(formData) !== JSON.stringify(config)
+    if (!hasChanges) return
+
+    const timer = setTimeout(() => {
+      updateConfig(formData)
+    }, 250) // 0.25秒防抖
+
+    return () => clearTimeout(timer)
+  }, [formData, updateConfig, config])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     if (!formData) return
@@ -79,18 +96,6 @@ function SettingsPage() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (formData) {
-      try {
-        await updateConfig(formData)
-        toast.success('设置已保存')
-      } catch (err: any) {
-        toast.error('保存失败: ' + err)
-      }
-    }
-  }
-
   if (!config || !formData) {
     return <div className="p-8">Loading...</div>
   }
@@ -106,7 +111,7 @@ function SettingsPage() {
         基础配置
       </h2>
       
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-6">
         <div className="space-y-2">
           <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">Access Token</label>
           <input
@@ -207,7 +212,7 @@ function SettingsPage() {
 
             {/* S3 配置 */}
             {formData.cloud_backup_provider === 's3' && (
-              <div className="space-y-4 p-4 bg-brand-50 dark:bg-brand-800 rounded-lg">
+              <div className="space-y-4 p-4 bg-brand-100 dark:bg-brand-800 rounded-lg">
                 <h3 className="text-sm font-medium text-brand-800 dark:text-brand-200">S3 配置</h3>
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">S3 端点 (Endpoint)</label>
@@ -321,13 +326,7 @@ function SettingsPage() {
             </div>
           </div>
         </div>
-
-        <div className="pt-4">
-          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-            保存设置
-          </button>
-        </div>
-      </form>
+      </div>
 
       {/* 数据库备份 - 使用独立组件 */}
       <div className="pt-6 border-t border-brand-200 dark:border-brand-700">
