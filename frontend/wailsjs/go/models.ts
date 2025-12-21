@@ -19,6 +19,7 @@ export namespace appconf {
 	    s3_access_key?: string;
 	    s3_secret_key?: string;
 	    cloud_backup_retention?: number;
+	    onedrive_client_id?: string;
 	    onedrive_refresh_token?: string;
 	    last_db_backup_time?: string;
 	    pending_db_restore?: string;
@@ -47,6 +48,7 @@ export namespace appconf {
 	        this.s3_access_key = source["s3_access_key"];
 	        this.s3_secret_key = source["s3_secret_key"];
 	        this.cloud_backup_retention = source["cloud_backup_retention"];
+	        this.onedrive_client_id = source["onedrive_client_id"];
 	        this.onedrive_refresh_token = source["onedrive_refresh_token"];
 	        this.last_db_backup_time = source["last_db_backup_time"];
 	        this.pending_db_restore = source["pending_db_restore"];

@@ -17,7 +17,6 @@ import (
 	"lunabox/internal/vo"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -51,6 +50,8 @@ func (s *ImportService) Init(ctx context.Context, db *sql.DB, config *appconf.Ap
 	s.config = config
 	s.gameService = gameService
 }
+
+// =================== PotatoVN 导入功能 ====================
 
 // SelectZipFile 选择要导入的 ZIP 文件
 func (s *ImportService) SelectZipFile() (string, error) {
@@ -90,7 +91,7 @@ func (s *ImportService) ImportFromPotatoVN(zipPath string, skipNoPath bool) (Imp
 	defer os.RemoveAll(tempDir)
 
 	// 解压文件
-	if err := s.extractZip(zipReader, tempDir); err != nil {
+	if err := utils.ExtractZip(zipReader, tempDir); err != nil {
 		runtime.LogErrorf(s.ctx, "failed to extract ZIP: %v", err)
 		return result, fmt.Errorf("解压失败: %w", err)
 	}
@@ -156,57 +157,6 @@ func (s *ImportService) ImportFromPotatoVN(zipPath string, skipNoPath bool) (Imp
 	return result, nil
 }
 
-// extractZip 解压 ZIP 文件到指定目录
-func (s *ImportService) extractZip(zipReader *zip.ReadCloser, destDir string) error {
-	for _, file := range zipReader.File {
-		filePath := filepath.Join(destDir, file.Name)
-
-		// 防止 ZIP Slip 攻击
-		if !strings.HasPrefix(filepath.Clean(filePath), filepath.Clean(destDir)+string(os.PathSeparator)) {
-			runtime.LogErrorf(s.ctx, "illegal file path in ZIP: %s", file.Name)
-			return fmt.Errorf("非法的文件路径: %s", file.Name)
-		}
-
-		if file.FileInfo().IsDir() {
-			if err := os.MkdirAll(filePath, os.ModePerm); err != nil {
-				runtime.LogErrorf(s.ctx, "failed to create dir in extractZip: %v", err)
-				return err
-			}
-			continue
-		}
-
-		// 确保父目录存在
-		if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
-			runtime.LogErrorf(s.ctx, "failed to create parent dir in extractZip: %v", err)
-			return err
-		}
-
-		// 解压文件
-		destFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
-		if err != nil {
-			runtime.LogErrorf(s.ctx, "failed to open dest file in extractZip: %v", err)
-			return err
-		}
-
-		srcFile, err := file.Open()
-		if err != nil {
-			runtime.LogErrorf(s.ctx, "failed to open src file in extractZip: %v", err)
-			destFile.Close()
-			return err
-		}
-
-		_, err = io.Copy(destFile, srcFile)
-		srcFile.Close()
-		destFile.Close()
-
-		if err != nil {
-			runtime.LogErrorf(s.ctx, "failed to copy file in extractZip: %v", err)
-			return err
-		}
-	}
-	return nil
-}
-
 // convertToGame 将 PotatoVN 的 Galgame 转换为本地的 Game 模型
 func (s *ImportService) convertToGame(galgame potatovn.Galgame, tempDir string) models.Game {
 	game := models.Game{
@@ -225,10 +175,10 @@ func (s *ImportService) convertToGame(galgame potatovn.Galgame, tempDir string) 
 	// 处理封面图片
 	if galgame.ImagePath.Value != "" && galgame.ImagePath.Value != potatovn.DefaultImagePath {
 		// 尝试从解压目录中获取封面图片
-		coverPath := s.resolveCoverPath(galgame.ImagePath.Value, tempDir)
+		coverPath := utils.ResolveCoverPath(galgame.ImagePath.Value, tempDir)
 		if coverPath != "" {
 			// 将封面图片复制到应用的封面目录
-			savedPath, err := s.saveCoverImage(coverPath, game.ID)
+			savedPath, err := utils.SaveCoverImage(coverPath, game.ID)
 			if err == nil {
 				game.CoverURL = savedPath
 			} else {
@@ -259,86 +209,6 @@ func (s *ImportService) mapRssTypeToSourceType(rssType potatovn.RssType) enums.S
 	default:
 		return enums.Local
 	}
-}
-
-// resolveCoverPath 解析封面图片路径
-func (s *ImportService) resolveCoverPath(imagePath string, tempDir string) string {
-	// PotatoVN 的图片路径格式通常是 ".\\Images\\xxx_cover" 或相对路径
-	// 需要转换为绝对路径
-
-	// 移除开头的 ".\" 或 "./"
-	cleanPath := strings.TrimPrefix(imagePath, ".\\")
-	cleanPath = strings.TrimPrefix(cleanPath, "./")
-
-	// 替换反斜杠为正斜杠
-	cleanPath = strings.ReplaceAll(cleanPath, "\\", "/")
-
-	// 构建完整路径
-	fullPath := filepath.Join(tempDir, cleanPath)
-
-	// 检查文件是否存在，可能需要添加扩展名
-	extensions := []string{"", ".png", ".jpg", ".jpeg", ".webp", ".gif"}
-	for _, ext := range extensions {
-		testPath := fullPath + ext
-		if _, err := os.Stat(testPath); err == nil {
-			return testPath
-		}
-	}
-
-	// 记录未找到封面图片的情况
-	runtime.LogWarningf(s.ctx, "resolveCoverPath: cover image not found, imagePath=%s, tempDir=%s", imagePath, tempDir)
-	return ""
-}
-
-// saveCoverImage 保存封面图片到应用的封面目录
-func (s *ImportService) saveCoverImage(srcPath string, gameID string) (string, error) {
-	// 获取应用程序目录
-	execPath, err := os.Executable()
-	if err != nil {
-		runtime.LogErrorf(s.ctx, "saveCoverImage: failed to get executable path: %v", err)
-		return "", err
-	}
-	appDir := filepath.Dir(execPath)
-
-	// 获取封面保存目录
-	coverDir := filepath.Join(appDir, "covers")
-	if err := os.MkdirAll(coverDir, os.ModePerm); err != nil {
-		runtime.LogErrorf(s.ctx, "saveCoverImage: failed to create cover dir: %v", err)
-		return "", err
-	}
-
-	// 获取源文件的扩展名
-	ext := filepath.Ext(srcPath)
-	if ext == "" {
-		ext = ".png"
-	}
-
-	// 生成目标文件名
-	destFileName := fmt.Sprintf("%s%s", gameID, ext)
-	destPath := filepath.Join(coverDir, destFileName)
-
-	// 复制文件
-	srcFile, err := os.Open(srcPath)
-	if err != nil {
-		runtime.LogErrorf(s.ctx, "saveCoverImage: failed to open src file: %v", err)
-		return "", err
-	}
-	defer srcFile.Close()
-
-	destFile, err := os.Create(destPath)
-	if err != nil {
-		runtime.LogErrorf(s.ctx, "saveCoverImage: failed to create dest file: %v", err)
-		return "", err
-	}
-	defer destFile.Close()
-
-	if _, err := io.Copy(destFile, srcFile); err != nil {
-		runtime.LogErrorf(s.ctx, "saveCoverImage: failed to copy file: %v", err)
-		return "", err
-	}
-
-	// 返回相对路径或可访问的 URL
-	return fmt.Sprintf("/local/covers/%s", destFileName), nil
 }
 
 // PreviewImport 预览导入内容（不实际导入）
@@ -435,6 +305,8 @@ func (s *ImportService) PreviewImport(zipPath string) ([]PreviewGame, error) {
 
 	return previews, nil
 }
+
+// =================== Playnite 导入功能 ====================
 
 // PreviewGame 预览导入的游戏信息
 type PreviewGame struct {
@@ -596,7 +468,7 @@ func (s *ImportService) convertPlayniteToGame(pg playnite.PlayniteGame) models.G
 
 	// 处理封面图片 - 从 Playnite 缓存目录复制到本地
 	if pg.CoverURL != "" {
-		savedPath, err := s.saveCoverImage(pg.CoverURL, game.ID)
+		savedPath, err := utils.SaveCoverImage(pg.CoverURL, game.ID)
 		if err == nil {
 			game.CoverURL = savedPath
 		} else {
@@ -666,14 +538,14 @@ func (s *ImportService) ScanLibraryDirectory(libraryPath string) ([]vo.BatchImpo
 		folderName := entry.Name()
 
 		// 扫描该文件夹下的可执行文件
-		executables := s.findExecutables(folderPath, excludeKeywords)
+		executables := utils.FindExecutables(folderPath, excludeKeywords)
 
 		if len(executables) == 0 {
 			continue // 没有可执行文件，跳过此文件夹
 		}
 
 		// 选择推荐的可执行文件
-		selectedExe := s.selectBestExecutable(executables, folderName)
+		selectedExe := utils.SelectBestExecutable(executables, folderName)
 
 		candidate := vo.BatchImportCandidate{
 			FolderPath:  folderPath,
@@ -691,94 +563,7 @@ func (s *ImportService) ScanLibraryDirectory(libraryPath string) ([]vo.BatchImpo
 	return candidates, nil
 }
 
-// findExecutables 在指定目录下查找可执行文件
-func (s *ImportService) findExecutables(folderPath string, excludeKeywords []string) []string {
-	var executables []string
-
-	// 仅扫描一级目录
-	entries, err := os.ReadDir(folderPath)
-	if err != nil {
-		runtime.LogWarningf(s.ctx, "findExecutables: failed to read dir %s: %v", folderPath, err)
-		return executables
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-
-		name := entry.Name()
-		lowerName := strings.ToLower(name)
-
-		// 检查是否是可执行文件
-		if !strings.HasSuffix(lowerName, ".exe") &&
-			!strings.HasSuffix(lowerName, ".bat") &&
-			!strings.HasSuffix(lowerName, ".lnk") {
-			continue
-		}
-
-		// 检查是否应该排除
-		excluded := false
-		for _, keyword := range excludeKeywords {
-			if strings.Contains(lowerName, keyword) {
-				excluded = true
-				break
-			}
-		}
-
-		if !excluded {
-			executables = append(executables, filepath.Join(folderPath, name))
-		}
-	}
-
-	return executables
-}
-
-// selectBestExecutable 选择最佳可执行文件
-func (s *ImportService) selectBestExecutable(executables []string, folderName string) string {
-	if len(executables) == 0 {
-		return ""
-	}
-	if len(executables) == 1 {
-		return executables[0]
-	}
-
-	lowerFolderName := strings.ToLower(folderName)
-
-	// 优先选择与文件夹名相似的
-	for _, exe := range executables {
-		exeName := strings.ToLower(filepath.Base(exe))
-		exeName = strings.TrimSuffix(exeName, filepath.Ext(exeName))
-		if strings.Contains(exeName, lowerFolderName) || strings.Contains(lowerFolderName, exeName) {
-			return exe
-		}
-	}
-
-	// 否则按文件大小排序，选择最大的
-	type exeInfo struct {
-		path string
-		size int64
-	}
-	var exeInfos []exeInfo
-
-	for _, exe := range executables {
-		info, err := os.Stat(exe)
-		if err == nil {
-			exeInfos = append(exeInfos, exeInfo{path: exe, size: info.Size()})
-		} else {
-			runtime.LogWarningf(s.ctx, "selectBestExecutable: failed to stat file %s: %v", exe, err)
-		}
-	}
-
-	if len(exeInfos) > 0 {
-		sort.Slice(exeInfos, func(i, j int) bool {
-			return exeInfos[i].size > exeInfos[j].size
-		})
-		return exeInfos[0].path
-	}
-
-	return executables[0]
-}
+// ==================== 元数据获取与批量导入 ====================
 
 // FetchMetadataForCandidate 为单个候选项获取元数据（带限流）
 func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchImportCandidate, error) {

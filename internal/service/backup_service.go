@@ -1,13 +1,13 @@
 package service
 
 import (
-	"archive/zip"
 	"context"
 	"database/sql"
 	"fmt"
-	"io"
 	"lunabox/internal/appconf"
 	"lunabox/internal/models"
+	"lunabox/internal/service/cloudprovider"
+	"lunabox/internal/service/cloudprovider/onedrive"
 	"lunabox/internal/utils"
 	"lunabox/internal/vo"
 	"os"
@@ -19,13 +19,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type BackupService struct {
-	ctx      context.Context
-	db       *sql.DB
-	config   *appconf.AppConfig
-	s3Client *utils.S3Client
+	ctx    context.Context
+	db     *sql.DB
+	config *appconf.AppConfig
 }
 
 func NewBackupService() *BackupService {
@@ -36,88 +36,19 @@ func (s *BackupService) Init(ctx context.Context, db *sql.DB, config *appconf.Ap
 	s.ctx = ctx
 	s.db = db
 	s.config = config
-	// 尝试初始化 S3 客户端
-	s.initS3Client()
 }
 
-func (s *BackupService) initS3Client() {
-	if s.config.CloudBackupEnabled && s.config.CloudBackupProvider == "s3" && s.config.S3Endpoint != "" {
-		client, err := utils.NewS3Client(utils.S3Config{
-			Endpoint:  s.config.S3Endpoint,
-			Region:    s.config.S3Region,
-			Bucket:    s.config.S3Bucket,
-			AccessKey: s.config.S3AccessKey,
-			SecretKey: s.config.S3SecretKey,
-		})
-		if err == nil {
-			s.s3Client = client
-		}
-	}
+// getCloudProvider 获取云备份提供商
+func (s *BackupService) getCloudProvider() (cloudprovider.CloudStorageProvider, error) {
+	return cloudprovider.NewCloudProvider(s.ctx, s.config)
 }
 
-// getS3Client 获取或创建 S3 客户端（配置更新后会重新创建）
-func (s *BackupService) getS3Client() (*utils.S3Client, error) {
-	if !s.config.CloudBackupEnabled {
-		return nil, fmt.Errorf("云备份未启用")
-	}
-	if s.config.CloudBackupProvider != "s3" {
-		return nil, fmt.Errorf("当前云备份提供商不是 S3")
-	}
-	if s.config.S3Endpoint == "" || s.config.S3AccessKey == "" || s.config.S3SecretKey == "" {
-		return nil, fmt.Errorf("S3 配置不完整")
-	}
-
-	// 每次都重新创建客户端，确保使用最新配置
-	client, err := utils.NewS3Client(utils.S3Config{
-		Endpoint:  s.config.S3Endpoint,
-		Region:    s.config.S3Region,
-		Bucket:    s.config.S3Bucket,
-		AccessKey: s.config.S3AccessKey,
-		SecretKey: s.config.S3SecretKey,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("创建 S3 客户端失败: %w", err)
-	}
-	return client, nil
-}
-
-// checkOneDriveConfigured 检查 OneDrive 是否已配置
-func (s *BackupService) checkOneDriveConfigured() error {
-	if !s.config.CloudBackupEnabled {
-		return fmt.Errorf("云备份未启用")
-	}
-	if s.config.CloudBackupProvider != "onedrive" {
-		return fmt.Errorf("当前云备份提供商不是 OneDrive")
-	}
-	if s.config.OneDriveRefreshToken == "" {
-		return fmt.Errorf("OneDrive 未授权")
-	}
-	return nil
-}
-
-// getOneDriveClient 获取 OneDrive 客户端
-func (s *BackupService) getOneDriveClient() (*utils.OneDriveClient, error) {
-	if err := s.checkOneDriveConfigured(); err != nil {
-		return nil, err
-	}
-
-	client, err := utils.NewOneDriveClient(utils.OneDriveConfig{
-		RefreshToken: s.config.OneDriveRefreshToken,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("创建 OneDrive 客户端失败: %w", err)
-	}
-	return client, nil
-}
-
-// getOneDriveCloudPath 获取 OneDrive 云端路径
-func (s *BackupService) getOneDriveCloudPath(subPath string) string {
-	return fmt.Sprintf("/LunaBox/v1/%s/%s", s.config.BackupUserID, subPath)
-}
+// ========== 云备份配置相关方法 ==========
 
 // SetupCloudBackup 设置云备份（生成 user-id）
 func (s *BackupService) SetupCloudBackup(password string) (string, error) {
 	if password == "" {
+		runtime.LogWarningf(s.ctx, "SetupCloudBackup: backup password is empty")
 		return "", fmt.Errorf("备份密码不能为空")
 	}
 	userID := utils.GenerateUserID(password)
@@ -128,20 +59,8 @@ func (s *BackupService) SetupCloudBackup(password string) (string, error) {
 
 // TestS3Connection 测试 S3 连接
 func (s *BackupService) TestS3Connection(config appconf.AppConfig) error {
-	if config.S3Endpoint == "" {
-		return fmt.Errorf("S3 端点未配置")
-	}
-	client, err := utils.NewS3Client(utils.S3Config{
-		Endpoint:  config.S3Endpoint,
-		Region:    config.S3Region,
-		Bucket:    config.S3Bucket,
-		AccessKey: config.S3AccessKey,
-		SecretKey: config.S3SecretKey,
-	})
-	if err != nil {
-		return err
-	}
-	if err := client.TestConnection(s.ctx); err != nil {
+	if err := cloudprovider.TestConnection(s.ctx, cloudprovider.ProviderS3, &config); err != nil {
+		runtime.LogErrorf(s.ctx, "TestS3Connection: connection test failed: %v", err)
 		return fmt.Errorf("连接测试失败: %w", err)
 	}
 	return nil
@@ -149,35 +68,24 @@ func (s *BackupService) TestS3Connection(config appconf.AppConfig) error {
 
 // TestOneDriveConnection 测试 OneDrive 连接
 func (s *BackupService) TestOneDriveConnection(config appconf.AppConfig) error {
-	if config.OneDriveRefreshToken == "" {
-		return fmt.Errorf("OneDrive 未授权")
-	}
-	client, err := utils.NewOneDriveClient(utils.OneDriveConfig{
-		RefreshToken: config.OneDriveRefreshToken,
-	})
-	if err != nil {
-		return err
-	}
-	return client.TestConnection(s.ctx)
+	return cloudprovider.TestConnection(s.ctx, cloudprovider.ProviderOneDrive, &config)
 }
 
 // GetOneDriveAuthURL 获取 OneDrive 授权 URL
 func (s *BackupService) GetOneDriveAuthURL() string {
-	return utils.GetOneDriveAuthURL("")
+	return onedrive.GetOneDriveAuthURL(s.config.OneDriveClientID)
 }
 
 // StartOneDriveAuth 启动 OneDrive 授权流程（使用本地回调服务器）
-// 返回 refresh token
 func (s *BackupService) StartOneDriveAuth() (string, error) {
-	// 启动本地回调服务器，等待授权码（超时 5 分钟）
-	code, err := utils.StartOneDriveAuthServer(s.ctx, 5*time.Minute)
+	code, err := onedrive.StartOneDriveAuthServer(s.ctx, 5*time.Minute)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "StartOneDriveAuth: failed to get auth code: %v", err)
 		return "", err
 	}
-
-	// 用授权码换取 token
-	tokenResp, err := utils.ExchangeOneDriveCodeForToken(s.ctx, "", code)
+	tokenResp, err := onedrive.ExchangeOneDriveCodeForToken(s.ctx, s.config.OneDriveClientID, code)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "StartOneDriveAuth: failed to exchange code for token: %v", err)
 		return "", err
 	}
 	return tokenResp.RefreshToken, nil
@@ -185,30 +93,25 @@ func (s *BackupService) StartOneDriveAuth() (string, error) {
 
 // ExchangeOneDriveCode 用授权码换取 OneDrive token
 func (s *BackupService) ExchangeOneDriveCode(code string) (string, error) {
-	tokenResp, err := utils.ExchangeOneDriveCodeForToken(s.ctx, "", code)
+	tokenResp, err := onedrive.ExchangeOneDriveCodeForToken(s.ctx, s.config.OneDriveClientID, code)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "ExchangeOneDriveCode: failed to exchange code for token: %v", err)
 		return "", err
 	}
 	return tokenResp.RefreshToken, nil
 }
 
 // GetCloudBackupStatus 获取云备份状态
-// TODO:快速失败？
 func (s *BackupService) GetCloudBackupStatus() vo.CloudBackupStatus {
-	var configured bool
-	if s.config.CloudBackupProvider == "onedrive" {
-		configured = s.config.OneDriveRefreshToken != "" && s.config.BackupUserID != ""
-	} else {
-		configured = s.config.S3Endpoint != "" && s.config.S3AccessKey != "" && s.config.BackupUserID != ""
-	}
-	status := vo.CloudBackupStatus{
+	return vo.CloudBackupStatus{
 		Enabled:    s.config.CloudBackupEnabled,
-		Configured: configured,
+		Configured: cloudprovider.IsConfigured(s.config),
 		UserID:     s.config.BackupUserID,
 		Provider:   s.config.CloudBackupProvider,
 	}
-	return status
 }
+
+// ========== 本地备份目录相关方法 ==========
 
 // GetBackupDir 获取备份根目录
 func (s *BackupService) GetBackupDir() (string, error) {
@@ -222,6 +125,42 @@ func (s *BackupService) GetBackupDir() (string, error) {
 	}
 	return backupDir, nil
 }
+
+// GetDBBackupDir 获取数据库备份目录
+func (s *BackupService) GetDBBackupDir() (string, error) {
+	execPath, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	backupDir := filepath.Join(filepath.Dir(execPath), "backups", "database")
+	if err := os.MkdirAll(backupDir, 0755); err != nil {
+		return "", err
+	}
+	return backupDir, nil
+}
+
+// OpenBackupFolder 打开备份文件夹
+func (s *BackupService) OpenBackupFolder(gameID string) error {
+	backupDir, err := s.GetBackupDir()
+	if err != nil {
+		return err
+	}
+	gameBackupDir := filepath.Join(backupDir, gameID)
+	os.MkdirAll(gameBackupDir, 0755)
+
+	var cmd *exec.Cmd
+	switch goruntime.GOOS {
+	case "windows":
+		cmd = exec.Command("explorer", gameBackupDir)
+	case "darwin":
+		cmd = exec.Command("open", gameBackupDir)
+	default:
+		cmd = exec.Command("xdg-open", gameBackupDir)
+	}
+	return cmd.Start()
+}
+
+// ========== 游戏存档本地备份方法 ==========
 
 // GetGameBackups 获取游戏的备份历史
 func (s *BackupService) GetGameBackups(gameID string) ([]models.GameBackup, error) {
@@ -248,7 +187,6 @@ func (s *BackupService) GetGameBackups(gameID string) ([]models.GameBackup, erro
 
 // CreateBackup 创建游戏存档备份
 func (s *BackupService) CreateBackup(gameID string) (*models.GameBackup, error) {
-	// 获取游戏信息
 	var savePath string
 	err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(save_path, '') FROM games WHERE id = ?", gameID).Scan(&savePath)
 	if err != nil {
@@ -257,13 +195,10 @@ func (s *BackupService) CreateBackup(gameID string) (*models.GameBackup, error) 
 	if savePath == "" {
 		return nil, fmt.Errorf("存档目录未设置")
 	}
-
-	// 检查存档目录是否存在
 	if _, err := os.Stat(savePath); os.IsNotExist(err) {
 		return nil, fmt.Errorf("存档目录不存在: %s", savePath)
 	}
 
-	// 创建备份目录
 	backupDir, err := s.GetBackupDir()
 	if err != nil {
 		return nil, err
@@ -273,18 +208,15 @@ func (s *BackupService) CreateBackup(gameID string) (*models.GameBackup, error) 
 		return nil, err
 	}
 
-	// 生成备份文件名
 	timestamp := time.Now().Format("2006-01-02T15-04-05")
 	backupFileName := fmt.Sprintf("%s.zip", timestamp)
 	backupPath := filepath.Join(gameBackupDir, backupFileName)
 
-	// 压缩存档目录
-	size, err := s.zipDirectory(savePath, backupPath)
+	size, err := utils.ZipDirectory(savePath, backupPath)
 	if err != nil {
 		return nil, fmt.Errorf("备份失败: %w", err)
 	}
 
-	// 保存备份记录
 	backup := &models.GameBackup{
 		ID:         uuid.New().String(),
 		GameID:     gameID,
@@ -306,25 +238,19 @@ func (s *BackupService) CreateBackup(gameID string) (*models.GameBackup, error) 
 
 // RestoreBackup 恢复备份到指定时间点
 func (s *BackupService) RestoreBackup(backupID string) error {
-	// 获取备份信息
 	var backup models.GameBackup
-	var gameID string
 	err := s.db.QueryRowContext(s.ctx,
 		"SELECT id, game_id, backup_path, size, created_at FROM game_backups WHERE id = ?", backupID).
 		Scan(&backup.ID, &backup.GameID, &backup.BackupPath, &backup.Size, &backup.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("备份记录不存在")
 	}
-	gameID = backup.GameID
 
-	// 获取游戏存档目录
 	var savePath string
-	err = s.db.QueryRowContext(s.ctx, "SELECT COALESCE(save_path, '') FROM games WHERE id = ?", gameID).Scan(&savePath)
+	err = s.db.QueryRowContext(s.ctx, "SELECT COALESCE(save_path, '') FROM games WHERE id = ?", backup.GameID).Scan(&savePath)
 	if err != nil || savePath == "" {
 		return fmt.Errorf("存档目录未设置")
 	}
-
-	// 检查备份文件是否存在
 	if _, err := os.Stat(backup.BackupPath); os.IsNotExist(err) {
 		return fmt.Errorf("备份文件不存在: %s", backup.BackupPath)
 	}
@@ -332,25 +258,24 @@ func (s *BackupService) RestoreBackup(backupID string) error {
 	// 先备份当前存档（恢复前备份）
 	if _, err := os.Stat(savePath); err == nil {
 		backupDir, _ := s.GetBackupDir()
-		preRestoreDir := filepath.Join(backupDir, gameID, "pre_restore")
+		preRestoreDir := filepath.Join(backupDir, backup.GameID, "pre_restore")
 		os.MkdirAll(preRestoreDir, 0755)
 		preRestorePath := filepath.Join(preRestoreDir, fmt.Sprintf("%s_before_restore.zip", time.Now().Format("2006-01-02T15-04-05")))
-		s.zipDirectory(savePath, preRestorePath)
+		_, err := utils.ZipDirectory(savePath, preRestorePath)
+		if err != nil {
+			return err
+		}
 	}
 
-	// 清空目标目录
 	if err := os.RemoveAll(savePath); err != nil {
 		return fmt.Errorf("清空存档目录失败: %w", err)
 	}
 	if err := os.MkdirAll(savePath, 0755); err != nil {
 		return fmt.Errorf("创建存档目录失败: %w", err)
 	}
-
-	// 解压备份
-	if err := s.unzipFile(backup.BackupPath, savePath); err != nil {
+	if err := utils.UnzipFile(backup.BackupPath, savePath); err != nil {
 		return fmt.Errorf("恢复失败: %w", err)
 	}
-
 	return nil
 }
 
@@ -361,139 +286,12 @@ func (s *BackupService) DeleteBackup(backupID string) error {
 	if err != nil {
 		return fmt.Errorf("备份记录不存在")
 	}
-
-	// 删除文件
 	os.Remove(backupPath)
-
-	// 删除记录
 	_, err = s.db.ExecContext(s.ctx, "DELETE FROM game_backups WHERE id = ?", backupID)
 	return err
 }
 
-// OpenBackupFolder 打开备份文件夹
-func (s *BackupService) OpenBackupFolder(gameID string) error {
-	backupDir, err := s.GetBackupDir()
-	if err != nil {
-		return err
-	}
-	gameBackupDir := filepath.Join(backupDir, gameID)
-	os.MkdirAll(gameBackupDir, 0755)
-
-	// 根据操作系统使用不同命令打开文件夹
-	var cmd *exec.Cmd
-	switch goruntime.GOOS {
-	case "windows":
-		cmd = exec.Command("explorer", gameBackupDir)
-	case "darwin":
-		cmd = exec.Command("open", gameBackupDir)
-	default: // linux
-		cmd = exec.Command("xdg-open", gameBackupDir)
-	}
-	return cmd.Start()
-}
-
-// zipDirectory 压缩目录
-func (s *BackupService) zipDirectory(source, target string) (int64, error) {
-	zipFile, err := os.Create(target)
-	if err != nil {
-		return 0, err
-	}
-	defer zipFile.Close()
-
-	archive := zip.NewWriter(zipFile)
-	defer archive.Close()
-
-	filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		header, err := zip.FileInfoHeader(info)
-		if err != nil {
-			return err
-		}
-
-		relPath, _ := filepath.Rel(source, path)
-		header.Name = strings.ReplaceAll(relPath, "\\", "/")
-
-		if info.IsDir() {
-			header.Name += "/"
-		} else {
-			header.Method = zip.Deflate
-		}
-
-		writer, err := archive.CreateHeader(header)
-		if err != nil {
-			return err
-		}
-
-		if !info.IsDir() {
-			file, err := os.Open(path)
-			if err != nil {
-				return err
-			}
-			defer file.Close()
-			_, err = io.Copy(writer, file)
-		}
-		return err
-	})
-
-	stat, _ := os.Stat(target)
-	return stat.Size(), nil
-}
-
-// unzipFile 解压文件
-func (s *BackupService) unzipFile(source, target string) error {
-	reader, err := zip.OpenReader(source)
-	if err != nil {
-		return err
-	}
-	defer reader.Close()
-
-	for _, file := range reader.File {
-		path := filepath.Join(target, file.Name)
-
-		if file.FileInfo().IsDir() {
-			os.MkdirAll(path, file.Mode())
-			continue
-		}
-
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-			return err
-		}
-
-		dstFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
-		if err != nil {
-			return err
-		}
-
-		srcFile, err := file.Open()
-		if err != nil {
-			dstFile.Close()
-			return err
-		}
-
-		_, err = io.Copy(dstFile, srcFile)
-		srcFile.Close()
-		dstFile.Close()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ========== 云备份相关方法 ==========
-
-// getCloudPath 获取云端路径
-func (s *BackupService) getCloudPath(subPath string) string {
-	return fmt.Sprintf("v1/%s/%s", s.config.BackupUserID, subPath)
-}
-
-// getOneDrivePath 获取 OneDrive 云端路径
-func (s *BackupService) getOneDrivePath(subPath string) string {
-	return s.getOneDriveCloudPath(subPath)
-}
+// ========== 游戏存档云备份方法 ==========
 
 // UploadGameBackupToCloud 上传游戏存档到云端
 func (s *BackupService) UploadGameBackupToCloud(gameID string, backupID string) error {
@@ -501,79 +299,33 @@ func (s *BackupService) UploadGameBackupToCloud(gameID string, backupID string) 
 		return fmt.Errorf("备份用户 ID 未设置")
 	}
 
-	// 获取本地备份信息
+	provider, err := s.getCloudProvider()
+	if err != nil {
+		return err
+	}
+
 	var backupPath string
-	err := s.db.QueryRowContext(s.ctx, "SELECT backup_path FROM game_backups WHERE id = ?", backupID).Scan(&backupPath)
+	err = s.db.QueryRowContext(s.ctx, "SELECT backup_path FROM game_backups WHERE id = ?", backupID).Scan(&backupPath)
 	if err != nil {
 		return fmt.Errorf("备份记录不存在")
 	}
 
 	timestamp := time.Now().Format("2006-01-02T15-04-05")
+	cloudPath := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s/%s.zip", gameID, timestamp))
 
-	// 根据提供商选择上传方式
-	if s.config.CloudBackupProvider == "onedrive" {
-		return s.uploadToOneDrive(gameID, backupPath, timestamp)
-	}
-	return s.uploadToS3(gameID, backupPath, timestamp)
-}
+	// 确保文件夹存在 (OneDrive 需要)
+	folderPath := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s", gameID))
+	provider.EnsureDir(s.ctx, folderPath)
 
-// uploadToS3 上传到 S3
-func (s *BackupService) uploadToS3(gameID, backupPath, timestamp string) error {
-	s3Client, err := s.getS3Client()
-	if err != nil {
-		return err
-	}
-
-	// 生成云端路径
-	cloudKey := s.getCloudPath(fmt.Sprintf("saves/%s/%s.zip", gameID, timestamp))
-
-	// 上传文件
-	if err := s3Client.UploadFile(s.ctx, cloudKey, backupPath); err != nil {
+	if err := provider.UploadFile(s.ctx, cloudPath, backupPath); err != nil {
 		return fmt.Errorf("上传失败: %w", err)
 	}
 
 	// 更新 latest
-	latestKey := s.getCloudPath(fmt.Sprintf("saves/%s/latest.zip", gameID))
-	if err := s3Client.UploadFile(s.ctx, latestKey, backupPath); err != nil {
-		// latest 更新失败不影响主流程
-	}
+	latestPath := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s/latest.zip", gameID))
+	provider.UploadFile(s.ctx, latestPath, backupPath)
 
-	// 清理旧版本
 	s.cleanupOldCloudBackups(gameID)
-
-	return nil
-}
-
-// uploadToOneDrive 上传到 OneDrive（OAuth API）
-func (s *BackupService) uploadToOneDrive(gameID, backupPath, timestamp string) error {
-	client, err := s.getOneDriveClient()
-	if err != nil {
-		return err
-	}
-
-	// 生成云端路径
-	cloudPath := s.getOneDriveCloudPath(fmt.Sprintf("saves/%s/%s.zip", gameID, timestamp))
-
-	// 确保文件夹存在
-	folderPath := s.getOneDriveCloudPath(fmt.Sprintf("saves/%s", gameID))
-	if err := client.CreateFolder(s.ctx, folderPath); err != nil {
-		// 文件夹可能已存在，忽略错误
-	}
-
-	// 上传文件
-	if err := client.UploadFile(s.ctx, cloudPath, backupPath); err != nil {
-		return fmt.Errorf("上传失败: %w", err)
-	}
-
-	// 更新 latest
-	latestPath := s.getOneDriveCloudPath(fmt.Sprintf("saves/%s/latest.zip", gameID))
-	if err := client.UploadFile(s.ctx, latestPath, backupPath); err != nil {
-		// latest 更新失败不影响主流程
-	}
-
-	// 清理旧版本
-	s.cleanupOldCloudBackups(gameID)
-
 	return nil
 }
 
@@ -583,93 +335,27 @@ func (s *BackupService) GetCloudGameBackups(gameID string) ([]vo.CloudBackupItem
 		return nil, fmt.Errorf("备份用户 ID 未设置")
 	}
 
-	if s.config.CloudBackupProvider == "onedrive" {
-		return s.getOneDriveGameBackups(gameID)
-	}
-	return s.getS3GameBackups(gameID)
-}
-
-// getS3GameBackups 获取 S3 云端游戏备份列表
-func (s *BackupService) getS3GameBackups(gameID string) ([]vo.CloudBackupItem, error) {
-	s3Client, err := s.getS3Client()
+	provider, err := s.getCloudProvider()
 	if err != nil {
 		return nil, err
 	}
 
-	prefix := s.getCloudPath(fmt.Sprintf("saves/%s/", gameID))
-	keys, err := s3Client.ListObjects(s.ctx, prefix)
+	listPath := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s/", gameID))
+	keys, err := provider.ListObjects(s.ctx, listPath)
 	if err != nil {
 		return nil, err
 	}
 
-	var items []vo.CloudBackupItem
-	for _, key := range keys {
-		// 跳过 latest
-		if strings.HasSuffix(key, "latest.zip") {
-			continue
-		}
-		// 解析时间戳
-		name := filepath.Base(key)
-		name = strings.TrimSuffix(name, ".zip")
-		t, _ := time.Parse("2006-01-02T15-04-05", name)
-
-		items = append(items, vo.CloudBackupItem{
-			Key:       key,
-			Name:      name,
-			CreatedAt: t,
-		})
-	}
-
-	// 按时间倒序
-	sort.Slice(items, func(i, j int) bool {
-		return items[i].CreatedAt.After(items[j].CreatedAt)
-	})
-
-	return items, nil
-}
-
-// getOneDriveGameBackups 获取 OneDrive 云端游戏备份列表（OAuth API）
-func (s *BackupService) getOneDriveGameBackups(gameID string) ([]vo.CloudBackupItem, error) {
-	client, err := s.getOneDriveClient()
-	if err != nil {
-		return nil, err
-	}
-
-	folderPath := s.getOneDriveCloudPath(fmt.Sprintf("saves/%s", gameID))
-	keys, err := client.ListObjects(s.ctx, folderPath)
-	if err != nil {
-		return nil, err
-	}
-
-	var items []vo.CloudBackupItem
-	for _, key := range keys {
-		// 跳过 latest
-		if strings.HasSuffix(key, "latest.zip") {
-			continue
-		}
-		// 解析时间戳
-		name := filepath.Base(key)
-		name = strings.TrimSuffix(name, ".zip")
-		t, _ := time.Parse("2006-01-02T15-04-05", name)
-
-		items = append(items, vo.CloudBackupItem{
-			Key:       key,
-			Name:      name,
-			CreatedAt: t,
-		})
-	}
-
-	// 按时间倒序
-	sort.Slice(items, func(i, j int) bool {
-		return items[i].CreatedAt.After(items[j].CreatedAt)
-	})
-
-	return items, nil
+	return s.parseCloudBackupItems(keys, ""), nil
 }
 
 // DownloadCloudBackup 从云端下载备份
 func (s *BackupService) DownloadCloudBackup(cloudKey string, gameID string) (string, error) {
-	// 创建临时目录
+	provider, err := s.getCloudProvider()
+	if err != nil {
+		return "", err
+	}
+
 	backupDir, err := s.GetBackupDir()
 	if err != nil {
 		return "", err
@@ -677,39 +363,20 @@ func (s *BackupService) DownloadCloudBackup(cloudKey string, gameID string) (str
 	cloudDownloadDir := filepath.Join(backupDir, gameID, "cloud_download")
 	os.MkdirAll(cloudDownloadDir, 0755)
 
-	// 下载文件
 	destPath := filepath.Join(cloudDownloadDir, filepath.Base(cloudKey))
-
-	if s.config.CloudBackupProvider == "onedrive" {
-		client, err := s.getOneDriveClient()
-		if err != nil {
-			return "", err
-		}
-		if err := client.DownloadFile(s.ctx, cloudKey, destPath); err != nil {
-			return "", fmt.Errorf("下载失败: %w", err)
-		}
-	} else {
-		s3Client, err := s.getS3Client()
-		if err != nil {
-			return "", err
-		}
-		if err := s3Client.DownloadFile(s.ctx, cloudKey, destPath); err != nil {
-			return "", fmt.Errorf("下载失败: %w", err)
-		}
+	if err := provider.DownloadFile(s.ctx, cloudKey, destPath); err != nil {
+		return "", fmt.Errorf("下载失败: %w", err)
 	}
-
 	return destPath, nil
 }
 
 // RestoreFromCloud 从云端恢复备份
 func (s *BackupService) RestoreFromCloud(cloudKey string, gameID string) error {
-	// 下载云端备份
 	localPath, err := s.DownloadCloudBackup(cloudKey, gameID)
 	if err != nil {
 		return err
 	}
 
-	// 获取游戏存档目录
 	var savePath string
 	err = s.db.QueryRowContext(s.ctx, "SELECT COALESCE(save_path, '') FROM games WHERE id = ?", gameID).Scan(&savePath)
 	if err != nil || savePath == "" {
@@ -722,20 +389,21 @@ func (s *BackupService) RestoreFromCloud(cloudKey string, gameID string) error {
 		preRestoreDir := filepath.Join(backupDir, gameID, "pre_restore")
 		os.MkdirAll(preRestoreDir, 0755)
 		preRestorePath := filepath.Join(preRestoreDir, fmt.Sprintf("%s_before_cloud_restore.zip", time.Now().Format("2006-01-02T15-04-05")))
-		s.zipDirectory(savePath, preRestorePath)
+		_, err := utils.ZipDirectory(savePath, preRestorePath)
+		if err != nil {
+			return err
+		}
 	}
 
-	// 清空并恢复
 	if err := os.RemoveAll(savePath); err != nil {
 		return fmt.Errorf("清空存档目录失败: %w", err)
 	}
 	if err := os.MkdirAll(savePath, 0755); err != nil {
 		return fmt.Errorf("创建存档目录失败: %w", err)
 	}
-	if err := s.unzipFile(localPath, savePath); err != nil {
+	if err := utils.UnzipFile(localPath, savePath); err != nil {
 		return fmt.Errorf("恢复失败: %w", err)
 	}
-
 	return nil
 }
 
@@ -751,81 +419,49 @@ func (s *BackupService) cleanupOldCloudBackups(gameID string) {
 		return
 	}
 
-	// 删除超出保留数量的旧备份
-	for i := retention; i < len(items); i++ {
-		if s.config.CloudBackupProvider == "onedrive" {
-			client, err := s.getOneDriveClient()
-			if err != nil {
-				return
-			}
-			client.DeleteObject(s.ctx, items[i].Key)
-		} else {
-			s3Client, err := s.getS3Client()
-			if err != nil {
-				return
-			}
-			s3Client.DeleteObject(s.ctx, items[i].Key)
-		}
-	}
-}
-
-// ========== 数据库备份相关方法 ==========
-
-// GetDBBackupDir 获取数据库备份目录
-func (s *BackupService) GetDBBackupDir() (string, error) {
-	execPath, err := os.Executable()
+	provider, err := s.getCloudProvider()
 	if err != nil {
-		return "", err
+		return
 	}
-	backupDir := filepath.Join(filepath.Dir(execPath), "backups", "database")
-	if err := os.MkdirAll(backupDir, 0755); err != nil {
-		return "", err
+
+	for i := retention; i < len(items); i++ {
+		provider.DeleteObject(s.ctx, items[i].Key)
 	}
-	return backupDir, nil
 }
+
+// ========== 数据库本地备份方法 ==========
 
 // CreateDBBackup 创建数据库备份
 func (s *BackupService) CreateDBBackup() (*vo.DBBackupInfo, error) {
-	// 创建备份目录
 	backupDir, err := s.GetDBBackupDir()
 	if err != nil {
 		return nil, err
 	}
 
-	// 生成备份文件名和导出目录
 	timestamp := time.Now().Format("2006-01-02T15-04-05")
 	exportDir := filepath.Join(backupDir, fmt.Sprintf("export_%s", timestamp))
 	backupFileName := fmt.Sprintf("lunabox_%s.zip", timestamp)
 	backupPath := filepath.Join(backupDir, backupFileName)
 
-	// 使用 DuckDB 的 EXPORT DATABASE 命令安全导出
-	// 这样可以避免文件锁问题
 	exportPath := strings.ReplaceAll(exportDir, "\\", "/")
 	_, err = s.db.ExecContext(s.ctx, fmt.Sprintf("EXPORT DATABASE '%s'", exportPath))
 	if err != nil {
 		return nil, fmt.Errorf("导出数据库失败: %w", err)
 	}
 
-	// 将导出的目录压缩为 zip 文件
-	_, err = s.zipDirectory(exportDir, backupPath)
+	_, err = utils.ZipDirectory(exportDir, backupPath)
 	if err != nil {
 		os.RemoveAll(exportDir)
 		return nil, fmt.Errorf("压缩备份失败: %w", err)
 	}
-
-	// 删除临时导出目录
 	os.RemoveAll(exportDir)
 
-	// 获取文件大小
 	stat, err := os.Stat(backupPath)
 	if err != nil {
 		return nil, err
 	}
 
-	// 更新上次备份时间
 	s.config.LastDBBackupTime = time.Now().Format(time.RFC3339)
-
-	// 清理旧备份（保留最近 10 个）
 	s.cleanupOldDBBackups(10)
 
 	return &vo.DBBackupInfo{
@@ -865,7 +501,6 @@ func (s *BackupService) GetDBBackups() (*vo.DBBackupStatus, error) {
 		})
 	}
 
-	// 按时间倒序
 	sort.Slice(backups, func(i, j int) bool {
 		return backups[i].CreatedAt.After(backups[j].CreatedAt)
 	})
@@ -878,19 +513,15 @@ func (s *BackupService) GetDBBackups() (*vo.DBBackupStatus, error) {
 
 // ScheduleDBRestore 安排数据库恢复（下次启动时执行）
 func (s *BackupService) ScheduleDBRestore(backupPath string) error {
-	// 检查备份文件是否存在
 	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
 		return fmt.Errorf("备份文件不存在: %s", backupPath)
 	}
-
-	// 设置待恢复路径
 	s.config.PendingDBRestore = backupPath
 	return nil
 }
 
 // DeleteDBBackup 删除数据库备份
 func (s *BackupService) DeleteDBBackup(backupPath string) error {
-	// 安全检查：确保是在备份目录内
 	backupDir, err := s.GetDBBackupDir()
 	if err != nil {
 		return err
@@ -901,147 +532,18 @@ func (s *BackupService) DeleteDBBackup(backupPath string) error {
 	return os.Remove(backupPath)
 }
 
-// copyFile 复制文件
-func (s *BackupService) copyFile(src, dst string) error {
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer srcFile.Close()
-
-	dstFile, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer dstFile.Close()
-
-	_, err = io.Copy(dstFile, srcFile)
-	return err
-}
-
 // cleanupOldDBBackups 清理旧的数据库备份
 func (s *BackupService) cleanupOldDBBackups(retention int) {
 	status, err := s.GetDBBackups()
 	if err != nil || len(status.Backups) <= retention {
 		return
 	}
-
-	// 删除超出保留数量的旧备份
 	for i := retention; i < len(status.Backups); i++ {
 		os.Remove(status.Backups[i].Path)
 	}
 }
 
-// ExecuteDBRestore 执行数据库恢复（在 OnStartup 中、打开数据库前调用）
-// 返回值: 是否执行了恢复操作
-func ExecuteDBRestore(config *appconf.AppConfig) (bool, error) {
-	if config.PendingDBRestore == "" {
-		return false, nil
-	}
-
-	backupPath := config.PendingDBRestore
-
-	// 检查备份文件是否存在
-	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
-		config.PendingDBRestore = ""
-		appconf.SaveConfig(config)
-		return false, fmt.Errorf("备份文件不存在: %s", backupPath)
-	}
-
-	// 获取数据库文件路径
-	execPath, err := os.Executable()
-	if err != nil {
-		return false, err
-	}
-	execDir := filepath.Dir(execPath)
-	dbPath := filepath.Join(execDir, "lunabox.db")
-
-	// 解压备份到临时目录
-	tempDir := filepath.Join(execDir, "backups", "database", "restore_temp")
-	os.RemoveAll(tempDir)
-	if err := os.MkdirAll(tempDir, 0755); err != nil {
-		return false, fmt.Errorf("创建临时目录失败: %w", err)
-	}
-
-	// 解压 zip 文件
-	if err := unzipForRestore(backupPath, tempDir); err != nil {
-		os.RemoveAll(tempDir)
-		return false, fmt.Errorf("解压备份失败: %w", err)
-	}
-
-	// 删除旧数据库文件
-	os.Remove(dbPath)
-	// 同时删除 WAL 文件（如果存在）
-	os.Remove(dbPath + ".wal")
-
-	// 打开新数据库并导入
-	db, err := sql.Open("duckdb", dbPath)
-	if err != nil {
-		os.RemoveAll(tempDir)
-		return false, fmt.Errorf("打开数据库失败: %w", err)
-	}
-
-	// 使用 IMPORT DATABASE 恢复数据
-	importPath := strings.ReplaceAll(tempDir, "\\", "/")
-	_, err = db.Exec(fmt.Sprintf("IMPORT DATABASE '%s'", importPath))
-	db.Close()
-
-	// 清理临时目录
-	os.RemoveAll(tempDir)
-
-	if err != nil {
-		return false, fmt.Errorf("导入数据库失败: %w", err)
-	}
-
-	// 清除待恢复标记
-	config.PendingDBRestore = ""
-	appconf.SaveConfig(config)
-
-	return true, nil
-}
-
-// unzipForRestore 解压文件用于恢复
-func unzipForRestore(src, dest string) error {
-	reader, err := zip.OpenReader(src)
-	if err != nil {
-		return err
-	}
-	defer reader.Close()
-
-	for _, file := range reader.File {
-		path := filepath.Join(dest, file.Name)
-
-		if file.FileInfo().IsDir() {
-			os.MkdirAll(path, file.Mode())
-			continue
-		}
-
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-			return err
-		}
-
-		dstFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
-		if err != nil {
-			return err
-		}
-
-		srcFile, err := file.Open()
-		if err != nil {
-			dstFile.Close()
-			return err
-		}
-
-		_, err = io.Copy(dstFile, srcFile)
-		srcFile.Close()
-		dstFile.Close()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ========== 数据库云备份相关方法 ==========
+// ========== 数据库云备份方法 ==========
 
 // UploadDBBackupToCloud 上传数据库备份到云端
 func (s *BackupService) UploadDBBackupToCloud(backupPath string) error {
@@ -1049,78 +551,29 @@ func (s *BackupService) UploadDBBackupToCloud(backupPath string) error {
 		return fmt.Errorf("备份用户 ID 未设置")
 	}
 
-	// 检查备份文件是否存在
+	provider, err := s.getCloudProvider()
+	if err != nil {
+		return err
+	}
+
 	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
 		return fmt.Errorf("备份文件不存在: %s", backupPath)
 	}
 
-	// 获取文件名作为云端文件名
 	fileName := filepath.Base(backupPath)
+	cloudKey := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("database/%s", fileName))
 
-	// 根据提供商选择上传方式
-	if s.config.CloudBackupProvider == "onedrive" {
-		return s.uploadDBToOneDrive(backupPath, fileName)
-	}
-	return s.uploadDBToS3(backupPath, fileName)
-}
+	folderPath := provider.GetCloudPath(s.config.BackupUserID, "database")
+	provider.EnsureDir(s.ctx, folderPath)
 
-// uploadDBToS3 上传数据库备份到 S3
-func (s *BackupService) uploadDBToS3(backupPath, fileName string) error {
-	s3Client, err := s.getS3Client()
-	if err != nil {
-		return err
-	}
-
-	// 生成云端路径: v1/{user_id}/database/{filename}
-	cloudKey := s.getCloudPath(fmt.Sprintf("database/%s", fileName))
-
-	// 上传文件
-	if err := s3Client.UploadFile(s.ctx, cloudKey, backupPath); err != nil {
+	if err := provider.UploadFile(s.ctx, cloudKey, backupPath); err != nil {
 		return fmt.Errorf("上传失败: %w", err)
 	}
 
-	// 更新 latest
-	latestKey := s.getCloudPath("database/latest.zip")
-	if err := s3Client.UploadFile(s.ctx, latestKey, backupPath); err != nil {
-		// latest 更新失败不影响主流程
-	}
+	latestKey := provider.GetCloudPath(s.config.BackupUserID, "database/latest.zip")
+	provider.UploadFile(s.ctx, latestKey, backupPath)
 
-	// 清理旧版本
 	s.cleanupOldCloudDBBackups()
-
-	return nil
-}
-
-// uploadDBToOneDrive 上传数据库备份到 OneDrive
-func (s *BackupService) uploadDBToOneDrive(backupPath, fileName string) error {
-	client, err := s.getOneDriveClient()
-	if err != nil {
-		return err
-	}
-
-	// 生成云端路径
-	cloudPath := s.getOneDriveCloudPath(fmt.Sprintf("database/%s", fileName))
-
-	// 确保文件夹存在
-	folderPath := s.getOneDriveCloudPath("database")
-	if err := client.CreateFolder(s.ctx, folderPath); err != nil {
-		// 文件夹可能已存在，忽略错误
-	}
-
-	// 上传文件
-	if err := client.UploadFile(s.ctx, cloudPath, backupPath); err != nil {
-		return fmt.Errorf("上传失败: %w", err)
-	}
-
-	// 更新 latest
-	latestPath := s.getOneDriveCloudPath("database/latest.zip")
-	if err := client.UploadFile(s.ctx, latestPath, backupPath); err != nil {
-		// latest 更新失败不影响主流程
-	}
-
-	// 清理旧版本
-	s.cleanupOldCloudDBBackups()
-
 	return nil
 }
 
@@ -1130,98 +583,27 @@ func (s *BackupService) GetCloudDBBackups() ([]vo.CloudBackupItem, error) {
 		return nil, fmt.Errorf("备份用户 ID 未设置")
 	}
 
-	if s.config.CloudBackupProvider == "onedrive" {
-		return s.getOneDriveDBBackups()
-	}
-	return s.getS3DBBackups()
-}
-
-// getS3DBBackups 获取 S3 云端数据库备份列表
-func (s *BackupService) getS3DBBackups() ([]vo.CloudBackupItem, error) {
-	s3Client, err := s.getS3Client()
+	provider, err := s.getCloudProvider()
 	if err != nil {
 		return nil, err
 	}
 
-	prefix := s.getCloudPath("database/")
-	keys, err := s3Client.ListObjects(s.ctx, prefix)
+	prefix := provider.GetCloudPath(s.config.BackupUserID, "database/")
+	keys, err := provider.ListObjects(s.ctx, prefix)
 	if err != nil {
 		return nil, err
 	}
 
-	var items []vo.CloudBackupItem
-	for _, key := range keys {
-		// 跳过 latest
-		if strings.HasSuffix(key, "latest.zip") {
-			continue
-		}
-		// 解析时间戳
-		name := filepath.Base(key)
-		// 文件名格式: lunabox_2006-01-02T15-04-05.zip
-		name = strings.TrimPrefix(name, "lunabox_")
-		name = strings.TrimSuffix(name, ".zip")
-		t, _ := time.Parse("2006-01-02T15-04-05", name)
-
-		items = append(items, vo.CloudBackupItem{
-			Key:       key,
-			Name:      filepath.Base(key),
-			CreatedAt: t,
-		})
-	}
-
-	// 按时间倒序
-	sort.Slice(items, func(i, j int) bool {
-		return items[i].CreatedAt.After(items[j].CreatedAt)
-	})
-
-	return items, nil
-}
-
-// getOneDriveDBBackups 获取 OneDrive 云端数据库备份列表
-func (s *BackupService) getOneDriveDBBackups() ([]vo.CloudBackupItem, error) {
-	client, err := s.getOneDriveClient()
-	if err != nil {
-		return nil, err
-	}
-
-	folderPath := s.getOneDriveCloudPath("database")
-	keys, err := client.ListObjects(s.ctx, folderPath)
-	if err != nil {
-		return nil, err
-	}
-
-	var items []vo.CloudBackupItem
-	for _, key := range keys {
-		// 跳过 latest
-		if strings.HasSuffix(key, "latest.zip") {
-			continue
-		}
-		// 解析时间戳
-		name := filepath.Base(key)
-		// 文件名格式: lunabox_2006-01-02T15-04-05.zip
-		displayName := name
-		name = strings.TrimPrefix(name, "lunabox_")
-		name = strings.TrimSuffix(name, ".zip")
-		t, _ := time.Parse("2006-01-02T15-04-05", name)
-
-		items = append(items, vo.CloudBackupItem{
-			Key:       key,
-			Name:      displayName,
-			CreatedAt: t,
-		})
-	}
-
-	// 按时间倒序
-	sort.Slice(items, func(i, j int) bool {
-		return items[i].CreatedAt.After(items[j].CreatedAt)
-	})
-
-	return items, nil
+	return s.parseCloudBackupItems(keys, "lunabox_"), nil
 }
 
 // DownloadCloudDBBackup 从云端下载数据库备份
 func (s *BackupService) DownloadCloudDBBackup(cloudKey string) (string, error) {
-	// 创建下载目录
+	provider, err := s.getCloudProvider()
+	if err != nil {
+		return "", err
+	}
+
 	backupDir, err := s.GetDBBackupDir()
 	if err != nil {
 		return "", err
@@ -1229,39 +611,19 @@ func (s *BackupService) DownloadCloudDBBackup(cloudKey string) (string, error) {
 	cloudDownloadDir := filepath.Join(backupDir, "cloud_download")
 	os.MkdirAll(cloudDownloadDir, 0755)
 
-	// 下载文件
 	destPath := filepath.Join(cloudDownloadDir, filepath.Base(cloudKey))
-
-	if s.config.CloudBackupProvider == "onedrive" {
-		client, err := s.getOneDriveClient()
-		if err != nil {
-			return "", err
-		}
-		if err := client.DownloadFile(s.ctx, cloudKey, destPath); err != nil {
-			return "", fmt.Errorf("下载失败: %w", err)
-		}
-	} else {
-		s3Client, err := s.getS3Client()
-		if err != nil {
-			return "", err
-		}
-		if err := s3Client.DownloadFile(s.ctx, cloudKey, destPath); err != nil {
-			return "", fmt.Errorf("下载失败: %w", err)
-		}
+	if err := provider.DownloadFile(s.ctx, cloudKey, destPath); err != nil {
+		return "", fmt.Errorf("下载失败: %w", err)
 	}
-
 	return destPath, nil
 }
 
 // ScheduleDBRestoreFromCloud 从云端下载并安排数据库恢复
 func (s *BackupService) ScheduleDBRestoreFromCloud(cloudKey string) error {
-	// 下载云端备份
 	localPath, err := s.DownloadCloudDBBackup(cloudKey)
 	if err != nil {
 		return err
 	}
-
-	// 安排恢复
 	return s.ScheduleDBRestore(localPath)
 }
 
@@ -1277,39 +639,112 @@ func (s *BackupService) cleanupOldCloudDBBackups() {
 		return
 	}
 
-	// 删除超出保留数量的旧备份
+	provider, err := s.getCloudProvider()
+	if err != nil {
+		return
+	}
+
 	for i := retention; i < len(items); i++ {
-		if s.config.CloudBackupProvider == "onedrive" {
-			client, err := s.getOneDriveClient()
-			if err != nil {
-				return
-			}
-			client.DeleteObject(s.ctx, items[i].Key)
-		} else {
-			s3Client, err := s.getS3Client()
-			if err != nil {
-				return
-			}
-			s3Client.DeleteObject(s.ctx, items[i].Key)
-		}
+		provider.DeleteObject(s.ctx, items[i].Key)
 	}
 }
 
 // CreateAndUploadDBBackup 创建数据库备份并上传到云端
 func (s *BackupService) CreateAndUploadDBBackup() (*vo.DBBackupInfo, error) {
-	// 先创建本地备份
 	backup, err := s.CreateDBBackup()
 	if err != nil {
 		return nil, err
 	}
 
-	// 如果云备份已启用，上传到云端
 	if s.config.CloudBackupEnabled && s.config.BackupUserID != "" {
 		if err := s.UploadDBBackupToCloud(backup.Path); err != nil {
-			// 云端上传失败不影响本地备份，只记录错误
 			return backup, fmt.Errorf("本地备份成功，但云端上传失败: %w", err)
 		}
 	}
-
 	return backup, nil
+}
+
+// ========== 辅助方法 ==========
+
+// parseCloudBackupItems 解析云端备份列表
+func (s *BackupService) parseCloudBackupItems(keys []string, prefix string) []vo.CloudBackupItem {
+	var items []vo.CloudBackupItem
+	for _, key := range keys {
+		if strings.HasSuffix(key, "latest.zip") {
+			continue
+		}
+		name := filepath.Base(key)
+		displayName := name
+		name = strings.TrimPrefix(name, prefix)
+		name = strings.TrimSuffix(name, ".zip")
+		t, _ := time.Parse("2006-01-02T15-04-05", name)
+
+		items = append(items, vo.CloudBackupItem{
+			Key:       key,
+			Name:      displayName,
+			CreatedAt: t,
+		})
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].CreatedAt.After(items[j].CreatedAt)
+	})
+	return items
+}
+
+// ========== 数据库恢复（启动时调用）==========
+
+// ExecuteDBRestore 执行数据库恢复（在 OnStartup 中、打开数据库前调用）
+func ExecuteDBRestore(config *appconf.AppConfig) (bool, error) {
+	if config.PendingDBRestore == "" {
+		return false, nil
+	}
+
+	backupPath := config.PendingDBRestore
+
+	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+		config.PendingDBRestore = ""
+		appconf.SaveConfig(config)
+		return false, fmt.Errorf("备份文件不存在: %s", backupPath)
+	}
+
+	execPath, err := os.Executable()
+	if err != nil {
+		return false, err
+	}
+	execDir := filepath.Dir(execPath)
+	dbPath := filepath.Join(execDir, "lunabox.db")
+
+	tempDir := filepath.Join(execDir, "backups", "database", "restore_temp")
+	os.RemoveAll(tempDir)
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return false, fmt.Errorf("创建临时目录失败: %w", err)
+	}
+
+	if err := utils.UnzipForRestore(backupPath, tempDir); err != nil {
+		os.RemoveAll(tempDir)
+		return false, fmt.Errorf("解压备份失败: %w", err)
+	}
+
+	os.Remove(dbPath)
+	os.Remove(dbPath + ".wal")
+
+	db, err := sql.Open("duckdb", dbPath)
+	if err != nil {
+		os.RemoveAll(tempDir)
+		return false, fmt.Errorf("打开数据库失败: %w", err)
+	}
+
+	importPath := strings.ReplaceAll(tempDir, "\\", "/")
+	_, err = db.Exec(fmt.Sprintf("IMPORT DATABASE '%s'", importPath))
+	db.Close()
+	os.RemoveAll(tempDir)
+
+	if err != nil {
+		return false, fmt.Errorf("导入数据库失败: %w", err)
+	}
+
+	config.PendingDBRestore = ""
+	appconf.SaveConfig(config)
+	return true, nil
 }

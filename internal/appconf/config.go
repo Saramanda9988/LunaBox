@@ -30,6 +30,7 @@ type AppConfig struct {
 	S3SecretKey          string `json:"s3_secret_key,omitempty"`          // S3 Secret Key
 	CloudBackupRetention int    `json:"cloud_backup_retention,omitempty"` // 云端保留备份数量
 	// OneDrive OAuth 配置
+	OneDriveClientID     string `json:"onedrive_client_id,omitempty"`     // OneDrive Client ID
 	OneDriveRefreshToken string `json:"onedrive_refresh_token,omitempty"` // OneDrive Refresh Token（OAuth 授权后获得）
 	// 数据库备份
 	LastDBBackupTime string `json:"last_db_backup_time,omitempty"` // 上次数据库备份时间
@@ -56,6 +57,7 @@ func LoadConfig() (*AppConfig, error) {
 		S3AccessKey:          "",
 		S3SecretKey:          "",
 		CloudBackupRetention: 20,
+		OneDriveClientID:     "",
 		OneDriveRefreshToken: "",
 		LastDBBackupTime:     "",
 		PendingDBRestore:     "",
