@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"lunabox/internal/appconf"
 	"lunabox/internal/utils"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type ConfigService struct {
@@ -30,6 +32,7 @@ func (s *ConfigService) GetAppConfig() (appconf.AppConfig, error) {
 
 func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	if newConfig.Theme == "" || newConfig.Language == "" {
+		runtime.LogErrorf(s.ctx, "invalid config")
 		return fmt.Errorf("invalid config")
 	}
 
@@ -40,6 +43,7 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 
 	err := appconf.SaveConfig(&newConfig)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "failed to save config: %v", err)
 		return err
 	}
 

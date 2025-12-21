@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"log"
 	"lunabox/internal/appconf"
 	"lunabox/internal/enums"
 	"lunabox/internal/service"
@@ -18,6 +17,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 
 	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/logger"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
@@ -32,10 +32,12 @@ var db *sql.DB
 var config *appconf.AppConfig
 
 func main() {
+	appLogger := logger.NewFileLogger("app.log")
+
 	var loadErr error
 	config, loadErr = appconf.LoadConfig()
 	if loadErr != nil {
-		log.Fatal(loadErr)
+		appLogger.Fatal(loadErr.Error())
 	}
 
 	gameService := service.NewGameService()
@@ -51,12 +53,14 @@ func main() {
 	// 创建本地文件处理器
 	localFileHandler, err := utils.NewLocalFileHandler()
 	if err != nil {
-		log.Printf("Warning: Failed to create local file handler: %v", err)
+		appLogger.Error("Warning: Failed to create local file handler: " + err.Error())
 	}
 
 	// Create application with options
 	bootstrapErr := wails.Run(&options.App{
 		Title:     "lunabox",
+		Logger:    appLogger,
+		LogLevel:  logger.INFO,
 		Width:     1230,
 		Height:    800,
 		MinWidth:  1230,
@@ -98,24 +102,24 @@ func main() {
 			if config.PendingDBRestore != "" {
 				restored, restoreErr := service.ExecuteDBRestore(config)
 				if restoreErr != nil {
-					log.Printf("恢复数据库失败: %v", restoreErr)
+					appLogger.Error("恢复数据库失败: " + restoreErr.Error())
 				} else if restored {
-					log.Println("数据库恢复成功")
+					appLogger.Info("数据库恢复成功")
 				}
 			}
 
 			execPath, err := os.Executable()
 			if err != nil {
-				log.Fatal(err)
+				appLogger.Fatal(err.Error())
 			}
 			dbPath := filepath.Join(filepath.Dir(execPath), "lunabox.db")
 			db, err = sql.Open("duckdb", dbPath)
 			if err != nil {
-				log.Fatal(err)
+				appLogger.Fatal(err.Error())
 			}
 
 			if err := initSchema(db); err != nil {
-				log.Fatal(err)
+				appLogger.Fatal(err.Error())
 			}
 
 			configService.Init(ctx, db, config)
@@ -131,12 +135,12 @@ func main() {
 		OnShutdown: func(ctx context.Context) {
 			// 关闭数据库连接
 			if err := db.Close(); err != nil {
-				log.Printf("关闭数据库失败: %v", err)
+				appLogger.Error("关闭数据库失败: " + err.Error())
 			}
 
 			// 保存配置
 			if err := appconf.SaveConfig(config); err != nil {
-				log.Printf("保存配置失败: %v", err)
+				appLogger.Error("保存配置失败: " + err.Error())
 			}
 		},
 		Bind: []interface{}{
@@ -157,11 +161,8 @@ func main() {
 	})
 
 	if bootstrapErr != nil {
-		println("Bootstrap Error:", bootstrapErr.Error())
-		log.Fatal(bootstrapErr)
+		appLogger.Fatal(bootstrapErr.Error())
 	}
-
-	log.Println("Bootstrap completed")
 }
 
 func initSchema(db *sql.DB) error {

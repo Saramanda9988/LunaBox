@@ -47,6 +47,9 @@ func (s *GameService) SelectGameExecutable() (string, error) {
 			},
 		},
 	})
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
+	}
 	return selection, err
 }
 
@@ -80,7 +83,9 @@ func (s *GameService) AddGame(game models.Game) error {
 		game.SourceID,
 		game.CreatedAt,
 	)
-
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "AddGame: failed to insert game %s: %v", game.Name, err)
+	}
 	return err
 }
 
@@ -88,26 +93,31 @@ func (s *GameService) DeleteGame(id string) error {
 	// 先删除关联的游戏分类记录
 	_, err := s.db.ExecContext(s.ctx, "DELETE FROM game_categories WHERE game_id = ?", id)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "DeleteGame: failed to delete game_categories for id %s: %v", id, err)
 		return fmt.Errorf("failed to delete game categories: %w", err)
 	}
 
 	// 删除关联的游玩会话记录
 	_, err = s.db.ExecContext(s.ctx, "DELETE FROM play_sessions WHERE game_id = ?", id)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "DeleteGame: failed to delete play_sessions for id %s: %v", id, err)
 		return fmt.Errorf("failed to delete play sessions: %w", err)
 	}
 	// 删除游戏记录
 	result, err := s.db.ExecContext(s.ctx, "DELETE FROM games WHERE id = ?", id)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "DeleteGame: failed to delete game for id %s: %v", id, err)
 		return fmt.Errorf("failed to delete game: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "DeleteGame: failed to get rows affected for id %s: %v", id, err)
 		return err
 	}
 
 	if rowsAffected == 0 {
+		runtime.LogWarningf(s.ctx, "DeleteGame: game not found with id: %s", id)
 		return fmt.Errorf("game not found with id: %s", id)
 	}
 
@@ -124,6 +134,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 
 	rows, err := s.db.QueryContext(s.ctx, query)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "GetGames: failed to query games: %v", err)
 		return nil, fmt.Errorf("failed to query games: %w", err)
 	}
 	defer rows.Close()
@@ -147,6 +158,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 			&game.CreatedAt,
 		)
 		if err != nil {
+			runtime.LogErrorf(s.ctx, "GetGames: failed to scan game row: %v", err)
 			return nil, fmt.Errorf("failed to scan game: %w", err)
 		}
 
@@ -155,6 +167,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 	}
 
 	if err = rows.Err(); err != nil {
+		runtime.LogErrorf(s.ctx, "GetGames: error iterating games: %v", err)
 		return nil, fmt.Errorf("error iterating games: %w", err)
 	}
 
@@ -187,9 +200,11 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 	)
 
 	if errors.Is(err, sql.ErrNoRows) {
+		runtime.LogWarningf(s.ctx, "GetGameByID: game not found with id: %s", id)
 		return models.Game{}, fmt.Errorf("game not found with id: %s", id)
 	}
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "GetGameByID: failed to query game %s: %v", id, err)
 		return models.Game{}, fmt.Errorf("failed to query game: %w", err)
 	}
 
@@ -224,15 +239,18 @@ func (s *GameService) UpdateGame(game models.Game) error {
 	)
 
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "UpdateGame: failed to update game %s: %v", game.ID, err)
 		return fmt.Errorf("failed to update game: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "UpdateGame: failed to get rows affected for id %s: %v", game.ID, err)
 		return err
 	}
 
 	if rowsAffected == 0 {
+		runtime.LogWarningf(s.ctx, "UpdateGame: game not found with id: %s", game.ID)
 		return fmt.Errorf("game not found with id: %s", game.ID)
 	}
 

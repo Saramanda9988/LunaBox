@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type TimerService struct {
@@ -34,15 +35,18 @@ func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 	//获取游戏路径
 	path, err := s.getGamePath(gameID)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "failed to get game path: %v", err)
 		return false, fmt.Errorf("failed to get game path: %w", err)
 	}
 
 	if path == "" {
+		runtime.LogErrorf(s.ctx, "failed to get game path: %v", err)
 		return false, fmt.Errorf("game path is empty for game: %s", gameID)
 	}
 
 	cmd := exec.Command(path)
 	if err := cmd.Start(); err != nil {
+		runtime.LogErrorf(s.ctx, "failed to start game: %v", err)
 		return false, fmt.Errorf("failed to start game: %w", err)
 	}
 
@@ -84,6 +88,7 @@ func (s *TimerService) waitForGameExit(cmd *exec.Cmd, sessionID string, startTim
 			sessionID,
 		)
 		if err != nil {
+			runtime.LogErrorf(s.ctx, "Failed to delete short play session %s: %v", sessionID, err)
 			fmt.Printf("Failed to delete short play session %s: %v\n", sessionID, err)
 		}
 		return
@@ -99,6 +104,7 @@ func (s *TimerService) waitForGameExit(cmd *exec.Cmd, sessionID string, startTim
 		sessionID,
 	)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "Failed to update play session %s: %v", sessionID, err)
 		fmt.Printf("Failed to update play session %s: %v\n", sessionID, err)
 	}
 }

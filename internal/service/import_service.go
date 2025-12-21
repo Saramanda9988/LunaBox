@@ -76,6 +76,7 @@ func (s *ImportService) ImportFromPotatoVN(zipPath string, skipNoPath bool) (Imp
 	// 打开 ZIP 文件
 	zipReader, err := zip.OpenReader(zipPath)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "failed to open ZIP file: %v", err)
 		return result, fmt.Errorf("无法打开 ZIP 文件: %w", err)
 	}
 	defer zipReader.Close()
@@ -83,12 +84,14 @@ func (s *ImportService) ImportFromPotatoVN(zipPath string, skipNoPath bool) (Imp
 	// 创建临时目录用于解压
 	tempDir, err := os.MkdirTemp("", "potatovn_import_*")
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "failed to create temp dir: %v", err)
 		return result, fmt.Errorf("无法创建临时目录: %w", err)
 	}
 	defer os.RemoveAll(tempDir)
 
 	// 解压文件
 	if err := s.extractZip(zipReader, tempDir); err != nil {
+		runtime.LogErrorf(s.ctx, "failed to extract ZIP: %v", err)
 		return result, fmt.Errorf("解压失败: %w", err)
 	}
 
@@ -96,17 +99,20 @@ func (s *ImportService) ImportFromPotatoVN(zipPath string, skipNoPath bool) (Imp
 	galgamesPath := filepath.Join(tempDir, "data.galgames.json")
 	galgamesData, err := os.ReadFile(galgamesPath)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "failed to read data.galgames.json: %v", err)
 		return result, fmt.Errorf("无法读取 data.galgames.json: %w", err)
 	}
 
 	var galgames []potatovn.Galgame
 	if err := json.Unmarshal(galgamesData, &galgames); err != nil {
+		runtime.LogErrorf(s.ctx, "failed to unmarshal data.galgames.json: %v", err)
 		return result, fmt.Errorf("解析 data.galgames.json 失败: %w", err)
 	}
 
 	// 获取现有游戏列表，用于去重检查
 	existingGames, err := s.gameService.GetGames()
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "failed to get existing games: %v", err)
 		return result, fmt.Errorf("获取现有游戏列表失败: %w", err)
 	}
 	existingNames := make(map[string]bool)
@@ -137,6 +143,7 @@ func (s *ImportService) ImportFromPotatoVN(zipPath string, skipNoPath bool) (Imp
 		game := s.convertToGame(galgame, tempDir)
 
 		if err := s.gameService.AddGame(game); err != nil {
+			runtime.LogErrorf(s.ctx, "failed to add game %s: %v", gameName, err)
 			result.Failed++
 			result.FailedNames = append(result.FailedNames, gameName)
 			continue
@@ -156,11 +163,13 @@ func (s *ImportService) extractZip(zipReader *zip.ReadCloser, destDir string) er
 
 		// 防止 ZIP Slip 攻击
 		if !strings.HasPrefix(filepath.Clean(filePath), filepath.Clean(destDir)+string(os.PathSeparator)) {
+			runtime.LogErrorf(s.ctx, "illegal file path in ZIP: %s", file.Name)
 			return fmt.Errorf("非法的文件路径: %s", file.Name)
 		}
 
 		if file.FileInfo().IsDir() {
 			if err := os.MkdirAll(filePath, os.ModePerm); err != nil {
+				runtime.LogErrorf(s.ctx, "failed to create dir in extractZip: %v", err)
 				return err
 			}
 			continue
@@ -168,17 +177,20 @@ func (s *ImportService) extractZip(zipReader *zip.ReadCloser, destDir string) er
 
 		// 确保父目录存在
 		if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
+			runtime.LogErrorf(s.ctx, "failed to create parent dir in extractZip: %v", err)
 			return err
 		}
 
 		// 解压文件
 		destFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
 		if err != nil {
+			runtime.LogErrorf(s.ctx, "failed to open dest file in extractZip: %v", err)
 			return err
 		}
 
 		srcFile, err := file.Open()
 		if err != nil {
+			runtime.LogErrorf(s.ctx, "failed to open src file in extractZip: %v", err)
 			destFile.Close()
 			return err
 		}
@@ -188,6 +200,7 @@ func (s *ImportService) extractZip(zipReader *zip.ReadCloser, destDir string) er
 		destFile.Close()
 
 		if err != nil {
+			runtime.LogErrorf(s.ctx, "failed to copy file in extractZip: %v", err)
 			return err
 		}
 	}
@@ -218,7 +231,11 @@ func (s *ImportService) convertToGame(galgame potatovn.Galgame, tempDir string) 
 			savedPath, err := s.saveCoverImage(coverPath, game.ID)
 			if err == nil {
 				game.CoverURL = savedPath
+			} else {
+				runtime.LogErrorf(s.ctx, "failed to save cover image for game %s: %v", game.Name, err)
 			}
+		} else {
+			runtime.LogErrorf(s.ctx, "cover image not found for game %s, path: %s", game.Name, galgame.ImagePath.Value)
 		}
 	}
 
@@ -268,6 +285,8 @@ func (s *ImportService) resolveCoverPath(imagePath string, tempDir string) strin
 		}
 	}
 
+	// 记录未找到封面图片的情况
+	runtime.LogWarningf(s.ctx, "resolveCoverPath: cover image not found, imagePath=%s, tempDir=%s", imagePath, tempDir)
 	return ""
 }
 
@@ -276,6 +295,7 @@ func (s *ImportService) saveCoverImage(srcPath string, gameID string) (string, e
 	// 获取应用程序目录
 	execPath, err := os.Executable()
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "saveCoverImage: failed to get executable path: %v", err)
 		return "", err
 	}
 	appDir := filepath.Dir(execPath)
@@ -283,6 +303,7 @@ func (s *ImportService) saveCoverImage(srcPath string, gameID string) (string, e
 	// 获取封面保存目录
 	coverDir := filepath.Join(appDir, "covers")
 	if err := os.MkdirAll(coverDir, os.ModePerm); err != nil {
+		runtime.LogErrorf(s.ctx, "saveCoverImage: failed to create cover dir: %v", err)
 		return "", err
 	}
 
@@ -299,17 +320,20 @@ func (s *ImportService) saveCoverImage(srcPath string, gameID string) (string, e
 	// 复制文件
 	srcFile, err := os.Open(srcPath)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "saveCoverImage: failed to open src file: %v", err)
 		return "", err
 	}
 	defer srcFile.Close()
 
 	destFile, err := os.Create(destPath)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "saveCoverImage: failed to create dest file: %v", err)
 		return "", err
 	}
 	defer destFile.Close()
 
 	if _, err := io.Copy(destFile, srcFile); err != nil {
+		runtime.LogErrorf(s.ctx, "saveCoverImage: failed to copy file: %v", err)
 		return "", err
 	}
 
@@ -322,6 +346,7 @@ func (s *ImportService) PreviewImport(zipPath string) ([]PreviewGame, error) {
 	// 打开 ZIP 文件
 	zipReader, err := zip.OpenReader(zipPath)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "PreviewImport: failed to open ZIP file: %v", err)
 		return nil, fmt.Errorf("无法打开 ZIP 文件: %w", err)
 	}
 	defer zipReader.Close()
@@ -329,21 +354,25 @@ func (s *ImportService) PreviewImport(zipPath string) ([]PreviewGame, error) {
 	// 创建临时目录用于解压
 	tempDir, err := os.MkdirTemp("", "potatovn_preview_*")
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "PreviewImport: failed to create temp dir: %v", err)
 		return nil, fmt.Errorf("无法创建临时目录: %w", err)
 	}
 	defer os.RemoveAll(tempDir)
 
 	// 只解压 data.galgames.json
+	found := false
 	for _, file := range zipReader.File {
 		if file.Name == "data.galgames.json" {
 			filePath := filepath.Join(tempDir, file.Name)
 			destFile, err := os.Create(filePath)
 			if err != nil {
+				runtime.LogErrorf(s.ctx, "PreviewImport: failed to create data.galgames.json: %v", err)
 				return nil, err
 			}
 
 			srcFile, err := file.Open()
 			if err != nil {
+				runtime.LogErrorf(s.ctx, "PreviewImport: failed to open data.galgames.json in ZIP: %v", err)
 				destFile.Close()
 				return nil, err
 			}
@@ -353,27 +382,35 @@ func (s *ImportService) PreviewImport(zipPath string) ([]PreviewGame, error) {
 			destFile.Close()
 
 			if err != nil {
+				runtime.LogErrorf(s.ctx, "PreviewImport: failed to copy data.galgames.json: %v", err)
 				return nil, err
 			}
+			found = true
 			break
 		}
+	}
+	if !found {
+		runtime.LogWarningf(s.ctx, "PreviewImport: data.galgames.json not found in ZIP: %s", zipPath)
 	}
 
 	// 读取 data.galgames.json
 	galgamesPath := filepath.Join(tempDir, "data.galgames.json")
 	galgamesData, err := os.ReadFile(galgamesPath)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "PreviewImport: failed to read data.galgames.json: %v", err)
 		return nil, fmt.Errorf("无法读取 data.galgames.json: %w", err)
 	}
 
 	var galgames []potatovn.Galgame
 	if err := json.Unmarshal(galgamesData, &galgames); err != nil {
+		runtime.LogErrorf(s.ctx, "PreviewImport: failed to unmarshal data.galgames.json: %v", err)
 		return nil, fmt.Errorf("解析 data.galgames.json 失败: %w", err)
 	}
 
 	// 获取现有游戏列表，用于去重检查
 	existingGames, err := s.gameService.GetGames()
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "PreviewImport: failed to get existing games: %v", err)
 		return nil, fmt.Errorf("获取现有游戏列表失败: %w", err)
 	}
 	existingNames := make(map[string]bool)
@@ -428,6 +465,7 @@ func (s *ImportService) PreviewPlayniteImport(jsonPath string) ([]PreviewGame, e
 	// 读取 JSON 文件
 	jsonData, err := os.ReadFile(jsonPath)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "PreviewPlayniteImport: failed to read JSON file: %v", err)
 		return nil, fmt.Errorf("无法读取 JSON 文件: %w", err)
 	}
 
@@ -437,12 +475,14 @@ func (s *ImportService) PreviewPlayniteImport(jsonPath string) ([]PreviewGame, e
 
 	var playniteGames []playnite.PlayniteGame
 	if err := json.Unmarshal(jsonData, &playniteGames); err != nil {
+		runtime.LogErrorf(s.ctx, "PreviewPlayniteImport: failed to unmarshal JSON: %v", err)
 		return nil, fmt.Errorf("解析 JSON 文件失败: %w", err)
 	}
 
 	// 获取现有游戏列表，用于去重检查
 	existingGames, err := s.gameService.GetGames()
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "PreviewPlayniteImport: failed to get existing games: %v", err)
 		return nil, fmt.Errorf("获取现有游戏列表失败: %w", err)
 	}
 	existingNames := make(map[string]bool)
@@ -477,6 +517,7 @@ func (s *ImportService) ImportFromPlaynite(jsonPath string, skipNoPath bool) (Im
 	// 读取 JSON 文件
 	jsonData, err := os.ReadFile(jsonPath)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "ImportFromPlaynite: failed to read JSON file: %v", err)
 		return result, fmt.Errorf("无法读取 JSON 文件: %w", err)
 	}
 
@@ -486,12 +527,14 @@ func (s *ImportService) ImportFromPlaynite(jsonPath string, skipNoPath bool) (Im
 
 	var playniteGames []playnite.PlayniteGame
 	if err := json.Unmarshal(jsonData, &playniteGames); err != nil {
+		runtime.LogErrorf(s.ctx, "ImportFromPlaynite: failed to unmarshal JSON: %v", err)
 		return result, fmt.Errorf("解析 JSON 文件失败: %w", err)
 	}
 
 	// 获取现有游戏列表，用于去重检查
 	existingGames, err := s.gameService.GetGames()
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "ImportFromPlaynite: failed to get existing games: %v", err)
 		return result, fmt.Errorf("获取现有游戏列表失败: %w", err)
 	}
 	existingNames := make(map[string]bool)
@@ -519,6 +562,7 @@ func (s *ImportService) ImportFromPlaynite(jsonPath string, skipNoPath bool) (Im
 		game := s.convertPlayniteToGame(pg)
 
 		if err := s.gameService.AddGame(game); err != nil {
+			runtime.LogErrorf(s.ctx, "ImportFromPlaynite: failed to add game %s: %v", pg.Name, err)
 			result.Failed++
 			result.FailedNames = append(result.FailedNames, pg.Name)
 			continue
@@ -556,6 +600,7 @@ func (s *ImportService) convertPlayniteToGame(pg playnite.PlayniteGame) models.G
 		if err == nil {
 			game.CoverURL = savedPath
 		} else {
+			runtime.LogErrorf(s.ctx, "convertPlayniteToGame: failed to save cover image for game %s: %v", game.Name, err)
 			// 如果复制失败，保留原路径
 			game.CoverURL = pg.CoverURL
 		}
@@ -608,6 +653,7 @@ func (s *ImportService) ScanLibraryDirectory(libraryPath string) ([]vo.BatchImpo
 	// 遍历一级子目录
 	entries, err := os.ReadDir(libraryPath)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "ScanLibraryDirectory: failed to read dir %s: %v", libraryPath, err)
 		return nil, fmt.Errorf("无法读取目录: %w", err)
 	}
 
@@ -652,6 +698,7 @@ func (s *ImportService) findExecutables(folderPath string, excludeKeywords []str
 	// 仅扫描一级目录
 	entries, err := os.ReadDir(folderPath)
 	if err != nil {
+		runtime.LogWarningf(s.ctx, "findExecutables: failed to read dir %s: %v", folderPath, err)
 		return executables
 	}
 
@@ -718,6 +765,8 @@ func (s *ImportService) selectBestExecutable(executables []string, folderName st
 		info, err := os.Stat(exe)
 		if err == nil {
 			exeInfos = append(exeInfos, exeInfo{path: exe, size: info.Size()})
+		} else {
+			runtime.LogWarningf(s.ctx, "selectBestExecutable: failed to stat file %s: %v", exe, err)
 		}
 	}
 
@@ -757,10 +806,14 @@ func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchIm
 			result.MatchStatus = "matched"
 			return result, nil
 		}
+		if err != nil {
+			runtime.LogWarningf(s.ctx, "FetchMetadataForCandidate: failed to fetch metadata from %v for %s: %v", src.source, searchName, err)
+		}
 		// 每个源之间添加短暂延迟以避免触发限流
 		time.Sleep(300 * time.Millisecond)
 	}
 
+	runtime.LogWarningf(s.ctx, "FetchMetadataForCandidate: no metadata found for %s", searchName)
 	return result, nil
 }
 
@@ -774,6 +827,7 @@ func (s *ImportService) BatchImportGames(candidates []vo.BatchImportCandidate) (
 	// 获取现有游戏列表用于去重
 	existingGames, err := s.gameService.GetGames()
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "BatchImportGames: failed to get existing games: %v", err)
 		return result, fmt.Errorf("获取现有游戏列表失败: %w", err)
 	}
 	existingNames := make(map[string]bool)
@@ -793,6 +847,7 @@ func (s *ImportService) BatchImportGames(candidates []vo.BatchImportCandidate) (
 		}
 
 		if existingNames[strings.ToLower(gameName)] {
+			runtime.LogWarningf(s.ctx, "BatchImportGames: game already exists, skipping: %s", gameName)
 			result.Skipped++
 			result.SkippedNames = append(result.SkippedNames, gameName+" (已存在)")
 			continue
@@ -817,6 +872,7 @@ func (s *ImportService) BatchImportGames(candidates []vo.BatchImportCandidate) (
 
 		// 保存游戏
 		if err := s.gameService.AddGame(game); err != nil {
+			runtime.LogErrorf(s.ctx, "BatchImportGames: failed to add game %s: %v", gameName, err)
 			result.Failed++
 			result.FailedNames = append(result.FailedNames, gameName)
 			continue

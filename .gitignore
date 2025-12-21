@@ -11,3 +11,4 @@ appconf.json
 *.db.wal
 SaveData
 docs
+app.log

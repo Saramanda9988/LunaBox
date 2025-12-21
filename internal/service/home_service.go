@@ -7,6 +7,8 @@ import (
 	"lunabox/internal/models"
 	"lunabox/internal/vo"
 	"time"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type HomeService struct {
@@ -45,6 +47,7 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 	`
 	rows, err := s.db.Query(recentGamesQuery)
 	if err != nil {
+		runtime.LogErrorf(s.ctx, "查询最近游戏失败: %v", err)
 		return data, err
 	}
 	defer rows.Close()
