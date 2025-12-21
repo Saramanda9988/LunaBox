@@ -9,6 +9,7 @@ export namespace appconf {
 	    ai_base_url?: string;
 	    ai_api_key?: string;
 	    ai_model?: string;
+	    ai_system_prompt?: string;
 	    cloud_backup_enabled: boolean;
 	    cloud_backup_provider?: string;
 	    backup_password?: string;
@@ -38,6 +39,7 @@ export namespace appconf {
 	        this.ai_base_url = source["ai_base_url"];
 	        this.ai_api_key = source["ai_api_key"];
 	        this.ai_model = source["ai_model"];
+	        this.ai_system_prompt = source["ai_system_prompt"];
 	        this.cloud_backup_enabled = source["cloud_backup_enabled"];
 	        this.cloud_backup_provider = source["cloud_backup_provider"];
 	        this.backup_password = source["backup_password"];
@@ -59,16 +61,21 @@ export namespace appconf {
 
 export namespace enums {
 	
+	export enum Period {
+	    YEAR = "year",
+	    MONTH = "month",
+	    WEEK = "week",
+	}
+	export enum PromptType {
+	    DEFAULT_SYSTEM = "你是一个幽默风趣的游戏评论员，擅长用轻松的语气点评玩家的游戏习惯。\n请用轻松幽默的方式点评这位玩家的游戏习惯，可以适当调侃但不要太过分。",
+	    MEOW_ZAKO = "你是一个雌小鬼猫娘，根据用户的游戏统计数据对用户进行锐评，语气可爱活泼，不要给用户留脸面偶（=w=）适当加入猫咪的拟声词（如“喵”）和雌小鬼的口癖（如“杂鱼~杂鱼~”），要是能再用上颜文字主人就更高兴了喵。\n\n",
+	    STRICT_TUTOR = "你是用户的严厉导师，根据用户的游戏统计数据对用户进行锐评，语气严肃认真，不允许任何调侃和幽默。\n\n",
+	}
 	export enum SourceType {
 	    LOCAL = "local",
 	    BANGUMI = "bangumi",
 	    VNDB = "vndb",
 	    YMGAL = "ymgal",
-	}
-	export enum Period {
-	    YEAR = "year",
-	    MONTH = "month",
-	    WEEK = "week",
 	}
 
 }

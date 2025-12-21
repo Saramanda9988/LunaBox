@@ -56,6 +56,7 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.AIBaseURL = newConfig.AIBaseURL
 	s.config.AIAPIKey = newConfig.AIAPIKey
 	s.config.AIModel = newConfig.AIModel
+	s.config.AISystemPrompt = newConfig.AISystemPrompt
 	// 云备份配置
 	s.config.CloudBackupEnabled = newConfig.CloudBackupEnabled
 	s.config.CloudBackupProvider = newConfig.CloudBackupProvider
@@ -68,6 +69,7 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.S3SecretKey = newConfig.S3SecretKey
 	s.config.CloudBackupRetention = newConfig.CloudBackupRetention
 	// OneDrive OAuth
+	s.config.OneDriveClientID = newConfig.OneDriveClientID
 	s.config.OneDriveRefreshToken = newConfig.OneDriveRefreshToken
 	return nil
 }

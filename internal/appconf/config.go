@@ -3,6 +3,7 @@ package appconf
 import (
 	"encoding/json"
 	"log"
+	"lunabox/internal/enums"
 	"lunabox/internal/utils"
 	"os"
 	"path/filepath"
@@ -15,10 +16,11 @@ type AppConfig struct {
 	Theme              string `json:"theme"`    // light or dark
 	Language           string `json:"language"` // zh, en, etc.
 	// AI 配置
-	AIProvider string `json:"ai_provider,omitempty"` // openai, deepseek, etc.
-	AIBaseURL  string `json:"ai_base_url,omitempty"` // API base URL
-	AIAPIKey   string `json:"ai_api_key,omitempty"`  // API key
-	AIModel    string `json:"ai_model,omitempty"`    // model name
+	AIProvider     string `json:"ai_provider,omitempty"`      // openai, deepseek, etc.
+	AIBaseURL      string `json:"ai_base_url,omitempty"`      // API base URL
+	AIAPIKey       string `json:"ai_api_key,omitempty"`       // API key
+	AIModel        string `json:"ai_model,omitempty"`         // model name
+	AISystemPrompt string `json:"ai_system_prompt,omitempty"` // AI 系统提示语
 	// 云备份配置
 	CloudBackupEnabled   bool   `json:"cloud_backup_enabled"`             // 是否启用云备份
 	CloudBackupProvider  string `json:"cloud_backup_provider,omitempty"`  // 云备份提供商: s3, onedrive
@@ -57,6 +59,7 @@ func LoadConfig() (*AppConfig, error) {
 		AIBaseURL:            "",
 		AIAPIKey:             "",
 		AIModel:              "",
+		AISystemPrompt:       string(enums.DefaultSystemPrompt),
 		CloudBackupEnabled:   false,
 		CloudBackupProvider:  "s3",
 		BackupPassword:       "",

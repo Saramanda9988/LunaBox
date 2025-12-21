@@ -9,7 +9,6 @@ import (
 	"io"
 	"lunabox/internal/appconf"
 	"lunabox/internal/enums"
-	"lunabox/internal/utils"
 	"lunabox/internal/vo"
 	"net/http"
 	"strings"
@@ -48,8 +47,11 @@ func (s *AiService) AISummarize(req vo.AISummaryRequest) (vo.AISummaryResponse, 
 	prompt := s.buildPrompt(statsData)
 
 	// 调用AI API
-	// TODO: 支持用户自定义系统提示语
-	summary, err := s.callAIAPI(utils.MeowZakoPrompt, prompt)
+	systemPrompt := s.appConfig.AISystemPrompt
+	if systemPrompt == "" {
+		systemPrompt = string(enums.DefaultSystemPrompt)
+	}
+	summary, err := s.callAIAPI(systemPrompt, prompt)
 	if err != nil {
 		return vo.AISummaryResponse{}, fmt.Errorf("AI调用失败: %w", err)
 	}
@@ -141,8 +143,8 @@ func (s *AiService) buildPrompt(data *AIStatsData) string {
 	case "year":
 		periodName = "今年"
 	}
-	sb.WriteString(fmt.Sprintf("这一部分是对环境的提醒：用户使用的程序是LunaBox，一款本地游戏管理和启动器软件。\n\n"))
-	sb.WriteString(fmt.Sprintf("以下是%s游戏统计数据，根据上面你的系统人设要求写一段总结（100-200字）：\n\n", periodName))
+	sb.WriteString(fmt.Sprintf("这一部分是对环境的提醒：用户使用的程序是LunaBox，一款本地游戏管理和启动器软件。你不需要在回答中出现相关的字眼\n\n"))
+	sb.WriteString(fmt.Sprintf("以下是%s游戏统计数据，根据上面你的系统人设要求写一段总结(200 - 300字)：\n\n", periodName))
 	sb.WriteString(fmt.Sprintf("时间范围：%s\n", periodName))
 	sb.WriteString(fmt.Sprintf("总游玩次数：%d 次\n", data.TotalPlayCount))
 	sb.WriteString(fmt.Sprintf("总游玩时长：%.1f 小时\n\n", float64(data.TotalPlayDuration)/3600))
