@@ -90,7 +90,7 @@ func GetOneDriveAuthURL(clientID string) string {
 		"client_id":     {clientID},
 		"response_type": {"code"},
 		"redirect_uri":  {redirectURI},
-		"scope":         {"Files.ReadWrite.All offline_access"},
+		"scope":         {"Files.ReadWrite.AppFolder offline_access"},
 		"response_mode": {"query"},
 	}
 	return oneDriveAuthURL + "?" + params.Encode()
@@ -220,7 +220,7 @@ func (p *OneDriveProvider) uploadSmallFile(ctx context.Context, remotePath strin
 		remotePath = "/" + remotePath
 	}
 
-	apiURL := fmt.Sprintf("%s/root:%s:/content", oneDriveAPIBase, remotePath)
+	apiURL := fmt.Sprintf("%s/special/approot:%s:/content", oneDriveAPIBase, remotePath)
 	req, err := http.NewRequestWithContext(ctx, "PUT", apiURL, file)
 	if err != nil {
 		return err
@@ -252,7 +252,7 @@ func (p *OneDriveProvider) uploadLargeFile(ctx context.Context, remotePath strin
 	}
 
 	// 创建上传会话
-	sessionURL := fmt.Sprintf("%s/root:%s:/createUploadSession", oneDriveAPIBase, remotePath)
+	sessionURL := fmt.Sprintf("%s/special/approot:%s:/createUploadSession", oneDriveAPIBase, remotePath)
 	sessionReq, err := http.NewRequestWithContext(ctx, "POST", sessionURL, bytes.NewReader([]byte("{}")))
 	if err != nil {
 		return err
@@ -318,7 +318,7 @@ func (p *OneDriveProvider) DownloadFile(ctx context.Context, cloudPath, localPat
 		cloudPath = "/" + cloudPath
 	}
 
-	apiURL := fmt.Sprintf("%s/root:%s:/content", oneDriveAPIBase, cloudPath)
+	apiURL := fmt.Sprintf("%s/special/approot:%s:/content", oneDriveAPIBase, cloudPath)
 	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
 	if err != nil {
 		return err
@@ -356,7 +356,7 @@ func (p *OneDriveProvider) ListObjects(ctx context.Context, folderPath string) (
 	}
 	folderPath = strings.TrimSuffix(folderPath, "/")
 
-	apiURL := fmt.Sprintf("%s/root:%s:/children", oneDriveAPIBase, folderPath)
+	apiURL := fmt.Sprintf("%s/special/approot:%s:/children", oneDriveAPIBase, folderPath)
 
 	var allItems []string
 	for apiURL != "" {
@@ -400,7 +400,7 @@ func (p *OneDriveProvider) DeleteObject(ctx context.Context, remotePath string) 
 		remotePath = "/" + remotePath
 	}
 
-	apiURL := fmt.Sprintf("%s/root:%s", oneDriveAPIBase, remotePath)
+	apiURL := fmt.Sprintf("%s/special/approot:%s", oneDriveAPIBase, remotePath)
 	req, err := http.NewRequestWithContext(ctx, "DELETE", apiURL, nil)
 	if err != nil {
 		return err
@@ -464,7 +464,7 @@ func (p *OneDriveProvider) EnsureDir(ctx context.Context, folderPath string) err
 		currentPath = currentPath + "/" + part
 
 		// 检查是否存在
-		checkURL := fmt.Sprintf("%s/root:%s", oneDriveAPIBase, currentPath)
+		checkURL := fmt.Sprintf("%s/special/approot:%s", oneDriveAPIBase, currentPath)
 		checkReq, _ := http.NewRequestWithContext(ctx, "GET", checkURL, nil)
 		checkReq.Header.Set("Authorization", "Bearer "+p.accessToken)
 		checkResp, err := p.httpClient.Do(checkReq)
@@ -479,9 +479,9 @@ func (p *OneDriveProvider) EnsureDir(ctx context.Context, folderPath string) err
 		// 创建文件夹
 		var createURL string
 		if parentPath == "/" {
-			createURL = fmt.Sprintf("%s/root/children", oneDriveAPIBase)
+			createURL = fmt.Sprintf("%s/special/approot/children", oneDriveAPIBase)
 		} else {
-			createURL = fmt.Sprintf("%s/root:%s:/children", oneDriveAPIBase, parentPath)
+			createURL = fmt.Sprintf("%s/special/approot:%s:/children", oneDriveAPIBase, parentPath)
 		}
 
 		body := map[string]interface{}{
