@@ -253,16 +253,10 @@ function GameDetailPage() {
               No Cover
             </div>
           )}
-          {/* 已通关奖杯标识 */}
-          {game.status === enums.GameStatus.COMPLETED && (
-            <div className="absolute top-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-yellow-500 shadow-lg">
-              <div className="i-mdi-trophy text-xl text-white" />
-            </div>
-          )}
         </div>
         
         <div className="flex-1 space-y-4">
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex flex-col gap-3">
             <h1 className="text-4xl font-bold text-brand-900 dark:text-white">{game.name}</h1>
             {/* 状态标签组 */}
             <div className="flex gap-1.5">
