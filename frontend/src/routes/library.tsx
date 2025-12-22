@@ -9,6 +9,7 @@ import { GameImportModal, ImportSource } from '../components/modal/GameImportMod
 import { BatchImportModal } from '../components/modal/BatchImportModal'
 import { FilterBar } from '../components/bar/FilterBar'
 import { LibrarySkeleton } from '../components/skeleton/LibrarySkeleton'
+import { statusOptions, sortOptions } from '../consts/options'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -27,6 +28,7 @@ function LibraryPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'name' | 'created_at'>('created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [statusFilter, setStatusFilter] = useState<string>('')
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -70,8 +72,15 @@ function LibraryPage() {
 
   const filteredGames = games
     .filter((game) => {
-      if (!searchQuery) return true
-      return game.name.toLowerCase().includes(searchQuery.toLowerCase())
+      // 搜索过滤
+      if (searchQuery && !game.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false
+      }
+      // 状态过滤
+      if (statusFilter && game.status !== statusFilter) {
+        return false
+      }
+      return true
     })
     .sort((a, b) => {
       let comparison = 0
@@ -105,21 +114,12 @@ function LibraryPage() {
         searchPlaceholder="搜索游戏..."
         sortBy={sortBy}
         onSortByChange={(val) => setSortBy(val as any)}
-        sortOptions={[
-          { label: '名称', value: 'name' },
-          { label: '添加时间', value: 'created_at' },
-        ]}
+        sortOptions={sortOptions}
         sortOrder={sortOrder}
         onSortOrderChange={setSortOrder}
-        extraButtons={
-          <button
-            className="p-2 text-brand-400 cursor-not-allowed rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700"
-            title="筛选 (即将推出)"
-            disabled
-          >
-            <div className="i-mdi-filter text-xl" />
-          </button>
-        }
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        statusOptions={statusOptions}
         actionButton={
           <div className="relative" ref={dropdownRef}>
             <button

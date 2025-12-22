@@ -1,4 +1,4 @@
-import { models } from '../../../wailsjs/go/models'
+import { models, enums } from '../../../wailsjs/go/models'
 import { StartGameWithTracking } from '../../../wailsjs/go/service/TimerService'
 import { useNavigate } from '@tanstack/react-router'
 import { toast } from 'react-hot-toast'
@@ -32,6 +32,8 @@ export function GameCard({ game }: GameCardProps) {
     navigate({ to: `/game/${game.id}` })
   }
 
+  const isCompleted = game.status === enums.GameStatus.COMPLETED
+
   return (
     <div className="group relative flex w-full flex-col overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm transition-all duration-300 hover:shadow-xl dark:border-brand-700 dark:bg-brand-800">
       <div className="relative aspect-[3/3.6] w-full overflow-hidden bg-brand-200 dark:bg-brand-700">
@@ -45,6 +47,13 @@ export function GameCard({ game }: GameCardProps) {
         ) : (
           <div className="flex h-full items-center justify-center text-brand-400">
             <div className="i-mdi-image-off text-4xl" />
+          </div>
+        )}
+
+        {/* 已通关奖杯标识 */}
+        {isCompleted && (
+          <div className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-yellow-500 shadow-lg">
+            <div className="i-mdi-trophy text-sm text-white" />
           </div>
         )}
         

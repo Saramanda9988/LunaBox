@@ -61,6 +61,12 @@ export namespace appconf {
 
 export namespace enums {
 	
+	export enum GameStatus {
+	    NOT_STARTED = "not_started",
+	    PLAYING = "playing",
+	    COMPLETED = "completed",
+	    ON_HOLD = "on_hold",
+	}
 	export enum SourceType {
 	    LOCAL = "local",
 	    BANGUMI = "bangumi",
@@ -90,6 +96,7 @@ export namespace models {
 	    summary: string;
 	    path: string;
 	    save_path: string;
+	    status: enums.GameStatus;
 	    source_type: enums.SourceType;
 	    // Go type: time
 	    cached_at: any;
@@ -110,6 +117,7 @@ export namespace models {
 	        this.summary = source["summary"];
 	        this.path = source["path"];
 	        this.save_path = source["save_path"];
+	        this.status = source["status"];
 	        this.source_type = source["source_type"];
 	        this.cached_at = this.convertValues(source["cached_at"], null);
 	        this.source_id = source["source_id"];

@@ -4,7 +4,7 @@ import { Route as rootRoute } from './__root'
 import { useChartTheme } from '../hooks/useChartTheme'
 import { GetGameByID, UpdateGame, SelectGameExecutable, DeleteGame, SelectSaveDirectory } from '../../wailsjs/go/service/GameService'
 import { GetGameStats } from '../../wailsjs/go/service/StatsService'
-import { models, vo } from '../../wailsjs/go/models'
+import { models, vo, enums } from '../../wailsjs/go/models'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -207,6 +207,26 @@ function GameDetailPage() {
     }
   }
 
+  const statusConfig = {
+    [enums.GameStatus.NOT_STARTED]: { label: '未开始', icon: 'i-mdi-clock-outline', color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
+    [enums.GameStatus.PLAYING]: { label: '游玩中', icon: 'i-mdi-gamepad-variant', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
+    [enums.GameStatus.COMPLETED]: { label: '已通关', icon: 'i-mdi-trophy', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' },
+    [enums.GameStatus.ON_HOLD]: { label: '搁置', icon: 'i-mdi-pause-circle-outline', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
+  }
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!game) return
+    const updatedGame = { ...game, status: newStatus } as models.Game
+    setGame(updatedGame)
+    try {
+      await UpdateGame(updatedGame)
+      toast.success('状态已更新')
+    } catch (error) {
+      console.error('Failed to update status:', error)
+      toast.error('状态更新失败')
+    }
+  }
+
   return (
     <div className={`space-y-8 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
       {/* Back Button */}
@@ -220,7 +240,7 @@ function GameDetailPage() {
 
       {/* Header Section */}
       <div className="flex gap-6 items-center">
-        <div className="w-60 flex-shrink-0 rounded-lg overflow-hidden shadow-lg bg-brand-200 dark:bg-brand-800">
+        <div className="relative w-60 flex-shrink-0 rounded-lg overflow-hidden shadow-lg bg-brand-200 dark:bg-brand-800">
           {game.cover_url ? (
             <img
               src={game.cover_url}
@@ -233,10 +253,39 @@ function GameDetailPage() {
               No Cover
             </div>
           )}
+          {/* 已通关奖杯标识 */}
+          {game.status === enums.GameStatus.COMPLETED && (
+            <div className="absolute top-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-yellow-500 shadow-lg">
+              <div className="i-mdi-trophy text-xl text-white" />
+            </div>
+          )}
         </div>
         
         <div className="flex-1 space-y-4">
-          <h1 className="text-4xl font-bold text-brand-900 dark:text-white">{game.name}</h1>
+          <div className="flex items-center gap-4 flex-wrap">
+            <h1 className="text-4xl font-bold text-brand-900 dark:text-white">{game.name}</h1>
+            {/* 状态标签组 */}
+            <div className="flex gap-1.5">
+              {Object.entries(statusConfig).map(([key, config]) => {
+                const isActive = (game.status || enums.GameStatus.NOT_STARTED) === key
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleStatusChange(key)}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                      isActive 
+                        ? config.color + ' ring-2 ring-offset-1 ring-brand-400 dark:ring-offset-brand-900' 
+                        : 'bg-brand-100 text-brand-500 dark:bg-brand-700 dark:text-brand-400 hover:bg-brand-200 dark:hover:bg-brand-600'
+                    }`}
+                    title={config.label}
+                  >
+                    <div className={`${config.icon} text-sm`} />
+                    {isActive && <span>{config.label}</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
           
           <div className="grid grid-cols-4 gap-4 text-sm text-brand-600 dark:text-brand-400">
             <div>

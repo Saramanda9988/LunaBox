@@ -14,6 +14,7 @@ import {AddGameToCategoryModal} from "../components/modal/AddGameToCategoryModal
 import { FilterBar } from '../components/bar/FilterBar'
 import { toast } from 'react-hot-toast'
 import { CategorySkeleton } from '../components/skeleton/CategorySkeleton'
+import { statusOptions, sortOptions } from '../consts/options'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -33,6 +34,7 @@ function CategoryDetailPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'name' | 'created_at'>('created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [statusFilter, setStatusFilter] = useState<string>('')
 
   useEffect(() => {
     if (categoryId) {
@@ -121,8 +123,15 @@ function CategoryDetailPage() {
 
   const filteredGames = games
       .filter((game) => {
-        if (!searchQuery) return true
-        return game.name.toLowerCase().includes(searchQuery.toLowerCase())
+        // 搜索过滤
+        if (searchQuery && !game.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+          return false
+        }
+        // 状态过滤
+        if (statusFilter && game.status !== statusFilter) {
+          return false
+        }
+        return true
       })
       .sort((a, b) => {
         let comparison = 0
@@ -184,12 +193,12 @@ function CategoryDetailPage() {
             searchPlaceholder="搜索游戏..."
             sortBy={sortBy}
             onSortByChange={(val) => setSortBy(val as any)}
-            sortOptions={[
-              { label: '名称', value: 'name' },
-              { label: '添加时间', value: 'created_at' },
-            ]}
+            sortOptions={sortOptions}
             sortOrder={sortOrder}
             onSortOrderChange={setSortOrder}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            statusOptions={statusOptions}
             actionButton={
               <button
                 onClick={openAddGameModal}

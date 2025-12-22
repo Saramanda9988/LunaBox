@@ -128,6 +128,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 	query := `SELECT 
 		id, name, cover_url, company, summary, path, 
 		COALESCE(save_path, '') as save_path,
+		COALESCE(status, 'not_started') as status,
 		source_type, cached_at, source_id, created_at 
 	FROM games 
 	ORDER BY created_at DESC`
@@ -143,6 +144,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 	for rows.Next() {
 		var game models.Game
 		var sourceType string
+		var status string
 
 		err := rows.Scan(
 			&game.ID,
@@ -152,6 +154,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 			&game.Summary,
 			&game.Path,
 			&game.SavePath,
+			&status,
 			&sourceType,
 			&game.CachedAt,
 			&game.SourceID,
@@ -163,6 +166,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 		}
 
 		game.SourceType = enums.SourceType(sourceType)
+		game.Status = enums.GameStatus(status)
 		games = append(games, game)
 	}
 
@@ -178,12 +182,14 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 	query := `SELECT 
 		id, name, cover_url, company, summary, path, 
 		COALESCE(save_path, '') as save_path,
+		COALESCE(status, 'not_started') as status,
 		source_type, cached_at, source_id, created_at 
 	FROM games 
 	WHERE id = ?`
 
 	var game models.Game
 	var sourceType string
+	var status string
 
 	err := s.db.QueryRowContext(s.ctx, query, id).Scan(
 		&game.ID,
@@ -193,6 +199,7 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		&game.Summary,
 		&game.Path,
 		&game.SavePath,
+		&status,
 		&sourceType,
 		&game.CachedAt,
 		&game.SourceID,
@@ -209,6 +216,7 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 	}
 
 	game.SourceType = enums.SourceType(sourceType)
+	game.Status = enums.GameStatus(status)
 	return game, nil
 }
 
@@ -220,6 +228,7 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		summary = ?,
 		path = ?,
 		save_path = ?,
+		status = ?,
 		source_type = ?,
 		cached_at = ?,
 		source_id = ?
@@ -232,6 +241,7 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		game.Summary,
 		game.Path,
 		game.SavePath,
+		string(game.Status),
 		string(game.SourceType),
 		game.CachedAt,
 		game.SourceID,

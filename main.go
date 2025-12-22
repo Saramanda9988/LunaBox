@@ -157,6 +157,7 @@ func main() {
 			enums.AllSourceTypes,
 			enums.AllPeriodTypes,
 			enums.Prompts,
+			enums.AllGameStatuses,
 		},
 	})
 
@@ -186,6 +187,8 @@ func initSchema(db *sql.DB) error {
 			company TEXT,
 			summary TEXT,
 			path TEXT,
+			save_path TEXT,
+			status TEXT DEFAULT 'not_started',
 			source_type TEXT,
 			cached_at TIMESTAMP,
 			source_id TEXT,
@@ -210,8 +213,6 @@ func initSchema(db *sql.DB) error {
 			size INTEGER,
 			created_at TIMESTAMP
 		)`,
-		// 添加 save_path 列（如果不存在）
-		`ALTER TABLE games ADD COLUMN IF NOT EXISTS save_path TEXT`,
 	}
 
 	for _, query := range queries {

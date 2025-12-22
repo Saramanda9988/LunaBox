@@ -5,6 +5,11 @@ interface SortOption {
   value: string
 }
 
+interface FilterOption {
+  label: string
+  value: string
+}
+
 interface FilterBarProps {
   searchQuery: string
   onSearchChange: (value: string) => void
@@ -14,6 +19,10 @@ interface FilterBarProps {
   sortOptions: SortOption[]
   sortOrder: 'asc' | 'desc'
   onSortOrderChange: (order: 'asc' | 'desc') => void
+  // 状态筛选
+  statusFilter?: string
+  onStatusFilterChange?: (value: string) => void
+  statusOptions?: FilterOption[]
   actionButton?: React.ReactNode
   extraButtons?: React.ReactNode
 }
@@ -27,6 +36,9 @@ export function FilterBar({
   sortOptions,
   sortOrder,
   onSortOrderChange,
+  statusFilter,
+  onStatusFilterChange,
+  statusOptions,
   actionButton,
   extraButtons,
 }: FilterBarProps) {
@@ -46,6 +58,21 @@ export function FilterBar({
       </div>
 
       <div className="flex items-center gap-2">
+        {/* 状态筛选 */}
+        {statusOptions && onStatusFilterChange && (
+          <select
+            value={statusFilter || ''}
+            onChange={(e) => onStatusFilterChange(e.target.value)}
+            className="bg-white border border-brand-300 text-brand-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 dark:bg-brand-900 dark:border-brand-600 dark:placeholder-brand-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          >
+            {statusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        )}
+
         <select
           value={sortBy}
           onChange={(e) => onSortByChange(e.target.value)}
