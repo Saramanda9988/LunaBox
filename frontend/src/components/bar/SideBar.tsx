@@ -19,7 +19,13 @@ export function SideBar() {
       }`}
     >
       <div className={`flex items-center h-16 border-b border-brand-200 dark:border-brand-700 ${isSidebarOpen ? 'justify-between px-4' : 'justify-center'}`}>
-        {isSidebarOpen && <span className="text-xl font-bold">LunaBox</span>}
+        {isSidebarOpen && (
+          <div className="flex items-center gap-2">
+            <img src="/appicon.png" className="w-8 h-8 dark:hidden"/>
+            <img src="/appicon-dark.png" className="w-8 h-8 hidden dark:block"/>
+            <span className="text-xl font-bold">LunaBox</span>
+          </div>
+        )}
         <button
           onClick={toggleSidebar}
           className="p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 focus:outline-none"

@@ -145,6 +145,8 @@ lunabox/
 
 ## RoadMap
 
+- [ ] 支持从ReinaManager中导入数据
+
 - [ ] 支持自定义背景图片
 
 - [ ] 更漂亮的默认首页，首页自定义
@@ -163,8 +165,8 @@ lunabox/
 
 灵感来源:
 
-- [ReinaManager](https://github.com/huoshen80/ReinaManager)- 一款轻量化的galgame和视觉小说管理工具
 - [PotatoVN](https://github.com/GoldenPotato137/PotatoVN) - Galgame 管理工具
+- [ReinaManager](https://github.com/huoshen80/ReinaManager) - 一款轻量化的galgame和视觉小说管理工具
 - [Playnite](https://github.com/JosefNemec/Playnite) - an open source video game library manager with one simple goal: To provide a unified interface for all of your games.
 
 ## 🙏 感谢

@@ -57,7 +57,7 @@ func main() {
 
 	// Create application with options
 	bootstrapErr := wails.Run(&options.App{
-		Title:     "lunabox",
+		Title:     "LunaBox",
 		Logger:    appLogger,
 		LogLevel:  logger.INFO,
 		Width:     1230,
