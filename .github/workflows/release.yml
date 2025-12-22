@@ -1,0 +1,177 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # 例如: v1.0.0, v1.2.3
+
+jobs:
+  build-release:
+    name: Build Release
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+        mode: [portable, installer]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install NSIS
+        if: matrix.mode == 'installer'
+        run: choco install nsis -y
+        shell: pwsh
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: pnpm install
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          $VERSION = "${{ github.ref_name }}" -replace '^v', ''
+          echo "VERSION=$VERSION" >> $env:GITHUB_OUTPUT
+          $COMMIT = "${{ github.sha }}".Substring(0,7)
+          echo "COMMIT=$COMMIT" >> $env:GITHUB_OUTPUT
+          $BUILD_TIME = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+          echo "BUILD_TIME=$BUILD_TIME" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+
+      - name: Build Portable Version
+        if: matrix.mode == 'portable'
+        run: |
+          $LDFLAGS = "-X 'lunabox/internal/version.Version=${{ steps.get_version.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.get_version.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.get_version.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=portable'"
+          wails build -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -o LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.exe
+        shell: pwsh
+
+      - name: Build Installer Version
+        if: matrix.mode == 'installer'
+        run: |
+          $LDFLAGS = "-X 'lunabox/internal/version.Version=${{ steps.get_version.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.get_version.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.get_version.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=installer'"
+          wails build -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -nsis
+        shell: pwsh
+
+      - name: Create portable ZIP
+        if: matrix.mode == 'portable'
+        run: |
+          Compress-Archive -Path "build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.exe" -DestinationPath "LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip"
+        shell: pwsh
+
+      - name: Rename installer
+        if: matrix.mode == 'installer'
+        run: |
+          Write-Host "Files in build/bin:"
+          Get-ChildItem -Path "build/bin" -Filter "*.exe" -Recurse
+          
+          if (Test-Path "build/bin/lunabox-${{ matrix.arch }}-installer.exe") {
+            Move-Item -Path "build/bin/lunabox-${{ matrix.arch }}-installer.exe" -Destination "LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe"
+          } elseif (Test-Path "build/bin/LunaBox-${{ matrix.arch }}-installer.exe") {
+            Move-Item -Path "build/bin/LunaBox-${{ matrix.arch }}-installer.exe" -Destination "LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe"
+          } else {
+            Write-Host "Warning: Installer not found for ${{ matrix.arch }}"
+          }
+        shell: pwsh
+
+      - name: Upload Portable Artifact
+        if: matrix.mode == 'portable'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable
+          path: LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip
+
+      - name: Upload Installer Artifact
+        if: matrix.mode == 'installer'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-installer
+          path: LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe
+
+  create-release:
+    name: Create GitHub Release
+    needs: build-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R ./artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+          find ./artifacts -type f \( -name "*.zip" -o -name "*.exe" \) -exec cp {} ./release/ \;
+          ls -lh ./release
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          cat << EOF > release_notes.md
+          ## LunaBox ${{ steps.get_version.outputs.VERSION }}
+          
+          ### 📦 下载说明
+          
+          #### 便携版 (Portable)
+          - 直接解压运行，数据存储在程序目录
+          - 适合需要在多台电脑间移动使用的场景
+          - **amd64**: 适用于 Intel/AMD 64位处理器
+          - **arm64**: 适用于 ARM64 处理器（如骁龙 X Elite）
+          
+          #### 安装版 (Setup)
+          - 标准安装程序，数据存储在 %APPDATA%\\LunaBox
+          - 适合固定电脑日常使用
+          - **amd64**: 适用于 Intel/AMD 64位处理器
+          - **arm64**: 适用于 ARM64 处理器（如骁龙 X Elite）
+          
+          ### 📝 更新内容
+          
+          请查看 [Commits](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
+          
+          ---
+          
+          **完整变更日志**: [\`${{ github.event.before }}..${{ github.ref_name }}\`](https://github.com/${{ github.repository }}/compare/${{ github.event.before }}...${{ github.ref_name }})
+          EOF
+          
+          cat release_notes.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/*
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

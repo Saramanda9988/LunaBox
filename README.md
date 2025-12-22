@@ -127,6 +127,7 @@ lunabox/
 ├── main.go              # 应用入口
 ├── wails.json           # Wails 配置
 ├── frontend/            # React 前端
+│   ├── public/          # 静态资源
 │   ├── src/
 │   │   ├── components/  # 组件
 │   │   ├── routes/      # 页面路由
