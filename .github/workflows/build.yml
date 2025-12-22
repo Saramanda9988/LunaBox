@@ -78,7 +78,7 @@ jobs:
         run: pnpm install
 
       - name: Build with Wails (dev tag)
-        run: wails build -tags dev
+        run: wails build -devtools
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

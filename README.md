@@ -140,6 +140,7 @@ lunabox/
 │   ├── models/          # 数据模型
 │   ├── service/         # 业务服务层
 │   ├── utils/           # 工具类
+│   ├── version/         # 版本信息管理
 │   └── vo/              # 视图对象
 └── build/               # 构建输出
 ```
