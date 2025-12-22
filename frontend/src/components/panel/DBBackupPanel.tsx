@@ -39,8 +39,20 @@ export function DBBackupPanel() {
     onConfirm: () => {},
   })
 
-  const cloudEnabled = config?.cloud_backup_enabled && config?.backup_user_id
   const cloudProvider = config?.cloud_backup_provider
+  
+  // 检查云备份是否真正可用
+  const cloudEnabled = (() => {
+    if (!config?.cloud_backup_enabled || !config?.backup_user_id) {
+      return false
+    }
+    // 如果是OneDrive，需要检查是否已授权
+    if (cloudProvider === 'onedrive') {
+      return !!config?.onedrive_refresh_token
+    }
+    // S3或其他provider的检查逻辑可以在这里添加
+    return true
+  })()
 
   useEffect(() => {
     loadDBBackups()

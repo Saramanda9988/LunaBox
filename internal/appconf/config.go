@@ -70,7 +70,7 @@ func LoadConfig() (*AppConfig, error) {
 		S3AccessKey:          "",
 		S3SecretKey:          "",
 		CloudBackupRetention: 20,
-		OneDriveClientID:     "",
+		OneDriveClientID:     "26fcab6e-41ea-49ff-8ec9-063983cae3ef",
 		OneDriveRefreshToken: "",
 		LastDBBackupTime:     "",
 		PendingDBRestore:     "",
