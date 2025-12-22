@@ -2,6 +2,7 @@ import { createRoute } from '@tanstack/react-router'
 import { useEffect, useState, useRef } from 'react'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../store'
+import { GetVersionInfo } from '../../wailsjs/go/service/VersionService'
 import { Route as rootRoute } from './__root'
 import { appconf, enums } from '../../wailsjs/go/models'
 import { TestS3Connection, TestOneDriveConnection, GetOneDriveAuthURL, StartOneDriveAuth } from '../../wailsjs/go/service/BackupService'
@@ -29,12 +30,19 @@ function SettingsPage() {
   const [testingS3, setTestingS3] = useState(false)
   const [testingOneDrive, setTestingOneDrive] = useState(false)
   const [authorizingOneDrive, setAuthorizingOneDrive] = useState(false)
+  const [versionInfo, setVersionInfo] = useState<Record<string, string> | null>(null)
   const isInitialMount = useRef(true)
 
   useEffect(() => {
     const init = async () => {
       setIsLoading(true)
       await fetchConfig()
+      try {
+        const info = await GetVersionInfo()
+        setVersionInfo(info)
+      } catch (err) {
+        console.error('Failed to fetch version info:', err)
+      }
       setIsLoading(false)
     }
     init()
@@ -402,6 +410,11 @@ function SettingsPage() {
         <p className="text-xs text-brand-500 dark:text-brand-400">
           Lunabox made with LunaRain_079 &amp; Contributors.
         </p>
+        {versionInfo && (
+          <p className="text-xs text-brand-400 dark:text-brand-500 mt-1">
+            Version {versionInfo.version} ({versionInfo.commit}) | {versionInfo.buildMode} | Built at {versionInfo.buildTime}
+          </p>
+        )}
       </div>
     </div>
   )

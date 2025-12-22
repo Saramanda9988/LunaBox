@@ -48,6 +48,7 @@ func main() {
 	categoryService := service.NewCategoryService()
 	configService := service.NewConfigService()
 	importService := service.NewImportService()
+	versionService := service.NewVersionService()
 
 	// 创建本地文件处理器
 	localFileHandler, err := utils.NewLocalFileHandler()
@@ -130,6 +131,7 @@ func main() {
 			timerService.Init(ctx, db, config)
 			categoryService.Init(ctx, db, config)
 			importService.Init(ctx, db, config, gameService)
+			versionService.Init(ctx)
 		},
 		OnShutdown: func(ctx context.Context) {
 			// 关闭数据库连接
@@ -152,6 +154,7 @@ func main() {
 			categoryService,
 			configService,
 			importService,
+			versionService,
 		},
 		EnumBind: []interface{}{
 			enums.AllSourceTypes,
