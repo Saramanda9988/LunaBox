@@ -61,10 +61,16 @@ export namespace appconf {
 
 export namespace enums {
 	
+	export enum SourceType {
+	    LOCAL = "local",
+	    BANGUMI = "bangumi",
+	    VNDB = "vndb",
+	    YMGAL = "ymgal",
+	}
 	export enum Period {
-	    YEAR = "year",
-	    MONTH = "month",
+	    DAY = "day",
 	    WEEK = "week",
+	    MONTH = "month",
 	}
 	export enum PromptType {
 	    DEFAULT_SYSTEM = "你是一个幽默风趣的游戏评论员，擅长用轻松的语气点评玩家的游戏习惯。\n请用轻松幽默的方式点评这位玩家的游戏习惯，可以适当调侃但不要太过分。",
@@ -76,12 +82,6 @@ export namespace enums {
 	    PLAYING = "playing",
 	    COMPLETED = "completed",
 	    ON_HOLD = "on_hold",
-	}
-	export enum SourceType {
-	    LOCAL = "local",
-	    BANGUMI = "bangumi",
-	    VNDB = "vndb",
-	    YMGAL = "ymgal",
 	}
 
 }
@@ -702,9 +702,46 @@ export namespace vo {
 		    return a;
 		}
 	}
+	export class LastPlayedGame {
+	    game: models.Game;
+	    last_played_at: string;
+	    last_played_dur: number;
+	    total_played_dur: number;
+	    is_playing: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new LastPlayedGame(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.game = this.convertValues(source["game"], models.Game);
+	        this.last_played_at = source["last_played_at"];
+	        this.last_played_dur = source["last_played_dur"];
+	        this.total_played_dur = source["total_played_dur"];
+	        this.is_playing = source["is_playing"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class HomePageData {
-	    recent_games: models.Game[];
-	    recently_added: models.Game[];
+	    last_played?: LastPlayedGame;
 	    today_play_time_sec: number;
 	    weekly_play_time_sec: number;
 	
@@ -714,8 +751,7 @@ export namespace vo {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.recent_games = this.convertValues(source["recent_games"], models.Game);
-	        this.recently_added = this.convertValues(source["recently_added"], models.Game);
+	        this.last_played = this.convertValues(source["last_played"], LastPlayedGame);
 	        this.today_play_time_sec = source["today_play_time_sec"];
 	        this.weekly_play_time_sec = source["weekly_play_time_sec"];
 	    }
@@ -738,6 +774,7 @@ export namespace vo {
 		    return a;
 		}
 	}
+	
 	export class MetadataRequest {
 	    source: enums.SourceType;
 	    id: string;
@@ -754,6 +791,8 @@ export namespace vo {
 	}
 	export class PeriodStats {
 	    dimension: enums.Period;
+	    start_date: string;
+	    end_date: string;
 	    total_play_count: number;
 	    total_play_duration: number;
 	    play_time_leaderboard: GamePlayStats[];
@@ -767,6 +806,8 @@ export namespace vo {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.dimension = source["dimension"];
+	        this.start_date = source["start_date"];
+	        this.end_date = source["end_date"];
 	        this.total_play_count = source["total_play_count"];
 	        this.total_play_duration = source["total_play_duration"];
 	        this.play_time_leaderboard = this.convertValues(source["play_time_leaderboard"], GamePlayStats);
@@ -791,6 +832,22 @@ export namespace vo {
 		    }
 		    return a;
 		}
+	}
+	export class PeriodStatsRequest {
+	    dimension: enums.Period;
+	    start_date: string;
+	    end_date: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PeriodStatsRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dimension = source["dimension"];
+	        this.start_date = source["start_date"];
+	        this.end_date = source["end_date"];
+	    }
 	}
 
 }

@@ -3,16 +3,16 @@ package enums
 type Period string
 
 const (
-	Year  Period = "year"
-	Month Period = "month"
+	Day   Period = "day"
 	Week  Period = "week"
+	Month Period = "month"
 )
 
 var AllPeriodTypes = []struct {
 	Value  Period
 	TSName string
 }{
-	{Year, "YEAR"},
-	{Month, "MONTH"},
+	{Day, "DAY"},
 	{Week, "WEEK"},
+	{Month, "MONTH"},
 }

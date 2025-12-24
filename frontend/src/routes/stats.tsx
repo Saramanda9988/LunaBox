@@ -37,6 +37,11 @@ export const Route = createRoute({
   component: StatsPage,
 })
 
+// 格式化日期为 YYYY-MM-DD
+const formatDate = (date: Date) => {
+  return date.toISOString().split('T')[0]
+}
+
 function StatsPage() {
   const ref = useRef<HTMLDivElement>(null)
   const { textColor, gridColor } = useChartTheme()
@@ -46,13 +51,18 @@ function StatsPage() {
   const [showSkeleton, setShowSkeleton] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
   
+  // 自定义日期范围
+  const [customDateRange, setCustomDateRange] = useState(false)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  
   // 延迟显示骨架屏，避免闪烁
   useEffect(() => {
     let timer: number
     if (loading) {
       timer = window.setTimeout(() => {
         setShowSkeleton(true)
-      }, 300) // 300ms 内加载完成则不显示骨架屏
+      }, 300)
     } else {
       setShowSkeleton(false)
     }
@@ -126,14 +136,29 @@ function StatsPage() {
   }, [dimension, setAISummary])
 
   useEffect(() => {
-    loadStats(dimension)
-    // AI总结已缓存在store中，切换维度时不清空，保留各维度的缓存
+    if (!customDateRange) {
+      loadStats(dimension)
+    }
   }, [dimension])
 
-  const loadStats = async (dim: enums.Period) => {
+  // 当切换到自定义日期范围时，初始化日期为今天
+  useEffect(() => {
+    if (customDateRange && !startDate && !endDate) {
+      const today = formatDate(new Date())
+      setStartDate(today)
+      setEndDate(today)
+    }
+  }, [customDateRange])
+
+  const loadStats = async (dim: enums.Period, start?: string, end?: string) => {
     setLoading(true)
     try {
-      const data = await GetGlobalPeriodStats(dim)
+      const req = new vo.PeriodStatsRequest({
+        dimension: dim,
+        start_date: start || '',
+        end_date: end || ''
+      })
+      const data = await GetGlobalPeriodStats(req)
       setStats(data)
     } catch (error) {
       console.error('Failed to load stats:', error)
@@ -141,6 +166,26 @@ function StatsPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleApplyDateRange = () => {
+    if (!startDate || !endDate) {
+      toast.error('请选择开始和结束日期')
+      return
+    }
+    if (new Date(startDate) >= new Date(endDate)) {
+      toast.error('开始日期必须早于结束日期')
+      return
+    }
+    // 自定义日期范围统一使用 DAY 维度（按日聚合）
+    loadStats(enums.Period.DAY, startDate, endDate)
+  }
+
+  const handleResetDateRange = () => {
+    setCustomDateRange(false)
+    setStartDate('')
+    setEndDate('')
+    loadStats(dimension)
   }
 
   const formatDuration = (seconds: number) => {
@@ -247,30 +292,87 @@ function StatsPage() {
         <h1 className="text-4xl font-bold text-brand-900 dark:text-white">统计</h1>
       </div>
       <div className="flex justify-between items-center no-export">
-        <div className="flex space-x-2 bg-brand-100 dark:bg-brand-800 p-1 rounded-lg">
-          {[
-            { label: '周', value: enums.Period.WEEK },
-            { label: '月', value: enums.Period.MONTH },
-            { label: '年', value: enums.Period.YEAR },
-          ].map((item) => (
-            <button
-              key={item.value}
-              onClick={() => setDimension(item.value)}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                dimension === item.value
-                  ? 'bg-white dark:bg-brand-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                  : 'text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
+        <div className="flex items-center space-x-4">
+          <div className="flex space-x-2 bg-brand-100 dark:bg-brand-800 p-1 rounded-lg">
+            {[
+              { label: '周', value: enums.Period.WEEK },
+              { label: '月', value: enums.Period.MONTH },
+            ].map((item) => (
+              <button
+                key={item.value}
+                onClick={() => {
+                  setDimension(item.value)
+                  if (customDateRange) {
+                    setCustomDateRange(false)
+                    setStartDate('')
+                    setEndDate('')
+                  }
+                }}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  dimension === item.value && !customDateRange
+                    ? 'bg-white dark:bg-brand-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          
+          {/* 自定义日期范围按钮 */}
+          <button
+            onClick={() => setCustomDateRange(!customDateRange)}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
+              customDateRange
+                ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+                : 'text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200'
+            }`}
+          >
+            <span className="i-mdi-calendar-range text-lg" />
+            自定义
+          </button>
         </div>
         <div className={'flex space-x-2 items-center'}>
           <button onClick={handleShare} className='flex justify-end i-mdi-share text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors' title="分享"/>
           <button onClick={handleAISummarize} className='flex justify-end i-mdi-robot-happy text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors' title="AI总结"/>
         </div>
       </div>
+
+      {/* 自定义日期范围选择器 */}
+      {customDateRange && (
+        <div className="flex items-center gap-4 p-4 bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 no-export">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-brand-600 dark:text-brand-400">开始日期</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="px-3 py-1.5 rounded-md border border-brand-300 dark:border-brand-600 bg-white dark:bg-brand-700 text-brand-900 dark:text-white text-sm"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-brand-600 dark:text-brand-400">结束日期</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="px-3 py-1.5 rounded-md border border-brand-300 dark:border-brand-600 bg-white dark:bg-brand-700 text-brand-900 dark:text-white text-sm"
+            />
+          </div>
+          <button
+            onClick={handleApplyDateRange}
+            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors"
+          >
+            应用
+          </button>
+          <button
+            onClick={handleResetDateRange}
+            className="px-4 py-1.5 bg-brand-200 dark:bg-brand-700 hover:bg-brand-300 dark:hover:bg-brand-600 text-brand-700 dark:text-brand-300 rounded-md text-sm font-medium transition-colors"
+          >
+            重置
+          </button>
+        </div>
+      )}
 
       {/* AI Summary Card - 显示在页面顶部 */}
       {(aiLoading || aiSummary) && (

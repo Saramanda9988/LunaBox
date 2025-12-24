@@ -42,3 +42,10 @@ type Message struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
+
+// PeriodStatsRequest 统计请求参数
+type PeriodStatsRequest struct {
+	Dimension enums.Period `json:"dimension"`  // day, week, month
+	StartDate string       `json:"start_date"` // YYYY-MM-DD (可选，不传则使用默认范围)
+	EndDate   string       `json:"end_date"`   // YYYY-MM-DD (可选，不传则使用默认范围)
+}

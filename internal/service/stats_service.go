@@ -160,47 +160,65 @@ func (s *StatsService) GetGameStats(gameID string) (vo.GameDetailStats, error) {
 	return stats, nil
 }
 
-func (s *StatsService) GetGlobalPeriodStats(dimension enums.Period) (vo.PeriodStats, error) {
+func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.PeriodStats, error) {
 	var stats vo.PeriodStats
-	stats.Dimension = dimension
+	stats.Dimension = req.Dimension
 
 	var (
-		startDateExpr string
-		seriesStart   string
-		seriesEnd     string
-		stepInterval  string
-		dateFormat    string
-		truncUnit     string
+		startDate    string
+		endDate      string
+		dateFormat   string
+		truncUnit    string
+		stepInterval string
 	)
 
-	switch dimension {
-	case "week":
-		startDateExpr = "current_date - INTERVAL 6 DAY"
-		seriesStart = "current_date - INTERVAL 6 DAY"
-		seriesEnd = "current_date"
-		stepInterval = "INTERVAL 1 DAY"
-		dateFormat = "%Y-%m-%d"
-		truncUnit = "day"
-	case "month":
-		startDateExpr = "current_date - INTERVAL 29 DAY"
-		seriesStart = "current_date - INTERVAL 29 DAY"
-		seriesEnd = "current_date"
-		stepInterval = "INTERVAL 1 DAY"
-		dateFormat = "%Y-%m-%d"
-		truncUnit = "day"
-	case "year":
-		startDateExpr = "date_trunc('month', current_date) - INTERVAL 11 MONTH"
-		seriesStart = "date_trunc('month', current_date) - INTERVAL 11 MONTH"
-		seriesEnd = "date_trunc('month', current_date)"
-		stepInterval = "INTERVAL 1 MONTH"
-		dateFormat = "%Y-%m"
-		truncUnit = "month"
-	default:
-		return stats, fmt.Errorf("invalid dimension: %s", dimension)
+	// 如果用户提供了自定义日期范围，使用用户的日期
+	if req.StartDate != "" && req.EndDate != "" {
+		startDate = req.StartDate
+		endDate = req.EndDate
+	} else {
+		// 使用默认范围
+		switch req.Dimension {
+		case enums.Day:
+			// 日维度：默认最近7天（保留兼容）
+			startDate = "current_date - INTERVAL 6 DAY"
+			endDate = "current_date"
+		case enums.Week:
+			// 周：最近7天
+			startDate = "current_date - INTERVAL 6 DAY"
+			endDate = "current_date"
+		case enums.Month:
+			// 月：最近30天
+			startDate = "current_date - INTERVAL 29 DAY"
+			endDate = "current_date"
+		default:
+			return stats, fmt.Errorf("invalid dimension: %s", req.Dimension)
+		}
+	}
+
+	// 所有维度都按日聚合
+	dateFormat = "%Y-%m-%d"
+	truncUnit = "day"
+	stepInterval = "INTERVAL 1 DAY"
+
+	// 构建日期表达式
+	var startDateExpr, endDateExpr, seriesStart, seriesEnd string
+	if req.StartDate != "" && req.EndDate != "" {
+		startDateExpr = fmt.Sprintf("'%s'::DATE", startDate)
+		endDateExpr = fmt.Sprintf("'%s'::DATE", endDate)
+		seriesStart = fmt.Sprintf("'%s'::DATE", startDate)
+		seriesEnd = fmt.Sprintf("'%s'::DATE", endDate)
+		stats.StartDate = startDate
+		stats.EndDate = endDate
+	} else {
+		startDateExpr = startDate
+		endDateExpr = endDate
+		seriesStart = startDate
+		seriesEnd = endDate
 	}
 
 	// 1. Total Play Count & Duration
-	queryTotal := fmt.Sprintf("SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions WHERE start_time >= %s", startDateExpr)
+	queryTotal := fmt.Sprintf("SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions WHERE start_time >= %s AND start_time <= %s + INTERVAL 1 DAY", startDateExpr, endDateExpr)
 	err := s.db.QueryRowContext(s.ctx, queryTotal).Scan(&stats.TotalPlayCount, &stats.TotalPlayDuration)
 	if err != nil {
 		runtime.LogErrorf(s.ctx, "failed to get total play count and duration: %v", err)
@@ -213,11 +231,11 @@ func (s *StatsService) GetGlobalPeriodStats(dimension enums.Period) (vo.PeriodSt
 		SELECT ps.game_id, g.name, g.cover_url, SUM(ps.duration) as total 
 		FROM play_sessions ps 
 		JOIN games g ON ps.game_id = g.id 
-		WHERE ps.start_time >= %s
+		WHERE ps.start_time >= %s AND ps.start_time <= %s + INTERVAL 1 DAY
 		GROUP BY ps.game_id, g.name, g.cover_url 
 		ORDER BY total DESC 
 		LIMIT 5
-	`, startDateExpr)
+	`, startDateExpr, endDateExpr)
 
 	rows, err := s.db.QueryContext(s.ctx, queryLeaderboard)
 	if err != nil {

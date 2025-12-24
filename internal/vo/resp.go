@@ -20,11 +20,19 @@ type GameMetadataFromWebVO struct {
 	Game   models.Game
 }
 
+// LastPlayedGame 上次游玩的游戏信息
+type LastPlayedGame struct {
+	Game           models.Game `json:"game"`
+	LastPlayedAt   string      `json:"last_played_at"`   // 上次游玩时间
+	LastPlayedDur  int         `json:"last_played_dur"`  // 上次游玩时长（秒）
+	TotalPlayedDur int         `json:"total_played_dur"` // 总游玩时长（秒）
+	IsPlaying      bool        `json:"is_playing"`       // 是否正在游玩
+}
+
 type HomePageData struct {
-	RecentGames       []models.Game `json:"recent_games"`
-	RecentlyAdded     []models.Game `json:"recently_added"`
-	TodayPlayTimeSec  int           `json:"today_play_time_sec"`
-	WeeklyPlayTimeSec int           `json:"weekly_play_time_sec"`
+	LastPlayed        *LastPlayedGame `json:"last_played"` // 上次游玩的游戏
+	TodayPlayTimeSec  int             `json:"today_play_time_sec"`
+	WeeklyPlayTimeSec int             `json:"weekly_play_time_sec"`
 }
 
 type DailyPlayTime struct {
@@ -64,7 +72,9 @@ type GameTrendSeries struct {
 }
 
 type PeriodStats struct {
-	Dimension           enums.Period      `json:"dimension"` // week, month, year
+	Dimension           enums.Period      `json:"dimension"`  // day, week, month
+	StartDate           string            `json:"start_date"` // YYYY-MM-DD
+	EndDate             string            `json:"end_date"`   // YYYY-MM-DD
 	TotalPlayCount      int               `json:"total_play_count"`
 	TotalPlayDuration   int               `json:"total_play_duration"`
 	PlayTimeLeaderboard []GamePlayStats   `json:"play_time_leaderboard"`
