@@ -7,8 +7,9 @@ interface BasicSettingsProps {
 
 export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    onChange({ ...formData, [name]: value } as appconf.AppConfig)
+    const { name, value, type } = e.target
+    const newValue = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+    onChange({ ...formData, [name]: newValue } as appconf.AppConfig)
   }
 
   return (
@@ -61,6 +62,20 @@ export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
           <option value="zh-CN">简体中文</option>
           <option value="en-US">English</option>
         </select>
+      </div>
+
+      <div className="flex items-center space-x-3">
+        <input
+          type="checkbox"
+          id="close_to_tray"
+          name="close_to_tray"
+          checked={formData.close_to_tray || false}
+          onChange={handleChange}
+          className="w-4 h-4 text-brand-600 border-brand-300 rounded focus:ring-brand-500 dark:border-brand-600 dark:bg-brand-700"
+        />
+        <label htmlFor="close_to_tray" className="text-sm font-medium text-brand-700 dark:text-brand-300">
+          关闭窗口时最小化到系统托盘
+        </label>
       </div>
     </>
   )

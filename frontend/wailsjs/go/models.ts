@@ -6,6 +6,7 @@ export namespace appconf {
 	    theme: string;
 	    language: string;
 	    sidebar_open: boolean;
+	    close_to_tray: boolean;
 	    ai_provider?: string;
 	    ai_base_url?: string;
 	    ai_api_key?: string;
@@ -42,6 +43,7 @@ export namespace appconf {
 	        this.theme = source["theme"];
 	        this.language = source["language"];
 	        this.sidebar_open = source["sidebar_open"];
+	        this.close_to_tray = source["close_to_tray"];
 	        this.ai_provider = source["ai_provider"];
 	        this.ai_base_url = source["ai_base_url"];
 	        this.ai_api_key = source["ai_api_key"];

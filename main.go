@@ -19,6 +19,9 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/logger"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+
+	"github.com/getlantern/systray"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -26,9 +29,20 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+//go:embed build/windows/icon.ico
+var icon []byte
+
 var db *sql.DB
 
 var config *appconf.AppConfig
+
+var appCtx context.Context
+
+// 用于通知 systray 退出
+var systrayQuit chan struct{}
+
+// 标记是否是从托盘强制退出（绕过 OnBeforeClose 的最小化逻辑）
+var forceQuit bool
 
 func main() {
 	appLogger := logger.NewFileLogger("app.log")
@@ -95,7 +109,20 @@ func main() {
 			WindowIsTranslucent:  false,
 			Theme:                windows.SystemDefault,
 		},
+		// 关闭窗口时的处理
+		OnBeforeClose: func(ctx context.Context) bool {
+			// 如果是从托盘强制退出，直接允许关闭
+			if forceQuit {
+				return false
+			}
+			if config.CloseToTray {
+				runtime.WindowHide(ctx)
+				return true
+			}
+			return false
+		},
 		OnStartup: func(ctx context.Context) {
+			appCtx = ctx
 			var err error
 
 			// 检查是否有待恢复的数据库备份（在打开数据库前执行）
@@ -134,8 +161,19 @@ func main() {
 			versionService.Init(ctx)
 			// 设置 TimerService 的 BackupService 依赖
 			timerService.SetBackupService(backupService)
+
+			// 在 Wails 启动后初始化系统托盘
+			// TODO: 升级wails v3，使用原生的托盘功能
+			systrayQuit = make(chan struct{})
+			go systray.Run(onSystrayReady, onSystrayExit)
 		},
 		OnShutdown: func(ctx context.Context) {
+			// 关闭系统托盘
+			if systrayQuit != nil {
+				systray.Quit()
+				<-systrayQuit // 等待 systray 完全退出
+			}
+
 			// 自动备份数据库（在关闭数据库前）
 			if config.AutoBackupDB {
 				appLogger.Info("performing automatic database backup...")
@@ -238,4 +276,39 @@ func initSchema(db *sql.DB) error {
 		}
 	}
 	return nil
+}
+
+// 系统托盘初始化
+func onSystrayReady() {
+	systray.SetIcon(icon)
+	systray.SetTitle("LunaBox")
+	systray.SetTooltip("LunaBox")
+
+	mShow := systray.AddMenuItem("显示主窗口", "显示 LunaBox 主窗口")
+	systray.AddSeparator()
+	mQuit := systray.AddMenuItem("退出", "退出 LunaBox")
+
+	go func() {
+		for {
+			select {
+			case <-mShow.ClickedCh:
+				if appCtx != nil {
+					runtime.WindowShow(appCtx)
+				}
+			case <-mQuit.ClickedCh:
+				// 通过托盘退出时，设置强制退出标志，绕过 OnBeforeClose 的最小化逻辑
+				forceQuit = true
+				if appCtx != nil {
+					runtime.Quit(appCtx)
+				}
+				return
+			}
+		}
+	}()
+}
+
+func onSystrayExit() {
+	if systrayQuit != nil {
+		close(systrayQuit)
+	}
 }

@@ -13,9 +13,10 @@ import (
 type AppConfig struct {
 	BangumiAccessToken string `json:"access_token,omitempty"`
 	VNDBAccessToken    string `json:"vndb_access_token,omitempty"`
-	Theme              string `json:"theme"`        // light or dark
-	Language           string `json:"language"`     // zh, en, etc.
-	SidebarOpen        bool   `json:"sidebar_open"` // 侧边栏是否展开
+	Theme              string `json:"theme"`         // light or dark
+	Language           string `json:"language"`      // zh, en, etc.
+	SidebarOpen        bool   `json:"sidebar_open"`  // 侧边栏是否展开
+	CloseToTray        bool   `json:"close_to_tray"` // 关闭时最小化到托盘
 	// AI 配置
 	AIProvider     string `json:"ai_provider,omitempty"`      // openai, deepseek, etc.
 	AIBaseURL      string `json:"ai_base_url,omitempty"`      // API base URL
@@ -64,6 +65,7 @@ func LoadConfig() (*AppConfig, error) {
 		Theme:                  "light",
 		Language:               "zh",
 		SidebarOpen:            true,
+		CloseToTray:            false,
 		AIProvider:             "",
 		AIBaseURL:              "",
 		AIAPIKey:               "",

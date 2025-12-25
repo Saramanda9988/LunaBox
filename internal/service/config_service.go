@@ -53,6 +53,7 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.Theme = newConfig.Theme
 	s.config.Language = newConfig.Language
 	s.config.SidebarOpen = newConfig.SidebarOpen
+	s.config.CloseToTray = newConfig.CloseToTray
 	s.config.AIProvider = newConfig.AIProvider
 	s.config.AIBaseURL = newConfig.AIBaseURL
 	s.config.AIAPIKey = newConfig.AIAPIKey
