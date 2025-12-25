@@ -88,26 +88,25 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
         </select>
       </div>
 
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">备份密码</label>
-        <input
-          type="password"
-          name="backup_password"
-          value={formData.backup_password || ''}
-          onChange={handleChange}
-          placeholder="用于生成用户标识和加密备份"
-          className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
-        />
-        <p className="text-xs text-brand-500 dark:text-brand-400">
-          重要：请牢记此密码，忘记将无法恢复云端备份
-          {formData.backup_user_id && <span className="ml-2">用户ID: {formData.backup_user_id.substring(0, 8)}...</span>}
-        </p>
-      </div>
-
       {/* S3 配置 */}
       {formData.cloud_backup_provider === 's3' && (
         <div className="space-y-4 p-4 bg-brand-100 dark:bg-brand-800 rounded-lg">
           <h3 className="text-sm font-medium text-brand-800 dark:text-brand-200">S3 配置</h3>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">备份密码</label>
+            <input
+              type="password"
+              name="backup_password"
+              value={formData.backup_password || ''}
+              onChange={handleChange}
+              placeholder="用于生成用户标识和加密备份"
+              className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
+            />
+            <p className="text-xs text-brand-500 dark:text-brand-400">
+              重要：请牢记此密码，忘记将无法恢复云端备份
+              {formData.backup_user_id && <span className="ml-2">用户ID: {formData.backup_user_id.substring(0, 8)}...</span>}
+            </p>
+          </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">S3 端点 (Endpoint)</label>
             <input type="text" name="s3_endpoint" value={formData.s3_endpoint || ''} onChange={handleChange} placeholder="https://s3.example.com" className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white" />
