@@ -1,4 +1,4 @@
-Unicode true
+﻿Unicode true
 
 ####
 ## Please note: Template replacements don't work in this file. They are provided with default defines like
@@ -77,6 +77,57 @@ ShowInstDetails show # This will always show the installation details.
 
 Function .onInit
    !insertmacro wails.checkArchitecture
+   
+   # Check if LunaBox is running
+   check_process:
+   FindWindow $0 "" "LunaBox"
+   ${If} $0 != 0
+      IfSilent silent_kill ask_kill
+      
+      ask_kill:
+         MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION '检测到 LunaBox 正在运行。$\n$\n请关闭 LunaBox 后点击"重试"继续安装，或点击"取消"退出安装程序。' IDRETRY check_process IDCANCEL cancel_install
+      
+      silent_kill:
+         # Silent mode: automatically terminate the process
+         nsExec::ExecToStack 'taskkill /F /IM "${PRODUCT_EXECUTABLE}"'
+         Sleep 2000
+         Goto check_done
+      
+      cancel_install:
+         Quit
+   ${EndIf}
+   
+   check_done:
+   
+   # Check if old version is installed
+   SetRegView 64
+   ReadRegStr $0 HKLM "${UNINST_KEY}" "DisplayVersion"
+   ReadRegStr $1 HKLM "${UNINST_KEY}" "UninstallString"
+   
+   ${If} $0 != ""
+   ${AndIf} $1 != ""
+      # Already installed
+      IfSilent run_uninstall show_prompt
+      
+      show_prompt:
+         MessageBox MB_YESNO|MB_ICONQUESTION '检测到 LunaBox 已安装 (版本 $0)。$\n$\n是否更新到版本 ${INFO_PRODUCTVERSION}？$\n$\n(旧版本将被卸载，但您的数据会被保留。)' IDYES run_uninstall IDNO skip_uninstall
+         
+      run_uninstall:
+         # Remove quotes and execute uninstaller
+         StrCpy $2 $1 "" 1
+         StrCpy $2 $2 -1
+         
+         # Run uninstaller silently to avoid user interaction during update
+         # The uninstaller is configured to keep user data in silent mode
+         ExecWait '"$2" /S _?=$INSTDIR'
+         
+         Goto done_check
+         
+      skip_uninstall:
+         MessageBox MB_OK '将继续安装，新版本文件将覆盖旧版本。'
+      
+      done_check:
+   ${EndIf}
 FunctionEnd
 
 Section
@@ -102,10 +153,28 @@ Section "uninstall"
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
 
-    # 询问用户是否删除用户数据
-    MessageBox MB_YESNO "是否删除 LunaBox 的用户数据（配置、数据库、备份等）？$\n$\n数据位置:$\n$APPDATA\LunaBox$\n$LOCALAPPDATA\LunaBox" IDNO skip_userdata
+    # Check if running in silent mode (e.g. during update)
+    IfSilent skip_userdata_silent ask_userdata
+
+    ask_userdata:
+        # Switch to current user context to correctly locate user data
+        SetShellVarContext current
+        
+        # Ask user whether to delete user data
+        MessageBox MB_YESNO '是否删除 LunaBox 的用户数据（配置、数据库、备份等）？$\n$\n数据位置:$\n$APPDATA\LunaBox$\n$LOCALAPPDATA\LunaBox' IDNO skip_delete_data
+        
+        # Delete data if user clicked Yes
         RMDir /r "$APPDATA\LunaBox"
         RMDir /r "$LOCALAPPDATA\LunaBox"
+        
+    skip_delete_data:
+        # Restore shell context to 'all' (for admin install) to clean up Program Files and Shortcuts
+        !insertmacro wails.setShellContext
+        Goto skip_userdata
+
+    skip_userdata_silent:
+        # In silent mode, we preserve user data by default (safe for updates)
+        
     skip_userdata:
 
     RMDir /r $INSTDIR

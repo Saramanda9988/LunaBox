@@ -1,15 +1,11 @@
 package utils
 
 import (
+	"lunabox/internal/version"
 	"os"
 	"path/filepath"
 	"sync"
 )
-
-// buildMode 由编译时 ldflags 注入
-// "portable" = 便携版，数据放在程序目录
-// "installer" = 安装版，数据放在用户目录
-var buildMode = "portable" // 默认为便携版
 
 const appName = "LunaBox"
 
@@ -24,7 +20,7 @@ var (
 // initDirs 初始化所有目录路径
 func initDirs() error {
 	initOnce.Do(func() {
-		if buildMode == "installer" {
+		if version.BuildMode == "installer" {
 			// 安装版：使用系统标准目录
 			initErr = initInstallerDirs()
 		} else {
@@ -131,10 +127,10 @@ func GetCacheSubDir(subPath string) (string, error) {
 
 // IsPortableMode 返回是否为便携模式
 func IsPortableMode() bool {
-	return buildMode == "portable"
+	return version.BuildMode == "portable"
 }
 
 // GetBuildMode 返回当前构建模式
 func GetBuildMode() string {
-	return buildMode
+	return version.BuildMode
 }
