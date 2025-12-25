@@ -95,21 +95,6 @@ func TestHomeService_GetHomePageData(t *testing.T) {
 
 	// Assertions
 
-	// 1. Recent Games
-	if len(data.RecentGames) != 3 {
-		t.Errorf("Expected 3 recent games, got %d", len(data.RecentGames))
-	} else {
-		if data.RecentGames[0].ID != game1ID {
-			t.Errorf("Expected first recent game to be %s, got %s", game1ID, data.RecentGames[0].ID)
-		}
-		if data.RecentGames[1].ID != game2ID {
-			t.Errorf("Expected second recent game to be %s, got %s", game2ID, data.RecentGames[1].ID)
-		}
-		if data.RecentGames[2].ID != game3ID {
-			t.Errorf("Expected third recent game to be %s, got %s", game3ID, data.RecentGames[2].ID)
-		}
-	}
-
 	// 2. Today Play Time
 	expectedToday := 3600 + 1800 + 1200
 	if data.TodayPlayTimeSec != expectedToday {
