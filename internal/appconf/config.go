@@ -42,6 +42,9 @@ type AppConfig struct {
 	AutoBackupDB       bool `json:"auto_backup_db"`        // 退出时自动备份数据库
 	AutoBackupGameSave bool `json:"auto_backup_game_save"` // 游戏退出时自动备份存档
 	AutoUploadToCloud  bool `json:"auto_upload_to_cloud"`  // 自动上传备份到云端
+	// 备份保留策略
+	LocalBackupRetention   int `json:"local_backup_retention"`    // 本地游戏备份保留数量
+	LocalDBBackupRetention int `json:"local_db_backup_retention"` // 本地数据库备份保留数量
 }
 
 // getConfigPath 获取配置文件路径
@@ -55,32 +58,34 @@ func getConfigPath() (string, error) {
 
 func LoadConfig() (*AppConfig, error) {
 	config := &AppConfig{
-		BangumiAccessToken:   "",
-		VNDBAccessToken:      "",
-		Theme:                "light",
-		Language:             "zh",
-		AIProvider:           "",
-		AIBaseURL:            "",
-		AIAPIKey:             "",
-		AIModel:              "",
-		AISystemPrompt:       string(enums.DefaultSystemPrompt),
-		CloudBackupEnabled:   false,
-		CloudBackupProvider:  "s3",
-		BackupPassword:       "",
-		BackupUserID:         "",
-		S3Endpoint:           "",
-		S3Region:             "",
-		S3Bucket:             "",
-		S3AccessKey:          "",
-		S3SecretKey:          "",
-		CloudBackupRetention: 20,
-		OneDriveClientID:     "26fcab6e-41ea-49ff-8ec9-063983cae3ef",
-		OneDriveRefreshToken: "",
-		LastDBBackupTime:     "",
-		PendingDBRestore:     "",
-		AutoBackupDB:         false,
-		AutoBackupGameSave:   false,
-		AutoUploadToCloud:    false,
+		BangumiAccessToken:     "",
+		VNDBAccessToken:        "",
+		Theme:                  "light",
+		Language:               "zh",
+		AIProvider:             "",
+		AIBaseURL:              "",
+		AIAPIKey:               "",
+		AIModel:                "",
+		AISystemPrompt:         string(enums.DefaultSystemPrompt),
+		CloudBackupEnabled:     false,
+		CloudBackupProvider:    "s3",
+		BackupPassword:         "",
+		BackupUserID:           "",
+		S3Endpoint:             "",
+		S3Region:               "",
+		S3Bucket:               "",
+		S3AccessKey:            "",
+		S3SecretKey:            "",
+		CloudBackupRetention:   20,
+		OneDriveClientID:       "26fcab6e-41ea-49ff-8ec9-063983cae3ef",
+		OneDriveRefreshToken:   "",
+		LastDBBackupTime:       "",
+		PendingDBRestore:       "",
+		AutoBackupDB:           false,
+		AutoBackupGameSave:     false,
+		AutoUploadToCloud:      false,
+		LocalBackupRetention:   20,
+		LocalDBBackupRetention: 10,
 	}
 
 	// 获取配置文件路径

@@ -217,7 +217,26 @@ func (s *BackupService) CreateBackup(gameID string) (*models.GameBackup, error) 
 		return nil, fmt.Errorf("failed to save backup record: %w", err)
 	}
 
+	s.cleanupOldLocalBackups(gameID)
+
 	return backup, nil
+}
+
+// cleanupOldLocalBackups 清理旧的本地游戏备份
+func (s *BackupService) cleanupOldLocalBackups(gameID string) {
+	retention := s.config.LocalBackupRetention
+	if retention <= 0 {
+		retention = 20
+	}
+
+	backups, err := s.GetGameBackups(gameID)
+	if err != nil || len(backups) <= retention {
+		return
+	}
+
+	for i := retention; i < len(backups); i++ {
+		s.DeleteBackup(backups[i].ID)
+	}
 }
 
 // RestoreBackup 恢复备份到指定时间点
@@ -446,7 +465,11 @@ func (s *BackupService) CreateDBBackup() (*vo.DBBackupInfo, error) {
 	}
 
 	s.config.LastDBBackupTime = time.Now().Format(time.RFC3339)
-	s.cleanupOldDBBackups(10)
+	retention := s.config.LocalDBBackupRetention
+	if retention <= 0 {
+		retention = 10
+	}
+	s.cleanupOldDBBackups(retention)
 
 	return &vo.DBBackupInfo{
 		Path:      backupPath,

@@ -102,9 +102,9 @@ func main() {
 			if config.PendingDBRestore != "" {
 				restored, restoreErr := service.ExecuteDBRestore(config)
 				if restoreErr != nil {
-					appLogger.Error("恢复数据库失败: " + restoreErr.Error())
+					appLogger.Error("fail to restore database: " + restoreErr.Error())
 				} else if restored {
-					appLogger.Info("数据库恢复成功")
+					appLogger.Info("database restored successfully")
 				}
 			}
 
@@ -138,23 +138,23 @@ func main() {
 		OnShutdown: func(ctx context.Context) {
 			// 自动备份数据库（在关闭数据库前）
 			if config.AutoBackupDB {
-				appLogger.Info("正在执行自动数据库备份...")
+				appLogger.Info("performing automatic database backup...")
 				_, err := backupService.CreateAndUploadDBBackup()
 				if err != nil {
-					appLogger.Error("自动备份数据库失败: " + err.Error())
+					appLogger.Error("automatic database backup failed: " + err.Error())
 				} else {
-					appLogger.Info("自动备份数据库成功")
+					appLogger.Info("automatic database backup succeeded")
 				}
 			}
 
 			// 关闭数据库连接
 			if err := db.Close(); err != nil {
-				appLogger.Error("关闭数据库失败: " + err.Error())
+				appLogger.Error("failed to close database: " + err.Error())
 			}
 
 			// 保存配置
 			if err := appconf.SaveConfig(config); err != nil {
-				appLogger.Error("保存配置失败: " + err.Error())
+				appLogger.Error("failed to save config: " + err.Error())
 			}
 		},
 		Bind: []interface{}{

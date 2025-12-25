@@ -74,5 +74,7 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.AutoBackupDB = newConfig.AutoBackupDB
 	s.config.AutoBackupGameSave = newConfig.AutoBackupGameSave
 	s.config.AutoUploadToCloud = newConfig.AutoUploadToCloud
+	s.config.LocalBackupRetention = newConfig.LocalBackupRetention
+	s.config.LocalDBBackupRetention = newConfig.LocalDBBackupRetention
 	return nil
 }
