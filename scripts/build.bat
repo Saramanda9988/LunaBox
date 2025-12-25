@@ -1,16 +1,25 @@
 @echo off
 REM LunaBox Build Script
-REM Usage: build.bat [portable|installer|all]
+REM Usage: build.bat [portable|installer|all] [version]
 
 setlocal enabledelayedexpansion
 
 set "BUILD_MODE=%~1"
 if "%BUILD_MODE%"=="" set "BUILD_MODE=all"
 
-REM Get version from git tag, fallback to default
-for /f "delims=" %%i in ('git describe --tags --abbrev=0 2^>nul') do set "GIT_VERSION=%%i"
-if not defined GIT_VERSION set "GIT_VERSION=v1.0.0"
-set "VERSION=%GIT_VERSION:~1%"
+set "VERSION_ARG=%~2"
+
+if not "%VERSION_ARG%"=="" (
+    set "VERSION=%VERSION_ARG%"
+) else (
+    REM Get version from git tag, fallback to default
+    for /f "delims=" %%i in ('git describe --tags --abbrev=0 2^>nul') do set "GIT_VERSION=%%i"
+    if not defined GIT_VERSION set "GIT_VERSION=v1.0.0"
+    set "VERSION=!GIT_VERSION!"
+)
+
+REM Remove 'v' prefix if exists
+if "!VERSION:~0,1!"=="v" set "VERSION=!VERSION:~1!"
 
 REM Get Git Commit Hash
 for /f "delims=" %%i in ('git rev-parse --short HEAD 2^>nul') do set "GIT_COMMIT=%%i"
@@ -37,7 +46,7 @@ if "%BUILD_MODE%"=="installer" goto :build_installer
 if "%BUILD_MODE%"=="all" goto :build_all
 
 echo Unknown build mode: %BUILD_MODE%
-echo Usage: build.bat [portable^|installer^|all]
+echo Usage: build.bat [portable^|installer^|all] [version]
 exit /b 1
 
 :build_all
@@ -60,11 +69,23 @@ if errorlevel 1 (
 echo Portable build completed: build\bin\lunabox-portable.exe
 echo.
 
-REM Create portable ZIP package
+REM Create portable ZIP package with default folders
 if exist "build\bin\lunabox-portable.exe" (
     echo Creating portable ZIP package...
+    set "TEMP_PKG_DIR=build\bin\LunaBox-Portable-%VERSION%"
+    if exist "!TEMP_PKG_DIR!" rd /s /q "!TEMP_PKG_DIR!"
+    mkdir "!TEMP_PKG_DIR!"
+    mkdir "!TEMP_PKG_DIR!\backups"
+    mkdir "!TEMP_PKG_DIR!\covers"
+    
+    copy "build\bin\lunabox-portable.exe" "!TEMP_PKG_DIR!\LunaBox.exe" >nul
+    
     if exist "build\bin\LunaBox-Portable-%VERSION%.zip" del "build\bin\LunaBox-Portable-%VERSION%.zip"
-    powershell -Command "Compress-Archive -Path 'build\bin\lunabox-portable.exe' -DestinationPath 'build\bin\LunaBox-Portable-%VERSION%.zip'"
+    powershell -Command "Compress-Archive -Path '!TEMP_PKG_DIR!' -DestinationPath 'build\bin\LunaBox-Portable-%VERSION%.zip'"
+    
+    REM Clean up temp directory
+    rd /s /q "!TEMP_PKG_DIR!"
+    
     echo Created: build\bin\LunaBox-Portable-%VERSION%.zip
 )
 echo.

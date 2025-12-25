@@ -73,7 +73,15 @@ jobs:
       - name: Create portable ZIP
         if: matrix.mode == 'portable'
         run: |
-          Compress-Archive -Path "build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.exe" -DestinationPath "LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip"
+          $PKG_NAME = "LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable"
+          $PKG_DIR = "build/bin/$PKG_NAME"
+          New-Item -ItemType Directory -Force -Path "$PKG_DIR"
+          New-Item -ItemType Directory -Force -Path "$PKG_DIR/backups"
+          New-Item -ItemType Directory -Force -Path "$PKG_DIR/covers"
+          
+          Copy-Item "build/bin/$PKG_NAME.exe" -Destination "$PKG_DIR/LunaBox.exe"
+          
+          Compress-Archive -Path "$PKG_DIR" -DestinationPath "$PKG_NAME.zip"
         shell: pwsh
 
       - name: Rename installer
