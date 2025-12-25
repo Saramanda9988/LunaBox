@@ -30,6 +30,10 @@ export function Init(arg1, arg2, arg3) {
   return window['go']['service']['GameService']['Init'](arg1, arg2, arg3);
 }
 
+export function SelectCoverImage(arg1) {
+  return window['go']['service']['GameService']['SelectCoverImage'](arg1);
+}
+
 export function SelectGameExecutable() {
   return window['go']['service']['GameService']['SelectGameExecutable']();
 }

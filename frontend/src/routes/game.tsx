@@ -2,7 +2,7 @@ import { createRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Route as rootRoute } from './__root'
 import { useChartTheme } from '../hooks/useChartTheme'
-import { GetGameByID, UpdateGame, SelectGameExecutable, DeleteGame, SelectSaveDirectory } from '../../wailsjs/go/service/GameService'
+import { GetGameByID, UpdateGame, SelectGameExecutable, DeleteGame, SelectSaveDirectory, SelectCoverImage } from '../../wailsjs/go/service/GameService'
 import { GetGameStats } from '../../wailsjs/go/service/StatsService'
 import { models, vo, enums } from '../../wailsjs/go/models'
 import {
@@ -207,6 +207,19 @@ function GameDetailPage() {
     }
   }
 
+  const handleSelectCoverImage = async () => {
+    if (!game) return
+    try {
+      const coverUrl = await SelectCoverImage(game.id)
+      if (coverUrl) {
+        setGame({ ...game, cover_url: coverUrl } as models.Game)
+      }
+    } catch (error) {
+      console.error('Failed to select cover image:', error)
+      toast.error('选择封面图片失败')
+    }
+  }
+
   const statusConfig = {
     [enums.GameStatus.NOT_STARTED]: { label: '未开始', icon: 'i-mdi-clock-outline', color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
     [enums.GameStatus.PLAYING]: { label: '游玩中', icon: 'i-mdi-gamepad-variant', color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300' },
@@ -377,14 +390,25 @@ function GameDetailPage() {
 
             <div>
               <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
-                封面图片 URL
+                封面图片
               </label>
-              <input
-                type="text"
-                value={game.cover_url}
-                onChange={(e) => setGame({ ...game, cover_url: e.target.value } as models.Game)}
-                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={game.cover_url}
+                  onChange={(e) => setGame({ ...game, cover_url: e.target.value } as models.Game)}
+                  placeholder="输入图片 URL 或选择本地图片"
+                  className="flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleSelectCoverImage}
+                  className="px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
+                >
+                  选择
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-brand-500">支持远端url获取和本地图片选取</p>
             </div>
 
             <div>

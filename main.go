@@ -220,6 +220,7 @@ func main() {
 	}
 }
 
+// TODO: 实现专门的migration机制
 func initSchema(db *sql.DB) error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS users (

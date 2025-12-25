@@ -20,6 +20,8 @@ export function GetGames():Promise<Array<models.Game>>;
 
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;
 
+export function SelectCoverImage(arg1:string):Promise<string>;
+
 export function SelectGameExecutable():Promise<string>;
 
 export function SelectSaveDirectory():Promise<string>;

@@ -275,6 +275,34 @@ func (s *GameService) SelectSaveDirectory() (string, error) {
 	return selection, err
 }
 
+// SelectCoverImage 选择封面图片并保存到 covers 目录
+func (s *GameService) SelectCoverImage(gameID string) (string, error) {
+	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+		Title: "选择封面图片",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "图片文件",
+				Pattern:     "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp",
+			},
+		},
+	})
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
+		return "", err
+	}
+	if selection == "" {
+		return "", nil
+	}
+
+	coverPath, err := utils.SaveCoverImage(selection, gameID)
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "failed to save cover image: %v", err)
+		return "", fmt.Errorf("failed to save cover image: %w", err)
+	}
+
+	return coverPath, nil
+}
+
 func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWebVO, error) {
 	var games []vo.GameMetadataFromWebVO
 	var wg sync.WaitGroup

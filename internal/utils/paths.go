@@ -70,7 +70,7 @@ func initInstallerDirs() error {
 	return nil
 }
 
-// GetDataDir 获取数据目录（数据库、备份等）
+// GetDataDir 获取数据目录（数据库、备份、上传的封面图片等）
 func GetDataDir() (string, error) {
 	if err := initDirs(); err != nil {
 		return "", err
@@ -81,7 +81,7 @@ func GetDataDir() (string, error) {
 	return dataDir, nil
 }
 
-// GetCacheDir 获取缓存目录（封面图片等）
+// GetCacheDir 获取缓存目录
 func GetCacheDir() (string, error) {
 	if err := initDirs(); err != nil {
 		return "", err

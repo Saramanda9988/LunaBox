@@ -22,6 +22,13 @@ func SaveCoverImage(srcPath string, gameID string) (string, error) {
 		return "", err
 	}
 
+	// 删除该 gameID 的旧封面文件（可能是不同扩展名）
+	oldExtensions := []string{".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
+	for _, ext := range oldExtensions {
+		oldPath := filepath.Join(coverDir, gameID+ext)
+		os.Remove(oldPath) // 忽略错误，文件可能不存在
+	}
+
 	// 获取源文件的扩展名
 	ext := filepath.Ext(srcPath)
 	if ext == "" {
