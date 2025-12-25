@@ -4,6 +4,7 @@ import { toPng } from 'html-to-image'
 import toast from 'react-hot-toast'
 import { Route as rootRoute } from './__root'
 import { useChartTheme } from '../hooks/useChartTheme'
+import { formatDurationShort, formatDurationHours } from '../utils/time'
 import {
   CategoryScale,
   Chart as ChartJS,
@@ -186,16 +187,6 @@ function StatsPage() {
     setStartDate('')
     setEndDate('')
     loadStats(dimension)
-  }
-
-  const formatDuration = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    return `${hours}h ${minutes}m`
-  }
-
-  const formatDurationHours = (seconds: number) => {
-    return Number((seconds / 3600).toFixed(1))
   }
 
   if (loading && !stats) {
@@ -400,7 +391,7 @@ function StatsPage() {
         </div>
         <div className="bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
           <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">总游玩时长</h3>
-          <p className="text-3xl font-bold text-brand-900 dark:text-white">{formatDuration(stats.total_play_duration)}</p>
+          <p className="text-3xl font-bold text-brand-900 dark:text-white">{formatDurationShort(stats.total_play_duration)}</p>
         </div>
       </div>
 
@@ -425,7 +416,7 @@ function StatsPage() {
               {stats.play_time_leaderboard[0].game_name}
             </h3>
             <p className="text-2xl font-mono font-semibold text-neutral-600 dark:text-neutral-400">
-              {formatDuration(stats.play_time_leaderboard[0].total_duration)}
+              {formatDurationShort(stats.play_time_leaderboard[0].total_duration)}
             </p>
           </div>
         )}
@@ -462,7 +453,7 @@ function StatsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-brand-900 dark:text-white text-right font-mono">
-                      {formatDuration(game.total_duration)}
+                      {formatDurationShort(game.total_duration)}
                     </td>
                   </tr>
                 ))}

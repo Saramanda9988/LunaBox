@@ -2,6 +2,7 @@ import { createRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Route as rootRoute } from './__root'
 import { useChartTheme } from '../hooks/useChartTheme'
+import { formatDuration } from '../utils/time'
 import { GetGameByID, UpdateGame, SelectGameExecutable, DeleteGame, SelectSaveDirectory, SelectCoverImage } from '../../wailsjs/go/service/GameService'
 import { GetGameStats } from '../../wailsjs/go/service/StatsService'
 import { models, vo, enums } from '../../wailsjs/go/models'
@@ -95,15 +96,6 @@ function GameDetailPage() {
         <button onClick={() => navigate({ to: '/library' })} className="text-neutral-600 hover:underline">返回库</button>
       </div>
     )
-  }
-
-  const formatDuration = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    if (hours > 0) {
-        return `${hours}小时${minutes}分钟`
-    }
-    return `${minutes}分钟`
   }
 
   const chartData = {

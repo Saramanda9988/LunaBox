@@ -13,6 +13,7 @@ import {
 import { Quit } from '../../../wailsjs/runtime/runtime'
 import { useAppStore } from '../../store'
 import { ConfirmModal } from '../modal/ConfirmModal'
+import { formatFileSize } from '../../utils/size'
 
 export function DBBackupPanel() {
   const { config } = useAppStore()
@@ -185,12 +186,6 @@ export function DBBackupPanel() {
         }
       },
     })
-  }
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + ' B'
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
   const isDisabled = restoringBackup !== null || uploadingBackup !== null || isBackingUp

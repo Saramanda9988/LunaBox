@@ -4,6 +4,7 @@ import { useAppStore } from '../store'
 import { Route as rootRoute } from './__root'
 import { StartGameWithTracking } from '../../wailsjs/go/service/TimerService'
 import toast from 'react-hot-toast'
+import { formatDuration } from '../utils/time'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -41,15 +42,6 @@ function HomePage() {
     }
   }
 
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    if (hours > 0) {
-      return hours + '小时' + (minutes > 0 ? ' ' + minutes + '分钟' : '')
-    }
-    return minutes + '分钟'
-  }
-
   if (isLoading) {
     return <div className="flex h-full items-center justify-center">Loading...</div>
   }
@@ -82,7 +74,7 @@ function HomePage() {
           <div>
             <div className="text-xs text-brand-500 dark:text-brand-400">今日游玩时间</div>
             <div className="text-lg font-bold text-neutral-600 dark:text-neutral-400">
-              {formatTime(homeData.today_play_time_sec)}
+              {formatDuration(homeData.today_play_time_sec)}
             </div>
           </div>
         </div>
@@ -128,7 +120,7 @@ function HomePage() {
           <div>
             <div className="text-xs text-brand-500 dark:text-brand-400">今日游玩时间</div>
             <div className="text-lg font-bold text-neutral-600 dark:text-neutral-400">
-              {formatTime(homeData.today_play_time_sec)}
+              {formatDuration(homeData.today_play_time_sec)}
             </div>
           </div>
         </div>
@@ -144,7 +136,7 @@ function HomePage() {
           </p>
           {lastPlayed.total_played_dur > 0 && !isPlaying && (
             <p className="text-brand-600 dark:text-white/70 text-sm mt-1 drop-shadow">
-              总游玩时长：{formatTime(lastPlayed.total_played_dur)}
+              总游玩时长：{formatDuration(lastPlayed.total_played_dur)}
             </p>
           )}
         </div>

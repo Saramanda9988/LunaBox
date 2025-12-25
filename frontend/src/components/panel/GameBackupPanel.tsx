@@ -14,6 +14,7 @@ import {
 } from '../../../wailsjs/go/service/BackupService'
 import { ConfirmModal } from '../modal/ConfirmModal'
 import { useAppStore } from '../../store'
+import { formatFileSize } from '../../utils/size'
 
 interface GameBackupPanelProps {
   gameId: string
@@ -178,12 +179,6 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
         }
       },
     })
-  }
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + ' B'
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
   const cloudEnabled = cloudStatus?.configured && cloudStatus?.enabled
