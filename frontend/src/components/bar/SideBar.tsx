@@ -50,16 +50,14 @@ export function SideBar() {
         </ul>
       </nav>
 
-      <div className={`p-4 border-brand-200 dark:border-brand-700 flex items-center ${isSidebarOpen ? 'justify-end gap-1' : 'justify-center'}`}>
-        {isSidebarOpen && (
-          <div 
-            onClick={() => BrowserOpenURL('https://github.com/Saramanda9988/LunaBox')}
-            className="flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 cursor-pointer"
-            title="GitHub"
-          >
-            <div className="i-mdi-github text-xl" />
-          </div>
-        )}
+      <div className={`p-4 border-brand-200 dark:border-brand-700 flex ${isSidebarOpen ? 'flex-row items-center justify-end gap-1' : 'flex-col items-center gap-2'}`}>
+        <div 
+          onClick={() => BrowserOpenURL('https://github.com/Saramanda9988/LunaBox')}
+          className="flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 cursor-pointer"
+          title="GitHub"
+        >
+          <div className="i-mdi-github text-xl" />
+        </div>
         <Link
           to="/settings"
           className="flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 no-underline [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100"
