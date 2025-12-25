@@ -13,8 +13,9 @@ import (
 type AppConfig struct {
 	BangumiAccessToken string `json:"access_token,omitempty"`
 	VNDBAccessToken    string `json:"vndb_access_token,omitempty"`
-	Theme              string `json:"theme"`    // light or dark
-	Language           string `json:"language"` // zh, en, etc.
+	Theme              string `json:"theme"`        // light or dark
+	Language           string `json:"language"`     // zh, en, etc.
+	SidebarOpen        bool   `json:"sidebar_open"` // 侧边栏是否展开
 	// AI 配置
 	AIProvider     string `json:"ai_provider,omitempty"`      // openai, deepseek, etc.
 	AIBaseURL      string `json:"ai_base_url,omitempty"`      // API base URL
@@ -62,6 +63,7 @@ func LoadConfig() (*AppConfig, error) {
 		VNDBAccessToken:        "",
 		Theme:                  "light",
 		Language:               "zh",
+		SidebarOpen:            true,
 		AIProvider:             "",
 		AIBaseURL:              "",
 		AIAPIKey:               "",
@@ -76,7 +78,7 @@ func LoadConfig() (*AppConfig, error) {
 		S3Bucket:               "",
 		S3AccessKey:            "",
 		S3SecretKey:            "",
-		CloudBackupRetention:   20,
+		CloudBackupRetention:   5,
 		OneDriveClientID:       "26fcab6e-41ea-49ff-8ec9-063983cae3ef",
 		OneDriveRefreshToken:   "",
 		LastDBBackupTime:       "",
@@ -84,8 +86,8 @@ func LoadConfig() (*AppConfig, error) {
 		AutoBackupDB:           false,
 		AutoBackupGameSave:     false,
 		AutoUploadToCloud:      false,
-		LocalBackupRetention:   20,
-		LocalDBBackupRetention: 10,
+		LocalBackupRetention:   10,
+		LocalDBBackupRetention: 5,
 	}
 
 	// 获取配置文件路径

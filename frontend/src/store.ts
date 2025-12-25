@@ -10,6 +10,7 @@ interface AISummaryCache {
 interface AppState {
   isSidebarOpen: boolean
   toggleSidebar: () => void
+  setSidebarOpen: (open: boolean) => void
   homeData: vo.HomePageData | null
   config: appconf.AppConfig | null
   isLoading: boolean
@@ -22,9 +23,19 @@ interface AppState {
   getAISummary: (dimension: string) => string | undefined
 }
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   isSidebarOpen: true,
-  toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+  toggleSidebar: () => {
+    const newState = !get().isSidebarOpen
+    set({ isSidebarOpen: newState })
+    // 保存到配置
+    const config = get().config
+    if (config) {
+      const newConfig = { ...config, sidebar_open: newState }
+      UpdateAppConfig(newConfig).catch(console.error)
+    }
+  },
+  setSidebarOpen: (open: boolean) => set({ isSidebarOpen: open }),
   homeData: null,
   config: null,
   isLoading: false,
@@ -42,7 +53,7 @@ export const useAppStore = create<AppState>((set) => ({
   fetchConfig: async () => {
     try {
       const config = await GetAppConfig()
-      set({ config })
+      set({ config, isSidebarOpen: config.sidebar_open })
     } catch (error) {
       console.error('Failed to fetch config:', error)
     }

@@ -138,12 +138,10 @@ func (s *AiService) buildPrompt(data *AIStatsData) string {
 
 	periodName := "最近7天"
 	switch data.Dimension {
-	case "day":
-		periodName = "最近7天"
 	case "week":
-		periodName = "最近4周"
+		periodName = "最近7天"
 	case "month":
-		periodName = "最近6个月"
+		periodName = "最近1个月"
 	}
 	sb.WriteString(fmt.Sprintf("这一部分是对环境的提醒：用户使用的程序是LunaBox，一款本地游戏管理和启动器软件。你不需要在回答中出现相关的字眼\n\n"))
 	sb.WriteString(fmt.Sprintf("以下是%s游戏统计数据，根据上面你的系统人设要求写一段总结(200 - 300字)：\n\n", periodName))
