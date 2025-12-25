@@ -20,13 +20,13 @@ export function CategoryCard({ category, onDelete }: CategoryCardProps) {
     >
       <div className={`p-3 rounded-lg mr-4 ${
           category.is_system
-              ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-              : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+              ? 'bg-error-100 text-error-600 dark:bg-error-900/30 dark:text-error-400'
+              : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-900/30 dark:text-neutral-400'
       }`}>
         <div className={`text-2xl ${category.is_system ? 'i-mdi-heart' : 'i-mdi-folder'}`} />
       </div>
       <div className="flex-1">
-        <h3 className="font-semibold text-brand-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+        <h3 className="font-semibold text-brand-900 dark:text-white group-hover:text-neutral-600 dark:group-hover:text-neutral-400 transition-colors">
           {category.name}
         </h3>
         <p className="text-sm text-brand-500 dark:text-brand-400">
@@ -40,7 +40,7 @@ export function CategoryCard({ category, onDelete }: CategoryCardProps) {
                 e.preventDefault() // Prevent navigation
                 onDelete(e)
               }}
-              className="absolute top-2 right-2 p-2 text-brand-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-2 right-2 p-2 text-brand-400 hover:text-error-500 opacity-0 group-hover:opacity-100 transition-opacity"
               title="删除收藏夹"
           >
             <div className="i-mdi-delete text-lg" />

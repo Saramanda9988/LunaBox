@@ -61,7 +61,7 @@ export function GameCard({ game }: GameCardProps) {
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 opacity-0 backdrop-blur-[2px] transition-all duration-300 group-hover:opacity-100">
           <button
             onClick={handleStartGame}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition-transform hover:scale-110 hover:bg-blue-500 active:scale-95"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-600 text-white shadow-lg transition-transform hover:scale-110 hover:bg-neutral-500 active:scale-95"
             title="启动游戏"
           >
             <div className="i-mdi-play text-lg" />

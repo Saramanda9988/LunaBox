@@ -310,7 +310,7 @@ function StatsPage() {
                 }}
                 className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   dimension === item.value && !customDateRange
-                    ? 'bg-white dark:bg-brand-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                    ? 'bg-white dark:bg-brand-700 text-neutral-600 dark:text-neutral-400 shadow-sm'
                     : 'text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200'
                 }`}
               >
@@ -324,7 +324,7 @@ function StatsPage() {
             onClick={() => setCustomDateRange(!customDateRange)}
             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
               customDateRange
-                ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+                ? 'bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400'
                 : 'text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200'
             }`}
           >
@@ -361,7 +361,7 @@ function StatsPage() {
           </div>
           <button
             onClick={handleApplyDateRange}
-            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors"
+            className="px-4 py-1.5 bg-neutral-600 hover:bg-neutral-700 text-white rounded-md text-sm font-medium transition-colors"
           >
             应用
           </button>
@@ -376,7 +376,7 @@ function StatsPage() {
 
       {/* AI Summary Card - 显示在页面顶部 */}
       {(aiLoading || aiSummary) && (
-        <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 p-6 rounded-xl shadow-sm border border-purple-200 dark:border-purple-700">
+        <div className="bg-gradient-to-r from-purple-50 to-neutral-50 dark:from-purple-900/20 dark:to-neutral-900/20 p-6 rounded-xl shadow-sm border border-purple-200 dark:border-purple-700">
           <div className="flex items-center gap-2 mb-3">
             <span className="i-mdi-robot-happy text-xl text-purple-600 dark:text-purple-400"/>
             <h3 className="text-lg font-semibold text-purple-900 dark:text-purple-100">AI 总结</h3>
@@ -424,7 +424,7 @@ function StatsPage() {
             <h3 className="text-lg font-bold text-brand-900 dark:text-white mb-2 line-clamp-2 px-2">
               {stats.play_time_leaderboard[0].game_name}
             </h3>
-            <p className="text-2xl font-mono font-semibold text-blue-600 dark:text-blue-400">
+            <p className="text-2xl font-mono font-semibold text-neutral-600 dark:text-neutral-400">
               {formatDuration(stats.play_time_leaderboard[0].total_duration)}
             </p>
           </div>

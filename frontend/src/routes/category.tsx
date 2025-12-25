@@ -158,7 +158,7 @@ function CategoryDetailPage() {
       <div className="flex flex-col items-center justify-center h-full space-y-4 text-brand-500">
         <div className="i-mdi-alert-circle-outline text-6xl" />
         <p className="text-xl">未找到该分类</p>
-        <button onClick={onBack} className="text-blue-600 hover:underline">返回列表</button>
+        <button onClick={onBack} className="text-neutral-600 hover:underline">返回列表</button>
       </div>
     )
   }
@@ -179,7 +179,7 @@ function CategoryDetailPage() {
             <div>
               <h1 className="text-4xl font-bold text-brand-900 dark:text-white flex items-center gap-3">
                 {category.name}
-                {category.is_system && <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-md dark:bg-blue-900 dark:text-blue-300 align-middle">系统</span>}
+                {category.is_system && <span className="text-sm bg-neutral-100 text-neutral-800 px-2 py-1 rounded-md dark:bg-neutral-900 dark:text-neutral-300 align-middle">系统</span>}
               </h1>
               <p className="text-brand-500 dark:text-brand-400 mt-2">
                 共 {games.length} 个游戏
@@ -202,7 +202,7 @@ function CategoryDetailPage() {
             actionButton={
               <button
                 onClick={openAddGameModal}
-                className="flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                className="flex items-center rounded-lg bg-neutral-600 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 focus:outline-none focus:ring-4 focus:ring-neutral-300 dark:bg-neutral-600 dark:hover:bg-neutral-700 dark:focus:ring-neutral-800"
               >
                 <div className="i-mdi-plus mr-2 text-lg" />
                 添加游戏
@@ -223,7 +223,7 @@ function CategoryDetailPage() {
                                 e.stopPropagation()
                                 handleRemoveGame(game.id)
                               }}
-                              className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-600"
+                              className="absolute top-2 right-2 p-1 bg-error-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-error-600"
                               title="从收藏夹移除"
                           >
                             <div className="i-mdi-close text-sm" />
@@ -243,7 +243,7 @@ function CategoryDetailPage() {
                 <p className="text-lg">这个收藏夹还没有游戏</p>
                 <button
                     onClick={openAddGameModal}
-                    className="mt-4 text-blue-600 hover:underline dark:text-blue-400"
+                    className="mt-4 text-neutral-600 hover:underline dark:text-neutral-400"
                 >
                   添加游戏
                 </button>

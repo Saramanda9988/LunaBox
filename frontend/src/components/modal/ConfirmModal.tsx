@@ -29,8 +29,8 @@ export function ConfirmModal({
         <div className="flex items-start gap-4">
           <div className={`p-2 rounded-full ${
             type === 'danger' 
-              ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' 
-              : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+              ? 'bg-error-100 text-error-600 dark:bg-error-900/30 dark:text-error-400' 
+              : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-900/30 dark:text-neutral-400'
           }`}>
             <div className={type === 'danger' ? 'i-mdi-alert-circle text-2xl' : 'i-mdi-information text-2xl'} />
           </div>
@@ -56,8 +56,8 @@ export function ConfirmModal({
             }}
             className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
               type === 'danger'
-                ? 'bg-red-600 hover:bg-red-700 shadow-sm shadow-red-200 dark:shadow-none'
-                : 'bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-200 dark:shadow-none'
+                ? 'bg-error-600 hover:bg-error-700 shadow-sm shadow-error-200 dark:shadow-none'
+                : 'bg-neutral-600 hover:bg-neutral-700 shadow-sm shadow-neutral-200 dark:shadow-none'
             }`}
           >
             {confirmText}

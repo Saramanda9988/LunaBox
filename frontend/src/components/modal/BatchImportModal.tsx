@@ -327,7 +327,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-brand-200 dark:border-brand-700">
                     <div className="flex items-center gap-3">
-                        <div className="i-mdi-folder-multiple text-3xl text-green-500" />
+                        <div className="i-mdi-folder-multiple text-3xl text-success-500" />
                         <h2 className="text-2xl font-bold text-brand-900 dark:text-white">
                             批量导入游戏库
                         </h2>
@@ -358,7 +358,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                             <button
                                 onClick={handleSelectDirectory}
                                 disabled={isLoading}
-                                className="flex w-full items-center justify-center rounded-lg py-4 text-white transition disabled:opacity-50 bg-green-500 hover:bg-green-600"
+                                className="flex w-full items-center justify-center rounded-lg py-4 text-white transition disabled:opacity-50 bg-success-500 hover:bg-success-600"
                             >
                                 <div className="i-mdi-folder-search mr-2 text-xl" />
                                 选择游戏库目录
@@ -369,7 +369,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                     {/* Step: Scanning */}
                     {step === 'scan' && (
                         <div className="py-12 text-center">
-                            <div className="i-mdi-loading animate-spin text-5xl mx-auto mb-4 text-green-500" />
+                            <div className="i-mdi-loading animate-spin text-5xl mx-auto mb-4 text-success-500" />
                             <p className="text-lg text-brand-600 dark:text-brand-300">
                                 正在扫描目录...
                             </p>
@@ -384,19 +384,19 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                         <div className="space-y-4">
                             {/* Summary */}
                             <div className="flex gap-4">
-                                <div className="flex-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 p-4 text-center">
-                                    <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                                <div className="flex-1 rounded-lg bg-neutral-50 dark:bg-neutral-900/20 p-4 text-center">
+                                    <div className="text-3xl font-bold text-neutral-600 dark:text-neutral-400">
                                         {candidates.length}
                                     </div>
-                                    <div className="text-sm text-blue-700 dark:text-blue-300">
+                                    <div className="text-sm text-neutral-700 dark:text-neutral-300">
                                         检测到
                                     </div>
                                 </div>
-                                <div className="flex-1 rounded-lg bg-green-50 dark:bg-green-900/20 p-4 text-center">
-                                    <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                                <div className="flex-1 rounded-lg bg-success-50 dark:bg-success-900/20 p-4 text-center">
+                                    <div className="text-3xl font-bold text-success-600 dark:text-success-400">
                                         {matchedCount}
                                     </div>
-                                    <div className="text-sm text-green-700 dark:text-green-300">
+                                    <div className="text-sm text-success-700 dark:text-success-300">
                                         已匹配
                                     </div>
                                 </div>
@@ -477,10 +477,10 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                                                             type="text"
                                                             value={candidate.searchName}
                                                             onChange={(e) => updateSearchName(index, e.target.value)}
-                                                            className="w-full bg-transparent border-b border-transparent hover:border-brand-300 focus:border-blue-500 focus:outline-none text-sm text-brand-900 dark:text-white"
+                                                            className="w-full bg-transparent border-b border-transparent hover:border-brand-300 focus:border-neutral-500 focus:outline-none text-sm text-brand-900 dark:text-white"
                                                         />
                                                         {candidate.matchedGame && (
-                                                            <div className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                                                            <div className="text-xs text-success-600 dark:text-success-400 mt-1 flex items-center gap-1">
                                                                 <span>→ {candidate.matchedGame.name}</span>
                                                                 <span className="text-brand-400">({candidate.matchSource})</span>
                                                             </div>
@@ -513,7 +513,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                                                             </span>
                                                         )}
                                                         {(candidate.matchStatus === 'matched' || candidate.matchStatus === 'manual') && (
-                                                            <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                            <span className="inline-flex items-center rounded-full bg-success-100 px-2 py-1 text-xs text-success-700 dark:bg-success-900/30 dark:text-success-400">
                                                                 <div className="i-mdi-check-circle mr-1" />
                                                                 已匹配
                                                             </span>
@@ -525,7 +525,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                                                             </span>
                                                         )}
                                                         {candidate.matchStatus === 'error' && (
-                                                            <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-xs text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                                            <span className="inline-flex items-center rounded-full bg-error-100 px-2 py-1 text-xs text-error-700 dark:bg-error-900/30 dark:text-error-400">
                                                                 <div className="i-mdi-close-circle mr-1" />
                                                                 错误
                                                             </span>
@@ -534,7 +534,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                                                     <td className="px-3 py-2 text-center">
                                                         <button
                                                             onClick={() => openManualSelect(index)}
-                                                            className="text-blue-500 hover:text-blue-700 text-sm"
+                                                            className="text-neutral-500 hover:text-neutral-700 text-sm"
                                                             title="手动选择"
                                                         >
                                                             <div className="i-mdi-pencil text-lg" />
@@ -559,7 +559,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                                     {pendingCount > 0 && (
                                         <button
                                             onClick={handleStartMatch}
-                                            className="rounded-lg px-5 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                                            className="rounded-lg px-5 py-2.5 text-sm font-medium text-white bg-neutral-600 hover:bg-neutral-700"
                                         >
                                             开始匹配元数据
                                         </button>
@@ -567,7 +567,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                                     <button
                                         onClick={handleImport}
                                         disabled={selectedCount === 0}
-                                        className="rounded-lg px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50 bg-green-600 hover:bg-green-700"
+                                        className="rounded-lg px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50 bg-success-600 hover:bg-success-700"
                                     >
                                         导入 {selectedCount} 个游戏
                                     </button>
@@ -579,19 +579,19 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                     {/* Step: Matching */}
                     {step === 'match' && (
                         <div className="py-12 text-center">
-                            <div className="i-mdi-loading animate-spin text-5xl mx-auto mb-4 text-blue-500" />
+                            <div className="i-mdi-loading animate-spin text-5xl mx-auto mb-4 text-neutral-500" />
                             <p className="text-lg text-brand-600 dark:text-brand-300">
                                 正在匹配元数据...
                             </p>
                             <p className="text-sm text-brand-400 dark:text-brand-500 mt-2">
                                 {matchProgress.current} / {matchProgress.total}
                             </p>
-                            <p className="text-sm text-blue-500 mt-2">
+                            <p className="text-sm text-neutral-500 mt-2">
                                 {matchProgress.gameName}
                             </p>
                             <div className="w-full max-w-md mx-auto mt-4 bg-brand-200 dark:bg-brand-700 rounded-full h-2">
                                 <div
-                                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                                    className="bg-neutral-500 h-2 rounded-full transition-all duration-300"
                                     style={{ width: `${matchProgress.total > 0 ? (matchProgress.current / matchProgress.total) * 100 : 0}%` }}
                                 />
                             </div>
@@ -604,7 +604,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                     {/* Step: Importing */}
                     {step === 'importing' && (
                         <div className="py-12 text-center">
-                            <div className="i-mdi-loading animate-spin text-5xl mx-auto mb-4 text-green-500" />
+                            <div className="i-mdi-loading animate-spin text-5xl mx-auto mb-4 text-success-500" />
                             <p className="text-lg text-brand-600 dark:text-brand-300">
                                 正在导入游戏...
                             </p>
@@ -615,12 +615,12 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                     {step === 'result' && importResult && (
                         <div className="space-y-6">
                             <div className="flex gap-4">
-                                <div className="flex-1 rounded-lg bg-green-50 dark:bg-green-900/20 p-4 text-center">
-                                    <div className="i-mdi-check-circle text-3xl text-green-500 mx-auto mb-2" />
-                                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                <div className="flex-1 rounded-lg bg-success-50 dark:bg-success-900/20 p-4 text-center">
+                                    <div className="i-mdi-check-circle text-3xl text-success-500 mx-auto mb-2" />
+                                    <div className="text-2xl font-bold text-success-600 dark:text-success-400">
                                         {importResult.success}
                                     </div>
-                                    <div className="text-sm text-green-700 dark:text-green-300">成功导入</div>
+                                    <div className="text-sm text-success-700 dark:text-success-300">成功导入</div>
                                 </div>
                                 {importResult.skipped > 0 && (
                                     <div className="flex-1 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 p-4 text-center">
@@ -632,12 +632,12 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                                     </div>
                                 )}
                                 {importResult.failed > 0 && (
-                                    <div className="flex-1 rounded-lg bg-red-50 dark:bg-red-900/20 p-4 text-center">
-                                        <div className="i-mdi-close-circle text-3xl text-red-500 mx-auto mb-2" />
-                                        <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                    <div className="flex-1 rounded-lg bg-error-50 dark:bg-error-900/20 p-4 text-center">
+                                        <div className="i-mdi-close-circle text-3xl text-error-500 mx-auto mb-2" />
+                                        <div className="text-2xl font-bold text-error-600 dark:text-error-400">
                                             {importResult.failed}
                                         </div>
-                                        <div className="text-sm text-red-700 dark:text-red-300">导入失败</div>
+                                        <div className="text-sm text-error-700 dark:text-error-300">导入失败</div>
                                     </div>
                                 )}
                             </div>
@@ -658,11 +658,11 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                             )}
 
                             {importResult.failed_names && importResult.failed_names.length > 0 && (
-                                <div className="rounded-lg border border-red-200 dark:border-red-800 p-4">
-                                    <h4 className="font-medium text-red-700 dark:text-red-400 mb-2">
+                                <div className="rounded-lg border border-error-200 dark:border-error-800 p-4">
+                                    <h4 className="font-medium text-error-700 dark:text-error-400 mb-2">
                                         导入失败的游戏:
                                     </h4>
-                                    <ul className="text-sm text-red-600 dark:text-red-300 space-y-1">
+                                    <ul className="text-sm text-error-600 dark:text-error-300 space-y-1">
                                         {importResult.failed_names.map((name, i) => (
                                             <li key={i}>• {name}</li>
                                         ))}
@@ -673,7 +673,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                             <div className="flex justify-center">
                                 <button
                                     onClick={resetAndClose}
-                                    className="rounded-lg px-8 py-2.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+                                    className="rounded-lg px-8 py-2.5 text-sm font-medium text-white bg-success-600 hover:bg-success-700"
                                 >
                                     完成
                                 </button>
@@ -700,7 +700,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                         <div className="flex-1 overflow-y-auto p-4 space-y-4">
                             {isSearching ? (
                                 <div className="py-8 text-center">
-                                    <div className="i-mdi-loading animate-spin text-3xl mx-auto mb-2 text-blue-500" />
+                                    <div className="i-mdi-loading animate-spin text-3xl mx-auto mb-2 text-neutral-500" />
                                     <p className="text-brand-400">搜索中...</p>
                                 </div>
                             ) : (
@@ -711,7 +711,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                                             <div
                                                 key={idx}
                                                 onClick={() => selectManualMatch(match.Game!, match.Source)}
-                                                className="w-36 cursor-pointer rounded-lg border border-brand-200 p-2 transition hover:border-blue-500 hover:shadow-md dark:border-brand-700"
+                                                className="w-36 cursor-pointer rounded-lg border border-brand-200 p-2 transition hover:border-neutral-500 hover:shadow-md dark:border-brand-700"
                                             >
                                                 <div className="aspect-[3/4] w-full overflow-hidden rounded-md bg-brand-200 dark:bg-brand-700">
                                                     {match.Game!.cover_url ? (
@@ -757,7 +757,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                                             <button
                                                 onClick={handleSearchById}
                                                 disabled={!manualId || isSearching}
-                                                className="rounded bg-blue-500 px-4 py-1.5 text-sm text-white hover:bg-blue-600 disabled:opacity-50"
+                                                className="rounded bg-neutral-500 px-4 py-1.5 text-sm text-white hover:bg-neutral-600 disabled:opacity-50"
                                             >
                                                 查找
                                             </button>

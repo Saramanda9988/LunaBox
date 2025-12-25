@@ -50,7 +50,7 @@ export function FilterBar({
         </div>
         <input
           type="text"
-          className="block w-auto p-2 pl-10 text-sm text-brand-900 border border-brand-300 rounded-lg bg-white focus:ring-blue-500 focus:border-blue-500 dark:bg-brand-900 dark:border-brand-700 dark:placeholder-brand-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          className="block w-auto p-2 pl-10 text-sm text-brand-900 border border-brand-300 rounded-lg bg-white focus:ring-neutral-500 focus:border-neutral-500 dark:bg-brand-900 dark:border-brand-700 dark:placeholder-brand-400 dark:text-white dark:focus:ring-neutral-500 dark:focus:border-neutral-500"
           placeholder={searchPlaceholder}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
@@ -63,7 +63,7 @@ export function FilterBar({
           <select
             value={statusFilter || ''}
             onChange={(e) => onStatusFilterChange(e.target.value)}
-            className="bg-white border border-brand-300 text-brand-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 dark:bg-brand-900 dark:border-brand-600 dark:placeholder-brand-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+            className="bg-white border border-brand-300 text-brand-900 text-sm rounded-lg focus:ring-neutral-500 focus:border-neutral-500 block p-2 dark:bg-brand-900 dark:border-brand-600 dark:placeholder-brand-400 dark:text-white dark:focus:ring-neutral-500 dark:focus:border-neutral-500"
           >
             {statusOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -76,7 +76,7 @@ export function FilterBar({
         <select
           value={sortBy}
           onChange={(e) => onSortByChange(e.target.value)}
-          className="bg-white border border-brand-300 text-brand-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 dark:bg-brand-900 dark:border-brand-600 dark:placeholder-brand-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          className="bg-white border border-brand-300 text-brand-900 text-sm rounded-lg focus:ring-neutral-500 focus:border-neutral-500 block p-2 dark:bg-brand-900 dark:border-brand-600 dark:placeholder-brand-400 dark:text-white dark:focus:ring-neutral-500 dark:focus:border-neutral-500"
         >
           {sortOptions.map((option) => (
             <option key={option.value} value={option.value}>

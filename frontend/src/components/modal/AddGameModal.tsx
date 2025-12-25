@@ -117,7 +117,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
           <div className="space-y-6">
             <button
               onClick={handleSelectExecutable}
-              className="flex w-full items-center justify-center rounded-lg bg-blue-500 py-4 text-white transition hover:bg-blue-600"
+              className="flex w-full items-center justify-center rounded-lg bg-neutral-500 py-4 text-white transition hover:bg-neutral-600"
             >
               <div className="i-mdi-file-find mr-2 text-xl" />
               选择启动程序
@@ -147,7 +147,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
               <button
                 onClick={handleSearchByName}
                 disabled={!executablePath || !gameName || isLoading}
-                className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-lg bg-neutral-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
               >
                 {isLoading ? '搜索中...' : '确认'}
               </button>
@@ -165,7 +165,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
                   <div
                     key={index}
                     onClick={() => saveGame(item.Game!)} // 使用非空断言，因为上面已过滤
-                    className="w-44 cursor-pointer rounded-lg border border-brand-200 p-3 transition hover:border-blue-500 hover:shadow-md dark:border-brand-700 dark:hover:border-blue-400"
+                    className="w-44 cursor-pointer rounded-lg border border-brand-200 p-3 transition hover:border-neutral-500 hover:shadow-md dark:border-brand-700 dark:hover:border-neutral-400"
                   >
                     <div className="aspect-[3/4] w-full overflow-hidden rounded-md bg-brand-200 dark:bg-brand-700">
                       {item.Game!.cover_url ? (
@@ -193,7 +193,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
               </button>
               <button
                 onClick={() => setStep(3)}
-                className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                className="text-sm text-neutral-600 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-300"
               >
                 都不是？输入id查找
               </button>
@@ -237,7 +237,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
               <button
                 onClick={handleSearchById}
                 disabled={!manualId || isLoading}
-                className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-lg bg-neutral-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
               >
                 {isLoading ? '搜索中...' : '确认'}
               </button>

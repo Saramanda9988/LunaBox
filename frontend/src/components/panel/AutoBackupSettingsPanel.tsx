@@ -66,7 +66,7 @@ export function AutoBackupSettingsPanel({ formData, onChange }: AutoBackupSettin
             name="local_backup_retention"
             value={formData.local_backup_retention || 10}
             onChange={(e) => onChange({ ...formData, local_backup_retention: parseInt(e.target.value) || 0 } as appconf.AppConfig)}
-            className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
+            className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
           />
           <p className="text-xs text-brand-500 dark:text-brand-400">每个游戏在本地保留的最大备份数量</p>
         </div>
@@ -78,7 +78,7 @@ export function AutoBackupSettingsPanel({ formData, onChange }: AutoBackupSettin
             name="local_db_backup_retention"
             value={formData.local_db_backup_retention || 5}
             onChange={(e) => onChange({ ...formData, local_db_backup_retention: parseInt(e.target.value) || 0 } as appconf.AppConfig)}
-            className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
+            className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
           />
           <p className="text-xs text-brand-500 dark:text-brand-400">数据库在本地保留的最大备份数量</p>
         </div>

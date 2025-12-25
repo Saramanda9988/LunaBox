@@ -26,7 +26,7 @@ export function AddCategoryModal({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="收藏夹名称"
-          className="w-full p-2 border border-brand-300 rounded-lg mb-4 dark:bg-brand-700 dark:border-brand-600 dark:text-white focus:ring-2 focus:ring-blue-500"
+          className="w-full p-2 border border-brand-300 rounded-lg mb-4 dark:bg-brand-700 dark:border-brand-600 dark:text-white focus:ring-2 focus:ring-neutral-500"
           autoFocus
         />
         <div className="flex justify-end gap-2">
@@ -39,7 +39,7 @@ export function AddCategoryModal({
           <button
             onClick={onSubmit}
             disabled={!value.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             创建
           </button>

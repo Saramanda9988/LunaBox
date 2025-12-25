@@ -124,7 +124,7 @@ function LibraryPage() {
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+              className="flex items-center rounded-lg bg-neutral-600 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 focus:outline-none focus:ring-4 focus:ring-neutral-300 dark:bg-neutral-600 dark:hover:bg-neutral-700 dark:focus:ring-neutral-800"
             >
               <div className="i-mdi-plus mr-2 text-lg" />
               添加游戏
@@ -142,7 +142,7 @@ function LibraryPage() {
                     }}
                     className="flex w-full items-center px-4 py-3 text-sm text-brand-700 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-600"
                   >
-                    <div className="i-mdi-gamepad-variant mr-3 text-xl text-blue-500" />
+                    <div className="i-mdi-gamepad-variant mr-3 text-xl text-neutral-500" />
                     <div className="text-left">
                       <div className="font-medium">手动添加</div>
                       <div className="text-xs text-brand-400 dark:text-brand-400">
@@ -157,7 +157,7 @@ function LibraryPage() {
                     }}
                     className="flex w-full items-center px-4 py-3 text-sm text-brand-700 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-600"
                   >
-                    <div className="i-mdi-folder-multiple mr-3 text-xl text-green-500" />
+                    <div className="i-mdi-folder-multiple mr-3 text-xl text-success-500" />
                     <div className="text-left">
                       <div className="font-medium">批量导入</div>
                       <div className="text-xs text-brand-400 dark:text-brand-400">
@@ -212,7 +212,7 @@ function LibraryPage() {
             <div className="flex flex-col gap-3 mt-4">
               <button
                 onClick={() => setImportSource('potatovn')}
-                className="rounded-lg border border-green-600 px-5 py-2.5 text-sm font-medium text-green-600 hover:bg-green-50 focus:outline-none focus:ring-4 focus:ring-green-300 dark:border-green-500 dark:text-green-500 dark:hover:bg-green-900/20"
+                className="rounded-lg border border-success-600 px-5 py-2.5 text-sm font-medium text-success-600 hover:bg-success-50 focus:outline-none focus:ring-4 focus:ring-success-300 dark:border-success-500 dark:text-success-500 dark:hover:bg-success-900/20"
               >
                 从 PotatoVN 导入
               </button>

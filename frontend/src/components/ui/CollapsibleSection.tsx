@@ -18,7 +18,7 @@ export function CollapsibleSection({ title, icon, children, defaultOpen = true }
         className="w-full flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-700 hover:bg-brand-300 dark:hover:bg-brand-600 transition-colors"
       >
         <h2 className="text-lg font-semibold text-brand-900 dark:text-white flex items-center gap-2">
-          <span className={`${icon} text-xl text-blue-500 dark:text-blue-400`} />
+          <span className={`${icon} text-xl text-neutral-500 dark:text-neutral-400`} />
           {title}
         </h2>
         <span className={`i-mdi-chevron-down text-xl text-brand-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />

@@ -20,7 +20,7 @@ export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
           name="access_token"
           value={formData.access_token || ''}
           onChange={handleChange}
-          className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
+          className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
         />
         <p className="text-xs text-brand-500 dark:text-brand-400">如果您想使用Bangumi数据源，请一定填写</p>
       </div>
@@ -32,7 +32,7 @@ export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
           name="vndb_access_token"
           value={formData.vndb_access_token || ''}
           onChange={handleChange}
-          className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
+          className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
         />
       </div>
 
@@ -42,7 +42,7 @@ export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
           name="theme"
           value={formData.theme}
           onChange={handleChange}
-          className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
+          className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
         >
           <option value="light">浅色</option>
           <option value="dark">深色</option>
@@ -56,7 +56,7 @@ export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
           name="language"
           value={formData.language}
           onChange={handleChange}
-          className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
+          className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
         >
           <option value="zh-CN">简体中文</option>
           <option value="en-US">English</option>

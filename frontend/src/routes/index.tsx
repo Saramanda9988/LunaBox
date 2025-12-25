@@ -60,7 +60,7 @@ function HomePage() {
         <p className="text-brand-500">暂无数据</p>
         <button 
           onClick={() => fetchHomeData()}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          className="px-4 py-2 bg-neutral-500 text-white rounded hover:bg-neutral-600 transition-colors"
         >
           重试
         </button>
@@ -78,10 +78,10 @@ function HomePage() {
           <p className="mt-2 text-brand-500 dark:text-brand-400">欢迎回来!</p>
         </div>
         <div className="absolute top-6 right-6 flex items-center gap-2 bg-white dark:bg-brand-800 px-4 py-3 rounded-xl shadow-sm">
-          <span className="i-mdi-clock-outline text-xl text-blue-500" />
+          <span className="i-mdi-clock-outline text-xl text-neutral-500" />
           <div>
             <div className="text-xs text-brand-500 dark:text-brand-400">今日游玩时间</div>
-            <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
+            <div className="text-lg font-bold text-neutral-600 dark:text-neutral-400">
               {formatTime(homeData.today_play_time_sec)}
             </div>
           </div>
@@ -91,7 +91,7 @@ function HomePage() {
         <p className="text-brand-500 dark:text-brand-400 mb-6">去游戏库选择一款游戏开始吧</p>
         <button
           onClick={() => navigate({ to: '/library' })}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium"
+          className="flex items-center gap-2 px-6 py-3 bg-neutral-600 hover:bg-neutral-700 text-white rounded-xl transition-colors font-medium"
         >
           <span className="i-mdi-gamepad-variant text-xl" />
           浏览游戏库
@@ -124,17 +124,17 @@ function HomePage() {
           <p className="mt-2 text-brand-600 dark:text-white/80 drop-shadow">欢迎回来</p>
         </div>
         <div className="absolute top-6 right-6 flex items-center gap-2 bg-white/80 dark:bg-brand-800/80 backdrop-blur-sm px-4 py-3 rounded-xl shadow-lg">
-          <span className="i-mdi-clock-outline text-xl text-blue-500" />
+          <span className="i-mdi-clock-outline text-xl text-neutral-500" />
           <div>
             <div className="text-xs text-brand-500 dark:text-brand-400">今日游玩时间</div>
-            <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
+            <div className="text-lg font-bold text-neutral-600 dark:text-neutral-400">
               {formatTime(homeData.today_play_time_sec)}
             </div>
           </div>
         </div>
         <div className="absolute bottom-8 left-8 max-w-lg">
           <h1 
-            className="text-4xl font-bold text-brand-900 dark:text-white mb-2 cursor-pointer hover:text-blue-600 dark:hover:text-blue-300 transition-colors drop-shadow-lg"
+            className="text-4xl font-bold text-brand-900 dark:text-white mb-2 cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors drop-shadow-lg"
             onClick={() => navigate({ to: '/game/$gameId', params: { gameId: lastPlayed.game.id } })}
           >
             {lastPlayed.game.name}
@@ -149,14 +149,14 @@ function HomePage() {
           )}
         </div>
         {isPlaying ? (
-          <div className="absolute bottom-8 right-8 flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl shadow-lg font-medium">
+          <div className="absolute bottom-8 right-8 flex items-center gap-2 px-6 py-3 bg-success-600 text-white rounded-xl shadow-lg font-medium">
             <span className="i-mdi-gamepad-variant text-xl animate-pulse" />
             正在游戏
           </div>
         ) : (
           <button
             onClick={handleContinuePlay}
-            className="absolute bottom-8 right-8 flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg transition-all hover:scale-105 font-medium"
+            className="absolute bottom-8 right-8 flex items-center gap-2 px-6 py-3 bg-neutral-600 hover:bg-neutral-700 text-white rounded-xl shadow-lg transition-all hover:scale-105 font-medium"
           >
             <span className="i-mdi-play text-xl" />
             继续游戏

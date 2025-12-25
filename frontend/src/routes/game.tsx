@@ -92,7 +92,7 @@ function GameDetailPage() {
       <div className="flex flex-col items-center justify-center h-full space-y-4 text-brand-500">
         <div className="i-mdi-gamepad-variant-outline text-6xl" />
         <p className="text-xl">未找到该游戏</p>
-        <button onClick={() => navigate({ to: '/library' })} className="text-blue-600 hover:underline">返回库</button>
+        <button onClick={() => navigate({ to: '/library' })} className="text-neutral-600 hover:underline">返回库</button>
       </div>
     )
   }
@@ -209,7 +209,7 @@ function GameDetailPage() {
 
   const statusConfig = {
     [enums.GameStatus.NOT_STARTED]: { label: '未开始', icon: 'i-mdi-clock-outline', color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
-    [enums.GameStatus.PLAYING]: { label: '游玩中', icon: 'i-mdi-gamepad-variant', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
+    [enums.GameStatus.PLAYING]: { label: '游玩中', icon: 'i-mdi-gamepad-variant', color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300' },
     [enums.GameStatus.COMPLETED]: { label: '已通关', icon: 'i-mdi-trophy', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' },
     [enums.GameStatus.ON_HOLD]: { label: '搁置', icon: 'i-mdi-pause-circle-outline', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
   }
@@ -316,7 +316,7 @@ function GameDetailPage() {
               className={`
                 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
                 ${activeTab === tab
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  ? 'border-neutral-500 text-neutral-600 dark:text-neutral-400'
                   : 'border-transparent text-brand-500 hover:text-brand-700 hover:border-brand-300 dark:text-brand-400 dark:hover:text-brand-300'}
               `}
             >
@@ -371,7 +371,7 @@ function GameDetailPage() {
                 type="text"
                 value={game.name}
                 onChange={(e) => setGame({ ...game, name: e.target.value } as models.Game)}
-                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
               />
             </div>
 
@@ -383,7 +383,7 @@ function GameDetailPage() {
                 type="text"
                 value={game.cover_url}
                 onChange={(e) => setGame({ ...game, cover_url: e.target.value } as models.Game)}
-                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
               />
             </div>
 
@@ -395,7 +395,7 @@ function GameDetailPage() {
                 type="text"
                 value={game.company}
                 onChange={(e) => setGame({ ...game, company: e.target.value } as models.Game)}
-                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
               />
             </div>
 
@@ -408,7 +408,7 @@ function GameDetailPage() {
                   type="text"
                   value={game.path}
                   onChange={(e) => setGame({ ...game, path: e.target.value } as models.Game)}
-                  className="flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
                 />
                 <button
                   type="button"
@@ -430,7 +430,7 @@ function GameDetailPage() {
                   value={game.save_path || ''}
                   onChange={(e) => setGame({ ...game, save_path: e.target.value } as models.Game)}
                   placeholder="选择游戏存档所在目录"
-                  className="flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
                 />
                 <button
                   type="button"
@@ -451,7 +451,7 @@ function GameDetailPage() {
                 value={game.summary}
                 onChange={(e) => setGame({ ...game, summary: e.target.value } as models.Game)}
                 rows={6}
-                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none resize-none"
               />
             </div>
 
@@ -459,13 +459,13 @@ function GameDetailPage() {
               <button
                 type="button"
                 onClick={handleDeleteGame}
-                className="px-6 py-2 mx-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                className="px-6 py-2 mx-1 bg-error-600 text-white rounded-md hover:bg-error-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-error-500"
               >
                 删除游戏
               </button>
               <button
                 type="submit"
-                className="px-6 py-2 mx-1  bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="px-6 py-2 mx-1  bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500"
               >
                 保存更改
               </button>

@@ -16,9 +16,9 @@ export function BetterSwitch({ id, checked, onCheckedChange, disabled }: BetterS
       disabled={disabled}
       className={`
         w-11 h-6 rounded-full relative outline-none cursor-pointer transition-colors
-        ${checked ? 'bg-blue-600' : 'bg-brand-300 dark:bg-brand-600'}
+        ${checked ? 'bg-neutral-600' : 'bg-brand-300 dark:bg-brand-600'}
         ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:brightness-110'}
-        focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-brand-900
+        focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2 dark:focus:ring-offset-brand-900
       `}
     >
       <Switch.Thumb

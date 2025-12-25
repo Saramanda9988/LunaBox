@@ -21,7 +21,7 @@ export function AISettingsPanel({ formData, onChange }: AISettingsProps) {
     <div className="space-y-4">
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">AI 服务商</label>
-        <select name="ai_provider" value={formData.ai_provider || ''} onChange={handleChange} className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white">
+        <select name="ai_provider" value={formData.ai_provider || ''} onChange={handleChange} className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white">
           <option value="">请选择</option>
           <option value="openai">OpenAI</option>
           <option value="deepseek">DeepSeek</option>
@@ -30,15 +30,15 @@ export function AISettingsPanel({ formData, onChange }: AISettingsProps) {
       </div>
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">API Base URL</label>
-        <input type="text" name="ai_base_url" value={formData.ai_base_url || ''} onChange={handleChange} placeholder="https://api.openai.com/v1" className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white" />
+        <input type="text" name="ai_base_url" value={formData.ai_base_url || ''} onChange={handleChange} placeholder="https://api.openai.com/v1" className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white" />
       </div>
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">API Key</label>
-        <input type="password" name="ai_api_key" value={formData.ai_api_key || ''} onChange={handleChange} placeholder="sk-..." className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white" />
+        <input type="password" name="ai_api_key" value={formData.ai_api_key || ''} onChange={handleChange} placeholder="sk-..." className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white" />
       </div>
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">模型名称</label>
-        <input type="text" name="ai_model" value={formData.ai_model || ''} onChange={handleChange} placeholder="gpt-3.5-turbo" className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white" />
+        <input type="text" name="ai_model" value={formData.ai_model || ''} onChange={handleChange} placeholder="gpt-3.5-turbo" className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white" />
       </div>
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">系统提示语 (System Prompt)</label>
@@ -59,7 +59,7 @@ export function AISettingsPanel({ formData, onChange }: AISettingsProps) {
           onChange={(e) => onChange({ ...formData, ai_system_prompt: e.target.value } as appconf.AppConfig)}
           rows={4}
           placeholder="输入自定义的 AI 系统提示语..."
-          className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white text-sm"
+          className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm"
         />
         <p className="text-xs text-brand-500 dark:text-brand-400">AI 将根据此提示语来生成统计总结。你可以点击上方预设快速填充。</p>
       </div>

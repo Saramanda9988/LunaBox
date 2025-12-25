@@ -206,7 +206,7 @@ export function DBBackupPanel() {
           <button
             onClick={handleCreateBackup}
             disabled={isDisabled}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-4 py-2 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isBackingUp && <div className="i-mdi-loading animate-spin" />}
             {isBackingUp ? '备份中...' : '立即备份'}
@@ -224,7 +224,7 @@ export function DBBackupPanel() {
         <div className="flex items-center gap-2 mb-4">
           <h3 className="text-lg font-semibold text-brand-900 dark:text-white">本地备份</h3>
           {config?.auto_backup_db && (
-            <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full flex items-center gap-1">
+            <span className="px-2 py-0.5 text-xs font-medium bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-400 rounded-full flex items-center gap-1">
               <div className="i-mdi-shield-check text-sm" />
               自动备份已启用
             </span>
@@ -256,7 +256,7 @@ export function DBBackupPanel() {
                       onClick={() => handleUploadDBBackup(backup.path)}
                       disabled={isDisabled}
                       title="上传到云端"
-                      className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900 rounded transition-colors disabled:opacity-50"
+                      className="p-2 text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded transition-colors disabled:opacity-50"
                     >
                       {uploadingBackup === backup.path ? (
                         <div className="i-mdi-loading text-xl animate-spin" />
@@ -269,7 +269,7 @@ export function DBBackupPanel() {
                     onClick={() => handleRestoreDB(backup.path)}
                     disabled={isDisabled}
                     title="恢复此备份"
-                    className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900 rounded transition-colors disabled:opacity-50"
+                    className="p-2 text-success-600 hover:bg-success-100 dark:hover:bg-success-900 rounded transition-colors disabled:opacity-50"
                   >
                     {restoringBackup === backup.path ? (
                       <div className="i-mdi-loading text-xl animate-spin" />
@@ -281,7 +281,7 @@ export function DBBackupPanel() {
                     onClick={() => handleDeleteDBBackup(backup.path)}
                     disabled={isDisabled}
                     title="删除备份"
-                    className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900 rounded transition-colors disabled:opacity-50"
+                    className="p-2 text-error-600 hover:bg-error-100 dark:hover:bg-error-900 rounded transition-colors disabled:opacity-50"
                   >
                     <div className="i-mdi-delete text-xl" />
                   </button>
@@ -299,7 +299,7 @@ export function DBBackupPanel() {
         <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-brand-900 dark:text-white flex items-center gap-2">
-              <div className="i-mdi-cloud text-xl text-blue-500" />
+              <div className="i-mdi-cloud text-xl text-neutral-500" />
               云端备份
             </h3>
             <button
@@ -320,10 +320,10 @@ export function DBBackupPanel() {
               {cloudDBBackups.map((backup) => (
                 <div
                   key={backup.key}
-                  className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg"
+                  className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-900/30 rounded-lg"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="i-mdi-cloud-check text-2xl text-blue-500" />
+                    <div className="i-mdi-cloud-check text-2xl text-neutral-500" />
                     <div>
                       <div className="font-medium text-brand-900 dark:text-white">{backup.name}</div>
                       <div className="text-sm text-brand-500">
@@ -336,7 +336,7 @@ export function DBBackupPanel() {
                       onClick={() => handleRestoreFromCloud(backup.key)}
                       disabled={isDisabled}
                       title="从云端恢复"
-                      className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900 rounded transition-colors disabled:opacity-50"
+                      className="p-2 text-success-600 hover:bg-success-100 dark:hover:bg-success-900 rounded transition-colors disabled:opacity-50"
                     >
                       {restoringBackup === backup.key ? (
                         <div className="i-mdi-loading text-xl animate-spin" />

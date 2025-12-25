@@ -58,8 +58,8 @@ const importConfigs: Record<ImportSource, ImportConfig> = {
         fileDescription: '选择 PotatoVN 导出的 ZIP 文件',
         fileHint: '支持包含 data.galgames.json 的 PotatoVN 备份文件',
         buttonText: '选择 ZIP 文件',
-        primaryColor: 'bg-blue-500',
-        hoverColor: 'hover:bg-blue-600',
+        primaryColor: 'bg-neutral-500',
+        hoverColor: 'hover:bg-neutral-600',
         selectFile: SelectZipFile,
         previewImport: PreviewImport,
         doImport: ImportFromPotatoVN,
@@ -140,14 +140,14 @@ export function GameImportModal({ isOpen, source, onClose, onImportComplete }: G
 
     // 动态颜色类
     const buttonPrimaryClass = `${config.primaryColor} ${config.hoverColor}`
-    const iconColorClass = source === 'playnite' ? 'text-purple-500' : 'text-blue-500'
-    const spinnerColorClass = source === 'playnite' ? 'text-purple-500' : 'text-blue-500'
+    const iconColorClass = source === 'playnite' ? 'text-purple-500' : 'text-neutral-500'
+    const spinnerColorClass = source === 'playnite' ? 'text-purple-500' : 'text-neutral-500'
     const resultButtonClass = source === 'playnite'
         ? 'bg-purple-600 hover:bg-purple-700'
-        : 'bg-blue-600 hover:bg-blue-700'
+        : 'bg-neutral-600 hover:bg-neutral-700'
     const importButtonClass = source === 'playnite'
         ? 'bg-purple-600 hover:bg-purple-700'
-        : 'bg-blue-600 hover:bg-blue-700'
+        : 'bg-neutral-600 hover:bg-neutral-700'
 
     return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -208,11 +208,11 @@ export function GameImportModal({ isOpen, source, onClose, onImportComplete }: G
                         <div className="space-y-4">
                             {/* Summary */}
                             <div className="flex gap-4">
-                                <div className="flex-1 rounded-lg bg-green-50 dark:bg-green-900/20 p-4 text-center">
-                                    <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                                <div className="flex-1 rounded-lg bg-success-50 dark:bg-success-900/20 p-4 text-center">
+                                    <div className="text-3xl font-bold text-success-600 dark:text-success-400">
                                         {newGamesCount}
                                     </div>
-                                    <div className="text-sm text-green-700 dark:text-green-300">
+                                    <div className="text-sm text-success-700 dark:text-success-300">
                                         将导入
                                     </div>
                                 </div>
@@ -316,7 +316,7 @@ export function GameImportModal({ isOpen, source, onClose, onImportComplete }: G
                                                                     将跳过
                                                                 </span>
                                                             ) : (
-                                                                <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                                <span className="inline-flex items-center rounded-full bg-success-100 px-2 py-1 text-xs text-success-700 dark:bg-success-900/30 dark:text-success-400">
                                                                     <div className="i-mdi-plus-circle mr-1" />
                                                                     新增
                                                                 </span>
@@ -367,12 +367,12 @@ export function GameImportModal({ isOpen, source, onClose, onImportComplete }: G
                         <div className="space-y-6">
                             {/* Result Summary */}
                             <div className="flex gap-4">
-                                <div className="flex-1 rounded-lg bg-green-50 dark:bg-green-900/20 p-4 text-center">
-                                    <div className="i-mdi-check-circle text-3xl text-green-500 mx-auto mb-2" />
-                                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                <div className="flex-1 rounded-lg bg-success-50 dark:bg-success-900/20 p-4 text-center">
+                                    <div className="i-mdi-check-circle text-3xl text-success-500 mx-auto mb-2" />
+                                    <div className="text-2xl font-bold text-success-600 dark:text-success-400">
                                         {importResult.success}
                                     </div>
-                                    <div className="text-sm text-green-700 dark:text-green-300">成功导入</div>
+                                    <div className="text-sm text-success-700 dark:text-success-300">成功导入</div>
                                 </div>
                                 {importResult.skipped > 0 && (
                                     <div className="flex-1 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 p-4 text-center">
@@ -384,12 +384,12 @@ export function GameImportModal({ isOpen, source, onClose, onImportComplete }: G
                                     </div>
                                 )}
                                 {importResult.failed > 0 && (
-                                    <div className="flex-1 rounded-lg bg-red-50 dark:bg-red-900/20 p-4 text-center">
-                                        <div className="i-mdi-close-circle text-3xl text-red-500 mx-auto mb-2" />
-                                        <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                    <div className="flex-1 rounded-lg bg-error-50 dark:bg-error-900/20 p-4 text-center">
+                                        <div className="i-mdi-close-circle text-3xl text-error-500 mx-auto mb-2" />
+                                        <div className="text-2xl font-bold text-error-600 dark:text-error-400">
                                             {importResult.failed}
                                         </div>
-                                        <div className="text-sm text-red-700 dark:text-red-300">导入失败</div>
+                                        <div className="text-sm text-error-700 dark:text-error-300">导入失败</div>
                                     </div>
                                 )}
                             </div>
@@ -412,11 +412,11 @@ export function GameImportModal({ isOpen, source, onClose, onImportComplete }: G
 
                             {/* Failed Names */}
                             {importResult.failed_names && importResult.failed_names.length > 0 && (
-                                <div className="rounded-lg border border-red-200 dark:border-red-800 p-4">
-                                    <h4 className="font-medium text-red-700 dark:text-red-400 mb-2">
+                                <div className="rounded-lg border border-error-200 dark:border-error-800 p-4">
+                                    <h4 className="font-medium text-error-700 dark:text-error-400 mb-2">
                                         导入失败的游戏:
                                     </h4>
-                                    <ul className="text-sm text-red-600 dark:text-red-300 space-y-1">
+                                    <ul className="text-sm text-error-600 dark:text-error-300 space-y-1">
                                         {importResult.failed_names.map((name, i) => (
                                             <li key={i}>• {name}</li>
                                         ))}
