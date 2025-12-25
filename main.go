@@ -21,7 +21,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"github.com/getlantern/systray"
+	"github.com/energye/systray"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -284,27 +284,38 @@ func onSystrayReady() {
 	systray.SetTitle("LunaBox")
 	systray.SetTooltip("LunaBox")
 
+	// 点击托盘图标时显示窗口
+	systray.SetOnClick(func(menu systray.IMenu) {
+		if appCtx != nil {
+			runtime.WindowShow(appCtx)
+		}
+	})
+
+	// 双击托盘图标时也显示窗口
+	systray.SetOnDClick(func(menu systray.IMenu) {
+		if appCtx != nil {
+			runtime.WindowShow(appCtx)
+		}
+	})
+
 	mShow := systray.AddMenuItem("显示主窗口", "显示 LunaBox 主窗口")
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("退出", "退出 LunaBox")
 
-	go func() {
-		for {
-			select {
-			case <-mShow.ClickedCh:
-				if appCtx != nil {
-					runtime.WindowShow(appCtx)
-				}
-			case <-mQuit.ClickedCh:
-				// 通过托盘退出时，设置强制退出标志，绕过 OnBeforeClose 的最小化逻辑
-				forceQuit = true
-				if appCtx != nil {
-					runtime.Quit(appCtx)
-				}
-				return
-			}
+	// energye/systray 使用 Click 方法设置回调，而不是 ClickedCh
+	mShow.Click(func() {
+		if appCtx != nil {
+			runtime.WindowShow(appCtx)
 		}
-	}()
+	})
+
+	mQuit.Click(func() {
+		// 通过托盘退出时，设置强制退出标志，绕过 OnBeforeClose 的最小化逻辑
+		forceQuit = true
+		if appCtx != nil {
+			runtime.Quit(appCtx)
+		}
+	})
 }
 
 func onSystrayExit() {
