@@ -6,6 +6,10 @@ export function Init(arg1, arg2, arg3) {
   return window['go']['service']['TimerService']['Init'](arg1, arg2, arg3);
 }
 
+export function SetBackupService(arg1) {
+  return window['go']['service']['TimerService']['SetBackupService'](arg1);
+}
+
 export function StartGameWithTracking(arg1) {
   return window['go']['service']['TimerService']['StartGameWithTracking'](arg1);
 }

@@ -38,6 +38,10 @@ type AppConfig struct {
 	// 数据库备份
 	LastDBBackupTime string `json:"last_db_backup_time,omitempty"` // 上次数据库备份时间
 	PendingDBRestore string `json:"pending_db_restore,omitempty"`  // 待恢复的数据库备份路径（重启后执行）
+	// 自动备份配置
+	AutoBackupDB       bool `json:"auto_backup_db"`        // 退出时自动备份数据库
+	AutoBackupGameSave bool `json:"auto_backup_game_save"` // 游戏退出时自动备份存档
+	AutoUploadToCloud  bool `json:"auto_upload_to_cloud"`  // 自动上传备份到云端
 }
 
 // getConfigPath 获取配置文件路径
@@ -74,6 +78,9 @@ func LoadConfig() (*AppConfig, error) {
 		OneDriveRefreshToken: "",
 		LastDBBackupTime:     "",
 		PendingDBRestore:     "",
+		AutoBackupDB:         false,
+		AutoBackupGameSave:   false,
+		AutoUploadToCloud:    false,
 	}
 
 	// 获取配置文件路径

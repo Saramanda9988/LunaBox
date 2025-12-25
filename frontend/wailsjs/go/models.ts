@@ -24,6 +24,9 @@ export namespace appconf {
 	    onedrive_refresh_token?: string;
 	    last_db_backup_time?: string;
 	    pending_db_restore?: string;
+	    auto_backup_db: boolean;
+	    auto_backup_game_save: boolean;
+	    auto_upload_to_cloud: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -54,6 +57,9 @@ export namespace appconf {
 	        this.onedrive_refresh_token = source["onedrive_refresh_token"];
 	        this.last_db_backup_time = source["last_db_backup_time"];
 	        this.pending_db_restore = source["pending_db_restore"];
+	        this.auto_backup_db = source["auto_backup_db"];
+	        this.auto_backup_game_save = source["auto_backup_game_save"];
+	        this.auto_upload_to_cloud = source["auto_upload_to_cloud"];
 	    }
 	}
 
@@ -221,6 +227,18 @@ export namespace models {
 
 export namespace service {
 	
+	export class BackupService {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new BackupService(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
 	export class GameService {
 	
 	

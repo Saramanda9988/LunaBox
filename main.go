@@ -132,8 +132,21 @@ func main() {
 			categoryService.Init(ctx, db, config)
 			importService.Init(ctx, db, config, gameService)
 			versionService.Init(ctx)
+			// 设置 TimerService 的 BackupService 依赖
+			timerService.SetBackupService(backupService)
 		},
 		OnShutdown: func(ctx context.Context) {
+			// 自动备份数据库（在关闭数据库前）
+			if config.AutoBackupDB {
+				appLogger.Info("正在执行自动数据库备份...")
+				_, err := backupService.CreateAndUploadDBBackup()
+				if err != nil {
+					appLogger.Error("自动备份数据库失败: " + err.Error())
+				} else {
+					appLogger.Info("自动备份数据库成功")
+				}
+			}
+
 			// 关闭数据库连接
 			if err := db.Close(); err != nil {
 				appLogger.Error("关闭数据库失败: " + err.Error())

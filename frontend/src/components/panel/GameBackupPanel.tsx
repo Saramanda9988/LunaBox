@@ -13,6 +13,7 @@ import {
   RestoreFromCloud,
 } from '../../../wailsjs/go/service/BackupService'
 import { ConfirmModal } from '../modal/ConfirmModal'
+import { useAppStore } from '../../store'
 
 interface GameBackupPanelProps {
   gameId: string
@@ -20,6 +21,7 @@ interface GameBackupPanelProps {
 }
 
 export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
+  const { config } = useAppStore()
   const [backups, setBackups] = useState<models.GameBackup[]>([])
   const [cloudBackups, setCloudBackups] = useState<vo.CloudBackupItem[]>([])
   const [cloudStatus, setCloudStatus] = useState<vo.CloudBackupStatus | null>(null)
@@ -218,7 +220,15 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
 
       {/* 本地备份历史列表 */}
       <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-        <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">本地备份</h3>
+        <div className="flex items-center gap-2 mb-4">
+          <h3 className="text-lg font-semibold text-brand-900 dark:text-white">本地备份</h3>
+          {config?.auto_backup_game_save && (
+            <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full flex items-center gap-1">
+              <div className="i-mdi-shield-check text-sm" />
+              自动备份已启用
+            </span>
+          )}
+        </div>
         {loadingLocal ? (
           <div className="flex justify-center py-8">
             <div className="i-mdi-loading animate-spin text-2xl text-brand-500" />

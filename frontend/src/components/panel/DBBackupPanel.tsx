@@ -221,7 +221,15 @@ export function DBBackupPanel() {
 
       {/* 本地备份列表 */}
       <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-        <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">本地备份</h3>
+        <div className="flex items-center gap-2 mb-4">
+          <h3 className="text-lg font-semibold text-brand-900 dark:text-white">本地备份</h3>
+          {config?.auto_backup_db && (
+            <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full flex items-center gap-1">
+              <div className="i-mdi-shield-check text-sm" />
+              自动备份已启用
+            </span>
+          )}
+        </div>
         {loadingLocal ? (
           <div className="flex justify-center py-8">
             <div className="i-mdi-loading animate-spin text-2xl text-brand-500" />

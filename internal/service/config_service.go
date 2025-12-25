@@ -71,5 +71,8 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	// OneDrive OAuth
 	s.config.OneDriveClientID = newConfig.OneDriveClientID
 	s.config.OneDriveRefreshToken = newConfig.OneDriveRefreshToken
+	s.config.AutoBackupDB = newConfig.AutoBackupDB
+	s.config.AutoBackupGameSave = newConfig.AutoBackupGameSave
+	s.config.AutoUploadToCloud = newConfig.AutoUploadToCloud
 	return nil
 }

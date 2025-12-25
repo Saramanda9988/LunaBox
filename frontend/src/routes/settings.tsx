@@ -9,6 +9,7 @@ import { TestS3Connection, TestOneDriveConnection, GetOneDriveAuthURL, StartOneD
 import { BrowserOpenURL } from '../../wailsjs/runtime/runtime'
 import { DBBackupPanel } from '../components/panel/DBBackupPanel'
 import { SettingsSkeleton } from '../components/skeleton/SettingsSkeleton'
+import { BetterSwitch } from '../components/ui/BetterSwitch'
 
 const PROMPT_LABELS: Record<string, string> = {
   DEFAULT_SYSTEM: '幽默评论员',
@@ -217,17 +218,18 @@ function SettingsPage() {
           </h2>
           
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
+            <div className="flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-800/50 rounded-lg">
+              <div className="flex flex-col">
+                <label htmlFor="cloud_backup_enabled" className="text-sm font-medium text-brand-700 dark:text-brand-300 cursor-pointer">
+                  启用云备份
+                </label>
+                <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">将您的数据同步到云端存储</p>
+              </div>
+              <BetterSwitch
                 id="cloud_backup_enabled"
                 checked={formData.cloud_backup_enabled || false}
-                onChange={(e) => setFormData({ ...formData, cloud_backup_enabled: e.target.checked } as appconf.AppConfig)}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                onCheckedChange={(checked) => setFormData({ ...formData, cloud_backup_enabled: checked } as appconf.AppConfig)}
               />
-              <label htmlFor="cloud_backup_enabled" className="text-sm font-medium text-brand-700 dark:text-brand-300">
-                启用云备份
-              </label>
             </div>
 
             <div className="space-y-2">
@@ -338,6 +340,65 @@ function SettingsPage() {
                 className="w-32 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-brand-700 dark:text-white"
               />
               <p className="text-xs text-brand-500 dark:text-brand-400">云端每个游戏保留的最大备份数量</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 自动备份配置 */}
+        <div className="pt-6 border-t border-brand-200 dark:bg-brand-800/50">
+          <h2 className="text-lg font-semibold text-brand-900 dark:text-white mb-4 flex items-center gap-2">
+            <span className="i-mdi-backup-restore text-xl"/>
+            自动备份
+          </h2>
+          
+          <div className="space-y-4 bg-brand-200 dark:bg-brand-800/50 p-4 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <label htmlFor="auto_backup_db" className="text-sm font-medium text-brand-700 dark:text-brand-300 cursor-pointer">
+                  应用退出时自动备份数据库
+                </label>
+                <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
+                  在应用关闭时自动创建数据库备份，保护您的游戏库数据
+                </p>
+              </div>
+              <BetterSwitch
+                id="auto_backup_db"
+                checked={formData.auto_backup_db || false}
+                onCheckedChange={(checked) => setFormData({ ...formData, auto_backup_db: checked } as appconf.AppConfig)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <label htmlFor="auto_backup_game_save" className="text-sm font-medium text-brand-700 dark:text-brand-300 cursor-pointer">
+                  游戏退出时自动备份存档
+                </label>
+                <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
+                  在游戏进程结束时自动备份存档目录（需要先设置存档目录）
+                </p>
+              </div>
+              <BetterSwitch
+                id="auto_backup_game_save"
+                checked={formData.auto_backup_game_save || false}
+                onCheckedChange={(checked) => setFormData({ ...formData, auto_backup_game_save: checked } as appconf.AppConfig)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <label htmlFor="auto_upload_to_cloud" className={`text-sm font-medium cursor-pointer ${formData.cloud_backup_enabled ? 'text-brand-700 dark:text-brand-300' : 'text-brand-400 dark:text-brand-500'}`}>
+                  自动上传备份到云端
+                </label>
+                <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
+                  在创建本地备份后自动上传到云存储（需要先启用云备份）
+                </p>
+              </div>
+              <BetterSwitch
+                id="auto_upload_to_cloud"
+                checked={formData.auto_upload_to_cloud || false}
+                onCheckedChange={(checked) => setFormData({ ...formData, auto_upload_to_cloud: checked } as appconf.AppConfig)}
+                disabled={!formData.cloud_backup_enabled}
+              />
             </div>
           </div>
         </div>
