@@ -1,4 +1,5 @@
 import { appconf } from '../../../wailsjs/go/models'
+import { BetterSwitch } from '../ui/BetterSwitch'
 
 interface BasicSettingsProps {
   formData: appconf.AppConfig
@@ -64,18 +65,15 @@ export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
         </select>
       </div>
 
-      <div className="flex items-center space-x-3">
-        <input
-          type="checkbox"
-          id="close_to_tray"
-          name="close_to_tray"
-          checked={formData.close_to_tray || false}
-          onChange={handleChange}
-          className="w-4 h-4 text-brand-600 border-brand-300 rounded focus:ring-brand-500 dark:border-brand-600 dark:bg-brand-700"
-        />
-        <label htmlFor="close_to_tray" className="text-sm font-medium text-brand-700 dark:text-brand-300">
+      <div className="flex items-center justify-between p-2">
+        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
           关闭窗口时最小化到系统托盘
         </label>
+        <BetterSwitch
+            id="close_to_tray"
+            checked={formData.close_to_tray || false}
+            onCheckedChange={(checked) => onChange({ ...formData, close_to_tray: checked } as appconf.AppConfig)}
+        />
       </div>
     </>
   )
