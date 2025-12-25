@@ -45,7 +45,8 @@ var systrayQuit chan struct{}
 var forceQuit bool
 
 func main() {
-	appLogger := logger.NewFileLogger("app.log")
+	logDir, _ := utils.GetSubDir("logs")
+	appLogger := logger.NewFileLogger(filepath.Join(logDir, "app.log"))
 
 	var loadErr error
 	config, loadErr = appconf.LoadConfig()
