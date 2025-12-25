@@ -38,7 +38,9 @@ jobs:
 
       - name: Install NSIS
         if: matrix.mode == 'installer'
-        run: choco install nsis -y
+        run: |
+          choco install nsis -y
+          echo "C:\Program Files (x86)\NSIS" >> $env:GITHUB_PATH
         shell: pwsh
 
       - name: Install frontend dependencies
