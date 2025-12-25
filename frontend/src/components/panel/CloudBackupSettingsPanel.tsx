@@ -139,8 +139,46 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
 
       {/* OneDrive 配置 */}
       {formData.cloud_backup_provider === 'onedrive' && (
-        <div className="space-y-4 p-4 bg-brand-50 dark:bg-brand-800 rounded-lg">
+        <div className="space-y-4 p-4 bg-brand-100 dark:bg-brand-800 rounded-lg">
           <h3 className="text-sm font-medium text-brand-800 dark:text-brand-200">OneDrive 配置</h3>
+          
+          <div className="p-3 bg-brand-100 dark:bg-brand-700 rounded-md border border-brand-300 dark:border-brand-600">
+            <div className="flex items-start gap-2">
+              <span className="i-mdi-information-outline text-lg text-warning-500 dark:text-brand-400 mt-0.5 flex-shrink-0" />
+              <div className="text-xs text-brand-600 dark:text-brand-400 space-y-1">
+                <p className="font-medium">注意：</p>
+                <ul className="list-disc list-inside space-y-0.5 pl-2">
+                  <li>默认使用项目提供的 Client ID，方便开箱即用</li>
+                  <li>您的数据完全保存在您自己的 OneDrive 账户的应用文件夹中，其他人无法访问</li>
+                  <li>所有敏感数据均保存在本地(如Refresh Token)，不会上传到云端</li>
+                  <li>使用默认 Client ID 产生的任何问题，作者不承担责任</li>
+                  <li>如需更高安全性，可在下方自定义 Client ID</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Client ID 配置 */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+              Client ID
+              {(!formData.onedrive_client_id || formData.onedrive_client_id === '26fcab6e-41ea-49ff-8ec9-063983cae3ef') && 
+                <span className="ml-2 text-xs text-brand-500 dark:text-brand-400">(使用默认)</span>
+              }
+            </label>
+            <input
+              type="text"
+              name="onedrive_client_id"
+              value={formData.onedrive_client_id || ''}
+              onChange={handleChange}
+              placeholder="26fcab6e-41ea-49ff-8ec9-063983cae3ef (默认)"
+              className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white font-mono text-sm"
+            />
+            <p className="text-xs text-brand-500 dark:text-brand-400">
+              如需自定义，请在 <a href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" rel="noopener noreferrer" className="underline hover:text-brand-600 dark:hover:text-brand-300">Microsoft Entra</a> 中注册应用
+            </p>
+          </div>
+
           <div className="space-y-2">
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">授权状态</label>
             {formData.onedrive_refresh_token ? (
