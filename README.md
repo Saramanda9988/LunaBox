@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="frontend/public/appicon.png" alt="LunaBox Logo" style="width:120px; height:120px; border-radius:16px;" />
+
 # LunaBox
 
 **轻量、快速、功能强大的视觉小说管理与游玩统计工具**
@@ -22,6 +24,16 @@
 - **多渠道备份** - 支持本地备份, AWS S3、七牛云、阿里云 OSS 等兼容 S3 协议的存储服务与 OneDrive 云端备份
 - **隐私与安全** - 所有敏感数据均保存在本地中
 
+## 截图
+
+应用中的部分截图（位于仓库的 `screenshot/` 目录）：
+
+![主界面](screenshot/home.png)
+![库视图](screenshot/lib.png)
+![游戏详情](screenshot/game.png)
+![统计页面](screenshot/lunabox-stats.png)
+
+
 ## 🛠️ 技术栈
 
 | 层级 | 技术 |
@@ -41,7 +53,7 @@
 
 ### 从 Release 下载
 
-前往 [Releases](../../releases) 页面下载最新版本的安装包。
+前往 [Releases](https://github.com/Saramanda9988/LunaBox/releases) 页面下载最新版本的安装包。
 
 ### 从源码构建
 
@@ -145,7 +157,7 @@ lunabox/
 └── build/               # 构建输出
 ```
 
-## RoadMap
+## 🗺️ RoadMap
 
 - [ ] 支持从ReinaManager中导入数据
 
