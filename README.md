@@ -4,7 +4,7 @@
 
 # LunaBox
 
-**轻量、快速、功能强大的视觉小说管理与游玩统计工具**
+**轻量、快速、功能丰富的视觉小说管理与游玩统计工具**
 
 [![Go](https://img.shields.io/badge/Go-1.24-00ADD8?style=flat-square&logo=go)](https://go.dev/)
 [![Wails](https://img.shields.io/badge/Wails-v2-DF0000?style=flat-square)](https://wails.io/)
@@ -85,6 +85,9 @@ wails dev
 
 # 构建生产版本
 wails build
+
+# 使用脚本进行本地构建版本(windows环境)
+.\scripts\build.bat all 1.0.0-beta   
 ```
 
 
