@@ -10,6 +10,7 @@ import (
 	"lunabox/internal/models"
 	"lunabox/internal/utils"
 	"lunabox/internal/vo"
+	"strings"
 	"sync"
 	"time"
 
@@ -66,6 +67,9 @@ func (s *GameService) AddGame(game models.Game) error {
 		game.CachedAt = time.Now()
 	}
 
+	// 保存原始封面URL用于后台下载
+	originalCoverURL := game.CoverURL
+
 	query := `INSERT INTO games (
 		id, name, cover_url, company, summary, path, 
 		source_type, cached_at, source_id, created_at
@@ -85,7 +89,46 @@ func (s *GameService) AddGame(game models.Game) error {
 	)
 	if err != nil {
 		runtime.LogErrorf(s.ctx, "AddGame: failed to insert game %s: %v", game.Name, err)
+		return err
 	}
+
+	// 后台异步下载封面图片（不阻塞添加流程）
+	if originalCoverURL != "" {
+		go s.asyncDownloadCoverImage(game.ID, game.Name, originalCoverURL)
+	}
+
+	return nil
+}
+
+// asyncDownloadCoverImage 后台异步下载封面图片并更新数据库
+func (s *GameService) asyncDownloadCoverImage(gameID, gameName, coverURL string) {
+	// 检查是否为远程URL
+	if coverURL == "" || !strings.HasPrefix(coverURL, "http") || strings.Contains(coverURL, "wails.localhost") {
+		return
+	}
+
+	runtime.LogInfof(s.ctx, "asyncDownloadCoverImage: downloading cover for %s", gameName)
+
+	// 下载并保存图片
+	localPath, err := utils.DownloadAndSaveCoverImage(coverURL, gameID)
+	if err != nil {
+		runtime.LogWarningf(s.ctx, "asyncDownloadCoverImage: failed to download cover for %s: %v", gameName, err)
+		return
+	}
+
+	// 更新数据库中的封面路径
+	if err := s.updateCoverURL(gameID, localPath); err != nil {
+		runtime.LogErrorf(s.ctx, "asyncDownloadCoverImage: failed to update cover URL for %s: %v", gameName, err)
+		return
+	}
+
+	runtime.LogInfof(s.ctx, "asyncDownloadCoverImage: successfully cached cover for %s", gameName)
+}
+
+// updateCoverURL 更新游戏的封面URL
+func (s *GameService) updateCoverURL(gameID, coverURL string) error {
+	query := `UPDATE games SET cover_url = ? WHERE id = ?`
+	_, err := s.db.ExecContext(s.ctx, query, coverURL, gameID)
 	return err
 }
 

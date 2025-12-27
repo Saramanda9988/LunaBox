@@ -655,7 +655,7 @@ func (s *ImportService) BatchImportGames(candidates []vo.BatchImportCandidate) (
 		game.CreatedAt = time.Now()
 		game.CachedAt = time.Now()
 
-		// 保存游戏
+		// 保存游戏（图片会在后台异步下载）
 		if err := s.gameService.AddGame(game); err != nil {
 			runtime.LogErrorf(s.ctx, "BatchImportGames: failed to add game %s: %v", gameName, err)
 			result.Failed++

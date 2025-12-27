@@ -87,7 +87,8 @@ function StatsPage() {
       for (let i = 0; i < images.length; i++) {
         const img = images[i]
         originalSrcs.push(img.src)
-        if (img.src.startsWith('http')) {
+        // 只处理真正的远程图片，跳过本地的 wails.localhost 图片
+        if (img.src.startsWith('http') && !img.src.includes('wails.localhost')) {
           try {
             const base64 = await FetchImageAsBase64(img.src)
             img.src = base64

@@ -3,9 +3,11 @@ package utils
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // SaveCoverImage 保存封面图片到应用的封面目录
@@ -86,4 +88,88 @@ func ResolveCoverPath(imagePath string, tempDir string) string {
 
 	// 记录未找到封面图片的情况
 	return ""
+}
+
+// DownloadAndSaveCoverImage 下载远程图片并保存到本地
+func DownloadAndSaveCoverImage(imageURL string, gameID string) (string, error) {
+	// 如果是本地路径，直接返回
+	if strings.HasPrefix(imageURL, "/local/") || strings.HasPrefix(imageURL, "http://wails.localhost") {
+		return imageURL, nil
+	}
+
+	// 如果不是 http/https URL，返回原始路径
+	if !strings.HasPrefix(imageURL, "http://") && !strings.HasPrefix(imageURL, "https://") {
+		return imageURL, nil
+	}
+
+	// 获取应用程序目录
+	appDir, err := GetDataDir()
+	if err != nil {
+		return imageURL, err // 失败时返回原始 URL
+	}
+
+	// 获取封面保存目录
+	coverDir := filepath.Join(appDir, "covers")
+	if err := os.MkdirAll(coverDir, os.ModePerm); err != nil {
+		return imageURL, err
+	}
+
+	// 下载图片
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+	resp, err := client.Get(imageURL)
+	if err != nil {
+		return imageURL, err // 下载失败，返回原始 URL
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return imageURL, fmt.Errorf("failed to download image: status %d", resp.StatusCode)
+	}
+
+	// 从 Content-Type 或 URL 推断文件扩展名
+	ext := ".jpg" // 默认扩展名
+	contentType := resp.Header.Get("Content-Type")
+	switch contentType {
+	case "image/png":
+		ext = ".png"
+	case "image/jpeg", "image/jpg":
+		ext = ".jpg"
+	case "image/gif":
+		ext = ".gif"
+	case "image/webp":
+		ext = ".webp"
+	default:
+		// 尝试从 URL 获取扩展名
+		if urlExt := filepath.Ext(imageURL); urlExt != "" {
+			ext = urlExt
+		}
+	}
+
+	// 删除该 gameID 的旧封面文件（可能是不同扩展名）
+	oldExtensions := []string{".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
+	for _, oldExt := range oldExtensions {
+		oldPath := filepath.Join(coverDir, gameID+oldExt)
+		os.Remove(oldPath) // 忽略错误
+	}
+
+	// 生成目标文件名
+	destFileName := fmt.Sprintf("%s%s", gameID, ext)
+	destPath := filepath.Join(coverDir, destFileName)
+
+	// 保存文件
+	destFile, err := os.Create(destPath)
+	if err != nil {
+		return imageURL, err
+	}
+	defer destFile.Close()
+
+	if _, err := io.Copy(destFile, resp.Body); err != nil {
+		os.Remove(destPath) // 清理失败的文件
+		return imageURL, err
+	}
+
+	// 返回本地路径
+	return fmt.Sprintf("/local/covers/%s", destFileName), nil
 }
