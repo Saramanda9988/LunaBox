@@ -64,6 +64,7 @@ func main() {
 	configService := service.NewConfigService()
 	importService := service.NewImportService()
 	versionService := service.NewVersionService()
+	templateService := service.NewTemplateService()
 
 	// 创建本地文件处理器
 	localFileHandler, err := utils.NewLocalFileHandler()
@@ -160,6 +161,7 @@ func main() {
 			categoryService.Init(ctx, db, config)
 			importService.Init(ctx, db, config, gameService)
 			versionService.Init(ctx)
+			templateService.Init(ctx, db, config)
 			// 设置 TimerService 的 BackupService 依赖
 			timerService.SetBackupService(backupService)
 
@@ -207,6 +209,7 @@ func main() {
 			configService,
 			importService,
 			versionService,
+			templateService,
 		},
 		EnumBind: []interface{}{
 			enums.AllSourceTypes,

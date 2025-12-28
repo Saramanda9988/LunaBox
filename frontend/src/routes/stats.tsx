@@ -21,6 +21,7 @@ import { AISummarize } from '../../wailsjs/go/service/AiService'
 import { enums, vo } from '../../wailsjs/go/models'
 import { useAppStore } from '../store'
 import { StatsSkeleton } from '../components/skeleton/StatsSkeleton'
+import { TemplateExportModal } from '../components/modal/TemplateExportModal'
 
 ChartJS.register(
   CategoryScale,
@@ -51,6 +52,7 @@ function StatsPage() {
   const [loading, setLoading] = useState(true)
   const [showSkeleton, setShowSkeleton] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
   
   // 自定义日期范围
   const [customDateRange, setCustomDateRange] = useState(false)
@@ -325,7 +327,8 @@ function StatsPage() {
           </button>
         </div>
         <div className={'flex space-x-2 items-center'}>
-          <button onClick={handleShare} className='flex justify-end i-mdi-share text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors' title="分享"/>
+          <button onClick={() => setShowTemplateModal(true)} className='flex justify-end i-mdi-image-filter-hdr text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors' title="美化导出"/>
+          <button onClick={handleShare} className='flex justify-end i-mdi-share text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors' title="截图分享"/>
           <button onClick={handleAISummarize} className='flex justify-end i-mdi-robot-happy text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors' title="AI总结"/>
         </div>
       </div>
@@ -486,6 +489,14 @@ function StatsPage() {
           </div>
         </div>
       </div>
+
+      {/* 模板导出弹窗 */}
+      <TemplateExportModal
+        isOpen={showTemplateModal}
+        onClose={() => setShowTemplateModal(false)}
+        stats={stats}
+        aiSummary={aiSummary}
+      />
     </div>
   )
 }

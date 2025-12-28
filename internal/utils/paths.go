@@ -125,6 +125,11 @@ func GetCacheSubDir(subPath string) (string, error) {
 	return dir, nil
 }
 
+// GetTemplatesDir 获取用户模板目录
+func GetTemplatesDir() (string, error) {
+	return GetSubDir("templates")
+}
+
 // IsPortableMode 返回是否为便携模式
 func IsPortableMode() bool {
 	return version.BuildMode == "portable"

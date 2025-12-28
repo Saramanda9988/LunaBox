@@ -130,3 +130,8 @@ type DBBackupStatus struct {
 	LastBackupTime string         `json:"last_backup_time"` // 上次备份时间
 	Backups        []DBBackupInfo `json:"backups"`          // 备份列表
 }
+
+// RenderTemplateResponse 渲染模板响应
+type RenderTemplateResponse struct {
+	HTML string `json:"html"` // 渲染后的HTML
+}

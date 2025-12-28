@@ -75,6 +75,12 @@ export namespace appconf {
 
 export namespace enums {
 	
+	export enum SourceType {
+	    LOCAL = "local",
+	    BANGUMI = "bangumi",
+	    VNDB = "vndb",
+	    YMGAL = "ymgal",
+	}
 	export enum Period {
 	    DAY = "day",
 	    WEEK = "week",
@@ -90,12 +96,6 @@ export namespace enums {
 	    PLAYING = "playing",
 	    COMPLETED = "completed",
 	    ON_HOLD = "on_hold",
-	}
-	export enum SourceType {
-	    LOCAL = "local",
-	    BANGUMI = "bangumi",
-	    VNDB = "vndb",
-	    YMGAL = "ymgal",
 	}
 
 }
@@ -873,6 +873,156 @@ export namespace vo {
 	        this.dimension = source["dimension"];
 	        this.start_date = source["start_date"];
 	        this.end_date = source["end_date"];
+	    }
+	}
+	export class StatsGameItem {
+	    rank: number;
+	    game_id: string;
+	    game_name: string;
+	    cover_url: string;
+	    cover_base64: string;
+	    total_duration: number;
+	    duration_str: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StatsGameItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rank = source["rank"];
+	        this.game_id = source["game_id"];
+	        this.game_name = source["game_name"];
+	        this.cover_url = source["cover_url"];
+	        this.cover_base64 = source["cover_base64"];
+	        this.total_duration = source["total_duration"];
+	        this.duration_str = source["duration_str"];
+	    }
+	}
+	export class StatsExportData {
+	    export_time: string;
+	    start_date: string;
+	    end_date: string;
+	    period: string;
+	    total_play_count: number;
+	    total_play_duration: number;
+	    total_play_time_str: string;
+	    leaderboard: StatsGameItem[];
+	    trend_chart_image: string;
+	    game_trend_chart_image: string;
+	    ai_summary: string;
+	    app_name: string;
+	    app_version: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StatsExportData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.export_time = source["export_time"];
+	        this.start_date = source["start_date"];
+	        this.end_date = source["end_date"];
+	        this.period = source["period"];
+	        this.total_play_count = source["total_play_count"];
+	        this.total_play_duration = source["total_play_duration"];
+	        this.total_play_time_str = source["total_play_time_str"];
+	        this.leaderboard = this.convertValues(source["leaderboard"], StatsGameItem);
+	        this.trend_chart_image = source["trend_chart_image"];
+	        this.game_trend_chart_image = source["game_trend_chart_image"];
+	        this.ai_summary = source["ai_summary"];
+	        this.app_name = source["app_name"];
+	        this.app_version = source["app_version"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class RenderTemplateRequest {
+	    template_id: string;
+	    data: StatsExportData;
+	
+	    static createFrom(source: any = {}) {
+	        return new RenderTemplateRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.template_id = source["template_id"];
+	        this.data = this.convertValues(source["data"], StatsExportData);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class RenderTemplateResponse {
+	    html: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RenderTemplateResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.html = source["html"];
+	    }
+	}
+	
+	
+	export class TemplateInfo {
+	    id: string;
+	    name: string;
+	    description: string;
+	    author: string;
+	    version: string;
+	    preview: string;
+	    is_builtin: boolean;
+	    file_path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TemplateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.author = source["author"];
+	        this.version = source["version"];
+	        this.preview = source["preview"];
+	        this.is_builtin = source["is_builtin"];
+	        this.file_path = source["file_path"];
 	    }
 	}
 
