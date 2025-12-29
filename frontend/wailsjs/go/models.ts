@@ -875,6 +875,60 @@ export namespace vo {
 	        this.end_date = source["end_date"];
 	    }
 	}
+	export class StatsGameTrend {
+	    game_id: string;
+	    game_name: string;
+	    points: StatsTimePoint[];
+	    color: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StatsGameTrend(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.game_id = source["game_id"];
+	        this.game_name = source["game_name"];
+	        this.points = this.convertValues(source["points"], StatsTimePoint);
+	        this.color = source["color"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StatsTimePoint {
+	    label: string;
+	    duration: number;
+	    duration_str: string;
+	    hours: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new StatsTimePoint(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.label = source["label"];
+	        this.duration = source["duration"];
+	        this.duration_str = source["duration_str"];
+	        this.hours = source["hours"];
+	    }
+	}
 	export class StatsGameItem {
 	    rank: number;
 	    game_id: string;
@@ -908,8 +962,11 @@ export namespace vo {
 	    total_play_duration: number;
 	    total_play_time_str: string;
 	    leaderboard: StatsGameItem[];
-	    trend_chart_image: string;
-	    game_trend_chart_image: string;
+	    timeline: StatsTimePoint[];
+	    leaderboard_trend: StatsGameTrend[];
+	    chart_labels: string;
+	    chart_data: string;
+	    game_trend_data: string;
 	    ai_summary: string;
 	    app_name: string;
 	    app_version: string;
@@ -928,8 +985,11 @@ export namespace vo {
 	        this.total_play_duration = source["total_play_duration"];
 	        this.total_play_time_str = source["total_play_time_str"];
 	        this.leaderboard = this.convertValues(source["leaderboard"], StatsGameItem);
-	        this.trend_chart_image = source["trend_chart_image"];
-	        this.game_trend_chart_image = source["game_trend_chart_image"];
+	        this.timeline = this.convertValues(source["timeline"], StatsTimePoint);
+	        this.leaderboard_trend = this.convertValues(source["leaderboard_trend"], StatsGameTrend);
+	        this.chart_labels = source["chart_labels"];
+	        this.chart_data = source["chart_data"];
+	        this.game_trend_data = source["game_trend_data"];
 	        this.ai_summary = source["ai_summary"];
 	        this.app_name = source["app_name"];
 	        this.app_version = source["app_version"];
@@ -997,6 +1057,8 @@ export namespace vo {
 	        this.html = source["html"];
 	    }
 	}
+	
+	
 	
 	
 	export class TemplateInfo {

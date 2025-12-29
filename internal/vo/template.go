@@ -16,9 +16,12 @@ type StatsExportData struct {
 	// 排行榜数据
 	Leaderboard []StatsGameItem `json:"leaderboard"` // 排行榜
 
-	// 图表数据（Base64图片）
-	TrendChartImage     string `json:"trend_chart_image"`      // 趋势图表图片
-	GameTrendChartImage string `json:"game_trend_chart_image"` // 游戏趋势图表图片
+	// 图表数据（用于 Chart.js 渲染）
+	Timeline         []StatsTimePoint `json:"timeline"`          // 总游玩时长时间线
+	LeaderboardTrend []StatsGameTrend `json:"leaderboard_trend"` // 排行榜游戏趋势
+	ChartLabels      string           `json:"chart_labels"`      // 图表标签 JSON 字符串
+	ChartData        string           `json:"chart_data"`        // 图表数据 JSON 字符串
+	GameTrendData    string           `json:"game_trend_data"`   // 游戏趋势数据 JSON 字符串
 
 	// AI总结
 	AISummary string `json:"ai_summary"` // AI总结内容
@@ -26,6 +29,22 @@ type StatsExportData struct {
 	// 应用信息
 	AppName    string `json:"app_name"`    // 应用名称
 	AppVersion string `json:"app_version"` // 应用版本
+}
+
+// StatsTimePoint 时间点数据
+type StatsTimePoint struct {
+	Label       string  `json:"label"`        // 标签（日期）
+	Duration    int     `json:"duration"`     // 时长（秒）
+	DurationStr string  `json:"duration_str"` // 格式化时长
+	Hours       float64 `json:"hours"`        // 小时数（用于图表）
+}
+
+// StatsGameTrend 游戏趋势数据
+type StatsGameTrend struct {
+	GameID   string           `json:"game_id"`
+	GameName string           `json:"game_name"`
+	Points   []StatsTimePoint `json:"points"`
+	Color    string           `json:"color"` // 图表颜色
 }
 
 // StatsGameItem 统计游戏项

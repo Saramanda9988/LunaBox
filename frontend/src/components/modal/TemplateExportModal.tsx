@@ -16,8 +16,6 @@ interface TemplateExportModalProps {
   onClose: () => void
   stats: vo.PeriodStats | null
   aiSummary: string
-  trendChartImage?: string
-  gameTrendChartImage?: string
 }
 
 export function TemplateExportModal({
@@ -25,8 +23,6 @@ export function TemplateExportModal({
   onClose,
   stats,
   aiSummary,
-  trendChartImage,
-  gameTrendChartImage,
 }: TemplateExportModalProps) {
   const [templates, setTemplates] = useState<vo.TemplateInfo[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
@@ -67,16 +63,8 @@ export function TemplateExportModal({
 
     setLoading(true)
     try {
-      // 准备导出数据
+      // 准备导出数据（包含图表数据，由后端处理）
       const exportData = await PrepareExportData(stats, aiSummary)
-      
-      // 添加图表图片
-      if (trendChartImage) {
-        exportData.trend_chart_image = trendChartImage
-      }
-      if (gameTrendChartImage) {
-        exportData.game_trend_chart_image = gameTrendChartImage
-      }
 
       // 渲染模板
       const req = new vo.RenderTemplateRequest({
@@ -242,7 +230,7 @@ export function TemplateExportModal({
                   srcDoc={previewHtml}
                   className="w-full h-full border-0 rounded-lg shadow-lg bg-white"
                   title="模板预览"
-                  sandbox="allow-same-origin"
+                  sandbox="allow-same-origin allow-scripts"
                 />
               ) : (
                 <div className="flex items-center justify-center h-full text-brand-500 dark:text-brand-400">

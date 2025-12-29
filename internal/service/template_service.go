@@ -173,6 +173,8 @@ func (s *TemplateService) RenderTemplate(req vo.RenderTemplateRequest) (vo.Rende
 	funcMap := template.FuncMap{
 		"formatDuration": formatDuration,
 		"json":           toJSON,
+		"safeJS":         func(s string) template.JS { return template.JS(s) },
+		"safeHTML":       func(s string) template.HTML { return template.HTML(s) },
 		"add":            func(a, b int) int { return a + b },
 		"sub":            func(a, b int) int { return a - b },
 		"mul":            func(a, b int) int { return a * b },
@@ -207,6 +209,67 @@ func (s *TemplateService) PrepareExportData(stats vo.PeriodStats, aiSummary stri
 		AISummary:         aiSummary,
 		AppName:           "LunaBox",
 		AppVersion:        version.Version,
+	}
+
+	// 处理时间线数据（用于图表）
+	var chartLabels []string
+	var chartData []float64
+	for _, point := range stats.Timeline {
+		hours := float64(point.Duration) / 3600.0
+		data.Timeline = append(data.Timeline, vo.StatsTimePoint{
+			Label:       point.Label,
+			Duration:    point.Duration,
+			DurationStr: formatDuration(point.Duration),
+			Hours:       hours,
+		})
+		chartLabels = append(chartLabels, point.Label)
+		chartData = append(chartData, hours)
+	}
+	// 转为 JSON 字符串供模板使用
+	if labelsJSON, err := json.Marshal(chartLabels); err == nil {
+		data.ChartLabels = string(labelsJSON)
+	}
+	if dataJSON, err := json.Marshal(chartData); err == nil {
+		data.ChartData = string(dataJSON)
+	}
+
+	// 处理游戏趋势数据
+	colors := []string{
+		"rgb(255, 99, 132)",
+		"rgb(54, 162, 235)",
+		"rgb(255, 206, 86)",
+		"rgb(75, 192, 192)",
+		"rgb(153, 102, 255)",
+	}
+	var gameTrendData []map[string]interface{}
+	for i, series := range stats.LeaderboardSeries {
+		trend := vo.StatsGameTrend{
+			GameID:   series.GameID,
+			GameName: series.GameName,
+			Color:    colors[i%len(colors)],
+		}
+		var points []float64
+		for _, point := range series.Points {
+			hours := float64(point.Duration) / 3600.0
+			trend.Points = append(trend.Points, vo.StatsTimePoint{
+				Label:       point.Label,
+				Duration:    point.Duration,
+				DurationStr: formatDuration(point.Duration),
+				Hours:       hours,
+			})
+			points = append(points, hours)
+		}
+		data.LeaderboardTrend = append(data.LeaderboardTrend, trend)
+		gameTrendData = append(gameTrendData, map[string]interface{}{
+			"label":           series.GameName,
+			"data":            points,
+			"borderColor":     colors[i%len(colors)],
+			"backgroundColor": colors[i%len(colors)],
+			"tension":         0.3,
+		})
+	}
+	if trendJSON, err := json.Marshal(gameTrendData); err == nil {
+		data.GameTrendData = string(trendJSON)
 	}
 
 	// 处理排行榜数据
