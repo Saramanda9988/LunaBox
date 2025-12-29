@@ -1,0 +1,677 @@
+<!--
+@name: 手账风报告
+@description: 包含手绘风格图表和装饰的趣味统计报告
+@author: LunaBox
+@version: 1.0.0
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游戏手账 · {{.StartDate}}</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- 引入手写字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Long+Cang&family=Patrick+Hand&family=Noto+Sans+SC:wght@400;500;700&display=swap"
+        rel="stylesheet">
+
+    <style>
+        :root {
+            /* 卡通手账调色板 */
+            --bg-paper: #fdfbf7;
+            --ink-primary: #5d4037;
+            /* 像铅笔/墨水的深褐色 */
+            --ink-secondary: #8d6e63;
+
+            --color-yellow: #fff9c4;
+            --color-pink: #ffccbc;
+            --color-blue: #b3e5fc;
+            --color-green: #c8e6c9;
+            --color-purple: #e1bee7;
+            --accent-orange: #ff7043;
+
+            /* 字体定义 */
+            --font-title: 'ZCOOL KuaiLe', cursive;
+            --font-hand: 'Patrick Hand', "KaiTi", "STKaiti", serif;
+            --font-body: 'Noto Sans SC', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-body);
+            color: var(--ink-primary);
+            background-color: var(--bg-paper);
+            /* 点阵纸背景纹理 */
+            background-image: radial-gradient(#ddd 2px, transparent 2px);
+            background-size: 20px 20px;
+            min-height: 100vh;
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+
+        .doodle {
+            width: 1em;
+            height: 1em;
+            fill: currentColor;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        /* ==================== 1. 头部设计 ==================== */
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            position: relative;
+            padding-top: 20px;
+        }
+
+        .title-sticker {
+            display: inline-block;
+            background: #fff;
+            padding: 20px 60px;
+            border: 3px dashed var(--ink-primary);
+            border-radius: 15px;
+            box-shadow: 5px 5px 0 var(--color-blue);
+            transform: rotate(-2deg);
+            position: relative;
+        }
+
+        .title-sticker h1 {
+            font-family: var(--font-title);
+            font-size: 2.8rem;
+            color: var(--accent-orange);
+            margin: 0;
+            -webkit-text-stroke: 1px var(--ink-primary);
+        }
+
+        .date-badge {
+            position: absolute;
+            bottom: -15px;
+            right: -20px;
+            background: var(--color-yellow);
+            padding: 5px 15px;
+            font-family: var(--font-hand);
+            font-size: 1.2rem;
+            box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.1);
+            transform: rotate(5deg);
+            border: 1px solid var(--ink-primary);
+            white-space: nowrap;
+        }
+
+        .tape {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 25px;
+            background: rgba(255, 171, 145, 0.7);
+            opacity: 0.8;
+            mask-image: radial-gradient(circle at 5px, transparent 4px, black 5px);
+            mask-size: 10px 100%;
+            mask-repeat: repeat-x;
+        }
+
+        /* ==================== 2. 统计邮票 ==================== */
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .stamp {
+            width: 180px;
+            background: #fff;
+            padding: 10px;
+            box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.05);
+            /* 邮票齿孔背景 */
+            background-image: radial-gradient(transparent 50%, #fff 51%);
+            background-size: 10px 10px;
+            background-position: -5px -5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.3s;
+            border: 1px solid #eee;
+        }
+
+        .stamp:hover {
+            transform: scale(1.1) rotate(0deg) !important;
+            z-index: 10;
+        }
+
+        .stamp-inner {
+            border: 1px solid var(--ink-secondary);
+            width: 100%;
+            padding: 15px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: radial-gradient(circle, #fff 50%, #fafafa 100%);
+        }
+
+        .stamp-num {
+            font-family: var(--font-title);
+            font-size: 1.8rem;
+            color: var(--accent-orange);
+            line-height: 1.2;
+            margin: 5px 0;
+            word-break: normal;
+            white-space: nowrap;
+            text-align: center;
+            padding: 0 10px;
+        }
+
+        .stamp-label {
+            font-family: var(--font-hand);
+            font-size: 1.1rem;
+            color: var(--ink-secondary);
+        }
+
+        /* ==================== 3. 布局 & 图表区 ==================== */
+        .grid-layout {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-family: var(--font-title);
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chart-section {
+            grid-column: span 12;
+            background: #fff;
+            border: 2px solid var(--ink-primary);
+            border-radius: 5px 20px 20px 5px;
+            padding: 20px 20px 20px 40px;
+            position: relative;
+            box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        .coil {
+            position: absolute;
+            left: 10px;
+            top: 20px;
+            bottom: 20px;
+            width: 10px;
+            background: repeating-linear-gradient(to bottom, #ccc 0, #ccc 2px, transparent 2px, transparent 15px);
+            border-left: 2px solid #999;
+        }
+
+        .chart-container-box {
+            position: relative;
+            height: 350px;
+            width: 100%;
+        }
+
+        /* ==================== 4. 游戏排行榜 (卡片风格) ==================== */
+        .masonry-grid {
+            column-count: 2;
+            column-gap: 25px;
+        }
+
+        @media (max-width: 768px) {
+            .masonry-grid {
+                column-count: 1;
+            }
+        }
+
+        .game-card {
+            break-inside: avoid;
+            background: #fff;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 15px 15px 25px 15px;
+            /* Bottom padding larger for polaroid look */
+            margin-bottom: 25px;
+            box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.05);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s;
+        }
+
+        .game-card:hover {
+            transform: translateY(-3px);
+            z-index: 5;
+            border-color: var(--ink-primary);
+        }
+
+        .card-tape {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 18px;
+            background: var(--color-blue);
+            opacity: 0.9;
+            box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .game-card:nth-child(2n) .card-tape {
+            background: var(--color-pink);
+            transform: translateX(-50%) rotate(2deg);
+        }
+
+        .game-card:nth-child(3n) .card-tape {
+            background: var(--color-green);
+            transform: translateX(-50%) rotate(-2deg);
+        }
+
+        .g-cover-box {
+            width: 100%;
+            aspect-ratio: 3/4;
+            background: #eee;
+            margin-bottom: 15px;
+            border: 1px solid #eee;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #aaa;
+            font-family: var(--font-hand);
+        }
+
+        .g-cover-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .g-info {
+            text-align: center;
+        }
+
+        .g-rank {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 30px;
+            height: 30px;
+            background: var(--accent-orange);
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-title);
+            font-size: 1.2rem;
+            border: 2px solid #fff;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 2;
+        }
+
+        .g-name {
+            font-family: var(--font-title);
+            font-size: 1.4rem;
+            color: var(--ink-primary);
+            line-height: 1.3;
+            margin-bottom: 5px;
+        }
+
+        .g-time {
+            font-family: var(--font-hand);
+            font-size: 1.5rem;
+            /* Hand font is usually smaller optically */
+            color: var(--ink-secondary);
+            font-weight: bold;
+            background: linear-gradient(transparent 60%, var(--color-yellow) 60%);
+            display: inline-block;
+            white-space: nowrap;
+            padding: 0 5px;
+        }
+
+        /* ==================== 5. AI 回响 (对话框) ==================== */
+        .quote-wrapper {
+            margin: 40px auto;
+            max-width: 90%;
+            position: relative;
+        }
+
+        .q-bubble {
+            background: #fff;
+            border: 2px solid var(--ink-primary);
+            padding: 30px 40px;
+            border-radius: 20px;
+            border-bottom-left-radius: 0;
+            box-shadow: 5px 5px 0 var(--color-purple);
+            position: relative;
+        }
+
+        .q-content {
+            font-family: var(--font-hand);
+            font-size: 1.3rem;
+            line-height: 1.6;
+            color: var(--ink-primary);
+        }
+
+        .q-label {
+            position: absolute;
+            top: -15px;
+            left: 30px;
+            background: var(--color-blue);
+            padding: 5px 15px;
+            font-family: var(--font-title);
+            border: 2px solid var(--ink-primary);
+            transform: rotate(-3deg);
+            white-space: nowrap;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 60px;
+            text-align: center;
+            font-family: var(--font-hand);
+            color: var(--ink-secondary);
+            border-top: 2px dashed var(--ink-secondary);
+            padding-top: 20px;
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 768px) {
+            .grid-layout {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .stamp {
+                width: 45%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <!-- 1. 头部 -->
+        <div class="header">
+            <div class="title-sticker">
+                <div class="tape"></div>
+                <h1>🎮 LunaBox 游戏手账</h1>
+                <div class="date-badge">{{.StartDate}} ~ {{.EndDate}}</div>
+            </div>
+        </div>
+
+        <!-- 2. 统计邮票 -->
+        <div class="stats-row">
+            <div class="stamp" style="transform: rotate(-2deg);">
+                <div class="stamp-inner">
+                    <!-- Controller Icon -->
+                    <svg class="doodle" style="font-size: 3rem; color: var(--accent-orange);" viewBox="0 0 24 24">
+                        <path
+                            d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v2H6v-2H4v-2h2V9h2v2h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4-3c-.83 0-1.5-.67-1.5-1.5S18.67 9 19.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
+                    </svg>
+                    <div class="stamp-num">{{.TotalPlayCount}}</div>
+                    <div class="stamp-label">游玩次数</div>
+                </div>
+            </div>
+
+            <div class="stamp" style="transform: rotate(2deg);">
+                <div class="stamp-inner">
+                    <!-- Time Icon -->
+                    <svg class="doodle" style="font-size: 3rem; color: var(--color-blue);" viewBox="0 0 24 24">
+                        <path
+                            d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                    </svg>
+                    <div class="stamp-num">{{.TotalPlayTimeStr}}</div>
+                    <div class="stamp-label">总时长</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI 总结 -->
+        {{if .AISummary}}
+        <div class="quote-wrapper">
+            <div class="q-bubble">
+                <div class="q-label">AI 回响</div>
+                <div class="q-content">
+                    {{.AISummary}}
+                </div>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- 3. 图表区 (仿手绘风格容器) -->
+        {{if .ChartLabels}}
+        <div class="chart-section">
+            <div class="coil"></div>
+            <div class="section-title">
+                <svg class="doodle" style="color: var(--accent-orange);" viewBox="0 0 24 24">
+                    <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z" />
+                </svg>
+                游玩时长趋势
+            </div>
+            <div class="chart-container-box">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+        {{end}}
+
+        {{if .GameTrendData}}
+        <div class="chart-section" style="transform: rotate(0.5deg);">
+            <div class="coil"></div>
+            <div class="section-title">
+                <svg class="doodle" style="color: var(--color-green);" viewBox="0 0 24 24">
+                    <path
+                        d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" />
+                </svg>
+                常玩游戏分布
+            </div>
+            <div class="chart-container-box">
+                <canvas id="gameTrendChart"></canvas>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- 4. 游戏排行榜 (照片墙) -->
+        {{if .Leaderboard}}
+        <div style="margin: 40px 0;">
+            <div class="section-title" style="justify-content: center; margin-bottom: 30px;">
+                <span
+                    style="background: var(--color-pink); padding: 5px 20px; transform: rotate(-1deg); border: 2px solid var(--ink-primary); box-shadow: 3px 3px 0 var(--color-blue); white-space: nowrap;">
+                    游玩排行
+                </span>
+            </div>
+
+            <div class="masonry-grid">
+                {{range $index, $game := .Leaderboard}}
+                <div class="game-card">
+                    <div class="card-tape"></div>
+                    <div class="g-rank">{{add $index 1}}</div>
+                    <div class="g-cover-box">
+                        {{if $game.CoverBase64}}
+                        <img class="g-cover-img" src="{{$game.CoverBase64}}" alt="{{$game.GameName}}">
+                        {{else if $game.CoverURL}}
+                        <img class="g-cover-img" src="{{$game.CoverURL}}" alt="{{$game.GameName}}">
+                        {{else}}
+                        <span>No Cover</span>
+                        {{end}}
+                    </div>
+                    <div class="g-info">
+                        <div class="g-name">{{$game.GameName}}</div>
+                        <div class="g-time">{{$game.DurationStr}}</div>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Footer -->
+        <div class="footer">
+            Generated by {{.AppName}} v{{.AppVersion}} · {{.ExportTime}} <br>
+            ✨ Keep Playing, Keep Recording ✨
+        </div>
+
+    </div>
+
+    <!-- Chart.js Config & Init -->
+    <script id="chart-data-config" type="application/json">
+        {
+            "labels": {{ .ChartLabels | safeJS }},
+            "data": {{ .ChartData | safeJS }},
+            "gameTrend": {{ .GameTrendData | safeJS }}
+        }
+    </script>
+    <script>
+        // 配置手绘风格图表
+        // 字体配置
+        Chart.defaults.font.family = "'Patrick Hand', 'Noto Sans SC', sans-serif";
+        Chart.defaults.font.size = 14;
+        Chart.defaults.color = '#8d6e63'; // ink secondary
+
+        const scrapbookOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'rectRounded',
+                        font: { size: 14 }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: '#fff',
+                    titleColor: '#5d4037',
+                    bodyColor: '#5d4037',
+                    borderColor: '#5d4037',
+                    borderWidth: 2,
+                    displayColors: false,
+                    padding: 10,
+                    cornerRadius: 10,
+                    titleFont: { family: "'ZCOOL KuaiLe', cursive" }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(93, 64, 55, 0.1)',
+                        tickBorderDash: [5, 5] // 虚线效果
+                    },
+                    border: {
+                        dash: [5, 5],
+                        color: '#5d4037'
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(93, 64, 55, 0.1)',
+                        tickBorderDash: [5, 5]
+                    },
+                    border: {
+                        dash: [5, 5],
+                        color: '#5d4037'
+                    }
+                }
+            },
+            elements: {
+                line: {
+                    tension: 0.4, // 平滑曲线
+                    borderWidth: 3,
+                    borderCapStyle: 'round'
+                },
+                point: {
+                    radius: 4,
+                    hoverRadius: 6,
+                    backgroundColor: '#fff',
+                    borderWidth: 2
+                }
+            }
+        };
+
+        // 读取数据
+        let config = {};
+        try {
+            const configEl = document.getElementById('chart-data-config');
+            if (configEl && configEl.textContent.trim()) {
+                config = JSON.parse(configEl.textContent);
+            }
+        } catch (e) {
+            console.error('Data Parse Error', e);
+        }
+
+        // 1. 总时长趋势 (使用蜡笔风格颜色)
+        if (config.labels && config.data) {
+            const ctx = document.getElementById('trendChart');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: config.labels,
+                        datasets: [{
+                            label: '游玩时长 (小时)',
+                            data: config.data,
+                            borderColor: '#ff7043', // accent orange
+                            backgroundColor: 'rgba(255, 112, 67, 0.1)',
+                            pointBorderColor: '#ff7043',
+                            fill: true
+                        }]
+                    },
+                    options: scrapbookOptions
+                });
+            }
+        }
+
+        // 2. 游戏分布 trends
+        if (config.gameTrend) {
+            const ctx2 = document.getElementById('gameTrendChart');
+            if (ctx2) {
+                // 为数据集分配手账颜色
+                const scrapbookColors = ['#ff7043', '#42a5f5', '#66bb6a', '#ab47bc', '#ffa726'];
+                const datasets = config.gameTrend.map((ds, index) => {
+                    const color = scrapbookColors[index % scrapbookColors.length];
+                    return {
+                        ...ds,
+                        borderColor: color,
+                        backgroundColor: color, // For dots/legend
+                        pointBorderColor: color,
+                        borderWidth: 3
+                    };
+                });
+
+                new Chart(ctx2, {
+                    type: 'line',
+                    data: {
+                        labels: config.labels,
+                        datasets: datasets
+                    },
+                    options: scrapbookOptions
+                });
+            }
+        }
+    </script>
+</body>
+
+</html>

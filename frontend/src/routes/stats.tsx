@@ -1,6 +1,5 @@
 import { createRoute } from '@tanstack/react-router'
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { toPng } from 'html-to-image'
 import toast from 'react-hot-toast'
 import { Route as rootRoute } from './__root'
 import { useChartTheme } from '../hooks/useChartTheme'
@@ -16,7 +15,7 @@ import {
   Tooltip,
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
-import { ExportStatsImage, FetchImageAsBase64, GetGlobalPeriodStats } from '../../wailsjs/go/service/StatsService'
+import { GetGlobalPeriodStats } from '../../wailsjs/go/service/StatsService'
 import { AISummarize } from '../../wailsjs/go/service/AiService'
 import { enums, vo } from '../../wailsjs/go/models'
 import { useAppStore } from '../store'
@@ -75,54 +74,6 @@ function StatsPage() {
   // 从 store 获取缓存的 AI 总结
   const { aiSummaryCache, setAISummary } = useAppStore()
   const aiSummary = aiSummaryCache[dimension] || ''
-
-  // TODO: 使用离屏canvas来避免CORS问题，先clone dom再进行操作
-  const handleShare = useCallback(async () => {
-    if (ref.current === null) {
-      return
-    }
-    try {
-      // Pre-process images to base64 to avoid CORS issues
-      const images = ref.current.querySelectorAll('img')
-      const originalSrcs: string[] = []
-      
-      for (let i = 0; i < images.length; i++) {
-        const img = images[i]
-        originalSrcs.push(img.src)
-        // 只处理真正的远程图片，跳过本地的 wails.localhost 图片
-        if (img.src.startsWith('http') && !img.src.includes('wails.localhost')) {
-          try {
-            const base64 = await FetchImageAsBase64(img.src)
-            img.src = base64
-          } catch (e) {
-            console.warn('Failed to convert image to base64:', img.src, e)
-            toast.error('图片转换失败，请检查网络连接')
-          }
-        }
-      }
-
-      const dataUrl = await toPng(ref.current, {
-        cacheBust: true,
-        filter: (node) => {
-          if (node.classList && node.classList.contains('no-export')) {
-            return false
-          }
-          return true
-        },
-      })
-      
-      // Restore original images
-      for (let i = 0; i < images.length; i++) {
-        images[i].src = originalSrcs[i]
-      }
-
-      await ExportStatsImage(dataUrl)
-      toast.success('图片已保存')
-    } catch (err) {
-      console.error('Failed to export image:', err)
-      toast.error('导出图片失败')
-    }
-  }, [ref])
 
   const handleAISummarize = useCallback(async () => {
     setAiLoading(true)
@@ -328,7 +279,6 @@ function StatsPage() {
         </div>
         <div className={'flex space-x-2 items-center'}>
           <button onClick={() => setShowTemplateModal(true)} className='flex justify-end i-mdi-image-filter-hdr text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors' title="美化导出"/>
-          <button onClick={handleShare} className='flex justify-end i-mdi-share text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors' title="截图分享"/>
           <button onClick={handleAISummarize} className='flex justify-end i-mdi-robot-happy text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors' title="AI总结"/>
         </div>
       </div>
