@@ -1,6 +1,5 @@
 import { createPortal } from 'react-dom'
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { toPng } from 'html-to-image'
 import toast from 'react-hot-toast'
 import { vo } from '../../../wailsjs/go/models'
 import {
@@ -86,24 +85,88 @@ export function TemplateExportModal({
 
     setExporting(true)
     try {
-      // 获取 iframe 内容
-      const iframe = previewRef.current.querySelector('iframe')
-      if (!iframe || !iframe.contentDocument) {
+      // 获取 iframe
+      const iframe = previewRef.current.querySelector('iframe') as HTMLIFrameElement
+      if (!iframe || !iframe.contentWindow) {
         throw new Error('无法获取预览内容')
       }
 
-      const body = iframe.contentDocument.body
-      if (!body) {
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document
+      if (!iframeDoc || !iframeDoc.body) {
         throw new Error('无法获取预览内容')
       }
 
-      // 使用 html-to-image 生成图片
-      const dataUrl = await toPng(body, {
-        cacheBust: true,
-        backgroundColor: '#ffffff',
-        width: body.scrollWidth,
-        height: body.scrollHeight,
+      // 等待字体加载完成
+      try {
+        await (iframeDoc as Document & { fonts?: FontFaceSet }).fonts?.ready
+      } catch {
+        // Fallback: wait a bit for fonts to load
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+      }
+
+      // 动态导入 html2canvas
+      const html2canvas = (await import('html2canvas')).default
+
+      // 在 iframe 内注入 html2canvas 并执行截图
+      const iframeWindow = iframe.contentWindow as Window & { html2canvas?: typeof html2canvas }
+
+      // 注入 html2canvas 到 iframe
+      if (!iframeWindow.html2canvas) {
+        const script = iframeDoc.createElement('script')
+        script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'
+        iframeDoc.head.appendChild(script)
+        await new Promise<void>((resolve, reject) => {
+          script.onload = () => resolve()
+          script.onerror = () => reject(new Error('Failed to load html2canvas'))
+          setTimeout(() => resolve(), 3000) // Timeout fallback
+        })
+      }
+
+      // 使用 iframe 内的 html2canvas 或外部的
+      const h2c = iframeWindow.html2canvas || html2canvas
+      const targetElement = iframeDoc.body
+
+      // 重置滚动位置，避免偏移
+      iframeWindow.scrollTo(0, 0)
+      iframeDoc.documentElement.scrollTop = 0
+      iframeDoc.body.scrollTop = 0
+
+      // 等待一帧确保滚动位置已重置
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+
+      const canvas = await h2c(targetElement, {
+        backgroundColor: '#F5EDDC',
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        x: 0,
+        y: 0,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: targetElement.scrollWidth,
+        windowHeight: targetElement.scrollHeight,
+        onclone: (clonedDoc: Document) => {
+          // 重置克隆文档的滚动位置
+          clonedDoc.documentElement.scrollTop = 0
+          clonedDoc.body.scrollTop = 0
+          // 确保克隆的文档使用正确的字体
+          const style = clonedDoc.createElement('style')
+          style.textContent = `
+            * {
+              -webkit-font-smoothing: antialiased;
+              -moz-osx-font-smoothing: grayscale;
+            }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+          `
+          clonedDoc.head.appendChild(style)
+        },
       })
+
+      const dataUrl = canvas.toDataURL('image/png')
 
       // 保存图片
       await ExportRenderedHTML(dataUrl)
@@ -111,7 +174,7 @@ export function TemplateExportModal({
       onClose()
     } catch (err) {
       console.error('Failed to export image:', err)
-      toast.error('导出图片失败')
+      toast.error('导出图片失败: ' + (err instanceof Error ? err.message : String(err)))
     } finally {
       setExporting(false)
     }

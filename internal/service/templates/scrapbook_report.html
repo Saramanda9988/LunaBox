@@ -36,10 +36,10 @@
             --color-purple: #e1bee7;
             --accent-orange: #ff7043;
 
-            /* 字体定义 */
-            --font-title: 'ZCOOL KuaiLe', cursive;
-            --font-hand: 'Patrick Hand', "KaiTi", "STKaiti", serif;
-            --font-body: 'Noto Sans SC', sans-serif;
+            /* 字体定义 - 带系统字体 fallback */
+            --font-title: 'ZCOOL KuaiLe', 'Microsoft YaHei', 'PingFang SC', cursive;
+            --font-hand: 'Patrick Hand', 'KaiTi', 'STKaiti', 'SimSun', serif;
+            --font-body: 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif;
         }
 
         * {
@@ -52,8 +52,8 @@
             font-family: var(--font-body);
             color: var(--ink-primary);
             background-color: var(--bg-paper);
-            /* 点阵纸背景纹理 */
-            background-image: radial-gradient(#ddd 2px, transparent 2px);
+            /* 点阵纸背景纹理 - 使用 SVG 替代 radial-gradient 以兼容 html2canvas */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='10' cy='10' r='1.5' fill='%23ddd'/%3E%3C/svg%3E");
             background-size: 20px 20px;
             min-height: 100vh;
             padding: 40px 20px;
@@ -124,9 +124,7 @@
             height: 25px;
             background: rgba(255, 171, 145, 0.7);
             opacity: 0.8;
-            mask-image: radial-gradient(circle at 5px, transparent 4px, black 5px);
-            mask-size: 10px 100%;
-            mask-repeat: repeat-x;
+            border-radius: 2px;
         }
 
         /* ==================== 2. 统计邮票 ==================== */
@@ -143,15 +141,12 @@
             background: #fff;
             padding: 10px;
             box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.05);
-            /* 邮票齿孔背景 */
-            background-image: radial-gradient(transparent 50%, #fff 51%);
-            background-size: 10px 10px;
-            background-position: -5px -5px;
+            /* 简化邮票边框，移除 radial-gradient 以兼容导出 */
+            border: 3px dashed #ccc;
             display: flex;
             flex-direction: column;
             align-items: center;
             transition: transform 0.3s;
-            border: 1px solid #eee;
         }
 
         .stamp:hover {
@@ -233,29 +228,38 @@
 
         /* ==================== 4. 游戏排行榜 (卡片风格) ==================== */
         .masonry-grid {
-            column-count: 2;
-            column-gap: 25px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+            justify-content: center;
         }
 
         @media (max-width: 768px) {
             .masonry-grid {
-                column-count: 1;
+                flex-direction: column;
+                align-items: center;
             }
         }
 
         .game-card {
-            break-inside: avoid;
+            width: calc(50% - 15px);
+            max-width: 350px;
             background: #fff;
             border: 2px solid #e0e0e0;
             border-radius: 4px;
             padding: 15px 15px 25px 15px;
             /* Bottom padding larger for polaroid look */
-            margin-bottom: 25px;
             box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.05);
             position: relative;
             display: flex;
             flex-direction: column;
             transition: transform 0.2s;
+        }
+
+        @media (max-width: 768px) {
+            .game-card {
+                width: 100%;
+            }
         }
 
         .game-card:hover {
