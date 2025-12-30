@@ -1,0 +1,480 @@
+<!--
+@name: 极简主义报告
+@description: 类似杂志排版的极简风格统计报告
+@author: LunaRain_079
+@version: 1.0.0
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUNABOX EDITORIAL REPORT</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-body: #f2f2f2;
+            --bg-card: #ffffff;
+            --text-main: #111111;
+            --text-muted: #666666;
+            --accent: #222222;
+            --border: #e0e0e0;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+            --radius: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 40px 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        /* Header - Editorial Style */
+        .header {
+            background: #ffffff;
+            color: var(--text-main);
+            padding: 60px 40px 40px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header h1 {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 2.8em;
+            font-weight: 700;
+            margin-bottom: 16px;
+            letter-spacing: -0.03em;
+            color: var(--text-main);
+        }
+
+        .header .meta {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9em;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .content {
+            padding: 50px 40px;
+        }
+
+        .section {
+            margin-bottom: 60px;
+        }
+
+        .section-title {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 1.6em;
+            font-weight: 600;
+            margin-bottom: 30px;
+            color: var(--text-main);
+            position: relative;
+            padding-left: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-title::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 24px;
+            background-color: var(--accent);
+            border-radius: 2px;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: #fafafa;
+            padding: 30px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .stat-value {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 3em;
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1.1;
+        }
+
+        /* AI Summary */
+        .ai-summary {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: var(--radius);
+            border-left: 4px solid var(--accent);
+            font-family: 'Noto Serif SC', serif;
+            font-size: 1.1em;
+            color: #444;
+            line-height: 1.8;
+            font-style: italic;
+        }
+
+        /* Charts */
+        .chart-container {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 30px;
+            height: 350px;
+        }
+
+        /* Leaderboard */
+        .leaderboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .game-item {
+            display: grid;
+            grid-template-columns: 50px 70px 1fr 120px;
+            align-items: center;
+            gap: 20px;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .game-item:last-child {
+            border-bottom: none;
+        }
+
+        .game-rank {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 1.5em;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-align: center;
+        }
+        
+        .game-item:nth-child(1) .game-rank { color: var(--text-main); }
+
+        .game-cover {
+            width: 70px;
+            height: 93px; /* 3:4 */
+            border-radius: 6px;
+            overflow: hidden;
+            background: #eee;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .game-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .game-info h3 {
+            font-family: 'Inter', sans-serif;
+            font-size: 1.1em;
+            font-weight: 600;
+            margin: 0;
+            color: var(--text-main);
+        }
+
+        .game-time {
+            font-family: 'Noto Serif SC', serif;
+            font-weight: 600;
+            text-align: right;
+            color: var(--text-main);
+        }
+
+        /* Footer */
+        .footer {
+            background: #fafafa;
+            padding: 30px 40px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85em;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .game-item { grid-template-columns: 40px 50px 1fr; }
+            .game-time { grid-column: 3; text-align: left; margin-top: 5px; font-size: 0.9em; color: var(--text-muted); }
+            .header h1 { font-size: 2em; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>游戏活动分析报告</h1>
+            <div class="meta">
+                <span>{{.StartDate}} — {{.EndDate}}</span>
+                <span>Generated by {{.AppName}}</span>
+            </div>
+        </header>
+
+        <div class="content">
+            <!-- Stats Section -->
+            <div class="section">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">总游戏场次</span>
+                        <div class="stat-value">{{.TotalPlayCount}}</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">总游戏时长</span>
+                        <div class="stat-value" style="font-size: 2.2em;">{{.TotalPlayTimeStr}}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Summary -->
+            {{if .AISummary}}
+            <div class="section">
+                <div class="section-title">智能分析摘要</div>
+                <div class="ai-summary">
+                    "{{.AISummary}}"
+                </div>
+            </div>
+            {{end}}
+
+            <!-- Charts -->
+            {{if .ChartLabels}}
+            <div class="section">
+                <div class="section-title">趋势分析</div>
+                <div class="chart-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+            {{end}}
+
+            {{if .GameTrendData}}
+            <div class="section">
+                <div class="section-title">游戏分布</div>
+                <div class="chart-container">
+                    <canvas id="gameTrendChart"></canvas>
+                </div>
+            </div>
+            {{end}}
+
+            <!-- Leaderboard -->
+            {{if .Leaderboard}}
+            <div class="section">
+                <div class="section-title">热门游戏排行</div>
+                <div class="leaderboard-list">
+                    {{range $index, $game := .Leaderboard}}
+                    <div class="game-item">
+                        <div class="game-rank">{{add $index 1}}</div>
+                        <div class="game-cover">
+                            {{if $game.CoverBase64}}
+                            <img src="{{$game.CoverBase64}}" alt="{{$game.GameName}}">
+                            {{else if $game.CoverURL}}
+                            <img src="{{$game.CoverURL}}" alt="{{$game.GameName}}">
+                            {{else}}
+                            <div style="width:100%;height:100%;background:#eee;display:flex;align-items:center;justify-content:center;color:#999;font-size:0.7em;">N/A</div>
+                            {{end}}
+                        </div>
+                        <div class="game-info">
+                            <h3>{{$game.GameName}}</h3>
+                        </div>
+                        <div class="game-time">{{$game.DurationStr}}</div>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+        </div>
+
+        <footer class="footer">
+            <div>{{.AppName}} v{{.AppVersion}}</div>
+            <div>Report generated on {{.ExportTime}}</div>
+        </footer>
+    </div>
+
+    <!-- Data Injection -->
+    <script id="chart-data-config" type="application/json">
+        {
+            "labels": {{ .ChartLabels | safeJS }},
+            "data": {{ .ChartData | safeJS }},
+            "gameTrend": {{ .GameTrendData | safeJS }}
+        }
+    </script>
+
+    <script>
+        // Chart Configuration
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#666666';
+        
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        usePointStyle: true,
+                        boxWidth: 8,
+                        padding: 20,
+                        font: {
+                            family: "'Inter', sans-serif",
+                            size: 12
+                        }
+                    },
+                    position: 'top',
+                    align: 'end'
+                },
+                tooltip: {
+                    backgroundColor: '#fff',
+                    titleColor: '#111',
+                    bodyColor: '#666',
+                    borderColor: '#e0e0e0',
+                    borderWidth: 1,
+                    padding: 10,
+                    displayColors: true,
+                    boxPadding: 4
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 11
+                        }
+                    }
+                },
+                y: {
+                    grid: {
+                        color: '#f0f0f0',
+                        borderDash: [4, 4]
+                    },
+                    beginAtZero: true,
+                    border: {
+                        display: false
+                    }
+                }
+            }
+        };
+
+        // Load Data
+        let config = {};
+        try {
+            config = JSON.parse(document.getElementById('chart-data-config').textContent);
+        } catch (e) { console.error(e); }
+
+        // Render Trend Chart
+        if (config.labels && config.data) {
+            const ctx = document.getElementById('trendChart');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: config.labels,
+                        datasets: [{
+                            label: '游戏时长 (小时)',
+                            data: config.data,
+                            borderColor: '#111111',
+                            backgroundColor: 'rgba(17, 17, 17, 0.05)',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#fff',
+                            pointBorderColor: '#111111',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            fill: true,
+                            tension: 0.4 // Smooth curves for modern feel
+                        }]
+                    },
+                    options: commonOptions
+                });
+            }
+        }
+
+        // Render Game Distribution
+        if (config.gameTrend) {
+            const ctx2 = document.getElementById('gameTrendChart');
+            if (ctx2) {
+                // Minimalist Palette
+                const palette = ['#111111', '#444444', '#777777', '#999999', '#bbbbbb'];
+                
+                // Map data to datasets
+                const datasets = config.gameTrend.map((ds, index) => {
+                    const color = palette[index % palette.length];
+                    return {
+                        label: ds.label,
+                        data: ds.data,
+                        borderColor: color,
+                        backgroundColor: color,
+                        borderWidth: 2,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: color,
+                        pointRadius: 3,
+                        tension: 0.4
+                    };
+                });
+
+                new Chart(ctx2, {
+                    type: 'line',
+                    data: {
+                        labels: config.labels,
+                        datasets: datasets
+                    },
+                    options: commonOptions
+                });
+            }
+        }
+    </script>
+</body>
+</html>
