@@ -135,7 +135,7 @@ export function TemplateExportModal({
       await new Promise((resolve) => requestAnimationFrame(resolve))
 
       const canvas = await h2c(targetElement, {
-        backgroundColor: '#F5EDDC',
+        backgroundColor: null,
         scale: 2,
         useCORS: true,
         allowTaint: true,
@@ -170,7 +170,6 @@ export function TemplateExportModal({
 
       // 保存图片
       await ExportRenderedHTML(dataUrl)
-      toast.success('图片已保存')
       onClose()
     } catch (err) {
       console.error('Failed to export image:', err)
@@ -183,7 +182,6 @@ export function TemplateExportModal({
   const handleOpenTemplatesDir = async () => {
     try {
       await OpenTemplatesDir()
-      toast.success('已打开模板目录')
     } catch (err) {
       console.error('Failed to open templates dir:', err)
       toast.error('打开模板目录失败')

@@ -11,9 +11,7 @@ import (
 	"lunabox/internal/utils"
 	"lunabox/internal/vo"
 	"os"
-	"os/exec"
 	"path/filepath"
-	goruntime "runtime"
 	"sort"
 	"strings"
 	"time"
@@ -130,18 +128,7 @@ func (s *BackupService) OpenBackupFolder(gameID string) error {
 		return err
 	}
 	gameBackupDir := filepath.Join(backupDir, gameID)
-	os.MkdirAll(gameBackupDir, 0755)
-
-	var cmd *exec.Cmd
-	switch goruntime.GOOS {
-	case "windows":
-		cmd = exec.Command("explorer", gameBackupDir)
-	case "darwin":
-		cmd = exec.Command("open", gameBackupDir)
-	default:
-		cmd = exec.Command("xdg-open", gameBackupDir)
-	}
-	return cmd.Start()
+	return utils.OpenDirectory(gameBackupDir)
 }
 
 // ========== 游戏存档本地备份方法 ==========

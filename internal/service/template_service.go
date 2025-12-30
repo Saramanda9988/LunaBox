@@ -327,40 +327,6 @@ func (s *TemplateService) fetchImageAsBase64(url string) (string, error) {
 	return fmt.Sprintf("data:%s;base64,%s", contentType, base64Data), nil
 }
 
-// SaveTemplate 保存用户自定义模板
-func (s *TemplateService) SaveTemplate(name, content string) error {
-	userDir, err := utils.GetTemplatesDir()
-	if err != nil {
-		return err
-	}
-
-	// 清理文件名
-	safeName := regexp.MustCompile(`[^a-zA-Z0-9_-]`).ReplaceAllString(name, "_")
-	if safeName == "" {
-		safeName = "custom_template"
-	}
-
-	filePath := filepath.Join(userDir, safeName+".html")
-	return os.WriteFile(filePath, []byte(content), 0644)
-}
-
-// DeleteTemplate 删除用户自定义模板
-func (s *TemplateService) DeleteTemplate(templateID string) error {
-	// 不能删除内置模板
-	_, err := builtinTemplates.ReadFile("templates/" + templateID + ".html")
-	if err == nil {
-		return fmt.Errorf("cannot delete builtin template")
-	}
-
-	userDir, err := utils.GetTemplatesDir()
-	if err != nil {
-		return err
-	}
-
-	filePath := filepath.Join(userDir, templateID+".html")
-	return os.Remove(filePath)
-}
-
 // OpenTemplatesDir 打开模板目录
 func (s *TemplateService) OpenTemplatesDir() error {
 	dir, err := utils.GetTemplatesDir()
@@ -368,8 +334,7 @@ func (s *TemplateService) OpenTemplatesDir() error {
 		return err
 	}
 
-	runtime.BrowserOpenURL(s.ctx, dir)
-	return nil
+	return utils.OpenDirectory(dir)
 }
 
 // ExportRenderedHTML 导出渲染后的HTML为图片

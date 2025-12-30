@@ -3,7 +3,9 @@ package utils
 import (
 	"lunabox/internal/version"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync"
 )
 
@@ -138,4 +140,27 @@ func IsPortableMode() bool {
 // GetBuildMode 返回当前构建模式
 func GetBuildMode() string {
 	return version.BuildMode
+}
+
+// OpenDirectory 使用系统文件管理器打开指定目录
+func OpenDirectory(dir string) error {
+	if dir == "" {
+		return os.ErrInvalid
+	}
+
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("explorer", dir)
+	case "darwin":
+		cmd = exec.Command("open", dir)
+	default:
+		cmd = exec.Command("xdg-open", dir)
+	}
+
+	return cmd.Start()
 }
