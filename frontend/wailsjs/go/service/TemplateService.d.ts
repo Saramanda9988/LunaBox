@@ -5,8 +5,6 @@ import {sql} from '../models';
 import {appconf} from '../models';
 import {vo} from '../models';
 
-export function DeleteTemplate(arg1:string):Promise<void>;
-
 export function ExportRenderedHTML(arg1:string):Promise<void>;
 
 export function GetTemplate(arg1:string):Promise<string>;
@@ -20,5 +18,3 @@ export function OpenTemplatesDir():Promise<void>;
 export function PrepareExportData(arg1:vo.PeriodStats,arg2:string):Promise<vo.StatsExportData>;
 
 export function RenderTemplate(arg1:vo.RenderTemplateRequest):Promise<vo.RenderTemplateResponse>;
-
-export function SaveTemplate(arg1:string,arg2:string):Promise<void>;
