@@ -10,7 +10,7 @@ import {
   UploadDBBackupToCloud,
   ScheduleDBRestoreFromCloud,
 } from '../../../wailsjs/go/service/BackupService'
-import { Quit } from '../../../wailsjs/runtime/runtime'
+import { SafeQuit } from '../../../wailsjs/go/service/ConfigService'
 import { useAppStore } from '../../store'
 import { ConfirmModal } from '../modal/ConfirmModal'
 import { formatFileSize } from '../../utils/size'
@@ -128,7 +128,7 @@ export function DBBackupPanel() {
         try {
           await ScheduleDBRestore(backupPath)
           toast.success('已安排恢复，程序即将退出...')
-          setTimeout(() => Quit(), 1500)
+          setTimeout(() => SafeQuit(), 1500)
         } catch (err: any) {
           toast.error('安排恢复失败: ' + err)
           setRestoringBackup(null)
@@ -179,7 +179,7 @@ export function DBBackupPanel() {
         try {
           await ScheduleDBRestoreFromCloud(cloudKey)
           toast.success('已安排恢复，程序即将退出...')
-          setTimeout(() => Quit(), 1500)
+          setTimeout(() => SafeQuit(), 1500)
         } catch (err: any) {
           toast.error('安排恢复失败: ' + err)
           setRestoringBackup(null)

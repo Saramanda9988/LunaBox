@@ -8,4 +8,8 @@ export function GetAppConfig():Promise<appconf.AppConfig>;
 
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;
 
+export function SafeQuit():Promise<void>;
+
+export function SetQuitHandler(arg1:any):Promise<void>;
+
 export function UpdateAppConfig(arg1:appconf.AppConfig):Promise<void>;

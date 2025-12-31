@@ -10,6 +10,14 @@ export function Init(arg1, arg2, arg3) {
   return window['go']['service']['ConfigService']['Init'](arg1, arg2, arg3);
 }
 
+export function SafeQuit() {
+  return window['go']['service']['ConfigService']['SafeQuit']();
+}
+
+export function SetQuitHandler(arg1) {
+  return window['go']['service']['ConfigService']['SetQuitHandler'](arg1);
+}
+
 export function UpdateAppConfig(arg1) {
   return window['go']['service']['ConfigService']['UpdateAppConfig'](arg1);
 }

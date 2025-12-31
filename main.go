@@ -152,6 +152,11 @@ func main() {
 			}
 
 			configService.Init(ctx, db, config)
+			// 设置安全退出回调
+			configService.SetQuitHandler(func() {
+				forceQuit = true
+				runtime.Quit(ctx)
+			})
 			gameService.Init(ctx, db, config)
 			aiService.Init(ctx, db, config)
 			backupService.Init(ctx, db, config)

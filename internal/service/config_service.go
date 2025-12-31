@@ -11,9 +11,10 @@ import (
 )
 
 type ConfigService struct {
-	ctx    context.Context
-	db     *sql.DB
-	config *appconf.AppConfig
+	ctx         context.Context
+	db          *sql.DB
+	config      *appconf.AppConfig
+	quitHandler func() // 安全退出回调
 }
 
 func NewConfigService() *ConfigService {
@@ -79,4 +80,16 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.LocalBackupRetention = newConfig.LocalBackupRetention
 	s.config.LocalDBBackupRetention = newConfig.LocalDBBackupRetention
 	return nil
+}
+
+// SetQuitHandler 设置安全退出回调
+func (s *ConfigService) SetQuitHandler(handler func()) {
+	s.quitHandler = handler
+}
+
+// SafeQuit 安全退出应用（绕过托盘最小化逻辑）
+func (s *ConfigService) SafeQuit() {
+	if s.quitHandler != nil {
+		s.quitHandler()
+	}
 }
