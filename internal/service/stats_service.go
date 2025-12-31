@@ -228,7 +228,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 	// 2. Leaderboard (Top 5)
 	stats.PlayTimeLeaderboard = make([]vo.GamePlayStats, 0)
 	queryLeaderboard := fmt.Sprintf(`
-		SELECT ps.game_id, g.name, g.cover_url, SUM(ps.duration) as total 
+		SELECT ps.game_id, g.name, COALESCE(g.cover_url, '') as cover_url, SUM(ps.duration) as total 
 		FROM play_sessions ps 
 		JOIN games g ON ps.game_id = g.id 
 		WHERE ps.start_time >= %s AND ps.start_time <= %s + INTERVAL 1 DAY

@@ -168,7 +168,15 @@ func (s *CategoryService) DeleteCategory(id string) error {
 
 func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, error) {
 	query := `
-		SELECT g.id, g.name, g.cover_url, g.company, g.summary, g.path, g.source_type, g.cached_at, g.source_id, g.created_at
+		SELECT g.id, g.name, 
+			COALESCE(g.cover_url, '') as cover_url, 
+			COALESCE(g.company, '') as company, 
+			COALESCE(g.summary, '') as summary, 
+			COALESCE(g.path, '') as path, 
+			COALESCE(g.source_type, '') as source_type, 
+			g.cached_at, 
+			COALESCE(g.source_id, '') as source_id, 
+			g.created_at
 		FROM games g
 		JOIN game_categories gc ON g.id = gc.game_id
 		WHERE gc.category_id = ?

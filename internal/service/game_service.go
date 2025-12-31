@@ -169,10 +169,17 @@ func (s *GameService) DeleteGame(id string) error {
 
 func (s *GameService) GetGames() ([]models.Game, error) {
 	query := `SELECT 
-		id, name, cover_url, company, summary, path, 
+		id, name, 
+		COALESCE(cover_url, '') as cover_url, 
+		COALESCE(company, '') as company, 
+		COALESCE(summary, '') as summary, 
+		COALESCE(path, '') as path, 
 		COALESCE(save_path, '') as save_path,
 		COALESCE(status, 'not_started') as status,
-		source_type, cached_at, source_id, created_at 
+		COALESCE(source_type, '') as source_type, 
+		cached_at, 
+		COALESCE(source_id, '') as source_id, 
+		created_at 
 	FROM games 
 	ORDER BY created_at DESC`
 
@@ -223,10 +230,17 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 
 func (s *GameService) GetGameByID(id string) (models.Game, error) {
 	query := `SELECT 
-		id, name, cover_url, company, summary, path, 
+		id, name, 
+		COALESCE(cover_url, '') as cover_url, 
+		COALESCE(company, '') as company, 
+		COALESCE(summary, '') as summary, 
+		COALESCE(path, '') as path, 
 		COALESCE(save_path, '') as save_path,
 		COALESCE(status, 'not_started') as status,
-		source_type, cached_at, source_id, created_at 
+		COALESCE(source_type, '') as source_type, 
+		cached_at, 
+		COALESCE(source_id, '') as source_id, 
+		created_at 
 	FROM games 
 	WHERE id = ?`
 

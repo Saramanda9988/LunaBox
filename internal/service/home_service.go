@@ -36,7 +36,15 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 	// 1. 上次游玩的游戏（最近一次游玩记录）
 	lastPlayedQuery := `
 		SELECT 
-			g.id, g.name, g.cover_url, g.company, g.summary, g.path, g.source_type, g.cached_at, g.source_id, g.created_at,
+			g.id, g.name, 
+			COALESCE(g.cover_url, '') as cover_url, 
+			COALESCE(g.company, '') as company, 
+			COALESCE(g.summary, '') as summary, 
+			COALESCE(g.path, '') as path, 
+			COALESCE(g.source_type, '') as source_type, 
+			g.cached_at, 
+			COALESCE(g.source_id, '') as source_id, 
+			g.created_at,
 			ps.start_time, ps.duration,
 			COALESCE((SELECT SUM(duration) FROM play_sessions WHERE game_id = g.id), 0) as total_duration
 		FROM games g
