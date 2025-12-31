@@ -421,30 +421,54 @@ func (s *BackupService) cleanupOldCloudBackups(gameID string) {
 
 // ========== 数据库本地备份方法 ==========
 
-// CreateDBBackup 创建数据库备份
+// CreateDBBackup 创建数据库备份（包含 covers 文件夹）
 func (s *BackupService) CreateDBBackup() (*vo.DBBackupInfo, error) {
 	backupDir, err := s.GetDBBackupDir()
 	if err != nil {
 		return nil, err
 	}
 
-	timestamp := time.Now().Format("2006-01-02T15-04-05")
-	exportDir := filepath.Join(backupDir, fmt.Sprintf("export_%s", timestamp))
-	backupFileName := fmt.Sprintf("lunabox_%s.zip", timestamp)
-	backupPath := filepath.Join(backupDir, backupFileName)
+	dataDir, err := utils.GetDataDir()
+	if err != nil {
+		return nil, err
+	}
 
-	exportPath := strings.ReplaceAll(exportDir, "\\", "/")
+	timestamp := time.Now().Format("2006-01-02T15-04-05")
+	// 创建临时打包目录，包含数据库导出和 covers
+	packDir := filepath.Join(backupDir, fmt.Sprintf("pack_%s", timestamp))
+	dbExportDir := filepath.Join(packDir, "database")
+	coversDestDir := filepath.Join(packDir, "covers")
+
+	if err := os.MkdirAll(dbExportDir, 0755); err != nil {
+		return nil, fmt.Errorf("创建临时目录失败: %w", err)
+	}
+
+	// 导出数据库
+	exportPath := strings.ReplaceAll(dbExportDir, "\\", "/")
 	_, err = s.db.ExecContext(s.ctx, fmt.Sprintf("EXPORT DATABASE '%s'", exportPath))
 	if err != nil {
+		os.RemoveAll(packDir)
 		return nil, fmt.Errorf("导出数据库失败: %w", err)
 	}
 
-	_, err = utils.ZipDirectory(exportDir, backupPath)
+	// 复制 covers 文件夹（如果存在）
+	coversSourceDir := filepath.Join(dataDir, "covers")
+	if _, err := os.Stat(coversSourceDir); err == nil {
+		if err := utils.CopyDir(coversSourceDir, coversDestDir); err != nil {
+			runtime.LogWarningf(s.ctx, "CreateDBBackup: failed to copy covers: %v", err)
+			// 封面复制失败不影响整体备份，继续执行
+		}
+	}
+
+	// 打包整个目录
+	backupFileName := fmt.Sprintf("lunabox_%s.zip", timestamp)
+	backupPath := filepath.Join(backupDir, backupFileName)
+
+	_, err = utils.ZipDirectory(packDir, backupPath)
+	os.RemoveAll(packDir)
 	if err != nil {
-		os.RemoveAll(exportDir)
 		return nil, fmt.Errorf("压缩备份失败: %w", err)
 	}
-	os.RemoveAll(exportDir)
 
 	stat, err := os.Stat(backupPath)
 	if err != nil {
@@ -689,6 +713,7 @@ func (s *BackupService) parseCloudBackupItems(keys []string, prefix string) []vo
 // ========== 数据库恢复（启动时调用）==========
 
 // ExecuteDBRestore 执行数据库恢复（在 OnStartup 中、打开数据库前调用）
+// 支持新格式（包含 database/ 和 covers/ 子目录）和旧格式（直接是数据库导出文件）
 func ExecuteDBRestore(config *appconf.AppConfig) (bool, error) {
 	if config.PendingDBRestore == "" {
 		return false, nil
@@ -702,13 +727,13 @@ func ExecuteDBRestore(config *appconf.AppConfig) (bool, error) {
 		return false, fmt.Errorf("备份文件不存在: %s", backupPath)
 	}
 
-	execDir, err := utils.GetDataDir()
+	dataDir, err := utils.GetDataDir()
 	if err != nil {
 		return false, err
 	}
-	dbPath := filepath.Join(execDir, "lunabox.db")
+	dbPath := filepath.Join(dataDir, "lunabox.db")
 
-	tempDir := filepath.Join(execDir, "backups", "database", "restore_temp")
+	tempDir := filepath.Join(dataDir, "backups", "database", "restore_temp")
 	os.RemoveAll(tempDir)
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		return false, fmt.Errorf("创建临时目录失败: %w", err)
@@ -717,6 +742,15 @@ func ExecuteDBRestore(config *appconf.AppConfig) (bool, error) {
 	if err := utils.UnzipForRestore(backupPath, tempDir); err != nil {
 		os.RemoveAll(tempDir)
 		return false, fmt.Errorf("解压备份失败: %w", err)
+	}
+
+	// 检测备份格式：新格式有 database/ 子目录，旧格式直接是数据库文件
+	dbImportDir := tempDir
+	coversBackupDir := ""
+	if _, err := os.Stat(filepath.Join(tempDir, "database")); err == nil {
+		// 新格式
+		dbImportDir = filepath.Join(tempDir, "database")
+		coversBackupDir = filepath.Join(tempDir, "covers")
 	}
 
 	os.Remove(dbPath)
@@ -728,14 +762,29 @@ func ExecuteDBRestore(config *appconf.AppConfig) (bool, error) {
 		return false, fmt.Errorf("打开数据库失败: %w", err)
 	}
 
-	importPath := strings.ReplaceAll(tempDir, "\\", "/")
+	importPath := strings.ReplaceAll(dbImportDir, "\\", "/")
 	_, err = db.Exec(fmt.Sprintf("IMPORT DATABASE '%s'", importPath))
 	db.Close()
-	os.RemoveAll(tempDir)
 
 	if err != nil {
+		os.RemoveAll(tempDir)
 		return false, fmt.Errorf("导入数据库失败: %w", err)
 	}
+
+	// 恢复 covers 文件夹（如果备份中包含）
+	if coversBackupDir != "" {
+		if _, err := os.Stat(coversBackupDir); err == nil {
+			coversDestDir := filepath.Join(dataDir, "covers")
+			// 先清空现有 covers 目录
+			os.RemoveAll(coversDestDir)
+			if err := utils.CopyDir(coversBackupDir, coversDestDir); err != nil {
+				// 封面恢复失败不影响整体恢复，只记录警告
+				fmt.Printf("警告: 恢复封面图片失败: %v\n", err)
+			}
+		}
+	}
+
+	os.RemoveAll(tempDir)
 
 	config.PendingDBRestore = ""
 	appconf.SaveConfig(config)
