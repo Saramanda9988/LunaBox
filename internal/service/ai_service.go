@@ -107,12 +107,12 @@ func (s *AiService) getStatsForAI(dimension enums.Period) (*AIStatsData, error) 
 
 	// 获取Top游戏
 	queryLeaderboard := fmt.Sprintf(`
-		SELECT g.name, SUM(ps.duration) as total 
-		FROM play_sessions ps 
-		JOIN games g ON ps.game_id = g.id 
+		SELECT COALESCE(g.name, '') as name, SUM(ps.duration) as total
+		FROM play_sessions ps
+		JOIN games g ON ps.game_id = g.id
 		WHERE ps.start_time >= %s
-		GROUP BY g.name 
-		ORDER BY total DESC 
+		GROUP BY g.name
+		ORDER BY total DESC
 		LIMIT 5
 	`, startDateExpr)
 

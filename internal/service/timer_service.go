@@ -156,7 +156,7 @@ func (s *TimerService) getGamePath(gameID string) (string, error) {
 	var path string
 	err := s.db.QueryRowContext(
 		s.ctx,
-		"SELECT path FROM games WHERE id = ?",
+		"SELECT COALESCE(path, '') FROM games WHERE id = ?",
 		gameID,
 	).Scan(&path)
 
