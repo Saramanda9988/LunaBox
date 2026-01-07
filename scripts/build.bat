@@ -29,7 +29,8 @@ REM Get build time
 for /f "tokens=*" %%i in ('powershell -command "Get-Date -Format 'yyyy-MM-dd HH:mm:ss'"') do set "BUILD_TIME=%%i"
 
 REM ldflags for build info injection
-set "LDFLAGS_BASE=-X 'lunabox/internal/version.Version=%VERSION%' -X 'lunabox/internal/version.GitCommit=%GIT_COMMIT%' -X 'lunabox/internal/version.BuildTime=%BUILD_TIME%'"
+REM -s: strip symbol table, -w: strip DWARF debug info (reduces binary size ~20-30%)
+set "LDFLAGS_BASE=-s -w -X 'lunabox/internal/version.Version=%VERSION%' -X 'lunabox/internal/version.GitCommit=%GIT_COMMIT%' -X 'lunabox/internal/version.BuildTime=%BUILD_TIME%'"
 set "LDFLAGS_PORTABLE=%LDFLAGS_BASE% -X 'lunabox/internal/version.BuildMode=portable'"
 set "LDFLAGS_INSTALLER=%LDFLAGS_BASE% -X 'lunabox/internal/version.BuildMode=installer'"
 

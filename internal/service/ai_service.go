@@ -133,6 +133,7 @@ func (s *AiService) getStatsForAI(dimension enums.Period) (*AIStatsData, error) 
 	return data, nil
 }
 
+// TODO: 现在这里做的太粗糙，下一个小版本需要优化
 func (s *AiService) buildPrompt(data *AIStatsData) string {
 	var sb strings.Builder
 

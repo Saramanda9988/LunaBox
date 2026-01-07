@@ -8,8 +8,9 @@ BUILD_MODE="${1:-all}"
 VERSION="1.0.0"
 
 # ldflags 用于注入构建模式
-LDFLAGS_PORTABLE="-X 'lunabox/internal/utils.buildMode=portable'"
-LDFLAGS_INSTALLER="-X 'lunabox/internal/utils.buildMode=installer'"
+# -s: strip symbol table, -w: strip DWARF debug info (reduces binary size ~20-30%)
+LDFLAGS_PORTABLE="-s -w -X 'lunabox/internal/utils.buildMode=portable'"
+LDFLAGS_INSTALLER="-s -w -X 'lunabox/internal/utils.buildMode=installer'"
 
 echo "========================================"
 echo "LunaBox Build Script"

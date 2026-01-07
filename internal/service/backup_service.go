@@ -45,6 +45,9 @@ func (s *BackupService) getCloudProvider() (cloudprovider.CloudStorageProvider, 
 
 // SetupCloudBackup 设置云备份（生成 user-id）
 func (s *BackupService) SetupCloudBackup(password string) (string, error) {
+	// TODO: 这里需要优化逻辑，要不要端到端做加密？如果没有必要，完全没有必要让用户输入密码，这里还不方便做自己部署server的兼容性
+	// TODO: s3如果也想能够实现多租户设计，这里是有用的
+	// TODO: 密码有没有可能出现重复？理论上是有可能的
 	if password == "" {
 		runtime.LogWarningf(s.ctx, "SetupCloudBackup: backup password is empty")
 		return "", fmt.Errorf("备份密码不能为空")
@@ -616,6 +619,7 @@ func (s *BackupService) GetCloudDBBackups() ([]vo.CloudBackupItem, error) {
 }
 
 // DownloadCloudDBBackup 从云端下载数据库备份
+// TODO: 前端提供此功能的按钮
 func (s *BackupService) DownloadCloudDBBackup(cloudKey string) (string, error) {
 	provider, err := s.getCloudProvider()
 	if err != nil {
