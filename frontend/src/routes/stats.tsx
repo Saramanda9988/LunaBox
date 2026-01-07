@@ -21,6 +21,7 @@ import { enums, vo } from '../../wailsjs/go/models'
 import { useAppStore } from '../store'
 import { StatsSkeleton } from '../components/skeleton/StatsSkeleton'
 import { TemplateExportModal } from '../components/modal/TemplateExportModal'
+import { AiSummaryCard } from '../components/card/AiSummaryCard'
 
 ChartJS.register(
   CategoryScale,
@@ -321,20 +322,10 @@ function StatsPage() {
 
       {/* AI Summary Card - 显示在页面顶部 */}
       {(aiLoading || aiSummary) && (
-        <div className="bg-gradient-to-r from-purple-50 to-neutral-50 dark:from-purple-900/20 dark:to-neutral-900/20 p-6 rounded-xl shadow-sm border border-purple-200 dark:border-purple-700">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="i-mdi-robot-happy text-xl text-purple-600 dark:text-purple-400"/>
-            <h3 className="text-lg font-semibold text-purple-900 dark:text-purple-100">AI 总结</h3>
-          </div>
-          {aiLoading ? (
-            <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
-              <span className="i-mdi-loading animate-spin text-xl"/>
-              <span>AI 正在思考中...</span>
-            </div>
-          ) : (
-            <p className="text-purple-800 dark:text-purple-200 leading-relaxed whitespace-pre-wrap">{aiSummary}</p>
-          )}
-        </div>
+        <AiSummaryCard 
+          aiSummary={aiSummary} 
+          aiLoading={aiLoading} 
+        />
       )}
 
       {/* Summary Cards */}
