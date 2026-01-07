@@ -147,32 +147,48 @@ jobs:
       - name: Generate release notes
         id: release_notes
         run: |
-          cat << EOF > release_notes.md
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+
+          # 检查是否存在 CHANGELOG.md
+          if [ -f "CHANGELOG.md" ]; then
+            # 提取当前版本的 changelog
+            # 匹配从 ## vVERSION 或 ## VERSION 到下一个 ## 之间的内容
+            awk "/^##[[:space:]]+v?${VERSION}/,/^##[[:space:]]+v/{print}" CHANGELOG.md | sed '$d' > release_notes.md
+
+            # 如果没有找到对应版本的内容，文件会是空的
+            if [ ! -s release_notes.md ]; then
+              echo "未找到版本 ${VERSION} 的 changelog，使用默认模板"
+              rm -f release_notes.md
+            fi
+          fi
+
+          # 如果没有从 CHANGELOG.md 提取到内容，使用默认模板
+          if [ ! -f "release_notes.md" ]; then
+            cat << EOF > release_notes.md
           ## LunaBox ${{ steps.get_version.outputs.VERSION }}
-          
-          ### 📦 下载说明
-          
-          #### 便携版 (Portable)
-          - 直接解压运行，数据存储在程序目录
-          - 适合需要在多台电脑间移动使用的场景
-          - **amd64**: 适用于 Intel/AMD 64位处理器
-          - **arm64**: 适用于 ARM64 处理器（如骁龙 X Elite）
-          
-          #### 安装版 (Setup)
-          - 标准安装程序，数据存储在 %APPDATA%\\LunaBox
-          - 适合固定电脑日常使用
-          - **amd64**: 适用于 Intel/AMD 64位处理器
-          - **arm64**: 适用于 ARM64 处理器（如骁龙 X Elite）
-          
+
           ### 📝 更新内容
-          
+
           请查看 [Commits](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
-          
-          ---
-          
-          **完整变更日志**: [\`${{ github.event.before }}..${{ github.ref_name }}\`](https://github.com/${{ github.repository }}/compare/${{ github.event.before }}...${{ github.ref_name }})
           EOF
-          
+          fi
+
+          # 添加下载说明
+          echo "" >> release_notes.md
+          echo "---" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### 📦 下载说明" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "| 文件 | 说明 |" >> release_notes.md
+          echo "|------|------|" >> release_notes.md
+          echo "| \`*-portable.zip\` | 便携版，解压即用，数据存储在程序目录 |" >> release_notes.md
+          echo "| \`*-setup.exe\` | 安装版，标准安装程序，数据存储在 %APPDATA%\\\\LunaBox |" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### 🔗 相关链接" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "- [查看所有提交](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})" >> release_notes.md
+          echo "- [版本对比](https://github.com/${{ github.repository }}/compare/${{ github.event.before }}...${{ github.ref_name }})" >> release_notes.md
+
           cat release_notes.md
 
       - name: Create Release
