@@ -49,6 +49,8 @@ VIAddVersionKey "ProductName"     "${INFO_PRODUCTNAME}"
 ManifestDPIAware true
 
 !include "MUI.nsh"
+!include "nsDialogs.nsh"
+!include "WinMessages.nsh"
 
 !define MUI_ICON "..\icon.ico"
 !define MUI_UNICON "..\icon.ico"
@@ -58,13 +60,17 @@ ManifestDPIAware true
 
 !insertmacro MUI_PAGE_WELCOME # Welcome to the installer page.
 # !insertmacro MUI_PAGE_LICENSE "resources\eula.txt" # Adds a EULA page to the installer
+!define MUI_PAGE_CUSTOMFUNCTION_PRE skip_directory_page
 !insertmacro MUI_PAGE_DIRECTORY # In which folder install page.
 !insertmacro MUI_PAGE_INSTFILES # Installing page.
 !insertmacro MUI_PAGE_FINISH # Finished installation page.
 
-!insertmacro MUI_UNPAGE_INSTFILES # Uinstalling page
+# Uninstaller pages
+!insertmacro MUI_UNPAGE_CONFIRM
+UninstPage custom un.ShowUserDataOptions un.ValidateUserDataOptions
+!insertmacro MUI_UNPAGE_INSTFILES
 
-!insertmacro MUI_LANGUAGE "English" # Set the Language of the installer
+!insertmacro MUI_LANGUAGE "SimpChinese" # Set the Language of the installer
 
 ## The following two statements can be used to sign the installer and the uninstaller. The path to the binaries are provided in %1
 #!uninstfinalize 'signtool --file "%1"'
@@ -75,59 +81,136 @@ OutFile "..\..\bin\${INFO_PROJECTNAME}-${ARCH}-installer.exe" # Name of the inst
 InstallDir "$PROGRAMFILES64\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}" # Default installing folder ($PROGRAMFILES is Program Files folder).
 ShowInstDetails show # This will always show the installation details.
 
+# Variable to store whether we're doing an update
+Var IS_UPDATE
+# Variable to store whether to delete user data during uninstall
+Var UN_DELETE_USERDATA
+
 Function .onInit
    !insertmacro wails.checkArchitecture
-   
+
+   # Initialize update flag
+   StrCpy $IS_UPDATE "0"
+
+   # Check if old version is installed FIRST (before process check)
+   SetRegView 64
+   ReadRegStr $0 HKLM "${UNINST_KEY}" "DisplayVersion"
+   ReadRegStr $1 HKLM "${UNINST_KEY}" "UninstallString"
+   ReadRegStr $2 HKLM "${UNINST_KEY}" "InstallLocation"
+
+   ${If} $0 != ""
+   ${AndIf} $1 != ""
+      # Old version found - ask user what to do
+      StrCpy $IS_UPDATE "1"
+
+      ${If} $2 == ""
+         # If InstallLocation is empty, use default
+         StrCpy $2 "$PROGRAMFILES64\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}"
+      ${EndIf}
+
+      # Store the old install path to $INSTDIR so we install to the same location
+      StrCpy $INSTDIR $2
+
+      # In silent mode, always update
+      IfSilent run_silent_uninstall
+
+      # Ask user: Update or Cancel
+      MessageBox MB_YESNO|MB_ICONQUESTION "检测到 LunaBox 已安装版本 $0$\n$\n要更新到版本 ${INFO_PRODUCTVERSION} 吗$\n$\n是-自动更新保留数据$\n否-退出安装程序" IDYES run_uninstall IDNO cancel_update
+
+      run_silent_uninstall:
+      run_uninstall:
+         # Check if process is running before uninstall
+         FindWindow $5 "" "LunaBox"
+         ${If} $5 != 0
+            # Terminate the process silently
+            nsExec::ExecToStack 'taskkill /F /IM "${PRODUCT_EXECUTABLE}"'
+            Sleep 2000
+         ${EndIf}
+
+         # Remove quotes from uninstaller path
+         StrCpy $3 $1 "" 1
+         StrCpy $3 $3 -1
+
+         # Execute uninstaller silently from the old install location
+         ExecWait '"$3" /S _?=$2' $4
+
+         # Uninstaller ran, skip process check since we already handled it
+         Goto init_done
+
+      cancel_update:
+         Quit
+   ${EndIf}
+
    # Check if LunaBox is running
    check_process:
-   FindWindow $0 "" "LunaBox"
-   ${If} $0 != 0
+   FindWindow $5 "" "LunaBox"
+   ${If} $5 != 0
       IfSilent silent_kill ask_kill
-      
+
       ask_kill:
          MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION '检测到 LunaBox 正在运行。$\n$\n请关闭 LunaBox 后点击"重试"继续安装，或点击"取消"退出安装程序。' IDRETRY check_process IDCANCEL cancel_install
-      
+
       silent_kill:
          # Silent mode: automatically terminate the process
          nsExec::ExecToStack 'taskkill /F /IM "${PRODUCT_EXECUTABLE}"'
          Sleep 2000
-         Goto check_done
-      
+         Goto init_done
+
       cancel_install:
          Quit
    ${EndIf}
-   
-   check_done:
-   
-   # Check if old version is installed
-   SetRegView 64
-   ReadRegStr $0 HKLM "${UNINST_KEY}" "DisplayVersion"
-   ReadRegStr $1 HKLM "${UNINST_KEY}" "UninstallString"
-   
-   ${If} $0 != ""
-   ${AndIf} $1 != ""
-      # Already installed
-      IfSilent run_uninstall show_prompt
-      
-      show_prompt:
-         MessageBox MB_YESNO|MB_ICONQUESTION '检测到 LunaBox 已安装 (版本 $0)。$\n$\n是否更新到版本 ${INFO_PRODUCTVERSION}？$\n$\n(旧版本将被卸载，但您的数据会被保留。)' IDYES run_uninstall IDNO skip_uninstall
-         
-      run_uninstall:
-         # Remove quotes and execute uninstaller
-         StrCpy $2 $1 "" 1
-         StrCpy $2 $2 -1
-         
-         # Run uninstaller silently to avoid user interaction during update
-         # The uninstaller is configured to keep user data in silent mode
-         ExecWait '"$2" /S _?=$INSTDIR'
-         
-         Goto done_check
-         
-      skip_uninstall:
-         MessageBox MB_OK '将继续安装，新版本文件将覆盖旧版本。'
-      
-      done_check:
+
+   init_done:
+FunctionEnd
+
+# Skip directory page when updating (already set $INSTDIR to old location)
+Function skip_directory_page
+   ${If} $IS_UPDATE == "1"
+      Abort
    ${EndIf}
+FunctionEnd
+
+# Uninstaller: Initialize the user data options page
+Function un.ShowUserDataOptions
+   # Skip this page in silent mode (preserve user data)
+   IfSilent 0 +2
+      Abort
+
+   !insertmacro MUI_HEADER_TEXT "卸载选项" "请选择是否删除用户数据"
+
+   nsDialogs::Create 1018
+   Pop $0
+
+   ${NSD_CreateLabel} 0 0 100% 40u "是否要同时删除 LunaBox 的用户数据？$\n$\n用户数据包括:$\n  - 配置文件$\n  - 游戏数据库$\n  - 备份文件$\n$\n数据位置: $APPDATA\LunaBox 和 $LOCALAPPDATA\LunaBox"
+   Pop $0
+
+   ${NSD_CreateRadioButton} 15 60u 100% 15u "保留用户数据 (推荐)"
+   Pop $1
+   ${NSD_SetState} $1 ${BST_CHECKED}
+   ${NSD_OnClick} $1 un.RadioButtonClicked
+
+   ${NSD_CreateRadioButton} 15 85u 100% 15u "删除所有用户数据"
+   Pop $2
+   ${NSD_OnClick} $2 un.RadioButtonClicked
+
+   # Initialize to "keep data" by default
+   StrCpy $UN_DELETE_USERDATA "0"
+
+   nsDialogs::Show
+FunctionEnd
+
+# Handle radio button clicks
+Function un.RadioButtonClicked
+   Pop $0  # Get the control handle
+   ${If} $0 == $1
+      StrCpy $UN_DELETE_USERDATA "0"
+   ${Else}
+      StrCpy $UN_DELETE_USERDATA "1"
+   ${EndIf}
+FunctionEnd
+
+# Validate the page (always allow next)
+Function un.ValidateUserDataOptions
 FunctionEnd
 
 Section
@@ -153,29 +236,13 @@ Section "uninstall"
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
 
-    # Check if running in silent mode (e.g. during update)
-    IfSilent skip_userdata_silent ask_userdata
-
-    ask_userdata:
-        # Switch to current user context to correctly locate user data
+    # Delete user data based on user's choice from the custom page
+    ${If} $UN_DELETE_USERDATA == "1"
         SetShellVarContext current
-        
-        # Ask user whether to delete user data
-        MessageBox MB_YESNO '是否删除 LunaBox 的用户数据（配置、数据库、备份等）？$\n$\n数据位置:$\n$APPDATA\LunaBox$\n$LOCALAPPDATA\LunaBox' IDNO skip_delete_data
-        
-        # Delete data if user clicked Yes
         RMDir /r "$APPDATA\LunaBox"
         RMDir /r "$LOCALAPPDATA\LunaBox"
-        
-    skip_delete_data:
-        # Restore shell context to 'all' (for admin install) to clean up Program Files and Shortcuts
         !insertmacro wails.setShellContext
-        Goto skip_userdata
-
-    skip_userdata_silent:
-        # In silent mode, we preserve user data by default (safe for updates)
-        
-    skip_userdata:
+    ${EndIf}
 
     RMDir /r $INSTDIR
 
