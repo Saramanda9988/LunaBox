@@ -70,6 +70,17 @@ func (s *GameService) AddGame(game models.Game) error {
 	// 保存原始封面URL用于后台下载
 	originalCoverURL := game.CoverURL
 
+	// 处理临时封面图片
+	if strings.Contains(game.CoverURL, "/local/covers/temp_") {
+		newCoverURL, err := utils.RenameTempCover(game.CoverURL, game.ID)
+		if err != nil {
+			runtime.LogWarningf(s.ctx, "AddGame: failed to rename temp cover: %v", err)
+		} else {
+			game.CoverURL = newCoverURL
+			originalCoverURL = ""
+		}
+	}
+
 	query := `INSERT INTO games (
 		id, name, cover_url, company, summary, path, 
 		source_type, cached_at, source_id, created_at
@@ -352,6 +363,36 @@ func (s *GameService) SelectCoverImage(gameID string) (string, error) {
 	}
 
 	coverPath, err := utils.SaveCoverImage(selection, gameID)
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "failed to save cover image: %v", err)
+		return "", fmt.Errorf("failed to save cover image: %w", err)
+	}
+
+	return coverPath, nil
+}
+
+// SelectCoverImageWithTempID 选择封面图片并使用临时ID保存（用于新增游戏时）
+func (s *GameService) SelectCoverImageWithTempID() (string, error) {
+	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+		Title: "选择封面图片",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "图片文件",
+				Pattern:     "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp",
+			},
+		},
+	})
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
+		return "", err
+	}
+	if selection == "" {
+		return "", nil
+	}
+
+	// 使用时间戳作为临时ID
+	tempID := fmt.Sprintf("temp_%d", time.Now().UnixNano())
+	coverPath, err := utils.SaveCoverImage(selection, tempID)
 	if err != nil {
 		runtime.LogErrorf(s.ctx, "failed to save cover image: %v", err)
 		return "", fmt.Errorf("failed to save cover image: %w", err)

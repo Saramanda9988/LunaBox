@@ -173,3 +173,42 @@ func DownloadAndSaveCoverImage(imageURL string, gameID string) (string, error) {
 	// 返回本地路径
 	return fmt.Sprintf("/local/covers/%s", destFileName), nil
 }
+
+// RenameTempCover 将临时封面图片重命名为正式的游戏ID
+func RenameTempCover(tempCoverURL string, gameID string) (string, error) {
+	// 从 URL 中提取文件名，格式如 /local/covers/temp_xxx.png
+	if !strings.Contains(tempCoverURL, "/local/covers/temp_") {
+		return tempCoverURL, nil
+	}
+
+	// 获取应用程序目录
+	appDir, err := GetDataDir()
+	if err != nil {
+		return tempCoverURL, err
+	}
+
+	coverDir := filepath.Join(appDir, "covers")
+
+	// 提取临时文件名
+	parts := strings.Split(tempCoverURL, "/")
+	tempFileName := parts[len(parts)-1] // temp_xxx.png
+	ext := filepath.Ext(tempFileName)
+
+	tempPath := filepath.Join(coverDir, tempFileName)
+	newFileName := gameID + ext
+	newPath := filepath.Join(coverDir, newFileName)
+
+	// 删除该 gameID 的旧封面文件（可能是不同扩展名）
+	oldExtensions := []string{".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
+	for _, oldExt := range oldExtensions {
+		oldPath := filepath.Join(coverDir, gameID+oldExt)
+		os.Remove(oldPath) // 忽略错误
+	}
+
+	// 重命名文件
+	if err := os.Rename(tempPath, newPath); err != nil {
+		return tempCoverURL, err
+	}
+
+	return fmt.Sprintf("/local/covers/%s", newFileName), nil
+}

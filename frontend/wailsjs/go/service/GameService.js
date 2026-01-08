@@ -34,6 +34,10 @@ export function SelectCoverImage(arg1) {
   return window['go']['service']['GameService']['SelectCoverImage'](arg1);
 }
 
+export function SelectCoverImageWithTempID() {
+  return window['go']['service']['GameService']['SelectCoverImageWithTempID']();
+}
+
 export function SelectGameExecutable() {
   return window['go']['service']['GameService']['SelectGameExecutable']();
 }
