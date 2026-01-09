@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 
 interface SortOption {
   label: string
@@ -25,6 +25,8 @@ interface FilterBarProps {
   statusOptions?: FilterOption[]
   actionButton?: React.ReactNode
   extraButtons?: React.ReactNode
+  // 持久化存储键，传入后会自动保存和恢复排序设置
+  storageKey?: string
 }
 
 export function FilterBar({
@@ -41,7 +43,44 @@ export function FilterBar({
   statusOptions,
   actionButton,
   extraButtons,
+  storageKey,
 }: FilterBarProps) {
+  const [initialized, setInitialized] = useState(false)
+
+  // 初始化时从 localStorage 恢复排序设置
+  useEffect(() => {
+    if (storageKey && !initialized) {
+      const savedSortBy = localStorage.getItem(`${storageKey}_sortBy`)
+      const savedSortOrder = localStorage.getItem(`${storageKey}_sortOrder`)
+
+      // 验证保存的 sortBy 是否在 sortOptions 中
+      if (savedSortBy && sortOptions.some(opt => opt.value === savedSortBy)) {
+        onSortByChange(savedSortBy)
+      }
+
+      if (savedSortOrder === 'asc' || savedSortOrder === 'desc') {
+        onSortOrderChange(savedSortOrder)
+      }
+
+      setInitialized(true)
+    }
+  }, [storageKey, sortOptions, initialized])
+
+  // 处理排序方式变更
+  const handleSortByChange = (value: string) => {
+    onSortByChange(value)
+    if (storageKey) {
+      localStorage.setItem(`${storageKey}_sortBy`, value)
+    }
+  }
+
+  // 处理排序顺序变更
+  const handleSortOrderChange = (order: 'asc' | 'desc') => {
+    onSortOrderChange(order)
+    if (storageKey) {
+      localStorage.setItem(`${storageKey}_sortOrder`, order)
+    }
+  }
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 my-4">
       <div className="relative flex-1 max-w-md">
@@ -75,7 +114,7 @@ export function FilterBar({
 
         <select
           value={sortBy}
-          onChange={(e) => onSortByChange(e.target.value)}
+          onChange={(e) => handleSortByChange(e.target.value)}
           className="bg-white border border-brand-300 text-brand-900 text-sm rounded-lg focus:ring-neutral-500 focus:border-neutral-500 block p-2 dark:bg-brand-900 dark:border-brand-600 dark:placeholder-brand-400 dark:text-white dark:focus:ring-neutral-500 dark:focus:border-neutral-500"
         >
           {sortOptions.map((option) => (
@@ -86,7 +125,7 @@ export function FilterBar({
         </select>
 
         <button
-          onClick={() => onSortOrderChange(sortOrder === 'asc' ? 'desc' : 'asc')}
+          onClick={() => handleSortOrderChange(sortOrder === 'asc' ? 'desc' : 'asc')}
           className="p-2 text-brand-500 hover:text-brand-900 dark:text-brand-400 dark:hover:text-white rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700"
           title={sortOrder === 'asc' ? '升序' : '降序'}
         >

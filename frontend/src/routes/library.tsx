@@ -113,13 +113,14 @@ function LibraryPage() {
         onSearchChange={setSearchQuery}
         searchPlaceholder="搜索游戏..."
         sortBy={sortBy}
-        onSortByChange={(val) => setSortBy(val as any)}
+        onSortByChange={(val) => setSortBy(val as 'name' | 'created_at')}
         sortOptions={sortOptions}
         sortOrder={sortOrder}
         onSortOrderChange={setSortOrder}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
         statusOptions={statusOptions}
+        storageKey="library"
         actionButton={
           <div className="relative" ref={dropdownRef}>
             <button
