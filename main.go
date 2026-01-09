@@ -104,7 +104,8 @@ func main() {
 				})
 			},
 		},
-		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
+		BackgroundColour: &options.RGBA{R: 18, G: 20, B: 22, A: 255},
+		StartHidden:      true,
 		// 样式完全交由wails前端控制
 		Windows: &windows.Options{
 			WebviewIsTransparent: false,
