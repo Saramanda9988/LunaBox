@@ -104,8 +104,13 @@ Function .onInit
       StrCpy $IS_UPDATE "1"
 
       ${If} $2 == ""
-         # If InstallLocation is empty, use default
-         StrCpy $2 "$PROGRAMFILES64\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}"
+         # InstallLocation is empty, extract from UninstallString
+         # UninstallString format: "C:\Path\To\uninstall.exe"
+         # Remove quotes from start and end
+         StrCpy $3 $1 "" 1  ; Remove first quote
+         StrCpy $3 $3 -1   ; Remove last quote
+         # Get directory path from uninstaller path
+         ${GetParent} $3 $2
       ${EndIf}
 
       # Store the old install path to $INSTDIR so we install to the same location
@@ -127,12 +132,15 @@ Function .onInit
             Sleep 2000
          ${EndIf}
 
-         # Remove quotes from uninstaller path
-         StrCpy $3 $1 "" 1
-         StrCpy $3 $3 -1
-
+         # $3 already contains the uninstaller path without quotes (from lines 110-111)
          # Execute uninstaller silently from the old install location
          ExecWait '"$3" /S _?=$2' $4
+
+         # Check if uninstall succeeded (non-zero return code indicates error)
+         ${If} $4 != "0"
+            # Uninstall failed, log the error but continue
+            DetailPrint "Warning: Uninstaller returned error code $4"
+         ${EndIf}
 
          # Uninstaller ran, skip process check since we already handled it
          Goto init_done
@@ -222,13 +230,26 @@ Section
 
     !insertmacro wails.files
 
+    # Always create/recreate start menu shortcut (important for updates and pinned shortcuts)
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
-    CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    
+    # Create desktop shortcut only during fresh install or if it doesn't exist during update
+    ${If} $IS_UPDATE == "0"
+        CreateShortcut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    ${Else}
+        # During update, only create desktop shortcut if it doesn't exist
+        IfFileExists "$DESKTOP\${INFO_PRODUCTNAME}.lnk" +2 0
+            CreateShortcut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    ${EndIf}
 
     !insertmacro wails.associateFiles
     !insertmacro wails.associateCustomProtocols
 
     !insertmacro wails.writeUninstaller
+
+    # Write InstallLocation to registry for update detection
+    SetRegView 64
+    WriteRegStr HKLM "${UNINST_KEY}" "InstallLocation" "$INSTDIR"
 SectionEnd
 
 Section "uninstall"
@@ -246,6 +267,8 @@ Section "uninstall"
 
     RMDir /r $INSTDIR
 
+    # Delete shortcuts - use SetErrors to ignore errors if they don't exist
+    SetErrors
     Delete "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk"
     Delete "$DESKTOP\${INFO_PRODUCTNAME}.lnk"
 

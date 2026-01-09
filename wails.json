@@ -9,5 +9,10 @@
   "author": {
     "name": "Saramanda9988",
     "email": "2074730050@qq.com"
+  },
+  "info": {
+    "companyName": "LunaBox",
+    "productName": "LunaBox",
+    "productVersion": "1.1.2"
   }
 }
