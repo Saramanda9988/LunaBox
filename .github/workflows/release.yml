@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.arch == 'arm64' && 'windows-11-arm' || 'windows-latest' }}
     strategy:
       matrix:
-        arch: [amd64, arm64]
+        arch: [amd64]
         mode: [portable, installer]
     
     steps:
