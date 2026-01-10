@@ -4,14 +4,15 @@ on:
   push:
     tags:
       - 'v*.*.*'  # 例如: v1.0.0, v1.2.3
+  workflow_dispatch:
 
 jobs:
   build-release:
     name: Build Release
-    runs-on: windows-latest
+    runs-on: ${{ matrix.arch == 'arm64' && 'windows-11-arm' || 'windows-latest' }}
     strategy:
       matrix:
-        arch: [amd64]
+        arch: [amd64, arm64]
         mode: [portable, installer]
     
     steps:
@@ -118,6 +119,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     needs: build-release
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
       contents: write
