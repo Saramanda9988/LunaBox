@@ -20,17 +20,18 @@ export function SideBar() {
     >
       <div className={`flex items-center h-16 border-b border-brand-200 dark:border-brand-700 ${isSidebarOpen ? 'justify-between px-4' : 'justify-center'}`}>
         {isSidebarOpen && (
-          <div className="flex items-center gap-2">
-            <img src="/appicon.png" className="w-8 h-8 dark:hidden"/>
-            <img src="/appicon-dark.png" className="w-8 h-8 hidden dark:block"/>
-            <span className="text-xl font-bold">LunaBox</span>
+          <div className="flex items-center gap-2 select-none">
+            <img src="/appicon.png" className="w-8 h-8 dark:hidden pointer-events-none" draggable="false"/>
+            <img src="/appicon-dark.png" className="w-8 h-8 hidden dark:block pointer-events-none" draggable="false"/>
+            <span className="text-xl font-bold pointer-events-none">LunaBox</span>
           </div>
         )}
         <button
           onClick={toggleSidebar}
-          className="p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 focus:outline-none"
+          className="p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 focus:outline-none select-none"
+          onDragStart={(e) => e.preventDefault()}
         >
-          <div className="i-mdi-menu text-xl" />
+          <div className="i-mdi-menu text-xl pointer-events-none" />
         </button>
       </div>
 
@@ -40,10 +41,11 @@ export function SideBar() {
             <li key={item.to}>
               <Link
                 to={item.to}
-                className={`flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 no-underline [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100 ${isSidebarOpen ? '' : 'justify-center'}`}
+                className={`flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 no-underline [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100 select-none ${isSidebarOpen ? '' : 'justify-center'}`}
+                onDragStart={(e) => e.preventDefault()}
               >
-                <div className={`${item.icon} text-xl`} />
-                {isSidebarOpen && <span className="ml-3">{item.label}</span>}
+                <div className={`${item.icon} text-xl pointer-events-none`} />
+                {isSidebarOpen && <span className="ml-3 pointer-events-none">{item.label}</span>}
               </Link>
             </li>
           ))}
@@ -51,19 +53,21 @@ export function SideBar() {
       </nav>
 
       <div className={`p-4 border-brand-200 dark:border-brand-700 flex ${isSidebarOpen ? 'flex-row items-center justify-end gap-1' : 'flex-col items-center gap-2'}`}>
-        <div 
+        <div
           onClick={() => BrowserOpenURL('https://github.com/Saramanda9988/LunaBox')}
-          className="flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 cursor-pointer"
+          className="flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 cursor-pointer select-none"
           title="GitHub"
+          onDragStart={(e) => e.preventDefault()}
         >
-          <div className="i-mdi-github text-xl" />
+          <div className="i-mdi-github text-xl pointer-events-none" />
         </div>
         <Link
           to="/settings"
-          className="flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 no-underline [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100"
+          className="flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 no-underline [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100 select-none"
           title="设置"
+          onDragStart={(e) => e.preventDefault()}
         >
-          <div className="i-mdi-cog text-xl" />
+          <div className="i-mdi-cog text-xl pointer-events-none" />
         </Link>
       </div>
     </aside>
