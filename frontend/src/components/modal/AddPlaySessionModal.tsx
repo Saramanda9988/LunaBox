@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { toast } from 'react-hot-toast'
 import { AddPlaySession } from '../../../wailsjs/go/service/TimerService'
+import { formatDuration } from '../../utils/time'
 
 interface AddPlaySessionModalProps {
   isOpen: boolean
@@ -28,15 +29,8 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
     if (!startTime || !endTime) return 0
     const start = new Date(startTime)
     const end = new Date(endTime)
-    const diffMinutes = Math.floor((end.getTime() - start.getTime()) / 1000 / 60)
+    const diffMinutes = Math.floor((end.getTime() - start.getTime()) / 1000)
     return Math.max(0, diffMinutes)
-  }
-
-  const formatDurationDisplay = (minutes: number) => {
-    if (minutes <= 0) return '0分钟'
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return `${hours > 0 ? `${hours}小时` : ''}${mins > 0 ? `${mins}分钟` : ''}`
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -132,7 +126,7 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
           <div className="bg-brand-50 dark:bg-brand-700/50 rounded-lg p-3">
             <div className="text-sm text-brand-600 dark:text-brand-400 mb-1">游玩时长</div>
             <div className="text-lg font-semibold text-brand-900 dark:text-white">
-              {formatDurationDisplay(calculateDuration())}
+              {formatDuration(calculateDuration())}
             </div>
           </div>
 
