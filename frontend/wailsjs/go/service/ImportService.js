@@ -45,3 +45,7 @@ export function SelectLibraryDirectory() {
 export function SelectZipFile() {
   return window['go']['service']['ImportService']['SelectZipFile']();
 }
+
+export function SetTimerService(arg1) {
+  return window['go']['service']['ImportService']['SetTimerService'](arg1);
+}

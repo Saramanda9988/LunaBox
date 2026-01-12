@@ -19,6 +19,7 @@ import {
 import { Line } from 'react-chartjs-2'
 import { toast } from 'react-hot-toast'
 import { GameBackupPanel } from '../components/panel/GameBackupPanel'
+import { PlaySessionPanel } from '../components/panel/PlaySessionPanel'
 import { ConfirmModal } from '../components/modal/ConfirmModal'
 import { GameDetailSkeleton } from '../components/skeleton/GameDetailSkeleton'
 
@@ -297,7 +298,7 @@ function GameDetailPage() {
             </div>
             <div>
               <div className="font-semibold mb-1">添加时间</div>
-              <div>{new Date(game.created_at).toLocaleDateString()}</div>
+              <div>{new Date(String(game.created_at)).toLocaleDateString()}</div>
             </div>
             {/* Placeholders for missing data */}
           </div>
@@ -314,7 +315,7 @@ function GameDetailPage() {
       {/* Tabs */}
       <div className="border-b border-brand-200 dark:border-brand-700">
         <nav className="-mb-px flex space-x-8">
-          {['stats', 'edit', 'backup'].map((tab) => (
+          {['stats', 'sessions', 'edit', 'backup'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -326,6 +327,7 @@ function GameDetailPage() {
               `}
             >
               {tab === 'stats' && '游戏统计'}
+              {tab === 'sessions' && '游玩记录'}
               {tab === 'edit' && '编辑'}
               {tab === 'backup' && '备份'}
             </button>
@@ -492,6 +494,12 @@ function GameDetailPage() {
 
       {activeTab === 'backup' && (
         <GameBackupPanel gameId={gameId} savePath={game?.save_path} />
+      )}
+
+      {activeTab === 'sessions' && (
+        <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
+          <PlaySessionPanel gameId={gameId} />
+        </div>
       )}
 
       <ConfirmModal

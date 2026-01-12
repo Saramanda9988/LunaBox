@@ -170,6 +170,8 @@ func main() {
 			templateService.Init(ctx, db, config)
 			// 设置 TimerService 的 BackupService 依赖
 			timerService.SetBackupService(backupService)
+			// 设置 ImportService 的 TimerService 依赖（用于导入游玩记录）
+			importService.SetTimerService(timerService)
 
 			// 在 Wails 启动后初始化系统托盘
 			// TODO: 升级wails v3，使用原生的托盘功能

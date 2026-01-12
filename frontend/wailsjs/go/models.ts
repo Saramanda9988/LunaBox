@@ -75,11 +75,6 @@ export namespace appconf {
 
 export namespace enums {
 	
-	export enum Period {
-	    DAY = "day",
-	    WEEK = "week",
-	    MONTH = "month",
-	}
 	export enum PromptType {
 	    DEFAULT_SYSTEM = "你是一个幽默风趣的游戏评论员，擅长用轻松的语气点评玩家的游戏习惯。\n请用轻松幽默的方式点评这位玩家的游戏习惯，可以适当调侃但不要太过分。",
 	    MEOW_ZAKO = "你是一个雌小鬼猫娘，根据用户的游戏统计数据对用户进行锐评，语气可爱活泼，不要给用户留脸面偶（=w=）适当加入猫咪的拟声词（如“喵”）和雌小鬼的口癖（如“杂鱼~杂鱼~”），要是能再用上颜文字主人就更高兴了喵。\n\n",
@@ -97,6 +92,11 @@ export namespace enums {
 	    VNDB = "vndb",
 	    YMGAL = "ymgal",
 	}
+	export enum Period {
+	    DAY = "day",
+	    WEEK = "week",
+	    MONTH = "month",
+	}
 
 }
 
@@ -112,11 +112,9 @@ export namespace models {
 	    save_path: string;
 	    status: enums.GameStatus;
 	    source_type: enums.SourceType;
-	    // Go type: time
-	    cached_at: any;
+	    cached_at: time.Time;
 	    source_id: string;
-	    // Go type: time
-	    created_at: any;
+	    created_at: time.Time;
 	
 	    static createFrom(source: any = {}) {
 	        return new Game(source);
@@ -133,9 +131,9 @@ export namespace models {
 	        this.save_path = source["save_path"];
 	        this.status = source["status"];
 	        this.source_type = source["source_type"];
-	        this.cached_at = this.convertValues(source["cached_at"], null);
+	        this.cached_at = this.convertValues(source["cached_at"], time.Time);
 	        this.source_id = source["source_id"];
-	        this.created_at = this.convertValues(source["created_at"], null);
+	        this.created_at = this.convertValues(source["created_at"], time.Time);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -161,8 +159,7 @@ export namespace models {
 	    game_id: string;
 	    backup_path: string;
 	    size: number;
-	    // Go type: time
-	    created_at: any;
+	    created_at: time.Time;
 	
 	    static createFrom(source: any = {}) {
 	        return new GameBackup(source);
@@ -174,7 +171,45 @@ export namespace models {
 	        this.game_id = source["game_id"];
 	        this.backup_path = source["backup_path"];
 	        this.size = source["size"];
-	        this.created_at = this.convertValues(source["created_at"], null);
+	        this.created_at = this.convertValues(source["created_at"], time.Time);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PlaySession {
+	    id: string;
+	    game_id: string;
+	    start_time: time.Time;
+	    end_time: time.Time;
+	    duration: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PlaySession(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.game_id = source["game_id"];
+	        this.start_time = this.convertValues(source["start_time"], time.Time);
+	        this.end_time = this.convertValues(source["end_time"], time.Time);
+	        this.duration = source["duration"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -197,8 +232,7 @@ export namespace models {
 	}
 	export class User {
 	    id: string;
-	    // Go type: time
-	    created_at: any;
+	    created_at: time.Time;
 	    default_backup_target: string;
 	
 	    static createFrom(source: any = {}) {
@@ -208,7 +242,7 @@ export namespace models {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
-	        this.created_at = this.convertValues(source["created_at"], null);
+	        this.created_at = this.convertValues(source["created_at"], time.Time);
 	        this.default_backup_target = source["default_backup_target"];
 	    }
 	
@@ -265,6 +299,7 @@ export namespace service {
 	    failed: number;
 	    failed_names: string[];
 	    skipped_names: string[];
+	    sessions_imported: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new ImportResult(source);
@@ -277,6 +312,7 @@ export namespace service {
 	        this.failed = source["failed"];
 	        this.failed_names = source["failed_names"];
 	        this.skipped_names = source["skipped_names"];
+	        this.sessions_imported = source["sessions_imported"];
 	    }
 	}
 	export class PreviewGame {
@@ -284,8 +320,7 @@ export namespace service {
 	    developer: string;
 	    source_type: string;
 	    exists: boolean;
-	    // Go type: time
-	    add_time: any;
+	    add_time: time.Time;
 	    has_path: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -298,7 +333,7 @@ export namespace service {
 	        this.developer = source["developer"];
 	        this.source_type = source["source_type"];
 	        this.exists = source["exists"];
-	        this.add_time = this.convertValues(source["add_time"], null);
+	        this.add_time = this.convertValues(source["add_time"], time.Time);
 	        this.has_path = source["has_path"];
 	    }
 	
@@ -320,6 +355,18 @@ export namespace service {
 		    return a;
 		}
 	}
+	export class TimerService {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new TimerService(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
 
 }
 
@@ -330,6 +377,23 @@ export namespace sql {
 	
 	    static createFrom(source: any = {}) {
 	        return new DB(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+
+}
+
+export namespace time {
+	
+	export class Time {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new Time(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -418,10 +482,8 @@ export namespace vo {
 	    id: string;
 	    name: string;
 	    is_system: boolean;
-	    // Go type: time
-	    created_at: any;
-	    // Go type: time
-	    updated_at: any;
+	    created_at: time.Time;
+	    updated_at: time.Time;
 	    game_count: number;
 	
 	    static createFrom(source: any = {}) {
@@ -433,8 +495,8 @@ export namespace vo {
 	        this.id = source["id"];
 	        this.name = source["name"];
 	        this.is_system = source["is_system"];
-	        this.created_at = this.convertValues(source["created_at"], null);
-	        this.updated_at = this.convertValues(source["updated_at"], null);
+	        this.created_at = this.convertValues(source["created_at"], time.Time);
+	        this.updated_at = this.convertValues(source["updated_at"], time.Time);
 	        this.game_count = source["game_count"];
 	    }
 	
@@ -460,8 +522,7 @@ export namespace vo {
 	    key: string;
 	    name: string;
 	    size: number;
-	    // Go type: time
-	    created_at: any;
+	    created_at: time.Time;
 	
 	    static createFrom(source: any = {}) {
 	        return new CloudBackupItem(source);
@@ -472,7 +533,7 @@ export namespace vo {
 	        this.key = source["key"];
 	        this.name = source["name"];
 	        this.size = source["size"];
-	        this.created_at = this.convertValues(source["created_at"], null);
+	        this.created_at = this.convertValues(source["created_at"], time.Time);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -515,8 +576,7 @@ export namespace vo {
 	    path: string;
 	    name: string;
 	    size: number;
-	    // Go type: time
-	    created_at: any;
+	    created_at: time.Time;
 	
 	    static createFrom(source: any = {}) {
 	        return new DBBackupInfo(source);
@@ -527,7 +587,7 @@ export namespace vo {
 	        this.path = source["path"];
 	        this.name = source["name"];
 	        this.size = source["size"];
-	        this.created_at = this.convertValues(source["created_at"], null);
+	        this.created_at = this.convertValues(source["created_at"], time.Time);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

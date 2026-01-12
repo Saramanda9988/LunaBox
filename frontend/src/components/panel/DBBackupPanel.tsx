@@ -244,7 +244,7 @@ export function DBBackupPanel() {
                   <div>
                     <div className="font-medium text-brand-900 dark:text-white">{backup.name}</div>
                     <div className="text-sm text-brand-500">
-                      {new Date(backup.created_at).toLocaleString('zh-CN')} · {formatFileSize(backup.size)}
+                      {new Date(String(backup.created_at)).toLocaleString('zh-CN')} · {formatFileSize(backup.size)}
                     </div>
                   </div>
                 </div>
@@ -325,7 +325,7 @@ export function DBBackupPanel() {
                     <div>
                       <div className="font-medium text-brand-900 dark:text-white">{backup.name}</div>
                       <div className="text-sm text-brand-500">
-                        {new Date(backup.created_at).toLocaleString('zh-CN')}
+                        {new Date(String(backup.created_at)).toLocaleString('zh-CN')}
                       </div>
                     </div>
                   </div>

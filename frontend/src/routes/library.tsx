@@ -89,7 +89,7 @@ function LibraryPage() {
           comparison = a.name.localeCompare(b.name)
           break
         case 'created_at':
-          comparison = (a.created_at || '').localeCompare(b.created_at || '')
+          comparison = String(a.created_at || '').localeCompare(String(b.created_at || ''))
           break
       }
       return sortOrder === 'asc' ? comparison : -comparison

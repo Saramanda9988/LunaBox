@@ -26,18 +26,20 @@ import (
 
 // ImportResult 导入结果
 type ImportResult struct {
-	Success      int      `json:"success"`       // 成功导入数量
-	Skipped      int      `json:"skipped"`       // 跳过数量（已存在）
-	Failed       int      `json:"failed"`        // 失败数量
-	FailedNames  []string `json:"failed_names"`  // 失败的游戏名称
-	SkippedNames []string `json:"skipped_names"` // 跳过的游戏名称
+	Success          int      `json:"success"`           // 成功导入数量
+	Skipped          int      `json:"skipped"`           // 跳过数量（已存在）
+	Failed           int      `json:"failed"`            // 失败数量
+	FailedNames      []string `json:"failed_names"`      // 失败的游戏名称
+	SkippedNames     []string `json:"skipped_names"`     // 跳过的游戏名称
+	SessionsImported int      `json:"sessions_imported"` // 导入的游玩记录数量
 }
 
 type ImportService struct {
-	ctx         context.Context
-	db          *sql.DB
-	config      *appconf.AppConfig
-	gameService *GameService
+	ctx          context.Context
+	db           *sql.DB
+	config       *appconf.AppConfig
+	gameService  *GameService
+	timerService *TimerService
 }
 
 func NewImportService() *ImportService {
@@ -49,6 +51,11 @@ func (s *ImportService) Init(ctx context.Context, db *sql.DB, config *appconf.Ap
 	s.db = db
 	s.config = config
 	s.gameService = gameService
+}
+
+// SetTimerService 设置 TimerService（用于导入游玩记录）
+func (s *ImportService) SetTimerService(timerService *TimerService) {
+	s.timerService = timerService
 }
 
 // =================== PotatoVN 导入功能 ====================
@@ -165,13 +172,24 @@ func (s *ImportService) ImportFromPotatoVN(zipPath string, skipNoPath bool) (Imp
 		}
 
 		// 转换并导入游戏
-		game := s.convertToGame(galgame, tempDir)
+		game, sessions := s.convertToGame(galgame, tempDir)
 
 		if err := s.gameService.AddGame(game); err != nil {
 			runtime.LogErrorf(s.ctx, "failed to add game %s: %v", gameName, err)
 			result.Failed++
 			result.FailedNames = append(result.FailedNames, gameName)
 			continue
+		}
+
+		// 导入游玩记录
+		if len(sessions) > 0 && s.timerService != nil {
+			if err := s.timerService.BatchAddPlaySessions(sessions); err != nil {
+				runtime.LogWarningf(s.ctx, "failed to import play sessions for game %s: %v", gameName, err)
+				// 游玩记录导入失败不影响游戏导入成功
+			} else {
+				runtime.LogInfof(s.ctx, "imported %d play sessions for game %s", len(sessions), gameName)
+				result.SessionsImported += len(sessions)
+			}
 		}
 
 		// 更新索引
@@ -186,9 +204,11 @@ func (s *ImportService) ImportFromPotatoVN(zipPath string, skipNoPath bool) (Imp
 }
 
 // convertToGame 将 PotatoVN 的 Galgame 转换为本地的 Game 模型
-func (s *ImportService) convertToGame(galgame potatovn.Galgame, tempDir string) models.Game {
+// 同时返回解析后的游玩记录
+func (s *ImportService) convertToGame(galgame potatovn.Galgame, tempDir string) (models.Game, []models.PlaySession) {
+	gameID := uuid.New().String()
 	game := models.Game{
-		ID:         uuid.New().String(),
+		ID:         gameID,
 		Name:       galgame.GetDisplayName(),
 		Company:    galgame.Developer.Value,
 		Summary:    galgame.Description.Value,
@@ -222,7 +242,13 @@ func (s *ImportService) convertToGame(galgame potatovn.Galgame, tempDir string) 
 		game.CreatedAt = time.Now()
 	}
 
-	return game
+	// 解析 PlayedTime 生成游玩记录
+	var sessions []models.PlaySession
+	if len(galgame.PlayedTime) > 0 {
+		sessions = s.parsePlayedTime(gameID, galgame.PlayedTime)
+	}
+
+	return game, sessions
 }
 
 // mapRssTypeToSourceType 将 PotatoVN 的 RssType 映射到本地的 SourceType
@@ -237,6 +263,45 @@ func (s *ImportService) mapRssTypeToSourceType(rssType potatovn.RssType) enums.S
 	default:
 		return enums.Local
 	}
+}
+
+// parsePlayedTime 解析 PotatoVN 的 PlayedTime 字段，生成游玩记录
+// PlayedTime 格式: map[string]int，key 为日期（如 "2026/1/12"），value 为游玩时长（分钟）
+func (s *ImportService) parsePlayedTime(gameID string, playedTime map[string]int) []models.PlaySession {
+	var sessions []models.PlaySession
+
+	for dateStr, durationMinutes := range playedTime {
+		if durationMinutes <= 0 {
+			continue
+		}
+
+		// 解析日期，支持 "2026/1/12" 格式
+		parsedTime, err := time.Parse("2006/1/2", dateStr)
+		if err != nil {
+			// 尝试其他格式
+			parsedTime, err = time.Parse("2006/01/02", dateStr)
+			if err != nil {
+				runtime.LogWarningf(s.ctx, "parsePlayedTime: failed to parse date %s: %v", dateStr, err)
+				continue
+			}
+		}
+
+		// 设置为当天中午12点作为开始时间（避免时区问题）
+		startTime := time.Date(parsedTime.Year(), parsedTime.Month(), parsedTime.Day(), 12, 0, 0, 0, time.Local)
+		durationSeconds := durationMinutes * 60
+		endTime := startTime.Add(time.Duration(durationMinutes) * time.Minute)
+
+		session := models.PlaySession{
+			ID:        uuid.New().String(),
+			GameID:    gameID,
+			StartTime: startTime,
+			EndTime:   endTime,
+			Duration:  durationSeconds,
+		}
+		sessions = append(sessions, session)
+	}
+
+	return sessions
 }
 
 // PreviewImport 预览导入内容（不实际导入）
