@@ -31,6 +31,8 @@ export namespace appconf {
 	    auto_upload_to_cloud: boolean;
 	    local_backup_retention: number;
 	    local_db_backup_retention: number;
+	    window_height: number;
+	    window_width: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -68,6 +70,8 @@ export namespace appconf {
 	        this.auto_upload_to_cloud = source["auto_upload_to_cloud"];
 	        this.local_backup_retention = source["local_backup_retention"];
 	        this.local_db_backup_retention = source["local_db_backup_retention"];
+	        this.window_height = source["window_height"];
+	        this.window_width = source["window_width"];
 	    }
 	}
 

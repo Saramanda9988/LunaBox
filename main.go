@@ -76,14 +76,24 @@ func main() {
 	}
 
 	// Create application with options
+	// 使用配置中保存的窗口尺寸，如果小于最小值则使用最小值
+	initWidth := config.WindowWidth
+	if initWidth < 970 {
+		initWidth = 970
+	}
+	initHeight := config.WindowHeight
+	if initHeight < 563 {
+		initHeight = 563
+	}
+
 	bootstrapErr := wails.Run(&options.App{
 		Title:     "LunaBox",
 		Logger:    appLogger,
 		LogLevel:  logger.INFO,
-		Width:     1230,
-		Height:    800,
-		MinWidth:  1230,
-		MinHeight: 800,
+		Width:     initWidth,
+		Height:    initHeight,
+		MinWidth:  970,
+		MinHeight: 563,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 			Middleware: func(next http.Handler) http.Handler {
@@ -117,6 +127,9 @@ func main() {
 		},
 		// 关闭窗口时的处理
 		OnBeforeClose: func(ctx context.Context) bool {
+			// 保存当前窗口尺寸（必须在窗口销毁前保存）
+			config.WindowWidth, config.WindowHeight = runtime.WindowGetSize(ctx)
+
 			// 如果是从托盘强制退出，直接允许关闭
 			if forceQuit {
 				return false
