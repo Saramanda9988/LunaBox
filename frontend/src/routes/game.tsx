@@ -1,7 +1,7 @@
 import { createRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Route as rootRoute } from './__root'
-import { GetGameByID, UpdateGame, SelectGameExecutable, DeleteGame, SelectSaveDirectory, SelectCoverImage } from '../../wailsjs/go/service/GameService'
+import { GetGameByID, UpdateGame, SelectGameExecutable, DeleteGame, SelectSaveDirectory, SelectCoverImage, UpdateGameFromRemote } from '../../wailsjs/go/service/GameService'
 import { models, enums } from '../../wailsjs/go/models'
 import { toast } from 'react-hot-toast'
 import { GameBackupPanel } from '../components/panel/GameBackupPanel'
@@ -140,6 +140,19 @@ function GameDetailPage() {
     }
   }
 
+  const handleUpdateFromRemote = async () => {
+    if (!game) return
+    try {
+      await UpdateGameFromRemote(game.id)
+      const updatedGame = await GetGameByID(game.id)
+      setGame(updatedGame)
+      toast.success('从远程更新成功')
+    } catch (error) {
+      console.error('Failed to update from remote:', error)
+      toast.error('从远程更新失败: ' + (error as Error).message)
+    }
+  }
+
   const statusConfig = {
     [enums.GameStatus.NOT_STARTED]: { label: '未开始', icon: 'i-mdi-clock-outline', color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
     [enums.GameStatus.PLAYING]: { label: '游玩中', icon: 'i-mdi-gamepad-variant', color: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300' },
@@ -275,6 +288,7 @@ function GameDetailPage() {
           onSelectExecutable={handleSelectExecutable}
           onSelectSaveDirectory={handleSelectSaveDirectory}
           onSelectCoverImage={handleSelectCoverImage}
+          onUpdateFromRemote={handleUpdateFromRemote}
         />
       )}
 
