@@ -1,37 +1,15 @@
 import { createRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Route as rootRoute } from './__root'
-import { useChartTheme } from '../hooks/useChartTheme'
-import { formatDuration } from '../utils/time'
 import { GetGameByID, UpdateGame, SelectGameExecutable, DeleteGame, SelectSaveDirectory, SelectCoverImage } from '../../wailsjs/go/service/GameService'
-import { GetGameStats } from '../../wailsjs/go/service/StatsService'
-import { models, vo, enums } from '../../wailsjs/go/models'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js'
-import { Line } from 'react-chartjs-2'
+import { models, enums } from '../../wailsjs/go/models'
 import { toast } from 'react-hot-toast'
 import { GameBackupPanel } from '../components/panel/GameBackupPanel'
 import { PlaySessionPanel } from '../components/panel/PlaySessionPanel'
+import { GameEditPanel } from '../components/panel/GameEditPanel'
+import { GameStatsPanel } from '../components/panel/GameStatsPanel'
 import { ConfirmModal } from '../components/modal/ConfirmModal'
 import { GameDetailSkeleton } from '../components/skeleton/GameDetailSkeleton'
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-)
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -40,11 +18,9 @@ export const Route = createRoute({
 })
 
 function GameDetailPage() {
-  const { textColor, gridColor } = useChartTheme()
   const navigate = useNavigate()
   const { gameId } = Route.useParams()
   const [game, setGame] = useState<models.Game | null>(null)
-  const [stats, setStats] = useState<vo.GameDetailStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [showSkeleton, setShowSkeleton] = useState(false)
   const [activeTab, setActiveTab] = useState('stats')
@@ -53,12 +29,8 @@ function GameDetailPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [gameData, statsData] = await Promise.all([
-          GetGameByID(gameId),
-          GetGameStats(gameId),
-        ])
+        const gameData = await GetGameByID(gameId)
         setGame(gameData)
-        setStats(statsData)
       } catch (error) {
         console.error('Failed to load game data:', error)
         toast.error('加载游戏数据失败')
@@ -97,51 +69,6 @@ function GameDetailPage() {
         <button onClick={() => navigate({ to: '/library' })} className="text-neutral-600 hover:underline">返回库</button>
       </div>
     )
-  }
-
-  const chartData = {
-    labels: stats?.recent_play_history?.map(h => h.date) || [],
-    datasets: [
-      {
-        label: '游戏时长 (分钟)',
-        data: stats?.recent_play_history?.map(h => h.duration / 60) || [],
-        borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: 'rgba(59, 130, 246, 0.5)',
-        tension: 0.3,
-      },
-    ],
-  }
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false,
-      },
-      title: {
-        display: false,
-      },
-    },
-    scales: {
-      x: {
-        grid: {
-          color: gridColor,
-        },
-        ticks: {
-          color: textColor,
-        },
-      },
-      y: {
-        beginAtZero: true,
-        grid: {
-          color: gridColor,
-        },
-        ticks: {
-          color: textColor,
-        },
-      },
-    },
   }
 
   const handleUpdateGame = async (e: React.FormEvent) => {
@@ -315,7 +242,7 @@ function GameDetailPage() {
       {/* Tabs */}
       <div className="border-b border-brand-200 dark:border-brand-700">
         <nav className="-mb-px flex space-x-8">
-          {['stats', 'sessions', 'edit', 'backup'].map((tab) => (
+          {['stats', 'edit', 'backup'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -327,7 +254,6 @@ function GameDetailPage() {
               `}
             >
               {tab === 'stats' && '游戏统计'}
-              {tab === 'sessions' && '游玩记录'}
               {tab === 'edit' && '编辑'}
               {tab === 'backup' && '备份'}
             </button>
@@ -337,169 +263,23 @@ function GameDetailPage() {
 
       {/* Content */}
       {activeTab === 'stats' && (
-        <div className="space-y-8">
-          <div className="grid grid-cols-3 gap-6">
-            <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-              <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">累计游戏次数</div>
-              <div className="text-2xl font-bold text-brand-900 dark:text-white">
-                {stats?.total_play_count || 0}
-              </div>
-            </div>
-            <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-              <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">今日游戏时长</div>
-              <div className="text-2xl font-bold text-brand-900 dark:text-white">
-                {formatDuration(stats?.today_play_time || 0)}
-              </div>
-            </div>
-            <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-              <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">累计总时长</div>
-              <div className="text-2xl font-bold text-brand-900 dark:text-white">
-                {formatDuration(stats?.total_play_time || 0)}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-            <div className="h-80">
-              <Line options={chartOptions} data={chartData} />
-            </div>
-          </div>
-        </div>
+        <GameStatsPanel gameId={gameId} />
       )}
       
       {activeTab === 'edit' && game && (
-        <div className="mx-auto bg-white dark:bg-brand-800 p-8 rounded-lg shadow-sm">
-          <form onSubmit={handleUpdateGame} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
-                游戏名称
-              </label>
-              <input
-                type="text"
-                value={game.name}
-                onChange={(e) => setGame({ ...game, name: e.target.value } as models.Game)}
-                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
-                封面图片
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={game.cover_url}
-                  onChange={(e) => setGame({ ...game, cover_url: e.target.value } as models.Game)}
-                  placeholder="输入图片 URL 或选择本地图片"
-                  className="flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={handleSelectCoverImage}
-                  className="px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
-                >
-                  选择
-                </button>
-              </div>
-              <p className="mt-1 text-xs text-brand-500">支持远端url获取和本地图片选取</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
-                开发商
-              </label>
-              <input
-                type="text"
-                value={game.company}
-                onChange={(e) => setGame({ ...game, company: e.target.value } as models.Game)}
-                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
-                游戏路径
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={game.path}
-                  onChange={(e) => setGame({ ...game, path: e.target.value } as models.Game)}
-                  className="flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={handleSelectExecutable}
-                  className="px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
-                >
-                  选择
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
-                存档目录
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={game.save_path || ''}
-                  onChange={(e) => setGame({ ...game, save_path: e.target.value } as models.Game)}
-                  placeholder="选择游戏存档所在目录"
-                  className="flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={handleSelectSaveDirectory}
-                  className="px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
-                >
-                  选择
-                </button>
-              </div>
-              <p className="mt-1 text-xs text-brand-500">设置存档目录后可使用备份功能</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
-                简介
-              </label>
-              <textarea
-                value={game.summary}
-                onChange={(e) => setGame({ ...game, summary: e.target.value } as models.Game)}
-                rows={6}
-                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none resize-none"
-              />
-            </div>
-
-            <div className="flex justify-end pt-4">
-              <button
-                type="button"
-                onClick={handleDeleteGame}
-                className="px-6 py-2 mx-1 bg-error-600 text-white rounded-md hover:bg-error-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-error-500"
-              >
-                删除游戏
-              </button>
-              <button
-                type="submit"
-                className="px-6 py-2 mx-1  bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500"
-              >
-                保存更改
-              </button>
-            </div>
-          </form>
-        </div>
+        <GameEditPanel
+          game={game}
+          onGameChange={setGame}
+          onSubmit={handleUpdateGame}
+          onDelete={handleDeleteGame}
+          onSelectExecutable={handleSelectExecutable}
+          onSelectSaveDirectory={handleSelectSaveDirectory}
+          onSelectCoverImage={handleSelectCoverImage}
+        />
       )}
 
       {activeTab === 'backup' && (
         <GameBackupPanel gameId={gameId} savePath={game?.save_path} />
-      )}
-
-      {activeTab === 'sessions' && (
-        <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-          <PlaySessionPanel gameId={gameId} />
-        </div>
       )}
 
       <ConfirmModal

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { toast } from 'react-hot-toast'
 import { AddPlaySession } from '../../../wailsjs/go/service/TimerService'
 
@@ -10,37 +11,68 @@ interface AddPlaySessionModalProps {
 }
 
 export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddPlaySessionModalProps) {
-  const [date, setDate] = useState(() => {
-    const today = new Date()
-    return today.toISOString().split('T')[0]
+  const [startTime, setStartTime] = useState(() => {
+    const now = new Date()
+    now.setHours(now.getHours() - 1)
+    return now.toISOString().slice(0, 16)
   })
-  const [hours, setHours] = useState(0)
-  const [minutes, setMinutes] = useState(30)
+  const [endTime, setEndTime] = useState(() => {
+    const now = new Date()
+    return now.toISOString().slice(0, 16)
+  })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (!isOpen) return null
 
+  const calculateDuration = () => {
+    if (!startTime || !endTime) return 0
+    const start = new Date(startTime)
+    const end = new Date(endTime)
+    const diffMinutes = Math.floor((end.getTime() - start.getTime()) / 1000 / 60)
+    return Math.max(0, diffMinutes)
+  }
+
+  const formatDurationDisplay = (minutes: number) => {
+    if (minutes <= 0) return '0分钟'
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    return `${hours > 0 ? `${hours}小时` : ''}${mins > 0 ? `${mins}分钟` : ''}`
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    const totalMinutes = hours * 60 + minutes
+    const start = new Date(startTime)
+    const end = new Date(endTime)
+    
+    if (start >= end) {
+      toast.error('结束时间必须晚于开始时间')
+      return
+    }
+
+    const totalMinutes = calculateDuration()
     if (totalMinutes <= 0) {
       toast.error('游玩时长必须大于0')
       return
     }
 
+    if (end > new Date()) {
+      toast.error('结束时间不能晚于当前时间')
+      return
+    }
+
     setIsSubmitting(true)
     try {
-      // 构建开始时间（设置为当天中午12点）
-      const startTime = new Date(date + 'T12:00:00')
-      
-      await AddPlaySession(gameId, startTime.toISOString(), totalMinutes)
+      await AddPlaySession(gameId, start.toISOString(), totalMinutes)
       toast.success('游玩记录添加成功')
       onSuccess()
       onClose()
       // 重置表单
-      setHours(0)
-      setMinutes(30)
+      const now = new Date()
+      const oneHourAgo = new Date(now)
+      oneHourAgo.setHours(now.getHours() - 1)
+      setStartTime(oneHourAgo.toISOString().slice(0, 16))
+      setEndTime(now.toISOString().slice(0, 16))
     } catch (error) {
       console.error('Failed to add play session:', error)
       toast.error('添加游玩记录失败')
@@ -49,24 +81,35 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="relative bg-white dark:bg-brand-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
-        <h2 className="text-xl font-semibold text-brand-900 dark:text-white mb-4">
-          添加游玩记录
-        </h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-brand-900 dark:text-white">
+            添加游玩记录
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-white transition-colors"
+          >
+            <div className="i-mdi-close text-xl" />
+          </button>
+        </div>
+
+        <div className='text-sm text-brand-600 dark:text-brand-400 mb-4'>
+          您可以对过去的游玩时间进行补充记录，以更准确地统计总游玩时长。
+        </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
-              游玩日期
+              开始时间
             </label>
             <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
+              type="datetime-local"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              max={new Date().toISOString().slice(0, 16)}
               className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
               required
             />
@@ -74,35 +117,23 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
 
           <div>
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
-              游玩时长
+              结束时间
             </label>
-            <div className="flex gap-2 items-center">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    value={hours}
-                    onChange={(e) => setHours(Math.max(0, parseInt(e.target.value) || 0))}
-                    min="0"
-                    max="99"
-                    className="w-20 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none text-center"
-                  />
-                  <span className="text-brand-600 dark:text-brand-400">小时</span>
-                  <input
-                    type="number"
-                    value={minutes}
-                    onChange={(e) => setMinutes(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
-                    min="0"
-                    max="59"
-                    className="w-20 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none text-center"
-                  />
-                  <span className="text-brand-600 dark:text-brand-400">分钟</span>
-                </div>
-              </div>
+            <input
+              type="datetime-local"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              max={new Date().toISOString().slice(0, 16)}
+              className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
+              required
+            />
+          </div>
+
+          <div className="bg-brand-50 dark:bg-brand-700/50 rounded-lg p-3">
+            <div className="text-sm text-brand-600 dark:text-brand-400 mb-1">游玩时长</div>
+            <div className="text-lg font-semibold text-brand-900 dark:text-white">
+              {formatDurationDisplay(calculateDuration())}
             </div>
-            <p className="mt-1 text-xs text-brand-500">
-              总计: {hours > 0 ? `${hours}小时` : ''}{minutes > 0 ? `${minutes}分钟` : ''}{hours === 0 && minutes === 0 ? '0分钟' : ''}
-            </p>
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
@@ -123,6 +154,7 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
