@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"lunabox/internal/appconf"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
@@ -51,6 +52,8 @@ func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 	}
 
 	cmd := exec.Command(path)
+	// 设置工作目录为游戏所在目录，确保汉化补丁等资源能正确加载
+	cmd.Dir = filepath.Dir(path)
 	if err := cmd.Start(); err != nil {
 		runtime.LogErrorf(s.ctx, "failed to start game: %v", err)
 		return false, fmt.Errorf("failed to start game: %w", err)
