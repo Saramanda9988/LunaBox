@@ -3,7 +3,6 @@ import { models } from '../../../wailsjs/go/models'
 interface GameEditFormProps {
   game: models.Game
   onGameChange: (game: models.Game) => void
-  onSubmit: (e: React.FormEvent) => void
   onDelete: () => void
   onSelectExecutable: () => void
   onSelectSaveDirectory: () => void
@@ -14,7 +13,6 @@ interface GameEditFormProps {
 export function GameEditPanel({
   game,
   onGameChange,
-  onSubmit,
   onDelete,
   onSelectExecutable,
   onSelectSaveDirectory,
@@ -23,7 +21,7 @@ export function GameEditPanel({
 }: GameEditFormProps) {
   return (
     <div className="mx-auto bg-white dark:bg-brand-800 p-8 rounded-lg shadow-sm">
-      <form onSubmit={onSubmit} className="space-y-6">
+      <div className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
             游戏名称
@@ -159,34 +157,26 @@ export function GameEditPanel({
         </div>
 
         <div className="flex justify-between pt-4">
-          <div>
+          <div className="flex gap-4 justify-end w-full">
             {onUpdateFromRemote && (
               <button
                 type="button"
                 onClick={onUpdateFromRemote}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="px-6 py-2 bg-accent-500 text-white rounded-md hover:bg-accent-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-accent-500"
               >
                 从远程更新
               </button>
             )}
-          </div>
-          <div className="flex gap-2">
             <button
               type="button"
               onClick={onDelete}
-              className="px-6 py-2 bg-error-600 text-white rounded-md hover:bg-error-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-error-500"
+              className="px-6 py-2 bg-error-500 text-white rounded-md hover:bg-error-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-error-500"
             >
-              删除游戏
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-neutral-500"
-            >
-              保存更改
+              删除
             </button>
           </div>
         </div>
-      </form>
+      </div>
     </div>
   )
 }
