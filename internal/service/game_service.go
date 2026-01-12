@@ -474,3 +474,45 @@ func fetchFromLocal(id string) (models.Game, error) {
 	// 如果需要实现，应该在这里查询数据库
 	return models.Game{}, fmt.Errorf("game not found in local cache")
 }
+
+// UpdateGameFromRemote 从远程数据源更新游戏信息
+func (s *GameService) UpdateGameFromRemote(gameID string) error {
+	// 获取现有游戏信息
+	existingGame, err := s.GetGameByID(gameID)
+	if err != nil {
+		return fmt.Errorf("failed to get game: %w", err)
+	}
+
+	if existingGame.SourceType == "" || existingGame.SourceID == "" {
+		return fmt.Errorf("游戏缺少数据源信息，无法从远程更新")
+	}
+
+	// 从远程获取最新数据
+	req := vo.MetadataRequest{
+		Source: existingGame.SourceType,
+		ID:     existingGame.SourceID,
+	}
+
+	remoteGame, err := s.FetchMetadata(req)
+	if err != nil {
+		return fmt.Errorf("failed to fetch metadata from remote: %w", err)
+	}
+
+	// 保留本地重要字段，更新远程可获取的字段
+	existingGame.Name = remoteGame.Name
+	existingGame.Company = remoteGame.Company
+	existingGame.Summary = remoteGame.Summary
+	existingGame.CachedAt = time.Now()
+
+	existingGame.CoverURL = remoteGame.CoverURL
+	if remoteGame.CoverURL != "" {
+		go s.asyncDownloadCoverImage(existingGame.ID, existingGame.Name, remoteGame.CoverURL)
+	}
+
+	if err := s.UpdateGame(existingGame); err != nil {
+		return fmt.Errorf("failed to update game: %w", err)
+	}
+
+	runtime.LogInfof(s.ctx, "UpdateGameFromRemote: successfully updated game %s from %s", existingGame.Name, existingGame.SourceType)
+	return nil
+}

@@ -1,11 +1,10 @@
 import { createRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Route as rootRoute } from './__root'
-import { GetGameByID, UpdateGame, SelectGameExecutable, DeleteGame, SelectSaveDirectory, SelectCoverImage } from '../../wailsjs/go/service/GameService'
+import { GetGameByID, UpdateGame, SelectGameExecutable, DeleteGame, SelectSaveDirectory, SelectCoverImage, UpdateGameFromRemote } from '../../wailsjs/go/service/GameService'
 import { models, enums } from '../../wailsjs/go/models'
 import { toast } from 'react-hot-toast'
 import { GameBackupPanel } from '../components/panel/GameBackupPanel'
-import { PlaySessionPanel } from '../components/panel/PlaySessionPanel'
 import { GameEditPanel } from '../components/panel/GameEditPanel'
 import { GameStatsPanel } from '../components/panel/GameStatsPanel'
 import { ConfirmModal } from '../components/modal/ConfirmModal'
@@ -25,12 +24,16 @@ function GameDetailPage() {
   const [showSkeleton, setShowSkeleton] = useState(false)
   const [activeTab, setActiveTab] = useState('stats')
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const isInitialMount = useRef(true)
+  const originalGameData = useRef<models.Game | null>(null)
 
   useEffect(() => {
     const loadData = async () => {
       try {
         const gameData = await GetGameByID(gameId)
         setGame(gameData)
+        originalGameData.current = gameData
+        isInitialMount.current = false
       } catch (error) {
         console.error('Failed to load game data:', error)
         toast.error('加载游戏数据失败')
@@ -54,6 +57,26 @@ function GameDetailPage() {
     return () => clearTimeout(timer)
   }, [isLoading])
 
+  // 自动保存
+  useEffect(() => {
+    if (!game || isInitialMount.current) return
+
+    const hasChanges = JSON.stringify(game) !== JSON.stringify(originalGameData.current)
+    if (!hasChanges) return
+
+    const timer = setTimeout(async () => {
+      try {
+        await UpdateGame(game)
+        originalGameData.current = game
+      } catch (error) {
+        console.error('Failed to auto-save game:', error)
+        toast.error('保存失败' + (error as Error).message)
+      }
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [game])
+
   if (isLoading && !game) {
     if (!showSkeleton) {
       return <div className="min-h-screen bg-brand-100 dark:bg-brand-900" />
@@ -69,21 +92,6 @@ function GameDetailPage() {
         <button onClick={() => navigate({ to: '/library' })} className="text-neutral-600 hover:underline">返回库</button>
       </div>
     )
-  }
-
-  const handleUpdateGame = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!game) return
-    
-    try {
-      await UpdateGame(game)
-      const updatedGame = await GetGameByID(game.id)
-      setGame(updatedGame)
-      toast.success('更新成功')
-    } catch (error) {
-      console.error('Failed to update game:', error)
-      toast.error('更新失败')
-    }
   }
 
   const handleSelectExecutable = async () => {
@@ -137,6 +145,20 @@ function GameDetailPage() {
     } catch (error) {
       console.error('Failed to select cover image:', error)
       toast.error('选择封面图片失败')
+    }
+  }
+
+  const handleUpdateFromRemote = async () => {
+    if (!game) return
+    try {
+      await UpdateGameFromRemote(game.id)
+      const updatedGame = await GetGameByID(game.id)
+      setGame(updatedGame)
+      originalGameData.current = updatedGame
+      toast.success('从远程更新成功')
+    } catch (error) {
+      console.error('Failed to update from remote:', error)
+      toast.error('从远程更新失败: ' + error)
     }
   }
 
@@ -270,11 +292,11 @@ function GameDetailPage() {
         <GameEditPanel
           game={game}
           onGameChange={setGame}
-          onSubmit={handleUpdateGame}
           onDelete={handleDeleteGame}
           onSelectExecutable={handleSelectExecutable}
           onSelectSaveDirectory={handleSelectSaveDirectory}
           onSelectCoverImage={handleSelectCoverImage}
+          onUpdateFromRemote={handleUpdateFromRemote}
         />
       )}
 

@@ -49,3 +49,7 @@ export function SelectSaveDirectory() {
 export function UpdateGame(arg1) {
   return window['go']['service']['GameService']['UpdateGame'](arg1);
 }
+
+export function UpdateGameFromRemote(arg1) {
+  return window['go']['service']['GameService']['UpdateGameFromRemote'](arg1);
+}

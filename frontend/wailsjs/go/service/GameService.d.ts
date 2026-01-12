@@ -29,3 +29,5 @@ export function SelectGameExecutable():Promise<string>;
 export function SelectSaveDirectory():Promise<string>;
 
 export function UpdateGame(arg1:models.Game):Promise<void>;
+
+export function UpdateGameFromRemote(arg1:string):Promise<void>;
