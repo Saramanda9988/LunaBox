@@ -41,6 +41,9 @@ var appCtx context.Context
 // 用于通知 systray 退出
 var systrayQuit chan struct{}
 
+// 用于同步托盘就绪状态
+var systrayReady chan struct{}
+
 // 标记是否是从托盘强制退出（绕过 OnBeforeClose 的最小化逻辑）
 var forceQuit bool
 
@@ -176,7 +179,12 @@ func main() {
 			// 在 Wails 启动后初始化系统托盘
 			// TODO: 升级wails v3，使用原生的托盘功能
 			systrayQuit = make(chan struct{})
+			systrayReady = make(chan struct{})
 			go systray.Run(onSystrayReady, onSystrayExit)
+
+			// 等待托盘初始化完成，避免竞态条件
+			<-systrayReady
+			appLogger.Info("system tray initialized successfully")
 		},
 		OnShutdown: func(ctx context.Context) {
 			// 关闭系统托盘
@@ -293,12 +301,14 @@ func initSchema(db *sql.DB) error {
 
 // 系统托盘初始化
 func onSystrayReady() {
+	// 先设置托盘的基本属性
 	systray.SetIcon(icon)
 	systray.SetTitle("LunaBox")
 	systray.SetTooltip("LunaBox")
 
 	// 点击托盘图标时显示窗口
 	systray.SetOnClick(func(menu systray.IMenu) {
+		// 确保 appCtx 已经初始化且有效
 		if appCtx != nil {
 			runtime.WindowShow(appCtx)
 		}
@@ -306,6 +316,7 @@ func onSystrayReady() {
 
 	// 双击托盘图标时也显示窗口
 	systray.SetOnDClick(func(menu systray.IMenu) {
+		// 确保 appCtx 已经初始化且有效
 		if appCtx != nil {
 			runtime.WindowShow(appCtx)
 		}
@@ -317,6 +328,7 @@ func onSystrayReady() {
 
 	// energye/systray 使用 Click 方法设置回调，而不是 ClickedCh
 	mShow.Click(func() {
+		// 确保 appCtx 已经初始化且有效
 		if appCtx != nil {
 			runtime.WindowShow(appCtx)
 		}
@@ -329,6 +341,11 @@ func onSystrayReady() {
 			runtime.Quit(appCtx)
 		}
 	})
+
+	// 通知主线程托盘已经准备就绪
+	if systrayReady != nil {
+		close(systrayReady)
+	}
 }
 
 func onSystrayExit() {
