@@ -4,7 +4,7 @@ import { vo, models } from '../../../wailsjs/go/models'
 import { GetGameStats } from '../../../wailsjs/go/service/StatsService'
 import { GetPlaySessions, DeletePlaySession } from '../../../wailsjs/go/service/TimerService'
 import { useChartTheme } from '../../hooks/useChartTheme'
-import { formatDuration } from '../../utils/time'
+import { formatDuration, formatLocalDateTime } from '../../utils/time'
 import { toast } from 'react-hot-toast'
 import { AddPlaySessionModal } from '../modal/AddPlaySessionModal'
 import { ConfirmModal } from '../modal/ConfirmModal'
@@ -77,8 +77,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
 
   const formatDate = (dateValue: any) => {
     const dateStr = typeof dateValue === 'string' ? dateValue : String(dateValue)
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('zh-CN', {
+    return formatLocalDateTime(dateStr, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',

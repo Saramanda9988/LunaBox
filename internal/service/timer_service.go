@@ -61,7 +61,7 @@ func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 	}
 
 	sessionID := uuid.New().String()
-	startTime := time.Now()
+	startTime := time.Now().UTC()
 
 	_, err = s.db.ExecContext(
 		s.ctx,
@@ -87,7 +87,7 @@ func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 func (s *TimerService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID string, startTime time.Time) {
 	_ = cmd.Wait()
 
-	endTime := time.Now()
+	endTime := time.Now().UTC()
 	duration := int(endTime.Sub(startTime).Seconds())
 
 	// If play time is less than 1 minute, remove the temporary session record

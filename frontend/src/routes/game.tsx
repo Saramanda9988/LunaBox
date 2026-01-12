@@ -4,6 +4,7 @@ import { Route as rootRoute } from './__root'
 import { GetGameByID, UpdateGame, SelectGameExecutable, DeleteGame, SelectSaveDirectory, SelectCoverImage, UpdateGameFromRemote } from '../../wailsjs/go/service/GameService'
 import { models, enums } from '../../wailsjs/go/models'
 import { toast } from 'react-hot-toast'
+import { formatLocalDate } from '../utils/time'
 import { GameBackupPanel } from '../components/panel/GameBackupPanel'
 import { GameEditPanel } from '../components/panel/GameEditPanel'
 import { GameStatsPanel } from '../components/panel/GameStatsPanel'
@@ -247,7 +248,7 @@ function GameDetailPage() {
             </div>
             <div>
               <div className="font-semibold mb-1">添加时间</div>
-              <div>{new Date(String(game.created_at)).toLocaleDateString()}</div>
+              <div>{formatLocalDate(game.created_at)}</div>
             </div>
             {/* Placeholders for missing data */}
           </div>

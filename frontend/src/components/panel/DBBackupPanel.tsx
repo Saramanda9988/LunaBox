@@ -14,6 +14,7 @@ import { SafeQuit } from '../../../wailsjs/go/service/ConfigService'
 import { useAppStore } from '../../store'
 import { ConfirmModal } from '../modal/ConfirmModal'
 import { formatFileSize } from '../../utils/size'
+import { formatLocalDateTime } from '../../utils/time'
 
 export function DBBackupPanel() {
   const { config } = useAppStore()
@@ -212,7 +213,7 @@ export function DBBackupPanel() {
         </div>
         {dbBackups?.last_backup_time && (
           <p className="text-xs text-brand-500 dark:text-brand-400">
-            上次备份: {new Date(dbBackups.last_backup_time).toLocaleString('zh-CN')}
+            上次备份: {formatLocalDateTime(dbBackups.last_backup_time)}
           </p>
         )}
       </div>
@@ -244,7 +245,7 @@ export function DBBackupPanel() {
                   <div>
                     <div className="font-medium text-brand-900 dark:text-white">{backup.name}</div>
                     <div className="text-sm text-brand-500">
-                      {new Date(String(backup.created_at)).toLocaleString('zh-CN')} · {formatFileSize(backup.size)}
+                      {formatLocalDateTime(backup.created_at)} · {formatFileSize(backup.size)}
                     </div>
                   </div>
                 </div>
@@ -325,7 +326,7 @@ export function DBBackupPanel() {
                     <div>
                       <div className="font-medium text-brand-900 dark:text-white">{backup.name}</div>
                       <div className="text-sm text-brand-500">
-                        {new Date(String(backup.created_at)).toLocaleString('zh-CN')}
+                        {formatLocalDateTime(backup.created_at)}
                       </div>
                     </div>
                   </div>

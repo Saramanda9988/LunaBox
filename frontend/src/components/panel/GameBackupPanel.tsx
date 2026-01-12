@@ -15,6 +15,7 @@ import {
 import { ConfirmModal } from '../modal/ConfirmModal'
 import { useAppStore } from '../../store'
 import { formatFileSize } from '../../utils/size'
+import { formatLocalDateTime } from '../../utils/time'
 
 interface GameBackupPanelProps {
   gameId: string
@@ -241,7 +242,7 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
                   <div className="i-mdi-archive text-2xl text-brand-500" />
                   <div>
                     <div className="font-medium text-brand-900 dark:text-white">
-                      {new Date(String(backup.created_at)).toLocaleString()}
+                      {formatLocalDateTime(backup.created_at)}
                     </div>
                     <div className="text-sm text-brand-500">大小: {formatFileSize(backup.size)}</div>
                   </div>
@@ -258,7 +259,7 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
                     </button>
                   )}
                   <button
-                    onClick={() => handleRestoreBackup(backup.id, String(backup.created_at))}
+                    onClick={() => handleRestoreBackup(backup.id, formatLocalDateTime(backup.created_at))}
                     title="恢复备份"
                     className="p-2 text-success-600 hover:bg-success-100 dark:hover:bg-success-900 rounded transition-colors"
                   >
@@ -312,10 +313,10 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
                     <div className="i-mdi-cloud-check text-2xl text-neutral-500" />
                     <div>
                       <div className="font-medium text-brand-900 dark:text-white">
-                        {backup.name || new Date(String(backup.created_at)).toLocaleString()}
+                        {backup.name || formatLocalDateTime(backup.created_at)}
                       </div>
                       <div className="text-sm text-brand-500">
-                        {new Date(String(backup.created_at)).toLocaleString()}
+                        {formatLocalDateTime(backup.created_at)}
                       </div>
                     </div>
                   </div>
