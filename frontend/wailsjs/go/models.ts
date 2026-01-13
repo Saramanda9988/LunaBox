@@ -31,8 +31,8 @@ export namespace appconf {
 	    auto_upload_to_cloud: boolean;
 	    local_backup_retention: number;
 	    local_db_backup_retention: number;
-	    window_height: number;
 	    window_width: number;
+	    window_height: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -70,8 +70,8 @@ export namespace appconf {
 	        this.auto_upload_to_cloud = source["auto_upload_to_cloud"];
 	        this.local_backup_retention = source["local_backup_retention"];
 	        this.local_db_backup_retention = source["local_db_backup_retention"];
-	        this.window_height = source["window_height"];
 	        this.window_width = source["window_width"];
+	        this.window_height = source["window_height"];
 	    }
 	}
 
@@ -79,6 +79,12 @@ export namespace appconf {
 
 export namespace enums {
 	
+	export enum GameStatus {
+	    NOT_STARTED = "not_started",
+	    PLAYING = "playing",
+	    COMPLETED = "completed",
+	    ON_HOLD = "on_hold",
+	}
 	export enum SourceType {
 	    LOCAL = "local",
 	    BANGUMI = "bangumi",
@@ -94,12 +100,6 @@ export namespace enums {
 	    DEFAULT_SYSTEM = "你是一个幽默风趣的游戏评论员，擅长用轻松的语气点评玩家的游戏习惯。\n请用轻松幽默的方式点评这位玩家的游戏习惯，可以适当调侃但不要太过分。",
 	    MEOW_ZAKO = "你是一个雌小鬼猫娘，根据用户的游戏统计数据对用户进行锐评，语气可爱活泼，不要给用户留脸面偶（=w=）适当加入猫咪的拟声词（如“喵”）和雌小鬼的口癖（如“杂鱼~杂鱼~”），要是能再用上颜文字主人就更高兴了喵。\n\n",
 	    STRICT_TUTOR = "你是用户的严厉导师，根据用户的游戏统计数据对用户进行锐评，语气严肃认真，不允许任何调侃和幽默。\n\n",
-	}
-	export enum GameStatus {
-	    NOT_STARTED = "not_started",
-	    PLAYING = "playing",
-	    COMPLETED = "completed",
-	    ON_HOLD = "on_hold",
 	}
 
 }

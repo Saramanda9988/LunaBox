@@ -48,8 +48,8 @@ type AppConfig struct {
 	LocalBackupRetention   int `json:"local_backup_retention"`    // 本地游戏备份保留数量
 	LocalDBBackupRetention int `json:"local_db_backup_retention"` // 本地数据库备份保留数量
 	// 窗口尺寸记忆
-	WindowHeight int `json:"window_height"` // 窗口高度
 	WindowWidth  int `json:"window_width"`  // 窗口宽度
+	WindowHeight int `json:"window_height"` // 窗口高度
 }
 
 // getConfigPath 获取配置文件路径

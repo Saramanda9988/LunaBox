@@ -127,9 +127,6 @@ func main() {
 		},
 		// 关闭窗口时的处理
 		OnBeforeClose: func(ctx context.Context) bool {
-			// 保存当前窗口尺寸（必须在窗口销毁前保存）
-			config.WindowWidth, config.WindowHeight = runtime.WindowGetSize(ctx)
-
 			// 如果是从托盘强制退出，直接允许关闭
 			if forceQuit {
 				return false
@@ -198,6 +195,14 @@ func main() {
 			// 等待托盘初始化完成，避免竞态条件
 			<-systrayReady
 			appLogger.Info("system tray initialized successfully")
+
+			// 使用 Events API 监听窗口尺寸变化，实时保存（只在非最大化时）
+			runtime.EventsOn(ctx, "window:resize", func(optionalData ...interface{}) {
+				// 只在非最大化时保存窗口尺寸
+				if !runtime.WindowIsMaximised(ctx) {
+					config.WindowWidth, config.WindowHeight = runtime.WindowGetSize(ctx)
+				}
+			})
 		},
 		OnShutdown: func(ctx context.Context) {
 			// 关闭系统托盘
