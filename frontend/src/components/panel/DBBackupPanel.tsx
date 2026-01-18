@@ -104,7 +104,7 @@ export function DBBackupPanel() {
       await CreateAndUploadDBBackup()
       await loadDBBackups()
       if (cloudEnabled) await loadCloudDBBackups()
-      toast.success(cloudEnabled ? '数据库备份成功并已上传云端' : '数据库备份成功')
+      toast.success(cloudEnabled && config?.auto_upload_db_to_cloud ? '数据库备份成功并已上传云端' : '数据库备份成功')
     } catch (err: any) {
       if (err.toString().includes('本地备份成功')) {
         await loadDBBackups()
