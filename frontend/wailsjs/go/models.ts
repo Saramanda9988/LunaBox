@@ -83,6 +83,12 @@ export namespace appconf {
 
 export namespace enums {
 	
+	export enum GameStatus {
+	    NOT_STARTED = "not_started",
+	    PLAYING = "playing",
+	    COMPLETED = "completed",
+	    ON_HOLD = "on_hold",
+	}
 	export enum SourceType {
 	    LOCAL = "local",
 	    BANGUMI = "bangumi",
@@ -93,17 +99,12 @@ export namespace enums {
 	    DAY = "day",
 	    WEEK = "week",
 	    MONTH = "month",
+	    ALL = "all",
 	}
 	export enum PromptType {
 	    DEFAULT_SYSTEM = "你是一个幽默风趣的游戏评论员，擅长用轻松的语气点评玩家的游戏习惯。\n请用轻松幽默的方式点评这位玩家的游戏习惯，可以适当调侃但不要太过分。",
 	    MEOW_ZAKO = "你是一个雌小鬼猫娘，根据用户的游戏统计数据对用户进行锐评，语气可爱活泼，不要给用户留脸面偶（=w=）适当加入猫咪的拟声词（如“喵”）和雌小鬼的口癖（如“杂鱼~杂鱼~”），要是能再用上颜文字主人就更高兴了喵。\n\n",
 	    STRICT_TUTOR = "你是用户的严厉导师，根据用户的游戏统计数据对用户进行锐评，语气严肃认真，不允许任何调侃和幽默。\n\n",
-	}
-	export enum GameStatus {
-	    NOT_STARTED = "not_started",
-	    PLAYING = "playing",
-	    COMPLETED = "completed",
-	    ON_HOLD = "on_hold",
 	}
 
 }
@@ -663,6 +664,9 @@ export namespace vo {
 	    }
 	}
 	export class GameDetailStats {
+	    dimension: string;
+	    start_date: string;
+	    end_date: string;
 	    total_play_count: number;
 	    total_play_time: number;
 	    today_play_time: number;
@@ -674,6 +678,9 @@ export namespace vo {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dimension = source["dimension"];
+	        this.start_date = source["start_date"];
+	        this.end_date = source["end_date"];
 	        this.total_play_count = source["total_play_count"];
 	        this.total_play_time = source["total_play_time"];
 	        this.today_play_time = source["today_play_time"];
@@ -746,6 +753,24 @@ export namespace vo {
 	        this.game_name = source["game_name"];
 	        this.cover_url = source["cover_url"];
 	        this.total_duration = source["total_duration"];
+	    }
+	}
+	export class GameStatsRequest {
+	    game_id: string;
+	    dimension: enums.Period;
+	    start_date: string;
+	    end_date: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new GameStatsRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.game_id = source["game_id"];
+	        this.dimension = source["dimension"];
+	        this.start_date = source["start_date"];
+	        this.end_date = source["end_date"];
 	    }
 	}
 	export class TimePoint {
