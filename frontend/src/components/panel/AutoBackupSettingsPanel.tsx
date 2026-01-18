@@ -43,17 +43,34 @@ export function AutoBackupSettingsPanel({ formData, onChange }: AutoBackupSettin
 
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <label htmlFor="auto_upload_to_cloud" className={`text-sm font-medium cursor-pointer ${formData.cloud_backup_enabled ? 'text-brand-700 dark:text-brand-300' : 'text-brand-400 dark:text-brand-500'}`}>
-            自动上传备份到云端
+          <label htmlFor="auto_upload_db_to_cloud" className={`text-sm font-medium cursor-pointer ${formData.cloud_backup_enabled ? 'text-brand-700 dark:text-brand-300' : 'text-brand-400 dark:text-brand-500'}`}>
+            自动上传数据库备份到云端
           </label>
           <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
-            在创建本地备份后自动上传到云存储（需要先启用云备份）
+            在创建数据库备份后自动上传到云存储（需要先启用云备份）
           </p>
         </div>
         <BetterSwitch
-          id="auto_upload_to_cloud"
-          checked={formData.auto_upload_to_cloud || false}
-          onCheckedChange={(checked) => onChange({ ...formData, auto_upload_to_cloud: checked } as appconf.AppConfig)}
+          id="auto_upload_db_to_cloud"
+          checked={formData.auto_upload_db_to_cloud || false}
+          onCheckedChange={(checked) => onChange({ ...formData, auto_upload_db_to_cloud: checked } as appconf.AppConfig)}
+          disabled={!formData.cloud_backup_enabled}
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <label htmlFor="auto_upload_game_save_to_cloud" className={`text-sm font-medium cursor-pointer ${formData.cloud_backup_enabled ? 'text-brand-700 dark:text-brand-300' : 'text-brand-400 dark:text-brand-500'}`}>
+            自动上传游戏存档备份到云端
+          </label>
+          <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
+            在游戏退出并备份存档后自动上传到云存储（需要先启用云备份）
+          </p>
+        </div>
+        <BetterSwitch
+          id="auto_upload_game_save_to_cloud"
+          checked={formData.auto_upload_game_save_to_cloud || false}
+          onCheckedChange={(checked) => onChange({ ...formData, auto_upload_game_save_to_cloud: checked } as appconf.AppConfig)}
           disabled={!formData.cloud_backup_enabled}
         />
       </div>

@@ -533,7 +533,7 @@ func (s *BackupService) GetDBBackups() (*vo.DBBackupStatus, error) {
 			Path:      filepath.Join(backupDir, entry.Name()),
 			Name:      entry.Name(),
 			Size:      info.Size(),
-			CreatedAt: info.ModTime(),
+			CreatedAt: info.ModTime().UTC(), // 转换为 UTC 时间，与数据库保持一致
 		})
 	}
 
@@ -693,7 +693,8 @@ func (s *BackupService) CreateAndUploadDBBackup() (*vo.DBBackupInfo, error) {
 		return nil, err
 	}
 
-	if s.config.CloudBackupEnabled && s.config.BackupUserID != "" {
+	// 只有在启用云备份、配置完整且开启数据库自动上传时才上传
+	if s.config.CloudBackupEnabled && s.config.BackupUserID != "" && s.config.AutoUploadDBToCloud {
 		if err := s.UploadDBBackupToCloud(backup.Path); err != nil {
 			return backup, fmt.Errorf("本地备份成功，但云端上传失败: %w", err)
 		}

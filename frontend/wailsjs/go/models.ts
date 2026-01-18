@@ -28,7 +28,9 @@ export namespace appconf {
 	    pending_db_restore?: string;
 	    auto_backup_db: boolean;
 	    auto_backup_game_save: boolean;
-	    auto_upload_to_cloud: boolean;
+	    auto_upload_to_cloud?: boolean;
+	    auto_upload_db_to_cloud: boolean;
+	    auto_upload_game_save_to_cloud: boolean;
 	    local_backup_retention: number;
 	    local_db_backup_retention: number;
 	    window_width: number;
@@ -68,6 +70,8 @@ export namespace appconf {
 	        this.auto_backup_db = source["auto_backup_db"];
 	        this.auto_backup_game_save = source["auto_backup_game_save"];
 	        this.auto_upload_to_cloud = source["auto_upload_to_cloud"];
+	        this.auto_upload_db_to_cloud = source["auto_upload_db_to_cloud"];
+	        this.auto_upload_game_save_to_cloud = source["auto_upload_game_save_to_cloud"];
 	        this.local_backup_retention = source["local_backup_retention"];
 	        this.local_db_backup_retention = source["local_db_backup_retention"];
 	        this.window_width = source["window_width"];

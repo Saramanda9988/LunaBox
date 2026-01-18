@@ -243,10 +243,10 @@ export function DBBackupPanel() {
                 <div className="flex items-center gap-4">
                   <div className="i-mdi-database text-2xl text-brand-500" />
                   <div>
-                    <div className="font-medium text-brand-900 dark:text-white">{backup.name}</div>
-                    <div className="text-sm text-brand-500">
-                      {formatLocalDateTime(backup.created_at)} · {formatFileSize(backup.size)}
+                    <div className="font-medium text-brand-900 dark:text-white">
+                      {formatLocalDateTime(backup.created_at)}
                     </div>
+                    <div className="text-sm text-brand-500">大小: {formatFileSize(backup.size)}</div>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -324,7 +324,9 @@ export function DBBackupPanel() {
                   <div className="flex items-center gap-4">
                     <div className="i-mdi-cloud-check text-2xl text-neutral-500" />
                     <div>
-                      <div className="font-medium text-brand-900 dark:text-white">{backup.name}</div>
+                      <div className="font-medium text-brand-900 dark:text-white">
+                        {backup.name || formatLocalDateTime(backup.created_at)}
+                      </div>
                       <div className="text-sm text-brand-500">
                         {formatLocalDateTime(backup.created_at)}
                       </div>

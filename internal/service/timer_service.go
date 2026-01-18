@@ -143,8 +143,8 @@ func (s *TimerService) autoBackupGameSave(gameID string) {
 		return
 	}
 
-	// 如果启用了自动上传到云端
-	if s.config.AutoUploadToCloud && s.config.CloudBackupEnabled && s.config.BackupUserID != "" {
+	// 如果启用了游戏存档自动上传到云端
+	if s.config.AutoUploadSaveToCloud && s.config.CloudBackupEnabled && s.config.BackupUserID != "" {
 		runtime.LogInfof(s.ctx, "Auto uploading backup to cloud: %s", backup.ID)
 		err = s.backupService.UploadGameBackupToCloud(gameID, backup.ID)
 		if err != nil {
