@@ -43,18 +43,33 @@ func (s *BackupService) getCloudProvider() (cloudprovider.CloudStorageProvider, 
 
 // ========== 云备份配置相关方法 ==========
 
-// SetupCloudBackup 设置云备份（生成 user-id）
+// SetupCloudBackup 设置云备份密码（只能设置一次）
 func (s *BackupService) SetupCloudBackup(password string) (string, error) {
-	// TODO: 这里需要优化逻辑，要不要端到端做加密？如果没有必要，完全没有必要让用户输入密码，这里还不方便做自己部署server的兼容性
-	// TODO: s3如果也想能够实现多租户设计，这里是有用的
-	// TODO: 密码有没有可能出现重复？理论上是有可能的
+	// 检查是否已经设置过密码
+	if s.config.BackupPassword != "" {
+		runtime.LogWarningf(s.ctx, "SetupCloudBackup: backup password already set")
+		return "", fmt.Errorf("备份密码已设置，无法修改")
+	}
+
 	if password == "" {
 		runtime.LogWarningf(s.ctx, "SetupCloudBackup: backup password is empty")
 		return "", fmt.Errorf("备份密码不能为空")
 	}
+
+	// 生成用户ID
 	userID := utils.GenerateUserID(password)
+
+	// 更新配置
 	s.config.BackupUserID = userID
 	s.config.BackupPassword = password
+
+	// 立即保存配置到文件
+	if err := appconf.SaveConfig(s.config); err != nil {
+		runtime.LogErrorf(s.ctx, "SetupCloudBackup: failed to save config: %v", err)
+		return "", fmt.Errorf("保存配置失败: %w", err)
+	}
+
+	runtime.LogInfof(s.ctx, "SetupCloudBackup: backup password set successfully, user_id: %s", userID)
 	return userID, nil
 }
 
@@ -518,7 +533,7 @@ func (s *BackupService) GetDBBackups() (*vo.DBBackupStatus, error) {
 			Path:      filepath.Join(backupDir, entry.Name()),
 			Name:      entry.Name(),
 			Size:      info.Size(),
-			CreatedAt: info.ModTime(),
+			CreatedAt: info.ModTime().UTC(), // 转换为 UTC 时间，与数据库保持一致
 		})
 	}
 
@@ -678,7 +693,8 @@ func (s *BackupService) CreateAndUploadDBBackup() (*vo.DBBackupInfo, error) {
 		return nil, err
 	}
 
-	if s.config.CloudBackupEnabled && s.config.BackupUserID != "" {
+	// 只有在启用云备份、配置完整且开启数据库自动上传时才上传
+	if s.config.CloudBackupEnabled && s.config.BackupUserID != "" && s.config.AutoUploadDBToCloud {
 		if err := s.UploadDBBackupToCloud(backup.Path); err != nil {
 			return backup, fmt.Errorf("本地备份成功，但云端上传失败: %w", err)
 		}

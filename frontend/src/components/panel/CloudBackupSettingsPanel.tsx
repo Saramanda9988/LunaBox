@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { appconf } from '../../../wailsjs/go/models'
-import { TestS3Connection, TestOneDriveConnection, GetOneDriveAuthURL, StartOneDriveAuth } from '../../../wailsjs/go/service/BackupService'
+import { TestS3Connection, TestOneDriveConnection, GetOneDriveAuthURL, StartOneDriveAuth, SetupCloudBackup } from '../../../wailsjs/go/service/BackupService'
+import { GetAppConfig } from '../../../wailsjs/go/service/ConfigService'
 import { BrowserOpenURL } from '../../../wailsjs/runtime'
 import { BetterSwitch } from '../ui/BetterSwitch'
+import { PasswordInputModal } from '../modal/PasswordInputModal'
 
 interface CloudBackupSettingsProps {
   formData: appconf.AppConfig
@@ -14,10 +16,34 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
   const [testingS3, setTestingS3] = useState(false)
   const [testingOneDrive, setTestingOneDrive] = useState(false)
   const [authorizingOneDrive, setAuthorizingOneDrive] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     onChange({ ...formData, [name]: value } as appconf.AppConfig)
+  }
+
+  const handleSetupBackupPassword = async (password: string, confirmPassword: string) => {
+    if (password.length < 6) {
+      toast.error('密码长度至少为6位')
+      return
+    }
+
+    if (password !== confirmPassword) {
+      toast.error('两次输入的密码不一致')
+      return
+    }
+
+    try {
+      const userID = await SetupCloudBackup(password)
+      toast.success(`密码设置成功！用户ID: ${userID.substring(0, 8)}...`)
+
+      // 重新加载配置以更新界面
+      const updatedConfig = await GetAppConfig()
+      onChange(updatedConfig)
+    } catch (err: any) {
+      toast.error('设置失败: ' + err)
+    }
   }
 
   const handleTestS3 = async () => {
@@ -94,18 +120,35 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
           <h3 className="text-sm font-medium text-brand-800 dark:text-brand-200">S3 配置</h3>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">备份密码</label>
-            <input
-              type="password"
-              name="backup_password"
-              value={formData.backup_password || ''}
-              onChange={handleChange}
-              placeholder="用于生成用户标识和加密备份"
-              className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
-            />
-            <p className="text-xs text-brand-500 dark:text-brand-400">
-              重要：请牢记此密码，忘记将无法恢复云端备份
-              {formData.backup_user_id && <span className="ml-2">用户ID: {formData.backup_user_id.substring(0, 8)}...</span>}
-            </p>
+            {formData.backup_password ? (
+              <div className="space-y-2">
+                <div className="px-3 py-2 bg-brand-100 dark:bg-brand-700 border border-brand-300 dark:border-brand-600 rounded-md text-brand-600 dark:text-brand-300">
+                  ********
+                </div>
+                <p className="text-xs text-brand-500 dark:text-brand-400">
+                  <span className="text-success-600 dark:text-success-400">
+                    ✓ 密码已设置，用户ID: {formData.backup_user_id?.substring(0, 8)}...
+                  </span>
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(true)}
+                  className="w-full px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-md transition-colors flex items-center justify-center gap-2"
+                >
+                  <span className="i-mdi-lock-plus text-lg" />
+                  设置备份密码
+                </button>
+                <p className="text-xs text-brand-500 dark:text-brand-400">
+                  用于生成用户标识
+                </p>
+                <p className="text-xs text-warning-600 dark:text-warning-400">
+                  重要：密码只能设置一次，设置后无法修改，请牢记
+                </p>
+              </div>
+            )}
           </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">S3 端点 (Endpoint)</label>
@@ -141,7 +184,7 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
       {formData.cloud_backup_provider === 'onedrive' && (
         <div className="space-y-4 p-4 bg-brand-100 dark:bg-brand-800 rounded-lg">
           <h3 className="text-sm font-medium text-brand-800 dark:text-brand-200">OneDrive 配置</h3>
-          
+
           <div className="p-3 bg-brand-100 dark:bg-brand-700 rounded-md border border-brand-300 dark:border-brand-600">
             <div className="flex items-start gap-2">
               <span className="i-mdi-information-outline text-lg text-warning-500 dark:text-brand-400 mt-0.5 flex-shrink-0" />
@@ -162,7 +205,7 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
           <div className="space-y-2">
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
               Client ID
-              {(!formData.onedrive_client_id || formData.onedrive_client_id === '26fcab6e-41ea-49ff-8ec9-063983cae3ef') && 
+              {(!formData.onedrive_client_id || formData.onedrive_client_id === '26fcab6e-41ea-49ff-8ec9-063983cae3ef') &&
                 <span className="ml-2 text-xs text-brand-500 dark:text-brand-400">(使用默认)</span>
               }
             </label>
@@ -222,6 +265,12 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
         />
         <p className="text-xs text-brand-500 dark:text-brand-400">云端每个游戏保留的最大备份数量</p>
       </div>
+
+      <PasswordInputModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onConfirm={handleSetupBackupPassword}
+      />
     </div>
   )
 }

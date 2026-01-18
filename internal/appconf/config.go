@@ -41,9 +41,11 @@ type AppConfig struct {
 	LastDBBackupTime string `json:"last_db_backup_time,omitempty"` // 上次数据库备份时间
 	PendingDBRestore string `json:"pending_db_restore,omitempty"`  // 待恢复的数据库备份路径（重启后执行）
 	// 自动备份配置
-	AutoBackupDB       bool `json:"auto_backup_db"`        // 退出时自动备份数据库
-	AutoBackupGameSave bool `json:"auto_backup_game_save"` // 游戏退出时自动备份存档
-	AutoUploadToCloud  bool `json:"auto_upload_to_cloud"`  // 自动上传备份到云端
+	AutoBackupDB          bool `json:"auto_backup_db"`                 // 退出时自动备份数据库
+	AutoBackupGameSave    bool `json:"auto_backup_game_save"`          // 游戏退出时自动备份存档
+	AutoUploadToCloud     bool `json:"auto_upload_to_cloud,omitempty"` // 已弃用，保留用于配置迁移
+	AutoUploadDBToCloud   bool `json:"auto_upload_db_to_cloud"`        // 自动上传数据库备份到云端
+	AutoUploadSaveToCloud bool `json:"auto_upload_game_save_to_cloud"` // 自动上传游戏存档备份到云端
 	// 备份保留策略
 	LocalBackupRetention   int `json:"local_backup_retention"`    // 本地游戏备份保留数量
 	LocalDBBackupRetention int `json:"local_db_backup_retention"` // 本地数据库备份保留数量
@@ -119,6 +121,17 @@ func LoadConfig() (*AppConfig, error) {
 	if err := json.Unmarshal(data, config); err != nil {
 		log.Printf("Failed to parse appconf file: %v", err)
 		return config, err
+	}
+
+	// corner case: 如果有密码但没有 user_id（可能是旧版本的配置文件）
+	if config.BackupPassword != "" && config.BackupUserID == "" {
+		log.Printf("Fixing config: found password without user_id, clearing...")
+		config.BackupPassword = ""
+		if err := SaveConfig(config); err != nil {
+			log.Printf("Failed to save fixed config: %v", err)
+		} else {
+			log.Printf("Config fixed: password clearing successfully")
+		}
 	}
 
 	return config, err

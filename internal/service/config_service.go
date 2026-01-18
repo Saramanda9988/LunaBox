@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"lunabox/internal/appconf"
-	"lunabox/internal/utils"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -37,11 +36,6 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 		return fmt.Errorf("invalid config")
 	}
 
-	// 如果备份密码有变化，重新生成 user-id
-	if newConfig.BackupPassword != "" && newConfig.BackupPassword != s.config.BackupPassword {
-		newConfig.BackupUserID = utils.GenerateUserID(newConfig.BackupPassword)
-	}
-
 	err := appconf.SaveConfig(&newConfig)
 	if err != nil {
 		runtime.LogErrorf(s.ctx, "failed to save config: %v", err)
@@ -60,7 +54,6 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.AIAPIKey = newConfig.AIAPIKey
 	s.config.AIModel = newConfig.AIModel
 	s.config.AISystemPrompt = newConfig.AISystemPrompt
-	// 云备份配置
 	s.config.CloudBackupEnabled = newConfig.CloudBackupEnabled
 	s.config.CloudBackupProvider = newConfig.CloudBackupProvider
 	s.config.BackupPassword = newConfig.BackupPassword
