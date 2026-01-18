@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Line } from 'react-chartjs-2'
-import { vo, models } from '../../../wailsjs/go/models'
+import { vo, models, enums } from '../../../wailsjs/go/models'
 import { GetGameStats } from '../../../wailsjs/go/service/StatsService'
 import { GetPlaySessions, DeletePlaySession } from '../../../wailsjs/go/service/TimerService'
 import { useChartTheme } from '../../hooks/useChartTheme'
@@ -8,6 +8,8 @@ import { formatDuration, formatLocalDateTime } from '../../utils/time'
 import { toast } from 'react-hot-toast'
 import { AddPlaySessionModal } from '../modal/AddPlaySessionModal'
 import { ConfirmModal } from '../modal/ConfirmModal'
+import { GameStatsSkeleton } from '../skeleton/GameStatsSkeleton'
+import { SlideButton } from '../ui/SlideButton'
 
 interface GameStatsPanelProps {
   gameId: string
@@ -20,13 +22,33 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
   const [stats, setStats] = useState<vo.GameDetailStats | null>(null)
   const [sessions, setSessions] = useState<models.PlaySession[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [showSkeleton, setShowSkeleton] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('chart')
+  const [timeDimension, setTimeDimension] = useState<enums.Period>(enums.Period.WEEK)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null)
 
+  // 延迟显示骨架屏，避免闪烁
+  useEffect(() => {
+    let timer: number
+    if (isLoading) {
+      timer = window.setTimeout(() => {
+        setShowSkeleton(true)
+      }, 300)
+    } else {
+      setShowSkeleton(false)
+    }
+    return () => clearTimeout(timer)
+  }, [isLoading])
+
   const loadStats = async () => {
     try {
-      const statsData = await GetGameStats(gameId)
+      const statsData = await GetGameStats({
+        game_id: gameId,
+        dimension: timeDimension,
+        start_date: '',
+        end_date: ''
+      })
       setStats(statsData)
     } catch (error) {
       console.error('Failed to load game stats:', error)
@@ -54,7 +76,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
       }
     }
     loadData()
-  }, [gameId])
+  }, [gameId, timeDimension])
 
   const handleDeleteSession = async () => {
     if (!deleteSessionId) return
@@ -131,26 +153,15 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
     },
   }
 
-  if (isLoading) {
-    return (
-      <div className="space-y-8">
-        <div className="grid grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm animate-pulse">
-              <div className="h-4 bg-brand-200 dark:bg-brand-700 rounded w-24 mb-2" />
-              <div className="h-8 bg-brand-200 dark:bg-brand-700 rounded w-16" />
-            </div>
-          ))}
-        </div>
-        <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-          <div className="h-80 bg-brand-100 dark:bg-brand-700 rounded animate-pulse" />
-        </div>
-      </div>
-    )
+  if (isLoading && !stats) {
+    if (!showSkeleton) {
+      return null
+    }
+    return <GameStatsSkeleton />
   }
 
   return (
-    <div className="space-y-8">
+    <div className={`space-y-8 transition-opacity duration-300 ${isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
       {/* 统计卡片 */}
       <div className="grid grid-cols-3 gap-6">
         <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
@@ -215,27 +226,42 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
           )}
         </div>
         <div className="flex items-center justify-between p-4 border-t-1 border-brand-200 dark:border-brand-700">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setViewMode('chart')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'chart'
-                  ? 'bg-neutral-600 text-white'
-                  : 'bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-300 hover:bg-brand-200 dark:hover:bg-brand-600'
-              }`}
-            >
-              <div className="i-mdi-chart-line text-lg" />
-            </button>
-            <button
-              onClick={() => setViewMode('sessions')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'sessions'
-                  ? 'bg-neutral-600 text-white'
-                  : 'bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-300 hover:bg-brand-200 dark:hover:bg-brand-600'
-              }`}
-            >
-              <div className="i-mdi-format-list-bulleted text-lg" />
-            </button>
+          <div className="flex gap-4">
+            {/* Time Dimension Selector */}
+            <SlideButton
+              options={[
+                { label: '周', value: enums.Period.WEEK },
+                { label: '月', value: enums.Period.MONTH },
+                { label: '全部', value: enums.Period.ALL },
+              ]}
+              value={timeDimension}
+              onChange={setTimeDimension}
+              disabled={isLoading}
+            />
+            
+            {/* View Mode Selector */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewMode('chart')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'chart'
+                    ? 'bg-neutral-600 text-white'
+                    : 'bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-300 hover:bg-brand-200 dark:hover:bg-brand-600'
+                }`}
+              >
+                <div className="i-mdi-chart-line text-lg" />
+              </button>
+              <button
+                onClick={() => setViewMode('sessions')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'sessions'
+                    ? 'bg-neutral-600 text-white'
+                    : 'bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-300 hover:bg-brand-200 dark:hover:bg-brand-600'
+                }`}
+              >
+                <div className="i-mdi-format-list-bulleted text-lg" />
+              </button>
+            </div>
           </div>
           
           <button
