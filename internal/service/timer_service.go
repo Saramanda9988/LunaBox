@@ -16,20 +16,24 @@ import (
 )
 
 type TimerService struct {
-	ctx           context.Context
-	db            *sql.DB
-	config        *appconf.AppConfig
-	backupService *BackupService
+	ctx               context.Context
+	db                *sql.DB
+	config            *appconf.AppConfig
+	backupService     *BackupService
+	activeTimeTracker *ActiveTimeTracker
 }
 
 func NewTimerService() *TimerService {
-	return &TimerService{}
+	return &TimerService{
+		activeTimeTracker: NewActiveTimeTracker(),
+	}
 }
 
 func (s *TimerService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
 	s.db = db
 	s.config = config
+	s.activeTimeTracker.Init(ctx, db)
 }
 
 // SetBackupService 设置备份服务（用于自动备份）
@@ -60,6 +64,9 @@ func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 		return false, fmt.Errorf("failed to start game: %w", err)
 	}
 
+	// 获取进程 ID
+	processID := uint32(cmd.Process.Pid)
+
 	sessionID := uuid.New().String()
 	startTime := time.Now().UTC()
 
@@ -77,18 +84,46 @@ func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 		return false, fmt.Errorf("failed to create play session: %w", err)
 	}
 
-	go s.waitForGameExit(cmd, sessionID, gameID, startTime)
+	// 如果启用了仅记录活跃时长，启动事件驱动的活跃时间追踪
+	if s.config.RecordActiveTimeOnly {
+		_, err = s.activeTimeTracker.StartTracking(gameID, processID)
+		if err != nil {
+			runtime.LogWarningf(s.ctx, "Failed to start active time tracking, falling back to normal tracking: %v", err)
+		}
+	}
+
+	go s.waitForGameExit(cmd, sessionID, gameID, startTime, processID)
 
 	// 启动成功，返回 true 给前端
 	return true, nil
 }
 
 // waitForGameExit 等待游戏进程退出并更新游玩记录
-func (s *TimerService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID string, startTime time.Time) {
+func (s *TimerService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID string, startTime time.Time, processID uint32) {
+	// 确保在退出时停止活跃时间追踪
+	defer s.activeTimeTracker.StopTracking(gameID)
+
 	_ = cmd.Wait()
 
 	endTime := time.Now().UTC()
-	duration := int(endTime.Sub(startTime).Seconds())
+
+	// 如果启用活跃时间追踪，从数据库获取实际记录的活跃时长
+	// 否则使用整个运行时长
+	var duration int
+	if s.config.RecordActiveTimeOnly {
+		// 获取由 ActiveTimeTracker 累加的实际时长
+		err := s.db.QueryRowContext(
+			s.ctx,
+			`SELECT COALESCE(duration, 0) FROM play_sessions WHERE id = ?`,
+			sessionID,
+		).Scan(&duration)
+		if err != nil {
+			runtime.LogErrorf(s.ctx, "Failed to get active time for session %s: %v", sessionID, err)
+			duration = int(endTime.Sub(startTime).Seconds())
+		}
+	} else {
+		duration = int(endTime.Sub(startTime).Seconds())
+	}
 
 	// If play time is less than 1 minute, remove the temporary session record
 	if duration < 60 {
