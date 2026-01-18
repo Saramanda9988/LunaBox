@@ -84,15 +84,20 @@ func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 		return false, fmt.Errorf("failed to create play session: %w", err)
 	}
 
-	// 如果启用了仅记录活跃时长，启动事件驱动的活跃时间追踪
-	if s.config.RecordActiveTimeOnly {
-		_, err = s.activeTimeTracker.StartTracking(gameID, processID)
-		if err != nil {
-			runtime.LogWarningf(s.ctx, "Failed to start active time tracking, falling back to normal tracking: %v", err)
-		}
-	}
-
+	// 启动游戏监控 goroutine
 	go s.waitForGameExit(cmd, sessionID, gameID, startTime, processID)
+
+	// 如果启用了仅记录活跃时长，延迟启动活跃时间追踪（在独立 goroutine 中，避免阻塞主线程）
+	if s.config.RecordActiveTimeOnly {
+		go func() {
+			// 延迟一小段时间，确保游戏窗口已经创建
+			time.Sleep(500 * time.Millisecond)
+			_, err := s.activeTimeTracker.StartTracking(sessionID, gameID, processID)
+			if err != nil {
+				runtime.LogWarningf(s.ctx, "Failed to start active time tracking: %v", err)
+			}
+		}()
+	}
 
 	// 启动成功，返回 true 给前端
 	return true, nil
@@ -100,29 +105,40 @@ func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 
 // waitForGameExit 等待游戏进程退出并更新游玩记录
 func (s *TimerService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID string, startTime time.Time, processID uint32) {
-	// 确保在退出时停止活跃时间追踪
-	defer s.activeTimeTracker.StopTracking(gameID)
+	// 使用独立 goroutine 等待进程，避免永久阻塞
+	exitChan := make(chan error, 1)
+	go func() {
+		exitChan <- cmd.Wait()
+	}()
 
-	_ = cmd.Wait()
+	// 等待进程退出，最长等待24小时（防止永久阻塞）
+	var exitErr error
+	select {
+	case exitErr = <-exitChan:
+		// 游戏正常退出
+	case <-time.After(24 * time.Hour):
+		// 超时保护（24小时后强制清理）
+		runtime.LogWarningf(s.ctx, "Game %s exceeded maximum runtime (24h), forcing cleanup", gameID)
+	}
+
+	// 确保停止追踪（无论如何都要执行）
+	activeSeconds := s.activeTimeTracker.StopTracking(gameID)
 
 	endTime := time.Now().UTC()
 
-	// 如果启用活跃时间追踪，从数据库获取实际记录的活跃时长
+	// 如果启用活跃时间追踪，使用累加的活跃时长
 	// 否则使用整个运行时长
 	var duration int
 	if s.config.RecordActiveTimeOnly {
-		// 获取由 ActiveTimeTracker 累加的实际时长
-		err := s.db.QueryRowContext(
-			s.ctx,
-			`SELECT COALESCE(duration, 0) FROM play_sessions WHERE id = ?`,
-			sessionID,
-		).Scan(&duration)
-		if err != nil {
-			runtime.LogErrorf(s.ctx, "Failed to get active time for session %s: %v", sessionID, err)
-			duration = int(endTime.Sub(startTime).Seconds())
-		}
+		duration = activeSeconds
+		runtime.LogInfof(s.ctx, "Game %s active play time: %d seconds", gameID, duration)
 	} else {
 		duration = int(endTime.Sub(startTime).Seconds())
+		runtime.LogInfof(s.ctx, "Game %s total runtime: %d seconds", gameID, duration)
+	}
+
+	if exitErr != nil {
+		runtime.LogDebugf(s.ctx, "Game %s exited with error: %v", gameID, exitErr)
 	}
 
 	// If play time is less than 1 minute, remove the temporary session record

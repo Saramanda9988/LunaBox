@@ -11,10 +11,13 @@ import (
 
 // TrackingSession 正在追踪的会话
 type TrackingSession struct {
-	GameID    string
-	ProcessID uint32
-	StartTime time.Time
-	cancel    context.CancelFunc
+	SessionID          string
+	GameID             string
+	ProcessID          uint32
+	StartTime          time.Time
+	cancel             context.CancelFunc
+	accumulatedSeconds int // 累加的活跃秒数
+	mu                 sync.Mutex
 }
 
 // ActiveTimeTracker 活跃时间追踪服务
@@ -39,9 +42,10 @@ func (s *ActiveTimeTracker) Init(ctx context.Context, db *sql.DB) {
 }
 
 // StartTracking 开始追踪指定游戏的活跃游玩时间
+// sessionID: play_session 记录 ID
 // processID: 游戏进程 ID
 // returns: 追踪会话 ID 和可能的错误
-func (s *ActiveTimeTracker) StartTracking(gameID string, processID uint32) (string, error) {
+func (s *ActiveTimeTracker) StartTracking(sessionID string, gameID string, processID uint32) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -54,6 +58,7 @@ func (s *ActiveTimeTracker) StartTracking(gameID string, processID uint32) (stri
 	ctx, cancel := context.WithCancel(context.Background())
 
 	session := &TrackingSession{
+		SessionID: sessionID,
 		GameID:    gameID,
 		ProcessID: processID,
 		StartTime: time.Now().UTC(),
@@ -68,20 +73,25 @@ func (s *ActiveTimeTracker) StartTracking(gameID string, processID uint32) (stri
 	return gameID, nil
 }
 
-// StopTracking 停止追踪指定游戏
-func (s *ActiveTimeTracker) StopTracking(gameID string) {
+// StopTracking 停止追踪指定游戏，返回累加的活跃秒数
+func (s *ActiveTimeTracker) StopTracking(gameID string) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	session, exists := s.sessions[gameID]
 	if !exists {
-		return
+		return 0
 	}
 
 	session.cancel()
 	delete(s.sessions, gameID)
 
-	log.Printf("[ActiveTimeTracker] Stopped tracking for game %s", gameID)
+	session.mu.Lock()
+	accumulated := session.accumulatedSeconds
+	session.mu.Unlock()
+
+	log.Printf("[ActiveTimeTracker] Stopped tracking for game %s, accumulated %d seconds", gameID, accumulated)
+	return accumulated
 }
 
 // trackActiveTime 追踪活跃时间（核心逻辑）
@@ -119,15 +129,12 @@ func (s *ActiveTimeTracker) trackActiveTime(ctx context.Context, session *Tracki
 				// channel 关闭，结束追踪
 				return
 			}
-			// 更新焦点状态
-			if info.ProcessID == session.ProcessID {
-				if !isFocused {
-					isFocused = true
-					log.Printf("[ActiveTimeTracker] Game %s gained focus", session.GameID)
-				}
-			} else {
+			// 焦点状态发生变化,使用通知中的状态信息
+			if info.IsFocused != isFocused {
+				isFocused = info.IsFocused
 				if isFocused {
-					isFocused = false
+					log.Printf("[ActiveTimeTracker] Game %s gained focus", session.GameID)
+				} else {
 					log.Printf("[ActiveTimeTracker] Game %s lost focus", session.GameID)
 				}
 			}
@@ -168,28 +175,22 @@ func (s *ActiveTimeTracker) fallbackPolling(ctx context.Context, session *Tracki
 	}
 }
 
-// incrementPlayTime 增加游玩时间（秒）
+// incrementPlayTime 增加游玩时间（秒）- 仅在内存中累加
 func (s *ActiveTimeTracker) incrementPlayTime(gameID string, seconds int) {
-	// 更新数据库中的会话时长
-	// 找到当前活跃的会话并更新
-	_, err := s.db.ExecContext(
-		s.ctx,
-		`UPDATE play_sessions
-		 SET duration = duration + ?, end_time = ?
-		 WHERE game_id = ? AND id = (
-			 SELECT id FROM play_sessions
-			 WHERE game_id = ?
-			 ORDER BY start_time DESC
-			 LIMIT 1
-			)`,
-		seconds,
-		time.Now().UTC(),
-		gameID,
-		gameID,
-	)
-	if err != nil {
-		log.Printf("[ActiveTimeTracker] Failed to increment play time for game %s: %v", gameID, err)
+	// 获取当前会话
+	s.mu.RLock()
+	session, exists := s.sessions[gameID]
+	s.mu.RUnlock()
+
+	if !exists {
+		log.Printf("[ActiveTimeTracker] No active session found for game %s", gameID)
+		return
 	}
+
+	// 在内存中累加时长
+	session.mu.Lock()
+	session.accumulatedSeconds += seconds
+	session.mu.Unlock()
 }
 
 // GetCurrentSession 获取当前追踪的会话信息

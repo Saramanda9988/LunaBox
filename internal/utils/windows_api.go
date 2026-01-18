@@ -13,6 +13,7 @@ import (
 type WindowFocusInfo struct {
 	HWnd      uintptr
 	ProcessID uint32
+	IsFocused bool // 目标进程是否获得焦点
 }
 
 const (
@@ -88,6 +89,7 @@ func (ft *FocusTracker) checkLoop() {
 				info := WindowFocusInfo{
 					HWnd:      0, // 不需要窗口句柄
 					ProcessID: ft.targetPID,
+					IsFocused: currentlyFocused,
 				}
 				select {
 				case ft.callbackChan <- info:
