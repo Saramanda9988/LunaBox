@@ -3,6 +3,12 @@ name: Build and Test
 on:
   push:
     branches: [main, master, develop]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'README.md'
+      - 'LICENSE'
+      - '.gitignore'
   pull_request:
     branches: [main, master, develop]
 
@@ -10,6 +16,10 @@ jobs:
   test:
     name: Test Compilation
     runs-on: windows-latest
+    # 跳过由 PR merge/squash commit 导致的重复构建
+    if: |
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'push' && !contains(github.event.head_commit.message, 'Merge pull request'))
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
