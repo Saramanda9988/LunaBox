@@ -121,6 +121,17 @@ func LoadConfig() (*AppConfig, error) {
 		return config, err
 	}
 
+	// corner case: 如果有密码但没有 user_id（可能是旧版本的配置文件）
+	if config.BackupPassword != "" && config.BackupUserID == "" {
+		log.Printf("Fixing config: found password without user_id, clearing...")
+		config.BackupPassword = ""
+		if err := SaveConfig(config); err != nil {
+			log.Printf("Failed to save fixed config: %v", err)
+		} else {
+			log.Printf("Config fixed: password clearing successfully")
+		}
+	}
+
 	return config, err
 }
 
