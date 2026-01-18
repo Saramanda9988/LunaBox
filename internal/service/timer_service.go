@@ -16,20 +16,24 @@ import (
 )
 
 type TimerService struct {
-	ctx           context.Context
-	db            *sql.DB
-	config        *appconf.AppConfig
-	backupService *BackupService
+	ctx               context.Context
+	db                *sql.DB
+	config            *appconf.AppConfig
+	backupService     *BackupService
+	activeTimeTracker *ActiveTimeTracker
 }
 
 func NewTimerService() *TimerService {
-	return &TimerService{}
+	return &TimerService{
+		activeTimeTracker: NewActiveTimeTracker(),
+	}
 }
 
 func (s *TimerService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
 	s.db = db
 	s.config = config
+	s.activeTimeTracker.Init(ctx, db)
 }
 
 // SetBackupService 设置备份服务（用于自动备份）
@@ -60,6 +64,9 @@ func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 		return false, fmt.Errorf("failed to start game: %w", err)
 	}
 
+	// 获取进程 ID
+	processID := uint32(cmd.Process.Pid)
+
 	sessionID := uuid.New().String()
 	startTime := time.Now().UTC()
 
@@ -77,18 +84,62 @@ func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 		return false, fmt.Errorf("failed to create play session: %w", err)
 	}
 
-	go s.waitForGameExit(cmd, sessionID, gameID, startTime)
+	// 启动游戏监控 goroutine
+	go s.waitForGameExit(cmd, sessionID, gameID, startTime, processID)
+
+	// 如果启用了仅记录活跃时长，延迟启动活跃时间追踪（在独立 goroutine 中，避免阻塞主线程）
+	if s.config.RecordActiveTimeOnly {
+		go func() {
+			// 延迟一小段时间，确保游戏窗口已经创建
+			time.Sleep(500 * time.Millisecond)
+			_, err := s.activeTimeTracker.StartTracking(sessionID, gameID, processID)
+			if err != nil {
+				runtime.LogWarningf(s.ctx, "Failed to start active time tracking: %v", err)
+			}
+		}()
+	}
 
 	// 启动成功，返回 true 给前端
 	return true, nil
 }
 
 // waitForGameExit 等待游戏进程退出并更新游玩记录
-func (s *TimerService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID string, startTime time.Time) {
-	_ = cmd.Wait()
+func (s *TimerService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID string, startTime time.Time, processID uint32) {
+	// 使用独立 goroutine 等待进程，避免永久阻塞
+	exitChan := make(chan error, 1)
+	go func() {
+		exitChan <- cmd.Wait()
+	}()
+
+	// 等待进程退出，最长等待24小时（防止永久阻塞）
+	var exitErr error
+	select {
+	case exitErr = <-exitChan:
+		// 游戏正常退出
+	case <-time.After(24 * time.Hour):
+		// 超时保护（24小时后强制清理）
+		runtime.LogWarningf(s.ctx, "Game %s exceeded maximum runtime (24h), forcing cleanup", gameID)
+	}
+
+	// 确保停止追踪（无论如何都要执行）
+	activeSeconds := s.activeTimeTracker.StopTracking(gameID)
 
 	endTime := time.Now().UTC()
-	duration := int(endTime.Sub(startTime).Seconds())
+
+	// 如果启用活跃时间追踪，使用累加的活跃时长
+	// 否则使用整个运行时长
+	var duration int
+	if s.config.RecordActiveTimeOnly {
+		duration = activeSeconds
+		runtime.LogInfof(s.ctx, "Game %s active play time: %d seconds", gameID, duration)
+	} else {
+		duration = int(endTime.Sub(startTime).Seconds())
+		runtime.LogInfof(s.ctx, "Game %s total runtime: %d seconds", gameID, duration)
+	}
+
+	if exitErr != nil {
+		runtime.LogDebugf(s.ctx, "Game %s exited with error: %v", gameID, exitErr)
+	}
 
 	// If play time is less than 1 minute, remove the temporary session record
 	if duration < 60 {

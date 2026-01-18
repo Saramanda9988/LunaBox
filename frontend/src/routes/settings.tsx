@@ -11,6 +11,7 @@ import { BasicSettingsPanel } from '../components/panel/BasicSettingsPanel'
 import { CloudBackupSettingsPanel } from '../components/panel/CloudBackupSettingsPanel'
 import { AutoBackupSettingsPanel } from '../components/panel/AutoBackupSettingsPanel'
 import { AISettingsPanel } from '../components/panel/AISettingsPanel'
+import { GameSettingsPanel } from '../components/panel/GameSettingsPanel'
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -103,6 +104,10 @@ function SettingsPage() {
 
       <CollapsibleSection title="基础配置" icon="i-mdi-database-settings" defaultOpen={true}>
         <BasicSettingsPanel formData={formData} onChange={handleFormChange} />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="游玩配置" icon="i-mdi-timer-play-outline" defaultOpen={false}>
+        <GameSettingsPanel formData={formData} onChange={handleFormChange} />
       </CollapsibleSection>
 
       <CollapsibleSection title="云备份配置" icon="i-mdi-cloud-upload" defaultOpen={false}>

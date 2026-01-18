@@ -64,6 +64,7 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.S3AccessKey = newConfig.S3AccessKey
 	s.config.S3SecretKey = newConfig.S3SecretKey
 	s.config.CloudBackupRetention = newConfig.CloudBackupRetention
+	s.config.RecordActiveTimeOnly = newConfig.RecordActiveTimeOnly
 	// OneDrive OAuth
 	s.config.OneDriveClientID = newConfig.OneDriveClientID
 	s.config.OneDriveRefreshToken = newConfig.OneDriveRefreshToken

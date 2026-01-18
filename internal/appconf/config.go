@@ -52,6 +52,8 @@ type AppConfig struct {
 	// 窗口尺寸记忆
 	WindowWidth  int `json:"window_width"`  // 窗口宽度
 	WindowHeight int `json:"window_height"` // 窗口高度
+	// 活跃时间追踪配置
+	RecordActiveTimeOnly bool `json:"record_active_time_only"` // 仅记录活跃游玩时长（窗口在前台时）
 }
 
 // getConfigPath 获取配置文件路径
@@ -97,6 +99,7 @@ func LoadConfig() (*AppConfig, error) {
 		LocalDBBackupRetention: 5,
 		WindowWidth:            1230,
 		WindowHeight:           800,
+		RecordActiveTimeOnly:   false, // 默认关闭，向后兼容
 	}
 
 	// 获取配置文件路径
