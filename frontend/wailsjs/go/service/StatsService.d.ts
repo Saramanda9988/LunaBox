@@ -9,7 +9,7 @@ export function ExportStatsImage(arg1:string):Promise<void>;
 
 export function FetchImageAsBase64(arg1:string):Promise<string>;
 
-export function GetGameStats(arg1:string):Promise<vo.GameDetailStats>;
+export function GetGameStats(arg1:vo.GameStatsRequest):Promise<vo.GameDetailStats>;
 
 export function GetGlobalPeriodStats(arg1:vo.PeriodStatsRequest):Promise<vo.PeriodStats>;
 

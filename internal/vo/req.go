@@ -50,6 +50,14 @@ type PeriodStatsRequest struct {
 	EndDate   string       `json:"end_date"`   // YYYY-MM-DD (可选，不传则使用默认范围)
 }
 
+// GameStatsRequest 游戏统计请求参数
+type GameStatsRequest struct {
+	GameID    string       `json:"game_id"`
+	Dimension enums.Period `json:"dimension"`  // week, month, all
+	StartDate string       `json:"start_date"` // YYYY-MM-DD (可选，不传则使用默认范围)
+	EndDate   string       `json:"end_date"`   // YYYY-MM-DD (可选，不传则使用默认范围)
+}
+
 // RenderTemplateRequest 渲染模板请求
 type RenderTemplateRequest struct {
 	TemplateID string          `json:"template_id"` // 模板ID

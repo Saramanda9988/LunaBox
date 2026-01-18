@@ -101,57 +101,132 @@ func (s *StatsService) FetchImageAsBase64(url string) (string, error) {
 	return fmt.Sprintf("data:%s;base64,%s", contentType, base64Data), nil
 }
 
-func (s *StatsService) GetGameStats(gameID string) (vo.GameDetailStats, error) {
+func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats, error) {
 	var stats vo.GameDetailStats
+	stats.Dimension = string(req.Dimension)
 
-	// 1. Total Play Time
-	err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(SUM(duration), 0) FROM play_sessions WHERE game_id = ?", gameID).Scan(&stats.TotalPlayTime)
-	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to get total play time: %v", err)
-		return stats, err
+	var (
+		startDate    string
+		endDate      string
+		dateFormat   string
+		stepInterval string
+	)
+
+	// 如果用户提供了自定义日期范围，使用用户的日期
+	if req.StartDate != "" && req.EndDate != "" {
+		startDate = req.StartDate
+		endDate = req.EndDate
+	} else {
+		// 使用默认范围
+		switch req.Dimension {
+		case enums.Week:
+			// 周：最近7天
+			startDate = "current_date - INTERVAL 6 DAY"
+			endDate = "current_date"
+		case enums.Month:
+			// 月：最近30天
+			startDate = "current_date - INTERVAL 29 DAY"
+			endDate = "current_date"
+		case enums.All:
+			// 所有记录：从第一条记录到现在
+			startDate = "(SELECT MIN(start_time::DATE) FROM play_sessions WHERE game_id = ?)"
+			endDate = "current_date"
+		default:
+			return stats, fmt.Errorf("invalid dimension: %s", req.Dimension)
+		}
 	}
 
-	// 2. Today Play Time
-	err = s.db.QueryRowContext(s.ctx, "SELECT COALESCE(SUM(duration), 0) FROM play_sessions WHERE game_id = ? AND start_time >= current_date", gameID).Scan(&stats.TodayPlayTime)
+	// 所有维度都按日聚合
+	dateFormat = "%Y-%m-%d"
+	stepInterval = "INTERVAL 1 DAY"
+
+	// 构建日期表达式
+	var startDateExpr, endDateExpr, seriesStart, seriesEnd string
+	if req.StartDate != "" && req.EndDate != "" {
+		startDateExpr = fmt.Sprintf("'%s'::DATE", startDate)
+		endDateExpr = fmt.Sprintf("'%s'::DATE", endDate)
+		seriesStart = fmt.Sprintf("'%s'::DATE", startDate)
+		seriesEnd = fmt.Sprintf("'%s'::DATE", endDate)
+		stats.StartDate = startDate
+		stats.EndDate = endDate
+	} else {
+		startDateExpr = startDate
+		endDateExpr = endDate
+		seriesStart = startDate
+		seriesEnd = endDate
+		// 获取实际日期范围用于显示
+		var actualStart, actualEnd string
+		if req.Dimension == enums.All {
+			err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(MIN(start_time::DATE), current_date), current_date FROM play_sessions WHERE game_id = ?", req.GameID).Scan(&actualStart, &actualEnd)
+			if err == nil {
+				stats.StartDate = actualStart
+				stats.EndDate = actualEnd
+			}
+		} else {
+			err := s.db.QueryRowContext(s.ctx, fmt.Sprintf("SELECT %s, %s", startDateExpr, endDateExpr)).Scan(&actualStart, &actualEnd)
+			if err == nil {
+				stats.StartDate = actualStart
+				stats.EndDate = actualEnd
+			}
+		}
+	}
+
+	// 1. Total Play Count & Duration (in selected period)
+	queryTotal := fmt.Sprintf("SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions WHERE game_id = ? AND start_time >= %s AND start_time <= %s + INTERVAL 1 DAY", startDateExpr, endDateExpr)
+	if req.Dimension == enums.All && req.StartDate == "" {
+		// For 'all' dimension without custom dates, we need special handling
+		err := s.db.QueryRowContext(s.ctx, queryTotal, req.GameID, req.GameID).Scan(&stats.TotalPlayCount, &stats.TotalPlayTime)
+		if err != nil {
+			runtime.LogErrorf(s.ctx, "failed to get total play count and duration: %v", err)
+			return stats, err
+		}
+	} else {
+		err := s.db.QueryRowContext(s.ctx, queryTotal, req.GameID).Scan(&stats.TotalPlayCount, &stats.TotalPlayTime)
+		if err != nil {
+			runtime.LogErrorf(s.ctx, "failed to get total play count and duration: %v", err)
+			return stats, err
+		}
+	}
+
+	// 2. Today Play Time (always show today regardless of period)
+	err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(SUM(duration), 0) FROM play_sessions WHERE game_id = ? AND start_time >= current_date", req.GameID).Scan(&stats.TodayPlayTime)
 	if err != nil {
 		runtime.LogErrorf(s.ctx, "failed to get today play time: %v", err)
 		return stats, err
 	}
 
-	// 3. Recent Play History (Last 7 days)
-	// Use DuckDB generate_series to create the date range and left join to ensure all days are present
-	query := `
+	// 3. Play History Timeline
+	queryTimeline := fmt.Sprintf(`
 		WITH dates AS (
 			SELECT generate_series AS day 
-			FROM generate_series(current_date - INTERVAL 6 DAY, current_date, INTERVAL 1 DAY)
+			FROM generate_series(%s, %s, %s)
 		)
 		SELECT 
-			strftime(d.day, '%Y-%m-%d'), 
+			strftime(d.day, '%s'), 
 			COALESCE(SUM(ps.duration), 0)
 		FROM dates d
 		LEFT JOIN play_sessions ps ON ps.game_id = ? AND ps.start_time::DATE = d.day
 		GROUP BY d.day
 		ORDER BY d.day ASC
-	`
+	`, seriesStart, seriesEnd, stepInterval, dateFormat)
 
-	err = s.db.QueryRowContext(s.ctx, "SELECT COALESCE(COUNT(*), 0) FROM play_sessions WHERE game_id = ?", gameID).Scan(&stats.TotalPlayCount)
-	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to get total play count: %v", err)
-		return vo.GameDetailStats{}, err
+	var rows *sql.Rows
+	if req.Dimension == enums.All && req.StartDate == "" {
+		rows, err = s.db.QueryContext(s.ctx, queryTimeline, req.GameID, req.GameID)
+	} else {
+		rows, err = s.db.QueryContext(s.ctx, queryTimeline, req.GameID)
 	}
-
-	rows, err := s.db.QueryContext(s.ctx, query, gameID)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to query recent play history: %v", err)
+		runtime.LogErrorf(s.ctx, "failed to query play history: %v", err)
 		return stats, err
 	}
 	defer rows.Close()
 
-	stats.RecentPlayHistory = make([]vo.DailyPlayTime, 0, 7)
+	stats.RecentPlayHistory = make([]vo.DailyPlayTime, 0)
 	for rows.Next() {
 		var item vo.DailyPlayTime
 		if err := rows.Scan(&item.Date, &item.Duration); err != nil {
-			runtime.LogErrorf(s.ctx, "failed to scan recent play history: %v", err)
+			runtime.LogErrorf(s.ctx, "failed to scan play history: %v", err)
 			return stats, err
 		}
 		stats.RecentPlayHistory = append(stats.RecentPlayHistory, item)

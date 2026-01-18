@@ -22,6 +22,7 @@ import { useAppStore } from '../store'
 import { StatsSkeleton } from '../components/skeleton/StatsSkeleton'
 import { TemplateExportModal } from '../components/modal/TemplateExportModal'
 import { AiSummaryCard } from '../components/card/AiSummaryCard'
+import { SlideButton } from '../components/ui/SlideButton'
 
 ChartJS.register(
   CategoryScale,
@@ -239,31 +240,22 @@ function StatsPage() {
       </div>
       <div className="flex justify-between items-center no-export">
         <div className="flex items-center space-x-4">
-          <div className="flex space-x-2 bg-brand-100 dark:bg-brand-800 p-1 rounded-lg">
-            {[
+          <SlideButton
+            options={[
               { label: '周', value: enums.Period.WEEK },
               { label: '月', value: enums.Period.MONTH },
-            ].map((item) => (
-              <button
-                key={item.value}
-                onClick={() => {
-                  setDimension(item.value)
-                  if (customDateRange) {
-                    setCustomDateRange(false)
-                    setStartDate('')
-                    setEndDate('')
-                  }
-                }}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  dimension === item.value && !customDateRange
-                    ? 'bg-white dark:bg-brand-700 text-neutral-600 dark:text-neutral-400 shadow-sm'
-                    : 'text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+            ]}
+            value={customDateRange ? '' as enums.Period : dimension}
+            onChange={(value) => {
+              setDimension(value)
+              if (customDateRange) {
+                setCustomDateRange(false)
+                setStartDate('')
+                setEndDate('')
+              }
+            }}
+            disabled={loading}
+          />
           
           {/* 自定义日期范围按钮 */}
           <button

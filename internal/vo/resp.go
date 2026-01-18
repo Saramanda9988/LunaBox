@@ -41,6 +41,9 @@ type DailyPlayTime struct {
 }
 
 type GameDetailStats struct {
+	Dimension         string          `json:"dimension"`  // week, month, all
+	StartDate         string          `json:"start_date"` // YYYY-MM-DD
+	EndDate           string          `json:"end_date"`   // YYYY-MM-DD
 	TotalPlayCount    int             `json:"total_play_count"`
 	TotalPlayTime     int             `json:"total_play_time"`
 	TodayPlayTime     int             `json:"today_play_time"`
