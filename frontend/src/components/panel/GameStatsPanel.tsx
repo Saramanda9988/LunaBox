@@ -8,7 +8,6 @@ import { formatDuration, formatLocalDateTime } from '../../utils/time'
 import { toast } from 'react-hot-toast'
 import { AddPlaySessionModal } from '../modal/AddPlaySessionModal'
 import { ConfirmModal } from '../modal/ConfirmModal'
-import { GameStatsSkeleton } from '../skeleton/GameStatsSkeleton'
 import { SlideButton } from '../ui/SlideButton'
 
 interface GameStatsPanelProps {
@@ -139,30 +138,26 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
     },
   }
 
-  if (isLoading && !stats) {
-    return <GameStatsSkeleton />
-  }
-
   return (
-    <div className={`space-y-8 transition-opacity duration-300 ${isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+    <div className="space-y-8">
       {/* 统计卡片 */}
       <div className="grid grid-cols-3 gap-6">
         <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
           <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">累计游戏次数</div>
           <div className="text-2xl font-bold text-brand-900 dark:text-white">
-            {stats?.total_play_count || 0}
+            {stats?.total_play_count ?? (isLoading ? '-' : 0)}
           </div>
         </div>
         <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
           <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">今日游戏时长</div>
           <div className="text-2xl font-bold text-brand-900 dark:text-white">
-            {formatDuration(stats?.today_play_time || 0)}
+            {stats ? formatDuration(stats.today_play_time) : (isLoading ? '-' : '0分钟')}
           </div>
         </div>
         <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
           <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">累计总时长</div>
           <div className="text-2xl font-bold text-brand-900 dark:text-white">
-            {formatDuration(stats?.total_play_time || 0)}
+            {stats ? formatDuration(stats.total_play_time) : (isLoading ? '-' : '0分钟')}
           </div>
         </div>
       </div>
@@ -170,7 +165,11 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
       {/* 视图切换和操作栏 */}
       <div className="bg-white dark:bg-brand-800 rounded-lg shadow-sm">
         <div className="p-6">
-          {viewMode === 'chart' ? (
+          {isLoading && !stats ? (
+            <div className="h-80 flex items-center justify-center">
+              <div className="i-mdi-loading animate-spin text-3xl text-brand-500" />
+            </div>
+          ) : viewMode === 'chart' ? (
             <div className="h-80">
               <Line options={chartOptions} data={chartData} />
             </div>
@@ -221,7 +220,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
               onChange={setTimeDimension}
               disabled={isLoading}
             />
-            
+
             {/* View Mode Selector */}
             <div className="flex gap-2">
               <button
@@ -246,7 +245,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
               </button>
             </div>
           </div>
-          
+
           <button
             onClick={() => setIsAddModalOpen(true)}
             className="flex items-center gap-1 px-3 py-1.5 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors text-sm"
