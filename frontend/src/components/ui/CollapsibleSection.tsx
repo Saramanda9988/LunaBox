@@ -1,14 +1,15 @@
-import { useState, ReactNode } from 'react'
+import type { ReactNode } from "react";
+import { useState } from "react";
 
 interface CollapsibleSectionProps {
-  title: string
-  icon: string
-  children: ReactNode
-  defaultOpen?: boolean
+  title: string;
+  icon: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
 }
 
 export function CollapsibleSection({ title, icon, children, defaultOpen = true }: CollapsibleSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen)
+  const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
     <div className="bg-brand-50 dark:bg-brand-800 rounded-xl border border-brand-200 dark:border-brand-700 overflow-hidden">
@@ -21,13 +22,13 @@ export function CollapsibleSection({ title, icon, children, defaultOpen = true }
           <span className={`${icon} text-xl text-neutral-500 dark:text-neutral-400`} />
           {title}
         </h2>
-        <span className={`i-mdi-chevron-down text-xl text-brand-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <span className={`i-mdi-chevron-down text-xl text-brand-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
       </button>
-      <div className={`transition-all duration-200 ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+      <div className={`transition-all duration-200 ${isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"}`}>
         <div className="p-5 space-y-4">
           {children}
         </div>
       </div>
     </div>
-  )
+  );
 }

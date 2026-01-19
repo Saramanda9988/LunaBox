@@ -1,17 +1,17 @@
-import { appconf } from '../../../wailsjs/go/models'
-import { BetterSwitch } from '../ui/BetterSwitch'
+import type { appconf } from "../../../wailsjs/go/models";
+import { BetterSwitch } from "../ui/BetterSwitch";
 
 interface BasicSettingsProps {
-  formData: appconf.AppConfig
-  onChange: (data: appconf.AppConfig) => void
+  formData: appconf.AppConfig;
+  onChange: (data: appconf.AppConfig) => void;
 }
 
 export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target
-    const newValue = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
-    onChange({ ...formData, [name]: newValue } as appconf.AppConfig)
-  }
+    const { name, value, type } = e.target;
+    const newValue = type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
+    onChange({ ...formData, [name]: newValue } as appconf.AppConfig);
+  };
 
   return (
     <>
@@ -20,7 +20,7 @@ export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
         <input
           type="text"
           name="access_token"
-          value={formData.access_token || ''}
+          value={formData.access_token || ""}
           onChange={handleChange}
           className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
         />
@@ -32,7 +32,7 @@ export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
         <input
           type="text"
           name="vndb_access_token"
-          value={formData.vndb_access_token || ''}
+          value={formData.vndb_access_token || ""}
           onChange={handleChange}
           className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
         />
@@ -70,11 +70,11 @@ export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
           关闭窗口时最小化到系统托盘
         </label>
         <BetterSwitch
-            id="close_to_tray"
-            checked={formData.close_to_tray || false}
-            onCheckedChange={(checked) => onChange({ ...formData, close_to_tray: checked } as appconf.AppConfig)}
+          id="close_to_tray"
+          checked={formData.close_to_tray || false}
+          onCheckedChange={checked => onChange({ ...formData, close_to_tray: checked } as appconf.AppConfig)}
         />
       </div>
     </>
-  )
+  );
 }

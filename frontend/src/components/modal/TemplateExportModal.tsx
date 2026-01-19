@@ -1,20 +1,20 @@
-import { createPortal } from 'react-dom'
-import { useState, useEffect, useRef, useCallback } from 'react'
-import toast from 'react-hot-toast'
-import { vo } from '../../../wailsjs/go/models'
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import toast from "react-hot-toast";
+import { vo } from "../../../wailsjs/go/models";
 import {
-  ListTemplates,
-  RenderTemplate,
-  PrepareExportData,
   ExportRenderedHTML,
+  ListTemplates,
   OpenTemplatesDir,
-} from '../../../wailsjs/go/service/TemplateService'
+  PrepareExportData,
+  RenderTemplate,
+} from "../../../wailsjs/go/service/TemplateService";
 
 interface TemplateExportModalProps {
-  isOpen: boolean
-  onClose: () => void
-  stats: vo.PeriodStats | null
-  aiSummary: string
+  isOpen: boolean;
+  onClose: () => void;
+  stats: vo.PeriodStats | null;
+  aiSummary: string;
 }
 
 export function TemplateExportModal({
@@ -23,116 +23,108 @@ export function TemplateExportModal({
   stats,
   aiSummary,
 }: TemplateExportModalProps) {
-  const [templates, setTemplates] = useState<vo.TemplateInfo[]>([])
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
-  const [previewHtml, setPreviewHtml] = useState<string>('')
-  const [loading, setLoading] = useState(false)
-  const [exporting, setExporting] = useState(false)
-  const previewRef = useRef<HTMLDivElement>(null)
-
-  // 加载模板列表
-  useEffect(() => {
-    if (isOpen) {
-      loadTemplates()
-    }
-  }, [isOpen])
+  const [templates, setTemplates] = useState<vo.TemplateInfo[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [previewHtml, setPreviewHtml] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   const loadTemplates = async () => {
     try {
-      const list = await ListTemplates()
-      setTemplates(list)
+      const list = await ListTemplates();
+      setTemplates(list);
       if (list.length > 0 && !selectedTemplateId) {
-        setSelectedTemplateId(list[0].id)
+        setSelectedTemplateId(list[0].id);
       }
-    } catch (err) {
-      console.error('Failed to load templates:', err)
-      toast.error('加载模板列表失败')
     }
-  }
-
-  // 当选择模板或数据变化时，渲染预览
-  useEffect(() => {
-    if (isOpen && selectedTemplateId && stats) {
-      renderPreview()
+    catch (err) {
+      console.error("Failed to load templates:", err);
+      toast.error("加载模板列表失败");
     }
-  }, [isOpen, selectedTemplateId, stats, aiSummary])
+  };
 
   const renderPreview = async () => {
-    if (!stats || !selectedTemplateId) return
+    if (!stats || !selectedTemplateId)
+      return;
 
-    setLoading(true)
+    setLoading(true);
     try {
       // 准备导出数据（包含图表数据，由后端处理）
-      const exportData = await PrepareExportData(stats, aiSummary)
+      const exportData = await PrepareExportData(stats, aiSummary);
 
       // 渲染模板
       const req = new vo.RenderTemplateRequest({
         template_id: selectedTemplateId,
         data: exportData,
-      })
-      const resp = await RenderTemplate(req)
-      setPreviewHtml(resp.html)
-    } catch (err) {
-      console.error('Failed to render template:', err)
-      toast.error('渲染模板失败')
-    } finally {
-      setLoading(false)
+      });
+      const resp = await RenderTemplate(req);
+      setPreviewHtml(resp.html);
     }
-  }
+    catch (err) {
+      console.error("Failed to render template:", err);
+      toast.error("渲染模板失败");
+    }
+    finally {
+      setLoading(false);
+    }
+  };
 
   const handleExport = useCallback(async () => {
-    if (!previewRef.current) return
+    if (!previewRef.current)
+      return;
 
-    setExporting(true)
+    setExporting(true);
     try {
       // 获取 iframe
-      const iframe = previewRef.current.querySelector('iframe') as HTMLIFrameElement
+      const iframe = previewRef.current.querySelector("iframe") as HTMLIFrameElement;
       if (!iframe || !iframe.contentWindow) {
-        throw new Error('无法获取预览内容')
+        throw new Error("无法获取预览内容");
       }
 
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
       if (!iframeDoc || !iframeDoc.body) {
-        throw new Error('无法获取预览内容')
+        throw new Error("无法获取预览内容");
       }
 
       // 等待字体加载完成
       try {
-        await (iframeDoc as Document & { fonts?: FontFaceSet }).fonts?.ready
-      } catch {
+        await (iframeDoc as Document & { fonts?: FontFaceSet }).fonts?.ready;
+      }
+      catch {
         // Fallback: wait a bit for fonts to load
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       // 动态导入 html2canvas
-      const html2canvas = (await import('html2canvas')).default
+      const html2canvas = (await import("html2canvas")).default;
 
       // 在 iframe 内注入 html2canvas 并执行截图
-      const iframeWindow = iframe.contentWindow as Window & { html2canvas?: typeof html2canvas }
+      const iframeWindow = iframe.contentWindow as Window & { html2canvas?: typeof html2canvas };
 
       // 注入 html2canvas 到 iframe
       if (!iframeWindow.html2canvas) {
-        const script = iframeDoc.createElement('script')
-        script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'
-        iframeDoc.head.appendChild(script)
+        const script = iframeDoc.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
+        iframeDoc.head.appendChild(script);
         await new Promise<void>((resolve, reject) => {
-          script.onload = () => resolve()
-          script.onerror = () => reject(new Error('Failed to load html2canvas'))
-          setTimeout(() => resolve(), 3000) // Timeout fallback
-        })
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error("Failed to load html2canvas"));
+          setTimeout(() => resolve(), 3000); // Timeout fallback
+        });
       }
 
       // 使用 iframe 内的 html2canvas 或外部的
-      const h2c = iframeWindow.html2canvas || html2canvas
-      const targetElement = iframeDoc.body
+      const h2c = iframeWindow.html2canvas || html2canvas;
+      const targetElement = iframeDoc.body;
 
       // 重置滚动位置，避免偏移
-      iframeWindow.scrollTo(0, 0)
-      iframeDoc.documentElement.scrollTop = 0
-      iframeDoc.body.scrollTop = 0
+      iframeWindow.scrollTo(0, 0);
+      iframeDoc.documentElement.scrollTop = 0;
+      iframeDoc.body.scrollTop = 0;
 
       // 等待一帧确保滚动位置已重置
-      await new Promise((resolve) => requestAnimationFrame(resolve))
+      await new Promise(resolve => requestAnimationFrame(resolve));
 
       const canvas = await h2c(targetElement, {
         backgroundColor: null,
@@ -148,10 +140,10 @@ export function TemplateExportModal({
         windowHeight: targetElement.scrollHeight,
         onclone: (clonedDoc: Document) => {
           // 重置克隆文档的滚动位置
-          clonedDoc.documentElement.scrollTop = 0
-          clonedDoc.body.scrollTop = 0
+          clonedDoc.documentElement.scrollTop = 0;
+          clonedDoc.body.scrollTop = 0;
           // 确保克隆的文档使用正确的字体
-          const style = clonedDoc.createElement('style')
+          const style = clonedDoc.createElement("style");
           style.textContent = `
             * {
               -webkit-font-smoothing: antialiased;
@@ -161,36 +153,54 @@ export function TemplateExportModal({
               margin: 0 !important;
               padding: 0 !important;
             }
-          `
-          clonedDoc.head.appendChild(style)
+          `;
+          clonedDoc.head.appendChild(style);
         },
-      })
+      });
 
-      const dataUrl = canvas.toDataURL('image/png')
+      const dataUrl = canvas.toDataURL("image/png");
 
       // 保存图片
-      await ExportRenderedHTML(dataUrl)
-      onClose()
-    } catch (err) {
-      console.error('Failed to export image:', err)
-      toast.error('导出图片失败: ' + (err instanceof Error ? err.message : String(err)))
-    } finally {
-      setExporting(false)
+      await ExportRenderedHTML(dataUrl);
+      onClose();
     }
-  }, [previewRef, onClose])
+    catch (err) {
+      console.error("Failed to export image:", err);
+      toast.error(`导出图片失败: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    finally {
+      setExporting(false);
+    }
+  }, [previewRef, onClose]);
 
   const handleOpenTemplatesDir = async () => {
     try {
-      await OpenTemplatesDir()
-    } catch (err) {
-      console.error('Failed to open templates dir:', err)
-      toast.error('打开模板目录失败')
+      await OpenTemplatesDir();
     }
-  }
+    catch (err) {
+      console.error("Failed to open templates dir:", err);
+      toast.error("打开模板目录失败");
+    }
+  };
 
-  if (!isOpen) return null
+  // 加载模板列表
+  useEffect(() => {
+    if (isOpen) {
+      loadTemplates();
+    }
+  }, [isOpen]);
 
-  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId)
+  // 当选择模板或数据变化时，渲染预览
+  useEffect(() => {
+    if (isOpen && selectedTemplateId && stats) {
+      renderPreview();
+    }
+  }, [isOpen, selectedTemplateId, stats, aiSummary]);
+
+  if (!isOpen)
+    return null;
+
+  const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -220,22 +230,24 @@ export function TemplateExportModal({
               </p>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
-              {templates.map((template) => (
+              {templates.map(template => (
                 <button
                   key={template.id}
                   onClick={() => setSelectedTemplateId(template.id)}
                   className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors ${
                     selectedTemplateId === template.id
-                      ? 'bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300'
-                      : 'hover:bg-brand-50 dark:hover:bg-brand-700/50 text-brand-700 dark:text-brand-300'
+                      ? "bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300"
+                      : "hover:bg-brand-50 dark:hover:bg-brand-700/50 text-brand-700 dark:text-brand-300"
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    {template.is_builtin ? (
-                      <span className="i-mdi-check-decagram text-neutral-500" />
-                    ) : (
-                      <span className="i-mdi-file-document-outline text-brand-400" />
-                    )}
+                    {template.is_builtin
+                      ? (
+                          <span className="i-mdi-check-decagram text-neutral-500" />
+                        )
+                      : (
+                          <span className="i-mdi-file-document-outline text-brand-400" />
+                        )}
                     <span className="font-medium text-sm">{template.name}</span>
                   </div>
                   {template.description && (
@@ -269,8 +281,10 @@ export function TemplateExportModal({
                     </h4>
                     <p className="text-xs text-brand-500 dark:text-brand-400">
                       {selectedTemplate.author && `作者: ${selectedTemplate.author} · `}
-                      版本 {selectedTemplate.version}
-                      {selectedTemplate.is_builtin && ' · 内置模板'}
+                      版本
+                      {" "}
+                      {selectedTemplate.version}
+                      {selectedTemplate.is_builtin && " · 内置模板"}
                     </p>
                   </div>
                 </div>
@@ -279,25 +293,29 @@ export function TemplateExportModal({
 
             {/* 预览区域 */}
             <div ref={previewRef} className="flex-1 overflow-auto p-4">
-              {loading ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="flex items-center gap-3 text-brand-500 dark:text-brand-400">
-                    <span className="i-mdi-loading animate-spin text-2xl" />
-                    <span>正在渲染预览...</span>
-                  </div>
-                </div>
-              ) : previewHtml ? (
-                <iframe
-                  srcDoc={previewHtml}
-                  className="w-full h-full border-0 rounded-lg shadow-lg bg-white"
-                  title="模板预览"
-                  sandbox="allow-same-origin allow-scripts"
-                />
-              ) : (
-                <div className="flex items-center justify-center h-full text-brand-500 dark:text-brand-400">
-                  选择模板以预览效果
-                </div>
-              )}
+              {loading
+                ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="flex items-center gap-3 text-brand-500 dark:text-brand-400">
+                        <span className="i-mdi-loading animate-spin text-2xl" />
+                        <span>正在渲染预览...</span>
+                      </div>
+                    </div>
+                  )
+                : previewHtml
+                  ? (
+                      <iframe
+                        srcDoc={previewHtml}
+                        className="w-full h-full border-0 rounded-lg shadow-lg bg-white"
+                        title="模板预览"
+                        sandbox="allow-same-origin allow-scripts"
+                      />
+                    )
+                  : (
+                      <div className="flex items-center justify-center h-full text-brand-500 dark:text-brand-400">
+                        选择模板以预览效果
+                      </div>
+                    )}
             </div>
           </div>
         </div>
@@ -320,22 +338,24 @@ export function TemplateExportModal({
               disabled={!previewHtml || exporting}
               className="px-4 py-2 text-sm font-medium text-white bg-neutral-600 hover:bg-neutral-700 rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              {exporting ? (
-                <>
-                  <span className="i-mdi-loading animate-spin" />
-                  导出中...
-                </>
-              ) : (
-                <>
-                  <span className="i-mdi-download" />
-                  导出图片
-                </>
-              )}
+              {exporting
+                ? (
+                    <>
+                      <span className="i-mdi-loading animate-spin" />
+                      导出中...
+                    </>
+                  )
+                : (
+                    <>
+                      <span className="i-mdi-download" />
+                      导出图片
+                    </>
+                  )}
             </button>
           </div>
         </div>
       </div>
     </div>,
-    document.body
-  )
+    document.body,
+  );
 }

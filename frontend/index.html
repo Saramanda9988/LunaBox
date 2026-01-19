@@ -1,59 +1,62 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" class="light">
-<head>
-    <meta charset="UTF-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <head>
+    <meta charset="UTF-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>lunabox</title>
     <!-- 防止白屏闪烁：在 CSS 加载前设置背景色 -->
     <style>
-        /* 立即设置背景色防止白屏 */
-        html, body, #root {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            width: 100%;
-            overflow: hidden;
-            background-color: #fdfdfd;
-        }
-        html.dark, html.dark body, html.dark #root {
-            background-color: #121416;
-        }
-        /* 初始隐藏内容，等待主题加载完成 */
-        #root {
-            opacity: 0;
-            transition: opacity 0.15s ease-in;
-        }
-        #root.ready {
-            opacity: 1;
-        }
-        /* 切换主题时禁用所有 transition，避免不同步闪烁 */
-        html.theme-transitioning,
-        html.theme-transitioning *,
-        html.theme-transitioning *::before,
-        html.theme-transitioning *::after {
-            transition: none !important;
-        }
+      /* 立即设置背景色防止白屏 */
+      html,
+      body,
+      #root {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+        background-color: #fdfdfd;
+      }
+      html.dark,
+      html.dark body,
+      html.dark #root {
+        background-color: #121416;
+      }
+      /* 初始隐藏内容，等待主题加载完成 */
+      #root {
+        opacity: 0;
+        transition: opacity 0.15s ease-in;
+      }
+      #root.ready {
+        opacity: 1;
+      }
+      /* 切换主题时禁用所有 transition，避免不同步闪烁 */
+      html.theme-transitioning,
+      html.theme-transitioning *,
+      html.theme-transitioning *::before,
+      html.theme-transitioning *::after {
+        transition: none !important;
+      }
     </style>
     <!-- 主题预加载脚本：在渲染前同步执行 -->
     <script>
-        (function() {
-            // 尝试从 localStorage 读取缓存的主题
-            const cached = localStorage.getItem('lunabox-theme');
-            if (cached === 'dark') {
-                document.documentElement.classList.remove('light');
-                document.documentElement.classList.add('dark');
-            } else if (cached === 'system') {
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                document.documentElement.classList.remove('dark', 'light');
-                document.documentElement.classList.add(prefersDark ? 'dark' : 'light');
-            }
-            // 默认保持 light（与后端配置的默认值一致）
-        })();
+      (function () {
+        // 尝试从 localStorage 读取缓存的主题
+        const cached = localStorage.getItem("lunabox-theme");
+        if (cached === "dark") {
+          document.documentElement.classList.remove("light");
+          document.documentElement.classList.add("dark");
+        } else if (cached === "system") {
+          const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          document.documentElement.classList.remove("dark", "light");
+          document.documentElement.classList.add(prefersDark ? "dark" : "light");
+        }
+        // 默认保持 light（与后端配置的默认值一致）
+      })();
     </script>
-</head>
-<body>
-<div id="root"></div>
-<script src="./src/main.tsx" type="module"></script>
-</body>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="./src/main.tsx" type="module"></script>
+  </body>
 </html>
-

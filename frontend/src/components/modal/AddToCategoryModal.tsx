@@ -1,13 +1,13 @@
-import { createPortal } from 'react-dom'
-import { useState, useEffect } from 'react'
-import { vo } from '../../../wailsjs/go/models'
+import type { vo } from "../../../wailsjs/go/models";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface AddToCategoryModalProps {
-  isOpen: boolean
-  allCategories: vo.CategoryVO[]
-  initialSelectedIds: string[]
-  onClose: () => void
-  onSave: (selectedIds: string[]) => void
+  isOpen: boolean;
+  allCategories: vo.CategoryVO[];
+  initialSelectedIds: string[];
+  onClose: () => void;
+  onSave: (selectedIds: string[]) => void;
 }
 
 export function AddToCategoryModal({
@@ -17,26 +17,27 @@ export function AddToCategoryModal({
   onClose,
   onSave,
 }: AddToCategoryModalProps) {
-  const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds)
+  const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
 
   useEffect(() => {
-    setSelectedIds(initialSelectedIds)
-  }, [initialSelectedIds])
+    setSelectedIds(initialSelectedIds);
+  }, [initialSelectedIds]);
 
-  if (!isOpen) return null
+  if (!isOpen)
+    return null;
 
   const toggleCategory = (categoryId: string) => {
     setSelectedIds(prev =>
       prev.includes(categoryId)
         ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
-    )
-  }
+        : [...prev, categoryId],
+    );
+  };
 
   const handleSave = () => {
-    onSave(selectedIds)
-    onClose()
-  }
+    onSave(selectedIds);
+    onClose();
+  };
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -52,41 +53,49 @@ export function AddToCategoryModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
-          {allCategories.length > 0 ? (
-            <div className="space-y-2">
-              {allCategories.map((category) => {
-                const isSelected = selectedIds.includes(category.id)
-                return (
-                  <button
-                    key={category.id}
-                    onClick={() => toggleCategory(category.id)}
-                    className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
-                      isSelected
-                        ? 'bg-neutral-100 dark:bg-neutral-900'
-                        : 'bg-brand-50 dark:bg-brand-900 hover:bg-brand-100 dark:hover:bg-brand-700'
-                    }`}
-                  >
-                    <span className="font-medium text-brand-900 dark:text-white">
-                      {category.name}
-                    </span>
-                    <div className={`flex items-center gap-2 text-sm text-brand-500 dark:text-brand-400`}>
-                      <span>{category.game_count || 0} 个游戏</span>
-                      {isSelected ? (
-                        <div className="i-mdi-check-circle text-neutral-600 dark:text-neutral-400 text-xl" />
-                      ) : (
-                        <div className="i-mdi-circle-outline text-brand-300 dark:text-brand-600 text-xl" />
-                      )}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-brand-500">
-              <div className="i-mdi-folder-outline text-4xl mb-2" />
-              <p>暂无收藏夹</p>
-            </div>
-          )}
+          {allCategories.length > 0
+            ? (
+                <div className="space-y-2">
+                  {allCategories.map((category) => {
+                    const isSelected = selectedIds.includes(category.id);
+                    return (
+                      <button
+                        key={category.id}
+                        onClick={() => toggleCategory(category.id)}
+                        className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
+                          isSelected
+                            ? "bg-neutral-100 dark:bg-neutral-900"
+                            : "bg-brand-50 dark:bg-brand-900 hover:bg-brand-100 dark:hover:bg-brand-700"
+                        }`}
+                      >
+                        <span className="font-medium text-brand-900 dark:text-white">
+                          {category.name}
+                        </span>
+                        <div className="flex items-center gap-2 text-sm text-brand-500 dark:text-brand-400">
+                          <span>
+                            {category.game_count || 0}
+                            {" "}
+                            个游戏
+                          </span>
+                          {isSelected
+                            ? (
+                                <div className="i-mdi-check-circle text-neutral-600 dark:text-neutral-400 text-xl" />
+                              )
+                            : (
+                                <div className="i-mdi-circle-outline text-brand-300 dark:text-brand-600 text-xl" />
+                              )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )
+            : (
+                <div className="flex flex-col items-center justify-center h-full text-brand-500">
+                  <div className="i-mdi-folder-outline text-4xl mb-2" />
+                  <p>暂无收藏夹</p>
+                </div>
+              )}
         </div>
 
         <div className="p-4 border-brand-200 dark:border-brand-700 flex gap-3">
@@ -105,6 +114,6 @@ export function AddToCategoryModal({
         </div>
       </div>
     </div>,
-    document.body
-  )
+    document.body,
+  );
 }

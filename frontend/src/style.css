@@ -6,12 +6,15 @@
   --toast-color: #374151;
 }
 
-html, body {
+html,
+body {
   user-select: none;
   -webkit-user-select: none;
 }
 
-input, textarea, [contenteditable="true"] {
+input,
+textarea,
+[contenteditable="true"] {
   user-select: text;
   -webkit-user-select: text;
 }

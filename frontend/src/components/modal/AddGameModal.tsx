@@ -1,122 +1,144 @@
-import { useState } from 'react'
-import { createPortal } from 'react-dom'
-import { models, vo, enums } from '../../../wailsjs/go/models'
-import { SelectGameExecutable, FetchMetadataByName, FetchMetadata, AddGame, SelectCoverImageWithTempID } from '../../../wailsjs/go/service/GameService'
-import { toast } from 'react-hot-toast'
+import { useState } from "react";
+import { createPortal } from "react-dom";
+import { toast } from "react-hot-toast";
+import { enums, models, vo } from "../../../wailsjs/go/models";
+import { AddGame, FetchMetadata, FetchMetadataByName, SelectCoverImageWithTempID, SelectGameExecutable } from "../../../wailsjs/go/service/GameService";
 
 interface AddGameModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onGameAdded: () => void
+  isOpen: boolean;
+  onClose: () => void;
+  onGameAdded: () => void;
 }
 
 // step: 1=选择程序, 2=搜索结果, 3=按ID搜索, 4=手动填写
-type StepType = 1 | 2 | 3 | 4
+type StepType = 1 | 2 | 3 | 4;
 
 export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps) {
-  const [step, setStep] = useState<StepType>(1)
-  const [executablePath, setExecutablePath] = useState('')
-  const [gameName, setGameName] = useState('')
-  const [metadataResults, setMetadataResults] = useState<vo.GameMetadataFromWebVO[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [manualId, setManualId] = useState('')
-  const [manualSource, setManualSource] = useState<enums.SourceType>(enums.SourceType.BANGUMI)
-  
-  // 手动添加表单字段
-  const [manualCoverUrl, setManualCoverUrl] = useState('')
-  const [manualCompany, setManualCompany] = useState('')
-  const [manualSummary, setManualSummary] = useState('')
+  const [step, setStep] = useState<StepType>(1);
+  const [executablePath, setExecutablePath] = useState("");
+  const [gameName, setGameName] = useState("");
+  const [metadataResults, setMetadataResults] = useState<vo.GameMetadataFromWebVO[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [manualId, setManualId] = useState("");
+  const [manualSource, setManualSource] = useState<enums.SourceType>(enums.SourceType.BANGUMI);
 
-  if (!isOpen) return null
+  // 手动添加表单字段
+  const [manualCoverUrl, setManualCoverUrl] = useState("");
+  const [manualCompany, setManualCompany] = useState("");
+  const [manualSummary, setManualSummary] = useState("");
+
+  if (!isOpen)
+    return null;
+
+  const resetAndClose = () => {
+    setStep(1);
+    setExecutablePath("");
+    setGameName("");
+    setMetadataResults([]);
+    setManualId("");
+    setManualCoverUrl("");
+    setManualCompany("");
+    setManualSummary("");
+    onClose();
+  };
 
   const handleSelectExecutable = async () => {
     try {
-      const path = await SelectGameExecutable()
+      const path = await SelectGameExecutable();
       if (path) {
-        setExecutablePath(path)
+        setExecutablePath(path);
         // Extract parent folder name
         // Windows path usually uses backslash, but Wails might return forward slash or mixed.
         // Let's handle both.
-        const normalizedPath = path.replace(/\\/g, '/')
-        const parts = normalizedPath.split('/')
+        const normalizedPath = path.replace(/\\/g, "/");
+        const parts = normalizedPath.split("/");
         // If it's a file, the last part is filename, the one before is parent folder
         if (parts.length > 1) {
-          setGameName(parts[parts.length - 2])
+          setGameName(parts[parts.length - 2]);
         }
       }
-    } catch (error) {
-      console.error('Failed to select executable:', error)
-      toast.error('打开系统选择器失败')
     }
-  }
+    catch (error) {
+      console.error("Failed to select executable:", error);
+      toast.error("打开系统选择器失败");
+    }
+  };
 
   const handleSearchByName = async () => {
-    if (!gameName) return
-    setIsLoading(true)
+    if (!gameName)
+      return;
+    setIsLoading(true);
     try {
-      const results = await FetchMetadataByName(gameName)
-      setMetadataResults(results || [])
-      setStep(2)
-    } catch (error) {
-      console.error('Failed to fetch metadata:', error)
-      toast.error('获取元信息失败,请检查网络或token的有效性')
-    } finally {
-      setIsLoading(false)
+      const results = await FetchMetadataByName(gameName);
+      setMetadataResults(results || []);
+      setStep(2);
     }
-  }
-
-  const handleSearchById = async () => {
-    if (!manualId) return
-    setIsLoading(true)
-    try {
-      const request = new vo.MetadataRequest({
-        source: manualSource,
-        id: manualId
-      })
-      const game = await FetchMetadata(request)
-      if (game) {
-        await saveGame(game)
-      }
-    } catch (error) {
-      console.error('Failed to fetch metadata by ID:', error)
-      toast.error('通过id获取元信息失败, 请检查网络或token的有效性')
-    } finally {
-      setIsLoading(false)
+    catch (error) {
+      console.error("Failed to fetch metadata:", error);
+      toast.error("获取元信息失败,请检查网络或token的有效性");
     }
-  }
+    finally {
+      setIsLoading(false);
+    }
+  };
 
   const saveGame = async (game: models.Game) => {
     try {
-      game.path = executablePath
+      game.path = executablePath;
       // Ensure other fields are set if missing?
       // The backend AddGame handles ID generation if empty.
-      await AddGame(game)
-      onGameAdded()
-      resetAndClose()
-    } catch (error) {
-      console.error('Failed to save game:', error)
-      toast.error('保存游戏失败')
+      await AddGame(game);
+      onGameAdded();
+      resetAndClose();
     }
-  }
+    catch (error) {
+      console.error("Failed to save game:", error);
+      toast.error("保存游戏失败");
+    }
+  };
+
+  const handleSearchById = async () => {
+    if (!manualId)
+      return;
+    setIsLoading(true);
+    try {
+      const request = new vo.MetadataRequest({
+        source: manualSource,
+        id: manualId,
+      });
+      const game = await FetchMetadata(request);
+      if (game) {
+        await saveGame(game);
+      }
+    }
+    catch (error) {
+      console.error("Failed to fetch metadata by ID:", error);
+      toast.error("通过id获取元信息失败, 请检查网络或token的有效性");
+    }
+    finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSelectCoverImage = async () => {
     try {
-      const coverUrl = await SelectCoverImageWithTempID()
+      const coverUrl = await SelectCoverImageWithTempID();
       if (coverUrl) {
-        setManualCoverUrl(coverUrl)
+        setManualCoverUrl(coverUrl);
       }
-    } catch (error) {
-      console.error('Failed to select cover image:', error)
-      toast.error('选择封面图片失败')
     }
-  }
+    catch (error) {
+      console.error("Failed to select cover image:", error);
+      toast.error("选择封面图片失败");
+    }
+  };
 
   const handleManualSave = async () => {
     if (!gameName) {
-      toast.error('请填写游戏名称')
-      return
+      toast.error("请填写游戏名称");
+      return;
     }
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       const game = new models.Game({
         name: gameName,
@@ -125,30 +147,20 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
         company: manualCompany,
         summary: manualSummary,
         source_type: enums.SourceType.LOCAL,
-        status: enums.GameStatus.NOT_STARTED
-      })
-      await AddGame(game)
-      onGameAdded()
-      resetAndClose()
-    } catch (error) {
-      console.error('Failed to save game manually:', error)
-      toast.error('保存游戏失败')
-    } finally {
-      setIsLoading(false)
+        status: enums.GameStatus.NOT_STARTED,
+      });
+      await AddGame(game);
+      onGameAdded();
+      resetAndClose();
     }
-  }
-
-  const resetAndClose = () => {
-    setStep(1)
-    setExecutablePath('')
-    setGameName('')
-    setMetadataResults([])
-    setManualId('')
-    setManualCoverUrl('')
-    setManualCompany('')
-    setManualSummary('')
-    onClose()
-  }
+    catch (error) {
+      console.error("Failed to save game manually:", error);
+      toast.error("保存游戏失败");
+    }
+    finally {
+      setIsLoading(false);
+    }
+  };
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -156,8 +168,8 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
         <div className="flex items-center justify-between">
           <h2 className="text-4xl font-bold text-brand-900 dark:text-white mb-6">添加游戏</h2>
           <button
-              onClick={resetAndClose}
-              className="i-mdi-close text-2xl text-brand-500 p-1 rounded-lg mb-6
+            onClick={resetAndClose}
+            className="i-mdi-close text-2xl text-brand-500 p-1 rounded-lg mb-6
               hover:bg-brand-100 hover:text-brand-700 focus:outline-none
               dark:text-brand-400 dark:hover:bg-brand-700 dark:hover:text-brand-200"
           />
@@ -188,7 +200,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
               <input
                 type="text"
                 value={gameName}
-                onChange={(e) => setGameName(e.target.value)}
+                onChange={e => setGameName(e.target.value)}
                 className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               />
             </div>
@@ -206,7 +218,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
                 disabled={!executablePath || !gameName || isLoading}
                 className="rounded-lg bg-neutral-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
               >
-                {isLoading ? '搜索中...' : '搜索元信息'}
+                {isLoading ? "搜索中..." : "搜索元信息"}
               </button>
             </div>
           </div>
@@ -215,7 +227,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
         {step === 2 && (
           <div className="space-y-6">
             <p className="text-brand-600 dark:text-brand-300">哪个结果是您期望的？</p>
-            
+
             <div className="flex max-h-[400px] flex-wrap justify-center gap-4 overflow-y-auto p-1">
               {metadataResults.filter(item => item.Game)
                 .map((item, index) => (
@@ -225,24 +237,28 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
                     className="w-44 cursor-pointer rounded-lg border border-brand-200 p-3 transition hover:border-neutral-500 hover:shadow-md dark:border-brand-700 dark:hover:border-neutral-400"
                   >
                     <div className="aspect-[3/4] w-full overflow-hidden rounded-md bg-brand-200 dark:bg-brand-700">
-                      {item.Game!.cover_url ? (
-                        <img src={item.Game!.cover_url} alt={item.Game!.name} className="h-full w-full object-cover" referrerPolicy="no-referrer"/>
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-brand-400">
-                          <div className="i-mdi-image-off text-4xl" />
-                        </div>
-                      )}
+                      {item.Game!.cover_url
+                        ? (
+                            <img src={item.Game!.cover_url} alt={item.Game!.name} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                          )
+                        : (
+                            <div className="flex h-full items-center justify-center text-brand-400">
+                              <div className="i-mdi-image-off text-4xl" />
+                            </div>
+                          )}
                     </div>
                     <h3 className="mt-2 truncate text-sm font-bold text-brand-900 dark:text-white" title={item.Game!.name}>{item.Game!.name}</h3>
                     <p className="text-xs text-brand-500 dark:text-brand-400">
-                      来自 {item.Source}
+                      来自
+                      {" "}
+                      {item.Source}
                     </p>
                   </div>
                 ))}
             </div>
 
             <div className="flex items-center justify-between border-t border-brand-200 pt-4 dark:border-brand-700">
-               <button
+              <button
                 onClick={() => setStep(1)}
                 className="text-sm text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-200"
               >
@@ -275,7 +291,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
               <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">数据源</label>
               <select
                 value={manualSource}
-                onChange={(e) => setManualSource(e.target.value as enums.SourceType)}
+                onChange={e => setManualSource(e.target.value as enums.SourceType)}
                 className="w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               >
                 <option value={enums.SourceType.BANGUMI}>Bangumi</option>
@@ -289,7 +305,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
               <input
                 type="text"
                 value={manualId}
-                onChange={(e) => setManualId(e.target.value)}
+                onChange={e => setManualId(e.target.value)}
                 placeholder="请输入游戏 ID"
                 className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               />
@@ -307,7 +323,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
                 disabled={!manualId || isLoading}
                 className="rounded-lg bg-neutral-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
               >
-                {isLoading ? '搜索中...' : '确认'}
+                {isLoading ? "搜索中..." : "确认"}
               </button>
             </div>
           </div>
@@ -316,13 +332,13 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
         {step === 4 && (
           <div className="space-y-4">
             <p className="text-brand-600 dark:text-brand-300">手动填写游戏信息</p>
-            
+
             <div>
               <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">游戏名称 *</label>
               <input
                 type="text"
                 value={gameName}
-                onChange={(e) => setGameName(e.target.value)}
+                onChange={e => setGameName(e.target.value)}
                 className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               />
             </div>
@@ -333,7 +349,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
                 <input
                   type="text"
                   value={manualCoverUrl}
-                  onChange={(e) => setManualCoverUrl(e.target.value)}
+                  onChange={e => setManualCoverUrl(e.target.value)}
                   placeholder="输入图片 URL 或选择本地图片"
                   className="box-border block flex-1 rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
                 />
@@ -353,7 +369,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
               <input
                 type="text"
                 value={manualCompany}
-                onChange={(e) => setManualCompany(e.target.value)}
+                onChange={e => setManualCompany(e.target.value)}
                 className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               />
             </div>
@@ -362,7 +378,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
               <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">简介</label>
               <textarea
                 value={manualSummary}
-                onChange={(e) => setManualSummary(e.target.value)}
+                onChange={e => setManualSummary(e.target.value)}
                 rows={3}
                 className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white resize-none"
               />
@@ -380,13 +396,13 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
                 disabled={!gameName || isLoading}
                 className="rounded-lg bg-neutral-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
               >
-                {isLoading ? '保存中...' : '保存'}
+                {isLoading ? "保存中..." : "保存"}
               </button>
             </div>
           </div>
         )}
       </div>
     </div>,
-    document.body
-  )
+    document.body,
+  );
 }

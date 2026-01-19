@@ -1,54 +1,59 @@
-import { models, enums } from '../../../wailsjs/go/models'
-import { StartGameWithTracking } from '../../../wailsjs/go/service/TimerService'
-import { useNavigate } from '@tanstack/react-router'
-import { toast } from 'react-hot-toast'
+import type { models } from "../../../wailsjs/go/models";
+import { useNavigate } from "@tanstack/react-router";
+import { toast } from "react-hot-toast";
+import { enums } from "../../../wailsjs/go/models";
+import { StartGameWithTracking } from "../../../wailsjs/go/service/TimerService";
 
 interface GameCardProps {
-  game: models.Game
+  game: models.Game;
 }
 
 export function GameCard({ game }: GameCardProps) {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const handleStartGame = async (e: React.MouseEvent) => {
-    e.stopPropagation()
+    e.stopPropagation();
     if (game.id) {
       try {
-        const started = await StartGameWithTracking(game.id)
+        const started = await StartGameWithTracking(game.id);
         if (started) {
-          toast.success(game.name + " 启动成功")
-        } else {
-          toast.error(game.name + " 启动失败（未能启动）")
+          toast.success(`${game.name} 启动成功`);
         }
-      } catch (error) {
-        console.error('Failed to start game:', error)
-        var notyfication = game.name + " 启动失败, 查询日志获得帮助"
-        toast.error(notyfication)
+        else {
+          toast.error(`${game.name} 启动失败（未能启动）`);
+        }
+      }
+      catch (error) {
+        console.error("Failed to start game:", error);
+        const notyfication = `${game.name} 启动失败, 查询日志获得帮助`;
+        toast.error(notyfication);
       }
     }
-  }
+  };
 
   const handleViewDetails = () => {
-    navigate({ to: `/game/${game.id}` })
-  }
+    navigate({ to: `/game/${game.id}` });
+  };
 
-  const isCompleted = game.status === enums.GameStatus.COMPLETED
+  const isCompleted = game.status === enums.GameStatus.COMPLETED;
 
   return (
     <div className="group relative flex w-full flex-col overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm transition-all duration-300 hover:shadow-xl dark:border-brand-700 dark:bg-brand-800">
       <div className="relative aspect-[3/3.6] w-full overflow-hidden bg-brand-200 dark:bg-brand-700">
-        {game.cover_url ? (
-          <img
-            src={game.cover_url}
-            alt={game.name}
-            referrerPolicy="no-referrer"
-            className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-brand-400">
-            <div className="i-mdi-image-off text-4xl" />
-          </div>
-        )}
+        {game.cover_url
+          ? (
+              <img
+                src={game.cover_url}
+                alt={game.name}
+                referrerPolicy="no-referrer"
+                className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
+              />
+            )
+          : (
+              <div className="flex h-full items-center justify-center text-brand-400">
+                <div className="i-mdi-image-off text-4xl" />
+              </div>
+            )}
 
         {/* 已通关奖杯标识 */}
         {isCompleted && (
@@ -56,7 +61,7 @@ export function GameCard({ game }: GameCardProps) {
             <div className="i-mdi-trophy text-sm text-white" />
           </div>
         )}
-        
+
         {/* Hover Overlay */}
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 opacity-0 backdrop-blur-[2px] transition-all duration-300 group-hover:opacity-100">
           <button
@@ -75,15 +80,15 @@ export function GameCard({ game }: GameCardProps) {
           </button>
         </div>
       </div>
-      
+
       <div className="px-2 pt-1 pb-2">
         <h3 className="truncate text-sm font-bold text-brand-900 dark:text-white leading-tight" title={game.name}>
           {game.name}
         </h3>
         <p className="truncate text-xs text-brand-500 dark:text-brand-400 leading-tight">
-          {game.company || 'Unknown Developer'}
+          {game.company || "Unknown Developer"}
         </p>
       </div>
     </div>
-  )
+  );
 }

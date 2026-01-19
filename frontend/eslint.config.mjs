@@ -17,6 +17,8 @@ export default antfu(
       "public/**",
       "api/**",
       ".github/**",
+      "wailsjs/**",
+      "src/vite-env.d.ts",
       "**/*.md",
     ],
     plugins: {
@@ -30,10 +32,10 @@ export default antfu(
       "@tanstack/query/exhaustive-deps": "error",
       "ts/no-redeclare": "off",
       "ts/consistent-type-definitions": ["error", "type"],
-      "no-console": ["warn"],
+      "no-console": ["error", { allow: ["warn", "error"] }], // 生产环境不应该有 console.log，但 warn/error 允许在开发时使用
       "antfu/no-top-level-await": ["off"],
       "node/prefer-global/process": ["off"],
-      "node/no-process-env": ["error"],
+      "style/multiline-ternary": ["off"],
       "perfectionist/sort-imports": [
         "error",
         {
@@ -58,6 +60,7 @@ export default antfu(
       // Core React Hooks rules
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
+      "style/multiline-ternary": "off",
     },
   },
   {

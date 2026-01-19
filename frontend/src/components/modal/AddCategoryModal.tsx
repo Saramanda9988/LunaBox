@@ -1,11 +1,11 @@
-import { createPortal } from 'react-dom'
+import { createPortal } from "react-dom";
 
 interface AddCategoryModalProps {
-  isOpen: boolean
-  value: string
-  onChange: (value: string) => void
-  onClose: () => void
-  onSubmit: () => void
+  isOpen: boolean;
+  value: string;
+  onChange: (value: string) => void;
+  onClose: () => void;
+  onSubmit: () => void;
 }
 
 export function AddCategoryModal({
@@ -15,7 +15,8 @@ export function AddCategoryModal({
   onClose,
   onSubmit,
 }: AddCategoryModalProps) {
-  if (!isOpen) return null
+  if (!isOpen)
+    return null;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -24,7 +25,7 @@ export function AddCategoryModal({
         <input
           type="text"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={e => onChange(e.target.value)}
           placeholder="收藏夹名称"
           className="w-full p-2 border border-brand-300 rounded-lg mb-4 dark:bg-brand-700 dark:border-brand-600 dark:text-white focus:ring-2 focus:ring-neutral-500"
           autoFocus
@@ -46,6 +47,6 @@ export function AddCategoryModal({
         </div>
       </div>
     </div>,
-    document.body
-  )
+    document.body,
+  );
 }

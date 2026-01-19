@@ -1,28 +1,28 @@
-import { createRoute } from '@tanstack/react-router'
-import { useEffect, useState, useRef, useCallback } from 'react'
-import toast from 'react-hot-toast'
-import { Route as rootRoute } from './__root'
-import { useChartTheme } from '../hooks/useChartTheme'
-import { formatDurationShort, formatDurationHours, formatDateToYYYYMMDD } from '../utils/time'
+import { createRoute } from "@tanstack/react-router";
 import {
   CategoryScale,
   Chart as ChartJS,
   Legend,
-  LineElement,
   LinearScale,
+  LineElement,
   PointElement,
   Title,
   Tooltip,
-} from 'chart.js'
-import { Line } from 'react-chartjs-2'
-import { GetGlobalPeriodStats } from '../../wailsjs/go/service/StatsService'
-import { AISummarize } from '../../wailsjs/go/service/AiService'
-import { enums, vo } from '../../wailsjs/go/models'
-import { useAppStore } from '../store'
-import { StatsSkeleton } from '../components/skeleton/StatsSkeleton'
-import { TemplateExportModal } from '../components/modal/TemplateExportModal'
-import { AiSummaryCard } from '../components/card/AiSummaryCard'
-import { SlideButton } from '../components/ui/SlideButton'
+} from "chart.js";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Line } from "react-chartjs-2";
+import toast from "react-hot-toast";
+import { enums, vo } from "../../wailsjs/go/models";
+import { AISummarize } from "../../wailsjs/go/service/AiService";
+import { GetGlobalPeriodStats } from "../../wailsjs/go/service/StatsService";
+import { AiSummaryCard } from "../components/card/AiSummaryCard";
+import { TemplateExportModal } from "../components/modal/TemplateExportModal";
+import { StatsSkeleton } from "../components/skeleton/StatsSkeleton";
+import { SlideButton } from "../components/ui/SlideButton";
+import { useChartTheme } from "../hooks/useChartTheme";
+import { useAppStore } from "../store";
+import { formatDateToYYYYMMDD, formatDurationHours, formatDurationShort } from "../utils/time";
+import { Route as rootRoute } from "./__root";
 
 ChartJS.register(
   CategoryScale,
@@ -32,167 +32,172 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-)
+);
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/stats',
+  path: "/stats",
   component: StatsPage,
-})
+});
 
 function StatsPage() {
-  const ref = useRef<HTMLDivElement>(null)
-  const { textColor, gridColor } = useChartTheme()
-  const [dimension, setDimension] = useState<enums.Period>(enums.Period.WEEK)
-  const [stats, setStats] = useState<vo.PeriodStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [showSkeleton, setShowSkeleton] = useState(false)
-  const [aiLoading, setAiLoading] = useState(false)
-  const [showTemplateModal, setShowTemplateModal] = useState(false)
-  
+  const ref = useRef<HTMLDivElement>(null);
+  const { textColor, gridColor } = useChartTheme();
+  const [dimension, setDimension] = useState<enums.Period>(enums.Period.WEEK);
+  const [stats, setStats] = useState<vo.PeriodStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showSkeleton, setShowSkeleton] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+
   // 自定义日期范围
-  const [customDateRange, setCustomDateRange] = useState(false)
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
-  
+  const [customDateRange, setCustomDateRange] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
   // 延迟显示骨架屏，避免闪烁
   useEffect(() => {
-    let timer: number
+    let timer: number;
     if (loading) {
       timer = window.setTimeout(() => {
-        setShowSkeleton(true)
-      }, 300)
-    } else {
-      setShowSkeleton(false)
+        setShowSkeleton(true);
+      }, 300);
     }
-    return () => clearTimeout(timer)
-  }, [loading])
+    else {
+      setShowSkeleton(false);
+    }
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   // 从 store 获取缓存的 AI 总结
-  const { aiSummaryCache, setAISummary } = useAppStore()
-  const aiSummary = aiSummaryCache[dimension] || ''
+  const { aiSummaryCache, setAISummary } = useAppStore();
+  const aiSummary = aiSummaryCache[dimension] || "";
 
   const handleAISummarize = useCallback(async () => {
-    setAiLoading(true)
-    setAISummary(dimension, '')
+    setAiLoading(true);
+    setAISummary(dimension, "");
     try {
-      const result = await AISummarize({ dimension })
-      setAISummary(dimension, result.summary)
-    } catch (err) {
-      console.error('AI summarize failed:', err)
-      setAISummary(dimension, '')
-      toast.error('AI总结失败，请检查AI配置是否正确')
-    } finally {
-      setAiLoading(false)
+      const result = await AISummarize({ dimension });
+      setAISummary(dimension, result.summary);
     }
-  }, [dimension, setAISummary])
+    catch (err) {
+      console.error("AI summarize failed:", err);
+      setAISummary(dimension, "");
+      toast.error("AI总结失败，请检查AI配置是否正确");
+    }
+    finally {
+      setAiLoading(false);
+    }
+  }, [dimension, setAISummary]);
+
+  const loadStats = async (dim: enums.Period, start?: string, end?: string) => {
+    setLoading(true);
+    try {
+      const req = new vo.PeriodStatsRequest({
+        dimension: dim,
+        start_date: start || "",
+        end_date: end || "",
+      });
+      const data = await GetGlobalPeriodStats(req);
+      setStats(data);
+    }
+    catch (error) {
+      console.error("Failed to load stats:", error);
+      toast.error("加载统计数据失败");
+    }
+    finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApplyDateRange = () => {
+    if (!startDate || !endDate) {
+      toast.error("请选择开始和结束日期");
+      return;
+    }
+    if (new Date(startDate) >= new Date(endDate)) {
+      toast.error("开始日期必须早于结束日期");
+      return;
+    }
+    // 自定义日期范围统一使用 DAY 维度（按日聚合）
+    loadStats(enums.Period.DAY, startDate, endDate);
+  };
+
+  const handleResetDateRange = () => {
+    setCustomDateRange(false);
+    setStartDate("");
+    setEndDate("");
+    loadStats(dimension);
+  };
 
   useEffect(() => {
     if (!customDateRange) {
-      loadStats(dimension)
+      loadStats(dimension);
     }
-  }, [dimension])
+  }, [dimension]);
 
   // 当切换到自定义日期范围时，初始化日期为今天
   useEffect(() => {
     if (customDateRange && !startDate && !endDate) {
-      const today = formatDateToYYYYMMDD(new Date())
-      setStartDate(today)
-      setEndDate(today)
+      const today = formatDateToYYYYMMDD(new Date());
+      setStartDate(today);
+      setEndDate(today);
     }
-  }, [customDateRange])
-
-  const loadStats = async (dim: enums.Period, start?: string, end?: string) => {
-    setLoading(true)
-    try {
-      const req = new vo.PeriodStatsRequest({
-        dimension: dim,
-        start_date: start || '',
-        end_date: end || ''
-      })
-      const data = await GetGlobalPeriodStats(req)
-      setStats(data)
-    } catch (error) {
-      console.error('Failed to load stats:', error)
-      toast.error('加载统计数据失败')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleApplyDateRange = () => {
-    if (!startDate || !endDate) {
-      toast.error('请选择开始和结束日期')
-      return
-    }
-    if (new Date(startDate) >= new Date(endDate)) {
-      toast.error('开始日期必须早于结束日期')
-      return
-    }
-    // 自定义日期范围统一使用 DAY 维度（按日聚合）
-    loadStats(enums.Period.DAY, startDate, endDate)
-  }
-
-  const handleResetDateRange = () => {
-    setCustomDateRange(false)
-    setStartDate('')
-    setEndDate('')
-    loadStats(dimension)
-  }
+  }, [customDateRange]);
 
   if (loading && !stats) {
     if (!showSkeleton) {
-      return <div className="min-h-screen bg-brand-100 dark:bg-brand-900" />
+      return <div className="min-h-screen bg-brand-100 dark:bg-brand-900" />;
     }
-    return <StatsSkeleton />
+    return <StatsSkeleton />;
   }
 
   if (!stats) {
-    return null
+    return null;
   }
 
   // Chart 1: Total Play Duration Trend
   const totalTrendData = {
-    labels: stats.timeline.map((p) => p.label), // 后端已返回本地日期字符串，直接使用
+    labels: stats.timeline.map(p => p.label), // 后端已返回本地日期字符串，直接使用
     datasets: [
       {
-        label: '总游玩时长 (小时)',
-        data: stats.timeline.map((p) => formatDurationHours(p.duration)),
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+        label: "总游玩时长 (小时)",
+        data: stats.timeline.map(p => formatDurationHours(p.duration)),
+        borderColor: "rgb(75, 192, 192)",
+        backgroundColor: "rgba(75, 192, 192, 0.5)",
         tension: 0.3,
       },
     ],
-  }
+  };
 
   // Chart 2: Game Play Duration Trend (Multi-line)
   const gameTrendData = {
-    labels: stats.timeline.map((p) => p.label), // 后端已返回本地日期字符串，直接使用
+    labels: stats.timeline.map(p => p.label), // 后端已返回本地日期字符串，直接使用
     datasets: stats.leaderboard_series.map((series, index) => {
       const colors = [
-        'rgb(255, 99, 132)',
-        'rgb(54, 162, 235)',
-        'rgb(255, 206, 86)',
-        'rgb(75, 192, 192)',
-        'rgb(153, 102, 255)',
-      ]
-      const color = colors[index % colors.length]
+        "rgb(255, 99, 132)",
+        "rgb(54, 162, 235)",
+        "rgb(255, 206, 86)",
+        "rgb(75, 192, 192)",
+        "rgb(153, 102, 255)",
+      ];
+      const color = colors[index % colors.length];
       return {
         label: series.game_name,
-        data: series.points.map((p) => formatDurationHours(p.duration)),
+        data: series.points.map(p => formatDurationHours(p.duration)),
         borderColor: color,
-        backgroundColor: color.replace('rgb', 'rgba').replace(')', ', 0.5)'),
+        backgroundColor: color.replace("rgb", "rgba").replace(")", ", 0.5)"),
         tension: 0.3,
-      }
+      };
     }),
-  }
+  };
 
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'top' as const,
+        position: "top" as const,
         labels: {
           color: textColor,
         },
@@ -211,7 +216,7 @@ function StatsPage() {
         beginAtZero: true,
         title: {
           display: true,
-          text: '小时',
+          text: "小时",
           color: textColor,
         },
         grid: {
@@ -222,13 +227,13 @@ function StatsPage() {
         },
       },
     },
-  }
+  };
 
   return (
-    <div 
-      id="stats-container" 
-      ref={ref} 
-      className={`space-y-6 max-w-8xl mx-auto p-8 bg-brand-100 dark:bg-brand-900 transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}
+    <div
+      id="stats-container"
+      ref={ref}
+      className={`space-y-6 max-w-8xl mx-auto p-8 bg-brand-100 dark:bg-brand-900 transition-opacity duration-300 ${loading ? "opacity-50 pointer-events-none" : "opacity-100"}`}
     >
       <div className="flex items-center justify-between">
         <h1 className="text-4xl font-bold text-brand-900 dark:text-white">统计</h1>
@@ -237,37 +242,37 @@ function StatsPage() {
         <div className="flex items-center space-x-4">
           <SlideButton
             options={[
-              { label: '周', value: enums.Period.WEEK },
-              { label: '月', value: enums.Period.MONTH },
+              { label: "周", value: enums.Period.WEEK },
+              { label: "月", value: enums.Period.MONTH },
             ]}
-            value={customDateRange ? '' as enums.Period : dimension}
+            value={customDateRange ? "" as enums.Period : dimension}
             onChange={(value) => {
-              setDimension(value)
+              setDimension(value);
               if (customDateRange) {
-                setCustomDateRange(false)
-                setStartDate('')
-                setEndDate('')
+                setCustomDateRange(false);
+                setStartDate("");
+                setEndDate("");
               }
             }}
             disabled={loading}
           />
-          
+
           {/* 自定义日期范围按钮 */}
           <button
             onClick={() => setCustomDateRange(!customDateRange)}
             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
               customDateRange
-                ? 'bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400'
-                : 'text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200'
+                ? "bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400"
+                : "text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200"
             }`}
           >
             <span className="i-mdi-calendar-range text-lg" />
             自定义
           </button>
         </div>
-        <div className={'flex space-x-2 items-center'}>
-          <button onClick={() => setShowTemplateModal(true)} className='flex justify-end i-mdi-image-filter-hdr text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors' title="美化导出"/>
-          <button onClick={handleAISummarize} className='flex justify-end i-mdi-robot-happy text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors' title="AI总结"/>
+        <div className="flex space-x-2 items-center">
+          <button onClick={() => setShowTemplateModal(true)} className="flex justify-end i-mdi-image-filter-hdr text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors" title="美化导出" />
+          <button onClick={handleAISummarize} className="flex justify-end i-mdi-robot-happy text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors" title="AI总结" />
         </div>
       </div>
 
@@ -279,7 +284,7 @@ function StatsPage() {
             <input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={e => setStartDate(e.target.value)}
               className="px-3 py-1.5 rounded-md border border-brand-300 dark:border-brand-600 bg-white dark:bg-brand-700 text-brand-900 dark:text-white text-sm"
             />
           </div>
@@ -288,7 +293,7 @@ function StatsPage() {
             <input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={e => setEndDate(e.target.value)}
               className="px-3 py-1.5 rounded-md border border-brand-300 dark:border-brand-600 bg-white dark:bg-brand-700 text-brand-900 dark:text-white text-sm"
             />
           </div>
@@ -309,9 +314,9 @@ function StatsPage() {
 
       {/* AI Summary Card - 显示在页面顶部 */}
       {(aiLoading || aiSummary) && (
-        <AiSummaryCard 
-          aiSummary={aiSummary} 
-          aiLoading={aiLoading} 
+        <AiSummaryCard
+          aiSummary={aiSummary}
+          aiLoading={aiLoading}
         />
       )}
 
@@ -354,10 +359,10 @@ function StatsPage() {
         )}
 
         {/* Other Games List */}
-        <div className={`${stats.play_time_leaderboard.length > 0 ? 'lg:col-span-2' : 'lg:col-span-3'} bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 overflow-hidden flex flex-col`}>
+        <div className={`${stats.play_time_leaderboard.length > 0 ? "lg:col-span-2" : "lg:col-span-3"} bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 overflow-hidden flex flex-col`}>
           <div className="p-6 border-b border-brand-200 dark:border-brand-700">
             <h3 className="text-lg font-semibold text-brand-900 dark:text-white">
-              {stats.play_time_leaderboard.length > 0 ? '排行榜' : '游玩时长排行榜'}
+              {stats.play_time_leaderboard.length > 0 ? "排行榜" : "游玩时长排行榜"}
             </h3>
           </div>
           <div className="overflow-x-auto flex-1">
@@ -372,7 +377,10 @@ function StatsPage() {
               <tbody className="divide-y divide-brand-200 dark:divide-brand-700">
                 {stats.play_time_leaderboard.slice(1).map((game, index) => (
                   <tr key={game.game_id} className="hover:bg-brand-50 dark:hover:bg-brand-700/50 transition-colors">
-                    <td className="px-6 py-4 text-brand-500 dark:text-brand-400 font-medium">#{index + 2}</td>
+                    <td className="px-6 py-4 text-brand-500 dark:text-brand-400 font-medium">
+                      #
+                      {index + 2}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center">
                         <img
@@ -392,7 +400,7 @@ function StatsPage() {
                 {stats.play_time_leaderboard.length <= 1 && (
                   <tr>
                     <td colSpan={3} className="px-6 py-12 text-center text-brand-500 dark:text-brand-400">
-                      {stats.play_time_leaderboard.length === 0 ? '暂无数据' : '暂无更多排行数据'}
+                      {stats.play_time_leaderboard.length === 0 ? "暂无数据" : "暂无更多排行数据"}
                     </td>
                   </tr>
                 )}
@@ -426,5 +434,5 @@ function StatsPage() {
         aiSummary={aiSummary}
       />
     </div>
-  )
+  );
 }
