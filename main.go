@@ -11,6 +11,7 @@ import (
 
 	"lunabox/internal/appconf"
 	"lunabox/internal/enums"
+	"lunabox/internal/migrations"
 	"lunabox/internal/service"
 
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
@@ -170,6 +171,13 @@ func main() {
 				appLogger.Fatal(err.Error())
 			}
 
+			// 运行数据库迁移（安全、只执行一次）
+			appLogger.Info("Checking for pending database migrations...")
+			if err := migrations.Run(ctx, db); err != nil {
+				appLogger.Fatal("Database migration failed: " + err.Error())
+			}
+			appLogger.Info("Database migrations completed")
+
 			configService.Init(ctx, db, config)
 			// 设置安全退出回调
 			configService.SetQuitHandler(func() {
@@ -295,13 +303,6 @@ func initSchema(db *sql.DB) error {
 			start_time TIMESTAMP,
 			end_time TIMESTAMP,
 			duration INTEGER
-		)`,
-		`CREATE TABLE IF NOT EXISTS game_backups (
-			id TEXT PRIMARY KEY,
-			game_id TEXT,
-			backup_path TEXT,
-			size INTEGER,
-			created_at TIMESTAMP
 		)`,
 	}
 
