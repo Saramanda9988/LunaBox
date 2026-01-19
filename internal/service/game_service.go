@@ -60,11 +60,11 @@ func (s *GameService) AddGame(game models.Game) error {
 	}
 
 	if game.CreatedAt.IsZero() {
-		game.CreatedAt = time.Now().UTC()
+		game.CreatedAt = time.Now()
 	}
 
 	if game.CachedAt.IsZero() {
-		game.CachedAt = time.Now().UTC()
+		game.CachedAt = time.Now()
 	}
 
 	// 保存原始封面URL用于后台下载
@@ -502,7 +502,7 @@ func (s *GameService) UpdateGameFromRemote(gameID string) error {
 	existingGame.Name = remoteGame.Name
 	existingGame.Company = remoteGame.Company
 	existingGame.Summary = remoteGame.Summary
-	existingGame.CachedAt = time.Now().UTC()
+	existingGame.CachedAt = time.Now()
 
 	existingGame.CoverURL = remoteGame.CoverURL
 	if remoteGame.CoverURL != "" {

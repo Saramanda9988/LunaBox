@@ -157,7 +157,7 @@ func (b BangumiInfoGetter) FetchMetadata(id string, token string) (models.Game, 
 		Summary:    bangumiResp.Summary,
 		SourceType: enums.Bangumi,
 		SourceID:   id,
-		CachedAt:   time.Now().UTC(),
+		CachedAt:   time.Now(),
 	}
 
 	return game, nil
@@ -252,7 +252,7 @@ func (b BangumiInfoGetter) FetchMetadataByName(name string, token string) (model
 		Summary:    bangumiResp.Summary,
 		SourceType: enums.Bangumi,
 		SourceID:   strconv.Itoa(bangumiResp.ID),
-		CachedAt:   time.Now().UTC(),
+		CachedAt:   time.Now(),
 	}
 
 	return game, nil
@@ -404,7 +404,7 @@ func (V VNDBInfoGetter) queryVNDB(filters []interface{}) (models.Game, error) {
 		Summary:    result.Description,
 		SourceType: enums.VNDB,
 		SourceID:   result.ID,
-		CachedAt:   time.Now().UTC(),
+		CachedAt:   time.Now(),
 	}
 
 	return game, nil
@@ -683,7 +683,7 @@ func (y YmgalInfoGetter) convertToModel(g *ymgalGame) (models.Game, error) {
 		Summary:    g.Introduction,
 		SourceType: enums.Ymgal,
 		SourceID:   strconv.FormatInt(g.Gid, 10),
-		CachedAt:   time.Now().UTC(),
+		CachedAt:   time.Now(),
 	}
 	return game, nil
 }

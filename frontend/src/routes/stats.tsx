@@ -3,7 +3,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { Route as rootRoute } from './__root'
 import { useChartTheme } from '../hooks/useChartTheme'
-import { formatDurationShort, formatDurationHours } from '../utils/time'
+import { formatDurationShort, formatDurationHours, formatDateToYYYYMMDD } from '../utils/time'
 import {
   CategoryScale,
   Chart as ChartJS,
@@ -39,11 +39,6 @@ export const Route = createRoute({
   path: '/stats',
   component: StatsPage,
 })
-
-// 格式化日期为 YYYY-MM-DD
-const formatDate = (date: Date) => {
-  return date.toISOString().split('T')[0]
-}
 
 function StatsPage() {
   const ref = useRef<HTMLDivElement>(null)
@@ -101,7 +96,7 @@ function StatsPage() {
   // 当切换到自定义日期范围时，初始化日期为今天
   useEffect(() => {
     if (customDateRange && !startDate && !endDate) {
-      const today = formatDate(new Date())
+      const today = formatDateToYYYYMMDD(new Date())
       setStartDate(today)
       setEndDate(today)
     }
@@ -158,7 +153,7 @@ function StatsPage() {
 
   // Chart 1: Total Play Duration Trend
   const totalTrendData = {
-    labels: stats.timeline.map((p) => p.label),
+    labels: stats.timeline.map((p) => p.label), // 后端已返回本地日期字符串，直接使用
     datasets: [
       {
         label: '总游玩时长 (小时)',
@@ -172,7 +167,7 @@ function StatsPage() {
 
   // Chart 2: Game Play Duration Trend (Multi-line)
   const gameTrendData = {
-    labels: stats.timeline.map((p) => p.label), // Assuming all series share the same timeline
+    labels: stats.timeline.map((p) => p.label), // 后端已返回本地日期字符串，直接使用
     datasets: stats.leaderboard_series.map((series, index) => {
       const colors = [
         'rgb(255, 99, 132)',

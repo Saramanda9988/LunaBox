@@ -68,7 +68,7 @@ func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 	processID := uint32(cmd.Process.Pid)
 
 	sessionID := uuid.New().String()
-	startTime := time.Now().UTC()
+	startTime := time.Now()
 
 	_, err = s.db.ExecContext(
 		s.ctx,
@@ -124,7 +124,7 @@ func (s *TimerService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID s
 	// 确保停止追踪（无论如何都要执行）
 	activeSeconds := s.activeTimeTracker.StopTracking(gameID)
 
-	endTime := time.Now().UTC()
+	endTime := time.Now()
 
 	// 如果启用活跃时间追踪，使用累加的活跃时长
 	// 否则使用整个运行时长

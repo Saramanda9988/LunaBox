@@ -533,7 +533,7 @@ func (s *BackupService) GetDBBackups() (*vo.DBBackupStatus, error) {
 			Path:      filepath.Join(backupDir, entry.Name()),
 			Name:      entry.Name(),
 			Size:      info.Size(),
-			CreatedAt: info.ModTime().UTC(), // 转换为 UTC 时间，与数据库保持一致
+			CreatedAt: info.ModTime(), // 使用本地时间
 		})
 	}
 

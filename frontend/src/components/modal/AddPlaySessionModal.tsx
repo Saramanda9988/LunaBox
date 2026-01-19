@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { toast } from 'react-hot-toast'
 import { AddPlaySession } from '../../../wailsjs/go/service/TimerService'
-import { formatDuration } from '../../utils/time'
+import { formatDuration, toLocalISOString } from '../../utils/time'
 
 interface AddPlaySessionModalProps {
   isOpen: boolean
@@ -15,11 +15,11 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
   const [startTime, setStartTime] = useState(() => {
     const now = new Date()
     now.setHours(now.getHours() - 1)
-    return now.toISOString().slice(0, 16)
+    return toLocalISOString(now).slice(0, 16)
   })
   const [endTime, setEndTime] = useState(() => {
     const now = new Date()
-    return now.toISOString().slice(0, 16)
+    return toLocalISOString(now).slice(0, 16)
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -29,8 +29,8 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
     if (!startTime || !endTime) return 0
     const start = new Date(startTime)
     const end = new Date(endTime)
-    const diffMinutes = Math.floor((end.getTime() - start.getTime()) / 1000)
-    return Math.max(0, diffMinutes)
+    const diffSeconds = Math.floor((end.getTime() - start.getTime()) / 1000)
+    return Math.max(0, diffSeconds)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,8 +44,8 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
       return
     }
 
-    const totalMinutes = calculateDuration()
-    if (totalMinutes <= 0) {
+    const totalSeconds = calculateDuration()
+    if (totalSeconds <= 0) {
       toast.error('游玩时长必须大于0')
       return
     }
@@ -57,7 +57,9 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
 
     setIsSubmitting(true)
     try {
-      await AddPlaySession(gameId, start.toISOString(), totalMinutes)
+      const totalMinutes = Math.floor(totalSeconds / 60)
+      // 使用本地时间格式（不带 Z 后缀），后端会直接解析为本地时间
+      await AddPlaySession(gameId, toLocalISOString(start), totalMinutes)
       toast.success('游玩记录添加成功')
       onSuccess()
       onClose()
@@ -65,8 +67,8 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
       const now = new Date()
       const oneHourAgo = new Date(now)
       oneHourAgo.setHours(now.getHours() - 1)
-      setStartTime(oneHourAgo.toISOString().slice(0, 16))
-      setEndTime(now.toISOString().slice(0, 16))
+      setStartTime(toLocalISOString(oneHourAgo).slice(0, 16))
+      setEndTime(toLocalISOString(now).slice(0, 16))
     } catch (error) {
       console.error('Failed to add play session:', error)
       toast.error('添加游玩记录失败')
@@ -103,7 +105,7 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
               type="datetime-local"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              max={new Date().toISOString().slice(0, 16)}
+              max={toLocalISOString(new Date()).slice(0, 16)}
               className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
               required
             />
@@ -117,7 +119,7 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
               type="datetime-local"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
-              max={new Date().toISOString().slice(0, 16)}
+              max={toLocalISOString(new Date()).slice(0, 16)}
               className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
               required
             />

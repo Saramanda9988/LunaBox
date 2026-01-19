@@ -61,7 +61,7 @@ func (s *ActiveTimeTracker) StartTracking(sessionID string, gameID string, proce
 		SessionID: sessionID,
 		GameID:    gameID,
 		ProcessID: processID,
-		StartTime: time.Now().UTC(),
+		StartTime: time.Now(),
 		cancel:    cancel,
 	}
 	s.sessions[gameID] = session

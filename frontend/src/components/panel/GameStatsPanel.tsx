@@ -109,7 +109,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
   }
 
   const chartData = {
-    labels: stats?.recent_play_history?.map(h => h.date) || [],
+    labels: stats?.recent_play_history?.map(h => h.date) || [], // 后端已返回本地日期字符串，直接使用
     datasets: [
       {
         label: '游戏时长 (分钟)',
