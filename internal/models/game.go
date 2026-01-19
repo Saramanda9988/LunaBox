@@ -20,11 +20,11 @@ type Game struct {
 	CreatedAt  time.Time        `json:"created_at"`
 }
 
-// GameBackup 游戏存档备份记录
+// GameBackup 游戏存档备份记录（基于文件系统，不使用数据库）
 type GameBackup struct {
-	ID         string    `json:"id"`
-	GameID     string    `json:"game_id"`
-	BackupPath string    `json:"backup_path"` // 备份文件路径
-	Size       int64     `json:"size"`        // 备份文件大小（字节）
-	CreatedAt  time.Time `json:"created_at"`
+	Path      string    `json:"path"` // 备份文件路径（作为唯一标识）
+	Name      string    `json:"name"` // 文件名
+	GameID    string    `json:"game_id"`
+	Size      int64     `json:"size"`       // 备份文件大小（字节）
+	CreatedAt time.Time `json:"created_at"` // 创建时间（来自文件修改时间）
 }

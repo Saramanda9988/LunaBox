@@ -108,8 +108,8 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
     }
   }
 
-  const handleRestoreBackup = async (backupId: string, createdAt: string) => {
-    const time = new Date(createdAt).toLocaleString()
+  const handleRestoreBackup = async (backupPath: string, createdAt: any) => {
+    const time = formatLocalDateTime(createdAt)
     setConfirmConfig({
       isOpen: true,
       title: '恢复存档',
@@ -117,7 +117,7 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
       type: 'info',
       onConfirm: async () => {
         try {
-          await RestoreBackup(backupId)
+          await RestoreBackup(backupPath)
           toast.success('存档已恢复')
         } catch (err: any) {
           toast.error('恢复失败: ' + err)
@@ -126,7 +126,7 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
     })
   }
 
-  const handleDeleteBackup = async (backupId: string) => {
+  const handleDeleteBackup = async (backupPath: string) => {
     setConfirmConfig({
       isOpen: true,
       title: '删除备份',
@@ -134,7 +134,7 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
       type: 'danger',
       onConfirm: async () => {
         try {
-          await DeleteBackup(backupId)
+          await DeleteBackup(backupPath)
           await loadBackups()
           toast.success('备份已删除')
         } catch (err: any) {
@@ -152,10 +152,10 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
     }
   }
 
-  const handleUploadToCloud = async (backupId: string) => {
+  const handleUploadToCloud = async (backupPath: string) => {
     setIsUploading(true)
     try {
-      await UploadGameBackupToCloud(gameId, backupId)
+      await UploadGameBackupToCloud(gameId, backupPath)
       await loadCloudBackups()
       toast.success('已上传到云端')
     } catch (err: any) {
@@ -235,7 +235,7 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
           <div className="space-y-3">
             {backups.map((backup) => (
               <div
-                key={backup.id}
+                key={backup.path}
                 className="flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-700 rounded-lg"
               >
                 <div className="flex items-center gap-4">
@@ -250,7 +250,7 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
                 <div className="flex gap-2">
                   {cloudEnabled && (
                     <button
-                      onClick={() => handleUploadToCloud(backup.id)}
+                      onClick={() => handleUploadToCloud(backup.path)}
                       disabled={isUploading}
                       title="上传到云端"
                       className="p-2 text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded transition-colors disabled:opacity-50"
@@ -259,14 +259,14 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
                     </button>
                   )}
                   <button
-                    onClick={() => handleRestoreBackup(backup.id, formatLocalDateTime(backup.created_at))}
+                    onClick={() => handleRestoreBackup(backup.path, backup.created_at)}
                     title="恢复备份"
                     className="p-2 text-success-600 hover:bg-success-100 dark:hover:bg-success-900 rounded transition-colors"
                   >
                     <div className="i-mdi-backup-restore text-xl" />
                   </button>
                   <button
-                    onClick={() => handleDeleteBackup(backup.id)}
+                    onClick={() => handleDeleteBackup(backup.path)}
                     title="删除备份"
                     className="p-2 text-error-600 hover:bg-error-100 dark:hover:bg-error-900 rounded transition-colors"
                   >

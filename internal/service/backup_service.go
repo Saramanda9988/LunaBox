@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -151,26 +150,46 @@ func (s *BackupService) OpenBackupFolder(gameID string) error {
 
 // ========== 游戏存档本地备份方法 ==========
 
-// GetGameBackups 获取游戏的备份历史
+// GetGameBackups 获取游戏的备份历史（直接读取文件夹，不使用数据库）
 func (s *BackupService) GetGameBackups(gameID string) ([]models.GameBackup, error) {
-	query := `SELECT id, game_id, backup_path, size, created_at 
-		FROM game_backups WHERE game_id = ? ORDER BY created_at DESC`
-
-	rows, err := s.db.QueryContext(s.ctx, query, gameID)
+	backupDir, err := s.GetBackupDir()
 	if err != nil {
-		return nil, fmt.Errorf("failed to query backups: %w", err)
+		return nil, err
 	}
-	defer rows.Close()
+
+	gameBackupDir := filepath.Join(backupDir, gameID)
+	entries, err := os.ReadDir(gameBackupDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []models.GameBackup{}, nil
+		}
+		return nil, err
+	}
 
 	var backups []models.GameBackup
-	for rows.Next() {
-		var backup models.GameBackup
-		err := rows.Scan(&backup.ID, &backup.GameID, &backup.BackupPath, &backup.Size, &backup.CreatedAt)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan backup: %w", err)
+	for _, entry := range entries {
+		// 只处理 .zip 文件，跳过目录（如 pre_restore、cloud_download）
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".zip") {
+			continue
 		}
-		backups = append(backups, backup)
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		backups = append(backups, models.GameBackup{
+			Path:      filepath.Join(gameBackupDir, entry.Name()),
+			Name:      entry.Name(),
+			GameID:    gameID,
+			Size:      info.Size(),
+			CreatedAt: info.ModTime(), // 使用文件修改时间
+		})
 	}
+
+	// 按创建时间降序排序
+	sort.Slice(backups, func(i, j int) bool {
+		return backups[i].CreatedAt.After(backups[j].CreatedAt)
+	})
+
 	return backups, nil
 }
 
@@ -206,20 +225,18 @@ func (s *BackupService) CreateBackup(gameID string) (*models.GameBackup, error) 
 		return nil, fmt.Errorf("备份失败: %w", err)
 	}
 
-	backup := &models.GameBackup{
-		ID:         uuid.New().String(),
-		GameID:     gameID,
-		BackupPath: backupPath,
-		Size:       size,
-		CreatedAt:  time.Now(),
+	// 获取文件信息以得到准确的修改时间
+	stat, err := os.Stat(backupPath)
+	if err != nil {
+		return nil, err
 	}
 
-	_, err = s.db.ExecContext(s.ctx,
-		"INSERT INTO game_backups (id, game_id, backup_path, size, created_at) VALUES (?, ?, ?, ?, ?)",
-		backup.ID, backup.GameID, backup.BackupPath, backup.Size, backup.CreatedAt)
-	if err != nil {
-		os.Remove(backupPath)
-		return nil, fmt.Errorf("failed to save backup record: %w", err)
+	backup := &models.GameBackup{
+		Path:      backupPath,
+		Name:      backupFileName,
+		GameID:    gameID,
+		Size:      size,
+		CreatedAt: stat.ModTime(),
 	}
 
 	s.cleanupOldLocalBackups(gameID)
@@ -240,33 +257,45 @@ func (s *BackupService) cleanupOldLocalBackups(gameID string) {
 	}
 
 	for i := retention; i < len(backups); i++ {
-		s.DeleteBackup(backups[i].ID)
+		s.DeleteBackup(backups[i].Path)
 	}
 }
 
-// RestoreBackup 恢复备份到指定时间点
-func (s *BackupService) RestoreBackup(backupID string) error {
-	var backup models.GameBackup
-	err := s.db.QueryRowContext(s.ctx,
-		"SELECT id, game_id, backup_path, size, created_at FROM game_backups WHERE id = ?", backupID).
-		Scan(&backup.ID, &backup.GameID, &backup.BackupPath, &backup.Size, &backup.CreatedAt)
+// RestoreBackup 恢复备份到指定时间点（参数改为备份路径）
+func (s *BackupService) RestoreBackup(backupPath string) error {
+	// 从路径中提取 gameID（路径格式: backups/{gameID}/{timestamp}.zip）
+	backupDir, err := s.GetBackupDir()
 	if err != nil {
-		return fmt.Errorf("备份记录不存在")
+		return err
+	}
+
+	// 验证备份路径在合法目录下
+	if !strings.HasPrefix(backupPath, backupDir) {
+		return fmt.Errorf("无效的备份路径")
+	}
+
+	// 从路径提取 gameID
+	relPath, _ := filepath.Rel(backupDir, backupPath)
+	parts := strings.Split(relPath, string(filepath.Separator))
+	if len(parts) < 2 {
+		return fmt.Errorf("无效的备份路径格式")
+	}
+	gameID := parts[0]
+
+	// 检查备份文件是否存在
+	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+		return fmt.Errorf("备份文件不存在: %s", backupPath)
 	}
 
 	var savePath string
-	err = s.db.QueryRowContext(s.ctx, "SELECT COALESCE(save_path, '') FROM games WHERE id = ?", backup.GameID).Scan(&savePath)
+	err = s.db.QueryRowContext(s.ctx, "SELECT COALESCE(save_path, '') FROM games WHERE id = ?", gameID).Scan(&savePath)
 	if err != nil || savePath == "" {
 		return fmt.Errorf("存档目录未设置")
-	}
-	if _, err := os.Stat(backup.BackupPath); os.IsNotExist(err) {
-		return fmt.Errorf("备份文件不存在: %s", backup.BackupPath)
 	}
 
 	// 先备份当前存档（恢复前备份）
 	if _, err := os.Stat(savePath); err == nil {
-		backupDir, _ := s.GetBackupDir()
-		preRestoreDir := filepath.Join(backupDir, backup.GameID, "pre_restore")
+		preRestoreDir := filepath.Join(backupDir, gameID, "pre_restore")
 		os.MkdirAll(preRestoreDir, 0755)
 		preRestorePath := filepath.Join(preRestoreDir, fmt.Sprintf("%s_before_restore.zip", time.Now().Format("2006-01-02T15-04-05")))
 		_, err := utils.ZipDirectory(savePath, preRestorePath)
@@ -281,28 +310,31 @@ func (s *BackupService) RestoreBackup(backupID string) error {
 	if err := os.MkdirAll(savePath, 0755); err != nil {
 		return fmt.Errorf("创建存档目录失败: %w", err)
 	}
-	if err := utils.UnzipFile(backup.BackupPath, savePath); err != nil {
+	if err := utils.UnzipFile(backupPath, savePath); err != nil {
 		return fmt.Errorf("恢复失败: %w", err)
 	}
 	return nil
 }
 
-// DeleteBackup 删除备份
-func (s *BackupService) DeleteBackup(backupID string) error {
-	var backupPath string
-	err := s.db.QueryRowContext(s.ctx, "SELECT backup_path FROM game_backups WHERE id = ?", backupID).Scan(&backupPath)
+// DeleteBackup 删除备份（参数改为备份路径）
+func (s *BackupService) DeleteBackup(backupPath string) error {
+	backupDir, err := s.GetBackupDir()
 	if err != nil {
-		return fmt.Errorf("备份记录不存在")
+		return err
 	}
-	os.Remove(backupPath)
-	_, err = s.db.ExecContext(s.ctx, "DELETE FROM game_backups WHERE id = ?", backupID)
-	return err
+
+	// 验证备份路径在合法目录下
+	if !strings.HasPrefix(backupPath, backupDir) {
+		return fmt.Errorf("无效的备份路径")
+	}
+
+	return os.Remove(backupPath)
 }
 
 // ========== 游戏存档云备份方法 ==========
 
-// UploadGameBackupToCloud 上传游戏存档到云端
-func (s *BackupService) UploadGameBackupToCloud(gameID string, backupID string) error {
+// UploadGameBackupToCloud 上传游戏存档到云端（参数改为 backupPath）
+func (s *BackupService) UploadGameBackupToCloud(gameID string, backupPath string) error {
 	if s.config.BackupUserID == "" {
 		return fmt.Errorf("备份用户 ID 未设置")
 	}
@@ -312,10 +344,9 @@ func (s *BackupService) UploadGameBackupToCloud(gameID string, backupID string) 
 		return err
 	}
 
-	var backupPath string
-	err = s.db.QueryRowContext(s.ctx, "SELECT backup_path FROM game_backups WHERE id = ?", backupID).Scan(&backupPath)
-	if err != nil {
-		return fmt.Errorf("备份记录不存在")
+	// 验证备份文件存在
+	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+		return fmt.Errorf("备份文件不存在: %s", backupPath)
 	}
 
 	timestamp := time.Now().Format("2006-01-02T15-04-05")
