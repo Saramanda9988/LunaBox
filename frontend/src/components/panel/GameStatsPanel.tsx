@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Line } from 'react-chartjs-2'
 import { vo, models, enums } from '../../../wailsjs/go/models'
 import { GetGameStats } from '../../../wailsjs/go/service/StatsService'
@@ -22,26 +22,12 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
   const [stats, setStats] = useState<vo.GameDetailStats | null>(null)
   const [sessions, setSessions] = useState<models.PlaySession[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [showSkeleton, setShowSkeleton] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('chart')
   const [timeDimension, setTimeDimension] = useState<enums.Period>(enums.Period.WEEK)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null)
 
-  // 延迟显示骨架屏，避免闪烁
-  useEffect(() => {
-    let timer: number
-    if (isLoading) {
-      timer = window.setTimeout(() => {
-        setShowSkeleton(true)
-      }, 300)
-    } else {
-      setShowSkeleton(false)
-    }
-    return () => clearTimeout(timer)
-  }, [isLoading])
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const statsData = await GetGameStats({
         game_id: gameId,
@@ -54,9 +40,9 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
       console.error('Failed to load game stats:', error)
       toast.error('加载统计数据失败')
     }
-  }
+  }, [gameId, timeDimension])
 
-  const loadSessions = async () => {
+  const loadSessions = useCallback(async () => {
     try {
       const data = await GetPlaySessions(gameId)
       setSessions(data || [])
@@ -64,7 +50,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
       console.error('Failed to load play sessions:', error)
       toast.error('加载游玩记录失败')
     }
-  }
+  }, [gameId])
 
   useEffect(() => {
     const loadData = async () => {
@@ -76,7 +62,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
       }
     }
     loadData()
-  }, [gameId, timeDimension])
+  }, [loadStats, loadSessions])
 
   const handleDeleteSession = async () => {
     if (!deleteSessionId) return
@@ -154,9 +140,6 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
   }
 
   if (isLoading && !stats) {
-    if (!showSkeleton) {
-      return null
-    }
     return <GameStatsSkeleton />
   }
 
