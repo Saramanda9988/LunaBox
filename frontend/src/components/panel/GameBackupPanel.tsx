@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { models, vo } from '../../../wailsjs/go/models'
 import {
@@ -47,18 +47,7 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
     onConfirm: () => {},
   })
 
-  useEffect(() => {
-    loadBackups()
-    loadCloudStatus()
-  }, [gameId])
-
-  useEffect(() => {
-    if (cloudStatus?.configured && cloudStatus?.enabled) {
-      loadCloudBackups()
-    }
-  }, [cloudStatus, gameId])
-
-  const loadBackups = async () => {
+  const loadBackups = useCallback(async () => {
     setLoadingLocal(true)
     try {
       const data = await GetGameBackups(gameId)
@@ -68,18 +57,18 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
     } finally {
       setLoadingLocal(false)
     }
-  }
+  }, [gameId])
 
-  const loadCloudStatus = async () => {
+  const loadCloudStatus = useCallback(async () => {
     try {
       const status = await GetCloudBackupStatus()
       setCloudStatus(status)
     } catch (err) {
       console.error('Failed to load cloud status:', err)
     }
-  }
+  }, [])
 
-  const loadCloudBackups = async () => {
+  const loadCloudBackups = useCallback(async () => {
     setLoadingCloud(true)
     try {
       const data = await GetCloudGameBackups(gameId)
@@ -89,7 +78,18 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
     } finally {
       setLoadingCloud(false)
     }
-  }
+  }, [gameId])
+
+  useEffect(() => {
+    loadBackups()
+    loadCloudStatus()
+  }, [loadBackups, loadCloudStatus])
+
+  useEffect(() => {
+    if (cloudStatus?.configured && cloudStatus?.enabled) {
+      loadCloudBackups()
+    }
+  }, [cloudStatus, loadCloudBackups])
 
   const handleCreateBackup = async () => {
     if (!savePath) {
@@ -288,7 +288,7 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
               云端备份
             </h3>
             <button
-              onClick={loadBackups}
+              onClick={loadCloudBackups}
               disabled={loadingCloud || !cloudEnabled}
               title="刷新云端备份列表"
               className="p-2 text-brand-600 hover:bg-brand-100 dark:hover:bg-brand-700 rounded transition-colors disabled:opacity-50"
