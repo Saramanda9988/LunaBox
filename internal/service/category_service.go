@@ -168,14 +168,14 @@ func (s *CategoryService) DeleteCategory(id string) error {
 
 func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, error) {
 	query := `
-		SELECT g.id, g.name, 
-			COALESCE(g.cover_url, '') as cover_url, 
-			COALESCE(g.company, '') as company, 
-			COALESCE(g.summary, '') as summary, 
-			COALESCE(g.path, '') as path, 
-			COALESCE(g.source_type, '') as source_type, 
-			g.cached_at, 
-			COALESCE(g.source_id, '') as source_id, 
+		SELECT g.id, g.name,
+			COALESCE(g.cover_url, '') as cover_url,
+			COALESCE(g.company, '') as company,
+			COALESCE(g.summary, '') as summary,
+			COALESCE(g.path, '') as path,
+			COALESCE(g.source_type, '') as source_type,
+			g.cached_at,
+			COALESCE(g.source_id, '') as source_id,
 			g.created_at
 		FROM games g
 		JOIN game_categories gc ON g.id = gc.game_id
@@ -199,4 +199,32 @@ func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, 
 		games = append(games, g)
 	}
 	return games, nil
+}
+
+func (s *CategoryService) GetCategoriesByGame(gameID string) ([]vo.CategoryVO, error) {
+	query := `
+		SELECT c.id, c.name, c.is_system, c.created_at, c.updated_at, COUNT(gc.game_id) as game_count
+		FROM categories c
+		INNER JOIN game_categories gc ON c.id = gc.category_id
+		WHERE gc.game_id = ?
+		GROUP BY c.id, c.name, c.is_system, c.created_at, c.updated_at
+		ORDER BY c.created_at
+	`
+	rows, err := s.db.Query(query, gameID)
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "GetCategoriesByGame: failed to query categories for game %s: %v", gameID, err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var categories []vo.CategoryVO
+	for rows.Next() {
+		var c vo.CategoryVO
+		if err := rows.Scan(&c.ID, &c.Name, &c.IsSystem, &c.CreatedAt, &c.UpdatedAt, &c.GameCount); err != nil {
+			runtime.LogErrorf(s.ctx, "GetCategoriesByGame: failed to scan row for game %s: %v", gameID, err)
+			return nil, err
+		}
+		categories = append(categories, c)
+	}
+	return categories, nil
 }

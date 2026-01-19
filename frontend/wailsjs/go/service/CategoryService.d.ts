@@ -14,6 +14,8 @@ export function DeleteCategory(arg1:string):Promise<void>;
 
 export function GetCategories():Promise<Array<vo.CategoryVO>>;
 
+export function GetCategoriesByGame(arg1:string):Promise<Array<vo.CategoryVO>>;
+
 export function GetCategoryByID(arg1:string):Promise<vo.CategoryVO>;
 
 export function GetGamesByCategory(arg1:string):Promise<Array<models.Game>>;

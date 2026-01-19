@@ -18,6 +18,10 @@ export function GetCategories() {
   return window['go']['service']['CategoryService']['GetCategories']();
 }
 
+export function GetCategoriesByGame(arg1) {
+  return window['go']['service']['CategoryService']['GetCategoriesByGame'](arg1);
+}
+
 export function GetCategoryByID(arg1) {
   return window['go']['service']['CategoryService']['GetCategoryByID'](arg1);
 }

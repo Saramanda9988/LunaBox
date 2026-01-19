@@ -2,13 +2,15 @@ import { createRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState, useRef } from 'react'
 import { Route as rootRoute } from './__root'
 import { GetGameByID, UpdateGame, SelectGameExecutable, DeleteGame, SelectSaveDirectory, SelectCoverImage, UpdateGameFromRemote } from '../../wailsjs/go/service/GameService'
-import { models, enums } from '../../wailsjs/go/models'
+import { GetCategories, AddGameToCategory, RemoveGameFromCategory, GetCategoriesByGame } from '../../wailsjs/go/service/CategoryService'
+import { models, enums, vo } from '../../wailsjs/go/models'
 import { toast } from 'react-hot-toast'
 import { formatLocalDate } from '../utils/time'
 import { GameBackupPanel } from '../components/panel/GameBackupPanel'
 import { GameEditPanel } from '../components/panel/GameEditPanel'
 import { GameStatsPanel } from '../components/panel/GameStatsPanel'
 import { ConfirmModal } from '../components/modal/ConfirmModal'
+import { AddToCategoryModal } from '../components/modal/AddToCategoryModal'
 import { GameDetailSkeleton } from '../components/skeleton/GameDetailSkeleton'
 
 export const Route = createRoute({
@@ -25,6 +27,9 @@ function GameDetailPage() {
   const [showSkeleton, setShowSkeleton] = useState(false)
   const [activeTab, setActiveTab] = useState('stats')
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
+  const [allCategories, setAllCategories] = useState<vo.CategoryVO[]>([])
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
   const isInitialMount = useRef(true)
   const originalGameData = useRef<models.Game | null>(null)
 
@@ -183,6 +188,53 @@ function GameDetailPage() {
     }
   }
 
+  const openCategoryModal = async () => {
+    try {
+      const [categories, gameCategories] = await Promise.all([
+        GetCategories(),
+        GetCategoriesByGame(gameId)
+      ])
+      setAllCategories(categories || [])
+      setSelectedCategoryIds(gameCategories?.map(c => c.id) || [])
+      setIsCategoryModalOpen(true)
+    } catch (error) {
+      console.error('Failed to load categories:', error)
+      toast.error('加载收藏夹失败')
+    }
+  }
+
+  const handleSaveCategories = async (newSelectedIds: string[]) => {
+    const currentIds = selectedCategoryIds
+
+    // 计算需要添加的和移除的
+    const toAdd = newSelectedIds.filter(id => !currentIds.includes(id))
+    const toRemove = currentIds.filter(id => !newSelectedIds.includes(id))
+
+    try {
+      // 执行添加操作
+      for (const categoryId of toAdd) {
+        await AddGameToCategory(gameId, categoryId)
+      }
+      // 执行移除操作
+      for (const categoryId of toRemove) {
+        await RemoveGameFromCategory(gameId, categoryId)
+      }
+
+      setSelectedCategoryIds(newSelectedIds)
+
+      // 刷新所有分类的game_count
+      const categories = await GetCategories()
+      setAllCategories(categories || [])
+
+      if (toAdd.length > 0 || toRemove.length > 0) {
+        toast.success('收藏已更新')
+      }
+    } catch (error) {
+      console.error('Failed to update categories:', error)
+      toast.error('更新收藏失败')
+    }
+  }
+
   return (
     <div className={`space-y-8 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${isLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
       {/* Back Button */}
@@ -223,8 +275,8 @@ function GameDetailPage() {
                     key={key}
                     onClick={() => handleStatusChange(key)}
                     className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-                      isActive 
-                        ? config.color + ' ring-2 ring-offset-1 ring-brand-400 dark:ring-offset-brand-900' 
+                      isActive
+                        ? config.color + ' ring-2 ring-offset-1 ring-brand-400 dark:ring-offset-brand-900'
                         : 'bg-brand-100 text-brand-500 dark:bg-brand-700 dark:text-brand-400 hover:bg-brand-200 dark:hover:bg-brand-600'
                     }`}
                     title={config.label}
@@ -264,24 +316,33 @@ function GameDetailPage() {
 
       {/* Tabs */}
       <div className="border-b border-brand-200 dark:border-brand-700">
-        <nav className="-mb-px flex space-x-8">
-          {['stats', 'edit', 'backup'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`
-                whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-                ${activeTab === tab
-                  ? 'border-neutral-500 text-neutral-600 dark:text-neutral-400'
-                  : 'border-transparent text-brand-500 hover:text-brand-700 hover:border-brand-300 dark:text-brand-400 dark:hover:text-brand-300'}
-              `}
-            >
-              {tab === 'stats' && '游戏统计'}
-              {tab === 'edit' && '编辑'}
-              {tab === 'backup' && '备份'}
-            </button>
-          ))}
-        </nav>
+        <div className="flex justify-between items-center">
+          <nav className="-mb-px flex space-x-8">
+            {['stats', 'edit', 'backup'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`
+                  whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+                  ${activeTab === tab
+                    ? 'border-neutral-500 text-neutral-600 dark:text-neutral-400'
+                    : 'border-transparent text-brand-500 hover:text-brand-700 hover:border-brand-300 dark:text-brand-400 dark:hover:text-brand-300'}
+                `}
+              >
+                {tab === 'stats' && '游戏统计'}
+                {tab === 'edit' && '编辑'}
+                {tab === 'backup' && '备份'}
+              </button>
+            ))}
+          </nav>
+          <button
+            onClick={openCategoryModal}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-100 text-brand-600 hover:text-brand-200 dark:bg-brand-900 dark:text-brand-400 dark:hover:text-brand-700 transition-colors"
+            title="添加到收藏"
+          >
+            <div className="i-mdi-folder-plus-outline text-lg" />
+          </button>
+        </div>
       </div>
 
       {/* Content */}
@@ -313,6 +374,14 @@ function GameDetailPage() {
         type="danger"
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDeleteGame}
+      />
+
+      <AddToCategoryModal
+        isOpen={isCategoryModalOpen}
+        allCategories={allCategories}
+        initialSelectedIds={selectedCategoryIds}
+        onClose={() => setIsCategoryModalOpen(false)}
+        onSave={handleSaveCategories}
       />
     </div>
   )
