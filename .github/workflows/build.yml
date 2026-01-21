@@ -1,17 +1,15 @@
 name: Build and Test
 
 on:
-  workflow_run:
-    workflows: ["ESLint Check"]
-    types: [completed]
+  push:
+    branches: [main, master, develop]
+  pull_request:
     branches: [main, master, develop]
 
 jobs:
   test:
     name: Test Compilation
     runs-on: windows-latest
-    # 只在 ESLint 成功时才运行
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
