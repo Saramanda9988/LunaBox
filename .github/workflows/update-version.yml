@@ -1,0 +1,123 @@
+name: Update Version Info
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (例如: 1.2.0)'
+        required: true
+        type: string
+      release_date:
+        description: '发布日期 (例如: 2024-01-15, 留空则使用今天)'
+        required: false
+        type: string
+      changelog_url:
+        description: 'Changelog URL (留空则使用 GitHub Release)'
+        required: false
+        type: string
+      download_url:
+        description: 'Download URL (留空则使用 GitHub Release)'
+        required: false
+        type: string
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      
+      - name: Get release info
+        id: release_info
+        run: |
+          # 如果是手动触发，使用输入参数
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            RELEASE_DATE="${{ github.event.inputs.release_date }}"
+            CHANGELOG="${{ github.event.inputs.changelog_url }}"
+            DOWNLOAD="${{ github.event.inputs.download_url }}"
+          else
+            # 从 release 事件获取信息
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"  # 移除 'v' 前缀
+            RELEASE_DATE=$(date +%Y-%m-%d)
+            CHANGELOG="${{ github.event.release.html_url }}"
+            DOWNLOAD="${{ github.event.release.html_url }}"
+          fi
+          
+          # 如果没有提供日期，使用今天
+          if [ -z "$RELEASE_DATE" ]; then
+            RELEASE_DATE=$(date +%Y-%m-%d)
+          fi
+          
+          # 如果没有提供 URL，使用 GitHub Release 页面
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="https://github.com/${{ github.repository }}/releases/tag/v${VERSION}"
+          fi
+          if [ -z "$DOWNLOAD" ]; then
+            DOWNLOAD="https://github.com/${{ github.repository }}/releases/tag/v${VERSION}"
+          fi
+          
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "release_date=${RELEASE_DATE}" >> $GITHUB_OUTPUT
+          echo "changelog=${CHANGELOG}" >> $GITHUB_OUTPUT
+          echo "download=${DOWNLOAD}" >> $GITHUB_OUTPUT
+      
+      - name: Update version.json
+        run: |
+          mkdir -p docs
+          
+          # 从 CHANGELOG.md 提取对应版本的更新日志
+          VERSION="${{ steps.release_info.outputs.version }}"
+          
+          # 提取版本的更新日志内容（使用 awk 提取指定版本的内容）
+          CHANGELOG_CONTENT=$(awk -v ver="$VERSION" '
+            /^## / {
+              if (found) exit;
+              if ($2 == ver) found=1;
+              next;
+            }
+            found && /^###/ { print; next; }
+            found && /^- / { print; next; }
+            found && /^$/ { next; }
+          ' CHANGELOG.md | sed 's/"/\\"/g' | awk '{
+            if (NR==1) printf "    \"%s\"", $0;
+            else printf ",\n    \"%s\"", $0;
+          }')
+          
+          # 如果没有找到对应版本的更新日志，使用默认内容
+          if [ -z "$CHANGELOG_CONTENT" ]; then
+            CHANGELOG_CONTENT='    "### 更新",\n    "- 请查看 GitHub Release 页面获取详细信息"'
+          fi
+          
+          cat > docs/version.json << EOF
+          {
+            "version": "${{ steps.release_info.outputs.version }}",
+            "release_date": "${{ steps.release_info.outputs.release_date }}",
+            "changelog": [
+          $CHANGELOG_CONTENT
+            ],
+            "downloads": {
+              "github": "${{ steps.release_info.outputs.changelog }}",
+              "gitee": "https://gitee.com/lunarain/lunabox/releases/tag/v${{ steps.release_info.outputs.version }}"
+            }
+          }
+          EOF
+          
+          echo "Created version.json with:"
+          cat docs/version.json
+      
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add docs/version.json
+          git diff --staged --quiet || git commit -m "chore: update version.json to ${{ steps.release_info.outputs.version }}"
+          git push

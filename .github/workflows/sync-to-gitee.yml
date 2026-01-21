@@ -1,0 +1,157 @@
+name: Sync Release to Gitee
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to sync (e.g., v1.2.0)'
+        required: true
+        type: string
+
+jobs:
+  sync-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Get GitHub Release Info
+        id: github_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag }}
+        run: |
+          # 获取 GitHub Release 信息
+          RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG")
+          
+          # 提取信息
+          RELEASE_NAME=$(echo "$RELEASE_INFO" | jq -r '.name // .tag_name')
+          RELEASE_BODY=$(echo "$RELEASE_INFO" | jq -r '.body // ""')
+          IS_PRERELEASE=$(echo "$RELEASE_INFO" | jq -r '.prerelease')
+          
+          # 输出信息
+          echo "release_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
+          echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+          
+          # 保存 body 到文件（处理多行文本）
+          echo "$RELEASE_BODY" > /tmp/release_body.txt
+          
+          echo "GitHub Release info:"
+          echo "  Tag: $TAG"
+          echo "  Name: $RELEASE_NAME"
+          echo "  Prerelease: $IS_PRERELEASE"
+      
+      - name: Download GitHub Release Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag }}
+        run: |
+          # 创建下载目录
+          mkdir -p /tmp/assets
+          
+          # 获取所有资源的下载链接
+          ASSETS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG" | \
+            jq -r '.assets[] | "\(.name)|\(.browser_download_url)"')
+          
+          # 下载每个资源
+          if [ -n "$ASSETS" ]; then
+            echo "$ASSETS" | while IFS='|' read -r name url; do
+              echo "Downloading: $name"
+              curl -L -H "Authorization: token $GITHUB_TOKEN" -o "/tmp/assets/$name" "$url"
+            done
+          else
+            echo "No assets found in this release"
+          fi
+      
+      - name: Create or Update Gitee Release
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_REPO: ${{ secrets.GITEE_REPO }}  # 格式: owner/repo
+          TAG: ${{ github.event.inputs.tag }}
+          RELEASE_NAME: ${{ steps.github_release.outputs.release_name }}
+          IS_PRERELEASE: ${{ steps.github_release.outputs.is_prerelease }}
+        run: |
+          # 读取 release body
+          RELEASE_BODY=$(cat /tmp/release_body.txt)
+          
+          # 检查 Gitee Release 是否已存在
+          EXISTING_RELEASE=$(curl -s -X GET \
+            "https://gitee.com/api/v5/repos/$GITEE_REPO/releases/tags/$TAG?access_token=$GITEE_TOKEN")
+          
+          RELEASE_ID=$(echo "$EXISTING_RELEASE" | jq -r '.id // empty')
+          
+          if [ -n "$RELEASE_ID" ]; then
+            echo "Updating existing Gitee release (ID: $RELEASE_ID)"
+            # 更新现有 Release
+            curl -X PATCH \
+              "https://gitee.com/api/v5/repos/$GITEE_REPO/releases/$RELEASE_ID" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"access_token\": \"$GITEE_TOKEN\",
+                \"tag_name\": \"$TAG\",
+                \"name\": \"$RELEASE_NAME\",
+                \"body\": $(echo "$RELEASE_BODY" | jq -Rs .),
+                \"prerelease\": $IS_PRERELEASE
+              }"
+          else
+            echo "Creating new Gitee release"
+            # 创建新 Release
+            RESPONSE=$(curl -s -X POST \
+              "https://gitee.com/api/v5/repos/$GITEE_REPO/releases" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"access_token\": \"$GITEE_TOKEN\",
+                \"tag_name\": \"$TAG\",
+                \"name\": \"$RELEASE_NAME\",
+                \"body\": $(echo "$RELEASE_BODY" | jq -Rs .),
+                \"prerelease\": $IS_PRERELEASE
+              }")
+            
+            RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
+            
+            if [ -z "$RELEASE_ID" ]; then
+              echo "Failed to create Gitee release"
+              echo "$RESPONSE"
+              exit 1
+            fi
+          fi
+          
+          echo "release_id=$RELEASE_ID" >> $GITHUB_OUTPUT
+          echo "Gitee Release: https://gitee.com/$GITEE_REPO/releases/$TAG"
+      
+      - name: Upload Assets to Gitee
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_REPO: ${{ secrets.GITEE_REPO }}
+          RELEASE_ID: ${{ steps.create_gitee_release.outputs.release_id }}
+        run: |
+          # 检查是否有文件要上传
+          if [ -z "$(ls -A /tmp/assets 2>/dev/null)" ]; then
+            echo "No assets to upload"
+            exit 0
+          fi
+          
+          # 上传每个文件
+          for file in /tmp/assets/*; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              echo "Uploading: $filename"
+              
+              curl -X POST \
+                "https://gitee.com/api/v5/repos/$GITEE_REPO/releases/$RELEASE_ID/attach_files" \
+                -H "Content-Type: multipart/form-data" \
+                -F "access_token=$GITEE_TOKEN" \
+                -F "file=@$file"
+              
+              echo "Uploaded: $filename"
+            fi
+          done
+      
+      - name: Summary
+        run: |
+          echo "✅ Successfully synced release ${{ github.event.inputs.tag }} to Gitee"
+          echo "GitHub: https://github.com/${{ github.repository }}/releases/tag/${{ github.event.inputs.tag }}"
+          echo "Gitee: https://gitee.com/${{ secrets.GITEE_REPO }}/releases/${{ github.event.inputs.tag }}"
