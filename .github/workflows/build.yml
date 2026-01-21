@@ -3,6 +3,9 @@ name: Build and Test
 on:
   push:
     branches: [main, master, develop]
+    paths:
+      - 'frontend/**'
+      - 'internal/**'
   pull_request:
     branches: [main, master, develop]
 
