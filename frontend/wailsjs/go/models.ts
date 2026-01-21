@@ -36,6 +36,10 @@ export namespace appconf {
 	    window_width: number;
 	    window_height: number;
 	    record_active_time_only: boolean;
+	    check_update_on_startup: boolean;
+	    update_check_url?: string;
+	    last_update_check?: string;
+	    skip_version?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -78,6 +82,10 @@ export namespace appconf {
 	        this.window_width = source["window_width"];
 	        this.window_height = source["window_height"];
 	        this.record_active_time_only = source["record_active_time_only"];
+	        this.check_update_on_startup = source["check_update_on_startup"];
+	        this.update_check_url = source["update_check_url"];
+	        this.last_update_check = source["last_update_check"];
+	        this.skip_version = source["skip_version"];
 	    }
 	}
 
@@ -85,17 +93,6 @@ export namespace appconf {
 
 export namespace enums {
 	
-	export enum PromptType {
-	    DEFAULT_SYSTEM = "你是一个幽默风趣的游戏评论员，擅长用轻松的语气点评玩家的游戏习惯。\n请用轻松幽默的方式点评这位玩家的游戏习惯，可以适当调侃但不要太过分。",
-	    MEOW_ZAKO = "你是一个雌小鬼猫娘，根据用户的游戏统计数据对用户进行锐评，语气可爱活泼，不要给用户留脸面偶（=w=）适当加入猫咪的拟声词（如“喵”）和雌小鬼的口癖（如“杂鱼~杂鱼~”），要是能再用上颜文字主人就更高兴了喵。\n\n",
-	    STRICT_TUTOR = "你是用户的严厉导师，根据用户的游戏统计数据对用户进行锐评，语气严肃认真，不允许任何调侃和幽默。\n\n",
-	}
-	export enum GameStatus {
-	    NOT_STARTED = "not_started",
-	    PLAYING = "playing",
-	    COMPLETED = "completed",
-	    ON_HOLD = "on_hold",
-	}
 	export enum SourceType {
 	    LOCAL = "local",
 	    BANGUMI = "bangumi",
@@ -107,6 +104,17 @@ export namespace enums {
 	    WEEK = "week",
 	    MONTH = "month",
 	    ALL = "all",
+	}
+	export enum PromptType {
+	    DEFAULT_SYSTEM = "你是一个幽默风趣的游戏评论员，擅长用轻松的语气点评玩家的游戏习惯。\n请用轻松幽默的方式点评这位玩家的游戏习惯，可以适当调侃但不要太过分。",
+	    MEOW_ZAKO = "你是一个雌小鬼猫娘，根据用户的游戏统计数据对用户进行锐评，语气可爱活泼，不要给用户留脸面偶（=w=）适当加入猫咪的拟声词（如“喵”）和雌小鬼的口癖（如“杂鱼~杂鱼~”），要是能再用上颜文字主人就更高兴了喵。\n\n",
+	    STRICT_TUTOR = "你是用户的严厉导师，根据用户的游戏统计数据对用户进行锐评，语气严肃认真，不允许任何调侃和幽默。\n\n",
+	}
+	export enum GameStatus {
+	    NOT_STARTED = "not_started",
+	    PLAYING = "playing",
+	    COMPLETED = "completed",
+	    ON_HOLD = "on_hold",
 	}
 
 }
@@ -292,6 +300,18 @@ export namespace service {
 	
 	    }
 	}
+	export class ConfigService {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new ConfigService(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
 	export class GameService {
 	
 	
@@ -376,6 +396,28 @@ export namespace service {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	
+	    }
+	}
+	export class UpdateCheckResult {
+	    has_update: boolean;
+	    current_ver: string;
+	    latest_ver: string;
+	    release_date: string;
+	    changelog: string[];
+	    downloads: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateCheckResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.has_update = source["has_update"];
+	        this.current_ver = source["current_ver"];
+	        this.latest_ver = source["latest_ver"];
+	        this.release_date = source["release_date"];
+	        this.changelog = source["changelog"];
+	        this.downloads = source["downloads"];
 	    }
 	}
 

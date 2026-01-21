@@ -73,6 +73,11 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.AutoUploadToCloud = newConfig.AutoUploadToCloud
 	s.config.LocalBackupRetention = newConfig.LocalBackupRetention
 	s.config.LocalDBBackupRetention = newConfig.LocalDBBackupRetention
+	s.config.RecordActiveTimeOnly = newConfig.RecordActiveTimeOnly
+	s.config.CheckUpdateOnStartup = newConfig.CheckUpdateOnStartup
+	s.config.UpdateCheckURL = newConfig.UpdateCheckURL
+	s.config.LastUpdateCheck = newConfig.LastUpdateCheck
+	s.config.SkipVersion = newConfig.SkipVersion
 	return nil
 }
 

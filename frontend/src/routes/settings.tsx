@@ -8,6 +8,7 @@ import { BasicSettingsPanel } from "../components/panel/BasicSettingsPanel";
 import { CloudBackupSettingsPanel } from "../components/panel/CloudBackupSettingsPanel";
 import { DBBackupPanel } from "../components/panel/DBBackupPanel";
 import { GameSettingsPanel } from "../components/panel/GameSettingsPanel";
+import { UpdateSettingsPanel } from "../components/panel/UpdateSettingsPanel";
 import { SettingsSkeleton } from "../components/skeleton/SettingsSkeleton";
 import { CollapsibleSection } from "../components/ui/CollapsibleSection";
 import { useAppStore } from "../store";
@@ -124,6 +125,10 @@ function SettingsPage() {
 
       <CollapsibleSection title="AI 配置" icon="i-mdi-robot-happy" defaultOpen={false}>
         <AISettingsPanel formData={formData} onChange={handleFormChange} />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="应用更新" icon="i-mdi-update" defaultOpen={false}>
+        <UpdateSettingsPanel formData={formData} onChange={handleFormChange} />
       </CollapsibleSection>
 
       <CollapsibleSection title="数据库备份" icon="i-mdi-database-refresh" defaultOpen={false}>

@@ -54,6 +54,11 @@ type AppConfig struct {
 	WindowHeight int `json:"window_height"` // 窗口高度
 	// 活跃时间追踪配置
 	RecordActiveTimeOnly bool `json:"record_active_time_only"` // 仅记录活跃游玩时长（窗口在前台时）
+	// 自动更新配置
+	CheckUpdateOnStartup bool   `json:"check_update_on_startup"`     // 启动时自动检查更新
+	UpdateCheckURL       string `json:"update_check_url,omitempty"`  // 自定义更新检查 URL
+	LastUpdateCheck      string `json:"last_update_check,omitempty"` // 上次更新检查时间
+	SkipVersion          string `json:"skip_version,omitempty"`      // 跳过的版本号（用户选择忽略的更新）
 }
 
 // getConfigPath 获取配置文件路径
@@ -100,6 +105,10 @@ func LoadConfig() (*AppConfig, error) {
 		WindowWidth:            1230,
 		WindowHeight:           800,
 		RecordActiveTimeOnly:   false, // 默认关闭，向后兼容
+		CheckUpdateOnStartup:   false, // 默认开启启动时检查更新
+		UpdateCheckURL:         "",
+		LastUpdateCheck:        "",
+		SkipVersion:            "",
 	}
 
 	// 获取配置文件路径

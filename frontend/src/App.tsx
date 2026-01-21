@@ -2,6 +2,8 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Toaster } from "react-hot-toast";
 import { WindowShow } from "../wailsjs/runtime/runtime";
+import { UpdateDialog } from "./components/ui/UpdateDialog";
+import { useUpdateCheck } from "./hooks/useUpdateCheck";
 import { Route as rootRoute } from "./routes/__root";
 import { Route as categoriesRoute } from "./routes/categories";
 import { Route as categoryRoute } from "./routes/category";
@@ -24,6 +26,7 @@ declare module "@tanstack/react-router" {
 
 function App() {
   const { config, fetchConfig } = useAppStore();
+  const { updateInfo, showUpdateDialog, setShowUpdateDialog, handleSkipVersion } = useUpdateCheck();
 
   useEffect(() => {
     fetchConfig();
@@ -102,6 +105,13 @@ function App() {
           },
         }}
       />
+      {showUpdateDialog && updateInfo && (
+        <UpdateDialog
+          updateInfo={updateInfo}
+          onClose={() => setShowUpdateDialog(false)}
+          onSkip={handleSkipVersion}
+        />
+      )}
     </>
   );
 }
