@@ -41,9 +41,8 @@ type UpdateService struct {
 
 // 默认更新检查 URL 列表（按优先级排序）
 var defaultUpdateURLs = []string{
-	"https://lunabox.vercel.app/version.json",                         // 主地址
-	"https://lunabox.pages.dev/version.json",                          // Cloudflare Pages 备份
-	"https://raw.githubusercontent.com/xxx/lunabox/main/version.json", // GitHub 备份（用户需修改）
+	"https://lunabox.pages.dev/version.json",   // 主地址
+	"https://4update.netlify.app/version.json", // Netlify 备份（用户可修改）
 }
 
 func NewUpdateService() *UpdateService {

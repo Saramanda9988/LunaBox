@@ -107,7 +107,8 @@ jobs:
                 \"tag_name\": \"$TAG\",
                 \"name\": \"$RELEASE_NAME\",
                 \"body\": $(echo "$RELEASE_BODY" | jq -Rs .),
-                \"prerelease\": $IS_PRERELEASE
+                \"prerelease\": $IS_PRERELEASE,
+                \"target_commitish\": \"main\"
               }")
             
             RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id // empty')

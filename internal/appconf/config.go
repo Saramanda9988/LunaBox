@@ -105,7 +105,7 @@ func LoadConfig() (*AppConfig, error) {
 		WindowWidth:            1230,
 		WindowHeight:           800,
 		RecordActiveTimeOnly:   false, // 默认关闭，向后兼容
-		CheckUpdateOnStartup:   false, // 默认开启启动时检查更新
+		CheckUpdateOnStartup:   true,  // 默认开启启动时检查更新
 		UpdateCheckURL:         "",
 		LastUpdateCheck:        "",
 		SkipVersion:            "",
