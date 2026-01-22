@@ -218,6 +218,17 @@ func main() {
 				<-systrayQuit // 等待 systray 完全退出
 			}
 
+			// 从 configService 获取最新配置（避免使用启动时的旧配置覆盖文件）
+			latestConfig, err := configService.GetAppConfig()
+			if err != nil {
+				appLogger.Error("failed to get latest config: " + err.Error())
+			} else {
+				// 更新窗口大小到最新配置
+				latestConfig.WindowWidth = config.WindowWidth
+				latestConfig.WindowHeight = config.WindowHeight
+				config = &latestConfig
+			}
+
 			// 自动备份数据库（在关闭数据库前）
 			if config.AutoBackupDB {
 				appLogger.Info("performing automatic database backup...")
@@ -234,7 +245,7 @@ func main() {
 				appLogger.Error("failed to close database: " + err.Error())
 			}
 
-			// 保存配置
+			// 保存最终配置
 			if err := appconf.SaveConfig(config); err != nil {
 				appLogger.Error("failed to save config: " + err.Error())
 			}
