@@ -107,6 +107,27 @@ export function UpdateSettingsPanel({ formData, onChange }: UpdateSettingsPanelP
           </div>
         )}
 
+        {/* 发现新版本提示（对话框关闭但有更新时显示） */}
+        {updateInfo && updateInfo.has_update && !showDialog && !error && (
+          <button
+            type="button"
+            onClick={() => setShowDialog(true)}
+            className="w-full p-3 bg-accent-50 dark:bg-accent-900/20 border border-accent-200 dark:border-accent-700 rounded-lg hover:bg-accent-100 dark:hover:bg-accent-900/30 transition-colors text-left"
+          >
+            <div className="flex items-center gap-2">
+              <span className="i-mdi-update text-accent-600 dark:text-accent-400 text-xl" />
+              <div className="flex-1 text-sm text-accent-700 dark:text-accent-300">
+                <span className="font-medium">发现新版本</span>
+                <span className="ml-2 font-mono font-semibold">
+                  v
+                  {updateInfo.latest_ver}
+                </span>
+              </div>
+              <span className="i-mdi-chevron-right text-accent-500 dark:text-accent-400 text-lg" />
+            </div>
+          </button>
+        )}
+
         {/* 已是最新版本提示 */}
         {updateInfo && !updateInfo.has_update && !error && (
           <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
