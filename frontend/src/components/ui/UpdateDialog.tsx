@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { BrowserOpenURL } from "../../../wailsjs/runtime/runtime";
 
 interface UpdateInfo {
@@ -48,7 +49,7 @@ export function UpdateDialog({ updateInfo, onClose, onSkip }: UpdateDialogProps)
     }
   };
 
-  return (
+  return createPortal(
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-200 ${isVisible ? "opacity-100" : "opacity-0"}`}
       onClick={handleClose}
@@ -128,7 +129,7 @@ export function UpdateDialog({ updateInfo, onClose, onSkip }: UpdateDialogProps)
                 <button
                   type="button"
                   onClick={() => handleDownload("github")}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-accent-600 hover:bg-accent-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-neutral-600 hover:bg-neutral-700 rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
                   <span className="i-mdi-github text-lg" />
                   GitHub 下载
@@ -138,7 +139,7 @@ export function UpdateDialog({ updateInfo, onClose, onSkip }: UpdateDialogProps)
                 <button
                   type="button"
                   onClick={() => handleDownload("gitee")}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-neutral-600 hover:bg-neutral-700 rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
                   <span className="i-mdi-cloud-download text-lg" />
                   Gitee 下载
@@ -155,6 +156,7 @@ export function UpdateDialog({ updateInfo, onClose, onSkip }: UpdateDialogProps)
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
