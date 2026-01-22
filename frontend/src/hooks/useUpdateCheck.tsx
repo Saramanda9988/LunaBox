@@ -35,6 +35,11 @@ export function useUpdateCheck() {
   const handleSkipVersion = async (version: string) => {
     try {
       await SkipVersion(version);
+      // 更新 UI 状态：关闭对话框并标记为已处理
+      setShowUpdateDialog(false);
+      if (updateInfo) {
+        setUpdateInfo({ ...updateInfo, has_update: false });
+      }
     }
     catch (err) {
       toast.error(`Failed to skip version:${err}`);
@@ -43,6 +48,7 @@ export function useUpdateCheck() {
 
   return {
     updateInfo,
+    setUpdateInfo,
     showUpdateDialog,
     setShowUpdateDialog,
     handleSkipVersion,

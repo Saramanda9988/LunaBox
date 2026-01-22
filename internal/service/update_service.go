@@ -58,7 +58,7 @@ func (s *UpdateService) Init(ctx context.Context, configService *ConfigService) 
 	s.config = configService
 }
 
-// CheckForUpdates 手动检查更新
+// CheckForUpdates 手动检查更新（忽略跳过版本设置，总是检查最新版本）
 func (s *UpdateService) CheckForUpdates() (*UpdateCheckResult, error) {
 	return s.checkUpdates(false)
 }
@@ -69,8 +69,10 @@ func (s *UpdateService) CheckForUpdatesOnStartup() (*UpdateCheckResult, error) {
 }
 
 // checkUpdates 检查更新的核心逻辑
+// isAutoCheck: true 表示启动时自动检查，会检查频率限制和跳过版本
+// isAutoCheck: false 表示手动检查，忽略跳过版本（因为在调用前已清空）
 func (s *UpdateService) checkUpdates(isAutoCheck bool) (*UpdateCheckResult, error) {
-	// 获取应用配置
+	// 获取应用配置（手动检查时，SkipVersion 已在 CheckForUpdates 中被清空）
 	appConfig, err := s.config.GetAppConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get app config: %w", err)
@@ -120,9 +122,13 @@ func (s *UpdateService) checkUpdates(isAutoCheck bool) (*UpdateCheckResult, erro
 		return nil, fmt.Errorf("failed to compare versions: %w", err)
 	}
 
-	// 如果用户跳过了这个版本，不提示更新
-	if appConfig.SkipVersion == updateInfo.Version {
-		hasUpdate = false
+	// 只有自动检查时才检查跳过版本（手动检查时 SkipVersion 已被清空）
+	if isAutoCheck && hasUpdate {
+		skipVersionNormalized := strings.TrimSpace(strings.TrimPrefix(appConfig.SkipVersion, "v"))
+		latestVersionNormalized := strings.TrimSpace(strings.TrimPrefix(updateInfo.Version, "v"))
+		if skipVersionNormalized != "" && skipVersionNormalized == latestVersionNormalized {
+			hasUpdate = false
+		}
 	}
 
 	result := &UpdateCheckResult{
@@ -198,7 +204,8 @@ func (s *UpdateService) SkipVersion(ver string) error {
 	if err != nil {
 		return err
 	}
-	appConfig.SkipVersion = ver
+	// 统一移除 v 前缀，确保存储格式一致
+	appConfig.SkipVersion = strings.TrimSpace(strings.TrimPrefix(ver, "v"))
 	return s.config.UpdateAppConfig(appConfig)
 }
 

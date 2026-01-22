@@ -47,13 +47,12 @@ export function UpdateSettingsPanel({ formData, onChange }: UpdateSettingsPanelP
     }
   };
 
-  const handleSkipVersion = async () => {
-    if (!updateInfo)
-      return;
-
+  const handleSkipVersion = async (version: string) => {
     try {
-      await SkipVersion(updateInfo.latest_ver);
-      setUpdateInfo({ ...updateInfo, has_update: false });
+      await SkipVersion(version);
+      if (updateInfo) {
+        setUpdateInfo({ ...updateInfo, has_update: false });
+      }
       setShowDialog(false);
     }
     catch (err) {
@@ -127,7 +126,7 @@ export function UpdateSettingsPanel({ formData, onChange }: UpdateSettingsPanelP
         <UpdateDialog
           updateInfo={updateInfo}
           onClose={() => setShowDialog(false)}
-          onSkip={handleSkipVersion}
+          onSkip={() => handleSkipVersion(updateInfo.latest_ver)}
         />
       )}
     </>

@@ -2,7 +2,7 @@ package version
 
 // 版本信息，通过 ldflags 在编译时注入
 var (
-	Version   = "dev"      // 版本号，如 1.0.0
+	Version   = "1.1.1"    // 版本号，如 1.0.0
 	GitCommit = "unknown"  // Git commit hash
 	BuildTime = "unknown"  // 构建时间
 	BuildMode = "portable" // 构建模式：portable 或 installer

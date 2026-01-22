@@ -36,6 +36,7 @@ export function UpdateDialog({ updateInfo, onClose, onSkip }: UpdateDialogProps)
   };
 
   const handleSkip = () => {
+    // 直接传递版本号，后端会统一处理格式
     onSkip(updateInfo.latest_ver);
     handleClose();
   };
@@ -62,8 +63,8 @@ export function UpdateDialog({ updateInfo, onClose, onSkip }: UpdateDialogProps)
       >
         {/* Header */}
         <div className="flex items-start gap-4 p-6 pb-4">
-          <div className="flex-shrink-0 w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-            <span className="i-mdi-download-circle text-3xl text-blue-600 dark:text-blue-400" />
+          <div className="flex-shrink-0 w-12 h-12 bg-accent-100 dark:bg-accent-900/30 rounded-full flex items-center justify-center">
+            <span className="i-mdi-download-circle text-3xl text-accent-600 dark:text-accent-400" />
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold text-brand-900 dark:text-white mb-1">
@@ -95,7 +96,7 @@ export function UpdateDialog({ updateInfo, onClose, onSkip }: UpdateDialogProps)
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-brand-600 dark:text-brand-400">最新版本</span>
-              <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
+              <span className="font-mono font-semibold text-accent-600 dark:text-accent-400">
                 v
                 {updateInfo.latest_ver}
               </span>
@@ -127,7 +128,7 @@ export function UpdateDialog({ updateInfo, onClose, onSkip }: UpdateDialogProps)
                 <button
                   type="button"
                   onClick={() => handleDownload("github")}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-accent-600 hover:bg-accent-700 rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
                   <span className="i-mdi-github text-lg" />
                   GitHub 下载
@@ -150,8 +151,6 @@ export function UpdateDialog({ updateInfo, onClose, onSkip }: UpdateDialogProps)
               className="w-full px-4 py-2.5 text-sm font-medium text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-700 border border-brand-300 dark:border-brand-600 rounded-lg transition-colors"
             >
               跳过此版本
-              <span className="i-mdi-download" />
-              立即下载
             </button>
           </div>
         </div>
