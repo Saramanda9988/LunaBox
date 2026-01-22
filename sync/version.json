@@ -16,6 +16,7 @@
     "- 优化游戏统计数据加载，使用 useCallback 并移除骨架加载"
   ],
   "downloads": {
-    "github": "https://github.com/LunaRain-079/lunabox/releases"
+    "github": "https://github.com/Saramanda9988/LunaBox/releases",
+    "gitee": "https://gitee.com/rin066/luna-box/releases"
   }
 }
