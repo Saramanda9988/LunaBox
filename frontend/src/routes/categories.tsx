@@ -141,7 +141,7 @@ function CategoriesPage() {
 
   if (isLoading && categories.length === 0) {
     if (!showSkeleton) {
-      return <div className="min-h-screen bg-brand-100 dark:bg-brand-900" />;
+      return null;
     }
     return <CategoriesSkeleton />;
   }

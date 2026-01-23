@@ -92,7 +92,7 @@ function GameDetailPage() {
 
   if (isLoading && !game) {
     if (!showSkeleton) {
-      return <div className="min-h-screen bg-brand-100 dark:bg-brand-900" />;
+      return null;
     }
     return <GameDetailSkeleton />;
   }
