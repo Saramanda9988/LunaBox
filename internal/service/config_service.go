@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"lunabox/internal/appconf"
+	"lunabox/internal/utils"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -28,6 +29,32 @@ func (s *ConfigService) Init(ctx context.Context, db *sql.DB, config *appconf.Ap
 
 func (s *ConfigService) GetAppConfig() (appconf.AppConfig, error) {
 	return *s.config, nil
+}
+
+// SelectBackgroundImage 打开文件选择对话框选择背景图片，并保存到应用目录
+func (s *ConfigService) SelectBackgroundImage() (string, error) {
+	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+		Title: "选择背景图片",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "图片文件", Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp"},
+		},
+	})
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
+		return "", err
+	}
+	if selection == "" {
+		return "", nil // 用户取消选择
+	}
+
+	// 将图片保存到应用目录
+	localPath, err := utils.SaveBackgroundImage(selection)
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "failed to save background image: %v", err)
+		return "", err
+	}
+
+	return localPath, nil
 }
 
 func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
@@ -78,6 +105,11 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.UpdateCheckURL = newConfig.UpdateCheckURL
 	s.config.LastUpdateCheck = newConfig.LastUpdateCheck
 	s.config.SkipVersion = newConfig.SkipVersion
+	// 背景图配置
+	s.config.BackgroundImage = newConfig.BackgroundImage
+	s.config.BackgroundBlur = newConfig.BackgroundBlur
+	s.config.BackgroundOpacity = newConfig.BackgroundOpacity
+	s.config.BackgroundEnabled = newConfig.BackgroundEnabled
 	return nil
 }
 

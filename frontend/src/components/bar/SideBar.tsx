@@ -2,7 +2,12 @@ import { Link } from "@tanstack/react-router";
 import { BrowserOpenURL } from "../../../wailsjs/runtime/runtime";
 import { useAppStore } from "../../store";
 
-export function SideBar() {
+interface SideBarProps {
+  bgEnabled?: boolean;
+  bgOpacity?: number;
+}
+
+export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
   const { isSidebarOpen, toggleSidebar } = useAppStore();
 
   const navItems = [
@@ -12,13 +17,23 @@ export function SideBar() {
     { to: "/categories", label: "收藏", icon: "i-mdi-format-list-bulleted" },
   ];
 
+  // 根据是否启用背景图来决定样式
+  const sidebarBgClass = bgEnabled
+    ? "border-r border-white/20 dark:border-white/10"
+    : "bg-white dark:bg-brand-800 border-r border-brand-200 dark:border-brand-700";
+
+  const sidebarStyle = bgEnabled
+    ? { backgroundColor: `rgba(var(--sidebar-bg-rgb), ${bgOpacity})` }
+    : undefined;
+
   return (
     <aside
-      className={`flex flex-col bg-white dark:bg-brand-800 transition-all duration-300 border-r border-brand-200 dark:border-brand-700 ${
+      className={`flex flex-col transition-all duration-300 ${sidebarBgClass} ${
         isSidebarOpen ? "w-64" : "w-16"
       }`}
+      style={sidebarStyle}
     >
-      <div className={`flex items-center h-16 border-b border-brand-200 dark:border-brand-700 ${isSidebarOpen ? "justify-between px-4" : "justify-center"}`}>
+      <div className={`flex items-center h-16 border-b ${bgEnabled ? "border-white/20 dark:border-white/10" : "border-brand-200 dark:border-brand-700"} ${isSidebarOpen ? "justify-between px-4" : "justify-center"}`}>
         {isSidebarOpen && (
           <div className="flex items-center gap-2 select-none">
             <img src="/appicon.png" className="w-8 h-8 dark:hidden pointer-events-none" draggable="false" />
@@ -52,7 +67,7 @@ export function SideBar() {
         </ul>
       </nav>
 
-      <div className={`p-4 border-brand-200 dark:border-brand-700 flex ${isSidebarOpen ? "flex-row items-center justify-end gap-1" : "flex-col items-center gap-2"}`}>
+      <div className={`p-4 ${bgEnabled ? "border-white/20 dark:border-white/10" : "border-brand-200 dark:border-brand-700"} flex ${isSidebarOpen ? "flex-row items-center justify-end gap-1" : "flex-col items-center gap-2"}`}>
         <div
           onClick={() => BrowserOpenURL("https://github.com/Saramanda9988/LunaBox")}
           className="flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 cursor-pointer select-none"

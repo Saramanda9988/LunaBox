@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { GetVersionInfo } from "../../wailsjs/go/service/VersionService";
 import { AISettingsPanel } from "../components/panel/AISettingsPanel";
 import { AutoBackupSettingsPanel } from "../components/panel/AutoBackupSettingsPanel";
+import { BackgroundSettingsPanel } from "../components/panel/BackgroundSettingsPanel";
 import { BasicSettingsPanel } from "../components/panel/BasicSettingsPanel";
 import { CloudBackupSettingsPanel } from "../components/panel/CloudBackupSettingsPanel";
 import { DBBackupPanel } from "../components/panel/DBBackupPanel";
@@ -109,6 +110,10 @@ function SettingsPage() {
 
       <CollapsibleSection title="基础配置" icon="i-mdi-database-settings" defaultOpen={true}>
         <BasicSettingsPanel formData={formData} onChange={handleFormChange} />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="外观设置" icon="i-mdi-palette" defaultOpen={false}>
+        <BackgroundSettingsPanel formData={formData} onChange={handleFormChange} />
       </CollapsibleSection>
 
       <CollapsibleSection title="游玩配置" icon="i-mdi-timer-play-outline" defaultOpen={false}>

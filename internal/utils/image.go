@@ -212,3 +212,55 @@ func RenameTempCover(tempCoverURL string, gameID string) (string, error) {
 
 	return fmt.Sprintf("/local/covers/%s", newFileName), nil
 }
+
+// SaveBackgroundImage 保存背景图片到应用的背景目录
+func SaveBackgroundImage(srcPath string) (string, error) {
+	// 获取应用程序目录
+	appDir, err := GetDataDir()
+	if err != nil {
+		return "", err
+	}
+
+	// 获取背景保存目录
+	bgDir := filepath.Join(appDir, "backgrounds")
+	if err := os.MkdirAll(bgDir, os.ModePerm); err != nil {
+		return "", err
+	}
+
+	// 获取源文件的扩展名
+	ext := strings.ToLower(filepath.Ext(srcPath))
+	if ext == "" {
+		ext = ".png"
+	}
+
+	// 生成目标文件名 (使用固定名称，每次覆盖)
+	destFileName := fmt.Sprintf("custom_bg%s", ext)
+	destPath := filepath.Join(bgDir, destFileName)
+
+	// 删除旧的背景文件（可能是不同扩展名）
+	oldExtensions := []string{".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
+	for _, oldExt := range oldExtensions {
+		oldPath := filepath.Join(bgDir, "custom_bg"+oldExt)
+		os.Remove(oldPath) // 忽略错误，文件可能不存在
+	}
+
+	// 复制文件
+	srcFile, err := os.Open(srcPath)
+	if err != nil {
+		return "", err
+	}
+	defer srcFile.Close()
+
+	destFile, err := os.Create(destPath)
+	if err != nil {
+		return "", err
+	}
+	defer destFile.Close()
+
+	if _, err := io.Copy(destFile, srcFile); err != nil {
+		return "", err
+	}
+
+	// 返回可访问的 URL
+	return fmt.Sprintf("/local/backgrounds/%s", destFileName), nil
+}

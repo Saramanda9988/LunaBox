@@ -89,7 +89,13 @@ export function FilterBar({
         </div>
         <input
           type="text"
-          className="block w-auto p-2 pl-10 text-sm text-brand-900 border border-brand-300 rounded-lg bg-white focus:ring-neutral-500 focus:border-neutral-500 dark:bg-brand-900 dark:border-brand-700 dark:placeholder-brand-400 dark:text-white dark:focus:ring-neutral-500 dark:focus:border-neutral-500"
+          className="glass-input block w-auto p-2 pl-10 text-sm text-brand-900 dark:text-white
+                     bg-white dark:bg-brand-900
+                     border border-brand-300 dark:border-brand-700
+                     rounded-lg
+                     placeholder:text-brand-400 dark:placeholder:text-brand-400
+                     focus:ring-neutral-500 focus:border-neutral-500
+                     dark:focus:ring-neutral-500 dark:focus:border-neutral-500"
           placeholder={searchPlaceholder}
           value={searchQuery}
           onChange={e => onSearchChange(e.target.value)}
@@ -102,7 +108,15 @@ export function FilterBar({
           <select
             value={statusFilter || ""}
             onChange={e => onStatusFilterChange(e.target.value)}
-            className="bg-white border border-brand-300 text-brand-900 text-sm rounded-lg focus:ring-neutral-500 focus:border-neutral-500 block p-2 dark:bg-brand-900 dark:border-brand-600 dark:placeholder-brand-400 dark:text-white dark:focus:ring-neutral-500 dark:focus:border-neutral-500"
+            className="glass-input
+                       bg-white dark:bg-brand-900
+                       border border-brand-300 dark:border-brand-600
+                       text-brand-900 dark:text-white
+                       placeholder:text-brand-400 dark:placeholder:text-brand-400
+                       text-sm rounded-lg
+                       focus:ring-neutral-500 focus:border-neutral-500
+                       dark:focus:ring-neutral-500 dark:focus:border-neutral-500
+                       block p-2"
           >
             {statusOptions.map(option => (
               <option key={option.value} value={option.value}>
@@ -115,7 +129,15 @@ export function FilterBar({
         <select
           value={sortBy}
           onChange={e => handleSortByChange(e.target.value)}
-          className="bg-white border border-brand-300 text-brand-900 text-sm rounded-lg focus:ring-neutral-500 focus:border-neutral-500 block p-2 dark:bg-brand-900 dark:border-brand-600 dark:placeholder-brand-400 dark:text-white dark:focus:ring-neutral-500 dark:focus:border-neutral-500"
+          className="glass-input
+                     bg-white dark:bg-brand-900
+                     border border-brand-300 dark:border-brand-600
+                     text-brand-900 dark:text-white
+                     placeholder:text-brand-400 dark:placeholder:text-brand-400
+                     text-sm rounded-lg
+                     focus:ring-neutral-500 focus:border-neutral-500
+                     dark:focus:ring-neutral-500 dark:focus:border-neutral-500
+                     block p-2"
         >
           {sortOptions.map(option => (
             <option key={option.value} value={option.value}>
@@ -126,7 +148,13 @@ export function FilterBar({
 
         <button
           onClick={() => handleSortOrderChange(sortOrder === "asc" ? "desc" : "asc")}
-          className="p-2 text-brand-500 hover:text-brand-900 dark:text-brand-400 dark:hover:text-white rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700"
+          className="glass-panel p-2
+                     text-brand-500 dark:text-brand-400
+                     hover:text-brand-900 dark:hover:text-white
+                     bg-white dark:bg-brand-800
+                     border border-brand-200 dark:border-brand-700
+                     rounded-lg
+                     hover:bg-brand-100 dark:hover:bg-brand-700"
           title={sortOrder === "asc" ? "升序" : "降序"}
         >
           <div className={sortOrder === "asc" ? "i-mdi-sort-ascending text-xl" : "i-mdi-sort-descending text-xl"} />

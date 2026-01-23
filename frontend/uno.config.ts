@@ -7,6 +7,55 @@ export default defineConfig({
     }),
     presetIcons(),
   ],
+
+  // 自定义 variants - 支持 data-glass 属性
+  variants: [
+    // data-glass variant: 当元素或父元素有 data-glass="true" 时生效
+    (matcher) => {
+      if (!matcher.startsWith("data-glass:"))
+        return matcher;
+
+      return {
+        matcher: matcher.slice(11), // 移除 'data-glass:' 前缀
+        selector: s => `[data-glass="true"] ${s}, ${s}[data-glass="true"]`,
+      };
+    },
+  ],
+
+  shortcuts: [
+    // 玻璃态效果基础类
+    {
+      "glass": "backdrop-filter backdrop-blur-20 backdrop-saturate-180",
+      "glass-border": "border border-white/18 dark:border-white/10",
+      "glass-text": "drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)] drop-shadow-[0_0_8px_rgba(0,0,0,0.2)]",
+    },
+
+    // 玻璃态层级系统（从不透明到透明）
+
+    // 1. glass-aside - 侧边栏（最不透明，需要清晰的导航）
+    [/^glass-aside$/, () => "data-glass:bg-white/12 data-glass:dark:bg-black/15 data-glass:backdrop-blur-28 data-glass:backdrop-saturate-180 data-glass:border-r data-glass:border-white/20 data-glass:dark:border-white/12"],
+
+    // 2. glass-btn - 按钮（保持可见，需要明确的交互反馈）
+    [/^glass-btn-(.*)$/, ([, color]) => {
+      const colorMap: Record<string, string> = {
+        neutral: "data-glass:bg-neutral-600/65",
+        error: "data-glass:bg-error-500/65",
+        success: "data-glass:bg-success-600/65",
+        primary: "data-glass:bg-primary-600/65",
+      };
+      return `data-glass:backdrop-blur-12 data-glass:border data-glass:border-white/25 data-glass:dark:border-white/15 ${colorMap[color] || "data-glass:bg-neutral-600/65"}`;
+    }],
+
+    // 3. glass-card - 卡片（统计卡、列表项等，中等透明）
+    [/^glass-card$/, () => "data-glass:bg-white/8 data-glass:dark:bg-black/12 data-glass:backdrop-blur-20 data-glass:backdrop-saturate-180 data-glass:border data-glass:border-white/22 data-glass:dark:border-white/12"],
+
+    // 4. glass-panel - 面板容器（较透明，轻量感）
+    [/^glass-panel$/, () => "data-glass:bg-white/5 data-glass:dark:bg-black/8 data-glass:backdrop-blur-20 data-glass:backdrop-saturate-180 data-glass:border data-glass:border-white/18 data-glass:dark:border-white/10"],
+
+    // 5. glass-input - 输入框（最透明，突出内容）
+    [/^glass-input$/, () => "data-glass:bg-white/3 data-glass:dark:bg-black/5 data-glass:backdrop-blur-16 data-glass:backdrop-saturate-150 data-glass:border data-glass:border-white/25 data-glass:dark:border-white/18"],
+  ],
+
   theme: {
     colors: {
       // 基础灰度色板

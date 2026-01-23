@@ -233,7 +233,7 @@ function StatsPage() {
     <div
       id="stats-container"
       ref={ref}
-      className={`space-y-6 max-w-8xl mx-auto p-8 bg-brand-100 dark:bg-brand-900 transition-opacity duration-300 ${loading ? "opacity-50 pointer-events-none" : "opacity-100"}`}
+      className={`space-y-6 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${loading ? "opacity-50 pointer-events-none" : "opacity-100"}`}
     >
       <div className="flex items-center justify-between">
         <h1 className="text-4xl font-bold text-brand-900 dark:text-white">统计</h1>
