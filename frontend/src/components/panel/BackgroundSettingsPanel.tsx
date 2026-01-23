@@ -78,7 +78,7 @@ export function BackgroundSettingsPanel({ formData, onChange }: BackgroundSettin
           <button
             type="button"
             onClick={handleSelectImage}
-            className="px-4 py-2 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors text-sm font-medium"
+            className="glass-btn-neutral px-4 py-2 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors text-sm font-medium"
           >
             选择
           </button>
@@ -86,7 +86,7 @@ export function BackgroundSettingsPanel({ formData, onChange }: BackgroundSettin
             <button
               type="button"
               onClick={handleClearImage}
-              className="px-4 py-2 bg-error-500 text-white rounded-md hover:bg-error-600 transition-colors text-sm font-medium"
+              className="glass-btn-error px-4 py-2 bg-error-500 text-white rounded-md hover:bg-error-600 transition-colors text-sm font-medium"
             >
               清除
             </button>

@@ -43,7 +43,7 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
         )}
         <button
           onClick={toggleSidebar}
-          className="p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 focus:outline-none select-none"
+          className="p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 focus:outline-none select-none data-glass:hover:bg-white/10 data-glass:hover:dark:bg-black/10"
           onDragStart={e => e.preventDefault()}
         >
           <div className="i-mdi-menu text-xl pointer-events-none" />
@@ -56,7 +56,7 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
             <li key={item.to}>
               <Link
                 to={item.to}
-                className={`flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 no-underline [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100 select-none ${isSidebarOpen ? "" : "justify-center"}`}
+                className={`flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 no-underline [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100 select-none data-glass:hover:bg-white/10 data-glass:hover:dark:bg-black/10 data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20 ${isSidebarOpen ? "" : "justify-center"}`}
                 onDragStart={e => e.preventDefault()}
               >
                 <div className={`${item.icon} text-xl pointer-events-none`} />
@@ -70,7 +70,7 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
       <div className={`p-4 ${bgEnabled ? "border-white/20 dark:border-white/10" : "border-brand-200 dark:border-brand-700"} flex ${isSidebarOpen ? "flex-row items-center justify-end gap-1" : "flex-col items-center gap-2"}`}>
         <div
           onClick={() => BrowserOpenURL("https://github.com/Saramanda9988/LunaBox")}
-          className="flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 cursor-pointer select-none"
+          className="flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 cursor-pointer select-none data-glass:hover:bg-white/10 data-glass:hover:dark:bg:black/10"
           title="GitHub"
           onDragStart={e => e.preventDefault()}
         >
@@ -78,7 +78,7 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
         </div>
         <Link
           to="/settings"
-          className="flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 no-underline [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100 select-none"
+          className="flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 no-underline [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100 select-none data-glass:hover:bg-white/10 data-glass:hover:dark:bg:black/10 data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg:black/20"
           title="设置"
           onDragStart={e => e.preventDefault()}
         >

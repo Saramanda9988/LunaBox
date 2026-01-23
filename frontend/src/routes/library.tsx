@@ -126,7 +126,7 @@ function LibraryPage() {
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center rounded-lg bg-neutral-600 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 focus:outline-none focus:ring-4 focus:ring-neutral-300 dark:bg-neutral-600 dark:hover:bg-neutral-700 dark:focus:ring-neutral-800"
+              className="glass-btn-neutral flex items-center rounded-lg bg-neutral-600 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 focus:outline-none focus:ring-4 focus:ring-neutral-300 dark:bg-neutral-600 dark:hover:bg-neutral-700 dark:focus:ring-neutral-800"
             >
               <div className="i-mdi-plus mr-2 text-lg" />
               添加游戏
@@ -135,7 +135,7 @@ function LibraryPage() {
 
             {/* Dropdown Menu */}
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-56 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black/5 dark:bg-brand-700 dark:ring-white/10 z-50">
+              <div className="glass-card absolute right-0 mt-2 w-56 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black/5 dark:bg-brand-700 dark:ring-white/10 z-50">
                 <div className="py-1">
                   <button
                     onClick={() => {

@@ -52,11 +52,11 @@ export function SlideButton<T extends string = string>({
   return (
     <div
       ref={containerRef}
-      className={`relative flex bg-brand-100 dark:bg-brand-800 p-1 rounded-lg ${className}`}
+      className={`glass-panel relative flex bg-brand-100 dark:bg-brand-800 p-1 rounded-lg ${className}`}
     >
       {/* Sliding background */}
       <div
-        className="absolute inset-y-1 bg-white dark:bg-brand-700 rounded-md shadow-sm transition-all duration-300 ease-out pointer-events-none"
+        className="data-glass:bg-white/40 data-glass:dark:bg-black/40 absolute inset-y-1 bg-white dark:bg-brand-700 rounded-md shadow-sm transition-all duration-300 ease-out pointer-events-none"
         style={{
           width: `${sliderStyle.width}px`,
           left: `${sliderStyle.left}px`,

@@ -12,11 +12,11 @@ export function CollapsibleSection({ title, icon, children, defaultOpen = true }
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="bg-brand-50 dark:bg-brand-800 rounded-xl border border-brand-200 dark:border-brand-700 overflow-hidden">
+    <div className="glass-panel bg-brand-50 dark:bg-brand-800 rounded-xl border border-brand-200 dark:border-brand-700 overflow-hidden">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-700 hover:bg-brand-300 dark:hover:bg-brand-600 transition-colors"
+        className="data-glass:bg-white/20 data-glass:dark:bg-black/20 w-full flex items-center justify-between p-4 transition-colors"
       >
         <h2 className="text-lg font-semibold text-brand-900 dark:text-white flex items-center gap-2">
           <span className={`${icon} text-xl text-neutral-500 dark:text-neutral-400`} />

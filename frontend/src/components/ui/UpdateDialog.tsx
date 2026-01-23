@@ -59,7 +59,7 @@ export function UpdateDialog({ updateInfo, onClose, onSkip }: UpdateDialogProps)
 
       {/* 对话框 */}
       <div
-        className={`relative bg-white dark:bg-brand-800 rounded-xl shadow-2xl border border-brand-200 dark:border-brand-700 max-w-md w-full mx-4 transition-all duration-200 ${isVisible ? "scale-100" : "scale-95"}`}
+        className={`glass-card relative bg-white dark:bg-brand-800 rounded-xl shadow-2xl border border-brand-200 dark:border-brand-700 max-w-md w-full mx-4 transition-all duration-200 ${isVisible ? "scale-100" : "scale-95"}`}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -87,7 +87,7 @@ export function UpdateDialog({ updateInfo, onClose, onSkip }: UpdateDialogProps)
         {/* Content */}
         <div className="px-6 pb-6 space-y-4">
           {/* Version Info */}
-          <div className="p-4 bg-brand-50 dark:bg-brand-900/50 rounded-lg space-y-2">
+          <div className="glass-card p-4 bg-brand-50 dark:bg-brand-900/50 rounded-lg space-y-2">
             <div className="flex justify-between items-center text-sm">
               <span className="text-brand-600 dark:text-brand-400">当前版本</span>
               <span className="font-mono font-medium text-brand-900 dark:text-white">
@@ -129,7 +129,7 @@ export function UpdateDialog({ updateInfo, onClose, onSkip }: UpdateDialogProps)
                 <button
                   type="button"
                   onClick={() => handleDownload("github")}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-neutral-600 hover:bg-neutral-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="glass-btn-neutral flex-1 px-4 py-2.5 text-sm font-medium text-white bg-neutral-600 hover:bg-neutral-700 rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
                   <span className="i-mdi-github text-lg" />
                   GitHub 下载
@@ -139,7 +139,7 @@ export function UpdateDialog({ updateInfo, onClose, onSkip }: UpdateDialogProps)
                 <button
                   type="button"
                   onClick={() => handleDownload("gitee")}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-neutral-600 hover:bg-neutral-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="glass-btn-neutral flex-1 px-4 py-2.5 text-sm font-medium text-white bg-neutral-600 hover:bg-neutral-700 rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
                   <span className="i-mdi-cloud-download text-lg" />
                   Gitee 下载

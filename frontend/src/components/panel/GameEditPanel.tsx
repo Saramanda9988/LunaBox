@@ -20,7 +20,7 @@ export function GameEditPanel({
   onUpdateFromRemote,
 }: GameEditFormProps) {
   return (
-    <div className="mx-auto bg-white dark:bg-brand-800 p-8 rounded-lg shadow-sm">
+    <div className="glass-panel mx-auto bg-white dark:bg-brand-800 p-8 rounded-lg shadow-sm">
       <div className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
@@ -30,7 +30,7 @@ export function GameEditPanel({
             type="text"
             value={game.name}
             onChange={e => onGameChange({ ...game, name: e.target.value } as models.Game)}
-            className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
+            className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
           />
         </div>
 
@@ -44,12 +44,12 @@ export function GameEditPanel({
               value={game.cover_url}
               onChange={e => onGameChange({ ...game, cover_url: e.target.value } as models.Game)}
               placeholder="输入图片 URL 或选择本地图片"
-              className="flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
+              className="glass-input flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             />
             <button
               type="button"
               onClick={onSelectCoverImage}
-              className="px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
+              className="glass-btn-neutral px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
             >
               选择
             </button>
@@ -65,7 +65,7 @@ export function GameEditPanel({
             type="text"
             value={game.company}
             onChange={e => onGameChange({ ...game, company: e.target.value } as models.Game)}
-            className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
+            className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
           />
         </div>
 
@@ -78,12 +78,12 @@ export function GameEditPanel({
               type="text"
               value={game.path}
               onChange={e => onGameChange({ ...game, path: e.target.value } as models.Game)}
-              className="flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
+              className="glass-input flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             />
             <button
               type="button"
               onClick={onSelectExecutable}
-              className="px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
+              className="glass-btn-neutral px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
             >
               选择
             </button>
@@ -100,12 +100,12 @@ export function GameEditPanel({
               value={game.save_path || ""}
               onChange={e => onGameChange({ ...game, save_path: e.target.value } as models.Game)}
               placeholder="选择游戏存档所在目录"
-              className="flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
+              className="glass-input flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             />
             <button
               type="button"
               onClick={onSelectSaveDirectory}
-              className="px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
+              className="glass-btn-neutral px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
             >
               选择
             </button>
@@ -121,7 +121,7 @@ export function GameEditPanel({
             value={game.summary}
             onChange={e => onGameChange({ ...game, summary: e.target.value } as models.Game)}
             rows={6}
-            className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none resize-none"
+            className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none resize-none"
           />
         </div>
 
@@ -133,7 +133,7 @@ export function GameEditPanel({
             <select
               value={game.source_type || ""}
               onChange={e => onGameChange({ ...game, source_type: e.target.value } as models.Game)}
-              className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
+              className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             >
               <option value="">无</option>
               <option value="local">本地</option>
@@ -151,7 +151,7 @@ export function GameEditPanel({
               value={game.source_id || ""}
               onChange={e => onGameChange({ ...game, source_id: e.target.value } as models.Game)}
               placeholder="远程数据源的ID"
-              className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
+              className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             />
           </div>
         </div>
@@ -162,7 +162,7 @@ export function GameEditPanel({
               <button
                 type="button"
                 onClick={onUpdateFromRemote}
-                className="px-6 py-2 bg-accent-500 text-white rounded-md hover:bg-accent-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-accent-500"
+                className="glass-btn-neutral px-6 py-2 bg-accent-500 text-white rounded-md hover:bg-accent-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-accent-500"
               >
                 从远程更新
               </button>
@@ -170,7 +170,7 @@ export function GameEditPanel({
             <button
               type="button"
               onClick={onDelete}
-              className="px-6 py-2 bg-error-500 text-white rounded-md hover:bg-error-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-error-500"
+              className="glass-btn-error px-6 py-2 bg-error-500 text-white rounded-md hover:bg-error-700 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-error-500"
             >
               删除
             </button>

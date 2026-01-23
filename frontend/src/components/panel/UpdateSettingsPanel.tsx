@@ -87,7 +87,7 @@ export function UpdateSettingsPanel({ formData, onChange }: UpdateSettingsPanelP
             type="button"
             onClick={handleCheckUpdate}
             disabled={isChecking}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-neutral-600 hover:bg-neutral-700 disabled:bg-brand-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
+            className="glass-btn-neutral w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-neutral-600 hover:bg-neutral-700 disabled:bg-brand-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
           >
             <span className={`i-mdi-update ${isChecking ? "animate-spin" : ""}`} />
             {isChecking ? "检查中..." : "手动检查更新"}

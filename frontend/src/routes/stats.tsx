@@ -278,7 +278,7 @@ function StatsPage() {
 
       {/* 自定义日期范围选择器 */}
       {customDateRange && (
-        <div className="flex items-center gap-4 p-4 bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 no-export">
+        <div className="glass-panel flex items-center gap-4 p-4 bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 no-export">
           <div className="flex items-center gap-2">
             <label className="text-sm text-brand-600 dark:text-brand-400">开始日期</label>
             <input
@@ -322,11 +322,11 @@ function StatsPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
+        <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
           <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">总游玩次数</h3>
           <p className="text-3xl font-bold text-brand-900 dark:text-white">{stats.total_play_count}</p>
         </div>
-        <div className="bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
+        <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
           <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">总游玩时长</h3>
           <p className="text-3xl font-bold text-brand-900 dark:text-white">{formatDurationShort(stats.total_play_duration)}</p>
         </div>
@@ -336,7 +336,7 @@ function StatsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Top 1 Game Card */}
         {stats.play_time_leaderboard.length > 0 && (
-          <div className="lg:col-span-1 bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 p-6 flex flex-col items-center text-center relative overflow-hidden">
+          <div className="glass-card lg:col-span-1 bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 p-6 flex flex-col items-center text-center relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-yellow-400 to-orange-500" />
             <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded-full flex items-center justify-center text-lg font-bold mb-4 shadow-sm">
               #1
@@ -359,7 +359,7 @@ function StatsPage() {
         )}
 
         {/* Other Games List */}
-        <div className={`${stats.play_time_leaderboard.length > 0 ? "lg:col-span-2" : "lg:col-span-3"} bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 overflow-hidden flex flex-col`}>
+        <div className={`glass-card ${stats.play_time_leaderboard.length > 0 ? "lg:col-span-2" : "lg:col-span-3"} bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 overflow-hidden flex flex-col`}>
           <div className="p-6 border-b border-brand-200 dark:border-brand-700">
             <h3 className="text-lg font-semibold text-brand-900 dark:text-white">
               {stats.play_time_leaderboard.length > 0 ? "排行榜" : "游玩时长排行榜"}
@@ -367,7 +367,7 @@ function StatsPage() {
           </div>
           <div className="overflow-x-auto flex-1">
             <table className="w-full text-left text-sm">
-              <thead className="bg-brand-50 dark:bg-brand-700/50">
+              <thead className="data-glass:bg-white/5 data-glass:dark:bg-black/5 bg-brand-50 dark:bg-brand-700/50">
                 <tr>
                   <th className="px-6 py-3 font-medium text-brand-500 dark:text-brand-400 w-20">排名</th>
                   <th className="px-6 py-3 font-medium text-brand-500 dark:text-brand-400">游戏</th>
@@ -376,7 +376,7 @@ function StatsPage() {
               </thead>
               <tbody className="divide-y divide-brand-200 dark:divide-brand-700">
                 {stats.play_time_leaderboard.slice(1).map((game, index) => (
-                  <tr key={game.game_id} className="hover:bg-brand-50 dark:hover:bg-brand-700/50 transition-colors">
+                  <tr key={game.game_id} className="hover:bg-brand-50 dark:hover:bg-brand-700/50 transition-colors data-glass:hover:bg-white/5 data-glass:hover:dark:bg-black/5">
                     <td className="px-6 py-4 text-brand-500 dark:text-brand-400 font-medium">
                       #
                       {index + 2}
@@ -387,7 +387,7 @@ function StatsPage() {
                           src={game.cover_url}
                           alt={game.game_name}
                           referrerPolicy="no-referrer"
-                          className="w-10 h-14 object-cover rounded shadow-sm mr-4 bg-brand-200 dark:bg-brand-700"
+                          className="w-10 h-14 object-cover rounded shadow-sm mr-4 bg-brand-200 dark:bg-brand-700 data-glass:bg-white/5 data-glass:dark:bg-black/5"
                         />
                         <span className="font-medium text-brand-900 dark:text-white line-clamp-1">{game.game_name}</span>
                       </div>
@@ -412,13 +412,13 @@ function StatsPage() {
 
       {/* Charts */}
       <div className="space-y-6">
-        <div className="bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
+        <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
           <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">游玩时长趋势</h3>
           <div className="h-96 w-full">
             <Line options={chartOptions} data={totalTrendData} />
           </div>
         </div>
-        <div className="bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
+        <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
           <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">常玩游戏趋势</h3>
           <div className="h-96 w-full">
             <Line options={chartOptions} data={gameTrendData} />

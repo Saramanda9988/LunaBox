@@ -54,6 +54,9 @@ export default defineConfig({
 
     // 5. glass-input - 输入框（最透明，突出内容）
     [/^glass-input$/, () => "data-glass:bg-white/3 data-glass:dark:bg-black/5 data-glass:backdrop-blur-16 data-glass:backdrop-saturate-150 data-glass:border data-glass:border-white/25 data-glass:dark:border-white/18"],
+
+    // 6. glass-btn-none - 透明按钮（仅保留交互反馈）
+    [/^glass-btn-none$/, () => "data-glass:bg-white/5 data-glass:dark:bg-black/8  data-glass:backdrop-blur-10 data-glass:bg-transparent data-glass:hover:bg-white/10 data-glass:dark:hover:bg-black/12"],
   ],
 
   theme: {

@@ -94,7 +94,7 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-800/50 rounded-lg">
+      <div className="glass-card flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-800/50 rounded-lg">
         <div className="flex flex-col">
           <label htmlFor="cloud_backup_enabled" className="text-sm font-medium text-brand-700 dark:text-brand-300 cursor-pointer">
             启用云备份
@@ -113,7 +113,7 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
         <select
           value={formData.cloud_backup_provider || "s3"}
           onChange={e => onChange({ ...formData, cloud_backup_provider: e.target.value } as appconf.AppConfig)}
-          className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
+          className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
         >
           <option value="s3">S3 兼容存储</option>
           <option value="onedrive">OneDrive</option>
@@ -122,7 +122,7 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
 
       {/* S3 配置 */}
       {formData.cloud_backup_provider === "s3" && (
-        <div className="space-y-4 p-4 bg-brand-100 dark:bg-brand-800 rounded-lg">
+        <div className="glass-card space-y-4 p-4 bg-brand-100 dark:bg-brand-800 rounded-lg">
           <h3 className="text-sm font-medium text-brand-800 dark:text-brand-200">S3 配置</h3>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">备份密码</label>
@@ -147,7 +147,7 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
                     <button
                       type="button"
                       onClick={() => setShowPasswordModal(true)}
-                      className="w-full px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-md transition-colors flex items-center justify-center gap-2"
+                      className="glass-btn-neutral w-full px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-md transition-colors flex items-center justify-center gap-2"
                     >
                       <span className="i-mdi-lock-plus text-lg" />
                       设置备份密码
@@ -163,28 +163,28 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
           </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">S3 端点 (Endpoint)</label>
-            <input type="text" name="s3_endpoint" value={formData.s3_endpoint || ""} onChange={handleChange} placeholder="https://s3.example.com" className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white" />
+            <input type="text" name="s3_endpoint" value={formData.s3_endpoint || ""} onChange={handleChange} placeholder="https://s3.example.com" className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">区域 (Region)</label>
-              <input type="text" name="s3_region" value={formData.s3_region || ""} onChange={handleChange} placeholder="us-east-1" className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white" />
+              <input type="text" name="s3_region" value={formData.s3_region || ""} onChange={handleChange} placeholder="us-east-1" className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white" />
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">存储桶 (Bucket)</label>
-              <input type="text" name="s3_bucket" value={formData.s3_bucket || ""} onChange={handleChange} placeholder="lunabox-backup" className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white" />
+              <input type="text" name="s3_bucket" value={formData.s3_bucket || ""} onChange={handleChange} placeholder="lunabox-backup" className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white" />
             </div>
           </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">Access Key</label>
-            <input type="text" name="s3_access_key" value={formData.s3_access_key || ""} onChange={handleChange} className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white" />
+            <input type="text" name="s3_access_key" value={formData.s3_access_key || ""} onChange={handleChange} className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white" />
           </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">Secret Key</label>
-            <input type="password" name="s3_secret_key" value={formData.s3_secret_key || ""} onChange={handleChange} className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white" />
+            <input type="password" name="s3_secret_key" value={formData.s3_secret_key || ""} onChange={handleChange} className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white" />
           </div>
           <div className="flex justify-end">
-            <button type="button" onClick={handleTestS3} disabled={testingS3} className="px-3 py-1.5 text-sm bg-brand-100 text-brand-700 rounded-md hover:bg-brand-200 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600 disabled:opacity-50">
+            <button type="button" onClick={handleTestS3} disabled={testingS3} className="glass-btn-neutral px-3 py-1.5 text-sm bg-brand-100 text-brand-700 rounded-md hover:bg-brand-200 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600 disabled:opacity-50">
               {testingS3 ? "测试中..." : "测试连接"}
             </button>
           </div>
@@ -225,7 +225,7 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
               value={formData.onedrive_client_id || ""}
               onChange={handleChange}
               placeholder="26fcab6e-41ea-49ff-8ec9-063983cae3ef (默认)"
-              className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white font-mono text-sm"
+              className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white font-mono text-sm"
             />
             <p className="text-xs text-brand-500 dark:text-brand-400">
               如需自定义，请在
@@ -252,7 +252,7 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
                 )
               : (
                   <div className="space-y-3">
-                    <button type="button" onClick={handleOneDriveAuth} disabled={authorizingOneDrive} className="px-3 py-1.5 text-sm bg-neutral-600 text-white rounded-md hover:bg-neutral-700 disabled:opacity-50 flex items-center gap-2">
+                    <button type="button" onClick={handleOneDriveAuth} disabled={authorizingOneDrive} className="glass-btn-neutral px-3 py-1.5 text-sm bg-neutral-600 text-white rounded-md hover:bg-neutral-700 disabled:opacity-50 flex items-center gap-2">
                       {authorizingOneDrive
                         ? (
                             <>
@@ -273,7 +273,7 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
           </div>
           {formData.onedrive_refresh_token && (
             <div className="flex justify-end">
-              <button type="button" onClick={handleTestOneDrive} disabled={testingOneDrive} className="px-3 py-1.5 text-sm bg-brand-100 text-brand-700 rounded-md hover:bg-brand-200 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600 disabled:opacity-50">
+              <button type="button" onClick={handleTestOneDrive} disabled={testingOneDrive} className="glass-btn-neutral px-3 py-1.5 text-sm bg-brand-100 text-brand-700 rounded-md hover:bg-brand-200 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600 disabled:opacity-50">
                 {testingOneDrive ? "测试中..." : "测试连接"}
               </button>
             </div>
@@ -289,7 +289,7 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
           onChange={e => onChange({ ...formData, cloud_backup_retention: Number.parseInt(e.target.value) || 20 } as appconf.AppConfig)}
           min={1}
           max={100}
-          className="w-32 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
+          className="glass-input w-32 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
         />
         <p className="text-xs text-brand-500 dark:text-brand-400">云端每个游戏保留的最大备份数量</p>
       </div>

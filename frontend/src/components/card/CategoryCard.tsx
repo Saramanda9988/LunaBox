@@ -15,7 +15,7 @@ export function CategoryCard({ category, onDelete }: CategoryCardProps) {
 
   return (
     <div
-      className="flex items-center p-4 bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700 rounded-xl shadow-sm hover:shadow-md transition-all text-left group relative"
+      className="glass-card flex items-center p-4 bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700 rounded-xl shadow-sm hover:shadow-md transition-all text-left group relative"
       onClick={handleViewDetails}
     >
       <div className={`p-3 rounded-lg mr-4 ${
@@ -43,7 +43,7 @@ export function CategoryCard({ category, onDelete }: CategoryCardProps) {
             e.preventDefault(); // Prevent navigation
             onDelete(e);
           }}
-          className="absolute top-2 right-2 p-2 text-brand-400 hover:text-error-500 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="glass-btn-none absolute top-2 right-2 p-2 text-brand-400 hover:text-error-500 opacity-0 group-hover:opacity-100 transition-opacity"
           title="删除收藏夹"
         >
           <div className="i-mdi-delete text-lg" />

@@ -38,7 +38,7 @@ export function GameCard({ game }: GameCardProps) {
   const isCompleted = game.status === enums.GameStatus.COMPLETED;
 
   return (
-    <div className="group relative flex w-full flex-col overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm transition-all duration-300 hover:shadow-xl dark:border-brand-700 dark:bg-brand-800">
+    <div className="glass-card group relative flex w-full flex-col overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm transition-all duration-300 hover:shadow-xl dark:border-brand-700 dark:bg-brand-800">
       <div className="relative aspect-[3/3.6] w-full overflow-hidden bg-brand-200 dark:bg-brand-700">
         {game.cover_url
           ? (

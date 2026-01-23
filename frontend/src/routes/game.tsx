@@ -268,7 +268,7 @@ function GameDetailPage() {
 
       {/* Header Section */}
       <div className="flex gap-6 items-center">
-        <div className="relative w-60 flex-shrink-0 rounded-lg overflow-hidden shadow-lg bg-brand-200 dark:bg-brand-800">
+        <div className="relative w-60 flex-shrink-0 rounded-lg overflow-hidden shadow-lg bg-brand-200 dark:bg-brand-800" data-glass="bg-white/5 dark:bg-black/5">
           {game.cover_url
             ? (
                 <img

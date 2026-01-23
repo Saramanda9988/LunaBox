@@ -149,19 +149,19 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
     <div className="space-y-8">
       {/* 统计卡片 */}
       <div className="grid grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
+        <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
           <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">累计游戏次数</div>
           <div className="text-2xl font-bold text-brand-900 dark:text-white">
             {stats?.total_play_count ?? (isLoading ? "-" : 0)}
           </div>
         </div>
-        <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
+        <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
           <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">今日游戏时长</div>
           <div className="text-2xl font-bold text-brand-900 dark:text-white">
             {stats ? formatDuration(stats.today_play_time) : (isLoading ? "-" : "0分钟")}
           </div>
         </div>
-        <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
+        <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
           <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">累计总时长</div>
           <div className="text-2xl font-bold text-brand-900 dark:text-white">
             {stats ? formatDuration(stats.total_play_time) : (isLoading ? "-" : "0分钟")}
@@ -170,7 +170,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
       </div>
 
       {/* 视图切换和操作栏 */}
-      <div className="bg-white dark:bg-brand-800 rounded-lg shadow-sm">
+      <div className="glass-card bg-white dark:bg-brand-800 rounded-lg shadow-sm">
         <div className="p-6">
           {isLoading && !stats
             ? (
@@ -240,7 +240,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
             <div className="flex gap-2">
               <button
                 onClick={() => setViewMode("chart")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                className={`glass-btn-neutral flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   viewMode === "chart"
                     ? "bg-neutral-600 text-white"
                     : "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-300 hover:bg-brand-200 dark:hover:bg-brand-600"
@@ -250,7 +250,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
               </button>
               <button
                 onClick={() => setViewMode("sessions")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                className={`glass-btn-neutral flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   viewMode === "sessions"
                     ? "bg-neutral-600 text-white"
                     : "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-300 hover:bg-brand-200 dark:hover:bg-brand-600"
@@ -263,7 +263,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
 
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors text-sm"
+            className="glass-btn-neutral flex items-center gap-1 px-3 py-1.5 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors text-sm"
           >
             <div className="i-mdi-plus text-lg" />
             手动添加

@@ -117,7 +117,7 @@ function HomePage() {
           <h1 className="text-4xl font-bold text-brand-900 dark:text-white drop-shadow-lg">首页</h1>
           <p className="mt-2 text-brand-600 dark:text-white/80 drop-shadow">欢迎回来</p>
         </div>
-        <div className="absolute top-6 right-6 flex items-center gap-2 bg-white/80 dark:bg-brand-800/80 backdrop-blur-sm px-4 py-3 rounded-xl shadow-lg">
+        <div className="glass-card absolute top-6 right-6 flex items-center gap-2 bg-white/80 dark:bg-brand-800/80 backdrop-blur-sm px-4 py-3 rounded-xl shadow-lg">
           <span className="i-mdi-clock-outline text-xl text-neutral-500" />
           <div>
             <div className="text-xs text-brand-500 dark:text-brand-400">今日游玩时间</div>

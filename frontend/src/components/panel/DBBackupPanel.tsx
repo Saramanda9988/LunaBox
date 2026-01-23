@@ -209,7 +209,7 @@ export function DBBackupPanel() {
   return (
     <div className="space-y-6">
       {/* 备份操作区 */}
-      <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
+      <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold text-brand-900 dark:text-white">数据库备份</h3>
@@ -220,7 +220,7 @@ export function DBBackupPanel() {
           <button
             onClick={handleCreateBackup}
             disabled={isDisabled}
-            className="px-4 py-2 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="glass-btn-neutral px-4 py-2 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isBackingUp && <div className="i-mdi-loading animate-spin" />}
             {isBackingUp ? "备份中..." : "立即备份"}
@@ -236,7 +236,7 @@ export function DBBackupPanel() {
       </div>
 
       {/* 本地备份列表 */}
-      <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
+      <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
         <div className="flex items-center gap-2 mb-4">
           <h3 className="text-lg font-semibold text-brand-900 dark:text-white">本地备份</h3>
           {config?.auto_backup_db && (
@@ -258,7 +258,7 @@ export function DBBackupPanel() {
                   {dbBackups.backups.map(backup => (
                     <div
                       key={backup.path}
-                      className="flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-700 rounded-lg"
+                      className="data-glass:bg-white/1 data-glass:dark:bg-black/1 flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-700 rounded-lg"
                     >
                       <div className="flex items-center gap-4">
                         <div className="i-mdi-database text-2xl text-brand-500" />
@@ -323,7 +323,7 @@ export function DBBackupPanel() {
 
       {/* 云端备份列表 */}
       {cloudEnabled && (
-        <div className="bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
+        <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-brand-900 dark:text-white flex items-center gap-2">
               <div className="i-mdi-cloud text-xl text-neutral-500" />
@@ -350,7 +350,7 @@ export function DBBackupPanel() {
                     {cloudDBBackups.map(backup => (
                       <div
                         key={backup.key}
-                        className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-900/30 rounded-lg"
+                        className="data-glass:bg-white/1 data-glass:dark:bg-black/1 flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-900/30 rounded-lg"
                       >
                         <div className="flex items-center gap-4">
                           <div className="i-mdi-cloud-check text-2xl text-neutral-500" />
