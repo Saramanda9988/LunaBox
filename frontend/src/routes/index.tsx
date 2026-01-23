@@ -14,7 +14,7 @@ export const Route = createRoute({
 
 function HomePage() {
   const navigate = useNavigate();
-  const { homeData, fetchHomeData, isLoading } = useAppStore();
+  const { homeData, fetchHomeData, isLoading, config } = useAppStore();
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
@@ -97,22 +97,25 @@ function HomePage() {
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1 relative overflow-hidden">
-        <div className="absolute inset-0">
-          <img
-            src={lastPlayed.game.cover_url}
-            alt=""
-            referrerPolicy="no-referrer"
-            className="w-full h-full object-cover"
-          />
-          {/* 整体柔和遮罩 - 浅色模式用浅色，深色模式用深色 */}
-          <div className="absolute inset-0 bg-brand-100/30 dark:bg-black/30" />
-          {/* 从左到右的渐变遮罩 */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-100/40 to-brand-100/80 dark:via-black/20 dark:to-brand-900/70" />
-          {/* 底部渐变遮罩 */}
-          <div className="absolute inset-0 bg-gradient-to-t from-brand-100/90 via-transparent to-transparent dark:from-brand-900/60" />
-          {/* 顶部轻微渐变 */}
-          <div className="absolute inset-0 bg-gradient-to-b from-brand-100/40 via-transparent to-transparent dark:from-black/20" />
-        </div>
+        {/* 仅在未启用自定义背景或未选择隐藏游戏封面时显示 */}
+        {(!config?.background_enabled || !config?.background_hide_game_cover) && (
+          <div className="absolute inset-0">
+            <img
+              src={lastPlayed.game.cover_url}
+              alt=""
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover"
+            />
+            {/* 整体柔和遮罩 - 浅色模式用浅色，深色模式用深色 */}
+            <div className="absolute inset-0 bg-brand-100/30 dark:bg-black/30" />
+            {/* 从左到右的渐变遮罩 */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-100/40 to-brand-100/80 dark:via-black/20 dark:to-brand-900/70" />
+            {/* 底部渐变遮罩 */}
+            <div className="absolute inset-0 bg-gradient-to-t from-brand-100/90 via-transparent to-transparent dark:from-brand-900/60" />
+            {/* 顶部轻微渐变 */}
+            <div className="absolute inset-0 bg-gradient-to-b from-brand-100/40 via-transparent to-transparent dark:from-black/20" />
+          </div>
+        )}
         <div className="absolute top-6 left-8">
           <h1 className="text-4xl font-bold text-brand-900 dark:text-white drop-shadow-lg">首页</h1>
           <p className="mt-2 text-brand-600 dark:text-white/80 drop-shadow">欢迎回来</p>

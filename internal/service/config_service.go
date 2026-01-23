@@ -110,6 +110,7 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.BackgroundBlur = newConfig.BackgroundBlur
 	s.config.BackgroundOpacity = newConfig.BackgroundOpacity
 	s.config.BackgroundEnabled = newConfig.BackgroundEnabled
+	s.config.BackgroundHideGameCover = newConfig.BackgroundHideGameCover
 	return nil
 }
 

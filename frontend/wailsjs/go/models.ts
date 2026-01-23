@@ -44,6 +44,7 @@ export namespace appconf {
 	    background_blur: number;
 	    background_opacity: number;
 	    background_enabled: boolean;
+	    background_hide_game_cover: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -94,6 +95,7 @@ export namespace appconf {
 	        this.background_blur = source["background_blur"];
 	        this.background_opacity = source["background_opacity"];
 	        this.background_enabled = source["background_enabled"];
+	        this.background_hide_game_cover = source["background_hide_game_cover"];
 	    }
 	}
 

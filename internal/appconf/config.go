@@ -60,10 +60,11 @@ type AppConfig struct {
 	LastUpdateCheck      string `json:"last_update_check,omitempty"` // 上次更新检查时间
 	SkipVersion          string `json:"skip_version,omitempty"`      // 跳过的版本号（用户选择忽略的更新）
 	// 背景图配置
-	BackgroundImage   string  `json:"background_image,omitempty"` // 自定义背景图路径
-	BackgroundBlur    int     `json:"background_blur"`            // 背景模糊度 (0-20)
-	BackgroundOpacity float64 `json:"background_opacity"`         // 背景不透明度 (0-1)
-	BackgroundEnabled bool    `json:"background_enabled"`         // 是否启用自定义背景
+	BackgroundImage         string  `json:"background_image,omitempty"` // 自定义背景图路径
+	BackgroundBlur          int     `json:"background_blur"`            // 背景模糊度 (0-20)
+	BackgroundOpacity       float64 `json:"background_opacity"`         // 背景不透明度 (0-1)
+	BackgroundEnabled       bool    `json:"background_enabled"`         // 是否启用自定义背景
+	BackgroundHideGameCover bool    `json:"background_hide_game_cover"` // 启用自定义背景时隐藏首页游戏封面
 }
 
 // getConfigPath 获取配置文件路径
@@ -115,10 +116,11 @@ func LoadConfig() (*AppConfig, error) {
 		LastUpdateCheck:        "",
 		SkipVersion:            "",
 		// 背景图配置默认值
-		BackgroundImage:   "",
-		BackgroundBlur:    10,   // 默认模糊度
-		BackgroundOpacity: 0.85, // 默认不透明度
-		BackgroundEnabled: false,
+		BackgroundImage:         "",
+		BackgroundBlur:          10,   // 默认模糊度
+		BackgroundOpacity:       0.85, // 默认不透明度
+		BackgroundEnabled:       false,
+		BackgroundHideGameCover: false, // 默认显示游戏封面
 	}
 
 	// 获取配置文件路径

@@ -66,6 +66,24 @@ export function BackgroundSettingsPanel({ formData, onChange }: BackgroundSettin
         />
       </div>
 
+      {/* 隐藏游戏封面开关 */}
+      <div className="flex items-center justify-between p-2">
+        <div>
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+            隐藏首页游戏封面
+          </label>
+          <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
+            启用自定义背景时，隐藏首页上一次游玩游戏的封面图片
+          </p>
+        </div>
+        <BetterSwitch
+          id="background_hide_game_cover"
+          checked={formData.background_hide_game_cover || false}
+          onCheckedChange={checked => onChange({ ...formData, background_hide_game_cover: checked } as appconf.AppConfig)}
+          disabled={!formData.background_enabled}
+        />
+      </div>
+
       {/* 背景图片选择 */}
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
