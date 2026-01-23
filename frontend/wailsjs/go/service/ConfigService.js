@@ -14,6 +14,10 @@ export function SafeQuit() {
   return window['go']['service']['ConfigService']['SafeQuit']();
 }
 
+export function SelectBackgroundImage() {
+  return window['go']['service']['ConfigService']['SelectBackgroundImage']();
+}
+
 export function SetQuitHandler(arg1) {
   return window['go']['service']['ConfigService']['SetQuitHandler'](arg1);
 }
