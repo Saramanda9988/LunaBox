@@ -1,9 +1,9 @@
-import type { appconf } from "../../../wailsjs/go/models";
+import type { AppConfig } from "../../../bindings/lunabox/internal/appconf";
 import { BetterSwitch } from "../ui/BetterSwitch";
 
 interface AutoBackupSettingsProps {
-  formData: appconf.AppConfig;
-  onChange: (data: appconf.AppConfig) => void;
+  formData: AppConfig;
+  onChange: (data: AppConfig) => void;
 }
 
 export function AutoBackupSettingsPanel({ formData, onChange }: AutoBackupSettingsProps) {
@@ -21,7 +21,7 @@ export function AutoBackupSettingsPanel({ formData, onChange }: AutoBackupSettin
         <BetterSwitch
           id="auto_backup_db"
           checked={formData.auto_backup_db || false}
-          onCheckedChange={checked => onChange({ ...formData, auto_backup_db: checked } as appconf.AppConfig)}
+          onCheckedChange={checked => onChange({ ...formData, auto_backup_db: checked } as AppConfig)}
         />
       </div>
 
@@ -37,7 +37,7 @@ export function AutoBackupSettingsPanel({ formData, onChange }: AutoBackupSettin
         <BetterSwitch
           id="auto_backup_game_save"
           checked={formData.auto_backup_game_save || false}
-          onCheckedChange={checked => onChange({ ...formData, auto_backup_game_save: checked } as appconf.AppConfig)}
+          onCheckedChange={checked => onChange({ ...formData, auto_backup_game_save: checked } as AppConfig)}
         />
       </div>
 
@@ -53,7 +53,7 @@ export function AutoBackupSettingsPanel({ formData, onChange }: AutoBackupSettin
         <BetterSwitch
           id="auto_upload_db_to_cloud"
           checked={formData.auto_upload_db_to_cloud || false}
-          onCheckedChange={checked => onChange({ ...formData, auto_upload_db_to_cloud: checked } as appconf.AppConfig)}
+          onCheckedChange={checked => onChange({ ...formData, auto_upload_db_to_cloud: checked } as AppConfig)}
           disabled={!formData.cloud_backup_enabled}
         />
       </div>
@@ -70,7 +70,7 @@ export function AutoBackupSettingsPanel({ formData, onChange }: AutoBackupSettin
         <BetterSwitch
           id="auto_upload_game_save_to_cloud"
           checked={formData.auto_upload_game_save_to_cloud || false}
-          onCheckedChange={checked => onChange({ ...formData, auto_upload_game_save_to_cloud: checked } as appconf.AppConfig)}
+          onCheckedChange={checked => onChange({ ...formData, auto_upload_game_save_to_cloud: checked } as AppConfig)}
           disabled={!formData.cloud_backup_enabled}
         />
       </div>
@@ -82,7 +82,7 @@ export function AutoBackupSettingsPanel({ formData, onChange }: AutoBackupSettin
             type="number"
             name="local_backup_retention"
             value={formData.local_backup_retention || 10}
-            onChange={e => onChange({ ...formData, local_backup_retention: Number.parseInt(e.target.value) || 0 } as appconf.AppConfig)}
+            onChange={e => onChange({ ...formData, local_backup_retention: Number.parseInt(e.target.value) || 0 } as AppConfig)}
             className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
           />
           <p className="text-xs text-brand-500 dark:text-brand-400">每个游戏在本地保留的最大备份数量</p>
@@ -94,7 +94,7 @@ export function AutoBackupSettingsPanel({ formData, onChange }: AutoBackupSettin
             type="number"
             name="local_db_backup_retention"
             value={formData.local_db_backup_retention || 5}
-            onChange={e => onChange({ ...formData, local_db_backup_retention: Number.parseInt(e.target.value) || 0 } as appconf.AppConfig)}
+            onChange={e => onChange({ ...formData, local_db_backup_retention: Number.parseInt(e.target.value) || 0 } as AppConfig)}
             className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
           />
           <p className="text-xs text-brand-500 dark:text-brand-400">数据库在本地保留的最大备份数量</p>

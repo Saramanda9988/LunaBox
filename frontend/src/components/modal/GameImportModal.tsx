@@ -1,4 +1,4 @@
-import type { service } from "../../../wailsjs/go/models";
+import type { ImportResult, PreviewGame } from "../../../bindings/lunabox/internal/service";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
@@ -9,7 +9,7 @@ import {
   PreviewPlayniteImport,
   SelectJSONFile,
   SelectZipFile,
-} from "../../../wailsjs/go/service/ImportService";
+} from "../../../bindings/lunabox/internal/service/importservice";
 
 export type ImportSource = "playnite" | "potatovn";
 
@@ -33,8 +33,8 @@ interface ImportConfig {
   primaryColor: string;
   hoverColor: string;
   selectFile: () => Promise<string>;
-  previewImport: (path: string) => Promise<service.PreviewGame[]>;
-  doImport: (path: string, skipNoPath: boolean) => Promise<service.ImportResult>;
+  previewImport: (path: string) => Promise<PreviewGame[]>;
+  doImport: (path: string, skipNoPath: boolean) => Promise<ImportResult>;
 }
 
 const importConfigs: Record<ImportSource, ImportConfig> = {
@@ -69,8 +69,8 @@ const importConfigs: Record<ImportSource, ImportConfig> = {
 export function GameImportModal({ isOpen, source, onClose, onImportComplete }: GameImportModalProps) {
   const [step, setStep] = useState<Step>("select");
   const [filePath, setFilePath] = useState("");
-  const [previewGames, setPreviewGames] = useState<service.PreviewGame[]>([]);
-  const [importResult, setImportResult] = useState<service.ImportResult | null>(null);
+  const [previewGames, setPreviewGames] = useState<PreviewGame[]>([]);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [skipNoPath, setSkipNoPath] = useState(true);
 

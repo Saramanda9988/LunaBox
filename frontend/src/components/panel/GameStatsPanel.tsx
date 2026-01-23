@@ -1,10 +1,11 @@
-import type { models, vo } from "../../../wailsjs/go/models";
+import type { PlaySession } from "../../../bindings/lunabox/internal/models";
+import type { GameDetailStats } from "../../../bindings/lunabox/internal/vo";
 import { useCallback, useEffect, useState } from "react";
 import { Line } from "react-chartjs-2";
 import { toast } from "react-hot-toast";
-import { enums } from "../../../wailsjs/go/models";
-import { GetGameStats } from "../../../wailsjs/go/service/StatsService";
-import { DeletePlaySession, GetPlaySessions } from "../../../wailsjs/go/service/TimerService";
+import { Period } from "../../../bindings/lunabox/internal/enums";
+import { GetGameStats } from "../../../bindings/lunabox/internal/service/StatsService";
+import { DeletePlaySession, GetPlaySessions } from "../../../bindings/lunabox/internal/service/TimerService";
 import { useChartTheme } from "../../hooks/useChartTheme";
 import { formatDuration, formatLocalDateTime } from "../../utils/time";
 import { AddPlaySessionModal } from "../modal/AddPlaySessionModal";
@@ -19,11 +20,11 @@ type ViewMode = "chart" | "sessions";
 
 export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
   const { textColor, gridColor } = useChartTheme();
-  const [stats, setStats] = useState<vo.GameDetailStats | null>(null);
-  const [sessions, setSessions] = useState<models.PlaySession[]>([]);
+  const [stats, setStats] = useState<GameDetailStats | null>(null);
+  const [sessions, setSessions] = useState<PlaySession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("chart");
-  const [timeDimension, setTimeDimension] = useState<enums.Period>(enums.Period.WEEK);
+  const [timeDimension, setTimeDimension] = useState<Period>(Period.Week);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
 
@@ -227,9 +228,9 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
             {/* Time Dimension Selector */}
             <SlideButton
               options={[
-                { label: "周", value: enums.Period.WEEK },
-                { label: "月", value: enums.Period.MONTH },
-                { label: "全部", value: enums.Period.ALL },
+                { label: "周", value: Period.Week },
+                { label: "月", value: Period.Month },
+                { label: "全部", value: Period.All },
               ]}
               value={timeDimension}
               onChange={setTimeDimension}

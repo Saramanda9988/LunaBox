@@ -1,4 +1,5 @@
-import type { models, vo } from "../../../wailsjs/go/models";
+import type { GameBackup } from "../../../bindings/lunabox/internal/models";
+import type { CloudBackupItem, CloudBackupStatus } from "../../../bindings/lunabox/internal/vo";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import {
@@ -11,7 +12,7 @@ import {
   RestoreBackup,
   RestoreFromCloud,
   UploadGameBackupToCloud,
-} from "../../../wailsjs/go/service/BackupService";
+} from "../../../bindings/lunabox/internal/service/BackupService";
 import { useAppStore } from "../../store";
 import { formatFileSize } from "../../utils/size";
 import { formatLocalDateTime } from "../../utils/time";
@@ -24,9 +25,9 @@ interface GameBackupPanelProps {
 
 export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
   const { config } = useAppStore();
-  const [backups, setBackups] = useState<models.GameBackup[]>([]);
-  const [cloudBackups, setCloudBackups] = useState<vo.CloudBackupItem[]>([]);
-  const [cloudStatus, setCloudStatus] = useState<vo.CloudBackupStatus | null>(null);
+  const [backups, setBackups] = useState<GameBackup[]>([]);
+  const [cloudBackups, setCloudBackups] = useState<CloudBackupItem[]>([]);
+  const [cloudStatus, setCloudStatus] = useState<CloudBackupStatus | null>(null);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [loadingLocal, setLoadingLocal] = useState(true);

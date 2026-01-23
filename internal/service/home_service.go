@@ -1,30 +1,26 @@
 package service
 
 import (
-	"context"
 	"database/sql"
+	"log/slog"
 	"lunabox/internal/appconf"
 	"lunabox/internal/models"
 	"lunabox/internal/vo"
 	"time"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type HomeService struct {
-	ctx    context.Context
 	db     *sql.DB
+	logger *slog.Logger
 	config *appconf.AppConfig
 }
 
-func NewHomeService() *HomeService {
-	return &HomeService{}
-}
-
-func (s *HomeService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
-	s.ctx = ctx
-	s.db = db
-	s.config = config
+func NewHomeService(db *sql.DB, config *appconf.AppConfig, logger *slog.Logger) *HomeService {
+	return &HomeService{
+		db:     db,
+		logger: logger,
+		config: config,
+	}
 }
 
 func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
@@ -71,7 +67,7 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 			IsPlaying:      isPlaying,
 		}
 	} else if err != sql.ErrNoRows {
-		runtime.LogErrorf(s.ctx, "查询上次游玩游戏失败: %v", err)
+		s.logger.Error("查询上次游玩游戏失败: %v", err)
 	}
 
 	// 2. 今日游戏时长

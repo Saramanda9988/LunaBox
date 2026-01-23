@@ -1,4 +1,5 @@
-import type { models, vo } from "../../wailsjs/go/models";
+import type { Game } from "../../bindings/lunabox/internal/models";
+import type { CategoryVO } from "../../bindings/lunabox/internal/vo";
 import { createRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -7,8 +8,8 @@ import {
   GetCategoryByID,
   GetGamesByCategory,
   RemoveGameFromCategory,
-} from "../../wailsjs/go/service/CategoryService";
-import { GetGames } from "../../wailsjs/go/service/GameService";
+} from "../../bindings/lunabox/internal/service/categoryservice";
+import { GetGames } from "../../bindings/lunabox/internal/service/GameService";
 import { FilterBar } from "../components/bar/FilterBar";
 import { GameCard } from "../components/card/GameCard";
 import { AddGameToCategoryModal } from "../components/modal/AddGameToCategoryModal";
@@ -25,12 +26,12 @@ export const Route = createRoute({
 function CategoryDetailPage() {
   const navigate = useNavigate();
   const { categoryId } = Route.useParams();
-  const [category, setCategory] = useState<vo.CategoryVO | null>(null);
-  const [games, setGames] = useState<models.Game[]>([]);
+  const [category, setCategory] = useState<CategoryVO | null>(null);
+  const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
-  const [allGames, setAllGames] = useState<models.Game[]>([]);
+  const [allGames, setAllGames] = useState<Game[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "created_at">("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -94,7 +95,7 @@ function CategoryDetailPage() {
     try {
       const result = await GetGames();
       const currentGameIds = new Set(games.map(g => g.id));
-      setAllGames(result.filter(g => !currentGameIds.has(g.id)) || []);
+      setAllGames(result.filter((g: Game) => !currentGameIds.has(g.id)) || []);
       setIsAddGameModalOpen(true);
     }
     catch (error) {

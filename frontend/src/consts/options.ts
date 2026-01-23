@@ -1,11 +1,11 @@
-import { enums } from "../../wailsjs/go/models";
+import { GameStatus } from "../../bindings/lunabox/internal/enums";
 
 export const statusOptions = [
   { label: "全部状态", value: "" },
-  { label: "未开始", value: enums.GameStatus.NOT_STARTED },
-  { label: "游玩中", value: enums.GameStatus.PLAYING },
-  { label: "已通关", value: enums.GameStatus.COMPLETED },
-  { label: "搁置", value: enums.GameStatus.ON_HOLD },
+  { label: "未开始", value: GameStatus.StatusNotStarted },
+  { label: "游玩中", value: GameStatus.StatusPlaying },
+  { label: "已通关", value: GameStatus.StatusCompleted },
+  { label: "搁置", value: GameStatus.StatusOnHold },
 ];
 
 export const sortOptions = [

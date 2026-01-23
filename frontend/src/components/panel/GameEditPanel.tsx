@@ -1,8 +1,8 @@
-import type { models } from "../../../wailsjs/go/models";
+import type { Game } from "../../../bindings/lunabox/internal/models";
 
 interface GameEditFormProps {
-  game: models.Game;
-  onGameChange: (game: models.Game) => void;
+  game: Game;
+  onGameChange: (game: Game) => void;
   onDelete: () => void;
   onSelectExecutable: () => void;
   onSelectSaveDirectory: () => void;
@@ -29,7 +29,7 @@ export function GameEditPanel({
           <input
             type="text"
             value={game.name}
-            onChange={e => onGameChange({ ...game, name: e.target.value } as models.Game)}
+            onChange={e => onGameChange({ ...game, name: e.target.value } as Game)}
             className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
           />
         </div>
@@ -42,7 +42,7 @@ export function GameEditPanel({
             <input
               type="text"
               value={game.cover_url}
-              onChange={e => onGameChange({ ...game, cover_url: e.target.value } as models.Game)}
+              onChange={e => onGameChange({ ...game, cover_url: e.target.value } as Game)}
               placeholder="输入图片 URL 或选择本地图片"
               className="flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             />
@@ -64,7 +64,7 @@ export function GameEditPanel({
           <input
             type="text"
             value={game.company}
-            onChange={e => onGameChange({ ...game, company: e.target.value } as models.Game)}
+            onChange={e => onGameChange({ ...game, company: e.target.value } as Game)}
             className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
           />
         </div>
@@ -77,7 +77,7 @@ export function GameEditPanel({
             <input
               type="text"
               value={game.path}
-              onChange={e => onGameChange({ ...game, path: e.target.value } as models.Game)}
+              onChange={e => onGameChange({ ...game, path: e.target.value } as Game)}
               className="flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             />
             <button
@@ -98,7 +98,7 @@ export function GameEditPanel({
             <input
               type="text"
               value={game.save_path || ""}
-              onChange={e => onGameChange({ ...game, save_path: e.target.value } as models.Game)}
+              onChange={e => onGameChange({ ...game, save_path: e.target.value } as Game)}
               placeholder="选择游戏存档所在目录"
               className="flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             />
@@ -119,7 +119,7 @@ export function GameEditPanel({
           </label>
           <textarea
             value={game.summary}
-            onChange={e => onGameChange({ ...game, summary: e.target.value } as models.Game)}
+            onChange={e => onGameChange({ ...game, summary: e.target.value } as Game)}
             rows={6}
             className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none resize-none"
           />
@@ -132,7 +132,7 @@ export function GameEditPanel({
             </label>
             <select
               value={game.source_type || ""}
-              onChange={e => onGameChange({ ...game, source_type: e.target.value } as models.Game)}
+              onChange={e => onGameChange({ ...game, source_type: e.target.value } as Game)}
               className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             >
               <option value="">无</option>
@@ -149,7 +149,7 @@ export function GameEditPanel({
             <input
               type="text"
               value={game.source_id || ""}
-              onChange={e => onGameChange({ ...game, source_id: e.target.value } as models.Game)}
+              onChange={e => onGameChange({ ...game, source_id: e.target.value } as Game)}
               placeholder="远程数据源的ID"
               className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             />

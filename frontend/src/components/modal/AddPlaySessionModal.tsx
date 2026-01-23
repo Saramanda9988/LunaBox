@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "react-hot-toast";
-import { AddPlaySession } from "../../../wailsjs/go/service/TimerService";
+import { AddPlaySession } from "../../../bindings/lunabox/internal/service/TimerService";
 import { formatDuration, toLocalISOString } from "../../utils/time";
 
 interface AddPlaySessionModalProps {

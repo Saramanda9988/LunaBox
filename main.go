@@ -1,28 +1,20 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"embed"
+	"log/slog"
 	"lunabox/internal/utils"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"lunabox/internal/appconf"
-	"lunabox/internal/enums"
 	"lunabox/internal/migrations"
 	"lunabox/internal/service"
 
-	"github.com/wailsapp/wails/v2/pkg/options/windows"
-
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/logger"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
-
-	"github.com/energye/systray"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -37,47 +29,33 @@ var db *sql.DB
 
 var config *appconf.AppConfig
 
-var appCtx context.Context
+var app *application.App
 
-// 用于通知 systray 退出
-var systrayQuit chan struct{}
-
-// 用于同步托盘就绪状态
-var systrayReady chan struct{}
-
-// 标记是否是从托盘强制退出（绕过 OnBeforeClose 的最小化逻辑）
+// 标记是否是从托盘强制退出
 var forceQuit bool
 
 func main() {
-	logDir, _ := utils.GetSubDir("logs")
-	appLogger := logger.NewFileLogger(filepath.Join(logDir, "app.log"))
+
+	logger, logErr := initLogger()
+	if logErr != nil {
+		// TODO: 处理日志初始化失败
+		slog.Error("failed to initialize logger", "error", logErr.Error())
+		os.Exit(1)
+	}
 
 	var loadErr error
 	config, loadErr = appconf.LoadConfig()
 	if loadErr != nil {
-		appLogger.Fatal(loadErr.Error())
+		logger.Error("failed to load config", "error", loadErr.Error())
+		panic(loadErr)
 	}
-
-	gameService := service.NewGameService()
-	aiService := service.NewAiService()
-	backupService := service.NewBackupService()
-	homeService := service.NewHomeService()
-	statsService := service.NewStatsService()
-	timerService := service.NewTimerService()
-	categoryService := service.NewCategoryService()
-	configService := service.NewConfigService()
-	importService := service.NewImportService()
-	versionService := service.NewVersionService()
-	templateService := service.NewTemplateService()
-	updateService := service.NewUpdateService()
 
 	// 创建本地文件处理器
-	localFileHandler, err := utils.NewLocalFileHandler()
-	if err != nil {
-		appLogger.Error("Warning: Failed to create local file handler: " + err.Error())
+	localFileHandler, localFileErr := utils.NewLocalFileHandler()
+	if localFileErr != nil {
+		slog.Warn("Failed to create local file handler", "error", localFileErr.Error())
 	}
 
-	// Create application with options
 	// 使用配置中保存的窗口尺寸，如果小于最小值则使用最小值
 	initWidth := config.WindowWidth
 	if initWidth < 970 {
@@ -88,16 +66,57 @@ func main() {
 		initHeight = 563
 	}
 
-	bootstrapErr := wails.Run(&options.App{
-		Title:     "LunaBox",
-		Logger:    appLogger,
-		LogLevel:  logger.INFO,
-		Width:     initWidth,
-		Height:    initHeight,
-		MinWidth:  970,
-		MinHeight: 563,
-		AssetServer: &assetserver.Options{
-			Assets: assets,
+	// 创建服务实例
+	gameService := service.NewGameService(db, config, logger)
+	aiService := service.NewAiService(db, config, logger)
+	backupService := service.NewBackupService(db, config, logger)
+	homeService := service.NewHomeService(db, config, logger)
+	statsService := service.NewStatsService(db, config, logger)
+	timerService := service.NewTimerService(db, config, logger)
+	categoryService := service.NewCategoryService(db, config, logger)
+	configService := service.NewConfigService(db, config, logger)
+	importService := service.NewImportService(db, config, logger)
+	templateService := service.NewTemplateService(db, config, logger)
+	updateService := service.NewUpdateService(logger)
+	versionService := service.NewVersionService()
+
+	configService.SetQuitHandler(func() {
+		forceQuit = true
+		app.Quit()
+	})
+
+	// 设置 TimerService 的 BackupService 依赖
+	timerService.SetBackupService(backupService)
+
+	// 设置 ImportService 的 TimerService 依赖
+	importService.SetTimerService(timerService)
+	importService.SetGameService(gameService)
+
+	// 设置 UpdateService 的 ConfigService 依赖
+	updateService.SetConfigService(configService)
+
+	// 创建 Wails v3 应用
+	app = application.New(application.Options{
+		Name:        "LunaBox",
+		Description: "A game library manager",
+		LogLevel:    slog.LevelInfo,
+		Logger:      logger,
+		Services: []application.Service{
+			application.NewService(gameService),
+			application.NewService(aiService),
+			application.NewService(backupService),
+			application.NewService(homeService),
+			application.NewService(statsService),
+			application.NewService(timerService),
+			application.NewService(categoryService),
+			application.NewService(configService),
+			application.NewService(importService),
+			application.NewService(versionService),
+			application.NewService(templateService),
+			application.NewService(updateService),
+		},
+		Assets: application.AssetOptions{
+			Handler: application.AssetFileServerFS(assets),
 			Middleware: func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					// 跨域处理
@@ -119,165 +138,178 @@ func main() {
 				})
 			},
 		},
-		BackgroundColour: &options.RGBA{R: 18, G: 20, B: 22, A: 255},
-		StartHidden:      true,
-		// 样式完全交由wails前端控制
-		Windows: &windows.Options{
-			WebviewIsTransparent: false,
-			WindowIsTranslucent:  false,
-			Theme:                windows.SystemDefault,
-		},
-		// 关闭窗口时的处理
-		OnBeforeClose: func(ctx context.Context) bool {
+		// FIXME: 用shouldQuit和PostShutDown这两个钩子生命周期对吗
+		ShouldQuit: func() bool {
+			window := app.Window.Current()
 			// 保存当前窗口大小（只在非最大化时）
-			if !runtime.WindowIsMaximised(ctx) {
-				config.WindowWidth, config.WindowHeight = runtime.WindowGetSize(ctx)
+			if !window.IsMaximised() {
+				config.WindowWidth, config.WindowHeight = window.Size()
 			}
 
 			// 如果是从托盘强制退出，直接允许关闭
 			if forceQuit {
-				return false
-			}
-			if config.CloseToTray {
-				runtime.WindowHide(ctx)
 				return true
 			}
-			return false
+			if config.CloseToTray {
+				window.Hide()
+				return false
+			}
+			return true
 		},
-		OnStartup: func(ctx context.Context) {
-			appCtx = ctx
-			var err error
-
-			// 检查是否有待恢复的数据库备份（在打开数据库前执行）
-			if config.PendingDBRestore != "" {
-				restored, restoreErr := service.ExecuteDBRestore(config)
-				if restoreErr != nil {
-					appLogger.Error("fail to restore database: " + restoreErr.Error())
-				} else if restored {
-					appLogger.Info("database restored successfully")
-				}
-			}
-
-			execPath, err := utils.GetDataDir()
-			if err != nil {
-				appLogger.Fatal(err.Error())
-			}
-			dbPath := filepath.Join(execPath, "lunabox.db")
-			db, err = sql.Open("duckdb", dbPath)
-			if err != nil {
-				appLogger.Fatal(err.Error())
-			}
-
-			if err := initSchema(db); err != nil {
-				appLogger.Fatal(err.Error())
-			}
-
-			// 运行数据库迁移（安全、只执行一次）
-			appLogger.Info("Checking for pending database migrations...")
-			if err := migrations.Run(ctx, db); err != nil {
-				appLogger.Fatal("Database migration failed: " + err.Error())
-			}
-			appLogger.Info("Database migrations completed")
-
-			configService.Init(ctx, db, config)
-			// 设置安全退出回调
-			configService.SetQuitHandler(func() {
-				forceQuit = true
-				runtime.Quit(ctx)
-			})
-			gameService.Init(ctx, db, config)
-			aiService.Init(ctx, db, config)
-			backupService.Init(ctx, db, config)
-			homeService.Init(ctx, db, config)
-			statsService.Init(ctx, db, config)
-			timerService.Init(ctx, db, config)
-			categoryService.Init(ctx, db, config)
-			importService.Init(ctx, db, config, gameService)
-			versionService.Init(ctx)
-			templateService.Init(ctx, db, config)
-			updateService.Init(ctx, configService)
-			// 设置 TimerService 的 BackupService 依赖
-			timerService.SetBackupService(backupService)
-			// 设置 ImportService 的 TimerService 依赖（用于导入游玩记录）
-			importService.SetTimerService(timerService)
-
-			// 在 Wails 启动后初始化系统托盘
-			// TODO: 升级wails v3，使用原生的托盘功能
-			systrayQuit = make(chan struct{})
-			systrayReady = make(chan struct{})
-			go systray.Run(onSystrayReady, onSystrayExit)
-
-			// 等待托盘初始化完成，避免竞态条件
-			<-systrayReady
-			appLogger.Info("system tray initialized successfully")
-		},
-		OnShutdown: func(ctx context.Context) {
-			// 关闭系统托盘
-			if systrayQuit != nil {
-				systray.Quit()
-				<-systrayQuit // 等待 systray 完全退出
-			}
-
-			// 从 configService 获取最新配置（避免使用启动时的旧配置覆盖文件）
+		OnShutdown: func() {
+			// FIXME: 托盘的生命周期需不需要我控
+			// 从 configService 获取最新配置
 			latestConfig, err := configService.GetAppConfig()
 			if err != nil {
-				appLogger.Error("failed to get latest config: " + err.Error())
+				slog.Error("failed to get latest config", "error", err.Error())
 			} else {
-				// 更新窗口大小到最新配置
 				latestConfig.WindowWidth = config.WindowWidth
 				latestConfig.WindowHeight = config.WindowHeight
 				config = &latestConfig
 			}
 
-			// 自动备份数据库（在关闭数据库前）
+			// 自动备份数据库
 			if config.AutoBackupDB {
-				appLogger.Info("performing automatic database backup...")
+				slog.Info("performing automatic database backup...")
 				_, err := backupService.CreateAndUploadDBBackup()
 				if err != nil {
-					appLogger.Error("automatic database backup failed: " + err.Error())
+					slog.Error("automatic database backup failed", "error", err.Error())
 				} else {
-					appLogger.Info("automatic database backup succeeded")
+					slog.Info("automatic database backup succeeded")
 				}
 			}
 
 			// 关闭数据库连接
-			if err := db.Close(); err != nil {
-				appLogger.Error("failed to close database: " + err.Error())
+			if db != nil {
+				if err := db.Close(); err != nil {
+					slog.Error("failed to close database", "error", err.Error())
+				}
 			}
 
 			// 保存最终配置
 			if err := appconf.SaveConfig(config); err != nil {
-				appLogger.Error("failed to save config: " + err.Error())
+				slog.Error("failed to save config", "error", err.Error())
 			}
-		},
-		Bind: []interface{}{
-			gameService,
-			aiService,
-			backupService,
-			homeService,
-			statsService,
-			timerService,
-			categoryService,
-			configService,
-			importService,
-			versionService,
-			templateService,
-			updateService,
-		},
-		EnumBind: []interface{}{
-			enums.AllSourceTypes,
-			enums.AllPeriodTypes,
-			enums.Prompts,
-			enums.AllGameStatuses,
 		},
 	})
 
-	if bootstrapErr != nil {
-		appLogger.Fatal(bootstrapErr.Error())
+	// 初始化数据库
+	initDatabase()
+
+	// 创建主窗口
+	mainWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:            "LunaBox",
+		Width:            initWidth,
+		Height:           initHeight,
+		MinWidth:         970,
+		MinHeight:        563,
+		BackgroundColour: application.NewRGBA(18, 20, 22, 255),
+		Hidden:           true,
+	})
+
+	// 初始化系统托盘
+	initSystemTray(app, mainWindow, logger)
+
+	// 运行应用
+	if err := app.Run(); err != nil {
+		slog.Error("application error", "error", err.Error())
+		panic(err)
 	}
 }
 
-// TODO: 实现专门的migration机制
+// initDatabase 初始化数据库
+func initDatabase() {
+	// 检查是否有待恢复的数据库备份（在打开数据库前执行）
+	if config.PendingDBRestore != "" {
+		restored, restoreErr := service.ExecuteDBRestore(config)
+		if restoreErr != nil {
+			slog.Error("fail to restore database", "error", restoreErr.Error())
+		} else if restored {
+			slog.Info("database restored successfully")
+		}
+	}
+
+	execPath, err := utils.GetDataDir()
+	if err != nil {
+		slog.Error("failed to get data dir", "error", err.Error())
+		panic(err)
+	}
+	dbPath := filepath.Join(execPath, "lunabox.db")
+	db, err = sql.Open("duckdb", dbPath)
+	if err != nil {
+		slog.Error("failed to open database", "error", err.Error())
+		panic(err)
+	}
+
+	if err := initSchema(db); err != nil {
+		slog.Error("failed to init schema", "error", err.Error())
+		panic(err)
+	}
+
+	// 运行数据库迁移
+	slog.Info("Checking for pending database migrations...")
+	if err := migrations.Run(db); err != nil {
+		slog.Error("Database migration failed", "error", err.Error())
+		panic(err)
+	}
+	slog.Info("Database migrations completed")
+}
+
+func initLogger() (*slog.Logger, error) {
+	logDir, _ := utils.GetSubDir("logs")
+	logFile := filepath.Join(logDir, "app.log")
+	// 确保日志目录存在
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return nil, err
+	}
+
+	// 打开日志文件（追加模式）
+	file, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return nil, err
+	}
+	handler := slog.NewTextHandler(file, nil)
+	logger := slog.New(handler)
+	return logger, nil
+}
+
+// initSystemTray 初始化系统托盘
+func initSystemTray(app *application.App, mainWindow *application.WebviewWindow, logger *slog.Logger) *application.SystemTray {
+	// 创建托盘菜单
+	trayMenu := app.Menu.New()
+	trayMenu.Add("显示主窗口").OnClick(func(ctx *application.Context) {
+		mainWindow.Show()
+		mainWindow.Focus()
+	})
+	trayMenu.AddSeparator()
+	trayMenu.Add("退出").OnClick(func(ctx *application.Context) {
+		forceQuit = true
+		app.Quit()
+	})
+
+	// 创建系统托盘
+	systray := app.SystemTray.New()
+	systray.SetLabel("LunaBox")
+	systray.SetIcon(icon)
+	systray.SetMenu(trayMenu)
+
+	// 托盘图标点击事件
+	systray.OnClick(func() {
+		mainWindow.Show()
+		mainWindow.Focus()
+	})
+	systray.OnDoubleClick(func() {
+		mainWindow.Show()
+		mainWindow.Focus()
+	})
+
+	// 注册托盘以便后续管理
+	systray.SetLabel("main-tray")
+
+	logger.Info("system tray initialized successfully")
+	return systray
+}
+
 func initSchema(db *sql.DB) error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS users (
@@ -327,59 +359,4 @@ func initSchema(db *sql.DB) error {
 		}
 	}
 	return nil
-}
-
-// 系统托盘初始化
-func onSystrayReady() {
-	// 先设置托盘的基本属性
-	systray.SetIcon(icon)
-	systray.SetTitle("LunaBox")
-	systray.SetTooltip("LunaBox")
-
-	// 点击托盘图标时显示窗口
-	systray.SetOnClick(func(menu systray.IMenu) {
-		// 确保 appCtx 已经初始化且有效
-		if appCtx != nil {
-			runtime.WindowShow(appCtx)
-		}
-	})
-
-	// 双击托盘图标时也显示窗口
-	systray.SetOnDClick(func(menu systray.IMenu) {
-		// 确保 appCtx 已经初始化且有效
-		if appCtx != nil {
-			runtime.WindowShow(appCtx)
-		}
-	})
-
-	mShow := systray.AddMenuItem("显示主窗口", "显示 LunaBox 主窗口")
-	systray.AddSeparator()
-	mQuit := systray.AddMenuItem("退出", "退出 LunaBox")
-
-	// energye/systray 使用 Click 方法设置回调，而不是 ClickedCh
-	mShow.Click(func() {
-		// 确保 appCtx 已经初始化且有效
-		if appCtx != nil {
-			runtime.WindowShow(appCtx)
-		}
-	})
-
-	mQuit.Click(func() {
-		// 通过托盘退出时，设置强制退出标志，绕过 OnBeforeClose 的最小化逻辑
-		forceQuit = true
-		if appCtx != nil {
-			runtime.Quit(appCtx)
-		}
-	})
-
-	// 通知主线程托盘已经准备就绪
-	if systrayReady != nil {
-		close(systrayReady)
-	}
-}
-
-func onSystrayExit() {
-	if systrayQuit != nil {
-		close(systrayQuit)
-	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"lunabox/internal/appconf"
 	"lunabox/internal/models"
 	"lunabox/internal/service/cloudprovider"
@@ -15,29 +16,25 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type BackupService struct {
-	ctx    context.Context
 	db     *sql.DB
+	logger *slog.Logger
 	config *appconf.AppConfig
 }
 
-func NewBackupService() *BackupService {
-	return &BackupService{}
-}
-
-func (s *BackupService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
-	s.ctx = ctx
-	s.db = db
-	s.config = config
+func NewBackupService(db *sql.DB, config *appconf.AppConfig, logger *slog.Logger) *BackupService {
+	return &BackupService{
+		db:     db,
+		logger: logger,
+		config: config,
+	}
 }
 
 // getCloudProvider 获取云备份提供商
 func (s *BackupService) getCloudProvider() (cloudprovider.CloudStorageProvider, error) {
-	return cloudprovider.NewCloudProvider(s.ctx, s.config)
+	return cloudprovider.NewCloudProvider(s.config)
 }
 
 // ========== 云备份配置相关方法 ==========
@@ -46,12 +43,12 @@ func (s *BackupService) getCloudProvider() (cloudprovider.CloudStorageProvider, 
 func (s *BackupService) SetupCloudBackup(password string) (string, error) {
 	// 检查是否已经设置过密码
 	if s.config.BackupPassword != "" {
-		runtime.LogWarningf(s.ctx, "SetupCloudBackup: backup password already set")
+		s.logger.Warn("SetupCloudBackup: backup password already set")
 		return "", fmt.Errorf("备份密码已设置，无法修改")
 	}
 
 	if password == "" {
-		runtime.LogWarningf(s.ctx, "SetupCloudBackup: backup password is empty")
+		s.logger.Warn("SetupCloudBackup: backup password is empty")
 		return "", fmt.Errorf("备份密码不能为空")
 	}
 
@@ -64,18 +61,20 @@ func (s *BackupService) SetupCloudBackup(password string) (string, error) {
 
 	// 立即保存配置到文件
 	if err := appconf.SaveConfig(s.config); err != nil {
-		runtime.LogErrorf(s.ctx, "SetupCloudBackup: failed to save config: %v", err)
+		s.logger.Error("SetupCloudBackup: failed to save config: %v", err)
 		return "", fmt.Errorf("保存配置失败: %w", err)
 	}
 
-	runtime.LogInfof(s.ctx, "SetupCloudBackup: backup password set successfully, user_id: %s", userID)
+	s.logger.Info("SetupCloudBackup: backup password set successfully, user_id: %s", userID)
 	return userID, nil
 }
 
 // TestS3Connection 测试 S3 连接
 func (s *BackupService) TestS3Connection(config appconf.AppConfig) error {
-	if err := cloudprovider.TestConnection(s.ctx, cloudprovider.ProviderS3, &config); err != nil {
-		runtime.LogErrorf(s.ctx, "TestS3Connection: connection test failed: %v", err)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := cloudprovider.TestConnection(ctx, cloudprovider.ProviderS3, &config); err != nil {
+		s.logger.Error("TestS3Connection: connection test failed", "error", err)
 		return fmt.Errorf("连接测试失败: %w", err)
 	}
 	return nil
@@ -83,7 +82,9 @@ func (s *BackupService) TestS3Connection(config appconf.AppConfig) error {
 
 // TestOneDriveConnection 测试 OneDrive 连接
 func (s *BackupService) TestOneDriveConnection(config appconf.AppConfig) error {
-	return cloudprovider.TestConnection(s.ctx, cloudprovider.ProviderOneDrive, &config)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return cloudprovider.TestConnection(ctx, cloudprovider.ProviderOneDrive, &config)
 }
 
 // GetOneDriveAuthURL 获取 OneDrive 授权 URL
@@ -93,14 +94,16 @@ func (s *BackupService) GetOneDriveAuthURL() string {
 
 // StartOneDriveAuth 启动 OneDrive 授权流程（使用本地回调服务器）
 func (s *BackupService) StartOneDriveAuth() (string, error) {
-	code, err := onedrive.StartOneDriveAuthServer(s.ctx, 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	code, err := onedrive.StartOneDriveAuthServer(ctx, 5*time.Minute)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "StartOneDriveAuth: failed to get auth code: %v", err)
+		s.logger.Error("StartOneDriveAuth: failed to get auth code", "error", err)
 		return "", err
 	}
-	tokenResp, err := onedrive.ExchangeOneDriveCodeForToken(s.ctx, s.config.OneDriveClientID, code)
+	tokenResp, err := onedrive.ExchangeOneDriveCodeForToken(ctx, s.config.OneDriveClientID, code)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "StartOneDriveAuth: failed to exchange code for token: %v", err)
+		s.logger.Error("StartOneDriveAuth: failed to exchange code for token", "error", err)
 		return "", err
 	}
 	return tokenResp.RefreshToken, nil
@@ -108,9 +111,11 @@ func (s *BackupService) StartOneDriveAuth() (string, error) {
 
 // ExchangeOneDriveCode 用授权码换取 OneDrive token
 func (s *BackupService) ExchangeOneDriveCode(code string) (string, error) {
-	tokenResp, err := onedrive.ExchangeOneDriveCodeForToken(s.ctx, s.config.OneDriveClientID, code)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	tokenResp, err := onedrive.ExchangeOneDriveCodeForToken(ctx, s.config.OneDriveClientID, code)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "ExchangeOneDriveCode: failed to exchange code for token: %v", err)
+		s.logger.Error("ExchangeOneDriveCode: failed to exchange code for token", "error", err)
 		return "", err
 	}
 	return tokenResp.RefreshToken, nil
@@ -196,7 +201,7 @@ func (s *BackupService) GetGameBackups(gameID string) ([]models.GameBackup, erro
 // CreateBackup 创建游戏存档备份
 func (s *BackupService) CreateBackup(gameID string) (*models.GameBackup, error) {
 	var savePath string
-	err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(save_path, '') FROM games WHERE id = ?", gameID).Scan(&savePath)
+	err := s.db.QueryRow("SELECT COALESCE(save_path, '') FROM games WHERE id = ?", gameID).Scan(&savePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get game: %w", err)
 	}
@@ -288,7 +293,7 @@ func (s *BackupService) RestoreBackup(backupPath string) error {
 	}
 
 	var savePath string
-	err = s.db.QueryRowContext(s.ctx, "SELECT COALESCE(save_path, '') FROM games WHERE id = ?", gameID).Scan(&savePath)
+	err = s.db.QueryRow("SELECT COALESCE(save_path, '') FROM games WHERE id = ?", gameID).Scan(&savePath)
 	if err != nil || savePath == "" {
 		return fmt.Errorf("存档目录未设置")
 	}
@@ -349,20 +354,23 @@ func (s *BackupService) UploadGameBackupToCloud(gameID string, backupPath string
 		return fmt.Errorf("备份文件不存在: %s", backupPath)
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
 	timestamp := time.Now().Format("2006-01-02T15-04-05")
 	cloudPath := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s/%s.zip", gameID, timestamp))
 
 	// 确保文件夹存在 (OneDrive 需要)
 	folderPath := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s", gameID))
-	provider.EnsureDir(s.ctx, folderPath)
+	provider.EnsureDir(ctx, folderPath)
 
-	if err := provider.UploadFile(s.ctx, cloudPath, backupPath); err != nil {
+	if err := provider.UploadFile(ctx, cloudPath, backupPath); err != nil {
 		return fmt.Errorf("上传失败: %w", err)
 	}
 
 	// 更新 latest
 	latestPath := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s/latest.zip", gameID))
-	provider.UploadFile(s.ctx, latestPath, backupPath)
+	provider.UploadFile(ctx, latestPath, backupPath)
 
 	s.cleanupOldCloudBackups(gameID)
 	return nil
@@ -379,8 +387,11 @@ func (s *BackupService) GetCloudGameBackups(gameID string) ([]vo.CloudBackupItem
 		return nil, err
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	listPath := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s/", gameID))
-	keys, err := provider.ListObjects(s.ctx, listPath)
+	keys, err := provider.ListObjects(ctx, listPath)
 	if err != nil {
 		return nil, err
 	}
@@ -402,8 +413,11 @@ func (s *BackupService) DownloadCloudBackup(cloudKey string, gameID string) (str
 	cloudDownloadDir := filepath.Join(backupDir, gameID, "cloud_download")
 	os.MkdirAll(cloudDownloadDir, 0755)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
 	destPath := filepath.Join(cloudDownloadDir, filepath.Base(cloudKey))
-	if err := provider.DownloadFile(s.ctx, cloudKey, destPath); err != nil {
+	if err := provider.DownloadFile(ctx, cloudKey, destPath); err != nil {
 		return "", fmt.Errorf("下载失败: %w", err)
 	}
 	return destPath, nil
@@ -417,7 +431,7 @@ func (s *BackupService) RestoreFromCloud(cloudKey string, gameID string) error {
 	}
 
 	var savePath string
-	err = s.db.QueryRowContext(s.ctx, "SELECT COALESCE(save_path, '') FROM games WHERE id = ?", gameID).Scan(&savePath)
+	err = s.db.QueryRow("SELECT COALESCE(save_path, '') FROM games WHERE id = ?", gameID).Scan(&savePath)
 	if err != nil || savePath == "" {
 		return fmt.Errorf("存档目录未设置")
 	}
@@ -463,8 +477,11 @@ func (s *BackupService) cleanupOldCloudBackups(gameID string) {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	for i := retention; i < len(items); i++ {
-		provider.DeleteObject(s.ctx, items[i].Key)
+		provider.DeleteObject(ctx, items[i].Key)
 	}
 }
 
@@ -494,7 +511,7 @@ func (s *BackupService) CreateDBBackup() (*vo.DBBackupInfo, error) {
 
 	// 导出数据库
 	exportPath := strings.ReplaceAll(dbExportDir, "\\", "/")
-	_, err = s.db.ExecContext(s.ctx, fmt.Sprintf("EXPORT DATABASE '%s'", exportPath))
+	_, err = s.db.Exec(fmt.Sprintf("EXPORT DATABASE '%s'", exportPath))
 	if err != nil {
 		os.RemoveAll(packDir)
 		return nil, fmt.Errorf("导出数据库失败: %w", err)
@@ -504,7 +521,7 @@ func (s *BackupService) CreateDBBackup() (*vo.DBBackupInfo, error) {
 	coversSourceDir := filepath.Join(dataDir, "covers")
 	if _, err := os.Stat(coversSourceDir); err == nil {
 		if err := utils.CopyDir(coversSourceDir, coversDestDir); err != nil {
-			runtime.LogWarningf(s.ctx, "CreateDBBackup: failed to copy covers: %v", err)
+			s.logger.Warn("CreateDBBackup: failed to copy covers: %v", err)
 			// 封面复制失败不影响整体备份，继续执行
 		}
 	}
@@ -630,15 +647,18 @@ func (s *BackupService) UploadDBBackupToCloud(backupPath string) error {
 	fileName := filepath.Base(backupPath)
 	cloudKey := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("database/%s", fileName))
 
-	folderPath := provider.GetCloudPath(s.config.BackupUserID, "database")
-	provider.EnsureDir(s.ctx, folderPath)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
 
-	if err := provider.UploadFile(s.ctx, cloudKey, backupPath); err != nil {
+	folderPath := provider.GetCloudPath(s.config.BackupUserID, "database")
+	provider.EnsureDir(ctx, folderPath)
+
+	if err := provider.UploadFile(ctx, cloudKey, backupPath); err != nil {
 		return fmt.Errorf("上传失败: %w", err)
 	}
 
 	latestKey := provider.GetCloudPath(s.config.BackupUserID, "database/latest.zip")
-	provider.UploadFile(s.ctx, latestKey, backupPath)
+	provider.UploadFile(ctx, latestKey, backupPath)
 
 	s.cleanupOldCloudDBBackups()
 	return nil
@@ -655,8 +675,11 @@ func (s *BackupService) GetCloudDBBackups() ([]vo.CloudBackupItem, error) {
 		return nil, err
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	prefix := provider.GetCloudPath(s.config.BackupUserID, "database/")
-	keys, err := provider.ListObjects(s.ctx, prefix)
+	keys, err := provider.ListObjects(ctx, prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -679,8 +702,11 @@ func (s *BackupService) DownloadCloudDBBackup(cloudKey string) (string, error) {
 	cloudDownloadDir := filepath.Join(backupDir, "cloud_download")
 	os.MkdirAll(cloudDownloadDir, 0755)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
 	destPath := filepath.Join(cloudDownloadDir, filepath.Base(cloudKey))
-	if err := provider.DownloadFile(s.ctx, cloudKey, destPath); err != nil {
+	if err := provider.DownloadFile(ctx, cloudKey, destPath); err != nil {
 		return "", fmt.Errorf("下载失败: %w", err)
 	}
 	return destPath, nil
@@ -712,8 +738,11 @@ func (s *BackupService) cleanupOldCloudDBBackups() {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
 	for i := retention; i < len(items); i++ {
-		provider.DeleteObject(s.ctx, items[i].Key)
+		provider.DeleteObject(ctx, items[i].Key)
 	}
 }
 

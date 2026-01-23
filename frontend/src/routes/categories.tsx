@@ -1,4 +1,4 @@
-import type { vo } from "../../wailsjs/go/models";
+import type { CategoryVO } from "../../bindings/lunabox/internal/vo";
 import { createRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
@@ -6,7 +6,7 @@ import {
   AddCategory,
   DeleteCategory,
   GetCategories,
-} from "../../wailsjs/go/service/CategoryService";
+} from "../../bindings/lunabox/internal/service/categoryservice";
 import { FilterBar } from "../components/bar/FilterBar";
 import { CategoryCard } from "../components/card/CategoryCard";
 import { AddCategoryModal } from "../components/modal/AddCategoryModal";
@@ -21,7 +21,7 @@ export const Route = createRoute({
 });
 
 function CategoriesPage() {
-  const [categories, setCategories] = useState<vo.CategoryVO[]>([]);
+  const [categories, setCategories] = useState<CategoryVO[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
@@ -75,7 +75,7 @@ function CategoriesPage() {
     }
   };
 
-  const handleDeleteCategory = async (e: React.MouseEvent, category: vo.CategoryVO) => {
+  const handleDeleteCategory = async (e: React.MouseEvent, category: CategoryVO) => {
     e.stopPropagation();
     setConfirmConfig({
       isOpen: true,

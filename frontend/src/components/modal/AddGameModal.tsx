@@ -1,8 +1,11 @@
+import type { GameMetadataFromWebVO } from "../../../bindings/lunabox/internal/vo";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "react-hot-toast";
-import { enums, models, vo } from "../../../wailsjs/go/models";
-import { AddGame, FetchMetadata, FetchMetadataByName, SelectCoverImageWithTempID, SelectGameExecutable } from "../../../wailsjs/go/service/GameService";
+import { GameStatus, SourceType } from "../../../bindings/lunabox/internal/enums";
+import { Game } from "../../../bindings/lunabox/internal/models";
+import { AddGame, FetchMetadata, FetchMetadataByName, SelectCoverImageWithTempID, SelectGameExecutable } from "../../../bindings/lunabox/internal/service/GameService";
+import { MetadataRequest } from "../../../bindings/lunabox/internal/vo";
 
 interface AddGameModalProps {
   isOpen: boolean;
@@ -17,10 +20,10 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
   const [step, setStep] = useState<StepType>(1);
   const [executablePath, setExecutablePath] = useState("");
   const [gameName, setGameName] = useState("");
-  const [metadataResults, setMetadataResults] = useState<vo.GameMetadataFromWebVO[]>([]);
+  const [metadataResults, setMetadataResults] = useState<GameMetadataFromWebVO[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [manualId, setManualId] = useState("");
-  const [manualSource, setManualSource] = useState<enums.SourceType>(enums.SourceType.BANGUMI);
+  const [manualSource, setManualSource] = useState<SourceType>(SourceType.Bangumi);
 
   // 手动添加表单字段
   const [manualCoverUrl, setManualCoverUrl] = useState("");
@@ -82,7 +85,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
     }
   };
 
-  const saveGame = async (game: models.Game) => {
+  const saveGame = async (game: Game) => {
     try {
       game.path = executablePath;
       // Ensure other fields are set if missing?
@@ -102,7 +105,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
       return;
     setIsLoading(true);
     try {
-      const request = new vo.MetadataRequest({
+      const request = new MetadataRequest({
         source: manualSource,
         id: manualId,
       });
@@ -140,14 +143,14 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
     }
     setIsLoading(true);
     try {
-      const game = new models.Game({
+      const game = new Game({
         name: gameName,
         path: executablePath,
         cover_url: manualCoverUrl,
         company: manualCompany,
         summary: manualSummary,
-        source_type: enums.SourceType.LOCAL,
-        status: enums.GameStatus.NOT_STARTED,
+        source_type: SourceType.Local,
+        status: GameStatus.StatusNotStarted,
       });
       await AddGame(game);
       onGameAdded();
@@ -291,12 +294,12 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
               <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">数据源</label>
               <select
                 value={manualSource}
-                onChange={e => setManualSource(e.target.value as enums.SourceType)}
+                onChange={e => setManualSource(e.target.value as SourceType)}
                 className="w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               >
-                <option value={enums.SourceType.BANGUMI}>Bangumi</option>
-                <option value={enums.SourceType.VNDB}>VNDB</option>
-                <option value={enums.SourceType.YMGAL}>月幕gal</option>
+                <option value={SourceType.Bangumi}>Bangumi</option>
+                <option value={SourceType.VNDB}>VNDB</option>
+                <option value={SourceType.Ymgal}>月幕gal</option>
               </select>
             </div>
 

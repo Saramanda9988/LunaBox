@@ -1,8 +1,8 @@
-import type { vo } from "../../../wailsjs/go/models";
+import type { CategoryVO } from "../../../bindings/lunabox/internal/vo";
 import { useNavigate } from "@tanstack/react-router";
 
 interface CategoryCardProps {
-  category: vo.CategoryVO;
+  category: CategoryVO;
   onDelete?: (e: React.MouseEvent) => void;
 }
 

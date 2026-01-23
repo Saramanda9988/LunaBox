@@ -1,11 +1,9 @@
 package migrations
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"log/slog"
 )
 
 // Migration 表示一个数据库迁移
@@ -50,7 +48,7 @@ func migrateUTCToLocalTime(tx *sql.Tx) error {
 }
 
 // Run 执行所有未运行的迁移
-func Run(ctx context.Context, db *sql.DB) error {
+func Run(db *sql.DB) error {
 	// 创建迁移版本表
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -85,7 +83,7 @@ func Run(ctx context.Context, db *sql.DB) error {
 			continue
 		}
 
-		runtime.LogInfof(ctx, "Running migration %d: %s", migration.Version, migration.Description)
+		slog.Info("Running migration", "version", migration.Version, "description", migration.Description)
 
 		// 开启事务 - 确保迁移和版本记录原子执行
 		tx, err := db.Begin()
@@ -113,7 +111,7 @@ func Run(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("failed to commit migration %d: %w", migration.Version, err)
 		}
 
-		runtime.LogInfof(ctx, "Migration %d completed successfully", migration.Version)
+		slog.Info("Migration completed successfully", "version", migration.Version)
 	}
 
 	return nil

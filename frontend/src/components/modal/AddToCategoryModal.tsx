@@ -1,10 +1,10 @@
-import type { vo } from "../../../wailsjs/go/models";
+import type { CategoryVO } from "../../../bindings/lunabox/internal/vo";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 interface AddToCategoryModalProps {
   isOpen: boolean;
-  allCategories: vo.CategoryVO[];
+  allCategories: CategoryVO[];
   initialSelectedIds: string[];
   onClose: () => void;
   onSave: (selectedIds: string[]) => void;

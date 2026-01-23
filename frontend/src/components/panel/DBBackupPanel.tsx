@@ -1,4 +1,3 @@
-import type { vo } from "../../../wailsjs/go/models";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import {
@@ -9,17 +8,18 @@ import {
   ScheduleDBRestore,
   ScheduleDBRestoreFromCloud,
   UploadDBBackupToCloud,
-} from "../../../wailsjs/go/service/BackupService";
-import { SafeQuit } from "../../../wailsjs/go/service/ConfigService";
+} from "../../../bindings/lunabox/internal/service/BackupService";
+import { SafeQuit } from "../../../bindings/lunabox/internal/service/ConfigService";
 import { useAppStore } from "../../store";
 import { formatFileSize } from "../../utils/size";
 import { formatLocalDateTime } from "../../utils/time";
 import { ConfirmModal } from "../modal/ConfirmModal";
+import {CloudBackupItem, DBBackupStatus} from "../../../bindings/lunabox/internal/vo";
 
 export function DBBackupPanel() {
   const { config } = useAppStore();
-  const [dbBackups, setDbBackups] = useState<vo.DBBackupStatus | null>(null);
-  const [cloudDBBackups, setCloudDBBackups] = useState<vo.CloudBackupItem[]>([]);
+  const [dbBackups, setDbBackups] = useState<DBBackupStatus | null>(null);
+  const [cloudDBBackups, setCloudDBBackups] = useState<CloudBackupItem[]>([]);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [restoringBackup, setRestoringBackup] = useState<string | null>(null);
   const [uploadingBackup, setUploadingBackup] = useState<string | null>(null);

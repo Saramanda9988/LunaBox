@@ -1,15 +1,15 @@
-import type { appconf } from "../../../wailsjs/go/models";
+import type { AppConfig } from "../../../bindings/lunabox/internal/appconf";
 import { useState } from "react";
 import toast from "react-hot-toast";
-import { GetOneDriveAuthURL, SetupCloudBackup, StartOneDriveAuth, TestOneDriveConnection, TestS3Connection } from "../../../wailsjs/go/service/BackupService";
-import { GetAppConfig } from "../../../wailsjs/go/service/ConfigService";
-import { BrowserOpenURL } from "../../../wailsjs/runtime";
+import { GetOneDriveAuthURL, SetupCloudBackup, StartOneDriveAuth, TestOneDriveConnection, TestS3Connection } from "../../../bindings/lunabox/internal/service/BackupService";
+import { GetAppConfig } from "../../../bindings/lunabox/internal/service/ConfigService";
+import { OpenDownloadURL } from "../../../bindings/lunabox/internal/service/UpdateService";
 import { PasswordInputModal } from "../modal/PasswordInputModal";
 import { BetterSwitch } from "../ui/BetterSwitch";
 
 interface CloudBackupSettingsProps {
-  formData: appconf.AppConfig;
-  onChange: (data: appconf.AppConfig) => void;
+  formData: AppConfig;
+  onChange: (data: AppConfig) => void;
 }
 
 export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSettingsProps) {
@@ -20,7 +20,7 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    onChange({ ...formData, [name]: value } as appconf.AppConfig);
+    onChange({ ...formData, [name]: value } as AppConfig);
   };
 
   const handleSetupBackupPassword = async (password: string, confirmPassword: string) => {
@@ -79,9 +79,9 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
     setAuthorizingOneDrive(true);
     try {
       const authURL = await GetOneDriveAuthURL();
-      BrowserOpenURL(authURL);
+      OpenDownloadURL(authURL);
       const refreshToken = await StartOneDriveAuth();
-      onChange({ ...formData, onedrive_refresh_token: refreshToken } as appconf.AppConfig);
+      onChange({ ...formData, onedrive_refresh_token: refreshToken } as AppConfig);
       toast.success("OneDrive 授权成功");
     }
     catch (err: any) {
@@ -104,7 +104,7 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
         <BetterSwitch
           id="cloud_backup_enabled"
           checked={formData.cloud_backup_enabled || false}
-          onCheckedChange={checked => onChange({ ...formData, cloud_backup_enabled: checked } as appconf.AppConfig)}
+          onCheckedChange={checked => onChange({ ...formData, cloud_backup_enabled: checked } as AppConfig)}
         />
       </div>
 
@@ -112,7 +112,7 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">云存储提供商</label>
         <select
           value={formData.cloud_backup_provider || "s3"}
-          onChange={e => onChange({ ...formData, cloud_backup_provider: e.target.value } as appconf.AppConfig)}
+          onChange={e => onChange({ ...formData, cloud_backup_provider: e.target.value } as AppConfig)}
           className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
         >
           <option value="s3">S3 兼容存储</option>
@@ -245,7 +245,7 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
                       <span className="i-mdi-check-circle text-lg" />
                       已授权
                     </span>
-                    <button type="button" onClick={() => onChange({ ...formData, onedrive_refresh_token: "" } as appconf.AppConfig)} className="px-2 py-1 text-xs text-error-600 hover:bg-error-100 dark:hover:bg-error-900 rounded">
+                    <button type="button" onClick={() => onChange({ ...formData, onedrive_refresh_token: "" } as AppConfig)} className="px-2 py-1 text-xs text-error-600 hover:bg-error-100 dark:hover:bg-error-900 rounded">
                       取消授权
                     </button>
                   </div>
@@ -286,7 +286,7 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
         <input
           type="number"
           value={formData.cloud_backup_retention || 5}
-          onChange={e => onChange({ ...formData, cloud_backup_retention: Number.parseInt(e.target.value) || 20 } as appconf.AppConfig)}
+          onChange={e => onChange({ ...formData, cloud_backup_retention: Number.parseInt(e.target.value) || 20 } as AppConfig)}
           min={1}
           max={100}
           className="w-32 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"

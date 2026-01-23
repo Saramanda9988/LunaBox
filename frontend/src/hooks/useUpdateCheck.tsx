@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
-import { CheckForUpdatesOnStartup, SkipVersion } from "../../wailsjs/go/service/UpdateService";
+import { CheckForUpdatesOnStartup, SkipVersion } from "../../bindings/lunabox/internal/service/UpdateService";
 
 interface UpdateInfo {
   has_update: boolean;

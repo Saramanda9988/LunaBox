@@ -1,7 +1,6 @@
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Toaster } from "react-hot-toast";
-import { WindowShow } from "../wailsjs/runtime/runtime";
 import { UpdateDialog } from "./components/ui/UpdateDialog";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
 import { Route as rootRoute } from "./routes/__root";
@@ -75,8 +74,7 @@ function App() {
     if (config) {
       // 标记内容已准备好，触发淡入动画
       document.getElementById("root")?.classList.add("ready");
-      // 显示窗口
-      WindowShow();
+      // FIXME: 这里还要不要showwindow
     }
   }, [config]);
 

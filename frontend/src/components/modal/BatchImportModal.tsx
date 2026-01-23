@@ -1,15 +1,23 @@
-import type { models, service } from "../../../wailsjs/go/models";
+import type { Game } from "../../../bindings/lunabox/internal/models";
+import type { ImportResult } from "../../../bindings/lunabox/internal/service";
+import type {
+  GameMetadataFromWebVO,
+} from "../../../bindings/lunabox/internal/vo";
+
 import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
-import { enums, vo } from "../../../wailsjs/go/models";
-
-import { FetchMetadata, FetchMetadataByName } from "../../../wailsjs/go/service/GameService";
+import { SourceType } from "../../../bindings/lunabox/internal/enums";
+import { FetchMetadata, FetchMetadataByName } from "../../../bindings/lunabox/internal/service/GameService";
 import {
   BatchImportGames,
   ScanLibraryDirectory,
   SelectLibraryDirectory,
-} from "../../../wailsjs/go/service/ImportService";
+} from "../../../bindings/lunabox/internal/service/importservice";
+import {
+  BatchImportCandidate,
+  MetadataRequest,
+} from "../../../bindings/lunabox/internal/vo";
 
 interface BatchImportModalProps {
   isOpen: boolean;
@@ -26,17 +34,17 @@ interface LocalCandidate {
   selectedExe: string;
   searchName: string;
   isSelected: boolean;
-  matchedGame: models.Game | null;
-  matchSource: enums.SourceType | null;
+  matchedGame: Game | null;
+  matchSource: SourceType | null;
   matchStatus: "pending" | "matched" | "not_found" | "error" | "manual";
-  allMatches?: vo.GameMetadataFromWebVO[];
+  allMatches?: GameMetadataFromWebVO[];
 }
 
 export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImportModalProps) {
   const [step, setStep] = useState<Step>("select");
   const [libraryPath, setLibraryPath] = useState("");
   const [candidates, setCandidates] = useState<LocalCandidate[]>([]);
-  const [importResult, setImportResult] = useState<service.ImportResult | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [matchProgress, setMatchProgress] = useState({ current: 0, total: 0, gameName: "" });
 
@@ -46,10 +54,10 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
   // 手动选择弹窗状态
   const [showManualSelect, setShowManualSelect] = useState(false);
   const [manualSelectIndex, setManualSelectIndex] = useState<number | null>(null);
-  const [manualMatches, setManualMatches] = useState<vo.GameMetadataFromWebVO[]>([]);
+  const [manualMatches, setManualMatches] = useState<GameMetadataFromWebVO[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [manualId, setManualId] = useState("");
-  const [manualSource, setManualSource] = useState<enums.SourceType>(enums.SourceType.BANGUMI);
+  const [manualSource, setManualSource] = useState<SourceType>(SourceType.Bangumi);
 
   if (!isOpen)
     return null;
@@ -64,7 +72,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
 
         try {
           const scanned = await ScanLibraryDirectory(path);
-          const localCandidates: LocalCandidate[] = (scanned || []).map(c => ({
+          const localCandidates: LocalCandidate[] = (scanned || []).map((c: BatchImportCandidate) => ({
             folderPath: c.folder_path,
             folderName: c.folder_name,
             executables: c.executables || [],
@@ -129,11 +137,11 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
 
         if (results && results.length > 0) {
           // 按优先级选择：Bangumi > VNDB > Ymgal
-          const priorityOrder = [enums.SourceType.BANGUMI, enums.SourceType.VNDB, enums.SourceType.YMGAL];
-          let bestMatch: vo.GameMetadataFromWebVO | null = null;
+          const priorityOrder = [SourceType.Bangumi, SourceType.VNDB, SourceType.Ymgal];
+          let bestMatch: GameMetadataFromWebVO | null = null;
 
           for (const source of priorityOrder) {
-            const match = results.find(r => r.Source === source && r.Game);
+            const match = results.find((r: GameMetadataFromWebVO) => r.Source === source && r.Game);
             if (match) {
               bestMatch = match;
               break;
@@ -192,10 +200,10 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
 
     try {
       // 转换为后端需要的格式
-      const importCandidates: vo.BatchImportCandidate[] = candidates
+      const importCandidates: BatchImportCandidate[] = candidates
         .filter(c => c.isSelected)
         .map((c) => {
-          const candidate = new vo.BatchImportCandidate({
+          const candidate = new BatchImportCandidate({
             folder_path: c.folderPath,
             folder_name: c.folderName,
             executables: c.executables,
@@ -275,7 +283,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
     }
   };
 
-  const selectManualMatch = (game: models.Game, source: enums.SourceType) => {
+  const selectManualMatch = (game: Game, source: SourceType) => {
     if (manualSelectIndex !== null) {
       const updated = [...candidates];
       updated[manualSelectIndex] = {
@@ -295,7 +303,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
       return;
     setIsSearching(true);
     try {
-      const request = new vo.MetadataRequest({
+      const request = new MetadataRequest({
         source: manualSource,
         id: manualId,
       });
@@ -783,12 +791,12 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                     <div className="flex gap-2">
                       <select
                         value={manualSource}
-                        onChange={e => setManualSource(e.target.value as enums.SourceType)}
+                        onChange={e => setManualSource(e.target.value as SourceType)}
                         className="rounded border border-brand-300 bg-brand-50 px-2 py-1.5 text-sm dark:border-brand-600 dark:bg-brand-700"
                       >
-                        <option value={enums.SourceType.BANGUMI}>Bangumi</option>
-                        <option value={enums.SourceType.VNDB}>VNDB</option>
-                        <option value={enums.SourceType.YMGAL}>月幕gal</option>
+                        <option value={SourceType.Bangumi}>Bangumi</option>
+                        <option value={SourceType.VNDB}>VNDB</option>
+                        <option value={SourceType.Ymgal}>月幕gal</option>
                       </select>
                       <input
                         type="text"

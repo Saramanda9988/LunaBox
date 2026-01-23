@@ -2,10 +2,13 @@
   "$schema": "https://wails.io/schemas/config.v2.json",
   "name": "LunaBox",
   "outputfilename": "LunaBox",
-  "frontend:install": "pnpm install",
-  "frontend:build": "pnpm run build",
-  "frontend:dev:watcher": "pnpm run dev",
-  "frontend:dev:serverUrl": "auto",
+  "frontend": {
+    "dir": "./frontend",
+    "install": "pnpm install",
+    "build": "pnpm run build",
+    "dev": "pnpm run dev",
+    "devServerUrl": "http://localhost:5173"
+  },
   "author": {
     "name": "Saramanda9988",
     "email": "2074730050@qq.com"

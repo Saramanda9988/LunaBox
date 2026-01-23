@@ -1,10 +1,11 @@
 package service
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/wailsapp/wails/v3/pkg/application"
+	"log/slog"
 	"lunabox/internal/appconf"
 	"lunabox/internal/enums"
 	"lunabox/internal/models"
@@ -15,41 +16,33 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type GameService struct {
-	ctx    context.Context
+	app    *application.App
 	db     *sql.DB
+	logger *slog.Logger
 	config *appconf.AppConfig
 }
 
-func NewGameService() *GameService {
-	return &GameService{}
-}
-
-func (s *GameService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
-	s.ctx = ctx
-	s.db = db
-	s.config = config
+func NewGameService(db *sql.DB, config *appconf.AppConfig, logger *slog.Logger) *GameService {
+	return &GameService{
+		db:     db,
+		logger: logger,
+		config: config,
+	}
 }
 
 func (s *GameService) SelectGameExecutable() (string, error) {
-	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
-		Title: "Select Game Executable",
-		Filters: []runtime.FileFilter{
-			{
-				DisplayName: "Executables",
-				Pattern:     "*.exe;*.bat;*.cmd;*.lnk",
-			},
-			{
-				DisplayName: "All Files",
-				Pattern:     "*.*",
-			},
-		},
-	})
+	app := application.Get()
+	selection, err := app.Dialog.OpenFile().
+		SetTitle("选择游戏可执行文件").
+		AddFilter("Executables", "*.exe;*.bat;*.cmd;*.lnk").
+		AddFilter("All Files", "*.*").
+		PromptForSingleSelection()
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
+		s.logger.Error("failed to open file dialog: %v", err)
+		return "", err
 	}
 	return selection, err
 }
@@ -74,7 +67,7 @@ func (s *GameService) AddGame(game models.Game) error {
 	if strings.Contains(game.CoverURL, "/local/covers/temp_") {
 		newCoverURL, err := utils.RenameTempCover(game.CoverURL, game.ID)
 		if err != nil {
-			runtime.LogWarningf(s.ctx, "AddGame: failed to rename temp cover: %v", err)
+			s.logger.Warn("AddGame: failed to rename temp cover: %v", err)
 		} else {
 			game.CoverURL = newCoverURL
 			originalCoverURL = ""
@@ -86,7 +79,7 @@ func (s *GameService) AddGame(game models.Game) error {
 		source_type, cached_at, source_id, created_at
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
-	_, err := s.db.ExecContext(s.ctx, query,
+	_, err := s.db.Exec(query,
 		game.ID,
 		game.Name,
 		game.CoverURL,
@@ -99,7 +92,7 @@ func (s *GameService) AddGame(game models.Game) error {
 		game.CreatedAt,
 	)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "AddGame: failed to insert game %s: %v", game.Name, err)
+		s.logger.Error("AddGame: failed to insert game %s: %v", game.Name, err)
 		return err
 	}
 
@@ -118,60 +111,60 @@ func (s *GameService) asyncDownloadCoverImage(gameID, gameName, coverURL string)
 		return
 	}
 
-	runtime.LogInfof(s.ctx, "asyncDownloadCoverImage: downloading cover for %s", gameName)
+	s.logger.Info("asyncDownloadCoverImage: downloading cover for %s", gameName)
 
 	// 下载并保存图片
 	localPath, err := utils.DownloadAndSaveCoverImage(coverURL, gameID)
 	if err != nil {
-		runtime.LogWarningf(s.ctx, "asyncDownloadCoverImage: failed to download cover for %s: %v", gameName, err)
+		s.logger.Warn("asyncDownloadCoverImage: failed to download cover for %s: %v", gameName, err)
 		return
 	}
 
 	// 更新数据库中的封面路径
 	if err := s.updateCoverURL(gameID, localPath); err != nil {
-		runtime.LogErrorf(s.ctx, "asyncDownloadCoverImage: failed to update cover URL for %s: %v", gameName, err)
+		s.logger.Error("asyncDownloadCoverImage: failed to update cover URL for %s: %v", gameName, err)
 		return
 	}
 
-	runtime.LogInfof(s.ctx, "asyncDownloadCoverImage: successfully cached cover for %s", gameName)
+	s.logger.Info("asyncDownloadCoverImage: successfully cached cover for %s", gameName)
 }
 
 // updateCoverURL 更新游戏的封面URL
 func (s *GameService) updateCoverURL(gameID, coverURL string) error {
 	query := `UPDATE games SET cover_url = ? WHERE id = ?`
-	_, err := s.db.ExecContext(s.ctx, query, coverURL, gameID)
+	_, err := s.db.Exec(query, coverURL, gameID)
 	return err
 }
 
 func (s *GameService) DeleteGame(id string) error {
 	// 先删除关联的游戏分类记录
-	_, err := s.db.ExecContext(s.ctx, "DELETE FROM game_categories WHERE game_id = ?", id)
+	_, err := s.db.Exec("DELETE FROM game_categories WHERE game_id = ?", id)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "DeleteGame: failed to delete game_categories for id %s: %v", id, err)
+		s.logger.Error("DeleteGame: failed to delete game_categories for id %s: %v", id, err)
 		return fmt.Errorf("failed to delete game categories: %w", err)
 	}
 
 	// 删除关联的游玩会话记录
-	_, err = s.db.ExecContext(s.ctx, "DELETE FROM play_sessions WHERE game_id = ?", id)
+	_, err = s.db.Exec("DELETE FROM play_sessions WHERE game_id = ?", id)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "DeleteGame: failed to delete play_sessions for id %s: %v", id, err)
+		s.logger.Error("DeleteGame: failed to delete play_sessions for id %s: %v", id, err)
 		return fmt.Errorf("failed to delete play sessions: %w", err)
 	}
 	// 删除游戏记录
-	result, err := s.db.ExecContext(s.ctx, "DELETE FROM games WHERE id = ?", id)
+	result, err := s.db.Exec("DELETE FROM games WHERE id = ?", id)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "DeleteGame: failed to delete game for id %s: %v", id, err)
+		s.logger.Error("DeleteGame: failed to delete game for id %s: %v", id, err)
 		return fmt.Errorf("failed to delete game: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "DeleteGame: failed to get rows affected for id %s: %v", id, err)
+		s.logger.Error("DeleteGame: failed to get rows affected for id %s: %v", id, err)
 		return err
 	}
 
 	if rowsAffected == 0 {
-		runtime.LogWarningf(s.ctx, "DeleteGame: game not found with id: %s", id)
+		s.logger.Warn("DeleteGame: game not found with id: %s", id)
 		return fmt.Errorf("game not found with id: %s", id)
 	}
 
@@ -194,9 +187,9 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 	FROM games 
 	ORDER BY created_at DESC`
 
-	rows, err := s.db.QueryContext(s.ctx, query)
+	rows, err := s.db.Query(query)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "GetGames: failed to query games: %v", err)
+		s.logger.Error("GetGames: failed to query games: %v", err)
 		return nil, fmt.Errorf("failed to query games: %w", err)
 	}
 	defer rows.Close()
@@ -222,7 +215,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 			&game.CreatedAt,
 		)
 		if err != nil {
-			runtime.LogErrorf(s.ctx, "GetGames: failed to scan game row: %v", err)
+			s.logger.Error("GetGames: failed to scan game row: %v", err)
 			return nil, fmt.Errorf("failed to scan game: %w", err)
 		}
 
@@ -232,7 +225,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 	}
 
 	if err = rows.Err(); err != nil {
-		runtime.LogErrorf(s.ctx, "GetGames: error iterating games: %v", err)
+		s.logger.Error("GetGames: error iterating games: %v", err)
 		return nil, fmt.Errorf("error iterating games: %w", err)
 	}
 
@@ -259,7 +252,7 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 	var sourceType string
 	var status string
 
-	err := s.db.QueryRowContext(s.ctx, query, id).Scan(
+	err := s.db.QueryRow(query, id).Scan(
 		&game.ID,
 		&game.Name,
 		&game.CoverURL,
@@ -275,11 +268,11 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 	)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		runtime.LogWarningf(s.ctx, "GetGameByID: game not found with id: %s", id)
+		s.logger.Warn("GetGameByID: game not found with id: %s", id)
 		return models.Game{}, fmt.Errorf("game not found with id: %s", id)
 	}
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "GetGameByID: failed to query game %s: %v", id, err)
+		s.logger.Error("GetGameByID: failed to query game %s: %v", id, err)
 		return models.Game{}, fmt.Errorf("failed to query game: %w", err)
 	}
 
@@ -302,7 +295,7 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		source_id = ?
 	WHERE id = ?`
 
-	result, err := s.db.ExecContext(s.ctx, query,
+	result, err := s.db.Exec(query,
 		game.Name,
 		game.CoverURL,
 		game.Company,
@@ -317,18 +310,18 @@ func (s *GameService) UpdateGame(game models.Game) error {
 	)
 
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "UpdateGame: failed to update game %s: %v", game.ID, err)
+		s.logger.Error("UpdateGame: failed to update game %s: %v", game.ID, err)
 		return fmt.Errorf("failed to update game: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "UpdateGame: failed to get rows affected for id %s: %v", game.ID, err)
+		s.logger.Error("UpdateGame: failed to get rows affected for id %s: %v", game.ID, err)
 		return err
 	}
 
 	if rowsAffected == 0 {
-		runtime.LogWarningf(s.ctx, "UpdateGame: game not found with id: %s", game.ID)
+		s.logger.Warn("UpdateGame: game not found with id: %s", game.ID)
 		return fmt.Errorf("game not found with id: %s", game.ID)
 	}
 
@@ -337,25 +330,25 @@ func (s *GameService) UpdateGame(game models.Game) error {
 
 // SelectSaveDirectory 选择存档目录
 func (s *GameService) SelectSaveDirectory() (string, error) {
-	selection, err := runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{
-		Title: "选择存档目录",
-	})
+	app := application.Get()
+	selection, err := app.Dialog.OpenFile().
+		SetTitle("选择存档目录").
+		CanChooseDirectories(true).
+		CanChooseFiles(false).
+		PromptForSingleSelection()
 	return selection, err
 }
 
 // SelectCoverImage 选择封面图片并保存到 covers 目录
 func (s *GameService) SelectCoverImage(gameID string) (string, error) {
-	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
-		Title: "选择封面图片",
-		Filters: []runtime.FileFilter{
-			{
-				DisplayName: "图片文件",
-				Pattern:     "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp",
-			},
-		},
-	})
+	app := application.Get()
+	selection, err := app.Dialog.OpenFile().
+		SetTitle("选择封面图片").
+		AddFilter("图片文件", "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp").
+		AddFilter("All Files", "*.*").
+		PromptForSingleSelection()
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
+		s.logger.Error("failed to open file dialog: %v", err)
 		return "", err
 	}
 	if selection == "" {
@@ -364,7 +357,7 @@ func (s *GameService) SelectCoverImage(gameID string) (string, error) {
 
 	coverPath, err := utils.SaveCoverImage(selection, gameID)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to save cover image: %v", err)
+		s.logger.Error("failed to save cover image: %v", err)
 		return "", fmt.Errorf("failed to save cover image: %w", err)
 	}
 
@@ -373,17 +366,14 @@ func (s *GameService) SelectCoverImage(gameID string) (string, error) {
 
 // SelectCoverImageWithTempID 选择封面图片并使用临时ID保存（用于新增游戏时）
 func (s *GameService) SelectCoverImageWithTempID() (string, error) {
-	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
-		Title: "选择封面图片",
-		Filters: []runtime.FileFilter{
-			{
-				DisplayName: "图片文件",
-				Pattern:     "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp",
-			},
-		},
-	})
+	app := application.Get()
+	selection, err := app.Dialog.OpenFile().
+		SetTitle("选择封面图片").
+		AddFilter("图片文件", "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp").
+		AddFilter("All Files", "*.*").
+		PromptForSingleSelection()
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
+		s.logger.Error("failed to open file dialog: %v", err)
 		return "", err
 	}
 	if selection == "" {
@@ -394,7 +384,7 @@ func (s *GameService) SelectCoverImageWithTempID() (string, error) {
 	tempID := fmt.Sprintf("temp_%d", time.Now().UnixNano())
 	coverPath, err := utils.SaveCoverImage(selection, tempID)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to save cover image: %v", err)
+		s.logger.Error("failed to save cover image: %v", err)
 		return "", fmt.Errorf("failed to save cover image: %w", err)
 	}
 
@@ -513,6 +503,6 @@ func (s *GameService) UpdateGameFromRemote(gameID string) error {
 		return fmt.Errorf("failed to update game: %w", err)
 	}
 
-	runtime.LogInfof(s.ctx, "UpdateGameFromRemote: successfully updated game %s from %s", existingGame.Name, existingGame.SourceType)
+	s.logger.Info("UpdateGameFromRemote: successfully updated game %s from %s", existingGame.Name, existingGame.SourceType)
 	return nil
 }

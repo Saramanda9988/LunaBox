@@ -1,17 +1,16 @@
 package service
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/wailsapp/wails/v3/pkg/application"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"lunabox/internal/version"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // UpdateInfo 版本信息结构
@@ -34,7 +33,7 @@ type UpdateCheckResult struct {
 
 // UpdateService 更新服务
 type UpdateService struct {
-	ctx    context.Context
+	logger *slog.Logger
 	config *ConfigService
 	client *http.Client
 }
@@ -45,17 +44,17 @@ var defaultUpdateURLs = []string{
 	"https://4update.netlify.app/version.json", // Netlify 备份（用户可修改）
 }
 
-func NewUpdateService() *UpdateService {
+func NewUpdateService(logger *slog.Logger) *UpdateService {
 	return &UpdateService{
+		logger: logger,
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
 	}
 }
 
-func (s *UpdateService) Init(ctx context.Context, configService *ConfigService) {
-	s.ctx = ctx
-	s.config = configService
+func (s *UpdateService) SetConfigService(service *ConfigService) {
+	s.config = service
 }
 
 // CheckForUpdates 手动检查更新（忽略跳过版本设置，总是检查最新版本）
@@ -105,7 +104,7 @@ func (s *UpdateService) checkUpdates(isAutoCheck bool) (*UpdateCheckResult, erro
 		if lastErr == nil {
 			break
 		}
-		runtime.LogErrorf(s.ctx, "Failed to fetch update info from %s: %v", url, lastErr)
+		s.logger.Error("Failed to fetch update info from %s: %v", url, lastErr)
 	}
 
 	if updateInfo == nil {
@@ -211,7 +210,12 @@ func (s *UpdateService) SkipVersion(ver string) error {
 
 // OpenDownloadURL 打开下载页面（已废弃，请在前端使用 runtime.BrowserOpenURL）
 func (s *UpdateService) OpenDownloadURL(url string) error {
-	runtime.BrowserOpenURL(s.ctx, url)
+	// FIXME: 修复
+	err := application.Get().Browser.OpenURL(url)
+	if err != nil {
+		s.logger.Error("Failed to open URL: %v", err)
+		return err
+	}
 	return nil
 }
 

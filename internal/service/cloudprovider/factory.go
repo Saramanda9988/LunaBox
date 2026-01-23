@@ -17,7 +17,7 @@ const (
 )
 
 // NewCloudProvider 根据配置创建云存储提供商
-func NewCloudProvider(ctx context.Context, config *appconf.AppConfig) (CloudStorageProvider, error) {
+func NewCloudProvider(config *appconf.AppConfig) (CloudStorageProvider, error) {
 	if !config.CloudBackupEnabled {
 		return nil, fmt.Errorf("云备份未启用")
 	}

@@ -20,6 +20,7 @@ export default antfu(
       "wailsjs/**",
       "src/vite-env.d.ts",
       "**/*.md",
+      "bindings/**",
     ],
     plugins: {
       "@tanstack/query": pluginQuery,

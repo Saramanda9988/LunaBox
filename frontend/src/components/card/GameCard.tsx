@@ -1,11 +1,11 @@
-import type { models } from "../../../wailsjs/go/models";
+import type { Game } from "../../../bindings/lunabox/internal/models";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "react-hot-toast";
-import { enums } from "../../../wailsjs/go/models";
-import { StartGameWithTracking } from "../../../wailsjs/go/service/TimerService";
+import { GameStatus } from "../../../bindings/lunabox/internal/enums";
+import { StartGameWithTracking } from "../../../bindings/lunabox/internal/service/TimerService";
 
 interface GameCardProps {
-  game: models.Game;
+  game: Game;
 }
 
 export function GameCard({ game }: GameCardProps) {
@@ -35,7 +35,7 @@ export function GameCard({ game }: GameCardProps) {
     navigate({ to: `/game/${game.id}` });
   };
 
-  const isCompleted = game.status === enums.GameStatus.COMPLETED;
+  const isCompleted = game.status === GameStatus.StatusCompleted;
 
   return (
     <div className="group relative flex w-full flex-col overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm transition-all duration-300 hover:shadow-xl dark:border-brand-700 dark:bg-brand-800">

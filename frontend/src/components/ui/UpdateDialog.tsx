@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { BrowserOpenURL } from "../../../wailsjs/runtime/runtime";
+import { OpenDownloadURL } from "../../../bindings/lunabox/internal/service/updateservice";
 
 interface UpdateInfo {
   has_update: boolean;
@@ -45,7 +45,7 @@ export function UpdateDialog({ updateInfo, onClose, onSkip }: UpdateDialogProps)
   const handleDownload = (source: string) => {
     const url = updateInfo.downloads[source];
     if (url) {
-      BrowserOpenURL(url);
+      OpenDownloadURL(url);
     }
   };
 

@@ -1,9 +1,10 @@
 import { create } from "zustand";
 
-import type { appconf, vo } from "../wailsjs/go/models";
+import type { AppConfig } from "../bindings/lunabox/internal/appconf";
+import type { HomePageData } from "../bindings/lunabox/internal/vo";
 
-import { GetAppConfig, UpdateAppConfig } from "../wailsjs/go/service/ConfigService";
-import { GetHomePageData } from "../wailsjs/go/service/HomeService";
+import { GetAppConfig, UpdateAppConfig } from "../bindings/lunabox/internal/service/ConfigService";
+import { GetHomePageData } from "../bindings/lunabox/internal/service/HomeService";
 
 type AISummaryCache = {
   [dimension: string]: string;
@@ -13,12 +14,12 @@ type AppState = {
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
-  homeData: vo.HomePageData | null;
-  config: appconf.AppConfig | null;
+  homeData: HomePageData | null;
+  config: AppConfig | null;
   isLoading: boolean;
   fetchHomeData: () => Promise<void>;
   fetchConfig: () => Promise<void>;
-  updateConfig: (config: appconf.AppConfig) => Promise<void>;
+  updateConfig: (config: AppConfig) => Promise<void>;
   // AI Summary 缓存
   aiSummaryCache: AISummaryCache;
   setAISummary: (dimension: string, summary: string) => void;
@@ -63,7 +64,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       console.error("Failed to fetch config:", error);
     }
   },
-  updateConfig: async (config: appconf.AppConfig) => {
+  updateConfig: async (config: AppConfig) => {
     try {
       await UpdateAppConfig(config);
       set({ config });

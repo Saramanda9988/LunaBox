@@ -1,8 +1,8 @@
-import type { models } from "../../wailsjs/go/models";
+import type { Game } from "../../bindings/lunabox/internal/models";
 import type { ImportSource } from "../components/modal/GameImportModal";
 import { createRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { GetGames } from "../../wailsjs/go/service/GameService";
+import { GetGames } from "../../bindings/lunabox/internal/service/GameService";
 import { FilterBar } from "../components/bar/FilterBar";
 import { GameCard } from "../components/card/GameCard";
 import { AddGameModal } from "../components/modal/AddGameModal";
@@ -19,7 +19,7 @@ export const Route = createRoute({
 });
 
 function LibraryPage() {
-  const [games, setGames] = useState<models.Game[]>([]);
+  const [games, setGames] = useState<Game[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);

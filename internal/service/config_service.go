@@ -1,29 +1,25 @@
 package service
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"lunabox/internal/appconf"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type ConfigService struct {
-	ctx         context.Context
 	db          *sql.DB
 	config      *appconf.AppConfig
+	logger      *slog.Logger
 	quitHandler func() // 安全退出回调
 }
 
-func NewConfigService() *ConfigService {
-	return &ConfigService{}
-}
-
-func (s *ConfigService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
-	s.ctx = ctx
-	s.db = db
-	s.config = config
+func NewConfigService(db *sql.DB, config *appconf.AppConfig, logger *slog.Logger) *ConfigService {
+	return &ConfigService{
+		db:     db,
+		config: config,
+		logger: logger,
+	}
 }
 
 func (s *ConfigService) GetAppConfig() (appconf.AppConfig, error) {
@@ -32,13 +28,13 @@ func (s *ConfigService) GetAppConfig() (appconf.AppConfig, error) {
 
 func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	if newConfig.Theme == "" || newConfig.Language == "" {
-		runtime.LogErrorf(s.ctx, "invalid config")
+		s.logger.Error("invalid config")
 		return fmt.Errorf("invalid config")
 	}
 
 	err := appconf.SaveConfig(&newConfig)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to save config: %v", err)
+		s.logger.Error("failed to save config: %v", err)
 		return err
 	}
 

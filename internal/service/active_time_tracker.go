@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"log/slog"
 	"lunabox/internal/utils"
 	"sync"
 	"time"
@@ -23,22 +24,19 @@ type TrackingSession struct {
 // ActiveTimeTracker 活跃时间追踪服务
 // 使用轮询方式检测窗口焦点状态，仅当游戏窗口处于前台时记录游玩时长
 type ActiveTimeTracker struct {
-	ctx      context.Context
 	db       *sql.DB
 	mu       sync.RWMutex
+	logger   *slog.Logger
 	sessions map[string]*TrackingSession // gameID -> session
 }
 
 // NewActiveTimeTracker 创建活跃时间追踪器
-func NewActiveTimeTracker() *ActiveTimeTracker {
+func NewActiveTimeTracker(db *sql.DB, logger *slog.Logger) *ActiveTimeTracker {
 	return &ActiveTimeTracker{
+		db:       db,
+		logger:   logger,
 		sessions: make(map[string]*TrackingSession),
 	}
-}
-
-func (s *ActiveTimeTracker) Init(ctx context.Context, db *sql.DB) {
-	s.ctx = ctx
-	s.db = db
 }
 
 // StartTracking 开始追踪指定游戏的活跃游玩时间

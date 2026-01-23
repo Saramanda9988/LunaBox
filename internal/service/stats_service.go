@@ -1,35 +1,32 @@
 package service
 
 import (
-	"context"
 	"database/sql"
 	"encoding/base64"
 	"fmt"
+	"github.com/wailsapp/wails/v3/pkg/application"
 	"io"
+	"log/slog"
 	"lunabox/internal/appconf"
 	"lunabox/internal/enums"
 	"lunabox/internal/vo"
 	"net/http"
 	"os"
 	"strings"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type StatsService struct {
-	ctx    context.Context
 	db     *sql.DB
+	logger *slog.Logger
 	config *appconf.AppConfig
 }
 
-func NewStatsService() *StatsService {
-	return &StatsService{}
-}
-
-func (s *StatsService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
-	s.ctx = ctx
-	s.db = db
-	s.config = config
+func NewStatsService(db *sql.DB, config *appconf.AppConfig, logger *slog.Logger) *StatsService {
+	return &StatsService{
+		db:     db,
+		logger: logger,
+		config: config,
+	}
 }
 
 // ExportStatsImage TODO:不是好做法，应该使用wails本地缓存机制缓存图片到本地，而不是现获取
@@ -41,32 +38,28 @@ func (s *StatsService) ExportStatsImage(base64Data string) error {
 
 	data, err := base64.StdEncoding.DecodeString(base64Data)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to decode base64 data: %v", err)
+		s.logger.Error("failed to decode base64 data: %v", err)
 		return fmt.Errorf("failed to decode base64 data: %w", err)
 	}
 
-	filename, err := runtime.SaveFileDialog(s.ctx, runtime.SaveDialogOptions{
-		DefaultFilename: "lunabox-stats.png",
-		Title:           "Save Stats Image",
-		Filters: []runtime.FileFilter{
-			{
-				DisplayName: "PNG Images (*.png)",
-				Pattern:     "*.png",
-			},
-		},
-	})
+	app := application.Get()
+	path, err := app.Dialog.SaveFile().
+		SetFilename("lunabox-stats.png").
+		SetMessage("保存统计图片").
+		AddFilter("PNG Images (*.png)", "*.png").
+		PromptForSingleSelection()
 
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to open save dialog: %v", err)
+		s.logger.Error("failed to open save dialog: %v", err)
 		return fmt.Errorf("failed to open save dialog: %w", err)
 	}
 
-	if filename == "" {
+	if path == "" {
 		return nil // User cancelled
 	}
 
-	if err := os.WriteFile(filename, data, 0644); err != nil {
-		runtime.LogErrorf(s.ctx, "failed to save file: %v", err)
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		s.logger.Error("failed to save file: %v", err)
 		return fmt.Errorf("failed to save file: %w", err)
 	}
 
@@ -76,19 +69,19 @@ func (s *StatsService) ExportStatsImage(base64Data string) error {
 func (s *StatsService) FetchImageAsBase64(url string) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to fetch image: %v", err)
+		s.logger.Error("failed to fetch image: %v", err)
 		return "", fmt.Errorf("failed to fetch image: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		runtime.LogErrorf(s.ctx, "failed to fetch image, status code: %d", resp.StatusCode)
+		s.logger.Error("failed to fetch image, status code: %d", resp.StatusCode)
 		return "", fmt.Errorf("failed to fetch image, status code: %d", resp.StatusCode)
 	}
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to read image body: %v", err)
+		s.logger.Error("failed to read image body: %v", err)
 		return "", fmt.Errorf("failed to read image body: %w", err)
 	}
 
@@ -157,13 +150,13 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 		// 获取实际日期范围用于显示
 		var actualStart, actualEnd string
 		if req.Dimension == enums.All {
-			err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(MIN(start_time::DATE), current_date), current_date FROM play_sessions WHERE game_id = ?", req.GameID).Scan(&actualStart, &actualEnd)
+			err := s.db.QueryRow("SELECT COALESCE(MIN(start_time::DATE), current_date), current_date FROM play_sessions WHERE game_id = ?", req.GameID).Scan(&actualStart, &actualEnd)
 			if err == nil {
 				stats.StartDate = actualStart
 				stats.EndDate = actualEnd
 			}
 		} else {
-			err := s.db.QueryRowContext(s.ctx, fmt.Sprintf("SELECT %s, %s", startDateExpr, endDateExpr)).Scan(&actualStart, &actualEnd)
+			err := s.db.QueryRow(fmt.Sprintf("SELECT %s, %s", startDateExpr, endDateExpr)).Scan(&actualStart, &actualEnd)
 			if err == nil {
 				stats.StartDate = actualStart
 				stats.EndDate = actualEnd
@@ -175,23 +168,23 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 	queryTotal := fmt.Sprintf("SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions WHERE game_id = ? AND start_time >= %s AND start_time <= %s + INTERVAL 1 DAY", startDateExpr, endDateExpr)
 	if req.Dimension == enums.All && req.StartDate == "" {
 		// For 'all' dimension without custom dates, we need special handling
-		err := s.db.QueryRowContext(s.ctx, queryTotal, req.GameID, req.GameID).Scan(&stats.TotalPlayCount, &stats.TotalPlayTime)
+		err := s.db.QueryRow(queryTotal, req.GameID, req.GameID).Scan(&stats.TotalPlayCount, &stats.TotalPlayTime)
 		if err != nil {
-			runtime.LogErrorf(s.ctx, "failed to get total play count and duration: %v", err)
+			s.logger.Error("failed to get total play count and duration: %v", err)
 			return stats, err
 		}
 	} else {
-		err := s.db.QueryRowContext(s.ctx, queryTotal, req.GameID).Scan(&stats.TotalPlayCount, &stats.TotalPlayTime)
+		err := s.db.QueryRow(queryTotal, req.GameID).Scan(&stats.TotalPlayCount, &stats.TotalPlayTime)
 		if err != nil {
-			runtime.LogErrorf(s.ctx, "failed to get total play count and duration: %v", err)
+			s.logger.Error("failed to get total play count and duration: %v", err)
 			return stats, err
 		}
 	}
 
 	// 2. Today Play Time (always show today regardless of period)
-	err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(SUM(duration), 0) FROM play_sessions WHERE game_id = ? AND start_time >= current_date", req.GameID).Scan(&stats.TodayPlayTime)
+	err := s.db.QueryRow("SELECT COALESCE(SUM(duration), 0) FROM play_sessions WHERE game_id = ? AND start_time >= current_date", req.GameID).Scan(&stats.TodayPlayTime)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to get today play time: %v", err)
+		s.logger.Error("failed to get today play time: %v", err)
 		return stats, err
 	}
 
@@ -212,12 +205,12 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 
 	var rows *sql.Rows
 	if req.Dimension == enums.All && req.StartDate == "" {
-		rows, err = s.db.QueryContext(s.ctx, queryTimeline, req.GameID, req.GameID)
+		rows, err = s.db.Query(queryTimeline, req.GameID, req.GameID)
 	} else {
-		rows, err = s.db.QueryContext(s.ctx, queryTimeline, req.GameID)
+		rows, err = s.db.Query(queryTimeline, req.GameID)
 	}
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to query play history: %v", err)
+		s.logger.Error("failed to query play history: %v", err)
 		return stats, err
 	}
 	defer rows.Close()
@@ -226,7 +219,7 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 	for rows.Next() {
 		var item vo.DailyPlayTime
 		if err := rows.Scan(&item.Date, &item.Duration); err != nil {
-			runtime.LogErrorf(s.ctx, "failed to scan play history: %v", err)
+			s.logger.Error("failed to scan play history: %v", err)
 			return stats, err
 		}
 		stats.RecentPlayHistory = append(stats.RecentPlayHistory, item)
@@ -294,9 +287,9 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 
 	// 1. Total Play Count & Duration
 	queryTotal := fmt.Sprintf("SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions WHERE start_time >= %s AND start_time <= %s + INTERVAL 1 DAY", startDateExpr, endDateExpr)
-	err := s.db.QueryRowContext(s.ctx, queryTotal).Scan(&stats.TotalPlayCount, &stats.TotalPlayDuration)
+	err := s.db.QueryRow(queryTotal).Scan(&stats.TotalPlayCount, &stats.TotalPlayDuration)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to get total play count and duration: %v", err)
+		s.logger.Error("failed to get total play count and duration: %v", err)
 		return stats, err
 	}
 
@@ -312,16 +305,16 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 		LIMIT 5
 	`, startDateExpr, endDateExpr)
 
-	rows, err := s.db.QueryContext(s.ctx, queryLeaderboard)
+	rows, err := s.db.Query(queryLeaderboard)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to query leaderboard: %v", err)
+		s.logger.Error("failed to query leaderboard: %v", err)
 		return stats, err
 	}
 
 	for rows.Next() {
 		var item vo.GamePlayStats
 		if err := rows.Scan(&item.GameID, &item.GameName, &item.CoverUrl, &item.TotalDuration); err != nil {
-			runtime.LogErrorf(s.ctx, "failed to scan leaderboard: %v", err)
+			s.logger.Error("failed to scan leaderboard: %v", err)
 			rows.Close()
 			return stats, err
 		}
@@ -345,16 +338,16 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 		ORDER BY d.day ASC
 	`, seriesStart, seriesEnd, stepInterval, dateFormat, truncUnit)
 
-	rows, err = s.db.QueryContext(s.ctx, queryTimeline)
+	rows, err = s.db.Query(queryTimeline)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to query timeline: %v", err)
+		s.logger.Error("failed to query timeline: %v", err)
 		return stats, err
 	}
 
 	for rows.Next() {
 		var item vo.TimePoint
 		if err := rows.Scan(&item.Label, &item.Duration); err != nil {
-			runtime.LogErrorf(s.ctx, "failed to scan timeline: %v", err)
+			s.logger.Error("failed to scan timeline: %v", err)
 			rows.Close()
 			return stats, err
 		}
@@ -385,16 +378,16 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 			ORDER BY d.day ASC
 		`, seriesStart, seriesEnd, stepInterval, dateFormat, truncUnit)
 
-		rows, err := s.db.QueryContext(s.ctx, queryGameSeries, game.GameID)
+		rows, err := s.db.Query(queryGameSeries, game.GameID)
 		if err != nil {
-			runtime.LogErrorf(s.ctx, "failed to query leaderboard series for game %s: %v", game.GameID, err)
+			s.logger.Error("failed to query leaderboard series for game %s: %v", game.GameID, err)
 			return stats, err
 		}
 
 		for rows.Next() {
 			var p vo.TimePoint
 			if err := rows.Scan(&p.Label, &p.Duration); err != nil {
-				runtime.LogErrorf(s.ctx, "failed to scan leaderboard series for game %s: %v", game.GameID, err)
+				s.logger.Error("failed to scan leaderboard series for game %s: %v", game.GameID, err)
 				rows.Close()
 				return stats, err
 			}

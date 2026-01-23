@@ -1,7 +1,7 @@
-import type { appconf } from "../../wailsjs/go/models";
+import type { AppConfig } from "../../bindings/lunabox/internal/appconf";
 import { createRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { GetVersionInfo } from "../../wailsjs/go/service/VersionService";
+import { GetVersionInfo } from "../../bindings/lunabox/internal/service/VersionService";
 import { AISettingsPanel } from "../components/panel/AISettingsPanel";
 import { AutoBackupSettingsPanel } from "../components/panel/AutoBackupSettingsPanel";
 import { BasicSettingsPanel } from "../components/panel/BasicSettingsPanel";
@@ -22,7 +22,7 @@ export const Route = createRoute({
 
 function SettingsPage() {
   const { config, fetchConfig, updateConfig } = useAppStore();
-  const [formData, setFormData] = useState<appconf.AppConfig | null>(null);
+  const [formData, setFormData] = useState<AppConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [versionInfo, setVersionInfo] = useState<Record<string, string> | null>(null);
@@ -60,7 +60,7 @@ function SettingsPage() {
 
   useEffect(() => {
     if (config && isInitialMount.current) {
-      setFormData({ ...config } as appconf.AppConfig);
+      setFormData({ ...config } as AppConfig);
       isInitialMount.current = false;
     }
   }, [config]);
@@ -81,7 +81,7 @@ function SettingsPage() {
     return () => clearTimeout(timer);
   }, [formData, updateConfig, config]);
 
-  const handleFormChange = (newData: appconf.AppConfig) => {
+  const handleFormChange = (newData: AppConfig) => {
     setFormData(newData);
   };
 

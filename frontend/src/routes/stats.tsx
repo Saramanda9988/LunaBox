@@ -1,3 +1,4 @@
+import type { PeriodStats } from "../../bindings/lunabox/internal/vo";
 import { createRoute } from "@tanstack/react-router";
 import {
   CategoryScale,
@@ -12,9 +13,10 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Line } from "react-chartjs-2";
 import toast from "react-hot-toast";
-import { enums, vo } from "../../wailsjs/go/models";
-import { AISummarize } from "../../wailsjs/go/service/AiService";
-import { GetGlobalPeriodStats } from "../../wailsjs/go/service/StatsService";
+import { Period } from "../../bindings/lunabox/internal/enums";
+import { AISummarize } from "../../bindings/lunabox/internal/service/AiService";
+import { GetGlobalPeriodStats } from "../../bindings/lunabox/internal/service/StatsService";
+import { PeriodStatsRequest } from "../../bindings/lunabox/internal/vo";
 import { AiSummaryCard } from "../components/card/AiSummaryCard";
 import { TemplateExportModal } from "../components/modal/TemplateExportModal";
 import { StatsSkeleton } from "../components/skeleton/StatsSkeleton";
@@ -43,8 +45,8 @@ export const Route = createRoute({
 function StatsPage() {
   const ref = useRef<HTMLDivElement>(null);
   const { textColor, gridColor } = useChartTheme();
-  const [dimension, setDimension] = useState<enums.Period>(enums.Period.WEEK);
-  const [stats, setStats] = useState<vo.PeriodStats | null>(null);
+  const [dimension, setDimension] = useState<Period>(Period.Week);
+  const [stats, setStats] = useState<PeriodStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -90,10 +92,10 @@ function StatsPage() {
     }
   }, [dimension, setAISummary]);
 
-  const loadStats = async (dim: enums.Period, start?: string, end?: string) => {
+  const loadStats = async (dim: Period, start?: string, end?: string) => {
     setLoading(true);
     try {
-      const req = new vo.PeriodStatsRequest({
+      const req = new PeriodStatsRequest({
         dimension: dim,
         start_date: start || "",
         end_date: end || "",
@@ -120,7 +122,7 @@ function StatsPage() {
       return;
     }
     // 自定义日期范围统一使用 DAY 维度（按日聚合）
-    loadStats(enums.Period.DAY, startDate, endDate);
+    loadStats(Period.Day, startDate, endDate);
   };
 
   const handleResetDateRange = () => {
@@ -242,10 +244,10 @@ function StatsPage() {
         <div className="flex items-center space-x-4">
           <SlideButton
             options={[
-              { label: "周", value: enums.Period.WEEK },
-              { label: "月", value: enums.Period.MONTH },
+              { label: "周", value: Period.Week},
+              { label: "月", value: Period.Month},
             ]}
-            value={customDateRange ? "" as enums.Period : dimension}
+            value={customDateRange ? "" as Period : dimension}
             onChange={(value) => {
               setDimension(value);
               if (customDateRange) {

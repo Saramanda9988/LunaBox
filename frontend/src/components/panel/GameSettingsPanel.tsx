@@ -1,9 +1,9 @@
-import type { appconf } from "../../../wailsjs/go/models";
+import type { AppConfig } from "../../../bindings/lunabox/internal/appconf";
 import { BetterSwitch } from "../ui/BetterSwitch";
 
 interface GameSettingsPanelProps {
-  formData: appconf.AppConfig;
-  onChange: (data: appconf.AppConfig) => void;
+  formData: AppConfig;
+  onChange: (data: AppConfig) => void;
 }
 
 export function GameSettingsPanel({ formData, onChange }: GameSettingsPanelProps) {
@@ -22,7 +22,7 @@ export function GameSettingsPanel({ formData, onChange }: GameSettingsPanelProps
           id="record_active_time_only"
           checked={formData.record_active_time_only || false}
           onCheckedChange={checked =>
-            onChange({ ...formData, record_active_time_only: checked } as appconf.AppConfig)}
+            onChange({ ...formData, record_active_time_only: checked } as AppConfig)}
         />
       </div>
 

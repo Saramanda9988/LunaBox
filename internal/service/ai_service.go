@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"lunabox/internal/appconf"
 	"lunabox/internal/enums"
 	"lunabox/internal/vo"
@@ -16,19 +17,17 @@ import (
 )
 
 type AiService struct {
-	ctx       context.Context
 	db        *sql.DB
+	logger    *slog.Logger
 	appConfig *appconf.AppConfig
 }
 
-func NewAiService() *AiService {
-	return &AiService{}
-}
-
-func (s *AiService) Init(ctx context.Context, db *sql.DB, appConfig *appconf.AppConfig) {
-	s.ctx = ctx
-	s.db = db
-	s.appConfig = appConfig
+func NewAiService(db *sql.DB, config *appconf.AppConfig, logger *slog.Logger) *AiService {
+	return &AiService{
+		db:        db,
+		appConfig: config,
+		logger:    logger,
+	}
 }
 
 // AISummarize 生成AI锐评总结
@@ -100,7 +99,7 @@ func (s *AiService) getStatsForAI(dimension enums.Period) (*AIStatsData, error) 
 
 	// 获取总游玩次数和时长
 	queryTotal := fmt.Sprintf("SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions WHERE start_time >= %s", startDateExpr)
-	err := s.db.QueryRowContext(s.ctx, queryTotal).Scan(&data.TotalPlayCount, &data.TotalPlayDuration)
+	err := s.db.QueryRow(queryTotal).Scan(&data.TotalPlayCount, &data.TotalPlayDuration)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +115,7 @@ func (s *AiService) getStatsForAI(dimension enums.Period) (*AIStatsData, error) 
 		LIMIT 5
 	`, startDateExpr)
 
-	rows, err := s.db.QueryContext(s.ctx, queryLeaderboard)
+	rows, err := s.db.Query(queryLeaderboard)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +184,12 @@ func (s *AiService) callAIAPI(systemPrompt string, userPrompt string) (string, e
 	}
 
 	url := strings.TrimSuffix(baseURL, "/") + "/chat/completions"
-	req, err := http.NewRequestWithContext(s.ctx, "POST", url, bytes.NewBuffer(jsonData))
+
+	// 使用带超时的 context 进行 HTTP 请求
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", err
 	}
@@ -193,7 +197,7 @@ func (s *AiService) callAIAPI(systemPrompt string, userPrompt string) (string, e
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+s.appConfig.AIAPIKey)
 
-	client := &http.Client{Timeout: 60 * time.Second}
+	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err

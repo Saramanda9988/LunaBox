@@ -1,10 +1,10 @@
 package service
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"lunabox/internal/appconf"
 	"lunabox/internal/models"
 	"os/exec"
@@ -12,33 +12,31 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type TimerService struct {
-	ctx               context.Context
 	db                *sql.DB
+	logger            *slog.Logger
 	config            *appconf.AppConfig
 	backupService     *BackupService
 	activeTimeTracker *ActiveTimeTracker
 }
 
-func NewTimerService() *TimerService {
+func NewTimerService(db *sql.DB, config *appconf.AppConfig, logger *slog.Logger) *TimerService {
 	return &TimerService{
-		activeTimeTracker: NewActiveTimeTracker(),
+		db:     db,
+		config: config,
+		logger: logger,
 	}
-}
-
-func (s *TimerService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
-	s.ctx = ctx
-	s.db = db
-	s.config = config
-	s.activeTimeTracker.Init(ctx, db)
 }
 
 // SetBackupService 设置备份服务（用于自动备份）
 func (s *TimerService) SetBackupService(backupService *BackupService) {
 	s.backupService = backupService
+}
+
+func (s *TimerService) SetActiveTimeTracker(activeTimeTracker *ActiveTimeTracker) {
+	s.activeTimeTracker = activeTimeTracker
 }
 
 // StartGameWithTracking 启动游戏并自动追踪游玩时长
@@ -47,12 +45,12 @@ func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 	//获取游戏路径
 	path, err := s.getGamePath(gameID)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to get game path: %v", err)
+		s.logger.Error("failed to get game path: %v", err)
 		return false, fmt.Errorf("failed to get game path: %w", err)
 	}
 
 	if path == "" {
-		runtime.LogErrorf(s.ctx, "failed to get game path: %v", err)
+		s.logger.Error("failed to get game path: %v", err)
 		return false, fmt.Errorf("game path is empty for game: %s", gameID)
 	}
 
@@ -60,7 +58,7 @@ func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 	// 设置工作目录为游戏所在目录，确保汉化补丁等资源能正确加载
 	cmd.Dir = filepath.Dir(path)
 	if err := cmd.Start(); err != nil {
-		runtime.LogErrorf(s.ctx, "failed to start game: %v", err)
+		s.logger.Error("failed to start game: %v", err)
 		return false, fmt.Errorf("failed to start game: %w", err)
 	}
 
@@ -70,8 +68,7 @@ func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 	sessionID := uuid.New().String()
 	startTime := time.Now()
 
-	_, err = s.db.ExecContext(
-		s.ctx,
+	_, err = s.db.Exec(
 		`INSERT INTO play_sessions (id, game_id, start_time, end_time, duration)
 		 VALUES (?, ?, ?, ?, ?)`,
 		sessionID,
@@ -94,7 +91,7 @@ func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 			time.Sleep(500 * time.Millisecond)
 			_, err := s.activeTimeTracker.StartTracking(sessionID, gameID, processID)
 			if err != nil {
-				runtime.LogWarningf(s.ctx, "Failed to start active time tracking: %v", err)
+				s.logger.Warn("Failed to start active time tracking: %v", err)
 			}
 		}()
 	}
@@ -118,7 +115,7 @@ func (s *TimerService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID s
 		// 游戏正常退出
 	case <-time.After(24 * time.Hour):
 		// 超时保护（24小时后强制清理）
-		runtime.LogWarningf(s.ctx, "Game %s exceeded maximum runtime (24h), forcing cleanup", gameID)
+		s.logger.Warn("Game %s exceeded maximum runtime (24h), forcing cleanup", gameID)
 	}
 
 	// 确保停止追踪（无论如何都要执行）
@@ -131,32 +128,29 @@ func (s *TimerService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID s
 	var duration int
 	if s.config.RecordActiveTimeOnly {
 		duration = activeSeconds
-		runtime.LogInfof(s.ctx, "Game %s active play time: %d seconds", gameID, duration)
+		s.logger.Info("Game %s active play time: %d seconds", gameID, duration)
 	} else {
 		duration = int(endTime.Sub(startTime).Seconds())
-		runtime.LogInfof(s.ctx, "Game %s total runtime: %d seconds", gameID, duration)
 	}
 
 	if exitErr != nil {
-		runtime.LogDebugf(s.ctx, "Game %s exited with error: %v", gameID, exitErr)
+		s.logger.Error("Game %s exited with error: %v", gameID, exitErr)
 	}
 
 	// If play time is less than 1 minute, remove the temporary session record
 	if duration < 60 {
-		_, err := s.db.ExecContext(
-			s.ctx,
+		_, err := s.db.Exec(
 			`DELETE FROM play_sessions WHERE id = ?`,
 			sessionID,
 		)
 		if err != nil {
-			runtime.LogErrorf(s.ctx, "Failed to delete short play session %s: %v", sessionID, err)
+			s.logger.Error("Failed to delete short play session %s: %v", sessionID, err)
 			fmt.Printf("Failed to delete short play session %s: %v\n", sessionID, err)
 		}
 		return
 	}
 
-	_, err := s.db.ExecContext(
-		s.ctx,
+	_, err := s.db.Exec(
 		`UPDATE play_sessions
 		 SET end_time = ?, duration = ?
 		 WHERE id = ?`,
@@ -165,7 +159,7 @@ func (s *TimerService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID s
 		sessionID,
 	)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "Failed to update play session %s: %v", sessionID, err)
+		s.logger.Error("Failed to update play session %s: %v", sessionID, err)
 		fmt.Printf("Failed to update play session %s: %v\n", sessionID, err)
 		return
 	}
@@ -180,37 +174,35 @@ func (s *TimerService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID s
 func (s *TimerService) autoBackupGameSave(gameID string) {
 	// 检查是否设置了存档目录
 	var savePath string
-	err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(save_path, '') FROM games WHERE id = ?", gameID).Scan(&savePath)
+	err := s.db.QueryRow("SELECT COALESCE(save_path, '') FROM games WHERE id = ?", gameID).Scan(&savePath)
 	if err != nil || savePath == "" {
-		runtime.LogDebugf(s.ctx, "Game %s has no save path configured, skipping auto backup", gameID)
 		return
 	}
 
 	// 执行备份
-	runtime.LogInfof(s.ctx, "Auto backing up game save for: %s", gameID)
+	s.logger.Info("Auto backing up game save for: %s", gameID)
 	backup, err := s.backupService.CreateBackup(gameID)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "Failed to auto backup game save: %v", err)
+		s.logger.Error("Failed to auto backup game save: %v", err)
 		return
 	}
 
 	// 如果启用了游戏存档自动上传到云端
 	if s.config.AutoUploadSaveToCloud && s.config.CloudBackupEnabled && s.config.BackupUserID != "" {
-		runtime.LogInfof(s.ctx, "Auto uploading backup to cloud: %s", backup.Path)
+		s.logger.Info("Auto uploading backup to cloud: %s", backup.Path)
 		err = s.backupService.UploadGameBackupToCloud(gameID, backup.Path)
 		if err != nil {
-			runtime.LogErrorf(s.ctx, "Failed to auto upload backup to cloud: %v", err)
+			s.logger.Error("Failed to auto upload backup to cloud: %v", err)
 		} else {
-			runtime.LogInfof(s.ctx, "Successfully uploaded backup to cloud: %s", backup.Path)
+			s.logger.Info("Successfully uploaded backup to cloud: %s", backup.Path)
 		}
 	}
-	runtime.LogInfof(s.ctx, "Auto backup completed for game: %s", gameID)
+	s.logger.Info("Auto backup completed for game: %s", gameID)
 }
 
 func (s *TimerService) getGamePath(gameID string) (string, error) {
 	var path string
-	err := s.db.QueryRowContext(
-		s.ctx,
+	err := s.db.QueryRow(
 		"SELECT COALESCE(path, '') FROM games WHERE id = ?",
 		gameID,
 	).Scan(&path)
@@ -231,9 +223,9 @@ func (s *TimerService) getGamePath(gameID string) (string, error) {
 func (s *TimerService) AddPlaySession(gameID string, startTime time.Time, durationMinutes int) (models.PlaySession, error) {
 	// 验证游戏是否存在
 	var exists bool
-	err := s.db.QueryRowContext(s.ctx, "SELECT EXISTS(SELECT 1 FROM games WHERE id = ?)", gameID).Scan(&exists)
+	err := s.db.QueryRow("SELECT EXISTS(SELECT 1 FROM games WHERE id = ?)", gameID).Scan(&exists)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "AddPlaySession: failed to check game existence: %v", err)
+		s.logger.Error("AddPlaySession: failed to check game existence: %v", err)
 		return models.PlaySession{}, fmt.Errorf("检查游戏是否存在失败: %w", err)
 	}
 	if !exists {
@@ -252,8 +244,7 @@ func (s *TimerService) AddPlaySession(gameID string, startTime time.Time, durati
 		Duration:  durationSeconds,
 	}
 
-	_, err = s.db.ExecContext(
-		s.ctx,
+	_, err = s.db.Exec(
 		`INSERT INTO play_sessions (id, game_id, start_time, end_time, duration)
 		 VALUES (?, ?, ?, ?, ?)`,
 		session.ID,
@@ -263,18 +254,17 @@ func (s *TimerService) AddPlaySession(gameID string, startTime time.Time, durati
 		session.Duration,
 	)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "AddPlaySession: failed to insert play session: %v", err)
+		s.logger.Error("AddPlaySession: failed to insert play session: %v", err)
 		return models.PlaySession{}, fmt.Errorf("添加游玩记录失败: %w", err)
 	}
 
-	runtime.LogInfof(s.ctx, "AddPlaySession: added play session for game %s, duration: %d minutes", gameID, durationMinutes)
+	s.logger.Info("AddPlaySession: added play session for game %s, duration: %d minutes", gameID, durationMinutes)
 	return session, nil
 }
 
 // GetPlaySessions 获取指定游戏的所有游玩记录
 func (s *TimerService) GetPlaySessions(gameID string) ([]models.PlaySession, error) {
-	rows, err := s.db.QueryContext(
-		s.ctx,
+	rows, err := s.db.Query(
 		`SELECT id, game_id, start_time, COALESCE(end_time, start_time), duration 
 		 FROM play_sessions 
 		 WHERE game_id = ? 
@@ -282,7 +272,7 @@ func (s *TimerService) GetPlaySessions(gameID string) ([]models.PlaySession, err
 		gameID,
 	)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "GetPlaySessions: failed to query play sessions: %v", err)
+		s.logger.Error("GetPlaySessions: failed to query play sessions: %v", err)
 		return nil, fmt.Errorf("查询游玩记录失败: %w", err)
 	}
 	defer rows.Close()
@@ -291,7 +281,7 @@ func (s *TimerService) GetPlaySessions(gameID string) ([]models.PlaySession, err
 	for rows.Next() {
 		var session models.PlaySession
 		if err := rows.Scan(&session.ID, &session.GameID, &session.StartTime, &session.EndTime, &session.Duration); err != nil {
-			runtime.LogErrorf(s.ctx, "GetPlaySessions: failed to scan play session: %v", err)
+			s.logger.Error("GetPlaySessions: failed to scan play session: %v", err)
 			return nil, fmt.Errorf("读取游玩记录失败: %w", err)
 		}
 		sessions = append(sessions, session)
@@ -302,9 +292,9 @@ func (s *TimerService) GetPlaySessions(gameID string) ([]models.PlaySession, err
 
 // DeletePlaySession 删除指定的游玩记录
 func (s *TimerService) DeletePlaySession(sessionID string) error {
-	result, err := s.db.ExecContext(s.ctx, "DELETE FROM play_sessions WHERE id = ?", sessionID)
+	result, err := s.db.Exec("DELETE FROM play_sessions WHERE id = ?", sessionID)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "DeletePlaySession: failed to delete play session: %v", err)
+		s.logger.Error("DeletePlaySession: failed to delete play session: %v", err)
 		return fmt.Errorf("删除游玩记录失败: %w", err)
 	}
 
@@ -316,7 +306,7 @@ func (s *TimerService) DeletePlaySession(sessionID string) error {
 		return fmt.Errorf("游玩记录不存在: %s", sessionID)
 	}
 
-	runtime.LogInfof(s.ctx, "DeletePlaySession: deleted play session %s", sessionID)
+	s.logger.Info("DeletePlaySession: deleted play session %s", sessionID)
 	return nil
 }
 
@@ -325,8 +315,7 @@ func (s *TimerService) UpdatePlaySession(session models.PlaySession) error {
 	// 重新计算结束时间
 	endTime := session.StartTime.Add(time.Duration(session.Duration) * time.Second)
 
-	result, err := s.db.ExecContext(
-		s.ctx,
+	result, err := s.db.Exec(
 		`UPDATE play_sessions SET start_time = ?, end_time = ?, duration = ? WHERE id = ?`,
 		session.StartTime,
 		endTime,
@@ -334,7 +323,7 @@ func (s *TimerService) UpdatePlaySession(session models.PlaySession) error {
 		session.ID,
 	)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "UpdatePlaySession: failed to update play session: %v", err)
+		s.logger.Error("UpdatePlaySession: failed to update play session: %v", err)
 		return fmt.Errorf("更新游玩记录失败: %w", err)
 	}
 
@@ -346,7 +335,7 @@ func (s *TimerService) UpdatePlaySession(session models.PlaySession) error {
 		return fmt.Errorf("游玩记录不存在: %s", session.ID)
 	}
 
-	runtime.LogInfof(s.ctx, "UpdatePlaySession: updated play session %s", session.ID)
+	s.logger.Info("UpdatePlaySession: updated play session %s", session.ID)
 	return nil
 }
 
@@ -356,13 +345,13 @@ func (s *TimerService) BatchAddPlaySessions(sessions []models.PlaySession) error
 		return nil
 	}
 
-	tx, err := s.db.BeginTx(s.ctx, nil)
+	tx, err := s.db.Begin()
 	if err != nil {
 		return fmt.Errorf("开始事务失败: %w", err)
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.PrepareContext(s.ctx,
+	stmt, err := tx.Prepare(
 		`INSERT INTO play_sessions (id, game_id, start_time, end_time, duration) VALUES (?, ?, ?, ?, ?)`)
 	if err != nil {
 		return fmt.Errorf("准备语句失败: %w", err)
@@ -370,9 +359,9 @@ func (s *TimerService) BatchAddPlaySessions(sessions []models.PlaySession) error
 	defer stmt.Close()
 
 	for _, session := range sessions {
-		_, err = stmt.ExecContext(s.ctx, session.ID, session.GameID, session.StartTime, session.EndTime, session.Duration)
+		_, err = stmt.Exec(session.ID, session.GameID, session.StartTime, session.EndTime, session.Duration)
 		if err != nil {
-			runtime.LogErrorf(s.ctx, "BatchAddPlaySessions: failed to insert session: %v", err)
+			s.logger.Error("BatchAddPlaySessions: failed to insert session: %v", err)
 			return fmt.Errorf("插入游玩记录失败: %w", err)
 		}
 	}
@@ -381,6 +370,6 @@ func (s *TimerService) BatchAddPlaySessions(sessions []models.PlaySession) error
 		return fmt.Errorf("提交事务失败: %w", err)
 	}
 
-	runtime.LogInfof(s.ctx, "BatchAddPlaySessions: added %d play sessions", len(sessions))
+	s.logger.Info("BatchAddPlaySessions: added %d play sessions", len(sessions))
 	return nil
 }

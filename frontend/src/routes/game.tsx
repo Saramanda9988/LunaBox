@@ -1,10 +1,16 @@
-import type { models, vo } from "../../wailsjs/go/models";
+import type { Game } from "../../bindings/lunabox/internal/models";
+import type { CategoryVO } from "../../bindings/lunabox/internal/vo";
 import { createRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
-import { enums } from "../../wailsjs/go/models";
-import { AddGameToCategory, GetCategories, GetCategoriesByGame, RemoveGameFromCategory } from "../../wailsjs/go/service/CategoryService";
-import { DeleteGame, GetGameByID, SelectCoverImage, SelectGameExecutable, SelectSaveDirectory, UpdateGame, UpdateGameFromRemote } from "../../wailsjs/go/service/GameService";
+import { GameStatus } from "../../bindings/lunabox/internal/enums";
+import {
+  AddGameToCategory,
+  GetCategories,
+  GetCategoriesByGame,
+  RemoveGameFromCategory,
+} from "../../bindings/lunabox/internal/service/categoryservice";
+import { DeleteGame, GetGameByID, SelectCoverImage, SelectGameExecutable, SelectSaveDirectory, UpdateGame, UpdateGameFromRemote } from "../../bindings/lunabox/internal/service/GameService";
 import { AddToCategoryModal } from "../components/modal/AddToCategoryModal";
 import { ConfirmModal } from "../components/modal/ConfirmModal";
 import { GameBackupPanel } from "../components/panel/GameBackupPanel";
@@ -23,16 +29,16 @@ export const Route = createRoute({
 function GameDetailPage() {
   const navigate = useNavigate();
   const { gameId } = Route.useParams();
-  const [game, setGame] = useState<models.Game | null>(null);
+  const [game, setGame] = useState<Game | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [activeTab, setActiveTab] = useState("stats");
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [allCategories, setAllCategories] = useState<vo.CategoryVO[]>([]);
+  const [allCategories, setAllCategories] = useState<CategoryVO[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const isInitialMount = useRef(true);
-  const originalGameData = useRef<models.Game | null>(null);
+  const originalGameData = useRef<Game | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -111,7 +117,7 @@ function GameDetailPage() {
     try {
       const path = await SelectGameExecutable();
       if (path && game) {
-        setGame({ ...game, path } as models.Game);
+        setGame({ ...game, path } as Game);
       }
     }
     catch (error) {
@@ -144,7 +150,7 @@ function GameDetailPage() {
     try {
       const path = await SelectSaveDirectory();
       if (path && game) {
-        setGame({ ...game, save_path: path } as models.Game);
+        setGame({ ...game, save_path: path } as Game);
       }
     }
     catch (error) {
@@ -159,7 +165,7 @@ function GameDetailPage() {
     try {
       const coverUrl = await SelectCoverImage(game.id);
       if (coverUrl) {
-        setGame({ ...game, cover_url: coverUrl } as models.Game);
+        setGame({ ...game, cover_url: coverUrl } as Game);
       }
     }
     catch (error) {
@@ -185,16 +191,16 @@ function GameDetailPage() {
   };
 
   const statusConfig = {
-    [enums.GameStatus.NOT_STARTED]: { label: "未开始", icon: "i-mdi-clock-outline", color: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300" },
-    [enums.GameStatus.PLAYING]: { label: "游玩中", icon: "i-mdi-gamepad-variant", color: "bg-neutral-100 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300" },
-    [enums.GameStatus.COMPLETED]: { label: "已通关", icon: "i-mdi-trophy", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300" },
-    [enums.GameStatus.ON_HOLD]: { label: "搁置", icon: "i-mdi-pause-circle-outline", color: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" },
+    [GameStatus.StatusNotStarted]: { label: "未开始", icon: "i-mdi-clock-outline", color: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300" },
+    [GameStatus.StatusPlaying]: { label: "游玩中", icon: "i-mdi-gamepad-variant", color: "bg-neutral-100 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300" },
+    [GameStatus.StatusCompleted]: { label: "已通关", icon: "i-mdi-trophy", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300" },
+    [GameStatus.StatusOnHold]: { label: "搁置", icon: "i-mdi-pause-circle-outline", color: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" },
   };
 
   const handleStatusChange = async (newStatus: string) => {
     if (!game)
       return;
-    const updatedGame = { ...game, status: newStatus } as models.Game;
+    const updatedGame = { ...game, status: newStatus } as Game;
     setGame(updatedGame);
     try {
       await UpdateGame(updatedGame);
@@ -213,7 +219,7 @@ function GameDetailPage() {
         GetCategoriesByGame(gameId),
       ]);
       setAllCategories(categories || []);
-      setSelectedCategoryIds(gameCategories?.map(c => c.id) || []);
+      setSelectedCategoryIds(gameCategories?.map((c: CategoryVO) => c.id) || []);
       setIsCategoryModalOpen(true);
     }
     catch (error) {
@@ -291,7 +297,7 @@ function GameDetailPage() {
             {/* 状态标签组 */}
             <div className="flex gap-1.5">
               {Object.entries(statusConfig).map(([key, config]) => {
-                const isActive = (game.status || enums.GameStatus.NOT_STARTED) === key;
+                const isActive = (game.status || GameStatus.StatusNotStarted) === key;
                 return (
                   <button
                     key={key}

@@ -1,16 +1,16 @@
-import type { appconf } from "../../../wailsjs/go/models";
+import type { AppConfig } from "../../../bindings/lunabox/internal/appconf";
 import { BetterSwitch } from "../ui/BetterSwitch";
 
 interface BasicSettingsProps {
-  formData: appconf.AppConfig;
-  onChange: (data: appconf.AppConfig) => void;
+  formData: AppConfig;
+  onChange: (data: AppConfig) => void;
 }
 
 export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const newValue = type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
-    onChange({ ...formData, [name]: newValue } as appconf.AppConfig);
+    onChange({ ...formData, [name]: newValue } as AppConfig);
   };
 
   return (
@@ -72,7 +72,7 @@ export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
         <BetterSwitch
           id="close_to_tray"
           checked={formData.close_to_tray || false}
-          onCheckedChange={checked => onChange({ ...formData, close_to_tray: checked } as appconf.AppConfig)}
+          onCheckedChange={checked => onChange({ ...formData, close_to_tray: checked } as AppConfig)}
         />
       </div>
     </>

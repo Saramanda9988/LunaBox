@@ -1,14 +1,15 @@
 package service
 
 import (
-	"context"
 	"database/sql"
 	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/wailsapp/wails/v3/pkg/application"
 	"html/template"
 	"io"
+	"log/slog"
 	"lunabox/internal/appconf"
 	"lunabox/internal/utils"
 	"lunabox/internal/version"
@@ -19,27 +20,23 @@ import (
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed templates/*.html
 var builtinTemplates embed.FS
 
 type TemplateService struct {
-	ctx    context.Context
 	db     *sql.DB
+	logger *slog.Logger
 	config *appconf.AppConfig
 }
 
-func NewTemplateService() *TemplateService {
-	return &TemplateService{}
-}
-
-func (s *TemplateService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
-	s.ctx = ctx
-	s.db = db
-	s.config = config
+func NewTemplateService(db *sql.DB, config *appconf.AppConfig, logger *slog.Logger) *TemplateService {
+	return &TemplateService{
+		db:     db,
+		logger: logger,
+		config: config,
+	}
 }
 
 // ListTemplates 列出所有可用模板
@@ -65,7 +62,7 @@ func (s *TemplateService) ListTemplates() ([]vo.TemplateInfo, error) {
 	// 2. 读取用户自定义模板
 	userDir, err := utils.GetTemplatesDir()
 	if err != nil {
-		runtime.LogWarningf(s.ctx, "Failed to get user templates dir: %v", err)
+		s.logger.Error("Failed to get user templates dir: %v", err)
 	} else {
 		userEntries, err := os.ReadDir(userDir)
 		if err == nil {
@@ -349,26 +346,21 @@ func (s *TemplateService) ExportRenderedHTML(base64Data string) error {
 		return fmt.Errorf("failed to decode base64 data: %w", err)
 	}
 
-	filename, err := runtime.SaveFileDialog(s.ctx, runtime.SaveDialogOptions{
-		DefaultFilename: fmt.Sprintf("lunabox-stats-%s.png", time.Now().Format("20060102-150405")),
-		Title:           "保存统计图片",
-		Filters: []runtime.FileFilter{
-			{
-				DisplayName: "PNG Images (*.png)",
-				Pattern:     "*.png",
-			},
-		},
-	})
+	app := application.Get()
+	path, err := app.Dialog.SaveFile().
+		SetFilename(fmt.Sprintf("lunabox-stats-%s.png", time.Now().Format("20060102-150405"))).
+		SetMessage("导出渲染海报").
+		AddFilter("PNG Images (*.png)", "*.png").
+		PromptForSingleSelection()
 
 	if err != nil {
 		return fmt.Errorf("failed to open save dialog: %w", err)
 	}
-
-	if filename == "" {
+	if path == "" {
 		return nil
 	}
 
-	return os.WriteFile(filename, data, 0644)
+	return os.WriteFile(path, data, 0644)
 }
 
 // formatDuration 格式化时长（秒转为可读格式）

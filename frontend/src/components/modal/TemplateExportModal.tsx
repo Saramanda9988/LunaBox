@@ -1,19 +1,25 @@
+import type {
+  PeriodStats,
+  TemplateInfo,
+} from "../../../bindings/lunabox/internal/vo";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
-import { vo } from "../../../wailsjs/go/models";
 import {
   ExportRenderedHTML,
   ListTemplates,
   OpenTemplatesDir,
   PrepareExportData,
   RenderTemplate,
-} from "../../../wailsjs/go/service/TemplateService";
+} from "../../../bindings/lunabox/internal/service/templateservice";
+import {
+  RenderTemplateRequest,
+} from "../../../bindings/lunabox/internal/vo";
 
 interface TemplateExportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  stats: vo.PeriodStats | null;
+  stats: PeriodStats | null;
   aiSummary: string;
 }
 
@@ -23,7 +29,7 @@ export function TemplateExportModal({
   stats,
   aiSummary,
 }: TemplateExportModalProps) {
-  const [templates, setTemplates] = useState<vo.TemplateInfo[]>([]);
+  const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [previewHtml, setPreviewHtml] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -54,7 +60,7 @@ export function TemplateExportModal({
       const exportData = await PrepareExportData(stats, aiSummary);
 
       // 渲染模板
-      const req = new vo.RenderTemplateRequest({
+      const req = new RenderTemplateRequest({
         template_id: selectedTemplateId,
         data: exportData,
       });

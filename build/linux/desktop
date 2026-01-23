@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=My Product
+Comment=A test-react application
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/test-react.exe %u
+Terminal=false
+Type=Application
+Icon=test-react.exe
+Categories=Utility;
+StartupWMClass=test-react.exe
+
+ 

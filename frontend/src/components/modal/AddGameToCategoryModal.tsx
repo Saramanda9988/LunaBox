@@ -1,9 +1,9 @@
-import type { models } from "../../../wailsjs/go/models";
+import type { Game } from "../../../bindings/lunabox/internal/models";
 import { createPortal } from "react-dom";
 
 interface AddGameToCategoryModalProps {
   isOpen: boolean;
-  allGames: models.Game[];
+  allGames: Game[];
   onClose: () => void;
   onAddGame: (gameId: string) => void;
 }

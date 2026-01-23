@@ -1,13 +1,13 @@
-import type { appconf } from "../../../wailsjs/go/models";
+import type { AppConfig } from "../../../bindings/lunabox/internal/appconf";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
-import { CheckForUpdates, SkipVersion } from "../../../wailsjs/go/service/UpdateService";
+import { CheckForUpdates, SkipVersion } from "../../../bindings/lunabox/internal/service/UpdateService";
 import { BetterSwitch } from "../ui/BetterSwitch";
 import { UpdateDialog } from "../ui/UpdateDialog";
 
 interface UpdateSettingsPanelProps {
-  formData: appconf.AppConfig;
-  onChange: (data: appconf.AppConfig) => void;
+  formData: AppConfig;
+  onChange: (data: AppConfig) => void;
 }
 
 interface UpdateInfo {
@@ -77,7 +77,7 @@ export function UpdateSettingsPanel({ formData, onChange }: UpdateSettingsPanelP
           <BetterSwitch
             id="check_update_on_startup"
             checked={formData.check_update_on_startup || false}
-            onCheckedChange={checked => onChange({ ...formData, check_update_on_startup: checked } as appconf.AppConfig)}
+            onCheckedChange={checked => onChange({ ...formData, check_update_on_startup: checked } as AppConfig)}
           />
         </div>
 
