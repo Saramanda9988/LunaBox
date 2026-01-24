@@ -32,7 +32,7 @@ function RootLayout() {
       {/* 主内容容器 */}
       <div className="relative flex h-full w-full flex-col text-brand-900 dark:text-brand-100">
         {/* 顶部栏 */}
-        <TopBar bgEnabled={!!bgEnabled} bgOpacity={bgOpacity} />
+        <TopBar />
 
         {/* 内容区域 */}
         <div className="flex flex-1 overflow-hidden">

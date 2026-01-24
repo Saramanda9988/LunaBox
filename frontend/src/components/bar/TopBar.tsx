@@ -1,12 +1,7 @@
 import { useEffect, useState } from "react";
 import { Quit, WindowIsMaximised, WindowMaximise, WindowMinimise, WindowUnmaximise } from "../../../wailsjs/runtime/runtime";
 
-interface TopBarProps {
-  bgEnabled: boolean;
-  bgOpacity: number;
-}
-
-export function TopBar({ bgEnabled, bgOpacity }: TopBarProps) {
+export function TopBar() {
   const [isMaximised, setIsMaximised] = useState(false);
 
   // 检查窗口最大化状态
@@ -50,15 +45,15 @@ export function TopBar({ bgEnabled, bgOpacity }: TopBarProps) {
       } as React.CSSProperties}
     >
       {/* 中央标题 */}
-      <img 
-        src="/topbar-title-dark.png" 
-        className="h-5 absolute dark:hidden left-1/2 -translate-x-1/2" 
-        style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}
+      <img
+        src="/topbar-title-dark.png"
+        className="h-5 absolute dark:hidden left-1/2 -translate-x-1/2 pointer-events-none"
+        draggable="false"
       />
-      <img 
-        src="/topbar-title.png" 
-        className="h-5 absolute hidden dark:block left-1/2 -translate-x-1/2" 
-        style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}
+      <img
+        src="/topbar-title.png"
+        className="h-5 absolute hidden dark:block left-1/2 -translate-x-1/2 pointer-events-none"
+        draggable="false"
       />
 
       {/* 右侧：窗口控制按钮 */}
