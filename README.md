@@ -26,13 +26,35 @@
 
 ## 截图
 
+<details>
+<summary>点击展开更多自定义背景样式</summary>
+
+![主界面](screenshot/home-img.png)
+
+![库视图](screenshot/lib-img.png)
+
+![游戏详情](screenshot/game-img.png)
+
+</details>
+
+<details>
+<summary>点击查看统计导出海报模板</summary>
+
+![简约](screenshot/lunabox-stats-20260124-175553.png)
+
+![未来复古](screenshot/lunabox-stats-20260124-175602.png)
+
+![手账风](screenshot/lunabox-stats-20260124-175617.png)
+
+</details>
+
 应用中的部分截图（位于仓库的 `screenshot/` 目录）：
 
 ![主界面](screenshot/home.png)
-![库视图](screenshot/lib.png)
-![游戏详情](screenshot/game.png)
-![统计页面](screenshot/lunabox-stats.png)
 
+![库视图](screenshot/lib.png)
+
+![游戏详情](screenshot/game.png)
 
 ## 🛠️ 技术栈
 
@@ -168,9 +190,9 @@ lunabox/
 
 - [ ] 支持从ReinaManager中导入数据
 
-- [ ] 支持自定义背景图片
+- [x] 支持自定义背景图片
 
-- [ ] 更漂亮的默认首页，首页自定义
+- [x] 更漂亮的默认首页，首页自定义
 
 - [ ] 支持 i18n
 
@@ -181,6 +203,8 @@ lunabox/
 - [x] 更多的统计导出模板
 
 - [ ] 更丰富的ai prompt预设
+
+- [ ] 支持locale emulator等启动参数的游戏启动
 
 ## 😀 从开源到开源
 
