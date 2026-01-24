@@ -41,46 +41,6 @@ textarea,
   --topbar-border: rgba(255, 255, 255, 0.1);
 }
 
-/* 启用自定义背景图时的智能文字颜色 */
-
-/* 亮色背景 → 深色文字 */
-[data-glass="true"][data-bg-brightness="light"] {
-  color: #111827 !important;
-}
-
-[data-glass="true"][data-bg-brightness="light"] .text-brand-900,
-[data-glass="true"][data-bg-brightness="light"] [class*="text-brand-9"],
-[data-glass="true"][data-bg-brightness="light"] .text-brand-700,
-[data-glass="true"][data-bg-brightness="light"] [class*="text-brand-7"] {
-  color: #111827 !important;
-}
-
-[data-glass="true"][data-bg-brightness="light"] .text-brand-500,
-[data-glass="true"][data-bg-brightness="light"] [class*="text-brand-5"],
-[data-glass="true"][data-bg-brightness="light"] .text-brand-400,
-[data-glass="true"][data-bg-brightness="light"] [class*="text-brand-4"] {
-  color: #4b5563 !important;
-}
-
-/* 暗色背景 → 浅色文字 */
-[data-glass="true"][data-bg-brightness="dark"] {
-  color: #f9fafb !important;
-}
-
-[data-glass="true"][data-bg-brightness="dark"] .text-brand-900,
-[data-glass="true"][data-bg-brightness="dark"] [class*="text-brand-9"],
-[data-glass="true"][data-bg-brightness="dark"] .text-brand-700,
-[data-glass="true"][data-bg-brightness="dark"] [class*="text-brand-7"] {
-  color: #f9fafb !important;
-}
-
-[data-glass="true"][data-bg-brightness="dark"] .text-brand-500,
-[data-glass="true"][data-bg-brightness="dark"] [class*="text-brand-5"],
-[data-glass="true"][data-bg-brightness="dark"] .text-brand-400,
-[data-glass="true"][data-bg-brightness="dark"] [class*="text-brand-4"] {
-  color: #d1d5db !important;
-}
-
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

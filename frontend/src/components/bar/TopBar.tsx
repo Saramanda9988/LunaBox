@@ -44,17 +44,22 @@ export function TopBar({ bgEnabled, bgOpacity }: TopBarProps) {
 
   return (
     <div
-      className="flex h-7 select-none items-center justify-center border-b border-brand-200/50 backdrop-blur-sm dark:border-brand-700/50"
+      className="flex h-7 select-none items-center justify-center border-b border-brand-200/50 bg-brand-50 dark:border-brand-700/50 dark:bg-brand-800"
       style={{
-        "backgroundColor": bgEnabled
-          ? `rgba(var(--topbar-bg-rgb), ${bgOpacity * 0.7})`
-          : "var(--topbar-bg)",
         "--wails-draggable": "drag",
       } as React.CSSProperties}
     >
       {/* 中央标题 */}
-      <img src="/topbar-title-dark.png" className="h-5 absolute dark:hidden left-1/2 -translate-x-1/2" />
-      <img src="/topbar-title.png" className="h-5 absolute hidden dark:block left-1/2 -translate-x-1/2" />
+      <img 
+        src="/topbar-title-dark.png" 
+        className="h-5 absolute dark:hidden left-1/2 -translate-x-1/2" 
+        style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}
+      />
+      <img 
+        src="/topbar-title.png" 
+        className="h-5 absolute hidden dark:block left-1/2 -translate-x-1/2" 
+        style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}
+      />
 
       {/* 右侧：窗口控制按钮 */}
       <div className="ml-auto flex items-center" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>

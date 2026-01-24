@@ -1,4 +1,5 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { SideBar } from "../components/bar/SideBar";
 import { TopBar } from "../components/bar/TopBar";
 import { useBackgroundBrightness } from "../hooks/useBackgroundBrightness";
@@ -15,20 +16,25 @@ function RootLayout() {
   // 检测背景图亮度
   const { isLight } = useBackgroundBrightness(config?.background_image, !!bgEnabled);
 
-  // 智能决定文字颜色主题
-  // isLight === true: 亮色背景 → 使用深色文字（移除 dark 类）
-  // isLight === false: 暗色背景 → 使用浅色文字（保持 dark 类）
-  // isLight === null: 未检测或未启用 → 使用系统主题
-  const shouldUseDarkText = bgEnabled && isLight === true;
-  const shouldUseLightText = bgEnabled && isLight === false;
+  // 智能主题切换：根据背景图亮度实时切换主题
+  useEffect(() => {
+    if (!bgEnabled) return;
+    
+    const root = document.documentElement;
+    
+    // 暗色背景 → 使用暗色主题
+    // 亮色背景 → 使用亮色主题
+    if (isLight === false) {
+      root.classList.add("dark");
+    } else if (isLight === true) {
+      root.classList.remove("dark");
+    }
+  }, [bgEnabled, isLight]);
 
   return (
     <div
-      className={`relative h-screen w-full overflow-hidden ${bgEnabled ? "custom-bg-enabled" : ""} ${
-        shouldUseDarkText ? "" : shouldUseLightText ? "dark" : ""
-      }`}
+      className="relative h-screen w-full overflow-hidden"
       data-glass={bgEnabled ? "true" : "false"}
-      data-bg-brightness={isLight === null ? "unknown" : isLight ? "light" : "dark"}
     >
       {/* 背景图层 */}
       {bgEnabled && (
@@ -44,13 +50,7 @@ function RootLayout() {
       )}
 
       {/* 主内容容器 */}
-      <div
-        className={`relative flex h-full w-full flex-col ${
-          bgEnabled
-            ? ""
-            : "bg-brand-100 dark:bg-brand-900"
-        } text-brand-900 dark:text-brand-100`}
-      >
+      <div className="relative flex h-full w-full flex-col text-brand-900 dark:text-brand-100">
         {/* 顶部栏 */}
         <TopBar bgEnabled={!!bgEnabled} bgOpacity={bgOpacity} />
 
@@ -58,7 +58,9 @@ function RootLayout() {
         <div className="flex flex-1 overflow-hidden">
           <SideBar bgEnabled={!!bgEnabled} bgOpacity={bgOpacity} />
           <main
-            className="flex-1 overflow-auto"
+            className={`flex-1 overflow-auto ${
+              bgEnabled ? "backdrop-blur-sm" : "bg-brand-100 dark:bg-brand-900"
+            }`}
             style={bgEnabled ? {
               backgroundColor: `rgba(var(--main-bg-rgb), ${bgOpacity})`,
             } : undefined}
