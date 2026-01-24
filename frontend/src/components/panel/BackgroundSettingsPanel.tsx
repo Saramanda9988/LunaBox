@@ -1,5 +1,6 @@
 import type { appconf } from "../../../wailsjs/go/models";
 import { SelectBackgroundImage } from "../../../wailsjs/go/service/ConfigService";
+import { detectImageBrightness } from "../../utils/detectImageBrightness";
 import { BetterSwitch } from "../ui/BetterSwitch";
 
 interface BackgroundSettingsProps {
@@ -12,7 +13,13 @@ export function BackgroundSettingsPanel({ formData, onChange }: BackgroundSettin
     try {
       const path = await SelectBackgroundImage();
       if (path) {
-        onChange({ ...formData, background_image: path } as appconf.AppConfig);
+        // 立即检测图片亮度并缓存
+        const isLight = await detectImageBrightness(path);
+        onChange({
+          ...formData,
+          background_image: path,
+          background_is_light: isLight,
+        } as appconf.AppConfig);
       }
     }
     catch (err) {
@@ -55,13 +62,24 @@ export function BackgroundSettingsPanel({ formData, onChange }: BackgroundSettin
             启用自定义背景
           </label>
           <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
-            开启后将使用自定义图片作为应用背景
+            开启后将使用自定义图片作为应用背景，并自动调整主题配色
           </p>
         </div>
         <BetterSwitch
           id="background_enabled"
           checked={formData.background_enabled || false}
-          onCheckedChange={checked => onChange({ ...formData, background_enabled: checked } as appconf.AppConfig)}
+          onCheckedChange={(checked) => {
+            const newConfig = { ...formData, background_enabled: checked } as appconf.AppConfig;
+
+            // 启用背景图时，根据缓存的亮度自动切换主题
+            if (checked && formData.background_is_light !== undefined) {
+              // 暗色背景 → 使用暗色主题
+              // 亮色背景 → 使用亮色主题
+              newConfig.theme = formData.background_is_light ? "light" : "dark";
+            }
+
+            onChange(newConfig);
+          }}
           disabled={!formData.background_image}
         />
       </div>

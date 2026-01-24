@@ -111,6 +111,7 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.BackgroundOpacity = newConfig.BackgroundOpacity
 	s.config.BackgroundEnabled = newConfig.BackgroundEnabled
 	s.config.BackgroundHideGameCover = newConfig.BackgroundHideGameCover
+	s.config.BackgroundIsLight = newConfig.BackgroundIsLight
 	return nil
 }
 

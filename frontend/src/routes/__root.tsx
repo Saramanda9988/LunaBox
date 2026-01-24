@@ -1,8 +1,6 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { useEffect } from "react";
 import { SideBar } from "../components/bar/SideBar";
 import { TopBar } from "../components/bar/TopBar";
-import { useBackgroundBrightness } from "../hooks/useBackgroundBrightness";
 import { useAppStore } from "../store";
 
 function RootLayout() {
@@ -12,24 +10,6 @@ function RootLayout() {
   const bgEnabled = config?.background_enabled && config?.background_image;
   const bgBlur = config?.background_blur ?? 10;
   const bgOpacity = config?.background_opacity ?? 0.85;
-
-  // 检测背景图亮度
-  const { isLight } = useBackgroundBrightness(config?.background_image, !!bgEnabled);
-
-  // 智能主题切换：根据背景图亮度实时切换主题
-  useEffect(() => {
-    if (!bgEnabled) return;
-    
-    const root = document.documentElement;
-    
-    // 暗色背景 → 使用暗色主题
-    // 亮色背景 → 使用亮色主题
-    if (isLight === false) {
-      root.classList.add("dark");
-    } else if (isLight === true) {
-      root.classList.remove("dark");
-    }
-  }, [bgEnabled, isLight]);
 
   return (
     <div

@@ -65,6 +65,7 @@ type AppConfig struct {
 	BackgroundOpacity       float64 `json:"background_opacity"`         // 背景不透明度 (0-1)
 	BackgroundEnabled       bool    `json:"background_enabled"`         // 是否启用自定义背景
 	BackgroundHideGameCover bool    `json:"background_hide_game_cover"` // 启用自定义背景时隐藏首页游戏封面
+	BackgroundIsLight       bool    `json:"background_is_light"`        // 记录自定义背景是不是浅色调
 }
 
 // getConfigPath 获取配置文件路径
@@ -121,6 +122,7 @@ func LoadConfig() (*AppConfig, error) {
 		BackgroundOpacity:       0.85, // 默认不透明度
 		BackgroundEnabled:       false,
 		BackgroundHideGameCover: false, // 默认显示游戏封面
+		BackgroundIsLight:       true,  // 默认是浅色调
 	}
 
 	// 获取配置文件路径
