@@ -1,5 +1,6 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { SideBar } from "../components/bar/SideBar";
+import { TopBar } from "../components/bar/TopBar";
 import { useBackgroundBrightness } from "../hooks/useBackgroundBrightness";
 import { useAppStore } from "../store";
 
@@ -44,21 +45,27 @@ function RootLayout() {
 
       {/* 主内容容器 */}
       <div
-        className={`relative flex h-full w-full ${
+        className={`relative flex h-full w-full flex-col ${
           bgEnabled
             ? ""
             : "bg-brand-100 dark:bg-brand-900"
         } text-brand-900 dark:text-brand-100`}
       >
-        <SideBar bgEnabled={!!bgEnabled} bgOpacity={bgOpacity} />
-        <main
-          className="flex-1 overflow-auto"
-          style={bgEnabled ? {
-            backgroundColor: `rgba(var(--main-bg-rgb), ${bgOpacity})`,
-          } : undefined}
-        >
-          <Outlet />
-        </main>
+        {/* 顶部栏 */}
+        <TopBar bgEnabled={!!bgEnabled} bgOpacity={bgOpacity} />
+
+        {/* 内容区域 */}
+        <div className="flex flex-1 overflow-hidden">
+          <SideBar bgEnabled={!!bgEnabled} bgOpacity={bgOpacity} />
+          <main
+            className="flex-1 overflow-auto"
+            style={bgEnabled ? {
+              backgroundColor: `rgba(var(--main-bg-rgb), ${bgOpacity})`,
+            } : undefined}
+          >
+            <Outlet />
+          </main>
+        </div>
       </div>
     </div>
   );

@@ -121,10 +121,12 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 18, G: 20, B: 22, A: 255},
 		StartHidden:      true,
+		Frameless:        true, // 启用无边框模式
 		// 样式完全交由wails前端控制
 		Windows: &windows.Options{
-			WebviewIsTransparent: false,
-			WindowIsTranslucent:  false,
+			WebviewIsTransparent: true,
+			WindowIsTranslucent:  true,
+			BackdropType:         windows.Auto,
 			Theme:                windows.SystemDefault,
 		},
 		// 关闭窗口时的处理

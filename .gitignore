@@ -13,3 +13,4 @@ SaveData
 docs
 app.log
 .claude
+frontend/wailsjs/runtime/package.json

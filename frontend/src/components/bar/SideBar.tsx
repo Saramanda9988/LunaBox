@@ -33,12 +33,14 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
       }`}
       style={sidebarStyle}
     >
-      <div className={`flex items-center h-16 border-b ${bgEnabled ? "border-white/20 dark:border-white/10" : "border-brand-200 dark:border-brand-700"} ${isSidebarOpen ? "justify-between px-4" : "justify-center"}`}>
+      <div className={`flex items-center h-16 ${bgEnabled ? "border-white/20 dark:border-white/10" : "border-brand-200 dark:border-brand-700"} ${isSidebarOpen ? "justify-between px-4" : "justify-center"}`}>
         {isSidebarOpen && (
-          <div className="flex items-center gap-2 select-none">
+          <div className="flex items-center gap-1 select-none">
             <img src="/appicon.png" className="w-8 h-8 dark:hidden pointer-events-none" draggable="false" />
             <img src="/appicon-dark.png" className="w-8 h-8 hidden dark:block pointer-events-none" draggable="false" />
-            <span className="text-xl font-bold pointer-events-none">LunaBox</span>
+            {/* <span className="text-xl font-bold pointer-events-none">LunaBox</span> */}
+            <img src="/topbar-title-dark.png" className="h-6 dark:hidden pointer-events-none " />
+            <img src="/topbar-title.png" className="h-6 hidden dark:block pointer-events-none " />
           </div>
         )}
         <button

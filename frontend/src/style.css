@@ -7,6 +7,10 @@
   /* 背景图相关变量 - RGB 格式用于 rgba() */
   --main-bg-rgb: 243, 244, 246;
   --sidebar-bg-rgb: 255, 255, 255;
+  /* TopBar 相关变量 */
+  --topbar-bg: #ffffff;
+  --topbar-bg-rgb: 255, 255, 255;
+  --topbar-border: rgba(0, 0, 0, 0.1);
 }
 
 html,
@@ -31,6 +35,10 @@ textarea,
   /* 深色模式下的背景 RGB */
   --main-bg-rgb: 18, 20, 22;
   --sidebar-bg-rgb: 28, 30, 31;
+  /* 深色模式下的 TopBar */
+  --topbar-bg: #1c1e1f;
+  --topbar-bg-rgb: 28, 30, 31;
+  --topbar-border: rgba(255, 255, 255, 0.1);
 }
 
 /* 启用自定义背景图时的智能文字颜色 */
