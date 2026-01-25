@@ -75,6 +75,7 @@ func (s *UpdateService) checkUpdates(isAutoCheck bool) (*UpdateCheckResult, erro
 	// 获取应用配置（手动检查时，SkipVersion 已在 CheckForUpdates 中被清空）
 	appConfig, err := s.config.GetAppConfig()
 	if err != nil {
+		runtime.LogError(s.ctx, "[UpdateService]获取应用配置失败: "+err.Error())
 		return nil, fmt.Errorf("failed to get app config: %w", err)
 	}
 
@@ -105,11 +106,12 @@ func (s *UpdateService) checkUpdates(isAutoCheck bool) (*UpdateCheckResult, erro
 		if lastErr == nil {
 			break
 		}
-		runtime.LogErrorf(s.ctx, "Failed to fetch update info from %s: %v", url, lastErr)
+		runtime.LogWarningf(s.ctx, "Failed to fetch update info from %s: %v", url, lastErr)
 	}
 
 	if updateInfo == nil {
-		return nil, fmt.Errorf("failed to fetch update info from all sources: %w", lastErr)
+		runtime.LogWarningf(s.ctx, "[UpdateService] failed to fetch update info from all sources: %v", lastErr)
+		return nil, fmt.Errorf("[UpdateService] failed to fetch update info from all sources: %w", lastErr)
 	}
 
 	// 更新最后检查时间
