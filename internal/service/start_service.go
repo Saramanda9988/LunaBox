@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"lunabox/internal/appconf"
 	"lunabox/internal/models"
+	"lunabox/internal/service/timer"
+	"lunabox/internal/utils"
 	"os/exec"
 	"path/filepath"
 	"time"
@@ -20,12 +22,12 @@ type StartService struct {
 	db                *sql.DB
 	config            *appconf.AppConfig
 	backupService     *BackupService
-	activeTimeTracker *ActiveTimeTracker
+	activeTimeTracker *timer.ActiveTimeTracker
 }
 
 func NewStartService() *StartService {
 	return &StartService{
-		activeTimeTracker: NewActiveTimeTracker(),
+		// activeTimeTracker 将在 Init 时创建
 	}
 }
 
@@ -33,7 +35,8 @@ func (s *StartService) Init(ctx context.Context, db *sql.DB, config *appconf.App
 	s.ctx = ctx
 	s.db = db
 	s.config = config
-	s.activeTimeTracker.Init(ctx, db)
+	// 初始化内部服务
+	s.activeTimeTracker = timer.NewActiveTimeTracker(ctx, db)
 }
 
 // SetBackupService 设置备份服务（用于自动备份）
@@ -271,7 +274,7 @@ func (s *StartService) startMagpie() {
 	time.Sleep(1 * time.Second)
 
 	// 检查 Magpie 是否已经在运行
-	isRunning, err := s.checkIfProcessRunning("Magpie.exe")
+	isRunning, err := utils.CheckIfProcessRunning("Magpie.exe")
 	if err != nil {
 		runtime.LogErrorf(s.ctx, "Failed to check Magpie process: %v", err)
 		return
@@ -298,19 +301,6 @@ func (s *StartService) startMagpie() {
 	}
 
 	runtime.LogInfof(s.ctx, "Magpie started successfully")
-}
-
-// checkIfProcessRunning 检查指定进程是否正在运行
-func (s *StartService) checkIfProcessRunning(processName string) (bool, error) {
-	cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("IMAGENAME eq %s", processName), "/FO", "CSV", "/NH")
-	output, err := cmd.Output()
-	if err != nil {
-		return false, fmt.Errorf("failed to execute tasklist: %w", err)
-	}
-
-	outputStr := string(output)
-	// 检查输出中是否包含进程名
-	return len(outputStr) > 0 && outputStr != "INFO: No tasks are running which match the specified criteria.\r\n", nil
 }
 
 // AddPlaySession 手动添加游玩记录
