@@ -66,6 +66,9 @@ type AppConfig struct {
 	BackgroundEnabled       bool    `json:"background_enabled"`         // 是否启用自定义背景
 	BackgroundHideGameCover bool    `json:"background_hide_game_cover"` // 启用自定义背景时隐藏首页游戏封面
 	BackgroundIsLight       bool    `json:"background_is_light"`        // 记录自定义背景是不是浅色调
+	// Locale Emulator 和 Magpie 配置
+	LocaleEmulatorPath string `json:"locale_emulator_path,omitempty"` // Locale Emulator 可执行文件路径
+	MagpiePath         string `json:"magpie_path,omitempty"`          // Magpie 可执行文件路径
 }
 
 // getConfigPath 获取配置文件路径
@@ -123,6 +126,8 @@ func LoadConfig() (*AppConfig, error) {
 		BackgroundEnabled:       false,
 		BackgroundHideGameCover: false, // 默认显示游戏封面
 		BackgroundIsLight:       true,  // 默认是浅色调
+		LocaleEmulatorPath:      "",
+		MagpiePath:              "",
 	}
 
 	// 获取配置文件路径

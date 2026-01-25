@@ -6,18 +6,20 @@ import (
 )
 
 type Game struct {
-	ID         string           `json:"id"`
-	Name       string           `json:"name"`
-	CoverURL   string           `json:"cover_url"`
-	Company    string           `json:"company"`
-	Summary    string           `json:"summary"`
-	Path       string           `json:"path"`        // 启动路径
-	SavePath   string           `json:"save_path"`   // 存档目录路径
-	Status     enums.GameStatus `json:"status"`      // 游戏状态: not_started, playing, completed, on_hold
-	SourceType enums.SourceType `json:"source_type"` // "local", "bangumi", "vndb"
-	CachedAt   time.Time        `json:"cached_at"`
-	SourceID   string           `json:"source_id"`
-	CreatedAt  time.Time        `json:"created_at"`
+	ID                string           `json:"id"`
+	Name              string           `json:"name"`
+	CoverURL          string           `json:"cover_url"`
+	Company           string           `json:"company"`
+	Summary           string           `json:"summary"`
+	Path              string           `json:"path"`        // 启动路径
+	SavePath          string           `json:"save_path"`   // 存档目录路径
+	Status            enums.GameStatus `json:"status"`      // 游戏状态: not_started, playing, completed, on_hold
+	SourceType        enums.SourceType `json:"source_type"` // "local", "bangumi", "vndb"
+	CachedAt          time.Time        `json:"cached_at"`
+	SourceID          string           `json:"source_id"`
+	CreatedAt         time.Time        `json:"created_at"`
+	UseLocaleEmulator bool             `json:"use_locale_emulator"` // 是否使用 Locale Emulator 转区启动
+	UseMagpie         bool             `json:"use_magpie"`          // 是否使用 Magpie 超分辨率缩放
 }
 
 // GameBackup 游戏存档备份记录（基于文件系统，不使用数据库）

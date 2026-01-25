@@ -15,8 +15,54 @@ type Migration struct {
 	Up          func(tx *sql.Tx) error // 改为接收事务
 }
 
+// addLocaleEmulatorAndMagpieColumns 添加 Locale Emulator 和 Magpie 支持列
+func addLocaleEmulatorAndMagpieColumns(tx *sql.Tx) error {
+	// 检查列是否已存在
+	var columnExists int
+	err := tx.QueryRow(`
+		SELECT COUNT(*) 
+		FROM information_schema.columns 
+		WHERE table_name = 'games' 
+		AND column_name = 'use_locale_emulator'
+	`).Scan(&columnExists)
+
+	if err != nil && err != sql.ErrNoRows {
+		return fmt.Errorf("failed to check column existence: %w", err)
+	}
+
+	// 如果列已存在，跳过迁移
+	if columnExists > 0 {
+		return nil
+	}
+
+	// 添加 use_locale_emulator 列
+	_, err = tx.Exec(`
+		ALTER TABLE games 
+		ADD COLUMN use_locale_emulator BOOLEAN DEFAULT FALSE
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to add use_locale_emulator column: %w", err)
+	}
+
+	// 添加 use_magpie 列
+	_, err = tx.Exec(`
+		ALTER TABLE games 
+		ADD COLUMN use_magpie BOOLEAN DEFAULT FALSE
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to add use_magpie column: %w", err)
+	}
+
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
+	{
+		Version:     115,
+		Description: "Add use_locale_emulator and use_magpie columns to games table",
+		Up:          addLocaleEmulatorAndMagpieColumns,
+	},
 	// {
 	// 	Version:     114,
 	// 	Description: "Convert UTC timestamps to local time (+8 hours for historical data)",

@@ -2,7 +2,7 @@ import type { models } from "../../../wailsjs/go/models";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "react-hot-toast";
 import { enums } from "../../../wailsjs/go/models";
-import { StartGameWithTracking } from "../../../wailsjs/go/service/TimerService";
+import { StartGameWithTracking } from "../../../wailsjs/go/service/StartService";
 
 interface GameCardProps {
   game: models.Game;

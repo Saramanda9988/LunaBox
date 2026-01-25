@@ -28,4 +28,4 @@ export function SelectLibraryDirectory():Promise<string>;
 
 export function SelectZipFile():Promise<string>;
 
-export function SetTimerService(arg1:service.TimerService):Promise<void>;
+export function SetStartService(arg1:service.StartService):Promise<void>;

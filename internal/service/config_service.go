@@ -112,6 +112,9 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.BackgroundEnabled = newConfig.BackgroundEnabled
 	s.config.BackgroundHideGameCover = newConfig.BackgroundHideGameCover
 	s.config.BackgroundIsLight = newConfig.BackgroundIsLight
+	// 游戏相关配置
+	s.config.LocaleEmulatorPath = newConfig.LocaleEmulatorPath
+	s.config.MagpiePath = newConfig.MagpiePath
 	return nil
 }
 

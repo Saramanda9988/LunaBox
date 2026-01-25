@@ -15,7 +15,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-type TimerService struct {
+type StartService struct {
 	ctx               context.Context
 	db                *sql.DB
 	config            *appconf.AppConfig
@@ -23,13 +23,13 @@ type TimerService struct {
 	activeTimeTracker *ActiveTimeTracker
 }
 
-func NewTimerService() *TimerService {
-	return &TimerService{
+func NewStartService() *StartService {
+	return &StartService{
 		activeTimeTracker: NewActiveTimeTracker(),
 	}
 }
 
-func (s *TimerService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
+func (s *StartService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
 	s.db = db
 	s.config = config
@@ -37,14 +37,14 @@ func (s *TimerService) Init(ctx context.Context, db *sql.DB, config *appconf.App
 }
 
 // SetBackupService 设置备份服务（用于自动备份）
-func (s *TimerService) SetBackupService(backupService *BackupService) {
+func (s *StartService) SetBackupService(backupService *BackupService) {
 	s.backupService = backupService
 }
 
 // StartGameWithTracking 启动游戏并自动追踪游玩时长
 // 当游戏进程退出时，自动保存游玩记录到数据库
-func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
-	//获取游戏路径
+func (s *StartService) StartGameWithTracking(gameID string) (bool, error) {
+	// 获取游戏路径
 	path, err := s.getGamePath(gameID)
 	if err != nil {
 		runtime.LogErrorf(s.ctx, "failed to get game path: %v", err)
@@ -56,12 +56,34 @@ func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 		return false, fmt.Errorf("game path is empty for game: %s", gameID)
 	}
 
-	cmd := exec.Command(path)
-	// 设置工作目录为游戏所在目录，确保汉化补丁等资源能正确加载
-	cmd.Dir = filepath.Dir(path)
+	// 获取游戏的启动配置
+	useLE, useMagpie, err := s.getGameLaunchConfig(gameID)
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "failed to get launch config: %v", err)
+		return false, fmt.Errorf("failed to get launch config: %w", err)
+	}
+
+	var cmd *exec.Cmd
+
+	// 如果启用了 Locale Emulator
+	if useLE && s.config.LocaleEmulatorPath != "" {
+		runtime.LogInfof(s.ctx, "Starting game with Locale Emulator: %s", gameID)
+		cmd = exec.Command(s.config.LocaleEmulatorPath, path)
+		cmd.Dir = filepath.Dir(path)
+	} else {
+		// 普通启动
+		cmd = exec.Command(path)
+		cmd.Dir = filepath.Dir(path)
+	}
+
 	if err := cmd.Start(); err != nil {
 		runtime.LogErrorf(s.ctx, "failed to start game: %v", err)
 		return false, fmt.Errorf("failed to start game: %w", err)
+	}
+
+	// 如果启用了 Magpie，在游戏启动后启动 Magpie
+	if useMagpie && s.config.MagpiePath != "" {
+		go s.startMagpie()
 	}
 
 	// 获取进程 ID
@@ -104,7 +126,7 @@ func (s *TimerService) StartGameWithTracking(gameID string) (bool, error) {
 }
 
 // waitForGameExit 等待游戏进程退出并更新游玩记录
-func (s *TimerService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID string, startTime time.Time, processID uint32) {
+func (s *StartService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID string, startTime time.Time, processID uint32) {
 	// 使用独立 goroutine 等待进程，避免永久阻塞
 	exitChan := make(chan error, 1)
 	go func() {
@@ -177,7 +199,7 @@ func (s *TimerService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID s
 }
 
 // autoBackupGameSave 自动备份游戏存档
-func (s *TimerService) autoBackupGameSave(gameID string) {
+func (s *StartService) autoBackupGameSave(gameID string) {
 	// 检查是否设置了存档目录
 	var savePath string
 	err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(save_path, '') FROM games WHERE id = ?", gameID).Scan(&savePath)
@@ -207,7 +229,7 @@ func (s *TimerService) autoBackupGameSave(gameID string) {
 	runtime.LogInfof(s.ctx, "Auto backup completed for game: %s", gameID)
 }
 
-func (s *TimerService) getGamePath(gameID string) (string, error) {
+func (s *StartService) getGamePath(gameID string) (string, error) {
 	var path string
 	err := s.db.QueryRowContext(
 		s.ctx,
@@ -225,10 +247,76 @@ func (s *TimerService) getGamePath(gameID string) (string, error) {
 	return path, nil
 }
 
+// getGameLaunchConfig 获取游戏的启动配置
+func (s *StartService) getGameLaunchConfig(gameID string) (useLE bool, useMagpie bool, err error) {
+	err = s.db.QueryRowContext(
+		s.ctx,
+		"SELECT COALESCE(use_locale_emulator, FALSE), COALESCE(use_magpie, FALSE) FROM games WHERE id = ?",
+		gameID,
+	).Scan(&useLE, &useMagpie)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, false, fmt.Errorf("game not found: %s", gameID)
+	}
+	if err != nil {
+		return false, false, err
+	}
+
+	return useLE, useMagpie, nil
+}
+
+// startMagpie 启动 Magpie 程序
+func (s *StartService) startMagpie() {
+	// 延迟一小段时间，确保游戏窗口已经创建
+	time.Sleep(1 * time.Second)
+
+	// 检查 Magpie 是否已经在运行
+	isRunning, err := s.checkIfProcessRunning("Magpie.exe")
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "Failed to check Magpie process: %v", err)
+		return
+	}
+
+	if isRunning {
+		runtime.LogInfof(s.ctx, "Magpie is already running")
+		return
+	}
+
+	// 启动 Magpie
+	runtime.LogInfof(s.ctx, "Starting Magpie: %s", s.config.MagpiePath)
+	cmd := exec.Command(s.config.MagpiePath)
+	cmd.Dir = filepath.Dir(s.config.MagpiePath)
+
+	if err := cmd.Start(); err != nil {
+		runtime.LogErrorf(s.ctx, "Failed to start Magpie: %v", err)
+		return
+	}
+
+	// 分离进程，避免阻塞
+	if cmd.Process != nil {
+		cmd.Process.Release()
+	}
+
+	runtime.LogInfof(s.ctx, "Magpie started successfully")
+}
+
+// checkIfProcessRunning 检查指定进程是否正在运行
+func (s *StartService) checkIfProcessRunning(processName string) (bool, error) {
+	cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("IMAGENAME eq %s", processName), "/FO", "CSV", "/NH")
+	output, err := cmd.Output()
+	if err != nil {
+		return false, fmt.Errorf("failed to execute tasklist: %w", err)
+	}
+
+	outputStr := string(output)
+	// 检查输出中是否包含进程名
+	return len(outputStr) > 0 && outputStr != "INFO: No tasks are running which match the specified criteria.\r\n", nil
+}
+
 // AddPlaySession 手动添加游玩记录
 // startTime: 开始时间
 // durationMinutes: 游玩时长（分钟）
-func (s *TimerService) AddPlaySession(gameID string, startTime time.Time, durationMinutes int) (models.PlaySession, error) {
+func (s *StartService) AddPlaySession(gameID string, startTime time.Time, durationMinutes int) (models.PlaySession, error) {
 	// 验证游戏是否存在
 	var exists bool
 	err := s.db.QueryRowContext(s.ctx, "SELECT EXISTS(SELECT 1 FROM games WHERE id = ?)", gameID).Scan(&exists)
@@ -272,7 +360,7 @@ func (s *TimerService) AddPlaySession(gameID string, startTime time.Time, durati
 }
 
 // GetPlaySessions 获取指定游戏的所有游玩记录
-func (s *TimerService) GetPlaySessions(gameID string) ([]models.PlaySession, error) {
+func (s *StartService) GetPlaySessions(gameID string) ([]models.PlaySession, error) {
 	rows, err := s.db.QueryContext(
 		s.ctx,
 		`SELECT id, game_id, start_time, COALESCE(end_time, start_time), duration 
@@ -301,7 +389,7 @@ func (s *TimerService) GetPlaySessions(gameID string) ([]models.PlaySession, err
 }
 
 // DeletePlaySession 删除指定的游玩记录
-func (s *TimerService) DeletePlaySession(sessionID string) error {
+func (s *StartService) DeletePlaySession(sessionID string) error {
 	result, err := s.db.ExecContext(s.ctx, "DELETE FROM play_sessions WHERE id = ?", sessionID)
 	if err != nil {
 		runtime.LogErrorf(s.ctx, "DeletePlaySession: failed to delete play session: %v", err)
@@ -321,7 +409,7 @@ func (s *TimerService) DeletePlaySession(sessionID string) error {
 }
 
 // UpdatePlaySession 更新游玩记录
-func (s *TimerService) UpdatePlaySession(session models.PlaySession) error {
+func (s *StartService) UpdatePlaySession(session models.PlaySession) error {
 	// 重新计算结束时间
 	endTime := session.StartTime.Add(time.Duration(session.Duration) * time.Second)
 
@@ -351,7 +439,7 @@ func (s *TimerService) UpdatePlaySession(session models.PlaySession) error {
 }
 
 // BatchAddPlaySessions 批量添加游玩记录（用于导入）
-func (s *TimerService) BatchAddPlaySessions(sessions []models.PlaySession) error {
+func (s *StartService) BatchAddPlaySessions(sessions []models.PlaySession) error {
 	if len(sessions) == 0 {
 		return nil
 	}

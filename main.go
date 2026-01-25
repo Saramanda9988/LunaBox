@@ -63,7 +63,7 @@ func main() {
 	backupService := service.NewBackupService()
 	homeService := service.NewHomeService()
 	statsService := service.NewStatsService()
-	timerService := service.NewTimerService()
+	startService := service.NewStartService()
 	categoryService := service.NewCategoryService()
 	configService := service.NewConfigService()
 	importService := service.NewImportService()
@@ -192,16 +192,16 @@ func main() {
 			backupService.Init(ctx, db, config)
 			homeService.Init(ctx, db, config)
 			statsService.Init(ctx, db, config)
-			timerService.Init(ctx, db, config)
+			startService.Init(ctx, db, config)
 			categoryService.Init(ctx, db, config)
 			importService.Init(ctx, db, config, gameService)
 			versionService.Init(ctx)
 			templateService.Init(ctx, db, config)
 			updateService.Init(ctx, configService)
-			// 设置 TimerService 的 BackupService 依赖
-			timerService.SetBackupService(backupService)
-			// 设置 ImportService 的 TimerService 依赖（用于导入游玩记录）
-			importService.SetTimerService(timerService)
+			// 设置 StartService 的 BackupService 依赖
+			startService.SetBackupService(backupService)
+			// 设置 ImportService 的 StartService 依赖（用于导入游玩记录）
+			importService.SetStartService(startService)
 
 			// 在 Wails 启动后初始化系统托盘
 			// TODO: 升级wails v3，使用原生的托盘功能
@@ -258,7 +258,7 @@ func main() {
 			backupService,
 			homeService,
 			statsService,
-			timerService,
+			startService,
 			categoryService,
 			configService,
 			importService,
