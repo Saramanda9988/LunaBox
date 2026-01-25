@@ -8,6 +8,7 @@ import (
 )
 
 // FindExecutables 在指定目录下查找可执行文件
+// 注意：不包含 .lnk 快捷方式，因为无法直接启动
 func FindExecutables(folderPath string, excludeKeywords []string) []string {
 	var executables []string
 
@@ -25,10 +26,9 @@ func FindExecutables(folderPath string, excludeKeywords []string) []string {
 		name := entry.Name()
 		lowerName := strings.ToLower(name)
 
-		// 检查是否是可执行文件
+		// 检查是否是可执行文件（不包含 .lnk 快捷方式）
 		if !strings.HasSuffix(lowerName, ".exe") &&
-			!strings.HasSuffix(lowerName, ".bat") &&
-			!strings.HasSuffix(lowerName, ".lnk") {
+			!strings.HasSuffix(lowerName, ".bat") {
 			continue
 		}
 

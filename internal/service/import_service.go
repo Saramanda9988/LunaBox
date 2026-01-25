@@ -642,45 +642,106 @@ func (s *ImportService) ScanLibraryDirectory(libraryPath string) ([]vo.BatchImpo
 		"updater", "uninstall", "删除", "卸载",
 	}
 
-	// 遍历一级子目录
-	entries, err := os.ReadDir(libraryPath)
+	// 最大递归 7 层
+	const maxDepth = 7
+	candidatesMap := make(map[string]vo.BatchImportCandidate) // 使用 map 去重
+
+	err := s.scanDirectoryRecursive(libraryPath, libraryPath, 0, maxDepth, excludeKeywords, candidatesMap)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "ScanLibraryDirectory: failed to read dir %s: %v", libraryPath, err)
-		return nil, fmt.Errorf("无法读取目录: %w", err)
+		runtime.LogErrorf(s.ctx, "ScanLibraryDirectory: failed to scan directory: %v", err)
+		return nil, fmt.Errorf("扫描目录失败: %w", err)
 	}
 
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
+	// 将 map 转换为 slice
+	for _, candidate := range candidatesMap {
+		candidates = append(candidates, candidate)
+	}
 
-		folderPath := filepath.Join(libraryPath, entry.Name())
-		folderName := entry.Name()
+	runtime.LogInfof(s.ctx, "ScanLibraryDirectory: found %d game candidates", len(candidates))
+	return candidates, nil
+}
 
-		// 扫描该文件夹下的可执行文件
-		executables := utils.FindExecutables(folderPath, excludeKeywords)
+// scanDirectoryRecursive 递归扫描目录，找到所有包含可执行文件的目录
+func (s *ImportService) scanDirectoryRecursive(
+	rootPath string,
+	currentPath string,
+	currentDepth int,
+	maxDepth int,
+	excludeKeywords []string,
+	candidatesMap map[string]vo.BatchImportCandidate,
+) error {
+	// 达到最大深度，停止递归
+	if currentDepth > maxDepth {
+		return nil
+	}
 
-		if len(executables) == 0 {
-			continue // 没有可执行文件，跳过此文件夹
+	// 读取当前目录
+	entries, err := os.ReadDir(currentPath)
+	if err != nil {
+		// 忽略无法读取的目录（可能是权限问题）
+		runtime.LogWarningf(s.ctx, "scanDirectoryRecursive: failed to read dir %s: %v", currentPath, err)
+		return nil
+	}
+
+	// 扫描当前目录下的可执行文件
+	executables := utils.FindExecutables(currentPath, excludeKeywords)
+
+	// 如果当前目录包含可执行文件，将其作为候选游戏
+	if len(executables) > 0 {
+		// 使用相对于根路径的路径作为文件夹名
+		relativePath, _ := filepath.Rel(rootPath, currentPath)
+		folderName := filepath.Base(currentPath)
+
+		// 如果是根目录，使用相对路径作为名称（更直观）
+		if relativePath != "." && relativePath != "" {
+			folderName = relativePath
 		}
 
 		// 选择推荐的可执行文件
 		selectedExe := utils.SelectBestExecutable(executables, folderName)
 
 		candidate := vo.BatchImportCandidate{
-			FolderPath:  folderPath,
+			FolderPath:  currentPath,
 			FolderName:  folderName,
 			Executables: executables,
 			SelectedExe: selectedExe,
-			SearchName:  folderName,
+			SearchName:  filepath.Base(currentPath), // 使用最底层目录名作为搜索名
 			IsSelected:  true,
 			MatchStatus: "pending",
 		}
 
-		candidates = append(candidates, candidate)
+		// 使用路径作为 key 去重（避免重复添加）
+		candidatesMap[currentPath] = candidate
+
+		// 找到游戏目录后，不再向下递归
+		// 这样可以避免将父目录和子目录都作为候选游戏
+		return nil
 	}
 
-	return candidates, nil
+	// 如果当前目录没有可执行文件，继续递归扫描子目录
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		// 跳过常见的非游戏目录
+		lowerName := strings.ToLower(entry.Name())
+		if lowerName == "system" || lowerName == "windows" ||
+			lowerName == "program files" || lowerName == "program files (x86)" ||
+			strings.HasPrefix(lowerName, ".") || // 隐藏目录
+			lowerName == "node_modules" || lowerName == "__pycache__" {
+			continue
+		}
+
+		subPath := filepath.Join(currentPath, entry.Name())
+		// 递归扫描子目录
+		if err := s.scanDirectoryRecursive(rootPath, subPath, currentDepth+1, maxDepth, excludeKeywords, candidatesMap); err != nil {
+			// 继续扫描其他目录，不因单个目录失败而停止
+			continue
+		}
+	}
+
+	return nil
 }
 
 // ==================== 元数据获取与批量导入 ====================
