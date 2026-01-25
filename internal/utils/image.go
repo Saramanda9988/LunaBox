@@ -233,15 +233,19 @@ func SaveBackgroundImage(srcPath string) (string, error) {
 		ext = ".png"
 	}
 
-	// 生成目标文件名 (使用固定名称，每次覆盖)
-	destFileName := fmt.Sprintf("custom_bg%s", ext)
+	// 生成带时间戳的文件名
+	timestamp := time.Now().UnixMilli()
+	destFileName := fmt.Sprintf("custom_bg_%d%s", timestamp, ext)
 	destPath := filepath.Join(bgDir, destFileName)
 
-	// 删除旧的背景文件（可能是不同扩展名）
-	oldExtensions := []string{".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
-	for _, oldExt := range oldExtensions {
-		oldPath := filepath.Join(bgDir, "custom_bg"+oldExt)
-		os.Remove(oldPath) // 忽略错误，文件可能不存在
+	// 删除旧的背景文件（清理所有 custom_bg_* 文件）
+	files, err := os.ReadDir(bgDir)
+	if err == nil {
+		for _, file := range files {
+			if !file.IsDir() && strings.HasPrefix(file.Name(), "custom_bg_") {
+				os.Remove(filepath.Join(bgDir, file.Name()))
+			}
+		}
 	}
 
 	// 复制文件

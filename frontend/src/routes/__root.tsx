@@ -39,7 +39,7 @@ function RootLayout() {
           <SideBar bgEnabled={!!bgEnabled} bgOpacity={bgOpacity} />
           <main
             className={`flex-1 overflow-auto ${
-              bgEnabled ? "backdrop-blur-sm" : "bg-brand-100 dark:bg-brand-900"
+              bgEnabled ? "" : "bg-brand-100 dark:bg-brand-900"
             }`}
             style={bgEnabled ? {
               backgroundColor: `rgba(var(--main-bg-rgb), ${bgOpacity})`,
