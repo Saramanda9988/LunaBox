@@ -11,6 +11,7 @@ import { GameBackupPanel } from "../components/panel/GameBackupPanel";
 import { GameEditPanel } from "../components/panel/GameEditPanel";
 import { GameStatsPanel } from "../components/panel/GameStatsPanel";
 import { GameDetailSkeleton } from "../components/skeleton/GameDetailSkeleton";
+import { useAppStore } from "../store";
 import { formatLocalDate } from "../utils/time";
 import { Route as rootRoute } from "./__root";
 
@@ -23,6 +24,7 @@ export const Route = createRoute({
 function GameDetailPage() {
   const navigate = useNavigate();
   const { gameId } = Route.useParams();
+  const config = useAppStore(state => state.config);
   const [game, setGame] = useState<models.Game | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
@@ -375,6 +377,7 @@ function GameDetailPage() {
       {activeTab === "edit" && game && (
         <GameEditPanel
           game={game}
+          config={config || undefined}
           onGameChange={setGame}
           onDelete={handleDeleteGame}
           onSelectExecutable={handleSelectExecutable}

@@ -15,30 +15,13 @@ type Migration struct {
 	Up          func(tx *sql.Tx) error // 改为接收事务
 }
 
-// addLocaleEmulatorAndMagpieColumns 添加 Locale Emulator 和 Magpie 支持列
-func addLocaleEmulatorAndMagpieColumns(tx *sql.Tx) error {
-	// 检查列是否已存在
-	var columnExists int
-	err := tx.QueryRow(`
-		SELECT COUNT(*) 
-		FROM information_schema.columns 
-		WHERE table_name = 'games' 
-		AND column_name = 'use_locale_emulator'
-	`).Scan(&columnExists)
-
-	if err != nil && err != sql.ErrNoRows {
-		return fmt.Errorf("failed to check column existence: %w", err)
-	}
-
-	// 如果列已存在，跳过迁移
-	if columnExists > 0 {
-		return nil
-	}
-
+// migration131 添加 Locale Emulator 和 Magpie 支持列
+func migration131(tx *sql.Tx) error {
+	// DuckDB 支持 IF NOT EXISTS，列已存在时会静默成功
 	// 添加 use_locale_emulator 列
-	_, err = tx.Exec(`
+	_, err := tx.Exec(`
 		ALTER TABLE games 
-		ADD COLUMN use_locale_emulator BOOLEAN DEFAULT FALSE
+		ADD COLUMN IF NOT EXISTS use_locale_emulator BOOLEAN DEFAULT FALSE
 	`)
 	if err != nil {
 		return fmt.Errorf("failed to add use_locale_emulator column: %w", err)
@@ -47,7 +30,7 @@ func addLocaleEmulatorAndMagpieColumns(tx *sql.Tx) error {
 	// 添加 use_magpie 列
 	_, err = tx.Exec(`
 		ALTER TABLE games 
-		ADD COLUMN use_magpie BOOLEAN DEFAULT FALSE
+		ADD COLUMN IF NOT EXISTS use_magpie BOOLEAN DEFAULT FALSE
 	`)
 	if err != nil {
 		return fmt.Errorf("failed to add use_magpie column: %w", err)
@@ -59,19 +42,19 @@ func addLocaleEmulatorAndMagpieColumns(tx *sql.Tx) error {
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
-		Version:     115,
+		Version:     131,
 		Description: "Add use_locale_emulator and use_magpie columns to games table",
-		Up:          addLocaleEmulatorAndMagpieColumns,
+		Up:          migration131,
 	},
 	// {
 	// 	Version:     114,
 	// 	Description: "Convert UTC timestamps to local time (+8 hours for historical data)",
-	// 	Up:          migrateUTCToLocalTime,
+	// 	Up:          migration114,
 	// },
 }
 
-// migrateUTCToLocalTime 将历史 UTC 时间转换为本地时间
-func migrateUTCToLocalTime(tx *sql.Tx) error {
+// migration114 将历史 UTC 时间转换为本地时间
+func migration114(tx *sql.Tx) error {
 	var count int
 	err := tx.QueryRow("SELECT COUNT(*) FROM play_sessions WHERE start_time < '2026-01-19 00:00:00'").Scan(&count)
 	if err != nil {

@@ -279,7 +279,6 @@ func main() {
 	}
 }
 
-// TODO: 实现专门的migration机制
 func initSchema(db *sql.DB) error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS users (
@@ -306,7 +305,9 @@ func initSchema(db *sql.DB) error {
 			source_type TEXT,
 			cached_at TIMESTAMP,
 			source_id TEXT,
-			created_at TIMESTAMP
+			created_at TIMESTAMP,
+			use_locale_emulator BOOLEAN DEFAULT FALSE,
+			use_magpie BOOLEAN DEFAULT FALSE
 		)`,
 		`CREATE TABLE IF NOT EXISTS game_categories (
 			game_id TEXT,

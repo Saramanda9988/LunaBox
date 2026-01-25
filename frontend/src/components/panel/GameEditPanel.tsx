@@ -1,7 +1,10 @@
-import type { models } from "../../../wailsjs/go/models";
+import type { appconf, models } from "../../../wailsjs/go/models";
+import { toast } from "react-hot-toast";
+import { BetterSwitch } from "../ui/BetterSwitch";
 
 interface GameEditFormProps {
   game: models.Game;
+  config?: appconf.AppConfig;
   onGameChange: (game: models.Game) => void;
   onDelete: () => void;
   onSelectExecutable: () => void;
@@ -12,6 +15,7 @@ interface GameEditFormProps {
 
 export function GameEditPanel({
   game,
+  config,
   onGameChange,
   onDelete,
   onSelectExecutable,
@@ -19,6 +23,24 @@ export function GameEditPanel({
   onSelectCoverImage,
   onUpdateFromRemote,
 }: GameEditFormProps) {
+  const hasLocaleEmulatorPath = config?.locale_emulator_path && config?.locale_emulator_path.length > 0;
+  const hasMagpiePath = config?.magpie_path && config?.magpie_path.length > 0;
+
+  const handleLocaleEmulatorToggle = (checked: boolean) => {
+    if (checked && !hasLocaleEmulatorPath) {
+      toast.error("请先在设置中配置 Locale Emulator 路径");
+      return;
+    }
+    onGameChange({ ...game, use_locale_emulator: checked } as models.Game);
+  };
+
+  const handleMagpieToggle = (checked: boolean) => {
+    if (checked && !hasMagpiePath) {
+      toast.error("请先在设置中配置 Magpie 路径");
+      return;
+    }
+    onGameChange({ ...game, use_magpie: checked } as models.Game);
+  };
   return (
     <div className="glass-panel mx-auto bg-white dark:bg-brand-800 p-8 rounded-lg shadow-sm">
       <div className="space-y-6">
@@ -153,6 +175,51 @@ export function GameEditPanel({
               placeholder="远程数据源的ID"
               className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             />
+          </div>
+        </div>
+
+        {/* 启动工具配置 */}
+        <div className="border-t border-brand-200 dark:border-brand-700 pt-6">
+          <h3 className="text-sm font-semibold text-brand-900 dark:text-white mb-4">启动工具</h3>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-brand-50 dark:bg-brand-700/30 rounded-lg">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                  使用 Locale Emulator 转区启动
+                </label>
+                <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
+                  {hasLocaleEmulatorPath
+                    ? "启用后将使用 Locale Emulator 转区启动此游戏"
+                    : "请先在设置中配置 Locale Emulator 路径"}
+                </p>
+              </div>
+              <BetterSwitch
+                id="use_locale_emulator"
+                checked={game.use_locale_emulator || false}
+                onCheckedChange={handleLocaleEmulatorToggle}
+                disabled={!hasLocaleEmulatorPath}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-brand-50 dark:bg-brand-700/30 rounded-lg">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                  使用 Magpie 超分辨率缩放
+                </label>
+                <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
+                  {hasMagpiePath
+                    ? "启用后将在游戏启动后自动启动 Magpie"
+                    : "请先在设置中配置 Magpie 路径"}
+                </p>
+              </div>
+              <BetterSwitch
+                id="use_magpie"
+                checked={game.use_magpie || false}
+                onCheckedChange={handleMagpieToggle}
+                disabled={!hasMagpiePath}
+              />
+            </div>
           </div>
         </div>
 

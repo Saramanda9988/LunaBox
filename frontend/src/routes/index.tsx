@@ -1,7 +1,7 @@
 import { createRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { StartGameWithTracking } from "../../wailsjs/go/service/TimerService";
+import { StartGameWithTracking } from "../../wailsjs/go/service/StartService";
 import { useAppStore } from "../store";
 import { formatDuration, formatLocalDateTime } from "../utils/time";
 import { Route as rootRoute } from "./__root";

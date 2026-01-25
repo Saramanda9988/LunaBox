@@ -83,8 +83,9 @@ func (s *GameService) AddGame(game models.Game) error {
 
 	query := `INSERT INTO games (
 		id, name, cover_url, company, summary, path, 
-		source_type, cached_at, source_id, created_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		source_type, cached_at, source_id, created_at,
+		use_locale_emulator, use_magpie
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := s.db.ExecContext(s.ctx, query,
 		game.ID,
@@ -97,6 +98,8 @@ func (s *GameService) AddGame(game models.Game) error {
 		game.CachedAt,
 		game.SourceID,
 		game.CreatedAt,
+		game.UseLocaleEmulator,
+		game.UseMagpie,
 	)
 	if err != nil {
 		runtime.LogErrorf(s.ctx, "AddGame: failed to insert game %s: %v", game.Name, err)
@@ -190,7 +193,9 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 		COALESCE(source_type, '') as source_type, 
 		cached_at, 
 		COALESCE(source_id, '') as source_id, 
-		created_at 
+		created_at,
+		COALESCE(use_locale_emulator, FALSE) as use_locale_emulator,
+		COALESCE(use_magpie, FALSE) as use_magpie
 	FROM games 
 	ORDER BY created_at DESC`
 
@@ -220,6 +225,8 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 			&game.CachedAt,
 			&game.SourceID,
 			&game.CreatedAt,
+			&game.UseLocaleEmulator,
+			&game.UseMagpie,
 		)
 		if err != nil {
 			runtime.LogErrorf(s.ctx, "GetGames: failed to scan game row: %v", err)
@@ -251,7 +258,9 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		COALESCE(source_type, '') as source_type, 
 		cached_at, 
 		COALESCE(source_id, '') as source_id, 
-		created_at 
+		created_at,
+		COALESCE(use_locale_emulator, FALSE) as use_locale_emulator,
+		COALESCE(use_magpie, FALSE) as use_magpie
 	FROM games 
 	WHERE id = ?`
 
@@ -272,6 +281,8 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		&game.CachedAt,
 		&game.SourceID,
 		&game.CreatedAt,
+		&game.UseLocaleEmulator,
+		&game.UseMagpie,
 	)
 
 	if errors.Is(err, sql.ErrNoRows) {
@@ -299,7 +310,9 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		status = ?,
 		source_type = ?,
 		cached_at = ?,
-		source_id = ?
+		source_id = ?,
+		use_locale_emulator = ?,
+		use_magpie = ?
 	WHERE id = ?`
 
 	result, err := s.db.ExecContext(s.ctx, query,
@@ -313,6 +326,8 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		string(game.SourceType),
 		game.CachedAt,
 		game.SourceID,
+		game.UseLocaleEmulator,
+		game.UseMagpie,
 		game.ID,
 	)
 

@@ -282,9 +282,9 @@ func (s *StartService) startMagpie() {
 		return
 	}
 
-	// 启动 Magpie
-	runtime.LogInfof(s.ctx, "Starting Magpie: %s", s.config.MagpiePath)
-	cmd := exec.Command(s.config.MagpiePath)
+	// 启动 Magpie (tray 模式)
+	runtime.LogInfof(s.ctx, "Starting Magpie in tray mode: %s", s.config.MagpiePath)
+	cmd := exec.Command(s.config.MagpiePath, "-t")
 	cmd.Dir = filepath.Dir(s.config.MagpiePath)
 
 	if err := cmd.Start(); err != nil {
