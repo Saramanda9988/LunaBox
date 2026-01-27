@@ -1,5 +1,6 @@
 import type { appconf, models } from "../../../wailsjs/go/models";
 import { toast } from "react-hot-toast";
+import { BetterSelect } from "../ui/BetterSelect";
 import { BetterSwitch } from "../ui/BetterSwitch";
 
 interface GameEditFormProps {
@@ -152,17 +153,17 @@ export function GameEditPanel({
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
               数据源类型
             </label>
-            <select
+            <BetterSelect
               value={game.source_type || ""}
-              onChange={e => onGameChange({ ...game, source_type: e.target.value } as models.Game)}
-              className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
-            >
-              <option value="">无</option>
-              <option value="local">本地</option>
-              <option value="bangumi">Bangumi</option>
-              <option value="vndb">VNDB</option>
-              <option value="ymgal">月幕Galgame</option>
-            </select>
+              onChange={value => onGameChange({ ...game, source_type: value } as models.Game)}
+              options={[
+                { value: "", label: "无" },
+                { value: "local", label: "本地" },
+                { value: "bangumi", label: "Bangumi" },
+                { value: "vndb", label: "VNDB" },
+                { value: "ymgal", label: "月幕Galgame" },
+              ]}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">

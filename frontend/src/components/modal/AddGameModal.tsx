@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { toast } from "react-hot-toast";
 import { enums, models, vo } from "../../../wailsjs/go/models";
 import { AddGame, FetchMetadata, FetchMetadataByName, SelectCoverImageWithTempID, SelectGameExecutable } from "../../../wailsjs/go/service/GameService";
+import { BetterSelect } from "../ui/BetterSelect";
 
 interface AddGameModalProps {
   isOpen: boolean;
@@ -289,15 +290,15 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
           <div className="space-y-6">
             <div>
               <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">数据源</label>
-              <select
+              <BetterSelect
                 value={manualSource}
-                onChange={e => setManualSource(e.target.value as enums.SourceType)}
-                className="w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
-              >
-                <option value={enums.SourceType.BANGUMI}>Bangumi</option>
-                <option value={enums.SourceType.VNDB}>VNDB</option>
-                <option value={enums.SourceType.YMGAL}>月幕gal</option>
-              </select>
+                onChange={value => setManualSource(value as enums.SourceType)}
+                options={[
+                  { value: enums.SourceType.BANGUMI, label: "Bangumi" },
+                  { value: enums.SourceType.VNDB, label: "VNDB" },
+                  { value: enums.SourceType.YMGAL, label: "月幕gal" },
+                ]}
+              />
             </div>
 
             <div>

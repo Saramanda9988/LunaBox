@@ -1,4 +1,5 @@
 import type { appconf } from "../../../wailsjs/go/models";
+import { BetterSelect } from "../ui/BetterSelect";
 import { BetterSwitch } from "../ui/BetterSwitch";
 
 interface BasicSettingsProps {
@@ -40,29 +41,29 @@ export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
 
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">主题</label>
-        <select
+        <BetterSelect
           name="theme"
           value={formData.theme}
-          onChange={handleChange}
-          className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
-        >
-          <option value="light">浅色</option>
-          <option value="dark">深色</option>
-          <option value="system">跟随系统</option>
-        </select>
+          onChange={value => onChange({ ...formData, theme: value } as appconf.AppConfig)}
+          options={[
+            { value: "light", label: "浅色" },
+            { value: "dark", label: "深色" },
+            { value: "system", label: "跟随系统" },
+          ]}
+        />
       </div>
 
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">语言</label>
-        <select
+        <BetterSelect
           name="language"
           value={formData.language}
-          onChange={handleChange}
-          className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
-        >
-          <option value="zh-CN">简体中文</option>
-          <option value="en-US">English</option>
-        </select>
+          onChange={value => onChange({ ...formData, language: value } as appconf.AppConfig)}
+          options={[
+            { value: "zh-CN", label: "简体中文" },
+            { value: "en-US", label: "English" },
+          ]}
+        />
       </div>
 
       <div className="flex items-center justify-between p-2">

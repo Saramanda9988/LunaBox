@@ -10,6 +10,7 @@ import {
   ScanLibraryDirectory,
   SelectLibraryDirectory,
 } from "../../../wailsjs/go/service/ImportService";
+import { BetterSelect } from "../ui/BetterSelect";
 
 interface BatchImportModalProps {
   isOpen: boolean;
@@ -781,15 +782,16 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                   <div className="border-t border-brand-200 dark:border-brand-700 pt-4 mt-4">
                     <p className="text-sm text-brand-500 mb-3">通过 ID 查找:</p>
                     <div className="flex gap-2">
-                      <select
+                      <BetterSelect
                         value={manualSource}
-                        onChange={e => setManualSource(e.target.value as enums.SourceType)}
-                        className="rounded border border-brand-300 bg-brand-50 px-2 py-1.5 text-sm dark:border-brand-600 dark:bg-brand-700"
-                      >
-                        <option value={enums.SourceType.BANGUMI}>Bangumi</option>
-                        <option value={enums.SourceType.VNDB}>VNDB</option>
-                        <option value={enums.SourceType.YMGAL}>月幕gal</option>
-                      </select>
+                        onChange={value => setManualSource(value as enums.SourceType)}
+                        options={[
+                          { value: enums.SourceType.BANGUMI, label: "Bangumi" },
+                          { value: enums.SourceType.VNDB, label: "VNDB" },
+                          { value: enums.SourceType.YMGAL, label: "月幕gal" },
+                        ]}
+                        className="w-32"
+                      />
                       <input
                         type="text"
                         value={manualId}

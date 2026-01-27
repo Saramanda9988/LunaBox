@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { BetterSelect } from "../ui/BetterSelect";
 
 interface SortOption {
   label: string;
@@ -105,48 +106,23 @@ export function FilterBar({
       <div className="flex items-center gap-2">
         {/* 状态筛选 */}
         {statusOptions && onStatusFilterChange && (
-          <select
+          <BetterSelect
             value={statusFilter || ""}
-            onChange={e => onStatusFilterChange(e.target.value)}
-            className="glass-input
-                       bg-white dark:bg-brand-900
-                       border border-brand-300 dark:border-brand-600
-                       text-brand-900 dark:text-white
-                       placeholder:text-brand-400 dark:placeholder:text-brand-400
-                       text-sm rounded-lg
-                       focus:ring-neutral-500 focus:border-neutral-500
-                       dark:focus:ring-neutral-500 dark:focus:border-neutral-500
-                       block p-2"
-          >
-            {statusOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            onChange={onStatusFilterChange}
+            options={statusOptions}
+            className="min-w-[120px]"
+          />
         )}
 
-        <select
+        <BetterSelect
           value={sortBy}
-          onChange={e => handleSortByChange(e.target.value)}
-          className="glass-input
-                     bg-white dark:bg-brand-900
-                     border border-brand-300 dark:border-brand-600
-                     text-brand-900 dark:text-white
-                     placeholder:text-brand-400 dark:placeholder:text-brand-400
-                     text-sm rounded-lg
-                     focus:ring-neutral-500 focus:border-neutral-500
-                     dark:focus:ring-neutral-500 dark:focus:border-neutral-500
-                     block p-2"
-        >
-          {sortOptions.map(option => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+          onChange={handleSortByChange}
+          options={sortOptions}
+          className="min-w-[120px]"
+        />
 
         <button
+          type="button"
           onClick={() => handleSortOrderChange(sortOrder === "asc" ? "desc" : "asc")}
           className="glass-panel p-2
                      text-brand-500 dark:text-brand-400

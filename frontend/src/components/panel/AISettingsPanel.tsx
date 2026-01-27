@@ -1,5 +1,6 @@
 import type { appconf } from "../../../wailsjs/go/models";
 import { enums } from "../../../wailsjs/go/models";
+import { BetterSelect } from "../ui/BetterSelect";
 
 const PROMPT_LABELS: Record<string, string> = {
   DEFAULT_SYSTEM: "幽默评论员",
@@ -22,12 +23,17 @@ export function AISettingsPanel({ formData, onChange }: AISettingsProps) {
     <div className="space-y-4">
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">AI 服务商</label>
-        <select name="ai_provider" value={formData.ai_provider || ""} onChange={handleChange} className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white">
-          <option value="">请选择</option>
-          <option value="openai">OpenAI</option>
-          <option value="deepseek">DeepSeek</option>
-          <option value="custom">自定义 (OpenAI兼容)</option>
-        </select>
+        <BetterSelect
+          name="ai_provider"
+          value={formData.ai_provider || ""}
+          onChange={value => onChange({ ...formData, ai_provider: value } as appconf.AppConfig)}
+          options={[
+            { value: "", label: "请选择" },
+            { value: "openai", label: "OpenAI" },
+            { value: "deepseek", label: "DeepSeek" },
+            { value: "custom", label: "自定义 (OpenAI兼容)" },
+          ]}
+        />
       </div>
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">API Base URL</label>

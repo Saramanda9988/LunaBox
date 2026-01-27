@@ -5,6 +5,7 @@ import { GetOneDriveAuthURL, SetupCloudBackup, StartOneDriveAuth, TestOneDriveCo
 import { GetAppConfig } from "../../../wailsjs/go/service/ConfigService";
 import { BrowserOpenURL } from "../../../wailsjs/runtime";
 import { PasswordInputModal } from "../modal/PasswordInputModal";
+import { BetterSelect } from "../ui/BetterSelect";
 import { BetterSwitch } from "../ui/BetterSwitch";
 
 interface CloudBackupSettingsProps {
@@ -110,14 +111,14 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
 
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">云存储提供商</label>
-        <select
+        <BetterSelect
           value={formData.cloud_backup_provider || "s3"}
-          onChange={e => onChange({ ...formData, cloud_backup_provider: e.target.value } as appconf.AppConfig)}
-          className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
-        >
-          <option value="s3">S3 兼容存储</option>
-          <option value="onedrive">OneDrive</option>
-        </select>
+          onChange={value => onChange({ ...formData, cloud_backup_provider: value } as appconf.AppConfig)}
+          options={[
+            { value: "s3", label: "S3 兼容存储" },
+            { value: "onedrive", label: "OneDrive" },
+          ]}
+        />
       </div>
 
       {/* S3 配置 */}
