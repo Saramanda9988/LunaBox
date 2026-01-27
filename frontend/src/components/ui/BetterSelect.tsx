@@ -31,7 +31,7 @@ export function BetterSelect({
       <div className={`relative ${className}`}>
         {/* Select Button */}
         <ListboxButton
-          className="glass-input relative w-full px-3 py-2 pr-10
+          className="glass-card relative w-full px-3 py-2 pr-10
                      text-left cursor-pointer
                      border border-brand-300 dark:border-brand-600
                      rounded-md shadow-sm
@@ -53,7 +53,6 @@ export function BetterSelect({
         <ListboxOptions
           anchor="bottom start"
           className="absolute z-50 mt-1 max-h-60 w-[var(--button-width)] overflow-auto
-                     glass-card
                      bg-white dark:bg-brand-800
                      border border-brand-300 dark:border-brand-600
                      rounded-md shadow-lg

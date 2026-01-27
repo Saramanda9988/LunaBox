@@ -184,7 +184,7 @@ export function GameEditPanel({
           <h3 className="text-sm font-semibold text-brand-900 dark:text-white mb-4">启动工具</h3>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-brand-50 dark:bg-brand-700/30 rounded-lg">
+            <div className="glass-card flex items-center justify-between p-3 bg-brand-50 dark:bg-brand-700/30 rounded-lg">
               <div className="flex-1">
                 <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
                   使用 Locale Emulator 转区启动
@@ -203,7 +203,7 @@ export function GameEditPanel({
               />
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-brand-50 dark:bg-brand-700/30 rounded-lg">
+            <div className="glass-card flex items-center justify-between p-3 bg-brand-50 dark:bg-brand-700/30 rounded-lg">
               <div className="flex-1">
                 <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
                   使用 Magpie 超分辨率缩放
