@@ -23,7 +23,7 @@ type GameMetadataFromWebVO struct {
 // LastPlayedGame 上次游玩的游戏信息
 type LastPlayedGame struct {
 	Game           models.Game `json:"game"`
-	LastPlayedAt   string      `json:"last_played_at"`   // 上次游玩时间
+	LastPlayedAt   time.Time   `json:"last_played_at"`   // 上次游玩时间
 	LastPlayedDur  int         `json:"last_played_dur"`  // 上次游玩时长（秒）
 	TotalPlayedDur int         `json:"total_played_dur"` // 总游玩时长（秒）
 	IsPlaying      bool        `json:"is_playing"`       // 是否正在游玩

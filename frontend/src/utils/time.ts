@@ -28,33 +28,55 @@ export function formatDurationHours(seconds: number): number {
 }
 
 /**
- * 解析后端返回的时间字符串为 Date 对象
+ * 解析后端返回的时间为 Date 对象
  *
- * 后端存储的是本地时间（TIMESTAMP 不带时区），返回格式如 "2025-01-19T01:00:00"
- * JavaScript 会将不带时区后缀的时间字符串解析为本地时间，这正是我们期望的行为
+ * 数据流：
+ * 1. Go time.Now() 获取本地时间，如 13:33:00 +0800
+ * 2. 写入 DuckDB TIMESTAMP 时，Go 驱动将其转换为 UTC，存储 05:33:00
+ * 3. 读取时返回 UTC 时间 05:33:00 +0000
+ * 4. Wails 序列化为 RFC3339 格式 "2026-02-01T05:33:00Z"
  *
- * @param timeString - 后端返回的时间（可以是字符串、Date对象）
- * @returns Date 对象（本地时间）
+ * 前端直接解析这个 UTC 时间字符串，JavaScript 会正确处理，
+ * 在格式化显示时（如 toLocaleString）会自动转换为用户本地时区。
+ *
+ * @param timeValue - 后端返回的时间（RFC3339 字符串或 Date 对象）
+ * @returns Date 对象
  */
-export function parseTime(timeString: any): Date {
-  if (!timeString)
+export function parseTime(timeValue: any): Date {
+  if (!timeValue)
     return new Date();
 
   // 如果已经是 Date 对象，直接返回
-  if (timeString instanceof Date) {
-    return timeString;
+  if (timeValue instanceof Date) {
+    return timeValue;
   }
 
-  // 将任何类型转换为字符串
-  const timeStr = String(timeString);
+  // 处理 Wails 的 time.Time 对象
+  // 虽然 TypeScript 类型声明是对象，但实际序列化后就是 RFC3339 字符串
+  let timeStr: string;
+  if (typeof timeValue === "object") {
+    timeStr = String(timeValue);
+    if (timeStr === "[object Object]") {
+      console.warn("parseTime: received empty time.Time object, returning current time");
+      return new Date();
+    }
+  }
+  else {
+    timeStr = String(timeValue);
+  }
 
-  // 如果字符串以 Z 结尾（UTC 时间），去掉 Z 作为本地时间处理
-  // 这是为了兼容历史数据（如果有的话）
-  const localStr = timeStr.endsWith("Z")
-    ? timeStr.slice(0, -1)
-    : timeStr.replace(" ", "T");
+  // 空字符串返回当前时间
+  if (!timeStr) {
+    return new Date();
+  }
 
-  return new Date(localStr);
+  // 将空格替换为 T（兼容 "2026-01-25 14:25:46" 格式）
+  timeStr = timeStr.replace(" ", "T");
+
+  // 直接解析 RFC3339 格式，JavaScript Date 会正确处理 UTC 时间（以 Z 结尾）
+  // 例如 "2026-02-01T05:33:00Z" 会被解析为 UTC 时间，
+  // 在格式化时（toLocaleString 等）会自动转换为本地时区显示
+  return new Date(timeStr);
 }
 
 /**
@@ -70,7 +92,7 @@ export const parseUTCTime = parseTime;
  */
 export function formatLocalDate(timeString: any, options?: Intl.DateTimeFormatOptions): string {
   const date = parseTime(timeString);
-  return date.toLocaleDateString("zh-CN", {
+  return date.toLocaleDateString(undefined, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -85,7 +107,7 @@ export function formatLocalDate(timeString: any, options?: Intl.DateTimeFormatOp
  */
 export function formatLocalDateTime(timeString: any, options?: Intl.DateTimeFormatOptions): string {
   const date = parseTime(timeString);
-  return date.toLocaleString("zh-CN", {
+  return date.toLocaleString(undefined, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -103,7 +125,7 @@ export function formatLocalDateTime(timeString: any, options?: Intl.DateTimeForm
  */
 export function formatLocalTime(timeString: any): string {
   const date = parseTime(timeString);
-  return date.toLocaleTimeString("zh-CN", {
+  return date.toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",

@@ -65,7 +65,7 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 		isPlaying := lastPlayedDur == 0
 		data.LastPlayed = &vo.LastPlayedGame{
 			Game:           g,
-			LastPlayedAt:   lastPlayedAt.Format("2006-01-02 15:04"),
+			LastPlayedAt:   lastPlayedAt,
 			LastPlayedDur:  lastPlayedDur,
 			TotalPlayedDur: totalPlayedDur,
 			IsPlaying:      isPlaying,

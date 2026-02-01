@@ -887,7 +887,7 @@ export namespace vo {
 	}
 	export class LastPlayedGame {
 	    game: models.Game;
-	    last_played_at: string;
+	    last_played_at: time.Time;
 	    last_played_dur: number;
 	    total_played_dur: number;
 	    is_playing: boolean;
@@ -899,7 +899,7 @@ export namespace vo {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.game = this.convertValues(source["game"], models.Game);
-	        this.last_played_at = source["last_played_at"];
+	        this.last_played_at = this.convertValues(source["last_played_at"], time.Time);
 	        this.last_played_dur = source["last_played_dur"];
 	        this.total_played_dur = source["total_played_dur"];
 	        this.is_playing = source["is_playing"];
