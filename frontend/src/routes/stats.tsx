@@ -10,12 +10,12 @@ import {
   Tooltip,
 } from "chart.js";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Line } from "react-chartjs-2";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import { enums, vo } from "../../wailsjs/go/models";
 import { AISummarize } from "../../wailsjs/go/service/AiService";
 import { GetGlobalPeriodStats } from "../../wailsjs/go/service/StatsService";
 import { AiSummaryCard } from "../components/card/AiSummaryCard";
+import { HorizontalScrollChart } from "../components/chart/HorizontalScrollChart";
 import { TemplateExportModal } from "../components/modal/TemplateExportModal";
 import { StatsSkeleton } from "../components/skeleton/StatsSkeleton";
 import { SlideButton } from "../components/ui/SlideButton";
@@ -260,10 +260,9 @@ function StatsPage() {
           {/* 自定义日期范围按钮 */}
           <button
             onClick={() => setCustomDateRange(!customDateRange)}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
-              customDateRange
-                ? "bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400"
-                : "text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200"
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${customDateRange
+              ? "bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400"
+              : "text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200"
             }`}
           >
             <span className="i-mdi-calendar-range text-lg" />
@@ -414,15 +413,19 @@ function StatsPage() {
       <div className="space-y-6">
         <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
           <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">游玩时长趋势</h3>
-          <div className="h-96 w-full">
-            <Line options={chartOptions} data={totalTrendData} />
-          </div>
+          <HorizontalScrollChart
+            data={totalTrendData}
+            options={chartOptions}
+            className="h-96"
+          />
         </div>
         <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
           <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">常玩游戏趋势</h3>
-          <div className="h-96 w-full">
-            <Line options={chartOptions} data={gameTrendData} />
-          </div>
+          <HorizontalScrollChart
+            data={gameTrendData}
+            options={chartOptions}
+            className="h-96"
+          />
         </div>
       </div>
 

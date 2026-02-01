@@ -1,15 +1,35 @@
 import type { models, vo } from "../../../wailsjs/go/models";
+import {
+  CategoryScale,
+  Chart as ChartJS,
+  Legend,
+  LinearScale,
+  LineElement,
+  PointElement,
+  Title,
+  Tooltip,
+} from "chart.js";
 import { useCallback, useEffect, useState } from "react";
-import { Line } from "react-chartjs-2";
 import { toast } from "react-hot-toast";
 import { enums } from "../../../wailsjs/go/models";
 import { DeletePlaySession, GetPlaySessions } from "../../../wailsjs/go/service/StartService";
 import { GetGameStats } from "../../../wailsjs/go/service/StatsService";
 import { useChartTheme } from "../../hooks/useChartTheme";
 import { formatDuration, formatLocalDateTime } from "../../utils/time";
+import { HorizontalScrollChart } from "../chart/HorizontalScrollChart";
 import { AddPlaySessionModal } from "../modal/AddPlaySessionModal";
 import { ConfirmModal } from "../modal/ConfirmModal";
 import { SlideButton } from "../ui/SlideButton";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+);
 
 interface GameStatsPanelProps {
   gameId: string;
@@ -116,6 +136,10 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      mode: "index" as const,
+      intersect: false,
+    },
     plugins: {
       legend: {
         display: false,
@@ -180,9 +204,11 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
               )
             : viewMode === "chart"
               ? (
-                  <div className="h-80">
-                    <Line options={chartOptions} data={chartData} />
-                  </div>
+                  <HorizontalScrollChart
+                    data={chartData}
+                    options={chartOptions}
+                    className="h-80"
+                  />
                 )
               : (
                   <div className="space-y-2">
@@ -213,6 +239,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
                                 onClick={() => setDeleteSessionId(session.id)}
                                 className="p-1.5 text-brand-400 hover:text-error-500 hover:bg-error-50 dark:hover:bg-error-900/20 rounded transition-colors"
                                 title="删除记录"
+                                type="button"
                               >
                                 <div className="i-mdi-delete-outline text-lg" />
                               </button>
@@ -240,21 +267,21 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
             <div className="flex gap-2">
               <button
                 onClick={() => setViewMode("chart")}
-                className={`glass-btn-neutral flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === "chart"
-                    ? "bg-neutral-600 text-white"
-                    : "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-300 hover:bg-brand-200 dark:hover:bg-brand-600"
+                className={`glass-btn-neutral flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === "chart"
+                  ? "bg-neutral-600 text-white"
+                  : "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-300 hover:bg-brand-200 dark:hover:bg-brand-600"
                 }`}
+                type="button"
               >
                 <div className="i-mdi-chart-line text-lg" />
               </button>
               <button
                 onClick={() => setViewMode("sessions")}
-                className={`glass-btn-neutral flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === "sessions"
-                    ? "bg-neutral-600 text-white"
-                    : "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-300 hover:bg-brand-200 dark:hover:bg-brand-600"
+                className={`glass-btn-neutral flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === "sessions"
+                  ? "bg-neutral-600 text-white"
+                  : "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-300 hover:bg-brand-200 dark:hover:bg-brand-600"
                 }`}
+                type="button"
               >
                 <div className="i-mdi-format-list-bulleted text-lg" />
               </button>
@@ -264,6 +291,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
           <button
             onClick={() => setIsAddModalOpen(true)}
             className="glass-btn-neutral flex items-center gap-1 px-3 py-1.5 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors text-sm"
+            type="button"
           >
             <div className="i-mdi-plus text-lg" />
             手动添加
