@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { enums } from "../../wailsjs/go/models";
 import { AddGameToCategory, GetCategories, GetCategoriesByGame, RemoveGameFromCategory } from "../../wailsjs/go/service/CategoryService";
-import { DeleteGame, GetGameByID, SelectCoverImage, SelectGameExecutable, SelectSaveDirectory, UpdateGame, UpdateGameFromRemote } from "../../wailsjs/go/service/GameService";
+import { DeleteGame, GetGameByID, SelectCoverImage, SelectGameExecutable, SelectSaveDirectory, SelectSaveFile, UpdateGame, UpdateGameFromRemote } from "../../wailsjs/go/service/GameService";
 import { AddToCategoryModal } from "../components/modal/AddToCategoryModal";
 import { ConfirmModal } from "../components/modal/ConfirmModal";
 import { GameBackupPanel } from "../components/panel/GameBackupPanel";
@@ -151,7 +151,20 @@ function GameDetailPage() {
     }
     catch (error) {
       console.error("Failed to select save directory:", error);
-      toast.error("选择存档目录失败");
+      toast.error("选择存档路径失败");
+    }
+  };
+
+  const handleSelectSaveFile = async () => {
+    try {
+      const path = await SelectSaveFile();
+      if (path && game) {
+        setGame({ ...game, save_path: path } as models.Game);
+      }
+    }
+    catch (error) {
+      console.error("Failed to select save file:", error);
+      toast.error("选择存档路径失败");
     }
   };
 
@@ -382,6 +395,7 @@ function GameDetailPage() {
           onDelete={handleDeleteGame}
           onSelectExecutable={handleSelectExecutable}
           onSelectSaveDirectory={handleSelectSaveDirectory}
+          onSelectSaveFile={handleSelectSaveFile}
           onSelectCoverImage={handleSelectCoverImage}
           onUpdateFromRemote={handleUpdateFromRemote}
         />

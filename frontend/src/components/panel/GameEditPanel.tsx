@@ -10,6 +10,7 @@ interface GameEditFormProps {
   onDelete: () => void;
   onSelectExecutable: () => void;
   onSelectSaveDirectory: () => void;
+  onSelectSaveFile: () => void;
   onSelectCoverImage: () => void;
   onUpdateFromRemote?: () => void;
 }
@@ -21,6 +22,7 @@ export function GameEditPanel({
   onDelete,
   onSelectExecutable,
   onSelectSaveDirectory,
+  onSelectSaveFile,
   onSelectCoverImage,
   onUpdateFromRemote,
 }: GameEditFormProps) {
@@ -115,25 +117,36 @@ export function GameEditPanel({
 
         <div>
           <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
-            存档目录
+            存档路径
           </label>
           <div className="flex gap-2">
             <input
               type="text"
               value={game.save_path || ""}
               onChange={e => onGameChange({ ...game, save_path: e.target.value } as models.Game)}
-              placeholder="选择游戏存档所在目录"
+              placeholder="选择游戏存档路径（文件或文件夹）"
               className="glass-input flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             />
-            <button
-              type="button"
-              onClick={onSelectSaveDirectory}
-              className="glass-btn-neutral px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
-            >
-              选择
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={onSelectSaveDirectory}
+                title="选择文件夹"
+                className="glass-btn-neutral p-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
+              >
+                <div className="i-mdi-folder text-xl" />
+              </button>
+              <button
+                type="button"
+                onClick={onSelectSaveFile}
+                title="选择文件"
+                className="glass-btn-neutral p-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
+              >
+                <div className="i-mdi-file text-xl" />
+              </button>
+            </div>
           </div>
-          <p className="mt-1 text-xs text-brand-500">设置存档目录后可使用备份功能</p>
+          <p className="mt-1 text-xs text-brand-500">设置存档路径（文件或文件夹）后可使用备份功能</p>
         </div>
 
         <div>
