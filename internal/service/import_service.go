@@ -894,7 +894,9 @@ func (s *ImportService) ProcessDroppedPaths(paths []string) ([]vo.BatchImportCan
 		"updater", "uninstall", "删除", "卸载",
 	}
 
-	candidatesMap := make(map[string]vo.BatchImportCandidate) // 使用 map 去重（按可执行文件路径）
+	// 最大递归深度设为 3 层（拖拽场景通常不会太深）
+	const maxDepth = 3
+	candidatesMap := make(map[string]vo.BatchImportCandidate) // 使用 map 去重（按路径）
 
 	for _, path := range paths {
 		info, err := os.Stat(path)
@@ -904,26 +906,17 @@ func (s *ImportService) ProcessDroppedPaths(paths []string) ([]vo.BatchImportCan
 		}
 
 		if info.IsDir() {
-			// 处理文件夹：扫描文件夹中的可执行文件
-			executables := utils.FindExecutables(path, excludeKeywords)
-			if len(executables) == 0 {
-				runtime.LogInfof(s.ctx, "ProcessDroppedPaths: no executable found in folder %s", path)
+			// 处理文件夹：使用递归扫描查找所有包含可执行文件的子目录
+			err := s.scanDirectoryRecursive(path, path, 0, maxDepth, excludeKeywords, candidatesMap)
+			if err != nil {
+				runtime.LogWarningf(s.ctx, "ProcessDroppedPaths: failed to scan directory %s: %v", path, err)
 				continue
 			}
 
-			folderName := filepath.Base(path)
-			selectedExe := utils.SelectBestExecutable(executables, folderName)
-
-			candidate := vo.BatchImportCandidate{
-				FolderPath:  path,
-				FolderName:  folderName,
-				Executables: executables,
-				SelectedExe: selectedExe,
-				SearchName:  folderName,
-				IsSelected:  true,
-				MatchStatus: "pending",
+			// 如果没有找到任何候选，记录日志
+			if len(candidatesMap) == 0 {
+				runtime.LogInfof(s.ctx, "ProcessDroppedPaths: no executable found in folder %s", path)
 			}
-			candidatesMap[selectedExe] = candidate
 		} else {
 			// 处理可执行文件
 			lowerName := strings.ToLower(path)
@@ -973,7 +966,8 @@ func (s *ImportService) ProcessDroppedPaths(paths []string) ([]vo.BatchImportCan
 				IsSelected:  true,
 				MatchStatus: "pending",
 			}
-			candidatesMap[path] = candidate
+			// 使用路径作为 key，与 scanDirectoryRecursive 保持一致
+			candidatesMap[folderPath] = candidate
 		}
 	}
 
