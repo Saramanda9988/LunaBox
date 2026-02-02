@@ -7,7 +7,7 @@ import { DragDropImportModal } from "../components/modal/DragDropImportModal";
 import { useAppStore } from "../store";
 
 function RootLayout() {
-  const { config, fetchHomeData } = useAppStore();
+  const { config, fetchGames } = useAppStore();
   const [isDragOver, setIsDragOver] = useState(false);
   const [showDragDropModal, setShowDragDropModal] = useState(false);
   const [droppedPaths, setDroppedPaths] = useState<string[]>([]);
@@ -67,7 +67,7 @@ function RootLayout() {
   }, []);
 
   const handleImportComplete = () => {
-    fetchHomeData();
+    fetchGames();
   };
 
   const handleCloseDragDropModal = () => {

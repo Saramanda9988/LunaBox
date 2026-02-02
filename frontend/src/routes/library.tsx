@@ -1,8 +1,6 @@
-import type { models } from "../../wailsjs/go/models";
 import type { ImportSource } from "../components/modal/GameImportModal";
 import { createRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { GetGames } from "../../wailsjs/go/service/GameService";
 import { FilterBar } from "../components/bar/FilterBar";
 import { GameCard } from "../components/card/GameCard";
 import { AddGameModal } from "../components/modal/AddGameModal";
@@ -10,6 +8,7 @@ import { BatchImportModal } from "../components/modal/BatchImportModal";
 import { GameImportModal } from "../components/modal/GameImportModal";
 import { LibrarySkeleton } from "../components/skeleton/LibrarySkeleton";
 import { sortOptions, statusOptions } from "../consts/options";
+import { useAppStore } from "../store";
 import { Route as rootRoute } from "./__root";
 
 export const Route = createRoute({
@@ -19,8 +18,7 @@ export const Route = createRoute({
 });
 
 function LibraryPage() {
-  const [games, setGames] = useState<models.Game[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { games, gamesLoading, fetchGames } = useAppStore();
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
   const [isBatchImportOpen, setIsBatchImportOpen] = useState(false);
@@ -35,7 +33,7 @@ function LibraryPage() {
   // 延迟显示骨架屏
   useEffect(() => {
     let timer: number;
-    if (isLoading) {
+    if (gamesLoading) {
       timer = window.setTimeout(() => {
         setShowSkeleton(true);
       }, 300);
@@ -44,7 +42,7 @@ function LibraryPage() {
       setShowSkeleton(false);
     }
     return () => clearTimeout(timer);
-  }, [isLoading]);
+  }, [gamesLoading]);
 
   // 点击外部关闭下拉菜单
   useEffect(() => {
@@ -57,16 +55,6 @@ function LibraryPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const loadGames = async () => {
-    try {
-      const result = await GetGames();
-      setGames(result || []);
-    }
-    finally {
-      setIsLoading(false);
-    }
-  };
-
   const filteredGames = games
     .filter((game) => {
       // 搜索过滤
@@ -74,10 +62,7 @@ function LibraryPage() {
         return false;
       }
       // 状态过滤
-      if (statusFilter && game.status !== statusFilter) {
-        return false;
-      }
-      return true;
+      return !(statusFilter && game.status !== statusFilter);
     })
     .sort((a, b) => {
       let comparison = 0;
@@ -93,10 +78,10 @@ function LibraryPage() {
     });
 
   useEffect(() => {
-    loadGames();
-  }, []);
+    fetchGames();
+  }, [fetchGames]);
 
-  if (isLoading && games.length === 0) {
+  if (gamesLoading && games.length === 0) {
     if (!showSkeleton) {
       return null;
     }
@@ -104,7 +89,7 @@ function LibraryPage() {
   }
 
   return (
-    <div className={`space-y-6 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${isLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
+    <div className={`space-y-6 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${gamesLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
       <div className="flex items-center justify-between">
         <h1 className="text-4xl font-bold text-brand-900 dark:text-white">游戏库</h1>
       </div>
@@ -249,20 +234,20 @@ function LibraryPage() {
       <AddGameModal
         isOpen={isAddGameModalOpen}
         onClose={() => setIsAddGameModalOpen(false)}
-        onGameAdded={loadGames}
+        onGameAdded={fetchGames}
       />
 
       <GameImportModal
         isOpen={importSource !== null}
         source={importSource || "potatovn"}
         onClose={() => setImportSource(null)}
-        onImportComplete={loadGames}
+        onImportComplete={fetchGames}
       />
 
       <BatchImportModal
         isOpen={isBatchImportOpen}
         onClose={() => setIsBatchImportOpen(false)}
-        onImportComplete={loadGames}
+        onImportComplete={fetchGames}
       />
     </div>
   );
