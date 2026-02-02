@@ -122,6 +122,13 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 18, G: 20, B: 22, A: 255},
 		StartHidden:      true,
 		Frameless:        true, // 启用无边框模式
+		// 启用拖拽文件导入功能
+		DragAndDrop: &options.DragAndDrop{
+			EnableFileDrop:     true,
+			DisableWebViewDrop: true,
+			CSSDropProperty:    "--wails-drop-target",
+			CSSDropValue:       "drop",
+		},
 		// 样式完全交由wails前端控制
 		Windows: &windows.Options{
 			WebviewIsTransparent: true,
