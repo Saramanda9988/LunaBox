@@ -59,6 +59,69 @@ func ZipDirectory(source, target string) (int64, error) {
 	return stat.Size(), nil
 }
 
+// ZipFileOrDirectory 压缩单个文件或整个目录
+func ZipFileOrDirectory(source, target string) (int64, error) {
+	// 检查源路径是否存在
+	info, err := os.Stat(source)
+	if err != nil {
+		return 0, fmt.Errorf("源路径不存在: %w", err)
+	}
+
+	// 如果是目录，使用原有的 ZipDirectory 函数
+	if info.IsDir() {
+		return ZipDirectory(source, target)
+	}
+
+	// 如果是单个文件，创建 zip 并添加该文件
+	zipFile, err := os.Create(target)
+	if err != nil {
+		return 0, err
+	}
+	defer zipFile.Close()
+
+	archive := zip.NewWriter(zipFile)
+	defer archive.Close()
+
+	// 创建文件头
+	header, err := zip.FileInfoHeader(info)
+	if err != nil {
+		return 0, err
+	}
+
+	// 使用文件名作为 zip 内的路径
+	header.Name = filepath.Base(source)
+	header.Method = zip.Deflate
+
+	writer, err := archive.CreateHeader(header)
+	if err != nil {
+		return 0, err
+	}
+
+	// 复制文件内容到 zip
+	file, err := os.Open(source)
+	if err != nil {
+		return 0, err
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(writer, file); err != nil {
+		return 0, err
+	}
+
+	// 关闭 archive 以确保所有数据写入
+	if err := archive.Close(); err != nil {
+		return 0, err
+	}
+
+	// 获取生成的 zip 文件大小
+	stat, err := os.Stat(target)
+	if err != nil {
+		return 0, err
+	}
+
+	return stat.Size(), nil
+}
+
 // UnzipFile 解压文件
 func UnzipFile(source, target string) error {
 	reader, err := zip.OpenReader(source)

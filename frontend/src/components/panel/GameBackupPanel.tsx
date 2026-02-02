@@ -98,7 +98,7 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
 
   const handleCreateBackup = async () => {
     if (!savePath) {
-      toast.error("请先设置存档目录");
+      toast.error("请先设置存档路径");
       return;
     }
     setIsBackingUp(true);
@@ -205,7 +205,7 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
           <div>
             <h3 className="text-lg font-semibold text-brand-900 dark:text-white">存档备份</h3>
             <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">
-              {savePath ? `存档目录: ${savePath}` : "请先在编辑页面设置存档目录"}
+              {savePath ? `存档路径: ${savePath}` : "请先在编辑页面设置存档路径（文件或文件夹）"}
             </p>
           </div>
           <div className="flex gap-2">

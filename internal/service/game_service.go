@@ -350,10 +350,18 @@ func (s *GameService) UpdateGame(game models.Game) error {
 	return nil
 }
 
+// SelectSaveFile 选择存档文件
+func (s *GameService) SelectSaveFile() (string, error) {
+	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+		Title: "选择存档文件",
+	})
+	return selection, err
+}
+
 // SelectSaveDirectory 选择存档目录
 func (s *GameService) SelectSaveDirectory() (string, error) {
 	selection, err := runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{
-		Title: "选择存档目录",
+		Title: "选择存档文件夹",
 	})
 	return selection, err
 }

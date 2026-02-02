@@ -201,10 +201,10 @@ func (s *BackupService) CreateBackup(gameID string) (*models.GameBackup, error) 
 		return nil, fmt.Errorf("failed to get game: %w", err)
 	}
 	if savePath == "" {
-		return nil, fmt.Errorf("存档目录未设置")
+		return nil, fmt.Errorf("存档路径未设置")
 	}
 	if _, err := os.Stat(savePath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("存档目录不存在: %s", savePath)
+		return nil, fmt.Errorf("存档路径不存在: %s", savePath)
 	}
 
 	backupDir, err := s.GetBackupDir()
@@ -220,7 +220,7 @@ func (s *BackupService) CreateBackup(gameID string) (*models.GameBackup, error) 
 	backupFileName := fmt.Sprintf("%s.zip", timestamp)
 	backupPath := filepath.Join(gameBackupDir, backupFileName)
 
-	size, err := utils.ZipDirectory(savePath, backupPath)
+	size, err := utils.ZipFileOrDirectory(savePath, backupPath)
 	if err != nil {
 		return nil, fmt.Errorf("备份失败: %w", err)
 	}
@@ -290,7 +290,7 @@ func (s *BackupService) RestoreBackup(backupPath string) error {
 	var savePath string
 	err = s.db.QueryRowContext(s.ctx, "SELECT COALESCE(save_path, '') FROM games WHERE id = ?", gameID).Scan(&savePath)
 	if err != nil || savePath == "" {
-		return fmt.Errorf("存档目录未设置")
+		return fmt.Errorf("存档路径未设置")
 	}
 
 	// 先备份当前存档（恢复前备份）
@@ -298,21 +298,58 @@ func (s *BackupService) RestoreBackup(backupPath string) error {
 		preRestoreDir := filepath.Join(backupDir, gameID, "pre_restore")
 		os.MkdirAll(preRestoreDir, 0755)
 		preRestorePath := filepath.Join(preRestoreDir, fmt.Sprintf("%s_before_restore.zip", time.Now().Format("2006-01-02T15-04-05")))
-		_, err := utils.ZipDirectory(savePath, preRestorePath)
+		_, err := utils.ZipFileOrDirectory(savePath, preRestorePath)
 		if err != nil {
 			return err
 		}
 	}
 
+	// 检查原始存档路径是文件还是目录
+	// 根据备份前的路径类型来决定恢复方式
+	parentDir := filepath.Dir(savePath)
 	if err := os.RemoveAll(savePath); err != nil {
-		return fmt.Errorf("清空存档目录失败: %w", err)
+		return fmt.Errorf("删除原存档失败: %w", err)
 	}
-	if err := os.MkdirAll(savePath, 0755); err != nil {
-		return fmt.Errorf("创建存档目录失败: %w", err)
+
+	// 临时解压目录
+	tempDir := filepath.Join(backupDir, gameID, "temp_restore")
+	os.RemoveAll(tempDir)
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return fmt.Errorf("创建临时目录失败: %w", err)
 	}
-	if err := utils.UnzipFile(backupPath, savePath); err != nil {
-		return fmt.Errorf("恢复失败: %w", err)
+	defer os.RemoveAll(tempDir)
+
+	// 解压到临时目录
+	if err := utils.UnzipFile(backupPath, tempDir); err != nil {
+		return fmt.Errorf("解压备份失败: %w", err)
 	}
+
+	// 检查解压后的内容
+	entries, err := os.ReadDir(tempDir)
+	if err != nil {
+		return fmt.Errorf("读取临时目录失败: %w", err)
+	}
+
+	// 如果只有一个文件且不是目录，说明备份的是单个文件
+	if len(entries) == 1 && !entries[0].IsDir() {
+		// 恢复单个文件
+		if err := os.MkdirAll(parentDir, 0755); err != nil {
+			return fmt.Errorf("创建父目录失败: %w", err)
+		}
+		srcFile := filepath.Join(tempDir, entries[0].Name())
+		if err := utils.CopyFile(srcFile, savePath); err != nil {
+			return fmt.Errorf("恢复文件失败: %w", err)
+		}
+	} else {
+		// 恢复整个目录
+		if err := os.MkdirAll(savePath, 0755); err != nil {
+			return fmt.Errorf("创建存档目录失败: %w", err)
+		}
+		if err := utils.CopyDir(tempDir, savePath); err != nil {
+			return fmt.Errorf("恢复目录失败: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -419,7 +456,7 @@ func (s *BackupService) RestoreFromCloud(cloudKey string, gameID string) error {
 	var savePath string
 	err = s.db.QueryRowContext(s.ctx, "SELECT COALESCE(save_path, '') FROM games WHERE id = ?", gameID).Scan(&savePath)
 	if err != nil || savePath == "" {
-		return fmt.Errorf("存档目录未设置")
+		return fmt.Errorf("存档路径未设置")
 	}
 
 	// 先备份当前存档
@@ -428,21 +465,58 @@ func (s *BackupService) RestoreFromCloud(cloudKey string, gameID string) error {
 		preRestoreDir := filepath.Join(backupDir, gameID, "pre_restore")
 		os.MkdirAll(preRestoreDir, 0755)
 		preRestorePath := filepath.Join(preRestoreDir, fmt.Sprintf("%s_before_cloud_restore.zip", time.Now().Format("2006-01-02T15-04-05")))
-		_, err := utils.ZipDirectory(savePath, preRestorePath)
+		_, err := utils.ZipFileOrDirectory(savePath, preRestorePath)
 		if err != nil {
 			return err
 		}
 	}
 
+	// 获取备份目录用于临时解压
+	backupDir, _ := s.GetBackupDir()
+	parentDir := filepath.Dir(savePath)
 	if err := os.RemoveAll(savePath); err != nil {
-		return fmt.Errorf("清空存档目录失败: %w", err)
+		return fmt.Errorf("删除原存档失败: %w", err)
 	}
-	if err := os.MkdirAll(savePath, 0755); err != nil {
-		return fmt.Errorf("创建存档目录失败: %w", err)
+
+	// 临时解压目录
+	tempDir := filepath.Join(backupDir, gameID, "temp_restore")
+	os.RemoveAll(tempDir)
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return fmt.Errorf("创建临时目录失败: %w", err)
 	}
-	if err := utils.UnzipFile(localPath, savePath); err != nil {
-		return fmt.Errorf("恢复失败: %w", err)
+	defer os.RemoveAll(tempDir)
+
+	// 解压到临时目录
+	if err := utils.UnzipFile(localPath, tempDir); err != nil {
+		return fmt.Errorf("解压备份失败: %w", err)
 	}
+
+	// 检查解压后的内容
+	entries, err := os.ReadDir(tempDir)
+	if err != nil {
+		return fmt.Errorf("读取临时目录失败: %w", err)
+	}
+
+	// 如果只有一个文件且不是目录，说明备份的是单个文件
+	if len(entries) == 1 && !entries[0].IsDir() {
+		// 恢复单个文件
+		if err := os.MkdirAll(parentDir, 0755); err != nil {
+			return fmt.Errorf("创建父目录失败: %w", err)
+		}
+		srcFile := filepath.Join(tempDir, entries[0].Name())
+		if err := utils.CopyFile(srcFile, savePath); err != nil {
+			return fmt.Errorf("恢复文件失败: %w", err)
+		}
+	} else {
+		// 恢复整个目录
+		if err := os.MkdirAll(savePath, 0755); err != nil {
+			return fmt.Errorf("创建存档目录失败: %w", err)
+		}
+		if err := utils.CopyDir(tempDir, savePath); err != nil {
+			return fmt.Errorf("恢复目录失败: %w", err)
+		}
+	}
+
 	return nil
 }
 
