@@ -20,6 +20,8 @@ export function PreviewImport(arg1:string):Promise<Array<service.PreviewGame>>;
 
 export function PreviewPlayniteImport(arg1:string):Promise<Array<service.PreviewGame>>;
 
+export function ProcessDroppedPaths(arg1:Array<string>):Promise<Array<vo.BatchImportCandidate>>;
+
 export function ScanLibraryDirectory(arg1:string):Promise<Array<vo.BatchImportCandidate>>;
 
 export function SelectJSONFile():Promise<string>;

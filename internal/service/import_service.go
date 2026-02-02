@@ -880,3 +880,108 @@ func (s *ImportService) BatchImportGames(candidates []vo.BatchImportCandidate) (
 
 	return result, nil
 }
+
+// ProcessDroppedPaths 处理拖拽导入的路径，支持文件夹和可执行文件
+// 返回候选游戏列表供前端展示和确认
+func (s *ImportService) ProcessDroppedPaths(paths []string) ([]vo.BatchImportCandidate, error) {
+	var candidates []vo.BatchImportCandidate
+
+	// 需要排除的可执行文件关键词
+	excludeKeywords := []string{
+		"unins", "setup", "config", "patch", "update", "crashpad",
+		"vc_redist", "dxwebsetup", "directx", "vcredist", "dotnet",
+		"redistributable", "installer", "launcher_helper", "crashreporter",
+		"updater", "uninstall", "删除", "卸载",
+	}
+
+	candidatesMap := make(map[string]vo.BatchImportCandidate) // 使用 map 去重（按可执行文件路径）
+
+	for _, path := range paths {
+		info, err := os.Stat(path)
+		if err != nil {
+			runtime.LogWarningf(s.ctx, "ProcessDroppedPaths: failed to stat path %s: %v", path, err)
+			continue
+		}
+
+		if info.IsDir() {
+			// 处理文件夹：扫描文件夹中的可执行文件
+			executables := utils.FindExecutables(path, excludeKeywords)
+			if len(executables) == 0 {
+				runtime.LogInfof(s.ctx, "ProcessDroppedPaths: no executable found in folder %s", path)
+				continue
+			}
+
+			folderName := filepath.Base(path)
+			selectedExe := utils.SelectBestExecutable(executables, folderName)
+
+			candidate := vo.BatchImportCandidate{
+				FolderPath:  path,
+				FolderName:  folderName,
+				Executables: executables,
+				SelectedExe: selectedExe,
+				SearchName:  folderName,
+				IsSelected:  true,
+				MatchStatus: "pending",
+			}
+			candidatesMap[selectedExe] = candidate
+		} else {
+			// 处理可执行文件
+			lowerName := strings.ToLower(path)
+			if !strings.HasSuffix(lowerName, ".exe") && !strings.HasSuffix(lowerName, ".bat") {
+				runtime.LogInfof(s.ctx, "ProcessDroppedPaths: skipping non-executable file %s", path)
+				continue
+			}
+
+			// 检查是否应该排除
+			excluded := false
+			fileName := filepath.Base(path)
+			lowerFileName := strings.ToLower(fileName)
+			for _, keyword := range excludeKeywords {
+				if strings.Contains(lowerFileName, keyword) {
+					excluded = true
+					break
+				}
+			}
+			if excluded {
+				runtime.LogInfof(s.ctx, "ProcessDroppedPaths: skipping excluded file %s", path)
+				continue
+			}
+
+			folderPath := filepath.Dir(path)
+			folderName := filepath.Base(folderPath)
+			// 如果文件名更有意义（不是通用名称），使用文件名作为搜索名
+			searchName := folderName
+			exeName := strings.TrimSuffix(fileName, filepath.Ext(fileName))
+			genericNames := []string{"game", "main", "start", "launch", "run", "play"}
+			isGeneric := false
+			for _, generic := range genericNames {
+				if strings.ToLower(exeName) == generic {
+					isGeneric = true
+					break
+				}
+			}
+			if !isGeneric && len(exeName) > 3 {
+				searchName = exeName
+			}
+
+			candidate := vo.BatchImportCandidate{
+				FolderPath:  folderPath,
+				FolderName:  folderName,
+				Executables: []string{path},
+				SelectedExe: path,
+				SearchName:  searchName,
+				IsSelected:  true,
+				MatchStatus: "pending",
+			}
+			candidatesMap[path] = candidate
+		}
+	}
+
+	// 将 map 转换为 slice
+	for _, candidate := range candidatesMap {
+		candidates = append(candidates, candidate)
+	}
+
+	runtime.LogInfof(s.ctx, "ProcessDroppedPaths: processed %d paths, found %d candidates", len(paths), len(candidates))
+	return candidates, nil
+}
