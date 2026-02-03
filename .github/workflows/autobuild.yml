@@ -1,0 +1,262 @@
+name: Auto Build Pre-release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-prerelease:
+    name: Build Pre-release
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [amd64]
+        mode: [portable, installer]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          cache-dependency-path: 'frontend/pnpm-lock.yaml'
+
+      - name: Setup Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install NSIS
+        if: matrix.mode == 'installer'
+        run: |
+          choco install nsis -y
+          echo "C:\Program Files (x86)\NSIS" >> $env:GITHUB_PATH
+        shell: pwsh
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: pnpm install
+
+      - name: Generate version info
+        id: version_info
+        run: |
+          # 获取最新tag作为基础版本
+          $LATEST_TAG = git describe --tags --abbrev=0 2>$null
+          if (-not $LATEST_TAG) {
+            $LATEST_TAG = "v0.0.0"
+          }
+          $BASE_VERSION = $LATEST_TAG -replace '^v', ''
+          
+          # 获取提交信息
+          $COMMIT = "${{ github.sha }}".Substring(0,7)
+          $COMMIT_COUNT = git rev-list --count HEAD
+          $BUILD_TIME = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+          
+          # 生成预发布版本号: 基础版本-dev.提交次数+提交hash
+          $VERSION = "$BASE_VERSION-dev.$COMMIT_COUNT+$COMMIT"
+          
+          echo "VERSION=$VERSION" >> $env:GITHUB_OUTPUT
+          echo "BASE_VERSION=$BASE_VERSION" >> $env:GITHUB_OUTPUT
+          echo "COMMIT=$COMMIT" >> $env:GITHUB_OUTPUT
+          echo "BUILD_TIME=$BUILD_TIME" >> $env:GITHUB_OUTPUT
+          echo "COMMIT_COUNT=$COMMIT_COUNT" >> $env:GITHUB_OUTPUT
+          
+          Write-Host "Generated Version: $VERSION"
+        shell: pwsh
+
+      - name: Build Portable Version
+        if: matrix.mode == 'portable'
+        run: |
+          $LDFLAGS = "-X 'lunabox/internal/version.Version=${{ steps.version_info.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.version_info.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.version_info.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=portable'"
+          wails build -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -o LunaBox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.exe
+        shell: pwsh
+
+      - name: Build Installer Version
+        if: matrix.mode == 'installer'
+        run: |
+          $LDFLAGS = "-X 'lunabox/internal/version.Version=${{ steps.version_info.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.version_info.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.version_info.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=installer'"
+          wails build -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -nsis
+        shell: pwsh
+
+      - name: Create portable ZIP
+        if: matrix.mode == 'portable'
+        run: |
+          $PKG_NAME = "LunaBox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-portable"
+          $PKG_DIR = "build/bin/$PKG_NAME"
+          New-Item -ItemType Directory -Force -Path "$PKG_DIR"
+          New-Item -ItemType Directory -Force -Path "$PKG_DIR/backups"
+          New-Item -ItemType Directory -Force -Path "$PKG_DIR/covers"
+          
+          Copy-Item "build/bin/$PKG_NAME.exe" -Destination "$PKG_DIR/LunaBox.exe"
+          
+          Compress-Archive -Path "$PKG_DIR" -DestinationPath "$PKG_NAME.zip"
+        shell: pwsh
+
+      - name: Rename installer
+        if: matrix.mode == 'installer'
+        run: |
+          Write-Host "Files in build/bin:"
+          Get-ChildItem -Path "build/bin" -Filter "*.exe" -Recurse
+          
+          if (Test-Path "build/bin/lunabox-${{ matrix.arch }}-installer.exe") {
+            Move-Item -Path "build/bin/lunabox-${{ matrix.arch }}-installer.exe" -Destination "LunaBox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe"
+          } elseif (Test-Path "build/bin/LunaBox-${{ matrix.arch }}-installer.exe") {
+            Move-Item -Path "build/bin/LunaBox-${{ matrix.arch }}-installer.exe" -Destination "LunaBox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe"
+          } else {
+            Write-Host "Warning: Installer not found for ${{ matrix.arch }}"
+          }
+        shell: pwsh
+
+      - name: Upload Portable Artifact
+        if: matrix.mode == 'portable'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunabox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-portable
+          path: LunaBox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip
+
+      - name: Upload Installer Artifact
+        if: matrix.mode == 'installer'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunabox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-installer
+          path: LunaBox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe
+
+  create-prerelease:
+    name: Create Pre-release
+    needs: build-prerelease
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate version info
+        id: version_info
+        run: |
+          # 获取最新tag作为基础版本
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          BASE_VERSION=${LATEST_TAG#v}
+          
+          # 获取提交信息
+          COMMIT=$(echo "${{ github.sha }}" | cut -c1-7)
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          
+          # 生成预发布版本号
+          VERSION="$BASE_VERSION-dev.$COMMIT_COUNT+$COMMIT"
+          
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_OUTPUT
+          echo "COMMIT=$COMMIT" >> $GITHUB_OUTPUT
+          echo "COMMIT_COUNT=$COMMIT_COUNT" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R ./artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+          find ./artifacts -type f \( -name "*.zip" -o -name "*.exe" \) -exec cp {} ./release/ \;
+          ls -lh ./release
+
+      - name: Get commit messages
+        id: get_commits
+        run: |
+          # 获取最近5个提交的信息
+          echo "COMMITS<<EOF" >> $GITHUB_OUTPUT
+          git log --pretty=format:"- %s (%h)" -n 5 >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          cat << EOF > release_notes.md
+          ## 🚀 LunaBox Development Build
+
+          **⚠️ 这是一个自动构建的预发布版本**
+          
+          ### 📋 版本信息
+          
+          - **版本号**: \`${{ steps.version_info.outputs.VERSION }}\`
+          - **基于版本**: \`${{ steps.version_info.outputs.BASE_VERSION }}\`
+          - **提交**: [\`${{ steps.version_info.outputs.COMMIT }}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+          - **构建时间**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          ### 📝 最近提交
+          
+          ${{ steps.get_commits.outputs.COMMITS }}
+          
+          ### 📦 下载说明
+          
+          | 文件 | 说明 |
+          |------|------|
+          | \`*-portable.zip\` | 便携版，解压即用，数据存储在程序目录 |
+          | \`*-setup.exe\` | 安装版，标准安装程序，数据存储在 %APPDATA%\\\\LunaBox |
+          
+          ### ⚠️ 注意事项
+          
+          - 此版本为**开发测试版本**，可能存在未知问题
+          - 建议在测试环境使用，做好数据备份
+          - 如果遇到问题，请在 [Issues](https://github.com/${{ github.repository }}/issues) 中反馈
+          - 稳定版本请使用带版本号标签的正式发布版
+          
+          ### 🔗 相关链接
+          
+          - [查看完整提交历史](https://github.com/${{ github.repository }}/commits/master)
+          - [报告问题](https://github.com/${{ github.repository }}/issues/new)
+          - [查看正式发布版](https://github.com/${{ github.repository }}/releases)
+          EOF
+
+          cat release_notes.md
+
+      - name: Delete old pre-release
+        run: |
+          # 删除旧的 dev-latest 标签和release
+          gh release delete dev-latest --yes || true
+          git push origin :refs/tags/dev-latest || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create new tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f dev-latest
+          git push -f origin dev-latest
+
+      - name: Create Pre-release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: dev-latest
+          name: "开发版 - ${{ steps.version_info.outputs.VERSION }}"
+          files: release/*
+          body_path: release_notes.md
+          draft: false
+          prerelease: true
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
