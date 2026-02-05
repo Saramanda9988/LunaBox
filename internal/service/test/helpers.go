@@ -57,8 +57,8 @@ func initTestSchema(t *testing.T, db *sql.DB) {
 		`CREATE TABLE IF NOT EXISTS play_sessions (
 			id TEXT PRIMARY KEY,
 			game_id TEXT,
-			start_time TIMESTAMP,
-			end_time TIMESTAMP,
+			start_time TIMESTAMPTZ,
+			end_time TIMESTAMPTZ,
 			duration INTEGER
 		)`,
 	}

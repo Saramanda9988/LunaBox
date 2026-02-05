@@ -31,13 +31,17 @@ export function formatDurationHours(seconds: number): number {
  * 解析后端返回的时间为 Date 对象
  *
  * 数据流：
- * 1. Go time.Now() 获取本地时间，如 13:33:00 +0800
- * 2. 写入 DuckDB TIMESTAMP 时，Go 驱动将其转换为 UTC，存储 05:33:00
- * 3. 读取时返回 UTC 时间 05:33:00 +0000
- * 4. Wails 序列化为 RFC3339 格式 "2026-02-01T05:33:00Z"
+ * 1. Go time.Now() 获取本地时间（如 2026-02-05 13:33:00 +0800）
+ * 2. Go DuckDB 驱动将其转换为 UTC epoch 微秒数存储（如 1738732380000000）
+ * 3. DuckDB 将此微秒数存储在 TIMESTAMPTZ 列中
+ * 4. 查询时，DuckDB 根据配置的时区（SET TimeZone）解释此微秒数：
+ *    - 按日期聚合时（start_time::DATE）会转换为本地日期
+ *    - 返回字符串时格式化为 RFC3339："2026-02-05T05:33:00Z"
+ * 5. Wails 将字符串传递给前端
+ * 6. 前端解析后，toLocaleString() 自动转换为用户本地时区显示
  *
- * 前端直接解析这个 UTC 时间字符串，JavaScript 会正确处理，
- * 在格式化显示时（如 toLocaleString）会自动转换为用户本地时区。
+ * 关键：TIMESTAMPTZ 存储的是 UTC 时间戳（INT64 微秒数），但查询时会使用
+ * 数据库配置的时区进行日期聚合，确保统计数据按用户本地日期计算。
  *
  * @param timeValue - 后端返回的时间（RFC3339 字符串或 Date 对象）
  * @returns Date 对象

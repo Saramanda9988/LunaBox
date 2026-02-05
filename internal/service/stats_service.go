@@ -243,7 +243,6 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 		startDate    string
 		endDate      string
 		dateFormat   string
-		truncUnit    string
 		stepInterval string
 	)
 
@@ -273,7 +272,6 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 
 	// 所有维度都按日聚合
 	dateFormat = "%Y-%m-%d"
-	truncUnit = "day"
 	stepInterval = "INTERVAL 1 DAY"
 
 	// 构建日期表达式
@@ -330,6 +328,8 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 	rows.Close()
 
 	// 3. Timeline (Total)
+	// 注意：使用 ps.start_time::DATE 将 TIMESTAMPTZ 转换为本地日期进行匹配
+	// 这样可以正确地按用户本地时区的日期进行聚合
 	stats.Timeline = make([]vo.TimePoint, 0)
 	queryTimeline := fmt.Sprintf(`
 		WITH dates AS (
@@ -340,10 +340,10 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 			strftime(d.day, '%s'), 
 			COALESCE(SUM(ps.duration), 0)
 		FROM dates d
-		LEFT JOIN play_sessions ps ON date_trunc('%s', ps.start_time) = d.day
+		LEFT JOIN play_sessions ps ON ps.start_time::DATE = d.day
 		GROUP BY d.day
 		ORDER BY d.day ASC
-	`, seriesStart, seriesEnd, stepInterval, dateFormat, truncUnit)
+	`, seriesStart, seriesEnd, stepInterval, dateFormat)
 
 	rows, err = s.db.QueryContext(s.ctx, queryTimeline)
 	if err != nil {
@@ -363,6 +363,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 	rows.Close()
 
 	// 4. Leaderboard Series
+	// 使用 ps.start_time::DATE 进行本地时区日期匹配
 	stats.LeaderboardSeries = make([]vo.GameTrendSeries, 0)
 	for _, game := range stats.PlayTimeLeaderboard {
 		series := vo.GameTrendSeries{
@@ -380,10 +381,10 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 				strftime(d.day, '%s'), 
 				COALESCE(SUM(ps.duration), 0)
 			FROM dates d
-			LEFT JOIN play_sessions ps ON ps.game_id = ? AND date_trunc('%s', ps.start_time) = d.day
+			LEFT JOIN play_sessions ps ON ps.game_id = ? AND ps.start_time::DATE = d.day
 			GROUP BY d.day
 			ORDER BY d.day ASC
-		`, seriesStart, seriesEnd, stepInterval, dateFormat, truncUnit)
+		`, seriesStart, seriesEnd, stepInterval, dateFormat)
 
 		rows, err := s.db.QueryContext(s.ctx, queryGameSeries, game.GameID)
 		if err != nil {

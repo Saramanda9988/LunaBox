@@ -69,6 +69,8 @@ type AppConfig struct {
 	// Locale Emulator 和 Magpie 配置
 	LocaleEmulatorPath string `json:"locale_emulator_path,omitempty"` // Locale Emulator 可执行文件路径
 	MagpiePath         string `json:"magpie_path,omitempty"`          // Magpie 可执行文件路径
+	// 时区配置
+	TimeZone string `json:"time_zone,omitempty"` // 数据库使用的 IANA 时区名称（如 "Asia/Shanghai"）
 }
 
 // getConfigPath 获取配置文件路径
@@ -98,6 +100,7 @@ func LoadConfig() (*AppConfig, error) {
 		BackupPassword:         "",
 		BackupUserID:           "",
 		S3Endpoint:             "",
+		TimeZone:               "",
 		S3Region:               "",
 		S3Bucket:               "",
 		S3AccessKey:            "",

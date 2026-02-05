@@ -108,18 +108,6 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
   const handleSessionAdded = async () => {
     await Promise.all([loadStats(), loadSessions()]);
   };
-
-  const formatDate = (dateValue: any) => {
-    const dateStr = typeof dateValue === "string" ? dateValue : String(dateValue);
-    return formatLocalDateTime(dateStr, {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   const chartData = {
     labels: stats?.recent_play_history?.map(h => h.date) || [], // 后端已返回本地日期字符串，直接使用
     datasets: [
@@ -227,7 +215,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
                             >
                               <div className="flex-1">
                                 <div className="text-sm text-brand-900 dark:text-white">
-                                  {formatDate(session.start_time)}
+                                  {formatLocalDateTime(session.start_time)}
                                 </div>
                                 <div className="text-xs text-brand-500 dark:text-brand-400">
                                   时长:

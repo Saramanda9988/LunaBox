@@ -115,6 +115,8 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	// 游戏相关配置
 	s.config.LocaleEmulatorPath = newConfig.LocaleEmulatorPath
 	s.config.MagpiePath = newConfig.MagpiePath
+	// 时区相关配置
+	s.config.TimeZone = newConfig.TimeZone
 	return nil
 }
 

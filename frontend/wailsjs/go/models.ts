@@ -48,6 +48,7 @@ export namespace appconf {
 	    background_is_light: boolean;
 	    locale_emulator_path?: string;
 	    magpie_path?: string;
+	    time_zone?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -102,6 +103,7 @@ export namespace appconf {
 	        this.background_is_light = source["background_is_light"];
 	        this.locale_emulator_path = source["locale_emulator_path"];
 	        this.magpie_path = source["magpie_path"];
+	        this.time_zone = source["time_zone"];
 	    }
 	}
 

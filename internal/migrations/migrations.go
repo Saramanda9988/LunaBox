@@ -39,12 +39,65 @@ func migration131(tx *sql.Tx) error {
 	return nil
 }
 
+// migration134 将 play_sessions 的时间戳字段从 TIMESTAMP 改为 TIMESTAMPTZ
+//
+// 关键理解：TIMESTAMP 和 TIMESTAMPTZ 存储格式完全相同（都是 INT64 微秒数）
+// 区别只在查询时的行为：
+// - TIMESTAMP: 按 UTC 处理，start_time::DATE 会得到 UTC 日期（可能与用户本地日期不符）
+// - TIMESTAMPTZ: 按配置的时区处理，start_time::DATE 会得到本地日期（正确）
+//
+// 迁移策略：重建表（CREATE AS SELECT -> DROP -> RENAME）
+func migration134(tx *sql.Tx) error {
+	// 步骤 1: 创建新表，将 TIMESTAMP 列声明为 TIMESTAMPTZ
+	_, err := tx.Exec(`
+		CREATE TABLE play_sessions_new (
+			id TEXT PRIMARY KEY,
+			game_id TEXT,
+			start_time TIMESTAMPTZ,
+			end_time TIMESTAMPTZ,
+			duration INTEGER
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create new table: %w", err)
+	}
+
+	// 步骤 2: 复制数据（TIMESTAMP 自动转换为 TIMESTAMPTZ）
+	_, err = tx.Exec(`
+		INSERT INTO play_sessions_new (id, game_id, start_time, end_time, duration)
+		SELECT id, game_id, start_time, end_time, duration
+		FROM play_sessions
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to copy data: %w", err)
+	}
+
+	// 步骤 3: 删除旧表
+	_, err = tx.Exec(`DROP TABLE play_sessions`)
+	if err != nil {
+		return fmt.Errorf("failed to drop old table: %w", err)
+	}
+
+	// 步骤 4: 重命名新表为原表名
+	_, err = tx.Exec(`ALTER TABLE play_sessions_new RENAME TO play_sessions`)
+	if err != nil {
+		return fmt.Errorf("failed to rename new table: %w", err)
+	}
+
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
 		Version:     131,
 		Description: "Add use_locale_emulator and use_magpie columns to games table",
 		Up:          migration131,
+	},
+	{
+		Version:     134,
+		Description: "Migrate play_sessions timestamps from TIMESTAMP to TIMESTAMPTZ for correct timezone handling",
+		Up:          migration134,
 	},
 	// {
 	// 	Version:     114,
@@ -124,6 +177,7 @@ func Run(ctx context.Context, db *sql.DB) error {
 
 		if err := migration.Up(tx); err != nil {
 			tx.Rollback()
+			runtime.LogErrorf(ctx, "Migration %d failed: %v", migration.Version, err)
 			return fmt.Errorf("migration %d failed: %w", migration.Version, err)
 		}
 
@@ -139,6 +193,7 @@ func Run(ctx context.Context, db *sql.DB) error {
 
 		// 提交事务 - 迁移和版本记录一起提交，保证原子性
 		if err := tx.Commit(); err != nil {
+			runtime.LogErrorf(ctx, "Failed to commit migration %d: %v", migration.Version, err)
 			return fmt.Errorf("failed to commit migration %d: %w", migration.Version, err)
 		}
 

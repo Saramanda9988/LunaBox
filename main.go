@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"fmt"
 	"lunabox/internal/utils"
 	"net/http"
 	"path/filepath"
@@ -177,6 +178,23 @@ func main() {
 				appLogger.Fatal(err.Error())
 			}
 
+			// 设置时区为本地时区，确保 TIMESTAMPTZ 的聚合操作使用正确的日界线
+			// 这对于按日期统计游戏时长非常重要
+			// 注意：需要用户在前端设置时区（使用 Intl.DateTimeFormat().resolvedOptions().timeZone）
+			timeZone := config.TimeZone
+			if timeZone == "" {
+				// 未配置时区，使用 UTC 作为默认值
+				timeZone = "UTC"
+				appLogger.Warning("TimeZone not configured, using UTC. Please set timezone in settings.")
+			}
+
+			_, err = db.Exec(fmt.Sprintf("SET TimeZone = '%s'", timeZone))
+			if err != nil {
+				appLogger.Warning("Failed to set timezone: " + err.Error())
+			} else {
+				appLogger.Info("Database timezone set to: " + timeZone)
+			}
+
 			if err := initSchema(db); err != nil {
 				appLogger.Fatal(err.Error())
 			}
@@ -324,8 +342,8 @@ func initSchema(db *sql.DB) error {
 		`CREATE TABLE IF NOT EXISTS play_sessions (
 			id TEXT PRIMARY KEY,
 			game_id TEXT,
-			start_time TIMESTAMP,
-			end_time TIMESTAMP,
+			start_time TIMESTAMPTZ,
+			end_time TIMESTAMPTZ,
 			duration INTEGER
 		)`,
 	}
