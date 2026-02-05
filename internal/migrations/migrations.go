@@ -39,7 +39,7 @@ func migration131(tx *sql.Tx) error {
 	return nil
 }
 
-// migration134 将 play_sessions 的时间戳字段从 TIMESTAMP 改为 TIMESTAMPTZ
+// migration134 将所有表的时间戳字段从 TIMESTAMP 改为 TIMESTAMPTZ
 //
 // 关键理解：TIMESTAMP 和 TIMESTAMPTZ 存储格式完全相同（都是 INT64 微秒数）
 // 区别只在查询时的行为：
@@ -48,38 +48,97 @@ func migration131(tx *sql.Tx) error {
 //
 // 迁移策略：重建表（CREATE AS SELECT -> DROP -> RENAME）
 func migration134(tx *sql.Tx) error {
-	// 步骤 1: 创建新表，将 TIMESTAMP 列声明为 TIMESTAMPTZ
-	_, err := tx.Exec(`
-		CREATE TABLE play_sessions_new (
-			id TEXT PRIMARY KEY,
-			game_id TEXT,
-			start_time TIMESTAMPTZ,
-			end_time TIMESTAMPTZ,
-			duration INTEGER
-		)
-	`)
+	// 迁移 play_sessions 表
+	if err := migrateTableTimestamps(tx, "play_sessions", []string{"start_time"}, `
+		id TEXT PRIMARY KEY,
+		game_id TEXT,
+		start_time TIMESTAMPTZ,
+		end_time TIMESTAMPTZ,
+		duration INTEGER
+	`, "id, game_id, start_time, end_time, duration"); err != nil {
+		return fmt.Errorf("failed to migrate play_sessions table: %w", err)
+	}
+
+	// 迁移 users 表
+	if err := migrateTableTimestamps(tx, "users", []string{"created_at"},
+		"id TEXT PRIMARY KEY, created_at TIMESTAMPTZ, default_backup_target TEXT",
+		"id, created_at, default_backup_target"); err != nil {
+		return fmt.Errorf("failed to migrate users table: %w", err)
+	}
+
+	// 迁移 categories 表
+	if err := migrateTableTimestamps(tx, "categories", []string{"created_at", "updated_at"},
+		"id TEXT PRIMARY KEY, name TEXT, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ, is_system BOOLEAN",
+		"id, name, created_at, updated_at, is_system"); err != nil {
+		return fmt.Errorf("failed to migrate categories table: %w", err)
+	}
+
+	// 迁移 games 表 - 显式指定列名，排除可能存在的 process_name 列
+	if err := migrateTableTimestamps(tx, "games", []string{"cached_at", "created_at"}, `
+		id TEXT PRIMARY KEY,
+		name TEXT,
+		cover_url TEXT,
+		company TEXT,
+		summary TEXT,
+		path TEXT,
+		save_path TEXT,
+		status TEXT DEFAULT 'not_started',
+		source_type TEXT,
+		cached_at TIMESTAMPTZ,
+		source_id TEXT,
+		created_at TIMESTAMPTZ,
+		use_locale_emulator BOOLEAN DEFAULT FALSE,
+		use_magpie BOOLEAN DEFAULT FALSE
+	`, "id, name, cover_url, company, summary, path, save_path, status, source_type, cached_at, source_id, created_at, use_locale_emulator, use_magpie"); err != nil {
+		return fmt.Errorf("failed to migrate games table: %w", err)
+	}
+
+	return nil
+}
+
+// migrateTableTimestamps 辅助函数：迁移表的时间戳字段
+func migrateTableTimestamps(tx *sql.Tx, tableName string, timestampColumns []string, newSchema string, columnList string) error {
+	// 检查是否需要迁移（检查第一个时间戳列是否已经是 TIMESTAMPTZ）
+	if len(timestampColumns) > 0 {
+		var columnType string
+		err := tx.QueryRow(`
+			SELECT data_type 
+			FROM information_schema.columns 
+			WHERE table_name = ? AND column_name = ?
+		`, tableName, timestampColumns[0]).Scan(&columnType)
+		if err != nil {
+			return fmt.Errorf("failed to check column type: %w", err)
+		}
+
+		// 如果已经是 TIMESTAMP WITH TIME ZONE，跳过迁移
+		if columnType == "TIMESTAMP WITH TIME ZONE" {
+			return nil
+		}
+	}
+
+	newTableName := tableName + "_new"
+
+	// 步骤 1: 创建新表
+	_, err := tx.Exec(fmt.Sprintf("CREATE TABLE %s (%s)", newTableName, newSchema))
 	if err != nil {
 		return fmt.Errorf("failed to create new table: %w", err)
 	}
 
-	// 步骤 2: 复制数据（TIMESTAMP 自动转换为 TIMESTAMPTZ）
-	_, err = tx.Exec(`
-		INSERT INTO play_sessions_new (id, game_id, start_time, end_time, duration)
-		SELECT id, game_id, start_time, end_time, duration
-		FROM play_sessions
-	`)
+	// 步骤 2: 复制数据 - 使用显式列名避免列数不匹配
+	insertSQL := fmt.Sprintf("INSERT INTO %s (%s) SELECT %s FROM %s", newTableName, columnList, columnList, tableName)
+	_, err = tx.Exec(insertSQL)
 	if err != nil {
 		return fmt.Errorf("failed to copy data: %w", err)
 	}
 
 	// 步骤 3: 删除旧表
-	_, err = tx.Exec(`DROP TABLE play_sessions`)
+	_, err = tx.Exec(fmt.Sprintf("DROP TABLE %s", tableName))
 	if err != nil {
 		return fmt.Errorf("failed to drop old table: %w", err)
 	}
 
-	// 步骤 4: 重命名新表为原表名
-	_, err = tx.Exec(`ALTER TABLE play_sessions_new RENAME TO play_sessions`)
+	// 步骤 4: 重命名新表
+	_, err = tx.Exec(fmt.Sprintf("ALTER TABLE %s RENAME TO %s", newTableName, tableName))
 	if err != nil {
 		return fmt.Errorf("failed to rename new table: %w", err)
 	}
@@ -96,7 +155,7 @@ var migrations = []Migration{
 	},
 	{
 		Version:     134,
-		Description: "Migrate play_sessions timestamps from TIMESTAMP to TIMESTAMPTZ for correct timezone handling",
+		Description: "Migrate all tables (play_sessions, users, categories, games) timestamps from TIMESTAMP to TIMESTAMPTZ for correct timezone handling",
 		Up:          migration134,
 	},
 	// {

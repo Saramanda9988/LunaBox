@@ -308,14 +308,14 @@ func initSchema(db *sql.DB) error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS users (
 			id TEXT PRIMARY KEY,
-			created_at TIMESTAMP,
+			created_at TIMESTAMPTZ,
 			default_backup_target TEXT
 		)`,
 		`CREATE TABLE IF NOT EXISTS categories (
 			id TEXT PRIMARY KEY,
 			name TEXT,
-			created_at TIMESTAMP,
-			updated_at TIMESTAMP,
+			created_at TIMESTAMPTZ,
+			updated_at TIMESTAMPTZ,
 			is_system BOOLEAN
 		)`,
 		`CREATE TABLE IF NOT EXISTS games (
@@ -328,9 +328,9 @@ func initSchema(db *sql.DB) error {
 			save_path TEXT,
 			status TEXT DEFAULT 'not_started',
 			source_type TEXT,
-			cached_at TIMESTAMP,
+			cached_at TIMESTAMPTZ,
 			source_id TEXT,
-			created_at TIMESTAMP,
+			created_at TIMESTAMPTZ,
 			use_locale_emulator BOOLEAN DEFAULT FALSE,
 			use_magpie BOOLEAN DEFAULT FALSE
 		)`,
