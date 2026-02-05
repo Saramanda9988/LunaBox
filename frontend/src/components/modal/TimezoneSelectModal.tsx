@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import { BetterSelect } from "../ui/BetterSelect";
 
 interface TimezoneSelectModalProps {
   isOpen: boolean;
@@ -11,8 +12,6 @@ const COMMON_TIMEZONES = [
   { value: "Asia/Shanghai", label: "中国标准时间 (UTC+8)" },
   { value: "Asia/Tokyo", label: "日本标准时间 (UTC+9)" },
   { value: "Asia/Seoul", label: "韩国标准时间 (UTC+9)" },
-  { value: "Asia/Hong_Kong", label: "香港时间 (UTC+8)" },
-  { value: "Asia/Taipei", label: "台北时间 (UTC+8)" },
   { value: "Asia/Singapore", label: "新加坡时间 (UTC+8)" },
   { value: "Asia/Bangkok", label: "曼谷时间 (UTC+7)" },
   { value: "Asia/Dubai", label: "迪拜时间 (UTC+4)" },
@@ -52,7 +51,7 @@ export function TimezoneSelectModal({ isOpen, onConfirm }: TimezoneSelectModalPr
           <div className="flex-1">
             <h3 className="text-xl font-bold text-brand-900 dark:text-white mb-2">选择时区</h3>
             <p className="text-brand-600 dark:text-brand-400 text-sm leading-relaxed">
-              检测到您尚未配置时区。为了正确统计游戏时长，请选择您所在的时区。
+              检测到您尚未配置时区。为了正确显示并记录游戏时长，请选择您所在的时区。
             </p>
           </div>
         </div>
@@ -63,24 +62,18 @@ export function TimezoneSelectModal({ isOpen, onConfirm }: TimezoneSelectModalPr
             {" "}
             <span className="font-semibold text-primary-600 dark:text-primary-400">{browserTimezone || "未知"}</span>
           </label>
-          <select
+          <BetterSelect
             value={selectedTimezone}
-            onChange={e => setSelectedTimezone(e.target.value)}
-            className="w-full px-4 py-2.5 bg-white dark:bg-brand-700 border border-brand-200 dark:border-brand-600 rounded-lg text-brand-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-          >
-            {COMMON_TIMEZONES.map(tz => (
-              <option key={tz.value} value={tz.value}>
-                {tz.label}
-              </option>
-            ))}
-          </select>
-          <p className="mt-2 text-xs text-brand-500 dark:text-brand-500">
-            如果列表中没有您的时区，可以稍后在设置中手动配置
-          </p>
+            onChange={setSelectedTimezone}
+            options={COMMON_TIMEZONES}
+            placeholder="请选择时区"
+            className="w-full"
+          />
         </div>
 
         <div className="flex justify-end gap-3">
           <button
+            type="button"
             onClick={handleConfirm}
             className="px-6 py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors shadow-sm shadow-primary-200 dark:shadow-none"
           >
