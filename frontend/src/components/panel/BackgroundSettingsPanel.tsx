@@ -1,5 +1,6 @@
 import type { appconf } from "../../../wailsjs/go/models";
 import { useState } from "react";
+import toast from "react-hot-toast";
 import { SaveCroppedBackgroundImage, SelectAndCropBackgroundImage } from "../../../wailsjs/go/service/ConfigService";
 import { detectImageBrightness } from "../../utils/detectImageBrightness";
 import { ImageCropperModal } from "../modal/ImageCropperModal";
@@ -24,6 +25,7 @@ export function BackgroundSettingsPanel({ formData, onChange }: BackgroundSettin
       }
     }
     catch (err) {
+      toast.error(`选择背景图片失败: ${err instanceof Error ? err.message : String(err)}`);
       console.error("Failed to select background image:", err);
     }
   };
@@ -55,6 +57,7 @@ export function BackgroundSettingsPanel({ formData, onChange }: BackgroundSettin
     }
     catch (err) {
       console.error("Failed to crop and save background image:", err);
+      toast.error(`裁剪保存失败: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
