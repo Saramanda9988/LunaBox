@@ -2,12 +2,20 @@ package utils
 
 import (
 	"fmt"
+	"image"
+	"image/jpeg"
+	"image/png"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	_ "image/gif"
+
+	_ "golang.org/x/image/bmp"
+	_ "golang.org/x/image/webp"
 )
 
 // SaveCoverImage 保存封面图片到应用的封面目录
@@ -263,6 +271,160 @@ func SaveBackgroundImage(srcPath string) (string, error) {
 
 	if _, err := io.Copy(destFile, srcFile); err != nil {
 		return "", err
+	}
+
+	// 返回可访问的 URL
+	return fmt.Sprintf("/local/backgrounds/%s", destFileName), nil
+}
+
+// SaveTempBackgroundImage 将用户选择的图片复制到应用的背景目录作为临时文件
+func SaveTempBackgroundImage(srcPath string) (string, error) {
+	// 获取应用程序目录
+	appDir, err := GetDataDir()
+	if err != nil {
+		return "", err
+	}
+
+	// 获取背景保存目录
+	bgDir := filepath.Join(appDir, "backgrounds")
+	if err := os.MkdirAll(bgDir, os.ModePerm); err != nil {
+		return "", err
+	}
+
+	// 获取源文件的扩展名
+	ext := strings.ToLower(filepath.Ext(srcPath))
+	if ext == "" {
+		ext = ".png"
+	}
+
+	// 生成临时文件名
+	timestamp := time.Now().UnixMilli()
+	tempFileName := fmt.Sprintf("temp_bg_%d%s", timestamp, ext)
+	tempPath := filepath.Join(bgDir, tempFileName)
+
+	// 删除旧的临时背景文件（清理所有 temp_bg_* 文件）
+	files, err := os.ReadDir(bgDir)
+	if err == nil {
+		for _, file := range files {
+			if !file.IsDir() && strings.HasPrefix(file.Name(), "temp_bg_") {
+				os.Remove(filepath.Join(bgDir, file.Name()))
+			}
+		}
+	}
+
+	// 复制文件到临时位置
+	srcFile, err := os.Open(srcPath)
+	if err != nil {
+		return "", err
+	}
+	defer srcFile.Close()
+
+	tempFile, err := os.Create(tempPath)
+	if err != nil {
+		return "", err
+	}
+	defer tempFile.Close()
+
+	if _, err := io.Copy(tempFile, srcFile); err != nil {
+		return "", err
+	}
+
+	// 返回可访问的 /local/ URL
+	return fmt.Sprintf("/local/backgrounds/%s", tempFileName), nil
+}
+
+// CropAndSaveBackgroundImage 裁剪并保存背景图片到应用的背景目录
+// srcPath 可以是本地文件系统路径或 /local/backgrounds/xxx 格式的相对路径
+func CropAndSaveBackgroundImage(srcPath string, x, y, width, height int) (string, error) {
+	// 获取应用程序目录
+	appDir, err := GetDataDir()
+	if err != nil {
+		return "", err
+	}
+
+	// 如果是 /local/ 路径，转换为实际文件路径
+	var actualPath string
+	if strings.HasPrefix(srcPath, "/local/backgrounds/") {
+		// 提取文件名
+		fileName := strings.TrimPrefix(srcPath, "/local/backgrounds/")
+		actualPath = filepath.Join(appDir, "backgrounds", fileName)
+	} else {
+		actualPath = srcPath
+	}
+
+	// 打开源图片文件
+	srcFile, err := os.Open(actualPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open source image: %w", err)
+	}
+	defer srcFile.Close()
+
+	// 解码图片
+	img, format, err := image.Decode(srcFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode image: %w", err)
+	}
+
+	// 验证裁剪区域
+	bounds := img.Bounds()
+	if x < 0 || y < 0 || x+width > bounds.Max.X || y+height > bounds.Max.Y {
+		return "", fmt.Errorf("crop area out of image bounds")
+	}
+
+	// 裁剪图片
+	croppedImg := img.(interface {
+		SubImage(r image.Rectangle) image.Image
+	}).SubImage(image.Rect(x, y, x+width, y+height))
+
+	// 获取背景保存目录
+	bgDir := filepath.Join(appDir, "backgrounds")
+	if err := os.MkdirAll(bgDir, os.ModePerm); err != nil {
+		return "", err
+	}
+
+	// 确定输出格式和扩展名
+	ext := strings.ToLower(filepath.Ext(actualPath))
+	if ext == "" {
+		ext = ".png"
+		format = "png"
+	}
+
+	// 生成带时间戳的文件名
+	timestamp := time.Now().UnixMilli()
+	destFileName := fmt.Sprintf("custom_bg_%d%s", timestamp, ext)
+	destPath := filepath.Join(bgDir, destFileName)
+
+	// 删除旧的背景文件（清理所有 custom_bg_* 和 temp_bg_* 文件）
+	files, err := os.ReadDir(bgDir)
+	if err == nil {
+		for _, file := range files {
+			if !file.IsDir() && (strings.HasPrefix(file.Name(), "custom_bg_") || strings.HasPrefix(file.Name(), "temp_bg_")) {
+				os.Remove(filepath.Join(bgDir, file.Name()))
+			}
+		}
+	}
+
+	// 创建目标文件
+	destFile, err := os.Create(destPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create destination file: %w", err)
+	}
+	defer destFile.Close()
+
+	// 根据格式编码保存图片
+	switch format {
+	case "jpeg", "jpg":
+		err = jpeg.Encode(destFile, croppedImg, &jpeg.Options{Quality: 95})
+	case "png":
+		err = png.Encode(destFile, croppedImg)
+	default:
+		// 对于其他格式，默认使用 PNG
+		err = png.Encode(destFile, croppedImg)
+	}
+
+	if err != nil {
+		os.Remove(destPath)
+		return "", fmt.Errorf("failed to encode image: %w", err)
 	}
 
 	// 返回可访问的 URL

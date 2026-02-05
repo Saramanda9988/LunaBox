@@ -10,6 +10,10 @@ export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Pr
 
 export function SafeQuit():Promise<void>;
 
+export function SaveCroppedBackgroundImage(arg1:string,arg2:number,arg3:number,arg4:number,arg5:number):Promise<string>;
+
+export function SelectAndCropBackgroundImage():Promise<string>;
+
 export function SelectBackgroundImage():Promise<string>;
 
 export function SetQuitHandler(arg1:any):Promise<void>;
