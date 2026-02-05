@@ -311,10 +311,9 @@ function GameDetailPage() {
                   <button
                     key={key}
                     onClick={() => handleStatusChange(key)}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-                      isActive
-                        ? `${config.color} ring-2 ring-offset-1 ring-brand-400 dark:ring-offset-brand-900`
-                        : "bg-brand-100 text-brand-500 dark:bg-brand-700 dark:text-brand-400 hover:bg-brand-200 dark:hover:bg-brand-600"
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${isActive
+                      ? `${config.color} ring-2 ring-offset-1 ring-brand-400 dark:ring-offset-brand-900`
+                      : "bg-brand-100 text-brand-500 dark:bg-brand-700 dark:text-brand-400 hover:bg-brand-200 dark:hover:bg-brand-600"
                     }`}
                     title={config.label}
                   >
@@ -344,7 +343,7 @@ function GameDetailPage() {
 
           <div className="mt-4">
             <div className="font-semibold mb-2 text-brand-900 dark:text-white">简介</div>
-            <p className="text-brand-600 dark:text-brand-400 text-sm leading-relaxed line-clamp-10">
+            <p className="text-brand-600 dark:text-brand-400 text-sm leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto scrollbar-hide pr-2">
               {game.summary || "暂无简介"}
             </p>
           </div>

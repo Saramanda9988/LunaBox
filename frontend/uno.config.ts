@@ -8,6 +8,13 @@ export default defineConfig({
     presetIcons(),
   ],
 
+  rules: [
+    ["scrollbar-hide", {
+      "scrollbar-width": "none",
+      "-ms-overflow-style": "none",
+    }],
+  ],
+
   // 自定义 variants - 支持 data-glass 属性
   variants: [
     // data-glass variant: 当元素或父元素有 data-glass="true" 时生效
