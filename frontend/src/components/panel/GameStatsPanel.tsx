@@ -15,6 +15,7 @@ import { enums } from "../../../wailsjs/go/models";
 import { DeletePlaySession, GetPlaySessions } from "../../../wailsjs/go/service/StartService";
 import { GetGameStats } from "../../../wailsjs/go/service/StatsService";
 import { useChartTheme } from "../../hooks/useChartTheme";
+import { useAppStore } from "../../store";
 import { formatDuration, formatLocalDateTime } from "../../utils/time";
 import { HorizontalScrollChart } from "../chart/HorizontalScrollChart";
 import { AddPlaySessionModal } from "../modal/AddPlaySessionModal";
@@ -38,6 +39,7 @@ interface GameStatsPanelProps {
 type ViewMode = "chart" | "sessions";
 
 export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
+  const { config } = useAppStore();
   const { textColor, gridColor } = useChartTheme();
   const [stats, setStats] = useState<vo.GameDetailStats | null>(null);
   const [sessions, setSessions] = useState<models.PlaySession[]>([]);
@@ -215,7 +217,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
                             >
                               <div className="flex-1">
                                 <div className="text-sm text-brand-900 dark:text-white">
-                                  {formatLocalDateTime(session.start_time)}
+                                  {formatLocalDateTime(session.start_time, config?.time_zone)}
                                 </div>
                                 <div className="text-xs text-brand-500 dark:text-brand-400">
                                   时长:

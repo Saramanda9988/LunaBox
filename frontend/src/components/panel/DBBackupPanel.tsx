@@ -230,7 +230,7 @@ export function DBBackupPanel() {
           <p className="text-xs text-brand-500 dark:text-brand-400">
             上次备份:
             {" "}
-            {formatLocalDateTime(dbBackups.last_backup_time)}
+            {formatLocalDateTime(dbBackups.last_backup_time, config?.time_zone)}
           </p>
         )}
       </div>
@@ -264,7 +264,7 @@ export function DBBackupPanel() {
                         <div className="i-mdi-database text-2xl text-brand-500" />
                         <div>
                           <div className="font-medium text-brand-900 dark:text-white">
-                            {formatLocalDateTime(backup.created_at)}
+                            {formatLocalDateTime(backup.created_at, config?.time_zone)}
                           </div>
                           <div className="text-sm text-brand-500">
                             大小:
@@ -356,10 +356,10 @@ export function DBBackupPanel() {
                           <div className="i-mdi-cloud-check text-2xl text-neutral-500" />
                           <div>
                             <div className="font-medium text-brand-900 dark:text-white">
-                              {backup.name || formatLocalDateTime(backup.created_at)}
+                              {backup.name || formatLocalDateTime(backup.created_at, config?.time_zone)}
                             </div>
                             <div className="text-sm text-brand-500">
-                              {formatLocalDateTime(backup.created_at)}
+                              {formatLocalDateTime(backup.created_at, config?.time_zone)}
                             </div>
                           </div>
                         </div>

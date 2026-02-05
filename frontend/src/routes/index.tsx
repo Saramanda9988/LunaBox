@@ -137,7 +137,7 @@ function HomePage() {
             {lastPlayed.game.name}
           </h1>
           <p className="text-brand-700 dark:text-white/80 text-sm drop-shadow">
-            {isPlaying ? "正在游玩中..." : `上次游玩：${formatLocalDateTime(lastPlayed.last_played_at)}`}
+            {isPlaying ? "正在游玩中..." : `上次游玩：${formatLocalDateTime(lastPlayed.last_played_at, config?.time_zone)}`}
           </p>
           {lastPlayed.total_played_dur > 0 && !isPlaying && (
             <p className="text-brand-600 dark:text-white/70 text-sm mt-1 drop-shadow">

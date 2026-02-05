@@ -92,14 +92,16 @@ export const parseUTCTime = parseTime;
 /**
  * 格式化时间为本地日期字符串
  * @param timeString - 时间（支持 string、Date）
+ * @param timezone - IANA 时区名称（如 "Asia/Shanghai"），可选，不提供时使用系统时区
  * @param options - Intl.DateTimeFormat 选项
  */
-export function formatLocalDate(timeString: any, options?: Intl.DateTimeFormatOptions): string {
+export function formatLocalDate(timeString: any, timezone?: string, options?: Intl.DateTimeFormatOptions): string {
   const date = parseTime(timeString);
   return date.toLocaleDateString(undefined, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+    ...(timezone && { timeZone: timezone }),
     ...options,
   });
 }
@@ -107,9 +109,10 @@ export function formatLocalDate(timeString: any, options?: Intl.DateTimeFormatOp
 /**
  * 格式化时间为本地日期时间字符串
  * @param timeString - 时间（支持 string、Date）
+ * @param timezone - IANA 时区名称（如 "Asia/Shanghai"），可选，不提供时使用系统时区
  * @param options - Intl.DateTimeFormat 选项
  */
-export function formatLocalDateTime(timeString: any, options?: Intl.DateTimeFormatOptions): string {
+export function formatLocalDateTime(timeString: any, timezone?: string, options?: Intl.DateTimeFormatOptions): string {
   const date = parseTime(timeString);
   return date.toLocaleString(undefined, {
     year: "numeric",
@@ -119,6 +122,7 @@ export function formatLocalDateTime(timeString: any, options?: Intl.DateTimeForm
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
+    ...(timezone && { timeZone: timezone }),
     ...options,
   });
 }
@@ -126,14 +130,16 @@ export function formatLocalDateTime(timeString: any, options?: Intl.DateTimeForm
 /**
  * 格式化时间为本地时间字符串（仅时分秒）
  * @param timeString - 时间（支持 string、Date）
+ * @param timezone - IANA 时区名称（如 "Asia/Shanghai"），可选，不提供时使用系统时区
  */
-export function formatLocalTime(timeString: any): string {
+export function formatLocalTime(timeString: any, timezone?: string): string {
   const date = parseTime(timeString);
   return date.toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
+    ...(timezone && { timeZone: timezone }),
   });
 }
 

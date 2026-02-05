@@ -337,7 +337,7 @@ function GameDetailPage() {
             </div>
             <div>
               <div className="font-semibold mb-1">添加时间</div>
-              <div>{formatLocalDate(game.created_at)}</div>
+              <div>{formatLocalDate(game.created_at, config?.time_zone)}</div>
             </div>
             {/* Placeholders for missing data */}
           </div>
