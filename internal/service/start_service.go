@@ -202,8 +202,8 @@ func (s *StartService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID s
 
 // detectAndMonitorProcess 检测实际游戏进程并开始监控
 func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, gameID string, startTime time.Time, launcherPID uint32, launcherExeName string, savedProcessName string) {
-	// 等待1秒，让启动器有时间启动实际游戏进程
-	time.Sleep(1 * time.Second)
+	// 等待10秒，让启动器有时间启动实际游戏进程
+	time.Sleep(3 * time.Second)
 
 	var actualProcessID uint32
 	var actualProcessName string

@@ -35,6 +35,7 @@ type ProcessInfo struct {
 // CheckIfProcessRunning 检查指定进程是否正在运行
 func CheckIfProcessRunning(processName string) (bool, error) {
 	cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("IMAGENAME eq %s", processName), "/FO", "CSV", "/NH")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	output, err := cmd.Output()
 	if err != nil {
 		return false, fmt.Errorf("failed to execute tasklist: %w", err)
@@ -50,6 +51,7 @@ func CheckIfProcessRunning(processName string) (bool, error) {
 func GetRunningProcesses() ([]ProcessInfo, error) {
 	// 使用tasklist获取进程列表，CSV格式便于解析
 	cmd := exec.Command("tasklist", "/FO", "CSV", "/NH")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute tasklist: %w", err)
@@ -161,6 +163,7 @@ func GetRunningProcesses() ([]ProcessInfo, error) {
 // 如果有多个同名进程，返回第一个找到的
 func GetProcessPIDByName(processName string) (uint32, error) {
 	cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("IMAGENAME eq %s", processName), "/FO", "CSV", "/NH")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	output, err := cmd.Output()
 	if err != nil {
 		return 0, fmt.Errorf("failed to execute tasklist: %w", err)
@@ -200,6 +203,7 @@ func GetProcessPIDByName(processName string) (uint32, error) {
 // IsProcessRunningByPID 检查指定PID的进程是否仍在运行
 func IsProcessRunningByPID(pid uint32) bool {
 	cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("PID eq %d", pid), "/FO", "CSV", "/NH")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	output, err := cmd.Output()
 	if err != nil {
 		return false

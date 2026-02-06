@@ -62,7 +62,6 @@ export function GameLaunchPanel({ game, config, onGameChange, onSelectProcessExe
                 type="text"
                 value={game.process_name || ""}
                 onChange={e => onGameChange({ ...game, process_name: e.target.value } as models.Game)}
-                placeholder="例如: dota2.exe (留空则自动检测)"
                 className="glass-input flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none font-mono"
               />
               <button
