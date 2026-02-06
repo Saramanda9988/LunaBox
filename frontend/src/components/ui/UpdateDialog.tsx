@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import {  } from "react-dom";
 import { BrowserOpenURL } from "../../../wailsjs/runtime/runtime";
 
 interface UpdateInfo {
