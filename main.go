@@ -71,6 +71,7 @@ func main() {
 	versionService := service.NewVersionService()
 	templateService := service.NewTemplateService()
 	updateService := service.NewUpdateService()
+	sessionService := service.NewSessionService()
 
 	// 创建本地文件处理器
 	localFileHandler, err := utils.NewLocalFileHandler()
@@ -217,16 +218,21 @@ func main() {
 			backupService.Init(ctx, db, config)
 			homeService.Init(ctx, db, config)
 			statsService.Init(ctx, db, config)
+			sessionService.Init(ctx, db, config)
 			startService.Init(ctx, db, config)
 			categoryService.Init(ctx, db, config)
 			importService.Init(ctx, db, config, gameService)
 			versionService.Init(ctx)
 			templateService.Init(ctx, db, config)
 			updateService.Init(ctx, configService)
-			// 设置 StartService 的 BackupService 依赖
+
+			// 设置 StartService 的 BackupService GameService SessionService依赖
 			startService.SetBackupService(backupService)
-			// 设置 ImportService 的 StartService 依赖（用于导入游玩记录）
-			importService.SetStartService(startService)
+			startService.SetGameService(gameService)
+			startService.SetSessionService(sessionService)
+
+			// 设置 ImportService 的 SessionService 依赖（用于导入游玩记录）
+			importService.SetSessionService(sessionService)
 
 			// 在 Wails 启动后初始化系统托盘
 			// TODO: 升级wails v3，使用原生的托盘功能
@@ -290,6 +296,7 @@ func main() {
 			versionService,
 			templateService,
 			updateService,
+			sessionService,
 		},
 		EnumBind: []interface{}{
 			enums.AllSourceTypes,

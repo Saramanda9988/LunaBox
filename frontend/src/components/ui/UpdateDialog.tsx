@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { BrowserOpenURL } from "../../../wailsjs/runtime/runtime";
 
 interface UpdateInfo {
@@ -49,7 +48,7 @@ export function UpdateDialog({ updateInfo, onClose, onSkip }: UpdateDialogProps)
     }
   };
 
-  return createPortal(
+  return (
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center transition-all duration-200 ${isVisible ? "opacity-100" : "opacity-0"}`}
       onClick={handleClose}
@@ -156,7 +155,6 @@ export function UpdateDialog({ updateInfo, onClose, onSkip }: UpdateDialogProps)
           </div>
         </div>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
 }

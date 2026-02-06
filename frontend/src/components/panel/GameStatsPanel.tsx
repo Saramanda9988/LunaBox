@@ -12,7 +12,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { enums } from "../../../wailsjs/go/models";
-import { DeletePlaySession, GetPlaySessions } from "../../../wailsjs/go/service/StartService";
+import { DeletePlaySession, GetPlaySessions } from "../../../wailsjs/go/service/SessionService";
 import { GetGameStats } from "../../../wailsjs/go/service/StatsService";
 import { useChartTheme } from "../../hooks/useChartTheme";
 import { useAppStore } from "../../store";

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
 import { vo } from "../../../wailsjs/go/models";
 import {
@@ -202,7 +201,7 @@ export function TemplateExportModal({
 
   const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
 
-  return createPortal(
+  return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="w-full max-w-6xl h-[85vh] rounded-xl bg-white shadow-xl dark:bg-brand-800 border border-brand-200 dark:border-brand-700 flex flex-col overflow-hidden">
         {/* 头部 */}
@@ -355,7 +354,6 @@ export function TemplateExportModal({
           </div>
         </div>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
 }

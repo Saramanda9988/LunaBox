@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { createPortal } from "react-dom";
 
 interface PasswordInputModalProps {
   isOpen: boolean;
@@ -45,7 +44,7 @@ export function PasswordInputModal({
   const passwordsMatch = password === confirmPassword;
   const canSubmit = password.length >= 6 && passwordsMatch;
 
-  return createPortal(
+  return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-brand-800 border border-brand-200 dark:border-brand-700">
         <div className="flex items-start gap-4 mb-6">
@@ -128,7 +127,6 @@ export function PasswordInputModal({
           </button>
         </div>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
 }

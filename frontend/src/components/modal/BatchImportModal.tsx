@@ -1,6 +1,5 @@
 import type { models, service } from "../../../wailsjs/go/models";
 import { useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
 import { enums, vo } from "../../../wailsjs/go/models";
 
@@ -337,7 +336,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
   const notFoundCount = candidates.filter(c => c.isSelected && c.matchStatus === "not_found").length;
   const pendingCount = candidates.filter(c => c.isSelected && c.matchStatus === "pending").length;
 
-  return createPortal(
+  return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="w-full max-w-4xl max-h-[90vh] rounded-xl bg-white shadow-2xl dark:bg-brand-800 flex flex-col">
         {/* Header */}
@@ -832,7 +831,6 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
           </div>
         </div>
       )}
-    </div>,
-    document.body,
+    </div>
   );
 }

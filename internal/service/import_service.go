@@ -35,11 +35,11 @@ type ImportResult struct {
 }
 
 type ImportService struct {
-	ctx          context.Context
-	db           *sql.DB
-	config       *appconf.AppConfig
-	gameService  *GameService
-	startService *StartService
+	ctx            context.Context
+	db             *sql.DB
+	config         *appconf.AppConfig
+	gameService    *GameService
+	sessionService *SessionService
 }
 
 func NewImportService() *ImportService {
@@ -53,9 +53,9 @@ func (s *ImportService) Init(ctx context.Context, db *sql.DB, config *appconf.Ap
 	s.gameService = gameService
 }
 
-// SetStartService 设置 StartService（用于导入游玩记录）
-func (s *ImportService) SetStartService(startService *StartService) {
-	s.startService = startService
+// SetSessionService SetStartService 设置 SessionService（用于导入游玩记录）
+func (s *ImportService) SetSessionService(sessionService *SessionService) {
+	s.sessionService = sessionService
 }
 
 // =================== PotatoVN 导入功能 ====================
@@ -182,8 +182,8 @@ func (s *ImportService) ImportFromPotatoVN(zipPath string, skipNoPath bool) (Imp
 		}
 
 		// 导入游玩记录
-		if len(sessions) > 0 && s.startService != nil {
-			if err := s.startService.BatchAddPlaySessions(sessions); err != nil {
+		if len(sessions) > 0 && s.sessionService != nil {
+			if err := s.sessionService.BatchAddPlaySessions(sessions); err != nil {
 				runtime.LogWarningf(s.ctx, "failed to import play sessions for game %s: %v", gameName, err)
 				// 游玩记录导入失败不影响游戏导入成功
 			} else {

@@ -26,6 +26,10 @@ export function GetGames() {
   return window['go']['service']['GameService']['GetGames']();
 }
 
+export function GetRunningProcesses() {
+  return window['go']['service']['GameService']['GetRunningProcesses']();
+}
+
 export function Init(arg1, arg2, arg3) {
   return window['go']['service']['GameService']['Init'](arg1, arg2, arg3);
 }
@@ -56,4 +60,8 @@ export function UpdateGame(arg1) {
 
 export function UpdateGameFromRemote(arg1) {
   return window['go']['service']['GameService']['UpdateGameFromRemote'](arg1);
+}
+
+export function UpdateGameProcessName(arg1, arg2) {
+  return window['go']['service']['GameService']['UpdateGameProcessName'](arg1, arg2);
 }

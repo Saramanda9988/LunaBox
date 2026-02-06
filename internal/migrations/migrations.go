@@ -146,6 +146,19 @@ func migrateTableTimestamps(tx *sql.Tx, tableName string, timestampColumns []str
 	return nil
 }
 
+// migration140 添加 process_name 列，用于记录实际监控的进程名
+// 某些汉化补丁需要启动启动器，但实际运行的游戏进程与启动器不同
+func migration140(tx *sql.Tx) error {
+	_, err := tx.Exec(`
+		ALTER TABLE games 
+		ADD COLUMN IF NOT EXISTS process_name TEXT DEFAULT ''
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to add process_name column: %w", err)
+	}
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
@@ -157,6 +170,11 @@ var migrations = []Migration{
 		Version:     134,
 		Description: "Migrate all tables (play_sessions, users, categories, games) timestamps from TIMESTAMP to TIMESTAMPTZ for correct timezone handling",
 		Up:          migration134,
+	},
+	{
+		Version:     140,
+		Description: "Add process_name column to games table for tracking actual game process",
+		Up:          migration140,
 	},
 	// {
 	// 	Version:     114,

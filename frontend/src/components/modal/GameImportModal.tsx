@@ -1,6 +1,5 @@
 import type { service } from "../../../wailsjs/go/models";
 import { useState } from "react";
-import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
 import {
   ImportFromPlaynite,
@@ -156,7 +155,7 @@ export function GameImportModal({ isOpen, source, onClose, onImportComplete }: G
     ? "bg-purple-600 hover:bg-purple-700"
     : "bg-neutral-600 hover:bg-neutral-700";
 
-  return createPortal(
+  return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="w-full max-w-3xl max-h-[90vh] rounded-xl bg-white shadow-2xl dark:bg-brand-800 flex flex-col">
         {/* Header */}
@@ -466,7 +465,6 @@ export function GameImportModal({ isOpen, source, onClose, onImportComplete }: G
           )}
         </div>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
 }

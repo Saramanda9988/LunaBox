@@ -147,6 +147,7 @@ export namespace models {
 	    summary: string;
 	    path: string;
 	    save_path: string;
+	    process_name: string;
 	    status: enums.GameStatus;
 	    source_type: enums.SourceType;
 	    cached_at: time.Time;
@@ -168,6 +169,7 @@ export namespace models {
 	        this.summary = source["summary"];
 	        this.path = source["path"];
 	        this.save_path = source["save_path"];
+	        this.process_name = source["process_name"];
 	        this.status = source["status"];
 	        this.source_type = source["source_type"];
 	        this.cached_at = this.convertValues(source["cached_at"], time.Time);
@@ -408,11 +410,11 @@ export namespace service {
 		    return a;
 		}
 	}
-	export class StartService {
+	export class SessionService {
 	
 	
 	    static createFrom(source: any = {}) {
-	        return new StartService(source);
+	        return new SessionService(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -474,6 +476,25 @@ export namespace time {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	
+	    }
+	}
+
+}
+
+export namespace utils {
+	
+	export class ProcessInfo {
+	    name: string;
+	    pid: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProcessInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.pid = source["pid"];
 	    }
 	}
 
