@@ -327,30 +327,25 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 }
 
 // monitorProcessByPID 通过PID监控进程直到退出
+// 使用 WaitForSingleObject 事件驱动，避免轮询
 func (s *StartService) monitorProcessByPID(sessionID string, gameID string, startTime time.Time, processID uint32, processName string) {
-	runtime.LogInfof(s.ctx, "Starting to monitor process %s (PID %d) for game %s", processName, processID, gameID)
+	runtime.LogInfof(s.ctx, "Starting to monitor process %s (PID %d) for game %s using WaitForSingleObject", processName, processID, gameID)
 
-	// 每秒检查一次进程是否仍在运行
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
+	// 创建进程监控器
+	pm, exitChan, err := utils.WaitForProcessExitAsync(processID)
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "Failed to start process monitor for %s (PID %d): %v", processName, processID, err)
+		// 监控失败，直接清理
+		goto cleanup
+	}
+	defer pm.Stop()
 
-	maxDuration := 24 * time.Hour
-	startMonitor := time.Now()
-
-	for {
-		select {
-		case <-ticker.C:
-			if !utils.IsProcessRunningByPID(processID) {
-				runtime.LogInfof(s.ctx, "Process %s (PID %d) has exited", processName, processID)
-				goto cleanup
-			}
-
-			// 超时保护
-			if time.Since(startMonitor) > maxDuration {
-				runtime.LogWarningf(s.ctx, "Game %s exceeded maximum runtime (24h), forcing cleanup", gameID)
-				goto cleanup
-			}
-		}
+	// 等待进程退出或超时（24小时）
+	select {
+	case <-exitChan:
+		runtime.LogInfof(s.ctx, "Process %s (PID %d) has exited", processName, processID)
+	case <-time.After(24 * time.Hour):
+		runtime.LogWarningf(s.ctx, "Game %s exceeded maximum runtime (24h), forcing cleanup", gameID)
 	}
 
 cleanup:
@@ -383,7 +378,7 @@ cleanup:
 		return
 	}
 
-	_, err := s.db.ExecContext(
+	_, err = s.db.ExecContext(
 		s.ctx,
 		`UPDATE play_sessions
 		 SET end_time = ?, duration = ?

@@ -5,12 +5,44 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
+	"syscall"
+	"time"
+)
+
+const (
+	SYNCHRONIZE               = 0x00100000
+	WAIT_OBJECT_0             = 0
+	WAIT_TIMEOUT              = 258
+	WAIT_FAILED               = 0xFFFFFFFF
+	INFINITE                  = 0xFFFFFFFF
+	PROCESS_QUERY_INFORMATION = 0x0400
+)
+
+var (
+	kernel32                = syscall.NewLazyDLL("kernel32.dll")
+	procOpenProcess         = kernel32.NewProc("OpenProcess")
+	procWaitForSingleObject = kernel32.NewProc("WaitForSingleObject")
+	procCloseHandle         = kernel32.NewProc("CloseHandle")
 )
 
 // ProcessInfo 进程信息
 type ProcessInfo struct {
 	Name string `json:"name"` // 进程名
 	PID  uint32 `json:"pid"`  // 进程ID
+}
+
+// CheckIfProcessRunning 检查指定进程是否正在运行
+func CheckIfProcessRunning(processName string) (bool, error) {
+	cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("IMAGENAME eq %s", processName), "/FO", "CSV", "/NH")
+	output, err := cmd.Output()
+	if err != nil {
+		return false, fmt.Errorf("failed to execute tasklist: %w", err)
+	}
+
+	outputStr := string(output)
+	// 检查输出中是否包含进程名
+	return strings.Contains(strings.ToLower(outputStr), strings.ToLower(processName)), nil
 }
 
 // GetRunningProcesses 获取系统中正在运行的进程列表
@@ -180,4 +212,157 @@ func IsProcessRunningByPID(pid uint32) bool {
 	}
 
 	return true
+}
+
+//====================ProcessMonitor====================
+
+// ProcessMonitor 进程监控器
+// 使用 WaitForSingleObject 实现事件驱动的进程退出检测
+type ProcessMonitor struct {
+	mu            sync.Mutex
+	pid           uint32
+	processHandle uintptr
+	running       bool
+	stopChan      chan struct{}
+	exitChan      chan struct{} // 进程退出通知
+}
+
+// NewProcessMonitor 创建进程监控器
+func NewProcessMonitor(pid uint32) *ProcessMonitor {
+	return &ProcessMonitor{
+		pid:      pid,
+		stopChan: make(chan struct{}),
+		exitChan: make(chan struct{}),
+	}
+}
+
+// Start 开始监控进程
+// 返回一个 channel，当进程退出时会被关闭
+func (pm *ProcessMonitor) Start() (<-chan struct{}, error) {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
+	if pm.running {
+		return pm.exitChan, nil
+	}
+
+	// 打开进程句柄
+	handle, _, err := procOpenProcess.Call(
+		uintptr(SYNCHRONIZE|PROCESS_QUERY_INFORMATION),
+		0,
+		uintptr(pm.pid),
+	)
+	if handle == 0 {
+		return nil, fmt.Errorf("failed to open process %d: %v", pm.pid, err)
+	}
+
+	pm.processHandle = handle
+	pm.running = true
+
+	// 启动监控 goroutine
+	go pm.monitorLoop()
+
+	return pm.exitChan, nil
+}
+
+// monitorLoop 监控循环
+func (pm *ProcessMonitor) monitorLoop() {
+	defer pm.cleanup()
+
+	// 使用带超时的 WaitForSingleObject
+	// 每秒检查一次是否需要停止，避免无法响应 Stop 调用
+	for {
+		select {
+		case <-pm.stopChan:
+			return
+		default:
+			// 等待进程退出，超时1秒
+			ret, _, _ := procWaitForSingleObject.Call(
+				pm.processHandle,
+				uintptr(1000), // 1秒超时
+			)
+
+			switch ret {
+			case WAIT_OBJECT_0:
+				// 进程已退出
+				close(pm.exitChan)
+				return
+			case WAIT_TIMEOUT:
+				// 超时，继续等待
+				continue
+			case WAIT_FAILED:
+				// 等待失败（可能进程句柄无效）
+				close(pm.exitChan)
+				return
+			default:
+				// 其他情况，继续等待
+				continue
+			}
+		}
+	}
+}
+
+// cleanup 清理资源
+func (pm *ProcessMonitor) cleanup() {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
+	if pm.processHandle != 0 {
+		procCloseHandle.Call(pm.processHandle)
+		pm.processHandle = 0
+	}
+	pm.running = false
+}
+
+// Stop 停止监控
+func (pm *ProcessMonitor) Stop() {
+	pm.mu.Lock()
+	if !pm.running {
+		pm.mu.Unlock()
+		return
+	}
+	pm.mu.Unlock()
+
+	// 发送停止信号
+	select {
+	case <-pm.stopChan:
+		// 已经关闭
+	default:
+		close(pm.stopChan)
+	}
+}
+
+// WaitForProcessExit 等待进程退出（阻塞）
+// timeout: 最大等待时间，0 表示无限等待
+// 返回: true 表示进程已退出，false 表示超时或被取消
+func (pm *ProcessMonitor) WaitForProcessExit(timeout time.Duration) bool {
+	exitChan, err := pm.Start()
+	if err != nil {
+		return true // 无法打开进程，认为已退出
+	}
+
+	if timeout == 0 {
+		<-exitChan
+		return true
+	}
+
+	select {
+	case <-exitChan:
+		return true
+	case <-time.After(timeout):
+		pm.Stop()
+		return false
+	}
+}
+
+// WaitForProcessExitAsync 异步等待进程退出
+// 返回一个 channel，当进程退出时会被关闭
+// 调用者需要在不再需要时调用 Stop()
+func WaitForProcessExitAsync(pid uint32) (*ProcessMonitor, <-chan struct{}, error) {
+	pm := NewProcessMonitor(pid)
+	exitChan, err := pm.Start()
+	if err != nil {
+		return nil, nil, err
+	}
+	return pm, exitChan, nil
 }
