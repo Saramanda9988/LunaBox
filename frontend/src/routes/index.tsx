@@ -66,12 +66,12 @@ function HomePage() {
 
   if (!lastPlayed) {
     return (
-      <div className="h-full relative flex flex-col items-center justify-center bg-brand-50 dark:bg-brand-900">
+      <div className="h-full relative flex flex-col items-center justify-center">
         <div className="absolute top-6 left-8">
-          <h1 className="text-4xl font-bold text-brand-900 dark:text-white">首页</h1>
-          <p className="mt-2 text-brand-500 dark:text-brand-400">欢迎回来!</p>
+          <h1 className="text-4xl font-bold text-brand-900 dark:text-white drop-shadow-lg">首页</h1>
+          <p className="mt-2 text-brand-600 dark:text-white/80 drop-shadow">欢迎回来!</p>
         </div>
-        <div className="absolute top-6 right-6 flex items-center gap-2 bg-white dark:bg-brand-800 px-4 py-3 rounded-xl shadow-sm">
+        <div className="glass-card absolute top-6 right-6 flex items-center gap-2 bg-white/80 dark:bg-brand-800/80 backdrop-blur-sm px-4 py-3 rounded-xl shadow-lg">
           <span className="i-mdi-clock-outline text-xl text-neutral-500" />
           <div>
             <div className="text-xs text-brand-500 dark:text-brand-400">今日游玩时间</div>
@@ -81,11 +81,11 @@ function HomePage() {
           </div>
         </div>
         <span className="i-mdi-gamepad-variant-outline text-8xl text-brand-300 dark:text-brand-700 mb-4" />
-        <h2 className="text-2xl font-bold text-brand-700 dark:text-brand-300 mb-2">还没有游玩记录</h2>
-        <p className="text-brand-500 dark:text-brand-400 mb-6">去游戏库选择一款游戏开始吧</p>
+        <h2 className="text-2xl font-bold text-brand-700 dark:text-brand-300 mb-2 drop-shadow-lg">还没有游玩记录</h2>
+        <p className="text-brand-600 dark:text-white/70 mb-6 drop-shadow">去游戏库选择一款游戏开始吧</p>
         <button
           onClick={() => navigate({ to: "/library" })}
-          className="flex items-center gap-2 px-6 py-3 bg-neutral-600 hover:bg-neutral-700 text-white rounded-xl transition-colors font-medium"
+          className="glass-btn-neutral flex items-center gap-2 px-6 py-3 bg-neutral-600 hover:bg-neutral-700 text-white rounded-xl shadow-lg transition-all hover:scale-105 font-medium"
         >
           <span className="i-mdi-gamepad-variant text-xl" />
           浏览游戏库

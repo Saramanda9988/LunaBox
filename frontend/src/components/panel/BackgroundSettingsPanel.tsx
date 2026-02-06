@@ -1,6 +1,9 @@
 import type { appconf } from "../../../wailsjs/go/models";
-import { SelectBackgroundImage } from "../../../wailsjs/go/service/ConfigService";
+import { useState } from "react";
+import toast from "react-hot-toast";
+import { SaveCroppedBackgroundImage, SelectAndCropBackgroundImage } from "../../../wailsjs/go/service/ConfigService";
 import { detectImageBrightness } from "../../utils/detectImageBrightness";
+import { ImageCropperModal } from "../modal/ImageCropperModal";
 import { BetterSwitch } from "../ui/BetterSwitch";
 
 interface BackgroundSettingsProps {
@@ -9,22 +12,58 @@ interface BackgroundSettingsProps {
 }
 
 export function BackgroundSettingsPanel({ formData, onChange }: BackgroundSettingsProps) {
+  const [selectedImagePath, setSelectedImagePath] = useState<string>("");
+  const [showCropper, setShowCropper] = useState(false);
+
   const handleSelectImage = async () => {
     try {
-      const path = await SelectBackgroundImage();
+      const path = await SelectAndCropBackgroundImage();
       if (path) {
-        // 立即检测图片亮度并缓存
-        const isLight = await detectImageBrightness(path);
-        onChange({
-          ...formData,
-          background_image: path,
-          background_is_light: isLight,
-        } as appconf.AppConfig);
+        // 打开裁剪对话框
+        setSelectedImagePath(path);
+        setShowCropper(true);
       }
     }
     catch (err) {
+      toast.error(`选择背景图片失败: ${err instanceof Error ? err.message : String(err)}`);
       console.error("Failed to select background image:", err);
     }
+  };
+
+  const handleCropConfirm = async (crop: { x: number; y: number; width: number; height: number }) => {
+    try {
+      // 调用后端裁剪并保存图片
+      const localPath = await SaveCroppedBackgroundImage(
+        selectedImagePath,
+        crop.x,
+        crop.y,
+        crop.width,
+        crop.height,
+      );
+
+      if (localPath) {
+        // 立即检测图片亮度并缓存
+        const isLight = await detectImageBrightness(localPath);
+        onChange({
+          ...formData,
+          background_image: localPath,
+          background_is_light: isLight,
+        } as appconf.AppConfig);
+      }
+
+      // 关闭裁剪对话框
+      setShowCropper(false);
+      setSelectedImagePath("");
+    }
+    catch (err) {
+      console.error("Failed to crop and save background image:", err);
+      toast.error(`裁剪保存失败: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const handleCropCancel = () => {
+    setShowCropper(false);
+    setSelectedImagePath("");
   };
 
   const handleClearImage = () => {
@@ -55,6 +94,17 @@ export function BackgroundSettingsPanel({ formData, onChange }: BackgroundSettin
 
   return (
     <>
+      {/* 图片裁剪对话框 */}
+      {showCropper && selectedImagePath && (
+        <ImageCropperModal
+          imagePath={selectedImagePath}
+          onConfirm={handleCropConfirm}
+          onCancel={handleCropCancel}
+          windowWidth={formData.window_width || 1134}
+          windowHeight={formData.window_height || 750}
+        />
+      )}
+
       {/* 启用开关 */}
       <div className="flex items-center justify-between p-2">
         <div>
@@ -129,7 +179,7 @@ export function BackgroundSettingsPanel({ formData, onChange }: BackgroundSettin
           )}
         </div>
         <p className="text-xs text-brand-500 dark:text-brand-400">
-          支持 PNG、JPG、JPEG、GIF、WebP、BMP 格式
+          支持 PNG、JPG、JPEG、GIF、WebP、BMP 格式，选择后可裁剪所需区域
         </p>
       </div>
 

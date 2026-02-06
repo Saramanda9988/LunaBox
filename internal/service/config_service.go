@@ -57,6 +57,49 @@ func (s *ConfigService) SelectBackgroundImage() (string, error) {
 	return localPath, nil
 }
 
+// SelectAndCropBackgroundImage 打开文件选择对话框选择背景图片，复制到临时目录并返回 /local/ 路径供前端裁剪
+func (s *ConfigService) SelectAndCropBackgroundImage() (string, error) {
+	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+		Title: "选择背景图片",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "图片文件", Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp"},
+		},
+	})
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
+		return "", err
+	}
+	if selection == "" {
+		return "", nil // 用户取消选择
+	}
+
+	// 将文件复制到临时目录，返回 /local/ 路径供前端使用
+	localPath, err := utils.SaveTempBackgroundImage(selection)
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "failed to save temp background image: %v", err)
+		return "", err
+	}
+
+	return localPath, nil
+}
+
+// SaveCroppedBackgroundImage 保存裁剪后的背景图片
+// srcPath 应为 /local/backgrounds/temp_bg_xxx.png 格式的路径
+func (s *ConfigService) SaveCroppedBackgroundImage(srcPath string, x, y, width, height int) (string, error) {
+	if srcPath == "" {
+		return "", fmt.Errorf("source path is empty")
+	}
+
+	// 裁剪并保存图片（会自动清理临时文件）
+	localPath, err := utils.CropAndSaveBackgroundImage(srcPath, x, y, width, height)
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "failed to crop and save background image: %v", err)
+		return "", err
+	}
+
+	return localPath, nil
+}
+
 func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	if newConfig.Theme == "" || newConfig.Language == "" {
 		runtime.LogErrorf(s.ctx, "invalid config")
