@@ -2,7 +2,8 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Toaster } from "react-hot-toast";
 import { SafeQuit } from "../wailsjs/go/service/ConfigService";
-import { WindowShow } from "../wailsjs/runtime/runtime";
+import { EventsOff, EventsOn, WindowShow } from "../wailsjs/runtime/runtime";
+import { ProcessSelectModal } from "./components/modal/ProcessSelectModal";
 import { TimezoneSelectModal } from "./components/modal/TimezoneSelectModal";
 import { UpdateDialog } from "./components/ui/UpdateDialog";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
@@ -30,10 +31,33 @@ function App() {
   const { config, fetchConfig, updateConfig } = useAppStore();
   const { updateInfo, showUpdateDialog, setShowUpdateDialog, handleSkipVersion } = useUpdateCheck();
   const [showTimezoneModal, setShowTimezoneModal] = useState(false);
+  const [processSelectData, setProcessSelectData] = useState<{
+    isOpen: boolean;
+    gameID: string;
+    launcherExeName: string;
+  }>({ isOpen: false, gameID: "", launcherExeName: "" });
 
   useEffect(() => {
     fetchConfig();
   }, [fetchConfig]);
+
+  // 监听后端发送的进程选择事件
+  useEffect(() => {
+    const handleProcessSelectRequired = (data: { gameID: string; sessionID: string; launcherExeName: string }) => {
+      console.warn("Process select required:", data);
+      setProcessSelectData({
+        isOpen: true,
+        gameID: data.gameID,
+        launcherExeName: data.launcherExeName,
+      });
+    };
+
+    EventsOn("process-select-required", handleProcessSelectRequired);
+
+    return () => {
+      EventsOff("process-select-required");
+    };
+  }, []);
 
   // 检查时区配置，如果未设置则显示选择弹窗
   useEffect(() => {
@@ -142,6 +166,13 @@ function App() {
       <TimezoneSelectModal
         isOpen={showTimezoneModal}
         onConfirm={handleTimezoneConfirm}
+      />
+      <ProcessSelectModal
+        isOpen={processSelectData.isOpen}
+        gameID={processSelectData.gameID}
+        launcherExeName={processSelectData.launcherExeName}
+        onClose={() => setProcessSelectData({ isOpen: false, gameID: "", launcherExeName: "" })}
+        onSelected={() => setProcessSelectData({ isOpen: false, gameID: "", launcherExeName: "" })}
       />
     </>
   );

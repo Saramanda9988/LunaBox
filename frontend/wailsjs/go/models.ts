@@ -111,6 +111,12 @@ export namespace appconf {
 
 export namespace enums {
 	
+	export enum GameStatus {
+	    NOT_STARTED = "not_started",
+	    PLAYING = "playing",
+	    COMPLETED = "completed",
+	    ON_HOLD = "on_hold",
+	}
 	export enum SourceType {
 	    LOCAL = "local",
 	    BANGUMI = "bangumi",
@@ -128,12 +134,6 @@ export namespace enums {
 	    MEOW_ZAKO = "你是一个雌小鬼猫娘，根据用户的游戏统计数据对用户进行锐评，语气可爱活泼，不要给用户留脸面偶（=w=）适当加入猫咪的拟声词（如“喵”）和雌小鬼的口癖（如“杂鱼~杂鱼~”），要是能再用上颜文字主人就更高兴了喵。\n\n",
 	    STRICT_TUTOR = "你是用户的严厉导师，根据用户的游戏统计数据对用户进行锐评，语气严肃认真，不允许任何调侃和幽默。\n\n",
 	}
-	export enum GameStatus {
-	    NOT_STARTED = "not_started",
-	    PLAYING = "playing",
-	    COMPLETED = "completed",
-	    ON_HOLD = "on_hold",
-	}
 
 }
 
@@ -147,6 +147,7 @@ export namespace models {
 	    summary: string;
 	    path: string;
 	    save_path: string;
+	    process_name: string;
 	    status: enums.GameStatus;
 	    source_type: enums.SourceType;
 	    cached_at: time.Time;
@@ -168,6 +169,7 @@ export namespace models {
 	        this.summary = source["summary"];
 	        this.path = source["path"];
 	        this.save_path = source["save_path"];
+	        this.process_name = source["process_name"];
 	        this.status = source["status"];
 	        this.source_type = source["source_type"];
 	        this.cached_at = this.convertValues(source["cached_at"], time.Time);
@@ -474,6 +476,25 @@ export namespace time {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	
+	    }
+	}
+
+}
+
+export namespace utils {
+	
+	export class ProcessInfo {
+	    name: string;
+	    pid: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProcessInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.pid = source["pid"];
 	    }
 	}
 

@@ -22,6 +22,10 @@ export function Init(arg1, arg2, arg3) {
   return window['go']['service']['StartService']['Init'](arg1, arg2, arg3);
 }
 
+export function NotifyProcessSelected(arg1, arg2) {
+  return window['go']['service']['StartService']['NotifyProcessSelected'](arg1, arg2);
+}
+
 export function SetBackupService(arg1) {
   return window['go']['service']['StartService']['SetBackupService'](arg1);
 }

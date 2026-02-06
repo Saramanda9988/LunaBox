@@ -17,6 +17,8 @@ export function GetPlaySessions(arg1:string):Promise<Array<models.PlaySession>>;
 
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;
 
+export function NotifyProcessSelected(arg1:string,arg2:string):Promise<void>;
+
 export function SetBackupService(arg1:service.BackupService):Promise<void>;
 
 export function StartGameWithTracking(arg1:string):Promise<boolean>;

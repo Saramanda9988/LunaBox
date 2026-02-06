@@ -539,3 +539,34 @@ func (s *GameService) UpdateGameFromRemote(gameID string) error {
 	runtime.LogInfof(s.ctx, "UpdateGameFromRemote: successfully updated game %s from %s", existingGame.Name, existingGame.SourceType)
 	return nil
 }
+
+// GetRunningProcesses 获取系统中正在运行的进程列表（过滤掉系统进程）
+func (s *GameService) GetRunningProcesses() ([]utils.ProcessInfo, error) {
+	return utils.GetRunningProcesses()
+}
+
+// UpdateGameProcessName 更新游戏的进程名
+// 当用户选择了实际的游戏进程时调用
+func (s *GameService) UpdateGameProcessName(gameID string, processName string) error {
+	result, err := s.db.ExecContext(
+		s.ctx,
+		`UPDATE games SET process_name = ? WHERE id = ?`,
+		processName,
+		gameID,
+	)
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "UpdateGameProcessName: failed to update process_name for game %s: %v", gameID, err)
+		return fmt.Errorf("failed to update process_name: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("game not found with id: %s", gameID)
+	}
+
+	runtime.LogInfof(s.ctx, "UpdateGameProcessName: updated process_name for game %s to %s", gameID, processName)
+	return nil
+}
