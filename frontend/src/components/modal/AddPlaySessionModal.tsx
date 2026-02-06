@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "react-hot-toast";
-import { AddPlaySession } from "../../../wailsjs/go/service/StartService";
+import { AddPlaySession } from "../../../wailsjs/go/service/SessionService";
 import { formatDuration, toLocalISOString } from "../../utils/time";
 
 interface AddPlaySessionModalProps {

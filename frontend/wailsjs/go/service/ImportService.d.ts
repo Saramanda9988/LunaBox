@@ -30,4 +30,4 @@ export function SelectLibraryDirectory():Promise<string>;
 
 export function SelectZipFile():Promise<string>;
 
-export function SetStartService(arg1:service.StartService):Promise<void>;
+export function SetSessionService(arg1:service.SessionService):Promise<void>;
