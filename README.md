@@ -186,7 +186,7 @@ lunabox/
 
 - [x] 自动更新检查与提示
 
-- [ ] 完善日志系统
+- [x] 完善日志系统
 
 - [ ] 支持从ReinaManager中导入数据
 
@@ -204,7 +204,7 @@ lunabox/
 
 - [ ] 更丰富的ai prompt预设
 
-- [ ] 支持locale emulator等启动参数的游戏启动
+- [x] 支持locale emulator等启动参数的游戏启动
 
 ## 😀 从开源到开源
 
