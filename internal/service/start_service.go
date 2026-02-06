@@ -3,9 +3,9 @@ package service
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"lunabox/internal/appconf"
+	"lunabox/internal/models"
 	"lunabox/internal/service/timer"
 	"lunabox/internal/utils"
 	"os/exec"
@@ -13,13 +13,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type StartService struct {
 	ctx               context.Context
-	db                *sql.DB
 	config            *appconf.AppConfig
 	backupService     *BackupService
 	gameService       *GameService
@@ -40,7 +38,7 @@ func NewStartService() *StartService {
 
 func (s *StartService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
-	s.db = db
+	// db 不再使用，但保留参数以保持与其他服务的接口一致性
 	s.config = config
 	// 初始化内部服务
 	s.activeTimeTracker = timer.NewActiveTimeTracker(ctx, db)
@@ -116,19 +114,8 @@ func (s *StartService) StartGameWithTracking(gameID string) (bool, error) {
 	// 获取启动器的进程 ID
 	launcherPID := uint32(cmd.Process.Pid)
 
-	sessionID := uuid.New().String()
 	startTime := time.Now()
-
-	_, err = s.db.ExecContext(
-		s.ctx,
-		`INSERT INTO play_sessions (id, game_id, start_time, end_time, duration)
-		 VALUES (?, ?, ?, ?, ?)`,
-		sessionID,
-		gameID,
-		startTime,
-		startTime, // 临时占位，等游戏结束后更新
-		0,         // 初始时长为 0
-	)
+	sessionID, err := s.sessionService.CreatePendingSession(gameID, startTime)
 	if err != nil {
 		return false, fmt.Errorf("failed to create play session: %w", err)
 	}
@@ -140,24 +127,9 @@ func (s *StartService) StartGameWithTracking(gameID string) (bool, error) {
 	return true, nil
 }
 
-// waitForGameExit 等待游戏进程退出并更新游玩记录
-func (s *StartService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID string, startTime time.Time, processID uint32) {
-	// 使用独立 goroutine 等待进程，避免永久阻塞
-	exitChan := make(chan error, 1)
-	go func() {
-		exitChan <- cmd.Wait()
-	}()
-
-	// 等待进程退出，最长等待24小时（防止永久阻塞）
-	var exitErr error
-	select {
-	case exitErr = <-exitChan:
-		// 游戏正常退出
-	case <-time.After(24 * time.Hour):
-		// 超时保护（24小时后强制清理）
-		runtime.LogWarningf(s.ctx, "Game %s exceeded maximum runtime (24h), forcing cleanup", gameID)
-	}
-
+// finalizePlaySession 完成游玩会话的最终处理
+// 包括停止追踪、计算时长、更新数据库、自动备份等
+func (s *StartService) finalizePlaySession(sessionID string, gameID string, startTime time.Time) {
 	// 确保停止追踪（无论如何都要执行）
 	activeSeconds := s.activeTimeTracker.StopTracking(gameID)
 
@@ -174,36 +146,26 @@ func (s *StartService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID s
 		runtime.LogInfof(s.ctx, "Game %s total runtime: %d seconds", gameID, duration)
 	}
 
-	if exitErr != nil {
-		runtime.LogDebugf(s.ctx, "Game %s exited with error: %v", gameID, exitErr)
-	}
-
 	// If play time is less than 1 minute, remove the temporary session record
 	if duration < 60 {
-		_, err := s.db.ExecContext(
-			s.ctx,
-			`DELETE FROM play_sessions WHERE id = ?`,
-			sessionID,
-		)
+		err := s.sessionService.DeletePlaySession(sessionID)
 		if err != nil {
 			runtime.LogErrorf(s.ctx, "Failed to delete short play session %s: %v", sessionID, err)
-			fmt.Printf("Failed to delete short play session %s: %v\n", sessionID, err)
 		}
 		return
 	}
 
-	_, err := s.db.ExecContext(
-		s.ctx,
-		`UPDATE play_sessions
-		 SET end_time = ?, duration = ?
-		 WHERE id = ?`,
-		endTime,
-		duration,
-		sessionID,
-	)
+	// 更新会话记录
+	session := models.PlaySession{
+		ID:        sessionID,
+		GameID:    gameID,
+		StartTime: startTime,
+		EndTime:   endTime,
+		Duration:  duration,
+	}
+	err := s.sessionService.UpdatePlaySession(session)
 	if err != nil {
 		runtime.LogErrorf(s.ctx, "Failed to update play session %s: %v", sessionID, err)
-		fmt.Printf("Failed to update play session %s: %v\n", sessionID, err)
 		return
 	}
 
@@ -211,6 +173,31 @@ func (s *StartService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID s
 	if s.config.AutoBackupGameSave && s.backupService != nil {
 		s.autoBackupGameSave(gameID)
 	}
+}
+
+// waitForGameExit 等待游戏进程退出并更新游玩记录
+func (s *StartService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID string, startTime time.Time, processID uint32) {
+	// 使用独立 goroutine 等待进程，避免永久阻塞
+	exitChan := make(chan error, 1)
+	go func() {
+		exitChan <- cmd.Wait()
+	}()
+
+	// 等待进程退出，最长等待24小时（防止永久阻塞）
+	var exitErr error
+	select {
+	case exitErr = <-exitChan:
+		// 游戏正常退出
+		if exitErr != nil {
+			runtime.LogDebugf(s.ctx, "Game %s exited with error: %v", gameID, exitErr)
+		}
+	case <-time.After(24 * time.Hour):
+		// 超时保护（24小时后强制清理）
+		runtime.LogWarningf(s.ctx, "Game %s exceeded maximum runtime (24h), forcing cleanup", gameID)
+	}
+
+	// 执行统一的会话清理逻辑
+	s.finalizePlaySession(sessionID, gameID, startTime)
 }
 
 // detectAndMonitorProcess 检测实际游戏进程并开始监控
@@ -285,7 +272,7 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 				s.pendingProcessSelectMu.Lock()
 				delete(s.pendingProcessSelect, gameID)
 				s.pendingProcessSelectMu.Unlock()
-				s.db.ExecContext(s.ctx, `DELETE FROM play_sessions WHERE id = ?`, sessionID)
+				s.sessionService.DeletePlaySession(sessionID)
 				return
 			}
 
@@ -298,7 +285,7 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 			pid, err := utils.GetProcessPIDByName(selectedProcess)
 			if err != nil {
 				runtime.LogErrorf(s.ctx, "Failed to find selected process %s: %v", selectedProcess, err)
-				s.db.ExecContext(s.ctx, `DELETE FROM play_sessions WHERE id = ?`, sessionID)
+				s.sessionService.DeletePlaySession(sessionID)
 				return
 			}
 			actualProcessID = pid
@@ -326,92 +313,36 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 	}
 }
 
-// monitorProcessByPID 通过PID监控进程直到退出
+// monitorProcessByPID 通过PID监控外部进程直到退出
 // 使用 WaitForSingleObject 事件驱动，避免轮询
 func (s *StartService) monitorProcessByPID(sessionID string, gameID string, startTime time.Time, processID uint32, processName string) {
-	runtime.LogInfof(s.ctx, "Starting to monitor process %s (PID %d) for game %s using WaitForSingleObject", processName, processID, gameID)
+	runtime.LogInfof(s.ctx, "Starting to monitor external process %s (PID %d) using WaitForSingleObject", processName, processID)
 
 	// 创建进程监控器
 	pm, exitChan, err := utils.WaitForProcessExitAsync(processID)
 	if err != nil {
 		runtime.LogErrorf(s.ctx, "Failed to start process monitor for %s (PID %d): %v", processName, processID, err)
 		// 监控失败，直接清理
-		goto cleanup
+		s.finalizePlaySession(sessionID, gameID, startTime)
+		return
 	}
 	defer pm.Stop()
 
 	// 等待进程退出或超时（24小时）
 	select {
 	case <-exitChan:
-		runtime.LogInfof(s.ctx, "Process %s (PID %d) has exited", processName, processID)
+		runtime.LogInfof(s.ctx, "External process %s (PID %d) has exited", processName, processID)
 	case <-time.After(24 * time.Hour):
 		runtime.LogWarningf(s.ctx, "Game %s exceeded maximum runtime (24h), forcing cleanup", gameID)
 	}
 
-cleanup:
-	// 确保停止追踪（无论如何都要执行）
-	activeSeconds := s.activeTimeTracker.StopTracking(gameID)
-
-	endTime := time.Now()
-
-	// 如果启用活跃时间追踪，使用累加的活跃时长
-	// 否则使用整个运行时长
-	var duration int
-	if s.config.RecordActiveTimeOnly {
-		duration = activeSeconds
-		runtime.LogInfof(s.ctx, "Game %s active play time: %d seconds", gameID, duration)
-	} else {
-		duration = int(endTime.Sub(startTime).Seconds())
-		runtime.LogInfof(s.ctx, "Game %s total runtime: %d seconds", gameID, duration)
-	}
-
-	// If play time is less than 1 minute, remove the temporary session record
-	if duration < 60 {
-		_, err := s.db.ExecContext(
-			s.ctx,
-			`DELETE FROM play_sessions WHERE id = ?`,
-			sessionID,
-		)
-		if err != nil {
-			runtime.LogErrorf(s.ctx, "Failed to delete short play session %s: %v", sessionID, err)
-		}
-		return
-	}
-
-	_, err = s.db.ExecContext(
-		s.ctx,
-		`UPDATE play_sessions
-		 SET end_time = ?, duration = ?
-		 WHERE id = ?`,
-		endTime,
-		duration,
-		sessionID,
-	)
-	if err != nil {
-		runtime.LogErrorf(s.ctx, "Failed to update play session %s: %v", sessionID, err)
-		return
-	}
-
-	// 自动备份游戏存档
-	if s.config.AutoBackupGameSave && s.backupService != nil {
-		s.autoBackupGameSave(gameID)
-	}
+	// 执行统一的会话清理逻辑
+	s.finalizePlaySession(sessionID, gameID, startTime)
 }
 
 // updateGameProcessName 更新游戏的进程名
 func (s *StartService) updateGameProcessName(gameID string, processName string) error {
-	_, err := s.db.ExecContext(
-		s.ctx,
-		`UPDATE games SET process_name = ? WHERE id = ?`,
-		processName,
-		gameID,
-	)
-	if err != nil {
-		runtime.LogErrorf(s.ctx, "Failed to update process_name for game %s: %v", gameID, err)
-		return err
-	}
-	runtime.LogInfof(s.ctx, "Updated process_name for game %s to %s", gameID, processName)
-	return nil
+	return s.gameService.UpdateGameProcessName(gameID, processName)
 }
 
 // NotifyProcessSelected 用户选择了进程后调用此方法通知后端
@@ -445,9 +376,8 @@ func (s *StartService) NotifyProcessSelected(gameID string, processName string) 
 // autoBackupGameSave 自动备份游戏存档
 func (s *StartService) autoBackupGameSave(gameID string) {
 	// 检查是否设置了存档目录
-	var savePath string
-	err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(save_path, '') FROM games WHERE id = ?", gameID).Scan(&savePath)
-	if err != nil || savePath == "" {
+	game, err := s.gameService.GetGameByID(gameID)
+	if err != nil || game.SavePath == "" {
 		runtime.LogDebugf(s.ctx, "Game %s has no save path configured, skipping auto backup", gameID)
 		return
 	}
@@ -475,56 +405,20 @@ func (s *StartService) autoBackupGameSave(gameID string) {
 
 // getGamePathAndProcess 获取游戏路径和已保存的进程名
 func (s *StartService) getGamePathAndProcess(gameID string) (path string, processName string, err error) {
-	err = s.db.QueryRowContext(
-		s.ctx,
-		"SELECT COALESCE(path, ''), COALESCE(process_name, '') FROM games WHERE id = ?",
-		gameID,
-	).Scan(&path, &processName)
-
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", "", fmt.Errorf("game not found: %s", gameID)
-	}
+	game, err := s.gameService.GetGameByID(gameID)
 	if err != nil {
 		return "", "", err
 	}
-
-	return path, processName, nil
-}
-
-func (s *StartService) getGamePath(gameID string) (string, error) {
-	var path string
-	err := s.db.QueryRowContext(
-		s.ctx,
-		"SELECT COALESCE(path, '') FROM games WHERE id = ?",
-		gameID,
-	).Scan(&path)
-
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", fmt.Errorf("game not found: %s", gameID)
-	}
-	if err != nil {
-		return "", err
-	}
-
-	return path, nil
+	return game.Path, game.ProcessName, nil
 }
 
 // getGameLaunchConfig 获取游戏的启动配置
 func (s *StartService) getGameLaunchConfig(gameID string) (useLE bool, useMagpie bool, err error) {
-	err = s.db.QueryRowContext(
-		s.ctx,
-		"SELECT COALESCE(use_locale_emulator, FALSE), COALESCE(use_magpie, FALSE) FROM games WHERE id = ?",
-		gameID,
-	).Scan(&useLE, &useMagpie)
-
-	if errors.Is(err, sql.ErrNoRows) {
-		return false, false, fmt.Errorf("game not found: %s", gameID)
-	}
+	game, err := s.gameService.GetGameByID(gameID)
 	if err != nil {
 		return false, false, err
 	}
-
-	return useLE, useMagpie, nil
+	return game.UseLocaleEmulator, game.UseMagpie, nil
 }
 
 // startMagpie 启动 Magpie 程序

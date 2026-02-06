@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"lunabox/internal/appconf"
 	"lunabox/internal/models"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type SessionService struct {
@@ -25,6 +26,29 @@ func (s *SessionService) Init(ctx context.Context, db *sql.DB, config *appconf.A
 	s.ctx = ctx
 	s.db = db
 	s.config = config
+}
+
+// CreatePendingSession 创建待完成的游戏会话（用于开始游戏时）
+// 返回创建的会话ID
+func (s *SessionService) CreatePendingSession(gameID string, startTime time.Time) (string, error) {
+	sessionID := uuid.New().String()
+
+	_, err := s.db.ExecContext(
+		s.ctx,
+		`INSERT INTO play_sessions (id, game_id, start_time, end_time, duration)
+		 VALUES (?, ?, ?, ?, ?)`,
+		sessionID,
+		gameID,
+		startTime,
+		startTime, // 临时占位，等游戏结束后更新
+		0,         // 初始时长为 0
+	)
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "CreatePendingSession: failed to create session: %v", err)
+		return "", fmt.Errorf("创建游玩会话失败: %w", err)
+	}
+
+	return sessionID, nil
 }
 
 // AddPlaySession 手动添加游玩记录

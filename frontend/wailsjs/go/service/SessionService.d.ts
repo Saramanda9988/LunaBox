@@ -10,6 +10,8 @@ export function AddPlaySession(arg1:string,arg2:time.Time,arg3:number):Promise<m
 
 export function BatchAddPlaySessions(arg1:Array<models.PlaySession>):Promise<void>;
 
+export function CreatePendingSession(arg1:string,arg2:time.Time):Promise<string>;
+
 export function DeletePlaySession(arg1:string):Promise<void>;
 
 export function GetPlaySessions(arg1:string):Promise<Array<models.PlaySession>>;
