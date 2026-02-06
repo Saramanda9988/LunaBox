@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { createPortal } from "react-dom";
 import { toast } from "react-hot-toast";
 import { AddPlaySession } from "../../../wailsjs/go/service/SessionService";
 import { formatDuration, toLocalISOString } from "../../utils/time";
@@ -81,7 +80,7 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
     }
   };
 
-  return createPortal(
+  return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="relative bg-white dark:bg-brand-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
         <div className="flex justify-between items-center mb-4">
@@ -154,7 +153,6 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
           </div>
         </form>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
 }

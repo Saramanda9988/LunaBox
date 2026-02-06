@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
 import { GetRunningProcesses } from "../../../wailsjs/go/service/GameService";
 import { NotifyProcessSelected } from "../../../wailsjs/go/service/StartService";
@@ -81,7 +80,7 @@ export function ProcessSelectModal({
   if (!isOpen)
     return null;
 
-  return createPortal(
+  return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl dark:bg-brand-800 border border-brand-200 dark:border-brand-700">
         {/* 标题 */}
@@ -200,7 +199,6 @@ export function ProcessSelectModal({
           </button>
         </div>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
 }
