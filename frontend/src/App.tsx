@@ -45,6 +45,10 @@ function App() {
   useEffect(() => {
     const handleProcessSelectRequired = (data: { gameID: string; sessionID: string; launcherExeName: string }) => {
       console.warn("Process select required:", data);
+
+      // 将窗口显示到前台
+      WindowShow();
+
       setProcessSelectData({
         isOpen: true,
         gameID: data.gameID,

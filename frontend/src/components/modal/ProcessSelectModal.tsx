@@ -107,11 +107,11 @@ export function ProcessSelectModal({
               选择游戏进程
             </h3>
             <p className="text-brand-600 dark:text-brand-400 text-sm leading-relaxed">
-              启动器
+              检测到
               {" "}
               <span className="font-mono text-primary-600 dark:text-primary-400">{launcherExeName}</span>
               {" "}
-              已退出，请选择实际运行的游戏进程
+              已退出，如果你没有手动退出，代表你导入游戏的不是实际的运行进程，请选择实际运行的游戏进程
             </p>
           </div>
         </div>
