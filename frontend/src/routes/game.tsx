@@ -9,6 +9,7 @@ import { AddToCategoryModal } from "../components/modal/AddToCategoryModal";
 import { ConfirmModal } from "../components/modal/ConfirmModal";
 import { GameBackupPanel } from "../components/panel/GameBackupPanel";
 import { GameEditPanel } from "../components/panel/GameEditPanel";
+import { GameLaunchPanel } from "../components/panel/GameLaunchPanel";
 import { GameStatsPanel } from "../components/panel/GameStatsPanel";
 import { GameDetailSkeleton } from "../components/skeleton/GameDetailSkeleton";
 import { useAppStore } from "../store";
@@ -270,6 +271,23 @@ function GameDetailPage() {
     }
   };
 
+  const handleSelectProcessExecutable = async () => {
+    try {
+      const path = await SelectGameExecutable();
+      if (path && game) {
+        // 从路径中提取文件名
+        const filename = path.split(/[\\/]/).pop();
+        if (filename) {
+          setGame({ ...game, process_name: filename } as models.Game);
+        }
+      }
+    }
+    catch (error) {
+      console.error("Failed to select executable:", error);
+      toast.error("选择文件失败");
+    }
+  };
+
   return (
     <div className={`space-y-8 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${isLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
       {/* Back Button */}
@@ -354,7 +372,7 @@ function GameDetailPage() {
       <div className="border-b border-brand-200 dark:border-brand-700">
         <div className="flex justify-between items-center">
           <nav className="-mb-px flex space-x-8">
-            {["stats", "edit", "backup"].map(tab => (
+            {["stats", "edit", "launch", "backup"].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -367,6 +385,7 @@ function GameDetailPage() {
               >
                 {tab === "stats" && "游戏统计"}
                 {tab === "edit" && "编辑"}
+                {tab === "launch" && "启动配置"}
                 {tab === "backup" && "备份"}
               </button>
             ))}
@@ -389,7 +408,6 @@ function GameDetailPage() {
       {activeTab === "edit" && game && (
         <GameEditPanel
           game={game}
-          config={config || undefined}
           onGameChange={setGame}
           onDelete={handleDeleteGame}
           onSelectExecutable={handleSelectExecutable}
@@ -397,6 +415,15 @@ function GameDetailPage() {
           onSelectSaveFile={handleSelectSaveFile}
           onSelectCoverImage={handleSelectCoverImage}
           onUpdateFromRemote={handleUpdateFromRemote}
+        />
+      )}
+
+      {activeTab === "launch" && game && (
+        <GameLaunchPanel
+          game={game}
+          config={config || undefined}
+          onGameChange={setGame}
+          onSelectProcessExecutable={handleSelectProcessExecutable}
         />
       )}
 
