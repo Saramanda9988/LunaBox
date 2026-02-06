@@ -5,6 +5,10 @@ import {sql} from '../models';
 import {appconf} from '../models';
 import {service} from '../models';
 
+export function CancelProcessSelection(arg1:string):Promise<void>;
+
+export function CleanupPendingSessions():Promise<void>;
+
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;
 
 export function NotifyProcessSelected(arg1:string,arg2:string):Promise<void>;

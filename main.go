@@ -262,6 +262,10 @@ func main() {
 				config = &latestConfig
 			}
 
+			// 清理所有待定的进程选择会话（防止遗留临时会话）
+			appLogger.Info("cleaning up pending process selections...")
+			startService.CleanupPendingSessions()
+
 			// 自动备份数据库（在关闭数据库前）
 			if config.AutoBackupDB {
 				appLogger.Info("performing automatic database backup...")

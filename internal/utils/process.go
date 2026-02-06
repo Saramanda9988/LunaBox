@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"strconv"
@@ -8,11 +9,15 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"unsafe"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 const (
 	SYNCHRONIZE               = 0x00100000
 	WAIT_OBJECT_0             = 0
+	STILL_ACTIVE              = 259
 	WAIT_TIMEOUT              = 258
 	WAIT_FAILED               = 0xFFFFFFFF
 	INFINITE                  = 0xFFFFFFFF
@@ -201,21 +206,42 @@ func GetProcessPIDByName(processName string) (uint32, error) {
 }
 
 // IsProcessRunningByPID 检查指定PID的进程是否仍在运行
-func IsProcessRunningByPID(pid uint32) bool {
-	cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("PID eq %d", pid), "/FO", "CSV", "/NH")
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	output, err := cmd.Output()
-	if err != nil {
+// 使用 Windows API OpenProcess + GetExitCodeProcess，避免 tasklist 的编码问题
+func IsProcessRunningByPID(pid uint32, ctx context.Context) bool {
+	// 尝试打开进程句柄
+	handle, _, err := procOpenProcess.Call(
+		uintptr(PROCESS_QUERY_INFORMATION),
+		0,
+		uintptr(pid),
+	)
+
+	// 无法打开句柄，进程不存在
+	if handle == 0 {
+		runtime.LogErrorf(ctx, "%s | [PROCESS_CHECK] PID %d NOT running (OpenProcess failed: %v)", time.Now(), pid, err)
+		return false
+	}
+	defer procCloseHandle.Call(handle)
+
+	// 检查进程退出码
+	var exitCode uint32
+	procGetExitCodeProcess := kernel32.NewProc("GetExitCodeProcess")
+	ret, _, _ := procGetExitCodeProcess.Call(handle, uintptr(unsafe.Pointer(&exitCode)))
+
+	if ret == 0 {
+		// GetExitCodeProcess 失败，假设进程不存在
+		runtime.LogErrorf(ctx, "%s | [PROCESS_CHECK] PID %d NOT running (GetExitCodeProcess failed)", time.Now(), pid)
 		return false
 	}
 
-	outputStr := strings.TrimSpace(string(output))
-	// 如果输出为空或包含"No tasks"说明进程不存在
-	if outputStr == "" || strings.Contains(outputStr, "No tasks are running") {
-		return false
+	// STILL_ACTIVE = 259，表示进程仍在运行
+	if exitCode == STILL_ACTIVE {
+		runtime.LogErrorf(ctx, "%s | [PROCESS_CHECK] PID %d IS running", time.Now(), pid)
+		return true
 	}
 
-	return true
+	// 进程已退出
+	runtime.LogErrorf(ctx, "%s | [PROCESS_CHECK] PID %d NOT running (exit code: %d)", time.Now(), pid, exitCode)
+	return false
 }
 
 //====================ProcessMonitor====================

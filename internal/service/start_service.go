@@ -127,52 +127,168 @@ func (s *StartService) StartGameWithTracking(gameID string) (bool, error) {
 	return true, nil
 }
 
-// finalizePlaySession 完成游玩会话的最终处理
-// 包括停止追踪、计算时长、更新数据库、自动备份等
-func (s *StartService) finalizePlaySession(sessionID string, gameID string, startTime time.Time) {
-	// 确保停止追踪（无论如何都要执行）
-	activeSeconds := s.activeTimeTracker.StopTracking(gameID)
+// detectAndMonitorProcess 检测实际游戏进程并开始监控
+// 采用分阶段检测策略，利用60秒会话记录阈值提供的余裕时间
+func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, gameID string, startTime time.Time, launcherPID uint32, launcherExeName string, savedProcessName string) {
+	var actualProcessID uint32
+	var actualProcessName string
+	var needExternalMonitor bool // 是否需要外部进程监控（非cmd子进程）
 
-	endTime := time.Now()
+	// 情况1: 已保存了process_name，且与启动器exe名称不同
+	// 说明之前用户已选择过实际的游戏进程
+	if savedProcessName != "" && savedProcessName != launcherExeName {
+		runtime.LogInfof(s.ctx, "Game %s has saved process_name: %s, will search for it after initial delay", gameID, savedProcessName)
 
-	// 如果启用活跃时间追踪，使用累加的活跃时长
-	// 否则使用整个运行时长
-	var duration int
-	if s.config.RecordActiveTimeOnly {
-		duration = activeSeconds
-		runtime.LogInfof(s.ctx, "Game %s active play time: %d seconds", gameID, duration)
-	} else {
-		duration = int(endTime.Sub(startTime).Seconds())
-		runtime.LogInfof(s.ctx, "Game %s total runtime: %d seconds", gameID, duration)
-	}
+		// 等待5秒，给启动器时间启动实际游戏
+		time.Sleep(5 * time.Second)
 
-	// If play time is less than 1 minute, remove the temporary session record
-	if duration < 60 {
-		err := s.sessionService.DeletePlaySession(sessionID)
+		// 在系统进程中搜索保存的进程名
+		pid, err := utils.GetProcessPIDByName(savedProcessName)
 		if err != nil {
-			runtime.LogErrorf(s.ctx, "Failed to delete short play session %s: %v", sessionID, err)
+			runtime.LogWarningf(s.ctx, "Failed to find saved process %s: %v, falling back to launcher monitoring", savedProcessName, err)
+			// 如果找不到保存的进程，使用启动器进程监控
+			actualProcessID = launcherPID
+			actualProcessName = launcherExeName
+			needExternalMonitor = false
+		} else {
+			actualProcessID = pid
+			actualProcessName = savedProcessName
+			needExternalMonitor = true // 需要外部监控，因为这不是cmd的子进程
+			runtime.LogInfof(s.ctx, "Found saved process %s with PID %d", savedProcessName, pid)
 		}
+	} else {
+		// 情况2: 没有保存的process_name，或process_name与启动器相同
+		// 使用分阶段检测策略来准确判断启动器类型
+
+		runtime.LogInfof(s.ctx, "Starting staged detection for game %s, launcher: %s (PID %d)", gameID, launcherExeName, launcherPID)
+
+		// 阶段1: 初始等待5秒，让启动器有时间启动实际游戏
+		time.Sleep(5 * time.Second)
+
+		// 阶段2: 第一次检测
+		launcherStillRunning := utils.IsProcessRunningByPID(launcherPID, s.ctx)
+
+		if !launcherStillRunning {
+			// 启动器在5秒内就退出了，说明是快速启动器（如Steam）
+			runtime.LogInfof(s.ctx, "Launcher %s exited quickly (within 5s), will prompt for actual game process", launcherExeName)
+			s.promptUserToSelectProcess(sessionID, gameID, startTime, launcherExeName)
+			return
+		}
+
+		// 阶段3: 启动器还在运行，进入观察期（15秒）
+		// 每2秒检查一次，看启动器是否会退出
+		runtime.LogInfof(s.ctx, "Launcher %s still running, entering observation period (15s)", launcherExeName)
+
+		observationPeriod := 15 * time.Second
+		checkInterval := 2 * time.Second
+		observationStart := time.Now()
+
+		for time.Since(observationStart) < observationPeriod {
+			time.Sleep(checkInterval)
+
+			if !utils.IsProcessRunningByPID(launcherPID, s.ctx) {
+				// 启动器在观察期内退出了，说明它只是个启动器
+				runtime.LogInfof(s.ctx, "Launcher %s exited during observation period, will prompt for actual game process", launcherExeName)
+				s.promptUserToSelectProcess(sessionID, gameID, startTime, launcherExeName)
+				return
+			}
+		}
+
+		// 阶段4: 观察期结束，启动器仍在运行
+		// 说明启动器本身就是游戏进程（如普通单exe游戏）
+		runtime.LogInfof(s.ctx, "Launcher %s still running after 20s total, treating it as the game process", launcherExeName)
+		actualProcessID = launcherPID
+		actualProcessName = launcherExeName
+		needExternalMonitor = false
+
+		// 保存进程名
+		if savedProcessName == "" {
+			s.updateGameProcessName(gameID, launcherExeName)
+		}
+	}
+
+	// 启动活跃时间追踪（如果启用）
+	if s.config.RecordActiveTimeOnly {
+		_, err := s.activeTimeTracker.StartTracking(sessionID, gameID, actualProcessID)
+		if err != nil {
+			runtime.LogWarningf(s.ctx, "Failed to start active time tracking: %v", err)
+		}
+	}
+
+	// 根据情况选择监控方式
+	if needExternalMonitor {
+		// 需要外部监控：实际游戏进程不是cmd的子进程
+		s.monitorProcessByPID(sessionID, gameID, startTime, actualProcessID, actualProcessName)
+	} else {
+		// 使用原有的 waitForGameExit：可以利用 cmd.Wait() 事件驱动
+		s.waitForGameExit(cmd, sessionID, gameID, startTime, actualProcessID)
+	}
+}
+
+// promptUserToSelectProcess 提示用户选择实际的游戏进程
+func (s *StartService) promptUserToSelectProcess(sessionID string, gameID string, startTime time.Time, launcherExeName string) {
+	// 创建等待用户选择的 channel
+	selectChan := make(chan string, 1)
+	s.pendingProcessSelectMu.Lock()
+	s.pendingProcessSelect[gameID] = selectChan
+	s.pendingProcessSelectMu.Unlock()
+
+	// 发送事件通知前端弹出进程选择窗口
+	runtime.EventsEmit(s.ctx, "process-select-required", map[string]interface{}{
+		"gameID":          gameID,
+		"sessionID":       sessionID,
+		"launcherExeName": launcherExeName,
+	})
+
+	// 等待用户选择（最多等待5分钟）
+	var selectedProcess string
+	var ok bool
+	select {
+	case selectedProcess, ok = <-selectChan:
+		if !ok {
+			// channel 被关闭，说明用户取消了选择
+			runtime.LogInfof(s.ctx, "User cancelled process selection for game %s", gameID)
+			s.sessionService.DeletePlaySession(sessionID)
+			return
+		}
+		// 用户已选择进程
+		runtime.LogInfof(s.ctx, "User selected process: %s for game %s", selectedProcess, gameID)
+	case <-time.After(5 * time.Minute):
+		// 超时未选择
+		runtime.LogWarningf(s.ctx, "Process selection timeout for game %s, cleaning up session", gameID)
+		s.pendingProcessSelectMu.Lock()
+		delete(s.pendingProcessSelect, gameID)
+		s.pendingProcessSelectMu.Unlock()
+		s.sessionService.DeletePlaySession(sessionID)
 		return
 	}
 
-	// 更新会话记录
-	session := models.PlaySession{
-		ID:        sessionID,
-		GameID:    gameID,
-		StartTime: startTime,
-		EndTime:   endTime,
-		Duration:  duration,
-	}
-	err := s.sessionService.UpdatePlaySession(session)
+	// 清理 channel
+	s.pendingProcessSelectMu.Lock()
+	delete(s.pendingProcessSelect, gameID)
+	s.pendingProcessSelectMu.Unlock()
+
+	// 获取选中进程的PID
+	pid, err := utils.GetProcessPIDByName(selectedProcess)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "Failed to update play session %s: %v", sessionID, err)
+		runtime.LogErrorf(s.ctx, "Failed to find selected process %s: %v", selectedProcess, err)
+		s.sessionService.DeletePlaySession(sessionID)
 		return
 	}
 
-	// 自动备份游戏存档
-	if s.config.AutoBackupGameSave && s.backupService != nil {
-		s.autoBackupGameSave(gameID)
+	// 保存用户选择的进程名
+	s.updateGameProcessName(gameID, selectedProcess)
+
+	// 启动活跃时间追踪（如果启用）
+	if s.config.RecordActiveTimeOnly {
+		_, err := s.activeTimeTracker.StartTracking(sessionID, gameID, pid)
+		if err != nil {
+			runtime.LogWarningf(s.ctx, "Failed to start active time tracking: %v", err)
+		}
 	}
+
+	// 监控选中的进程
+	s.monitorProcessByPID(sessionID, gameID, startTime, pid, selectedProcess)
 }
 
 // waitForGameExit 等待游戏进程退出并更新游玩记录
@@ -200,119 +316,6 @@ func (s *StartService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID s
 	s.finalizePlaySession(sessionID, gameID, startTime)
 }
 
-// detectAndMonitorProcess 检测实际游戏进程并开始监控
-func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, gameID string, startTime time.Time, launcherPID uint32, launcherExeName string, savedProcessName string) {
-	// 等待10秒，让启动器有时间启动实际游戏进程
-	time.Sleep(3 * time.Second)
-
-	var actualProcessID uint32
-	var actualProcessName string
-	var needExternalMonitor bool // 是否需要外部进程监控（非cmd子进程）
-
-	// 情况1: 已保存了process_name，且与启动器exe名称不同
-	// 说明之前用户已选择过实际的游戏进程
-	if savedProcessName != "" && savedProcessName != launcherExeName {
-		runtime.LogInfof(s.ctx, "Game %s has saved process_name: %s, searching for it", gameID, savedProcessName)
-
-		// 在系统进程中搜索保存的进程名
-		pid, err := utils.GetProcessPIDByName(savedProcessName)
-		if err != nil {
-			runtime.LogWarningf(s.ctx, "Failed to find saved process %s: %v, falling back to launcher monitoring", savedProcessName, err)
-			// 如果找不到保存的进程，使用启动器进程监控
-			actualProcessID = launcherPID
-			actualProcessName = launcherExeName
-			needExternalMonitor = false
-		} else {
-			actualProcessID = pid
-			actualProcessName = savedProcessName
-			needExternalMonitor = true // 需要外部监控，因为这不是cmd的子进程
-			runtime.LogInfof(s.ctx, "Found saved process %s with PID %d", savedProcessName, pid)
-		}
-	} else {
-		// 情况2: 没有保存的process_name，或process_name与启动器相同
-		// 检查启动器进程是否仍在运行
-		launcherStillRunning := utils.IsProcessRunningByPID(launcherPID)
-
-		if launcherStillRunning {
-			// 启动器仍在运行，直接监控启动器进程
-			actualProcessID = launcherPID
-			actualProcessName = launcherExeName
-			needExternalMonitor = false
-			runtime.LogInfof(s.ctx, "Launcher %s (PID %d) is still running, monitoring it", launcherExeName, launcherPID)
-
-			// 如果没有保存过process_name，保存当前的
-			if savedProcessName == "" {
-				s.updateGameProcessName(gameID, launcherExeName)
-			}
-		} else {
-			// 启动器已退出，需要让用户选择实际的游戏进程
-			runtime.LogInfof(s.ctx, "Launcher %s (PID %d) has exited, notifying frontend to select actual game process", launcherExeName, launcherPID)
-
-			// 创建等待用户选择的 channel
-			selectChan := make(chan string, 1)
-			s.pendingProcessSelectMu.Lock()
-			s.pendingProcessSelect[gameID] = selectChan
-			s.pendingProcessSelectMu.Unlock()
-
-			// 发送事件通知前端弹出进程选择窗口
-			runtime.EventsEmit(s.ctx, "process-select-required", map[string]interface{}{
-				"gameID":          gameID,
-				"sessionID":       sessionID,
-				"launcherExeName": launcherExeName,
-			})
-
-			// 等待用户选择（最多等待5分钟）使用channel
-			var selectedProcess string
-			select {
-			case selectedProcess = <-selectChan:
-				// 用户已选择进程
-			case <-time.After(5 * time.Minute):
-				// 超时未选择
-				runtime.LogWarningf(s.ctx, "Process selection timeout for game %s, cleaning up session", gameID)
-				s.pendingProcessSelectMu.Lock()
-				delete(s.pendingProcessSelect, gameID)
-				s.pendingProcessSelectMu.Unlock()
-				s.sessionService.DeletePlaySession(sessionID)
-				return
-			}
-
-			// 清理 channel
-			s.pendingProcessSelectMu.Lock()
-			delete(s.pendingProcessSelect, gameID)
-			s.pendingProcessSelectMu.Unlock()
-
-			// 获取选中进程的PID
-			pid, err := utils.GetProcessPIDByName(selectedProcess)
-			if err != nil {
-				runtime.LogErrorf(s.ctx, "Failed to find selected process %s: %v", selectedProcess, err)
-				s.sessionService.DeletePlaySession(sessionID)
-				return
-			}
-			actualProcessID = pid
-			actualProcessName = selectedProcess
-			needExternalMonitor = true
-			runtime.LogInfof(s.ctx, "User selected process %s (PID %d)", selectedProcess, pid)
-		}
-	}
-
-	// 启动活跃时间追踪（如果启用）
-	if s.config.RecordActiveTimeOnly {
-		_, err := s.activeTimeTracker.StartTracking(sessionID, gameID, actualProcessID)
-		if err != nil {
-			runtime.LogWarningf(s.ctx, "Failed to start active time tracking: %v", err)
-		}
-	}
-
-	// 根据情况选择监控方式
-	if needExternalMonitor {
-		// 需要外部监控：实际游戏进程不是cmd的子进程
-		s.monitorProcessByPID(sessionID, gameID, startTime, actualProcessID, actualProcessName)
-	} else {
-		// 使用原有的 waitForGameExit：可以利用 cmd.Wait() 事件驱动
-		s.waitForGameExit(cmd, sessionID, gameID, startTime, actualProcessID)
-	}
-}
-
 // monitorProcessByPID 通过PID监控外部进程直到退出
 // 使用 WaitForSingleObject 事件驱动，避免轮询
 func (s *StartService) monitorProcessByPID(sessionID string, gameID string, startTime time.Time, processID uint32, processName string) {
@@ -338,6 +341,54 @@ func (s *StartService) monitorProcessByPID(sessionID string, gameID string, star
 
 	// 执行统一的会话清理逻辑
 	s.finalizePlaySession(sessionID, gameID, startTime)
+}
+
+// finalizePlaySession 完成游玩会话的最终处理
+// 包括停止追踪、计算时长、更新数据库、自动备份等
+func (s *StartService) finalizePlaySession(sessionID string, gameID string, startTime time.Time) {
+	// 确保停止追踪（无论如何都要执行）
+	activeSeconds := s.activeTimeTracker.StopTracking(gameID)
+
+	endTime := time.Now()
+
+	// 如果启用活跃时间追踪，使用累加的活跃时长
+	// 否则使用整个运行时长
+	var duration int
+	if s.config.RecordActiveTimeOnly {
+		duration = activeSeconds
+		runtime.LogInfof(s.ctx, "Game %s active play time: %d seconds", gameID, duration)
+	} else {
+		duration = int(endTime.Sub(startTime).Seconds())
+		runtime.LogInfof(s.ctx, "Game %s total runtime: %d seconds", gameID, duration)
+	}
+
+	// 如果游玩时长小于1分钟，删除临时会话记录
+	if duration < 60 {
+		err := s.sessionService.DeletePlaySession(sessionID)
+		if err != nil {
+			runtime.LogErrorf(s.ctx, "Failed to delete short play session %s: %v", sessionID, err)
+		}
+		return
+	}
+
+	// 更新会话记录
+	session := models.PlaySession{
+		ID:        sessionID,
+		GameID:    gameID,
+		StartTime: startTime,
+		EndTime:   endTime,
+		Duration:  duration,
+	}
+	err := s.sessionService.UpdatePlaySession(session)
+	if err != nil {
+		runtime.LogErrorf(s.ctx, "Failed to update play session %s: %v", sessionID, err)
+		return
+	}
+
+	// 自动备份游戏存档
+	if s.config.AutoBackupGameSave && s.backupService != nil {
+		s.autoBackupGameSave(gameID)
+	}
 }
 
 // updateGameProcessName 更新游戏的进程名
@@ -371,6 +422,49 @@ func (s *StartService) NotifyProcessSelected(gameID string, processName string) 
 	}
 
 	return nil
+}
+
+// CancelProcessSelection 用户取消了进程选择
+// 关闭等待的 channel 并清理临时会话
+func (s *StartService) CancelProcessSelection(gameID string) error {
+	s.pendingProcessSelectMu.Lock()
+	selectChan, exists := s.pendingProcessSelect[gameID]
+	if exists {
+		// 关闭 channel（让等待的 goroutine 知道用户取消了）
+		close(selectChan)
+		delete(s.pendingProcessSelect, gameID)
+	}
+	s.pendingProcessSelectMu.Unlock()
+
+	if exists {
+		runtime.LogInfof(s.ctx, "User cancelled process selection for game %s", gameID)
+	} else {
+		runtime.LogWarningf(s.ctx, "No pending process selection to cancel for game %s", gameID)
+	}
+
+	return nil
+}
+
+// CleanupPendingSessions 清理所有待定的进程选择会话
+// 用于程序关闭时的清理
+func (s *StartService) CleanupPendingSessions() {
+	s.pendingProcessSelectMu.Lock()
+	defer s.pendingProcessSelectMu.Unlock()
+
+	if len(s.pendingProcessSelect) == 0 {
+		return
+	}
+
+	runtime.LogInfof(s.ctx, "Cleaning up %d pending process selections", len(s.pendingProcessSelect))
+
+	// 关闭所有等待的 channels
+	for gameID, selectChan := range s.pendingProcessSelect {
+		close(selectChan)
+		runtime.LogInfof(s.ctx, "Cancelled pending process selection for game %s", gameID)
+	}
+
+	// 清空 map
+	s.pendingProcessSelect = make(map[string]chan string)
 }
 
 // autoBackupGameSave 自动备份游戏存档

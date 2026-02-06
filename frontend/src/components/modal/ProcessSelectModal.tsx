@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { GetRunningProcesses } from "../../../wailsjs/go/service/GameService";
-import { NotifyProcessSelected } from "../../../wailsjs/go/service/StartService";
+import { CancelProcessSelection, NotifyProcessSelected } from "../../../wailsjs/go/service/StartService";
 
 interface ProcessInfo {
   name: string;
@@ -56,6 +56,20 @@ export function ProcessSelectModal({
   const filteredProcesses = processes.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  // 处理关闭（通知后端取消选择）
+  const handleClose = async () => {
+    try {
+      // 通知后端用户取消了进程选择
+      await CancelProcessSelection(gameID);
+    }
+    catch (error) {
+      console.error("Failed to cancel process selection:", error);
+    }
+    finally {
+      onClose();
+    }
+  };
 
   // 确认选择
   const handleConfirm = async () => {
@@ -184,7 +198,7 @@ export function ProcessSelectModal({
         <div className="flex justify-end gap-3 mt-6">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 rounded-lg dark:text-brand-300 dark:hover:bg-brand-700 transition-colors"
           >
             取消
