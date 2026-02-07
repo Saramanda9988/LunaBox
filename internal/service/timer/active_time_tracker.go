@@ -4,11 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"lunabox/internal/applog"
 	"lunabox/internal/service/timer/focusing"
 	"sync"
 	"time"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // TrackingSession 正在追踪的会话
@@ -50,7 +49,7 @@ func (s *ActiveTimeTracker) StartTracking(sessionID string, gameID string, proce
 
 	// 检查是否已有追踪中的会话
 	if _, exists := s.sessions[gameID]; exists {
-		runtime.LogInfof(s.ctx, "[ActiveTimeTracker] Game %s is already being tracked", gameID)
+		applog.LogInfof(s.ctx, "[ActiveTimeTracker] Game %s is already being tracked", gameID)
 		log.Printf("[ActiveTimeTracker] Game %s is already being tracked", gameID)
 		return gameID, nil
 	}
@@ -69,7 +68,7 @@ func (s *ActiveTimeTracker) StartTracking(sessionID string, gameID string, proce
 	// 启动追踪 goroutine
 	go s.trackActiveTime(ctx, session)
 
-	runtime.LogInfof(s.ctx, "[ActiveTimeTracker] Started tracking for game %s (PID: %d)", gameID, processID)
+	applog.LogInfof(s.ctx, "[ActiveTimeTracker] Started tracking for game %s (PID: %d)", gameID, processID)
 	log.Printf("[ActiveTimeTracker] Started tracking for game %s (PID: %d)", gameID, processID)
 	return gameID, nil
 }
@@ -91,7 +90,7 @@ func (s *ActiveTimeTracker) StopTracking(gameID string) int {
 	accumulated := session.accumulatedSeconds
 	session.mu.Unlock()
 
-	runtime.LogInfof(s.ctx, "[ActiveTimeTracker] Stopped tracking for game %s, accumulated %d seconds", gameID, accumulated)
+	applog.LogInfof(s.ctx, "[ActiveTimeTracker] Stopped tracking for game %s, accumulated %d seconds", gameID, accumulated)
 	log.Printf("[ActiveTimeTracker] Stopped tracking for game %s, accumulated %d seconds", gameID, accumulated)
 	return accumulated
 }
@@ -102,7 +101,7 @@ func (s *ActiveTimeTracker) trackActiveTime(ctx context.Context, session *Tracki
 	tracker := focusing.NewFocusTracker(session.ProcessID)
 	focusChan, err := tracker.Start()
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "[ActiveTimeTracker] Failed to start focus tracker for game %s: %v", session.GameID, err)
+		applog.LogErrorf(s.ctx, "[ActiveTimeTracker] Failed to start focus tracker for game %s: %v", session.GameID, err)
 		// 降级到轮询模式
 		s.fallbackPolling(ctx, session)
 		return
@@ -135,10 +134,10 @@ func (s *ActiveTimeTracker) trackActiveTime(ctx context.Context, session *Tracki
 			if info.IsFocused != isFocused {
 				isFocused = info.IsFocused
 				if isFocused {
-					runtime.LogInfof(s.ctx, "[ActiveTimeTracker] Game %s gained focus", session.GameID)
+					applog.LogInfof(s.ctx, "[ActiveTimeTracker] Game %s gained focus", session.GameID)
 					log.Printf("[ActiveTimeTracker] Game %s gained focus", session.GameID)
 				} else {
-					runtime.LogInfof(s.ctx, "[ActiveTimeTracker] Game %s lost focus", session.GameID)
+					applog.LogInfof(s.ctx, "[ActiveTimeTracker] Game %s lost focus", session.GameID)
 					log.Printf("[ActiveTimeTracker] Game %s lost focus", session.GameID)
 				}
 			}
@@ -154,7 +153,7 @@ func (s *ActiveTimeTracker) trackActiveTime(ctx context.Context, session *Tracki
 			currentFocus := tracker.IsFocused()
 			if currentFocus != isFocused {
 				isFocused = currentFocus
-				runtime.LogInfof(s.ctx, "[ActiveTimeTracker] Game %s focus state corrected to %v", session.GameID, isFocused)
+				applog.LogInfof(s.ctx, "[ActiveTimeTracker] Game %s focus state corrected to %v", session.GameID, isFocused)
 				log.Printf("[ActiveTimeTracker] Game %s focus state corrected to %v", session.GameID, isFocused)
 			}
 		}
@@ -163,7 +162,7 @@ func (s *ActiveTimeTracker) trackActiveTime(ctx context.Context, session *Tracki
 
 // fallbackPolling 降级轮询模式（当事件 Hook 失败时使用）
 func (s *ActiveTimeTracker) fallbackPolling(ctx context.Context, session *TrackingSession) {
-	runtime.LogInfof(s.ctx, "[ActiveTimeTracker] Falling back to polling mode for game %s", session.GameID)
+	applog.LogInfof(s.ctx, "[ActiveTimeTracker] Falling back to polling mode for game %s", session.GameID)
 	log.Printf("[ActiveTimeTracker] Falling back to polling mode for game %s", session.GameID)
 
 	ticker := time.NewTicker(1 * time.Second)
@@ -189,7 +188,7 @@ func (s *ActiveTimeTracker) incrementPlayTime(gameID string, seconds int) {
 	s.mu.RUnlock()
 
 	if !exists {
-		runtime.LogInfof(s.ctx, "[ActiveTimeTracker] No active session found for game %s", gameID)
+		applog.LogInfof(s.ctx, "[ActiveTimeTracker] No active session found for game %s", gameID)
 		log.Printf("[ActiveTimeTracker] No active session found for game %s", gameID)
 		return
 	}

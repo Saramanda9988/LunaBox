@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"fmt"
 	"lunabox/internal/appconf"
+	"lunabox/internal/applog"
 	"lunabox/internal/models"
 	"lunabox/internal/vo"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type CategoryService struct {
@@ -34,7 +34,7 @@ func (s *CategoryService) ensureSystemCategories() {
 	var count int
 	err := s.db.QueryRow("SELECT count(*) FROM categories WHERE is_system = true AND name = ?", "最喜欢的游戏").Scan(&count)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "Error checking system category: %v", err)
+		applog.LogErrorf(s.ctx, "Error checking system category: %v", err)
 		return
 	}
 
@@ -46,7 +46,7 @@ func (s *CategoryService) ensureSystemCategories() {
 			VALUES (?, ?, ?, ?, ?)
 		`, id, "最喜欢的游戏", true, now, now)
 		if err != nil {
-			runtime.LogErrorf(s.ctx, "Error creating system category: %v", err)
+			applog.LogErrorf(s.ctx, "Error creating system category: %v", err)
 		}
 	}
 }
@@ -61,7 +61,7 @@ func (s *CategoryService) GetCategories() ([]vo.CategoryVO, error) {
 	`
 	rows, err := s.db.Query(query)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "GetCategories: failed to query categories: %v", err)
+		applog.LogErrorf(s.ctx, "GetCategories: failed to query categories: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -70,7 +70,7 @@ func (s *CategoryService) GetCategories() ([]vo.CategoryVO, error) {
 	for rows.Next() {
 		var c vo.CategoryVO
 		if err := rows.Scan(&c.ID, &c.Name, &c.IsSystem, &c.CreatedAt, &c.UpdatedAt, &c.GameCount); err != nil {
-			runtime.LogErrorf(s.ctx, "GetCategories: failed to scan row: %v", err)
+			applog.LogErrorf(s.ctx, "GetCategories: failed to scan row: %v", err)
 			return nil, err
 		}
 		categories = append(categories, c)
@@ -90,9 +90,9 @@ func (s *CategoryService) GetCategoryByID(id string) (vo.CategoryVO, error) {
 	err := s.db.QueryRow(query, id).Scan(&c.ID, &c.Name, &c.IsSystem, &c.CreatedAt, &c.UpdatedAt, &c.GameCount)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			runtime.LogWarningf(s.ctx, "GetCategoryByID: category not found with id: %s", id)
+			applog.LogWarningf(s.ctx, "GetCategoryByID: category not found with id: %s", id)
 		} else {
-			runtime.LogErrorf(s.ctx, "GetCategoryByID: failed to query category %s: %v", id, err)
+			applog.LogErrorf(s.ctx, "GetCategoryByID: failed to query category %s: %v", id, err)
 		}
 		return c, err
 	}
@@ -107,7 +107,7 @@ func (s *CategoryService) AddCategory(name string) error {
 		       VALUES (?, ?, ?, ?, ?)
 	       `, id, name, false, now, now)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "AddCategory: failed to insert category %s: %v", name, err)
+		applog.LogErrorf(s.ctx, "AddCategory: failed to insert category %s: %v", name, err)
 	}
 	return err
 }
@@ -115,7 +115,7 @@ func (s *CategoryService) AddCategory(name string) error {
 func (s *CategoryService) AddGameToCategory(gameID, categoryID string) error {
 	_, err := s.db.Exec("INSERT INTO game_categories (game_id, category_id) VALUES (?, ?)", gameID, categoryID)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "AddGameToCategory: failed to add game %s to category %s: %v", gameID, categoryID, err)
+		applog.LogErrorf(s.ctx, "AddGameToCategory: failed to add game %s to category %s: %v", gameID, categoryID, err)
 	}
 	return err
 }
@@ -123,7 +123,7 @@ func (s *CategoryService) AddGameToCategory(gameID, categoryID string) error {
 func (s *CategoryService) RemoveGameFromCategory(gameID, categoryID string) error {
 	_, err := s.db.Exec("DELETE FROM game_categories WHERE game_id = ? AND category_id = ?", gameID, categoryID)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "RemoveGameFromCategory: failed to remove game %s from category %s: %v", gameID, categoryID, err)
+		applog.LogErrorf(s.ctx, "RemoveGameFromCategory: failed to remove game %s from category %s: %v", gameID, categoryID, err)
 	}
 	return err
 }
@@ -132,35 +132,35 @@ func (s *CategoryService) DeleteCategory(id string) error {
 	var isSystem bool
 	err := s.db.QueryRow("SELECT is_system FROM categories WHERE id = ?", id).Scan(&isSystem)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "DeleteCategory: failed to query is_system for id %s: %v", id, err)
+		applog.LogErrorf(s.ctx, "DeleteCategory: failed to query is_system for id %s: %v", id, err)
 		return err
 	}
 	if isSystem {
-		runtime.LogWarningf(s.ctx, "DeleteCategory: attempt to delete system category %s", id)
+		applog.LogWarningf(s.ctx, "DeleteCategory: attempt to delete system category %s", id)
 		return fmt.Errorf("cannot delete system category")
 	}
 
 	tx, err := s.db.Begin()
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "DeleteCategory: failed to begin transaction for id %s: %v", id, err)
+		applog.LogErrorf(s.ctx, "DeleteCategory: failed to begin transaction for id %s: %v", id, err)
 		return err
 	}
 	defer tx.Rollback()
 
 	_, err = tx.Exec("DELETE FROM game_categories WHERE category_id = ?", id)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "DeleteCategory: failed to delete game_categories for id %s: %v", id, err)
+		applog.LogErrorf(s.ctx, "DeleteCategory: failed to delete game_categories for id %s: %v", id, err)
 		return err
 	}
 
 	_, err = tx.Exec("DELETE FROM categories WHERE id = ?", id)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "DeleteCategory: failed to delete category for id %s: %v", id, err)
+		applog.LogErrorf(s.ctx, "DeleteCategory: failed to delete category for id %s: %v", id, err)
 		return err
 	}
 
 	if err := tx.Commit(); err != nil {
-		runtime.LogErrorf(s.ctx, "DeleteCategory: failed to commit transaction for id %s: %v", id, err)
+		applog.LogErrorf(s.ctx, "DeleteCategory: failed to commit transaction for id %s: %v", id, err)
 		return err
 	}
 	return nil
@@ -184,7 +184,7 @@ func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, 
 	`
 	rows, err := s.db.Query(query, categoryID)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "GetGamesByCategory: failed to query games for category %s: %v", categoryID, err)
+		applog.LogErrorf(s.ctx, "GetGamesByCategory: failed to query games for category %s: %v", categoryID, err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -193,7 +193,7 @@ func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, 
 	for rows.Next() {
 		var g models.Game
 		if err := rows.Scan(&g.ID, &g.Name, &g.CoverURL, &g.Company, &g.Summary, &g.Path, &g.SourceType, &g.CachedAt, &g.SourceID, &g.CreatedAt); err != nil {
-			runtime.LogErrorf(s.ctx, "GetGamesByCategory: failed to scan row for category %s: %v", categoryID, err)
+			applog.LogErrorf(s.ctx, "GetGamesByCategory: failed to scan row for category %s: %v", categoryID, err)
 			return nil, err
 		}
 		games = append(games, g)
@@ -212,7 +212,7 @@ func (s *CategoryService) GetCategoriesByGame(gameID string) ([]vo.CategoryVO, e
 	`
 	rows, err := s.db.Query(query, gameID)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "GetCategoriesByGame: failed to query categories for game %s: %v", gameID, err)
+		applog.LogErrorf(s.ctx, "GetCategoriesByGame: failed to query categories for game %s: %v", gameID, err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -221,7 +221,7 @@ func (s *CategoryService) GetCategoriesByGame(gameID string) ([]vo.CategoryVO, e
 	for rows.Next() {
 		var c vo.CategoryVO
 		if err := rows.Scan(&c.ID, &c.Name, &c.IsSystem, &c.CreatedAt, &c.UpdatedAt, &c.GameCount); err != nil {
-			runtime.LogErrorf(s.ctx, "GetCategoriesByGame: failed to scan row for game %s: %v", gameID, err)
+			applog.LogErrorf(s.ctx, "GetCategoriesByGame: failed to scan row for game %s: %v", gameID, err)
 			return nil, err
 		}
 		categories = append(categories, c)
