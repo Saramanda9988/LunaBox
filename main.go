@@ -6,7 +6,7 @@ import (
 	"embed"
 	"fmt"
 	"lunabox/internal/cli"
-	"lunabox/internal/ipcserver"
+	"lunabox/internal/cli/ipc"
 	"lunabox/internal/utils"
 	"net/http"
 	"path/filepath"
@@ -248,7 +248,7 @@ func main() {
 				BackupService:  backupService,
 				VersionService: versionService,
 			}
-			ipcserver.StartServer(cliApp)
+			ipc.StartServer(cliApp)
 
 			// 在 Wails 启动后初始化系统托盘
 			// TODO: 升级wails v3，使用原生的托盘功能

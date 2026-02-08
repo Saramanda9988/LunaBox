@@ -1,30 +1,14 @@
-package ipcserver
+package ipc
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"lunabox/internal/applog"
 	"lunabox/internal/cli"
 )
-
-const (
-	Port        = 56789
-	ServerAddr  = "127.0.0.1"
-	PingTimeout = 500 * time.Millisecond
-)
-
-type CommandRequest struct {
-	Args []string `json:"args"`
-}
-
-type CommandResponse struct {
-	Output string `json:"output"`
-	Error  string `json:"error,omitempty"`
-}
 
 // StartServer 启动 IPC 服务器 (在 GUI 进程中运行)
 func StartServer(app *cli.CoreApp) {

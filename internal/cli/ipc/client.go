@@ -1,26 +1,11 @@
-package ipcclient
+package ipc
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 )
-
-const (
-	ServerURL   = "http://127.0.0.1:56789"
-	PingTimeout = 500 * time.Millisecond
-)
-
-type CommandRequest struct {
-	Args []string `json:"args"`
-}
-
-type CommandResponse struct {
-	Output string `json:"output"`
-	Error  string `json:"error,omitempty"`
-}
 
 // IsServerRunning 检查 Server 是否在运行
 func IsServerRunning() bool {
