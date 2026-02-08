@@ -50,7 +50,7 @@ AI agent 在做决定时，优先参考这些“真实入口”。
 ### 2.2 后端锚点
 
 - 启动与注入：`main.go`（创建 services、`Init(...)`、`SetXxxService(...)`、`Bind`）
-- 初始建表：`main.go` 的 `initSchema(...)`
+- 初始建表：`internal/migrations/init.go` 的 `InitSchema(...)`
 - migrations：`internal/migrations/migrations.go`
 - services：`internal/service/*_service.go`
 - utils：`internal/utils/*`
@@ -102,6 +102,7 @@ AI agent 在做决定时，优先参考这些“真实入口”。
 - MUST 适配“自定义背景 + 玻璃态”模式：
   - 除 modal 类组件外，新增组件 SHOULD 适当加入 `data-glass:` 相关样式或使用预制 `glass` 类
   - 在 `data-glass="true"` 时避免纯不透明大面积底色，优先半透明/边框/blur 维持层次
+  - 每个页面的最外层盒子不要设置任何颜色与不透明度，全部由root进行控制即可，保证用户手动设置的背景图片的blur/透明度一致性
 - NOTE：根节点布局已在 `frontend/src/routes/__root.tsx` 上设置 `data-glass`，不要重复造全局开关。
 
 ### 3.6 工具函数
@@ -135,7 +136,7 @@ AI agent 在做决定时，优先参考这些“真实入口”。
 
 - MUST：任何数据库结构变更（表/列/索引/数据修复）都必须通过 migration 管理：`internal/migrations/migrations.go`。
 - MUST：新增 schema 变更时同时更新两处：
-	1) `main.go` 的 `initSchema(...)`（新安装时的初始结构）
+	1) `internal/migrations/init.go` 的 `InitSchema(...)`（新安装时的初始结构）
 	2) `internal/migrations` 增加新 migration（老用户升级路径）
 - MUST：migration 需要满足：
 	- 版本号递增、不可复用（例如 141、142…）
@@ -148,7 +149,7 @@ AI agent 在做决定时，优先参考这些“真实入口”。
 
 1) 在 `internal/migrations/migrations.go` 追加 migration（版本号递增）
 2) 迁移逻辑必须幂等（`IF NOT EXISTS` 或显式检查）
-3) 如是新表/新列：同步更新 `main.go` 的 `initSchema(...)`
+3) 如是新表/新列：同步更新 `internal/migrations/init.go` 的 `InitSchema(...)`
 4) 如果迁移涉及数据回填/修复：明确写在 migration 描述里，并尽量保证可重复执行
 
 ### 4.4 Service 设计与依赖注入（Spring-like）
@@ -179,7 +180,7 @@ AI agent 在做决定时，优先参考这些“真实入口”。
 
 - MUST：错误向上返回时使用 `%w` 包装，保留原始错误。
 - SHOULD：对用户可见的错误信息使用可理解的中文描述，对内部日志保留技术细节。
-- SHOULD：在 service 内使用 `runtime.LogInfof/LogErrorf`（有 ctx 的情况下）记录关键路径。
+- SHOULD：在 service 内使用 `applog.LogInfof/LogErrorf`（有 ctx 的情况下）记录关键路径。
 
 ## 5. Agent 变更流程（推荐顺序）
 
@@ -196,6 +197,6 @@ AI agent 在做决定时，优先参考这些“真实入口”。
 - 前端：新增/修改的组件在 `light` 与 `dark` 下都可读；背景开启时 `data-glass="true"` 下观感不崩。
 - 前端：没有把局部样式硬塞进 `style.css`（除非是全局不可避免项）。
 - 前端：新增组件遵守 HeadlessUI/Radix 封装约束，没有直接引入大型 UI 框架。
-- 后端：涉及 schema 变更时同时更新 `initSchema` + 新 migration，并确保幂等与事务安全。
+- 后端：涉及 schema 变更时同时更新 `InitSchema` + 新 migration，并确保幂等与事务安全。
 - 后端：没有引入非 Windows 平台的系统调用；底层操作优先 Wails/Go 标准库。
 - 通用：新增工具函数前已搜索并复用现有 `frontend/src/utils` 或 `internal/utils`。
