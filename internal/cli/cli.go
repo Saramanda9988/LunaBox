@@ -5,16 +5,12 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
-	"path/filepath"
 	"strings"
 
+	_ "github.com/duckdb/duckdb-go/v2"
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
-	"lunabox/internal/migrations"
 	"lunabox/internal/service"
-	"lunabox/internal/utils"
-
-	_ "github.com/duckdb/duckdb-go/v2"
 )
 
 // CoreApp CLI 模式的核心应用 (也可用于 GUI 传递 Context)
@@ -54,102 +50,6 @@ func RunCommand(w io.Writer, app *CoreApp, args []string) error {
 		printUsage(w)
 		return fmt.Errorf("unknown command: %s", command)
 	}
-}
-
-// NewCoreApp 初始化核心服务（CLI 模式，使用带超时的 context）
-func NewCoreApp() (*CoreApp, error) {
-	app := &CoreApp{}
-
-	// 1. 创建一个长期运行的 context（用于 CLI 模式）
-	// 使用 context.Background() 作为基础，避免 nil context 导致的问题
-	app.Ctx = context.Background()
-
-	// 2. 加载配置
-	config, err := appconf.LoadConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load config: %w", err)
-	}
-	app.Config = config
-
-	// 3. 初始化数据库
-	execPath, err := utils.GetDataDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get data dir: %w", err)
-	}
-	dbPath := filepath.Join(execPath, "lunabox.db")
-
-	db, err := sql.Open("duckdb", dbPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open database: %w", err)
-	}
-	app.DB = db
-
-	// 4. 设置时区
-	timeZone := config.TimeZone
-	if timeZone == "" {
-		timeZone = "UTC"
-	}
-	_, err = db.Exec(fmt.Sprintf("SET TimeZone = '%s'", timeZone))
-	if err != nil {
-		applog.LogWarningf(app.Ctx, "Failed to set timezone: %v", err)
-	}
-
-	// 5. 初始化数据库 schema
-	if err := migrations.InitSchema(db); err != nil {
-		return nil, fmt.Errorf("failed to init schema: %w", err)
-	}
-
-	// 6. 运行数据库迁移
-	applog.LogInfof(app.Ctx, "Checking for pending database migrations...")
-	if err := migrations.Run(app.Ctx, db); err != nil {
-		return nil, fmt.Errorf("database migration failed: %w", err)
-	}
-	applog.LogInfof(app.Ctx, "Database migrations completed successfully")
-
-	// 7. 初始化核心服务
-	applog.LogInfof(app.Ctx, "Initializing core services...")
-	app.GameService = service.NewGameService()
-	app.StartService = service.NewStartService()
-	app.SessionService = service.NewSessionService()
-	app.BackupService = service.NewBackupService()
-
-	// 8. 初始化服务（传入 context）✅ 关键修复：不再传 nil
-	applog.LogInfof(app.Ctx, "Initializing service dependencies...")
-	app.GameService.Init(app.Ctx, db, config)
-	app.StartService.Init(app.Ctx, db, config)
-	app.SessionService.Init(app.Ctx, db, config)
-	app.BackupService.Init(app.Ctx, db, config)
-
-	// 9. 设置服务依赖
-	app.StartService.SetGameService(app.GameService)
-	app.StartService.SetSessionService(app.SessionService)
-	app.StartService.SetBackupService(app.BackupService)
-
-	applog.LogInfof(app.Ctx, "Core initialization completed successfully")
-	return app, nil
-}
-
-// Close 关闭核心服务
-func (app *CoreApp) Close() error {
-	// 清理所有待定的进程选择会话（防止遗留临时会话）
-	applog.LogInfof(app.Ctx, "cleaning up pending process selections...")
-	app.StartService.CleanupPendingSessions()
-
-	// 自动备份数据库（在关闭数据库前）
-	if app.Config.AutoBackupDB {
-		applog.LogInfof(app.Ctx, "performing automatic database backup...")
-		_, err := app.BackupService.CreateAndUploadDBBackup()
-		if err != nil {
-			applog.LogErrorf(app.Ctx, "automatic database backup failed: %v", err)
-		} else {
-			applog.LogInfof(app.Ctx, "automatic database backup succeeded")
-		}
-	}
-
-	if app.DB != nil {
-		return app.DB.Close()
-	}
-	return nil
 }
 
 // printUsage 打印使用帮助
