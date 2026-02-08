@@ -11,6 +11,7 @@ require (
 	github.com/energye/systray v1.0.2
 	github.com/google/uuid v1.6.0
 	github.com/labstack/gommon v0.4.2
+	github.com/mattn/go-runewidth v0.0.19
 	github.com/spf13/cobra v1.10.2
 	github.com/wailsapp/wails/v2 v2.11.0
 	golang.org/x/image v0.35.0
@@ -34,6 +35,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.5 // indirect
 	github.com/aws/smithy-go v1.24.0 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
+	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
 	github.com/duckdb/duckdb-go-bindings v0.1.23 // indirect
 	github.com/duckdb/duckdb-go-bindings/darwin-amd64 v0.1.23 // indirect
 	github.com/duckdb/duckdb-go-bindings/darwin-arm64 v0.1.23 // indirect

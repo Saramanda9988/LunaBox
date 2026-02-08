@@ -246,6 +246,7 @@ func main() {
 				StartService:   startService,
 				SessionService: sessionService,
 				BackupService:  backupService,
+				VersionService: versionService,
 			}
 			ipcserver.StartServer(cliApp)
 

@@ -19,6 +19,7 @@ type CoreApp struct {
 	StartService   *service.StartService
 	SessionService *service.SessionService
 	BackupService  *service.BackupService
+	VersionService *service.VersionService
 }
 
 // RunCommand 执行 CLI 命令

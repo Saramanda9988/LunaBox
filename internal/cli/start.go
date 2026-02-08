@@ -22,7 +22,7 @@ func newStartCmd(app *CoreApp) *cobra.Command {
 			applog.LogInfof(app.Ctx, "Looking for game: %s", gameQuery)
 			gameID, gameName, err := resolveGame(w, app, gameQuery)
 			if err != nil {
-				applog.LogFatalf(app.Ctx, "Failed to find game: %v", err)
+				applog.LogErrorf(app.Ctx, "Failed to find game: %v", err)
 				return err
 			}
 
@@ -32,12 +32,12 @@ func newStartCmd(app *CoreApp) *cobra.Command {
 			// 启动游戏
 			success, err := app.StartService.StartGameWithTracking(gameID)
 			if err != nil {
-				applog.LogFatalf(app.Ctx, "Failed to start game: %v", err)
+				applog.LogErrorf(app.Ctx, "Failed to start game: %v", err)
 				return err
 			}
 
 			if !success {
-				applog.LogFatalf(app.Ctx, "Game failed to start")
+				applog.LogErrorf(app.Ctx, "Game failed to start")
 				return fmt.Errorf("game failed to start")
 			}
 

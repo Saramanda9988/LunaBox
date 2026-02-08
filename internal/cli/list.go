@@ -3,7 +3,9 @@ package cli
 import (
 	"fmt"
 	"lunabox/internal/applog"
+	"strings"
 
+	"github.com/mattn/go-runewidth"
 	"github.com/spf13/cobra"
 )
 
@@ -13,13 +15,12 @@ func newListCmd(app *CoreApp) *cobra.Command {
 		Short: "List all games in your library",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			w := cmd.OutOrStdout()
-			fmt.Fprintln(w, "Starting list command...")
 
 			applog.LogInfof(app.Ctx, "Getting games from database...")
 			// 获取所有游戏
 			games, err := app.GameService.GetGames()
 			if err != nil {
-				applog.LogFatalf(app.Ctx, "Failed to get games: %v", err)
+				applog.LogErrorf(app.Ctx, "Failed to get games: %v", err)
 				return err
 			}
 
@@ -32,10 +33,15 @@ func newListCmd(app *CoreApp) *cobra.Command {
 			}
 
 			// 打印游戏列表
+			// Total width: 1 (│) + 1 (space) + 12 (ID) + 1 (space) + 1 (│) + 1 (space) + 53 (Name) + 1 (space) + 1 (│) = 72 chars
+			line := "┌" + strings.Repeat("─", 70) + "┐"
+			midLine := "├" + strings.Repeat("─", 70) + "┤"
+			bottomLine := "└" + strings.Repeat("─", 70) + "┘"
+
 			fmt.Fprintf(w, "\nYour Game Library (%d games):\n\n", len(games))
-			fmt.Fprintln(w, "┌────────────────────────────────────────────────────────────────────┐")
+			fmt.Fprintln(w, line)
 			fmt.Fprintf(w, "│ %-12s │ %-53s │\n", "Short ID", "Name")
-			fmt.Fprintln(w, "├────────────────────────────────────────────────────────────────────┤")
+			fmt.Fprintln(w, midLine)
 
 			for _, game := range games {
 				// 只显示ID的前8位
@@ -44,33 +50,47 @@ func newListCmd(app *CoreApp) *cobra.Command {
 					shortID = shortID[:8]
 				}
 
-				// 截断过长的名称
-				name := game.Name
-				if len(name) > 51 {
-					name = name[:48] + "..."
-				}
-
 				// 显示状态图标
-				statusIcon := "○"
+				statusIcon := "·"
 				switch game.Status {
 				case "playing":
 					statusIcon = "▶"
 				case "completed":
 					statusIcon = "✓"
 				case "on_hold":
-					statusIcon = "⏸"
+					statusIcon = "○"
 				case "dropped":
 					statusIcon = "✗"
 				}
 
-				fmt.Fprintf(w, "│ %-12s │ %s %-51s │\n", shortID, statusIcon, name)
+				// Calculate available width for name
+				// Name column is 53 chars wide total.
+				// Content is: statusIcon + " " + name
+				// So name available width = 53 - width(statusIcon) - 1
+				iconWidth := runewidth.StringWidth(statusIcon)
+				nameAvailableWidth := 53 - iconWidth - 1
+
+				// Truncate name if too long
+				name := game.Name
+				if runewidth.StringWidth(name) > nameAvailableWidth {
+					name = runewidth.Truncate(name, nameAvailableWidth-3, "...")
+				}
+
+				// Calculate padding
+				currentNameWidth := runewidth.StringWidth(name)
+				padding := nameAvailableWidth - currentNameWidth
+				if padding < 0 {
+					padding = 0
+				}
+
+				fmt.Fprintf(w, "│ %-12s │ %s %s%s │\n", shortID, statusIcon, name, strings.Repeat(" ", padding))
 			}
 
-			fmt.Fprintln(w, "└────────────────────────────────────────────────────────────────────┘")
+			fmt.Fprintln(w, bottomLine)
 			fmt.Fprintln(w)
 			fmt.Fprintln(w, "Status Icons: ○ Not Started  ▶ Playing  ✓ Completed  ⏸ On Hold  ✗ Dropped")
 			fmt.Fprintln(w)
-			fmt.Fprintf(w, "Use 'lunacli start <game-id>' to start a game\n\n")
+			fmt.Fprintf(w, "Use 'lunacli start <game-id> or name' to start a game\n\n")
 			return nil
 		},
 	}
