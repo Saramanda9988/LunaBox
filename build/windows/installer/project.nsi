@@ -217,7 +217,7 @@ Function ShowCLIOptions
    nsDialogs::Create 1018
    Pop $0
 
-   ${NSD_CreateLabel} 0 0 100% 50u "LunaBox 提供命令行工具 (CLI) 支持，您可以在终端中使用 'lunacli' 命令来管理游戏。$\n$\n例如:$\n  lunacli list           列出所有游戏$\n  lunacli start <ID>   启动游戏$\n  lunacli help           显示帮助$\n$\n是否要安装 CLI 工具并添加到系统 PATH？"
+   ${NSD_CreateLabel} 0 0 100% 50u "LunaBox 提供命令行工具 (CLI) 支持，您可以在终端中使用 'lunacli' 命令来启动和管理游戏。"
    Pop $0
 
    ${NSD_CreateCheckbox} 15 65u 100% 15u "安装命令行工具 (CLI) 并添加到 PATH (推荐)"
@@ -312,7 +312,9 @@ Section
             # Not in PATH, add it
             WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path" "$0;$INSTDIR"
             # Broadcast WM_SETTINGCHANGE to notify of PATH change
-            SendMessage ${HWND_BROADCAST} ${WM_SETTINGCHANGE} 0 "STR:Environment" /TIMEOUT=5000
+            # Use SendMessageTimeout to avoid hanging if a top-level window is unresponsive
+            # 0xffff = HWND_BROADCAST, 2 = SMTO_ABORTIFHUNG, 5000 = Timeout in ms
+            System::Call 'user32::SendMessageTimeout(p 0xffff, i ${WM_SETTINGCHANGE}, p 0, t "Environment", i 2, i 5000, *i .r0)'
         ${EndIf}
 
         # Record that CLI was installed (for future updates)
@@ -363,7 +365,9 @@ Section "uninstall"
             ${UnStrRep} $4 $3 "$INSTDIR" ""   # Try standalone
             WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path" "$4"
             # Broadcast WM_SETTINGCHANGE to notify of PATH change
-            SendMessage ${HWND_BROADCAST} ${WM_SETTINGCHANGE} 0 "STR:Environment" /TIMEOUT=5000
+            # Use SendMessageTimeout to avoid hanging if a top-level window is unresponsive
+            # 0xffff = HWND_BROADCAST, 2 = SMTO_ABORTIFHUNG, 5000 = Timeout in ms
+            System::Call 'user32::SendMessageTimeout(p 0xffff, i ${WM_SETTINGCHANGE}, p 0, t "Environment", i 2, i 5000, *i .r0)'
         ${EndIf}
     ${EndIf}
 
