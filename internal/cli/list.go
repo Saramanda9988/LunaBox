@@ -88,7 +88,7 @@ func newListCmd(app *CoreApp) *cobra.Command {
 
 			fmt.Fprintln(w, bottomLine)
 			fmt.Fprintln(w)
-			fmt.Fprintln(w, "Status Icons: ○ Not Started  ▶ Playing  ✓ Completed  ⏸ On Hold  ✗ Dropped")
+			fmt.Fprintln(w, "Status Icons: · Not Started  ▶ Playing  ✓ Completed  ○ On Hold  ✗ Dropped")
 			fmt.Fprintln(w)
 			fmt.Fprintf(w, "Use 'lunacli start <game-id> or name' to start a game\n\n")
 			return nil

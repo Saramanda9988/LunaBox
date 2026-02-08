@@ -42,8 +42,7 @@ func newStartCmd(app *CoreApp) *cobra.Command {
 			}
 
 			fmt.Fprintln(w, "Game started successfully!")
-			// Note: Monitoring is handled by StartService in IPC mode
-			// TODO: Consider if local mode monitoring is needed
+			fmt.Fprintln(w, "Recording play duration...")
 
 			return nil
 		},
