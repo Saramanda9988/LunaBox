@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"lunabox/internal/ipc"
+	"lunabox/internal/ipcclient"
 )
 
 func main() {
@@ -16,8 +16,8 @@ func main() {
 	}
 
 	// 1. 尝试通过 IPC 在 GUI 进程中运行命令
-	if ipc.IsServerRunning() {
-		err := ipc.RemoteRun(args)
+	if ipcclient.IsServerRunning() {
+		err := ipcclient.RemoteRun(args)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
