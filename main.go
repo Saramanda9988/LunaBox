@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"lunabox/internal/cli"
+	"lunabox/internal/ipc"
 	"lunabox/internal/utils"
 	"net/http"
 	"path/filepath"
@@ -196,7 +198,7 @@ func main() {
 				appLogger.Info("Database timezone set to: " + timeZone)
 			}
 
-			if err := initSchema(db); err != nil {
+			if err := migrations.InitSchema(db); err != nil {
 				appLogger.Fatal(err.Error())
 			}
 
@@ -233,6 +235,19 @@ func main() {
 
 			// 设置 ImportService 的 SessionService 依赖（用于导入游玩记录）
 			importService.SetSessionService(sessionService)
+
+			// 启动 IPC Server (用于 CLI 通信)
+			// 构造 CLI CoreApp 以共享 GUI 的服务实例
+			cliApp := &cli.CoreApp{
+				Config:         config,
+				DB:             db,
+				Ctx:            ctx,
+				GameService:    gameService,
+				StartService:   startService,
+				SessionService: sessionService,
+				BackupService:  backupService,
+			}
+			ipc.StartServer(cliApp)
 
 			// 在 Wails 启动后初始化系统托盘
 			// TODO: 升级wails v3，使用原生的托盘功能
@@ -313,59 +328,6 @@ func main() {
 	if bootstrapErr != nil {
 		appLogger.Fatal(bootstrapErr.Error())
 	}
-}
-
-func initSchema(db *sql.DB) error {
-	queries := []string{
-		`CREATE TABLE IF NOT EXISTS users (
-			id TEXT PRIMARY KEY,
-			created_at TIMESTAMPTZ,
-			default_backup_target TEXT
-		)`,
-		`CREATE TABLE IF NOT EXISTS categories (
-			id TEXT PRIMARY KEY,
-			name TEXT,
-			created_at TIMESTAMPTZ,
-			updated_at TIMESTAMPTZ,
-			is_system BOOLEAN
-		)`,
-		`CREATE TABLE IF NOT EXISTS games (
-			id TEXT PRIMARY KEY,
-			name TEXT,
-			cover_url TEXT,
-			company TEXT,
-			summary TEXT,
-			path TEXT,
-			save_path TEXT,
-			status TEXT DEFAULT 'not_started',
-			source_type TEXT,
-			cached_at TIMESTAMPTZ,
-			source_id TEXT,
-			created_at TIMESTAMPTZ,
-			use_locale_emulator BOOLEAN DEFAULT FALSE,
-			use_magpie BOOLEAN DEFAULT FALSE
-		)`,
-		`CREATE TABLE IF NOT EXISTS game_categories (
-			game_id TEXT,
-			category_id TEXT,
-			PRIMARY KEY (game_id, category_id)
-		)`,
-		`CREATE TABLE IF NOT EXISTS play_sessions (
-			id TEXT PRIMARY KEY,
-			game_id TEXT,
-			start_time TIMESTAMPTZ,
-			end_time TIMESTAMPTZ,
-			duration INTEGER
-		)`,
-	}
-
-	for _, query := range queries {
-		_, err := db.Exec(query)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // 系统托盘初始化
