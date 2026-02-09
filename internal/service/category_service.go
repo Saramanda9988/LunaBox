@@ -173,10 +173,15 @@ func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, 
 			COALESCE(g.company, '') as company,
 			COALESCE(g.summary, '') as summary,
 			COALESCE(g.path, '') as path,
+			COALESCE(g.save_path, '') as save_path,
+			COALESCE(g.process_name, '') as process_name,
+			COALESCE(g.status, '') as status,
 			COALESCE(g.source_type, '') as source_type,
 			g.cached_at,
 			COALESCE(g.source_id, '') as source_id,
-			g.created_at
+			g.created_at,
+			COALESCE(g.use_locale_emulator, FALSE) as use_locale_emulator,
+			COALESCE(g.use_magpie, FALSE) as use_magpie
 		FROM games g
 		JOIN game_categories gc ON g.id = gc.game_id
 		WHERE gc.category_id = ?
@@ -192,7 +197,7 @@ func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, 
 	var games []models.Game
 	for rows.Next() {
 		var g models.Game
-		if err := rows.Scan(&g.ID, &g.Name, &g.CoverURL, &g.Company, &g.Summary, &g.Path, &g.SourceType, &g.CachedAt, &g.SourceID, &g.CreatedAt); err != nil {
+		if err := rows.Scan(&g.ID, &g.Name, &g.CoverURL, &g.Company, &g.Summary, &g.Path, &g.SavePath, &g.ProcessName, &g.Status, &g.SourceType, &g.CachedAt, &g.SourceID, &g.CreatedAt, &g.UseLocaleEmulator, &g.UseMagpie); err != nil {
 			applog.LogErrorf(s.ctx, "GetGamesByCategory: failed to scan row for category %s: %v", categoryID, err)
 			return nil, err
 		}

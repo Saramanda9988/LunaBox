@@ -48,11 +48,14 @@ export function FilterBar({
 }: FilterBarProps) {
   const [initialized, setInitialized] = useState(false);
 
-  // 初始化时从 localStorage 恢复排序设置
+  // 初始化时从 localStorage 恢复所有设置
+
   useEffect(() => {
     if (storageKey && !initialized) {
       const savedSortBy = localStorage.getItem(`${storageKey}_sortBy`);
       const savedSortOrder = localStorage.getItem(`${storageKey}_sortOrder`);
+      const savedSearchQuery = localStorage.getItem(`${storageKey}_searchQuery`);
+      const savedStatusFilter = localStorage.getItem(`${storageKey}_statusFilter`);
 
       // 验证保存的 sortBy 是否在 sortOptions 中
       if (savedSortBy && sortOptions.some(opt => opt.value === savedSortBy)) {
@@ -63,9 +66,50 @@ export function FilterBar({
         onSortOrderChange(savedSortOrder);
       }
 
+      // 恢复搜索查询
+      if (savedSearchQuery) {
+        onSearchChange(savedSearchQuery);
+      }
+
+      // 恢复状态筛选
+      if (savedStatusFilter && statusOptions && onStatusFilterChange) {
+        // 验证保存的 statusFilter 是否在 statusOptions 中
+        if (statusOptions.some(opt => opt.value === savedStatusFilter)) {
+          onStatusFilterChange(savedStatusFilter);
+        }
+      }
+
       setInitialized(true);
     }
-  }, [storageKey, sortOptions, initialized]);
+  }, [storageKey, sortOptions, statusOptions, initialized]);
+
+  // 处理搜索查询变更
+  const handleSearchChange = (value: string) => {
+    onSearchChange(value);
+    if (storageKey) {
+      if (value) {
+        localStorage.setItem(`${storageKey}_searchQuery`, value);
+      }
+      else {
+        localStorage.removeItem(`${storageKey}_searchQuery`);
+      }
+    }
+  };
+
+  // 处理状态筛选变更
+  const handleStatusFilterChange = (value: string) => {
+    if (onStatusFilterChange) {
+      onStatusFilterChange(value);
+      if (storageKey) {
+        if (value) {
+          localStorage.setItem(`${storageKey}_statusFilter`, value);
+        }
+        else {
+          localStorage.removeItem(`${storageKey}_statusFilter`);
+        }
+      }
+    }
+  };
 
   // 处理排序方式变更
   const handleSortByChange = (value: string) => {
@@ -82,6 +126,7 @@ export function FilterBar({
       localStorage.setItem(`${storageKey}_sortOrder`, order);
     }
   };
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 my-4">
       <div className="relative flex-1 max-w-md">
@@ -99,7 +144,7 @@ export function FilterBar({
                      dark:focus:ring-neutral-500 dark:focus:border-neutral-500"
           placeholder={searchPlaceholder}
           value={searchQuery}
-          onChange={e => onSearchChange(e.target.value)}
+          onChange={e => handleSearchChange(e.target.value)}
         />
       </div>
 
@@ -108,7 +153,7 @@ export function FilterBar({
         {statusOptions && onStatusFilterChange && (
           <BetterSelect
             value={statusFilter || ""}
-            onChange={onStatusFilterChange}
+            onChange={handleStatusFilterChange}
             options={statusOptions}
             className="min-w-[120px]"
           />
