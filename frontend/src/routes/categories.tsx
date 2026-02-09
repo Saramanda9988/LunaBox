@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import {
   AddCategory,
+  DeleteCategories,
   DeleteCategory,
   GetCategories,
   UpdateCategory,
@@ -33,6 +34,8 @@ function CategoriesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "game_count" | "created_at" | "updated_at">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
 
   // 确认弹窗状态
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -149,6 +152,64 @@ function CategoriesPage() {
       return sortOrder === "asc" ? comparison : -comparison;
     });
 
+  const handleBatchModeChange = (enabled: boolean) => {
+    setBatchMode(enabled);
+    if (!enabled) {
+      setSelectedCategoryIds([]);
+    }
+  };
+
+  const setCategorySelection = (category: vo.CategoryVO, selected: boolean) => {
+    if (category.is_system)
+      return;
+    setSelectedCategoryIds((prev) => {
+      if (selected) {
+        return prev.includes(category.id) ? prev : [...prev, category.id];
+      }
+      return prev.filter(id => id !== category.id);
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedCategoryIds((prev) => {
+      const next = new Set(prev);
+      filteredCategories.forEach((category) => {
+        if (!category.is_system) {
+          next.add(category.id);
+        }
+      });
+      return Array.from(next);
+    });
+  };
+
+  const handleClearSelection = () => {
+    setSelectedCategoryIds([]);
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedCategoryIds.length === 0)
+      return;
+    setConfirmConfig({
+      isOpen: true,
+      title: "批量删除收藏夹",
+      message: `确定要删除选中的 ${selectedCategoryIds.length} 个收藏夹吗？此操作无法撤销。`,
+      type: "danger",
+      onConfirm: async () => {
+        try {
+          await DeleteCategories(selectedCategoryIds);
+          await loadCategories();
+          setSelectedCategoryIds([]);
+          setBatchMode(false);
+          toast.success("批量删除成功");
+        }
+        catch (error) {
+          console.error("Failed to batch delete categories:", error);
+          toast.error("批量删除失败");
+        }
+      },
+    });
+  };
+
   useEffect(() => {
     loadCategories();
   }, []);
@@ -194,6 +255,24 @@ function CategoriesPage() {
         ]}
         sortOrder={sortOrder}
         onSortOrderChange={setSortOrder}
+        batchMode={batchMode}
+        onBatchModeChange={handleBatchModeChange}
+        selectedCount={selectedCategoryIds.length}
+        onSelectAll={handleSelectAll}
+        onClearSelection={handleClearSelection}
+        batchActions={(
+          <button
+            type="button"
+            onClick={handleBatchDelete}
+            disabled={selectedCategoryIds.length === 0}
+            className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
+                        bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
+                        rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-error-600 dark:text-error-400
+                        ${selectedCategoryIds.length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+          >
+            <div className="i-mdi-delete text-lg" />
+          </button>
+        )}
         actionButton={(
           <button
             onClick={() => setIsAddCategoryModalOpen(true)}
@@ -212,6 +291,10 @@ function CategoriesPage() {
             category={category}
             onEdit={e => handleEditCategory(e, category)}
             onDelete={e => handleDeleteCategory(e, category)}
+            selectionMode={batchMode}
+            selected={selectedCategoryIds.includes(category.id)}
+            selectionDisabled={category.is_system}
+            onSelectChange={selected => setCategorySelection(category, selected)}
           />
         ))}
       </div>

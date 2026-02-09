@@ -28,6 +28,13 @@ interface FilterBarProps {
   extraButtons?: React.ReactNode;
   // 持久化存储键，传入后会自动保存和恢复排序设置
   storageKey?: string;
+  // 批量选择
+  batchMode?: boolean;
+  onBatchModeChange?: (enabled: boolean) => void;
+  selectedCount?: number;
+  onSelectAll?: () => void;
+  onClearSelection?: () => void;
+  batchActions?: React.ReactNode;
 }
 
 export function FilterBar({
@@ -45,6 +52,12 @@ export function FilterBar({
   actionButton,
   extraButtons,
   storageKey,
+  batchMode = false,
+  onBatchModeChange,
+  selectedCount,
+  onSelectAll,
+  onClearSelection,
+  batchActions,
 }: FilterBarProps) {
   const [initialized, setInitialized] = useState(false);
 
@@ -149,6 +162,60 @@ export function FilterBar({
       </div>
 
       <div className="flex items-center gap-2">
+        {onBatchModeChange && (
+          <button
+            type="button"
+            onClick={() => onBatchModeChange(!batchMode)}
+            className={`glass-panel flex items-center gap-1.5 px-3 py-2 text-sm
+                       ${batchMode
+            ? "text-brand-900 dark:text-white bg-brand-100 dark:bg-brand-700 border-brand-300 dark:border-brand-600"
+            : "text-brand-500 dark:text-brand-400 bg-white dark:bg-brand-800 border-brand-200 dark:border-brand-700"}
+                       border rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700`}
+            title={batchMode ? "退出批量选择" : "批量选择"}
+          >
+            <div className={batchMode ? "i-mdi-close-circle-outline text-lg" : "i-mdi-checkbox-multiple-marked-outline text-lg"} />
+          </button>
+        )}
+
+        {batchMode && (
+          <>
+            {onSelectAll && (
+              <button
+                type="button"
+                onClick={onSelectAll}
+                className="glass-panel px-3 py-2 text-sm text-brand-600 dark:text-brand-300
+                           bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
+                           rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700"
+              >
+                全选
+              </button>
+            )}
+            {onClearSelection && (
+              <button
+                type="button"
+                onClick={onClearSelection}
+                className="glass-panel px-3 py-2 text-sm text-brand-600 dark:text-brand-300
+                           bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
+                           rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700"
+              >
+                清空
+              </button>
+            )}
+            {typeof selectedCount === "number" && (
+              <div className="px-2 text-sm text-brand-600 dark:text-brand-400">
+                已选
+                {" "}
+                {selectedCount}
+              </div>
+            )}
+            {batchActions && (
+              <div className="flex items-center gap-2">
+                {batchActions}
+              </div>
+            )}
+          </>
+        )}
+
         {/* 状态筛选 */}
         {statusOptions && onStatusFilterChange && (
           <BetterSelect
@@ -182,7 +249,7 @@ export function FilterBar({
         </button>
 
         {extraButtons}
-        {actionButton}
+        {!batchMode && actionButton}
       </div>
     </div>
   );

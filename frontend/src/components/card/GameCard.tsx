@@ -6,10 +6,23 @@ import { StartGameWithTracking } from "../../../wailsjs/go/service/StartService"
 
 interface GameCardProps {
   game: models.Game;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onSelectChange?: (selected: boolean) => void;
 }
 
-export function GameCard({ game }: GameCardProps) {
+export function GameCard({
+  game,
+  selectionMode = false,
+  selected = false,
+  onSelectChange,
+}: GameCardProps) {
   const navigate = useNavigate();
+
+  const handleToggleSelect = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSelectChange?.(!selected);
+  };
 
   const handleStartGame = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -38,7 +51,24 @@ export function GameCard({ game }: GameCardProps) {
   const isCompleted = game.status === enums.GameStatus.COMPLETED;
 
   return (
-    <div className="glass-card group relative flex w-full flex-col overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm transition-all duration-300 hover:shadow-xl dark:border-brand-700 dark:bg-brand-800">
+    <div
+      className={`glass-card group relative flex w-full flex-col overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm transition-all duration-300 hover:shadow-xl dark:border-brand-700 dark:bg-brand-800 ${selectionMode ? "cursor-pointer" : ""} ${selectionMode && selected ? "ring-2 ring-neutral-500 dark:ring-neutral-400" : ""}`}
+      onClick={selectionMode ? handleToggleSelect : undefined}
+    >
+      {selectionMode && (
+        <button
+          type="button"
+          onClick={handleToggleSelect}
+          className={`absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full border
+                      ${selected
+          ? "bg-neutral-600 text-white border-neutral-600"
+          : "bg-white/90 text-transparent border-brand-300 dark:bg-brand-800/90 dark:border-brand-600"}
+                      shadow-sm`}
+          title={selected ? "取消选择" : "选择"}
+        >
+          <div className="i-mdi-check text-sm" />
+        </button>
+      )}
       <div className="relative aspect-[3/3.6] w-full overflow-hidden bg-brand-200 dark:bg-brand-700">
         {game.cover_url
           ? (
@@ -62,23 +92,24 @@ export function GameCard({ game }: GameCardProps) {
           </div>
         )}
 
-        {/* Hover Overlay */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 opacity-0 backdrop-blur-[2px] transition-all duration-300 group-hover:opacity-100">
-          <button
-            onClick={handleStartGame}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-600 text-white shadow-lg transition-transform hover:scale-110 hover:bg-neutral-500 active:scale-95"
-            title="启动游戏"
-          >
-            <div className="i-mdi-play text-lg" />
-          </button>
-          <button
-            onClick={handleViewDetails}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-md transition-transform hover:scale-110 hover:bg-white/30 active:scale-95"
-            title="查看详情"
-          >
-            <div className="i-mdi-information-variant text-lg" />
-          </button>
-        </div>
+        {!selectionMode && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 opacity-0 backdrop-blur-[2px] transition-all duration-300 group-hover:opacity-100">
+            <button
+              onClick={handleStartGame}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-600 text-white shadow-lg transition-transform hover:scale-110 hover:bg-neutral-500 active:scale-95"
+              title="启动游戏"
+            >
+              <div className="i-mdi-play text-lg" />
+            </button>
+            <button
+              onClick={handleViewDetails}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-md transition-transform hover:scale-110 hover:bg-white/30 active:scale-95"
+              title="查看详情"
+            >
+              <div className="i-mdi-information-variant text-lg" />
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="px-2 pt-1 pb-2">

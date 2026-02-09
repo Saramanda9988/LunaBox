@@ -10,6 +10,10 @@ export function DeleteGame(arg1) {
   return window['go']['service']['GameService']['DeleteGame'](arg1);
 }
 
+export function DeleteGames(arg1) {
+  return window['go']['service']['GameService']['DeleteGames'](arg1);
+}
+
 export function FetchMetadata(arg1) {
   return window['go']['service']['GameService']['FetchMetadata'](arg1);
 }

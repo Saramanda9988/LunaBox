@@ -7,6 +7,9 @@ interface AddToCategoryModalProps {
   initialSelectedIds: string[];
   onClose: () => void;
   onSave: (selectedIds: string[]) => void;
+  selectionMode?: "single" | "multiple";
+  title?: string;
+  confirmText?: string;
 }
 
 export function AddToCategoryModal({
@@ -15,21 +18,26 @@ export function AddToCategoryModal({
   initialSelectedIds,
   onClose,
   onSave,
+  selectionMode = "multiple",
+  title = "添加到收藏",
+  confirmText = "确定",
 }: AddToCategoryModalProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
 
   useEffect(() => {
-    setSelectedIds(initialSelectedIds);
-  }, [initialSelectedIds]);
+    setSelectedIds(selectionMode === "single" ? initialSelectedIds.slice(0, 1) : initialSelectedIds);
+  }, [initialSelectedIds, selectionMode]);
 
   if (!isOpen)
     return null;
 
   const toggleCategory = (categoryId: string) => {
     setSelectedIds(prev =>
-      prev.includes(categoryId)
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId],
+      selectionMode === "single"
+        ? (prev[0] === categoryId ? [] : [categoryId])
+        : (prev.includes(categoryId)
+            ? prev.filter(id => id !== categoryId)
+            : [...prev, categoryId]),
     );
   };
 
@@ -42,8 +50,9 @@ export function AddToCategoryModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="w-full max-w-md max-h-[70vh] rounded-xl bg-white flex flex-col shadow-xl dark:bg-brand-800">
         <div className="p-6 border-b border-brand-200 dark:border-brand-700 flex justify-between items-center">
-          <h3 className="text-xl font-bold text-brand-900 dark:text-white">添加到收藏</h3>
+          <h3 className="text-xl font-bold text-brand-900 dark:text-white">{title}</h3>
           <button
+            type="button"
             onClick={onClose}
             className="text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-white"
           >
@@ -59,6 +68,7 @@ export function AddToCategoryModal({
                     const isSelected = selectedIds.includes(category.id);
                     return (
                       <button
+                        type="button"
                         key={category.id}
                         onClick={() => toggleCategory(category.id)}
                         className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
@@ -99,16 +109,18 @@ export function AddToCategoryModal({
 
         <div className="p-4 border-brand-200 dark:border-brand-700 flex gap-3">
           <button
+            type="button"
             onClick={onClose}
             className="flex-1 py-2 border border-brand-300 text-brand-600 rounded-lg hover:bg-brand-50 dark:border-brand-600 dark:text-brand-400 dark:hover:bg-brand-700 font-medium"
           >
             取消
           </button>
           <button
+            type="button"
             onClick={handleSave}
             className="flex-1 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 dark:bg-neutral-600 dark:hover:bg-neutral-700 font-medium"
           >
-            确定
+            {confirmText}
           </button>
         </div>
       </div>

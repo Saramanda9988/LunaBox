@@ -10,6 +10,14 @@ export function AddGameToCategory(arg1, arg2) {
   return window['go']['service']['CategoryService']['AddGameToCategory'](arg1, arg2);
 }
 
+export function AddGamesToCategories(arg1, arg2) {
+  return window['go']['service']['CategoryService']['AddGamesToCategories'](arg1, arg2);
+}
+
+export function DeleteCategories(arg1) {
+  return window['go']['service']['CategoryService']['DeleteCategories'](arg1);
+}
+
 export function DeleteCategory(arg1) {
   return window['go']['service']['CategoryService']['DeleteCategory'](arg1);
 }
@@ -36,6 +44,10 @@ export function Init(arg1, arg2, arg3) {
 
 export function RemoveGameFromCategory(arg1, arg2) {
   return window['go']['service']['CategoryService']['RemoveGameFromCategory'](arg1, arg2);
+}
+
+export function RemoveGamesFromCategory(arg1, arg2) {
+  return window['go']['service']['CategoryService']['RemoveGamesFromCategory'](arg1, arg2);
 }
 
 export function UpdateCategory(arg1, arg2) {

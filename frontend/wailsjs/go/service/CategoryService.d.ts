@@ -10,6 +10,10 @@ export function AddCategory(arg1:string):Promise<void>;
 
 export function AddGameToCategory(arg1:string,arg2:string):Promise<void>;
 
+export function AddGamesToCategories(arg1:Array<string>,arg2:Array<string>):Promise<void>;
+
+export function DeleteCategories(arg1:Array<string>):Promise<void>;
+
 export function DeleteCategory(arg1:string):Promise<void>;
 
 export function GetCategories():Promise<Array<vo.CategoryVO>>;
@@ -23,5 +27,7 @@ export function GetGamesByCategory(arg1:string):Promise<Array<models.Game>>;
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;
 
 export function RemoveGameFromCategory(arg1:string,arg2:string):Promise<void>;
+
+export function RemoveGamesFromCategory(arg1:Array<string>,arg2:string):Promise<void>;
 
 export function UpdateCategory(arg1:string,arg2:string):Promise<void>;

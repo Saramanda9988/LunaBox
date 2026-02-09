@@ -244,3 +244,107 @@ func TestCategoryService_DeleteCategoryWithGames(t *testing.T) {
 		}
 	})
 }
+
+func TestCategoryService_BatchOperations(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	categoryService := service.NewCategoryService()
+	categoryService.Init(context.Background(), db, &appconf.AppConfig{})
+
+	gameService := service.NewGameService()
+	gameService.Init(context.Background(), db, &appconf.AppConfig{})
+
+	// 准备游戏
+	game1 := createTestGame()
+	game1.ID = "batch-game-001"
+	game2 := createTestGame()
+	game2.ID = "batch-game-002"
+	if err := gameService.AddGame(game1); err != nil {
+		t.Fatalf("添加游戏1失败: %v", err)
+	}
+	if err := gameService.AddGame(game2); err != nil {
+		t.Fatalf("添加游戏2失败: %v", err)
+	}
+
+	// 准备分类
+	if err := categoryService.AddCategory("批量分类A"); err != nil {
+		t.Fatalf("添加分类A失败: %v", err)
+	}
+	if err := categoryService.AddCategory("批量分类B"); err != nil {
+		t.Fatalf("添加分类B失败: %v", err)
+	}
+
+	categories, _ := categoryService.GetCategories()
+	var categoryAID string
+	var categoryBID string
+	var systemID string
+	for _, c := range categories {
+		if c.Name == "批量分类A" {
+			categoryAID = c.ID
+		}
+		if c.Name == "批量分类B" {
+			categoryBID = c.ID
+		}
+		if c.IsSystem {
+			systemID = c.ID
+		}
+	}
+
+	t.Run("批量添加游戏到多个分类", func(t *testing.T) {
+		err := categoryService.AddGamesToCategories([]string{game1.ID, game2.ID}, []string{categoryAID, categoryBID})
+		if err != nil {
+			t.Fatalf("批量添加失败: %v", err)
+		}
+
+		var count int
+		err = db.QueryRow("SELECT COUNT(*) FROM game_categories").Scan(&count)
+		if err != nil {
+			t.Fatalf("查询关联表失败: %v", err)
+		}
+		if count != 4 {
+			t.Errorf("期望 4 条关联，实际为 %d", count)
+		}
+	})
+
+	t.Run("批量从分类移除游戏", func(t *testing.T) {
+		err := categoryService.RemoveGamesFromCategory([]string{game1.ID, game2.ID}, categoryAID)
+		if err != nil {
+			t.Fatalf("批量移除失败: %v", err)
+		}
+
+		var count int
+		err = db.QueryRow("SELECT COUNT(*) FROM game_categories WHERE category_id = ?", categoryAID).Scan(&count)
+		if err != nil {
+			t.Fatalf("查询关联表失败: %v", err)
+		}
+		if count != 0 {
+			t.Errorf("期望分类A关联为 0，实际为 %d", count)
+		}
+	})
+
+	t.Run("批量删除分类(跳过系统分类)", func(t *testing.T) {
+		err := categoryService.DeleteCategories([]string{categoryAID, categoryBID, systemID})
+		if err != nil {
+			t.Fatalf("批量删除分类失败: %v", err)
+		}
+
+		cats, _ := categoryService.GetCategories()
+		for _, c := range cats {
+			if c.ID == categoryAID || c.ID == categoryBID {
+				t.Error("批量删除后仍存在普通分类")
+			}
+		}
+		// 系统分类应保留
+		foundSystem := false
+		for _, c := range cats {
+			if c.ID == systemID {
+				foundSystem = true
+				break
+			}
+		}
+		if systemID != "" && !foundSystem {
+			t.Error("系统分类不应被批量删除")
+		}
+	})
+}
