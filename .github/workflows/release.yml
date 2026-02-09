@@ -65,13 +65,22 @@ jobs:
         if: matrix.mode == 'portable'
         run: |
           $LDFLAGS = "-X 'lunabox/internal/version.Version=${{ steps.get_version.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.get_version.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.get_version.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=portable'"
+          # Build GUI
           wails build -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -o LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.exe
+          
+          # Build CLI
+          go build -ldflags "$LDFLAGS" -o build/bin/lunacli.exe ./cmd/lunacli
         shell: pwsh
 
       - name: Build Installer Version
         if: matrix.mode == 'installer'
         run: |
           $LDFLAGS = "-X 'lunabox/internal/version.Version=${{ steps.get_version.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.get_version.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.get_version.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=installer'"
+          
+          # Build CLI first (needed for installer)
+          go build -ldflags "$LDFLAGS" -o build/bin/lunacli.exe ./cmd/lunacli
+          
+          # Build GUI with NSIS
           wails build -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -nsis
         shell: pwsh
 
@@ -85,6 +94,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path "$PKG_DIR/covers"
           
           Copy-Item "build/bin/$PKG_NAME.exe" -Destination "$PKG_DIR/LunaBox.exe"
+          Copy-Item "build/bin/lunacli.exe" -Destination "$PKG_DIR/lunacli.exe"
           
           Compress-Archive -Path "$PKG_DIR" -DestinationPath "$PKG_NAME.zip"
         shell: pwsh
