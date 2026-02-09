@@ -30,6 +30,10 @@ export function SetSessionService(arg1) {
   return window['go']['service']['StartService']['SetSessionService'](arg1);
 }
 
+export function StartGameWithOptions(arg1, arg2) {
+  return window['go']['service']['StartService']['StartGameWithOptions'](arg1, arg2);
+}
+
 export function StartGameWithTracking(arg1) {
   return window['go']['service']['StartService']['StartGameWithTracking'](arg1);
 }

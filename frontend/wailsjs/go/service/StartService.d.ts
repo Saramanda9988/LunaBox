@@ -19,4 +19,6 @@ export function SetGameService(arg1:service.GameService):Promise<void>;
 
 export function SetSessionService(arg1:service.SessionService):Promise<void>;
 
+export function StartGameWithOptions(arg1:string,arg2:service.LaunchOptions):Promise<boolean>;
+
 export function StartGameWithTracking(arg1:string):Promise<boolean>;

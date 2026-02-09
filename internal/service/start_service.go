@@ -17,6 +17,12 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+// LaunchOptions 定义游戏启动选项
+type LaunchOptions struct {
+	UseLocaleEmulator *bool // 是否使用 Locale Emulator，nil 表示使用游戏配置
+	UseMagpie         *bool // 是否使用 Magpie，nil 表示使用游戏配置
+}
+
 type StartService struct {
 	ctx               context.Context
 	config            *appconf.AppConfig
@@ -67,6 +73,17 @@ func (s *StartService) SetSessionService(sessionService *SessionService) {
 // StartGameWithTracking 启动游戏并自动追踪游玩时长
 // 当游戏进程退出时，自动保存游玩记录到数据库
 func (s *StartService) StartGameWithTracking(gameID string) (bool, error) {
+	return s.startGame(gameID, LaunchOptions{})
+}
+
+// StartGameWithOptions 使用指定选项启动游戏
+// 供 CLI 调用，支持覆盖 LE 和 Magpie 设置
+func (s *StartService) StartGameWithOptions(gameID string, options LaunchOptions) (bool, error) {
+	return s.startGame(gameID, options)
+}
+
+// startGame 内部启动方法，支持通过 options 覆盖配置
+func (s *StartService) startGame(gameID string, options LaunchOptions) (bool, error) {
 	// 获取游戏路径和进程配置
 	path, processName, err := s.getGamePathAndProcess(gameID)
 	if err != nil {
@@ -83,10 +100,21 @@ func (s *StartService) StartGameWithTracking(gameID string) (bool, error) {
 	launcherExeName := filepath.Base(path)
 
 	// 获取游戏的启动配置
-	useLE, useMagpie, err := s.getGameLaunchConfig(gameID)
+	defaultUseLE, defaultUseMagpie, err := s.getGameLaunchConfig(gameID)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "failed to get launch config: %v", err)
 		return false, fmt.Errorf("failed to get launch config: %w", err)
+	}
+
+	// 确定最终配置：优先使用 options 中的设置（如果非 nil），否则使用游戏默认配置
+	useLE := defaultUseLE
+	if options.UseLocaleEmulator != nil {
+		useLE = *options.UseLocaleEmulator
+	}
+
+	useMagpie := defaultUseMagpie
+	if options.UseMagpie != nil {
+		useMagpie = *options.UseMagpie
 	}
 
 	var cmd *exec.Cmd

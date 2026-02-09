@@ -4,19 +4,24 @@ import (
 	"fmt"
 	"io"
 	"lunabox/internal/applog"
+	"lunabox/internal/service"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
 
 func newStartCmd(app *CoreApp) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "start <game>",
 		Short: "Start a game by ID, alias or name (fuzzy match)",
 		Args:  cobra.ExactArgs(1), // Expect exactly one argument
 		RunE: func(cmd *cobra.Command, args []string) error {
 			gameQuery := args[0]
 			w := cmd.OutOrStdout()
+
+			// 获取 flags
+			useLE, _ := cmd.Flags().GetBool("le")
+			useMagpie, _ := cmd.Flags().GetBool("magpie")
 
 			// 解析游戏 ID
 			applog.LogInfof(app.Ctx, "Looking for game: %s", gameQuery)
@@ -27,10 +32,32 @@ func newStartCmd(app *CoreApp) *cobra.Command {
 			}
 
 			applog.LogInfof(app.Ctx, "Found game: %s (ID: %s)", gameName, gameID)
-			applog.LogInfof(app.Ctx, "Starting game...")
+
+			// 构造启动选项
+			launchOptions := service.LaunchOptions{}
+			if cmd.Flags().Changed("le") {
+				if useLE && app.Config.LocaleEmulatorPath == "" {
+					return fmt.Errorf("Locale Emulator path is not configured")
+				}
+				launchOptions.UseLocaleEmulator = &useLE
+			}
+			if cmd.Flags().Changed("magpie") {
+				if useMagpie && app.Config.MagpiePath == "" {
+					return fmt.Errorf("Magpie path is not configured")
+				}
+				launchOptions.UseMagpie = &useMagpie
+			}
+
+			logMsg := "Starting game..."
+			if launchOptions.UseLocaleEmulator != nil || launchOptions.UseMagpie != nil {
+				logMsg = fmt.Sprintf("Starting game with options (LE: %v, Magpie: %v)...",
+					boolPtrToString(launchOptions.UseLocaleEmulator),
+					boolPtrToString(launchOptions.UseMagpie))
+			}
+			applog.LogInfof(app.Ctx, logMsg)
 
 			// 启动游戏
-			success, err := app.StartService.StartGameWithTracking(gameID)
+			success, err := app.StartService.StartGameWithOptions(gameID, launchOptions)
 			if err != nil {
 				applog.LogErrorf(app.Ctx, "Failed to start game: %v", err)
 				return err
@@ -47,6 +74,18 @@ func newStartCmd(app *CoreApp) *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.Flags().Bool("le", false, "Start with Locale Emulator")
+	cmd.Flags().BoolP("magpie", "m", false, "Start with Magpie")
+
+	return cmd
+}
+
+func boolPtrToString(b *bool) string {
+	if b == nil {
+		return "default"
+	}
+	return fmt.Sprintf("%v", *b)
 }
 
 // resolveGame 解析游戏查询（ID / ID前缀 / 别名 / 名称模糊匹配）
