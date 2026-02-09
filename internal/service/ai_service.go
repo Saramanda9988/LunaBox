@@ -6,9 +6,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"io"
 	"lunabox/internal/appconf"
+	"lunabox/internal/applog"
 	"lunabox/internal/enums"
 	"lunabox/internal/vo"
 	"net/http"
@@ -35,14 +35,14 @@ func (s *AiService) Init(ctx context.Context, db *sql.DB, appConfig *appconf.App
 // AISummarize 生成AI锐评总结
 func (s *AiService) AISummarize(req vo.AISummaryRequest) (vo.AISummaryResponse, error) {
 	if s.appConfig.AIAPIKey == "" {
-		runtime.LogError(s.ctx, "[AIService] please configure AI API Key first")
+		applog.LogError(s.ctx, "[AIService] please configure AI API Key first")
 		return vo.AISummaryResponse{}, fmt.Errorf("please configure AI API Key first")
 	}
 
 	// 获取统计数据
 	statsData, err := s.getStatsForAI(enums.Period(req.Dimension))
 	if err != nil {
-		runtime.LogError(s.ctx, "[AIService] fail to get stats: "+err.Error())
+		applog.LogError(s.ctx, "[AIService] fail to get stats: "+err.Error())
 		return vo.AISummaryResponse{}, fmt.Errorf("获取统计数据失败: %w", err)
 	}
 
@@ -56,7 +56,7 @@ func (s *AiService) AISummarize(req vo.AISummaryRequest) (vo.AISummaryResponse, 
 	}
 	summary, err := s.callAIAPI(systemPrompt, prompt)
 	if err != nil {
-		runtime.LogError(s.ctx, "[AIService] fail to get call AI: "+err.Error())
+		applog.LogError(s.ctx, "[AIService] fail to get call AI: "+err.Error())
 		return vo.AISummaryResponse{}, fmt.Errorf("AI调用失败: %w", err)
 	}
 

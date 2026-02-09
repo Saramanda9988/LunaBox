@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"lunabox/internal/appconf"
+	"lunabox/internal/applog"
 	"lunabox/internal/models"
 	"lunabox/internal/service/timer"
 	"lunabox/internal/utils"
@@ -15,6 +16,12 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+// LaunchOptions 定义游戏启动选项
+type LaunchOptions struct {
+	UseLocaleEmulator *bool // 是否使用 Locale Emulator，nil 表示使用游戏配置
+	UseMagpie         *bool // 是否使用 Magpie，nil 表示使用游戏配置
+}
 
 type StartService struct {
 	ctx               context.Context
@@ -66,15 +73,26 @@ func (s *StartService) SetSessionService(sessionService *SessionService) {
 // StartGameWithTracking 启动游戏并自动追踪游玩时长
 // 当游戏进程退出时，自动保存游玩记录到数据库
 func (s *StartService) StartGameWithTracking(gameID string) (bool, error) {
+	return s.startGame(gameID, LaunchOptions{})
+}
+
+// StartGameWithOptions 使用指定选项启动游戏
+// 供 CLI 调用，支持覆盖 LE 和 Magpie 设置
+func (s *StartService) StartGameWithOptions(gameID string, options LaunchOptions) (bool, error) {
+	return s.startGame(gameID, options)
+}
+
+// startGame 内部启动方法，支持通过 options 覆盖配置
+func (s *StartService) startGame(gameID string, options LaunchOptions) (bool, error) {
 	// 获取游戏路径和进程配置
 	path, processName, err := s.getGamePathAndProcess(gameID)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to get game path: %v", err)
+		applog.LogErrorf(s.ctx, "failed to get game path: %v", err)
 		return false, fmt.Errorf("failed to get game path: %w", err)
 	}
 
 	if path == "" {
-		runtime.LogErrorf(s.ctx, "game path is empty for game: %s", gameID)
+		applog.LogErrorf(s.ctx, "game path is empty for game: %s", gameID)
 		return false, fmt.Errorf("game path is empty for game: %s", gameID)
 	}
 
@@ -82,17 +100,28 @@ func (s *StartService) StartGameWithTracking(gameID string) (bool, error) {
 	launcherExeName := filepath.Base(path)
 
 	// 获取游戏的启动配置
-	useLE, useMagpie, err := s.getGameLaunchConfig(gameID)
+	defaultUseLE, defaultUseMagpie, err := s.getGameLaunchConfig(gameID)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to get launch config: %v", err)
+		applog.LogErrorf(s.ctx, "failed to get launch config: %v", err)
 		return false, fmt.Errorf("failed to get launch config: %w", err)
+	}
+
+	// 确定最终配置：优先使用 options 中的设置（如果非 nil），否则使用游戏默认配置
+	useLE := defaultUseLE
+	if options.UseLocaleEmulator != nil {
+		useLE = *options.UseLocaleEmulator
+	}
+
+	useMagpie := defaultUseMagpie
+	if options.UseMagpie != nil {
+		useMagpie = *options.UseMagpie
 	}
 
 	var cmd *exec.Cmd
 
 	// 如果启用了 Locale Emulator
 	if useLE && s.config.LocaleEmulatorPath != "" {
-		runtime.LogInfof(s.ctx, "Starting game with Locale Emulator: %s", gameID)
+		applog.LogInfof(s.ctx, "Starting game with Locale Emulator: %s", gameID)
 		cmd = exec.Command(s.config.LocaleEmulatorPath, path)
 		cmd.Dir = filepath.Dir(path)
 	} else {
@@ -102,7 +131,7 @@ func (s *StartService) StartGameWithTracking(gameID string) (bool, error) {
 	}
 
 	if err := cmd.Start(); err != nil {
-		runtime.LogErrorf(s.ctx, "failed to start game: %v", err)
+		applog.LogErrorf(s.ctx, "failed to start game: %v", err)
 		return false, fmt.Errorf("failed to start game: %w", err)
 	}
 
@@ -137,7 +166,7 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 	// 情况1: 已保存了process_name，且与启动器exe名称不同
 	// 说明之前用户已选择过实际的游戏进程
 	if savedProcessName != "" && savedProcessName != launcherExeName {
-		runtime.LogInfof(s.ctx, "Game %s has saved process_name: %s, will search for it after initial delay", gameID, savedProcessName)
+		applog.LogInfof(s.ctx, "Game %s has saved process_name: %s, will search for it after initial delay", gameID, savedProcessName)
 
 		// 等待5秒，给启动器时间启动实际游戏
 		time.Sleep(5 * time.Second)
@@ -145,7 +174,7 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 		// 在系统进程中搜索保存的进程名
 		pid, err := utils.GetProcessPIDByName(savedProcessName)
 		if err != nil {
-			runtime.LogWarningf(s.ctx, "Failed to find saved process %s: %v, falling back to launcher monitoring", savedProcessName, err)
+			applog.LogWarningf(s.ctx, "Failed to find saved process %s: %v, falling back to launcher monitoring", savedProcessName, err)
 			// 如果找不到保存的进程，使用启动器进程监控
 			actualProcessID = launcherPID
 			actualProcessName = launcherExeName
@@ -154,13 +183,13 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 			actualProcessID = pid
 			actualProcessName = savedProcessName
 			needExternalMonitor = true // 需要外部监控，因为这不是cmd的子进程
-			runtime.LogInfof(s.ctx, "Found saved process %s with PID %d", savedProcessName, pid)
+			applog.LogInfof(s.ctx, "Found saved process %s with PID %d", savedProcessName, pid)
 		}
 	} else {
 		// 情况2: 没有保存的process_name，或process_name与启动器相同
 		// 使用分阶段检测策略来准确判断启动器类型
 
-		runtime.LogInfof(s.ctx, "Starting staged detection for game %s, launcher: %s (PID %d)", gameID, launcherExeName, launcherPID)
+		applog.LogInfof(s.ctx, "Starting staged detection for game %s, launcher: %s (PID %d)", gameID, launcherExeName, launcherPID)
 
 		// 阶段1: 初始等待5秒，让启动器有时间启动实际游戏
 		time.Sleep(5 * time.Second)
@@ -170,14 +199,14 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 
 		if !launcherStillRunning {
 			// 启动器在5秒内就退出了，说明是快速启动器（如Steam）
-			runtime.LogInfof(s.ctx, "Launcher %s exited quickly (within 5s), will prompt for actual game process", launcherExeName)
+			applog.LogInfof(s.ctx, "Launcher %s exited quickly (within 5s), will prompt for actual game process", launcherExeName)
 			s.promptUserToSelectProcess(sessionID, gameID, startTime, launcherExeName)
 			return
 		}
 
 		// 阶段3: 启动器还在运行，进入观察期（15秒）
 		// 每2秒检查一次，看启动器是否会退出
-		runtime.LogInfof(s.ctx, "Launcher %s still running, entering observation period (15s)", launcherExeName)
+		applog.LogInfof(s.ctx, "Launcher %s still running, entering observation period (15s)", launcherExeName)
 
 		observationPeriod := 15 * time.Second
 		checkInterval := 2 * time.Second
@@ -188,7 +217,7 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 
 			if !utils.IsProcessRunningByPID(launcherPID, s.ctx) {
 				// 启动器在观察期内退出了，说明它只是个启动器
-				runtime.LogInfof(s.ctx, "Launcher %s exited during observation period, will prompt for actual game process", launcherExeName)
+				applog.LogInfof(s.ctx, "Launcher %s exited during observation period, will prompt for actual game process", launcherExeName)
 				s.promptUserToSelectProcess(sessionID, gameID, startTime, launcherExeName)
 				return
 			}
@@ -196,7 +225,7 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 
 		// 阶段4: 观察期结束，启动器仍在运行
 		// 说明启动器本身就是游戏进程（如普通单exe游戏）
-		runtime.LogInfof(s.ctx, "Launcher %s still running after 20s total, treating it as the game process", launcherExeName)
+		applog.LogInfof(s.ctx, "Launcher %s still running after 20s total, treating it as the game process", launcherExeName)
 		actualProcessID = launcherPID
 		actualProcessName = launcherExeName
 		needExternalMonitor = false
@@ -211,7 +240,7 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 	if s.config.RecordActiveTimeOnly {
 		_, err := s.activeTimeTracker.StartTracking(sessionID, gameID, actualProcessID)
 		if err != nil {
-			runtime.LogWarningf(s.ctx, "Failed to start active time tracking: %v", err)
+			applog.LogWarningf(s.ctx, "Failed to start active time tracking: %v", err)
 		}
 	}
 
@@ -247,15 +276,15 @@ func (s *StartService) promptUserToSelectProcess(sessionID string, gameID string
 	case selectedProcess, ok = <-selectChan:
 		if !ok {
 			// channel 被关闭，说明用户取消了选择
-			runtime.LogInfof(s.ctx, "User cancelled process selection for game %s", gameID)
+			applog.LogInfof(s.ctx, "User cancelled process selection for game %s", gameID)
 			s.sessionService.DeletePlaySession(sessionID)
 			return
 		}
 		// 用户已选择进程
-		runtime.LogInfof(s.ctx, "User selected process: %s for game %s", selectedProcess, gameID)
+		applog.LogInfof(s.ctx, "User selected process: %s for game %s", selectedProcess, gameID)
 	case <-time.After(5 * time.Minute):
 		// 超时未选择
-		runtime.LogWarningf(s.ctx, "Process selection timeout for game %s, cleaning up session", gameID)
+		applog.LogWarningf(s.ctx, "Process selection timeout for game %s, cleaning up session", gameID)
 		s.pendingProcessSelectMu.Lock()
 		delete(s.pendingProcessSelect, gameID)
 		s.pendingProcessSelectMu.Unlock()
@@ -271,7 +300,7 @@ func (s *StartService) promptUserToSelectProcess(sessionID string, gameID string
 	// 获取选中进程的PID
 	pid, err := utils.GetProcessPIDByName(selectedProcess)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "Failed to find selected process %s: %v", selectedProcess, err)
+		applog.LogErrorf(s.ctx, "Failed to find selected process %s: %v", selectedProcess, err)
 		s.sessionService.DeletePlaySession(sessionID)
 		return
 	}
@@ -283,7 +312,7 @@ func (s *StartService) promptUserToSelectProcess(sessionID string, gameID string
 	if s.config.RecordActiveTimeOnly {
 		_, err := s.activeTimeTracker.StartTracking(sessionID, gameID, pid)
 		if err != nil {
-			runtime.LogWarningf(s.ctx, "Failed to start active time tracking: %v", err)
+			applog.LogWarningf(s.ctx, "Failed to start active time tracking: %v", err)
 		}
 	}
 
@@ -305,11 +334,11 @@ func (s *StartService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID s
 	case exitErr = <-exitChan:
 		// 游戏正常退出
 		if exitErr != nil {
-			runtime.LogDebugf(s.ctx, "Game %s exited with error: %v", gameID, exitErr)
+			applog.LogDebugf(s.ctx, "Game %s exited with error: %v", gameID, exitErr)
 		}
 	case <-time.After(24 * time.Hour):
 		// 超时保护（24小时后强制清理）
-		runtime.LogWarningf(s.ctx, "Game %s exceeded maximum runtime (24h), forcing cleanup", gameID)
+		applog.LogWarningf(s.ctx, "Game %s exceeded maximum runtime (24h), forcing cleanup", gameID)
 	}
 
 	// 执行统一的会话清理逻辑
@@ -319,12 +348,12 @@ func (s *StartService) waitForGameExit(cmd *exec.Cmd, sessionID string, gameID s
 // monitorProcessByPID 通过PID监控外部进程直到退出
 // 使用 WaitForSingleObject 事件驱动，避免轮询
 func (s *StartService) monitorProcessByPID(sessionID string, gameID string, startTime time.Time, processID uint32, processName string) {
-	runtime.LogInfof(s.ctx, "Starting to monitor external process %s (PID %d) using WaitForSingleObject", processName, processID)
+	applog.LogInfof(s.ctx, "Starting to monitor external process %s (PID %d) using WaitForSingleObject", processName, processID)
 
 	// 创建进程监控器
 	pm, exitChan, err := utils.WaitForProcessExitAsync(processID)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "Failed to start process monitor for %s (PID %d): %v", processName, processID, err)
+		applog.LogErrorf(s.ctx, "Failed to start process monitor for %s (PID %d): %v", processName, processID, err)
 		// 监控失败，直接清理
 		s.finalizePlaySession(sessionID, gameID, startTime)
 		return
@@ -334,9 +363,9 @@ func (s *StartService) monitorProcessByPID(sessionID string, gameID string, star
 	// 等待进程退出或超时（24小时）
 	select {
 	case <-exitChan:
-		runtime.LogInfof(s.ctx, "External process %s (PID %d) has exited", processName, processID)
+		applog.LogInfof(s.ctx, "External process %s (PID %d) has exited", processName, processID)
 	case <-time.After(24 * time.Hour):
-		runtime.LogWarningf(s.ctx, "Game %s exceeded maximum runtime (24h), forcing cleanup", gameID)
+		applog.LogWarningf(s.ctx, "Game %s exceeded maximum runtime (24h), forcing cleanup", gameID)
 	}
 
 	// 执行统一的会话清理逻辑
@@ -356,17 +385,17 @@ func (s *StartService) finalizePlaySession(sessionID string, gameID string, star
 	var duration int
 	if s.config.RecordActiveTimeOnly {
 		duration = activeSeconds
-		runtime.LogInfof(s.ctx, "Game %s active play time: %d seconds", gameID, duration)
+		applog.LogInfof(s.ctx, "Game %s active play time: %d seconds", gameID, duration)
 	} else {
 		duration = int(endTime.Sub(startTime).Seconds())
-		runtime.LogInfof(s.ctx, "Game %s total runtime: %d seconds", gameID, duration)
+		applog.LogInfof(s.ctx, "Game %s total runtime: %d seconds", gameID, duration)
 	}
 
 	// 如果游玩时长小于1分钟，删除临时会话记录
 	if duration < 60 {
 		err := s.sessionService.DeletePlaySession(sessionID)
 		if err != nil {
-			runtime.LogErrorf(s.ctx, "Failed to delete short play session %s: %v", sessionID, err)
+			applog.LogErrorf(s.ctx, "Failed to delete short play session %s: %v", sessionID, err)
 		}
 		return
 	}
@@ -381,7 +410,7 @@ func (s *StartService) finalizePlaySession(sessionID string, gameID string, star
 	}
 	err := s.sessionService.UpdatePlaySession(session)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "Failed to update play session %s: %v", sessionID, err)
+		applog.LogErrorf(s.ctx, "Failed to update play session %s: %v", sessionID, err)
 		return
 	}
 
@@ -413,12 +442,12 @@ func (s *StartService) NotifyProcessSelected(gameID string, processName string) 
 		// 非阻塞发送（如果 channel 已满或已关闭则跳过）
 		select {
 		case selectChan <- processName:
-			runtime.LogInfof(s.ctx, "Notified process selection for game %s: %s", gameID, processName)
+			applog.LogInfof(s.ctx, "Notified process selection for game %s: %s", gameID, processName)
 		default:
-			runtime.LogWarningf(s.ctx, "Failed to notify process selection for game %s (channel full or closed)", gameID)
+			applog.LogWarningf(s.ctx, "Failed to notify process selection for game %s (channel full or closed)", gameID)
 		}
 	} else {
-		runtime.LogWarningf(s.ctx, "No pending process selection for game %s", gameID)
+		applog.LogWarningf(s.ctx, "No pending process selection for game %s", gameID)
 	}
 
 	return nil
@@ -437,9 +466,9 @@ func (s *StartService) CancelProcessSelection(gameID string) error {
 	s.pendingProcessSelectMu.Unlock()
 
 	if exists {
-		runtime.LogInfof(s.ctx, "User cancelled process selection for game %s", gameID)
+		applog.LogInfof(s.ctx, "User cancelled process selection for game %s", gameID)
 	} else {
-		runtime.LogWarningf(s.ctx, "No pending process selection to cancel for game %s", gameID)
+		applog.LogWarningf(s.ctx, "No pending process selection to cancel for game %s", gameID)
 	}
 
 	return nil
@@ -455,12 +484,12 @@ func (s *StartService) CleanupPendingSessions() {
 		return
 	}
 
-	runtime.LogInfof(s.ctx, "Cleaning up %d pending process selections", len(s.pendingProcessSelect))
+	applog.LogInfof(s.ctx, "Cleaning up %d pending process selections", len(s.pendingProcessSelect))
 
 	// 关闭所有等待的 channels
 	for gameID, selectChan := range s.pendingProcessSelect {
 		close(selectChan)
-		runtime.LogInfof(s.ctx, "Cancelled pending process selection for game %s", gameID)
+		applog.LogInfof(s.ctx, "Cancelled pending process selection for game %s", gameID)
 	}
 
 	// 清空 map
@@ -472,29 +501,29 @@ func (s *StartService) autoBackupGameSave(gameID string) {
 	// 检查是否设置了存档目录
 	game, err := s.gameService.GetGameByID(gameID)
 	if err != nil || game.SavePath == "" {
-		runtime.LogDebugf(s.ctx, "Game %s has no save path configured, skipping auto backup", gameID)
+		applog.LogDebugf(s.ctx, "Game %s has no save path configured, skipping auto backup", gameID)
 		return
 	}
 
 	// 执行备份
-	runtime.LogInfof(s.ctx, "Auto backing up game save for: %s", gameID)
+	applog.LogInfof(s.ctx, "Auto backing up game save for: %s", gameID)
 	backup, err := s.backupService.CreateBackup(gameID)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "Failed to auto backup game save: %v", err)
+		applog.LogErrorf(s.ctx, "Failed to auto backup game save: %v", err)
 		return
 	}
 
 	// 如果启用了游戏存档自动上传到云端
 	if s.config.AutoUploadSaveToCloud && s.config.CloudBackupEnabled && s.config.BackupUserID != "" {
-		runtime.LogInfof(s.ctx, "Auto uploading backup to cloud: %s", backup.Path)
+		applog.LogInfof(s.ctx, "Auto uploading backup to cloud: %s", backup.Path)
 		err = s.backupService.UploadGameBackupToCloud(gameID, backup.Path)
 		if err != nil {
-			runtime.LogErrorf(s.ctx, "Failed to auto upload backup to cloud: %v", err)
+			applog.LogErrorf(s.ctx, "Failed to auto upload backup to cloud: %v", err)
 		} else {
-			runtime.LogInfof(s.ctx, "Successfully uploaded backup to cloud: %s", backup.Path)
+			applog.LogInfof(s.ctx, "Successfully uploaded backup to cloud: %s", backup.Path)
 		}
 	}
-	runtime.LogInfof(s.ctx, "Auto backup completed for game: %s", gameID)
+	applog.LogInfof(s.ctx, "Auto backup completed for game: %s", gameID)
 }
 
 // getGamePathAndProcess 获取游戏路径和已保存的进程名
@@ -523,22 +552,22 @@ func (s *StartService) startMagpie() {
 	// 检查 Magpie 是否已经在运行
 	isRunning, err := utils.CheckIfProcessRunning("Magpie.exe")
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "Failed to check Magpie process: %v", err)
+		applog.LogErrorf(s.ctx, "Failed to check Magpie process: %v", err)
 		return
 	}
 
 	if isRunning {
-		runtime.LogInfof(s.ctx, "Magpie is already running")
+		applog.LogInfof(s.ctx, "Magpie is already running")
 		return
 	}
 
 	// 启动 Magpie (tray 模式)
-	runtime.LogInfof(s.ctx, "Starting Magpie in tray mode: %s", s.config.MagpiePath)
+	applog.LogInfof(s.ctx, "Starting Magpie in tray mode: %s", s.config.MagpiePath)
 	cmd := exec.Command(s.config.MagpiePath, "-t")
 	cmd.Dir = filepath.Dir(s.config.MagpiePath)
 
 	if err := cmd.Start(); err != nil {
-		runtime.LogErrorf(s.ctx, "Failed to start Magpie: %v", err)
+		applog.LogErrorf(s.ctx, "Failed to start Magpie: %v", err)
 		return
 	}
 
@@ -547,5 +576,5 @@ func (s *StartService) startMagpie() {
 		cmd.Process.Release()
 	}
 
-	runtime.LogInfof(s.ctx, "Magpie started successfully")
+	applog.LogInfof(s.ctx, "Magpie started successfully")
 }

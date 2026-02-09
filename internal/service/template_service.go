@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"io"
 	"lunabox/internal/appconf"
+	"lunabox/internal/applog"
 	"lunabox/internal/utils"
 	"lunabox/internal/version"
 	"lunabox/internal/vo"
@@ -65,7 +66,7 @@ func (s *TemplateService) ListTemplates() ([]vo.TemplateInfo, error) {
 	// 2. 读取用户自定义模板
 	userDir, err := utils.GetTemplatesDir()
 	if err != nil {
-		runtime.LogWarningf(s.ctx, "Failed to get user templates dir: %v", err)
+		applog.LogWarningf(s.ctx, "Failed to get user templates dir: %v", err)
 	} else {
 		userEntries, err := os.ReadDir(userDir)
 		if err == nil {

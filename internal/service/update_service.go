@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"lunabox/internal/applog"
 	"net/http"
 	"strings"
 	"time"
@@ -75,7 +76,7 @@ func (s *UpdateService) checkUpdates(isAutoCheck bool) (*UpdateCheckResult, erro
 	// 获取应用配置（手动检查时，SkipVersion 已在 CheckForUpdates 中被清空）
 	appConfig, err := s.config.GetAppConfig()
 	if err != nil {
-		runtime.LogError(s.ctx, "[UpdateService]获取应用配置失败: "+err.Error())
+		applog.LogError(s.ctx, "[UpdateService]获取应用配置失败: "+err.Error())
 		return nil, fmt.Errorf("failed to get app config: %w", err)
 	}
 
@@ -106,11 +107,11 @@ func (s *UpdateService) checkUpdates(isAutoCheck bool) (*UpdateCheckResult, erro
 		if lastErr == nil {
 			break
 		}
-		runtime.LogWarningf(s.ctx, "Failed to fetch update info from %s: %v", url, lastErr)
+		applog.LogWarningf(s.ctx, "Failed to fetch update info from %s: %v", url, lastErr)
 	}
 
 	if updateInfo == nil {
-		runtime.LogWarningf(s.ctx, "[UpdateService] failed to fetch update info from all sources: %v", lastErr)
+		applog.LogWarningf(s.ctx, "[UpdateService] failed to fetch update info from all sources: %v", lastErr)
 		return nil, fmt.Errorf("[UpdateService] failed to fetch update info from all sources: %w", lastErr)
 	}
 

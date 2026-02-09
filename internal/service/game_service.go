@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"lunabox/internal/appconf"
+	"lunabox/internal/applog"
 	"lunabox/internal/enums"
 	"lunabox/internal/models"
 	"lunabox/internal/utils"
@@ -49,7 +50,7 @@ func (s *GameService) SelectGameExecutable() (string, error) {
 		},
 	})
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
+		applog.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
 	}
 	return selection, err
 }
@@ -74,7 +75,7 @@ func (s *GameService) AddGame(game models.Game) error {
 	if strings.Contains(game.CoverURL, "/local/covers/temp_") {
 		newCoverURL, err := utils.RenameTempCover(game.CoverURL, game.ID)
 		if err != nil {
-			runtime.LogWarningf(s.ctx, "AddGame: failed to rename temp cover: %v", err)
+			applog.LogWarningf(s.ctx, "AddGame: failed to rename temp cover: %v", err)
 		} else {
 			game.CoverURL = newCoverURL
 			originalCoverURL = ""
@@ -102,7 +103,7 @@ func (s *GameService) AddGame(game models.Game) error {
 		game.UseMagpie,
 	)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "AddGame: failed to insert game %s: %v", game.Name, err)
+		applog.LogErrorf(s.ctx, "AddGame: failed to insert game %s: %v", game.Name, err)
 		return err
 	}
 
@@ -121,22 +122,22 @@ func (s *GameService) asyncDownloadCoverImage(gameID, gameName, coverURL string)
 		return
 	}
 
-	runtime.LogInfof(s.ctx, "asyncDownloadCoverImage: downloading cover for %s", gameName)
+	applog.LogInfof(s.ctx, "asyncDownloadCoverImage: downloading cover for %s", gameName)
 
 	// 下载并保存图片
 	localPath, err := utils.DownloadAndSaveCoverImage(coverURL, gameID)
 	if err != nil {
-		runtime.LogWarningf(s.ctx, "asyncDownloadCoverImage: failed to download cover for %s: %v", gameName, err)
+		applog.LogWarningf(s.ctx, "asyncDownloadCoverImage: failed to download cover for %s: %v", gameName, err)
 		return
 	}
 
 	// 更新数据库中的封面路径
 	if err := s.updateCoverURL(gameID, localPath); err != nil {
-		runtime.LogErrorf(s.ctx, "asyncDownloadCoverImage: failed to update cover URL for %s: %v", gameName, err)
+		applog.LogErrorf(s.ctx, "asyncDownloadCoverImage: failed to update cover URL for %s: %v", gameName, err)
 		return
 	}
 
-	runtime.LogInfof(s.ctx, "asyncDownloadCoverImage: successfully cached cover for %s", gameName)
+	applog.LogInfof(s.ctx, "asyncDownloadCoverImage: successfully cached cover for %s", gameName)
 }
 
 // updateCoverURL 更新游戏的封面URL
@@ -150,31 +151,31 @@ func (s *GameService) DeleteGame(id string) error {
 	// 先删除关联的游戏分类记录
 	_, err := s.db.ExecContext(s.ctx, "DELETE FROM game_categories WHERE game_id = ?", id)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "DeleteGame: failed to delete game_categories for id %s: %v", id, err)
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game_categories for id %s: %v", id, err)
 		return fmt.Errorf("failed to delete game categories: %w", err)
 	}
 
 	// 删除关联的游玩会话记录
 	_, err = s.db.ExecContext(s.ctx, "DELETE FROM play_sessions WHERE game_id = ?", id)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "DeleteGame: failed to delete play_sessions for id %s: %v", id, err)
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete play_sessions for id %s: %v", id, err)
 		return fmt.Errorf("failed to delete play sessions: %w", err)
 	}
 	// 删除游戏记录
 	result, err := s.db.ExecContext(s.ctx, "DELETE FROM games WHERE id = ?", id)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "DeleteGame: failed to delete game for id %s: %v", id, err)
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game for id %s: %v", id, err)
 		return fmt.Errorf("failed to delete game: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "DeleteGame: failed to get rows affected for id %s: %v", id, err)
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to get rows affected for id %s: %v", id, err)
 		return err
 	}
 
 	if rowsAffected == 0 {
-		runtime.LogWarningf(s.ctx, "DeleteGame: game not found with id: %s", id)
+		applog.LogWarningf(s.ctx, "DeleteGame: game not found with id: %s", id)
 		return fmt.Errorf("game not found with id: %s", id)
 	}
 
@@ -201,7 +202,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 
 	rows, err := s.db.QueryContext(s.ctx, query)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "GetGames: failed to query games: %v", err)
+		applog.LogErrorf(s.ctx, "GetGames: failed to query games: %v", err)
 		return nil, fmt.Errorf("failed to query games: %w", err)
 	}
 	defer rows.Close()
@@ -229,7 +230,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 			&game.UseMagpie,
 		)
 		if err != nil {
-			runtime.LogErrorf(s.ctx, "GetGames: failed to scan game row: %v", err)
+			applog.LogErrorf(s.ctx, "GetGames: failed to scan game row: %v", err)
 			return nil, fmt.Errorf("failed to scan game: %w", err)
 		}
 
@@ -239,7 +240,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 	}
 
 	if err = rows.Err(); err != nil {
-		runtime.LogErrorf(s.ctx, "GetGames: error iterating games: %v", err)
+		applog.LogErrorf(s.ctx, "GetGames: error iterating games: %v", err)
 		return nil, fmt.Errorf("error iterating games: %w", err)
 	}
 
@@ -288,11 +289,11 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 	)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		runtime.LogWarningf(s.ctx, "GetGameByID: game not found with id: %s", id)
+		applog.LogWarningf(s.ctx, "GetGameByID: game not found with id: %s", id)
 		return models.Game{}, fmt.Errorf("game not found with id: %s", id)
 	}
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "GetGameByID: failed to query game %s: %v", id, err)
+		applog.LogErrorf(s.ctx, "GetGameByID: failed to query game %s: %v", id, err)
 		return models.Game{}, fmt.Errorf("failed to query game: %w", err)
 	}
 
@@ -336,18 +337,18 @@ func (s *GameService) UpdateGame(game models.Game) error {
 	)
 
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "UpdateGame: failed to update game %s: %v", game.ID, err)
+		applog.LogErrorf(s.ctx, "UpdateGame: failed to update game %s: %v", game.ID, err)
 		return fmt.Errorf("failed to update game: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "UpdateGame: failed to get rows affected for id %s: %v", game.ID, err)
+		applog.LogErrorf(s.ctx, "UpdateGame: failed to get rows affected for id %s: %v", game.ID, err)
 		return err
 	}
 
 	if rowsAffected == 0 {
-		runtime.LogWarningf(s.ctx, "UpdateGame: game not found with id: %s", game.ID)
+		applog.LogWarningf(s.ctx, "UpdateGame: game not found with id: %s", game.ID)
 		return fmt.Errorf("game not found with id: %s", game.ID)
 	}
 
@@ -382,7 +383,7 @@ func (s *GameService) SelectCoverImage(gameID string) (string, error) {
 		},
 	})
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
+		applog.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
 		return "", err
 	}
 	if selection == "" {
@@ -391,7 +392,7 @@ func (s *GameService) SelectCoverImage(gameID string) (string, error) {
 
 	coverPath, err := utils.SaveCoverImage(selection, gameID)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to save cover image: %v", err)
+		applog.LogErrorf(s.ctx, "failed to save cover image: %v", err)
 		return "", fmt.Errorf("failed to save cover image: %w", err)
 	}
 
@@ -410,7 +411,7 @@ func (s *GameService) SelectCoverImageWithTempID() (string, error) {
 		},
 	})
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
+		applog.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
 		return "", err
 	}
 	if selection == "" {
@@ -421,7 +422,7 @@ func (s *GameService) SelectCoverImageWithTempID() (string, error) {
 	tempID := fmt.Sprintf("temp_%d", time.Now().UnixNano())
 	coverPath, err := utils.SaveCoverImage(selection, tempID)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "failed to save cover image: %v", err)
+		applog.LogErrorf(s.ctx, "failed to save cover image: %v", err)
 		return "", fmt.Errorf("failed to save cover image: %w", err)
 	}
 
@@ -540,7 +541,7 @@ func (s *GameService) UpdateGameFromRemote(gameID string) error {
 		return fmt.Errorf("failed to update game: %w", err)
 	}
 
-	runtime.LogInfof(s.ctx, "UpdateGameFromRemote: successfully updated game %s from %s", existingGame.Name, existingGame.SourceType)
+	applog.LogInfof(s.ctx, "UpdateGameFromRemote: successfully updated game %s from %s", existingGame.Name, existingGame.SourceType)
 	return nil
 }
 
@@ -559,7 +560,7 @@ func (s *GameService) UpdateGameProcessName(gameID string, processName string) e
 		gameID,
 	)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "UpdateGameProcessName: failed to update process_name for game %s: %v", gameID, err)
+		applog.LogErrorf(s.ctx, "UpdateGameProcessName: failed to update process_name for game %s: %v", gameID, err)
 		return fmt.Errorf("failed to update process_name: %w", err)
 	}
 
@@ -571,6 +572,6 @@ func (s *GameService) UpdateGameProcessName(gameID string, processName string) e
 		return fmt.Errorf("game not found with id: %s", gameID)
 	}
 
-	runtime.LogInfof(s.ctx, "UpdateGameProcessName: updated process_name for game %s to %s", gameID, processName)
+	applog.LogInfof(s.ctx, "UpdateGameProcessName: updated process_name for game %s to %s", gameID, processName)
 	return nil
 }

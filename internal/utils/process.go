@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"lunabox/internal/applog"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -10,8 +11,6 @@ import (
 	"syscall"
 	"time"
 	"unsafe"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 const (
@@ -217,7 +216,7 @@ func IsProcessRunningByPID(pid uint32, ctx context.Context) bool {
 
 	// 无法打开句柄，进程不存在
 	if handle == 0 {
-		runtime.LogErrorf(ctx, "%s | [PROCESS_CHECK] PID %d NOT running (OpenProcess failed: %v)", time.Now(), pid, err)
+		applog.LogErrorf(ctx, "%s | [PROCESS_CHECK] PID %d NOT running (OpenProcess failed: %v)", time.Now(), pid, err)
 		return false
 	}
 	defer procCloseHandle.Call(handle)
@@ -229,18 +228,18 @@ func IsProcessRunningByPID(pid uint32, ctx context.Context) bool {
 
 	if ret == 0 {
 		// GetExitCodeProcess 失败，假设进程不存在
-		runtime.LogErrorf(ctx, "%s | [PROCESS_CHECK] PID %d NOT running (GetExitCodeProcess failed)", time.Now(), pid)
+		applog.LogErrorf(ctx, "%s | [PROCESS_CHECK] PID %d NOT running (GetExitCodeProcess failed)", time.Now(), pid)
 		return false
 	}
 
 	// STILL_ACTIVE = 259，表示进程仍在运行
 	if exitCode == STILL_ACTIVE {
-		runtime.LogErrorf(ctx, "%s | [PROCESS_CHECK] PID %d IS running", time.Now(), pid)
+		applog.LogErrorf(ctx, "%s | [PROCESS_CHECK] PID %d IS running", time.Now(), pid)
 		return true
 	}
 
 	// 进程已退出
-	runtime.LogErrorf(ctx, "%s | [PROCESS_CHECK] PID %d NOT running (exit code: %d)", time.Now(), pid, exitCode)
+	applog.LogErrorf(ctx, "%s | [PROCESS_CHECK] PID %d NOT running (exit code: %d)", time.Now(), pid, exitCode)
 	return false
 }
 

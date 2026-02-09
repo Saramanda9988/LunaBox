@@ -48,9 +48,20 @@ VIAddVersionKey "ProductName"     "${INFO_PRODUCTNAME}"
 # Enable HiDPI support. https://nsis.sourceforge.io/Reference/ManifestDPIAware
 ManifestDPIAware true
 
+
 !include "MUI.nsh"
 !include "nsDialogs.nsh"
 !include "WinMessages.nsh"
+!include "LogicLib.nsh"
+!include "StrFunc.nsh"
+
+# Declare string functions for installer
+${StrStr}
+${StrRep}
+
+# Declare string functions for uninstaller (with Un prefix)
+${UnStrStr}
+${UnStrRep}
 
 !define MUI_ICON "..\icon.ico"
 !define MUI_UNICON "..\icon.ico"
@@ -62,6 +73,7 @@ ManifestDPIAware true
 # !insertmacro MUI_PAGE_LICENSE "resources\eula.txt" # Adds a EULA page to the installer
 !define MUI_PAGE_CUSTOMFUNCTION_PRE skip_directory_page
 !insertmacro MUI_PAGE_DIRECTORY # In which folder install page.
+Page custom ShowCLIOptions ValidateCLIOptions # CLI 选项页面
 !insertmacro MUI_PAGE_INSTFILES # Installing page.
 !insertmacro MUI_PAGE_FINISH # Finished installation page.
 
@@ -85,12 +97,28 @@ ShowInstDetails show # This will always show the installation details.
 Var IS_UPDATE
 # Variable to store whether to delete user data during uninstall
 Var UN_DELETE_USERDATA
+# Variable to store whether to install CLI and add to PATH
+Var INSTALL_CLI_TO_PATH
+# Variable to store the checkbox handle
+Var CHECKBOX_CLI
 
 Function .onInit
    !insertmacro wails.checkArchitecture
 
    # Initialize update flag
    StrCpy $IS_UPDATE "0"
+
+   # Initialize CLI installation flag
+   # Check registry to see if CLI was installed in previous version
+   SetRegView 64
+   ReadRegStr $0 HKLM "${UNINST_KEY}" "CLIInstalled"
+   ${If} $0 == "1"
+       # Was installed before, keep it during update
+       StrCpy $INSTALL_CLI_TO_PATH "1"
+   ${Else}
+       # Default to checked for fresh install
+       StrCpy $INSTALL_CLI_TO_PATH "1"
+   ${EndIf}
 
    # Check if old version is installed FIRST (before process check)
    SetRegView 64
@@ -178,6 +206,46 @@ Function skip_directory_page
    ${EndIf}
 FunctionEnd
 
+# Show CLI installation options page
+Function ShowCLIOptions
+   # Skip in silent mode
+   IfSilent 0 +2
+      Abort
+
+   !insertmacro MUI_HEADER_TEXT "命令行工具" "选择是否安装命令行支持"
+
+   nsDialogs::Create 1018
+   Pop $0
+
+   ${NSD_CreateLabel} 0 0 100% 50u "LunaBox 提供命令行工具 (CLI) 支持，您可以在终端中使用 'lunacli' 命令来启动和管理游戏。"
+   Pop $0
+
+   ${NSD_CreateCheckbox} 15 65u 100% 15u "安装命令行工具 (CLI) 并添加到 PATH (推荐)"
+   Pop $CHECKBOX_CLI
+   
+   # Set initial state based on $INSTALL_CLI_TO_PATH
+   ${If} $INSTALL_CLI_TO_PATH == "1"
+      ${NSD_SetState} $CHECKBOX_CLI ${BST_CHECKED}
+   ${Else}
+      ${NSD_SetState} $CHECKBOX_CLI ${BST_UNCHECKED}
+   ${EndIf}
+
+   ${NSD_CreateLabel} 30 85u 100% 20u "注意：添加到 PATH 后，您可以在任何位置的终端中直接使用 'lunacli' 命令。"
+   Pop $0
+
+   nsDialogs::Show
+FunctionEnd
+
+# Validate CLI options (save the checkbox state)
+Function ValidateCLIOptions
+   ${NSD_GetState} $CHECKBOX_CLI $0
+   ${If} $0 == ${BST_CHECKED}
+      StrCpy $INSTALL_CLI_TO_PATH "1"
+   ${Else}
+      StrCpy $INSTALL_CLI_TO_PATH "0"
+   ${EndIf}
+FunctionEnd
+
 # Uninstaller: Initialize the user data options page
 Function un.ShowUserDataOptions
    # Skip this page in silent mode (preserve user data)
@@ -230,6 +298,34 @@ Section
 
     !insertmacro wails.files
 
+    # Install CLI version and add to PATH only if user selected it
+    ${If} $INSTALL_CLI_TO_PATH == "1"
+        # Install CLI version (lunacli.exe) for command-line usage
+        File "..\..\bin\lunacli.exe"
+
+        # Add install directory to system PATH (for CLI usage)
+        ReadRegStr $0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
+        
+        # Check if already in PATH
+        ${StrStr} $1 $0 "$INSTDIR"
+        ${If} $1 == ""
+            # Not in PATH, add it
+            WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path" "$0;$INSTDIR"
+            # Broadcast WM_SETTINGCHANGE to notify of PATH change
+            # Use SendMessageTimeout to avoid hanging if a top-level window is unresponsive
+            # 0xffff = HWND_BROADCAST, 2 = SMTO_ABORTIFHUNG, 5000 = Timeout in ms
+            System::Call 'user32::SendMessageTimeout(p 0xffff, i ${WM_SETTINGCHANGE}, p 0, t "Environment", i 2, i 5000, *i .r0)'
+        ${EndIf}
+
+        # Record that CLI was installed (for future updates)
+        SetRegView 64
+        WriteRegStr HKLM "${UNINST_KEY}" "CLIInstalled" "1"
+    ${Else}
+        # Record that CLI was NOT installed
+        SetRegView 64
+        WriteRegStr HKLM "${UNINST_KEY}" "CLIInstalled" "0"
+    ${EndIf}
+
     # Always create/recreate start menu shortcut (important for updates and pinned shortcuts)
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     
@@ -254,6 +350,26 @@ SectionEnd
 
 Section "uninstall"
     !insertmacro wails.setShellContext
+
+    # Remove install directory from PATH only if it was added during installation
+    SetRegView 64
+    ReadRegStr $0 HKLM "${UNINST_KEY}" "CLIInstalled"
+    ${If} $0 == "1"
+        # CLI was installed, remove from PATH
+        ReadRegStr $0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
+        ${UnStrStr} $1 $0 "$INSTDIR"
+        ${If} $1 != ""
+            # Found in PATH, remove it
+            ${UnStrRep} $2 $0 ";$INSTDIR" ""  # Try with semicolon first
+            ${UnStrRep} $3 $2 "$INSTDIR;" ""  # Try with semicolon after
+            ${UnStrRep} $4 $3 "$INSTDIR" ""   # Try standalone
+            WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path" "$4"
+            # Broadcast WM_SETTINGCHANGE to notify of PATH change
+            # Use SendMessageTimeout to avoid hanging if a top-level window is unresponsive
+            # 0xffff = HWND_BROADCAST, 2 = SMTO_ABORTIFHUNG, 5000 = Timeout in ms
+            System::Call 'user32::SendMessageTimeout(p 0xffff, i ${WM_SETTINGCHANGE}, p 0, t "Environment", i 2, i 5000, *i .r0)'
+        ${EndIf}
+    ${EndIf}
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
 

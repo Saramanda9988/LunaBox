@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"lunabox/internal/appconf"
+	"lunabox/internal/applog"
 	"lunabox/internal/models"
 	"lunabox/internal/service/cloudprovider"
 	"lunabox/internal/service/cloudprovider/onedrive"
@@ -15,8 +16,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type BackupService struct {
@@ -46,12 +45,12 @@ func (s *BackupService) getCloudProvider() (cloudprovider.CloudStorageProvider, 
 func (s *BackupService) SetupCloudBackup(password string) (string, error) {
 	// 检查是否已经设置过密码
 	if s.config.BackupPassword != "" {
-		runtime.LogWarningf(s.ctx, "SetupCloudBackup: backup password already set")
+		applog.LogWarningf(s.ctx, "SetupCloudBackup: backup password already set")
 		return "", fmt.Errorf("备份密码已设置，无法修改")
 	}
 
 	if password == "" {
-		runtime.LogWarningf(s.ctx, "SetupCloudBackup: backup password is empty")
+		applog.LogWarningf(s.ctx, "SetupCloudBackup: backup password is empty")
 		return "", fmt.Errorf("备份密码不能为空")
 	}
 
@@ -64,18 +63,18 @@ func (s *BackupService) SetupCloudBackup(password string) (string, error) {
 
 	// 立即保存配置到文件
 	if err := appconf.SaveConfig(s.config); err != nil {
-		runtime.LogErrorf(s.ctx, "SetupCloudBackup: failed to save config: %v", err)
+		applog.LogErrorf(s.ctx, "SetupCloudBackup: failed to save config: %v", err)
 		return "", fmt.Errorf("保存配置失败: %w", err)
 	}
 
-	runtime.LogInfof(s.ctx, "SetupCloudBackup: backup password set successfully, user_id: %s", userID)
+	applog.LogInfof(s.ctx, "SetupCloudBackup: backup password set successfully, user_id: %s", userID)
 	return userID, nil
 }
 
 // TestS3Connection 测试 S3 连接
 func (s *BackupService) TestS3Connection(config appconf.AppConfig) error {
 	if err := cloudprovider.TestConnection(s.ctx, cloudprovider.ProviderS3, &config); err != nil {
-		runtime.LogErrorf(s.ctx, "TestS3Connection: connection test failed: %v", err)
+		applog.LogErrorf(s.ctx, "TestS3Connection: connection test failed: %v", err)
 		return fmt.Errorf("连接测试失败: %w", err)
 	}
 	return nil
@@ -95,12 +94,12 @@ func (s *BackupService) GetOneDriveAuthURL() string {
 func (s *BackupService) StartOneDriveAuth() (string, error) {
 	code, err := onedrive.StartOneDriveAuthServer(s.ctx, 5*time.Minute)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "StartOneDriveAuth: failed to get auth code: %v", err)
+		applog.LogErrorf(s.ctx, "StartOneDriveAuth: failed to get auth code: %v", err)
 		return "", err
 	}
 	tokenResp, err := onedrive.ExchangeOneDriveCodeForToken(s.ctx, s.config.OneDriveClientID, code)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "StartOneDriveAuth: failed to exchange code for token: %v", err)
+		applog.LogErrorf(s.ctx, "StartOneDriveAuth: failed to exchange code for token: %v", err)
 		return "", err
 	}
 	return tokenResp.RefreshToken, nil
@@ -110,7 +109,7 @@ func (s *BackupService) StartOneDriveAuth() (string, error) {
 func (s *BackupService) ExchangeOneDriveCode(code string) (string, error) {
 	tokenResp, err := onedrive.ExchangeOneDriveCodeForToken(s.ctx, s.config.OneDriveClientID, code)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "ExchangeOneDriveCode: failed to exchange code for token: %v", err)
+		applog.LogErrorf(s.ctx, "ExchangeOneDriveCode: failed to exchange code for token: %v", err)
 		return "", err
 	}
 	return tokenResp.RefreshToken, nil
@@ -578,7 +577,7 @@ func (s *BackupService) CreateDBBackup() (*vo.DBBackupInfo, error) {
 	coversSourceDir := filepath.Join(dataDir, "covers")
 	if _, err := os.Stat(coversSourceDir); err == nil {
 		if err := utils.CopyDir(coversSourceDir, coversDestDir); err != nil {
-			runtime.LogWarningf(s.ctx, "CreateDBBackup: failed to copy covers: %v", err)
+			applog.LogWarningf(s.ctx, "CreateDBBackup: failed to copy covers: %v", err)
 			// 封面复制失败不影响整体备份，继续执行
 		}
 	}

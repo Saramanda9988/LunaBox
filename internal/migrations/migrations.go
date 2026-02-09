@@ -4,8 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"lunabox/internal/applog"
 )
 
 // Migration 表示一个数据库迁移
@@ -244,7 +243,7 @@ func Run(ctx context.Context, db *sql.DB) error {
 			continue
 		}
 
-		runtime.LogInfof(ctx, "Running migration %d: %s", migration.Version, migration.Description)
+		applog.LogInfof(ctx, "Running migration %d: %s", migration.Version, migration.Description)
 
 		// 开启事务 - 确保迁移和版本记录原子执行
 		tx, err := db.Begin()
@@ -254,7 +253,7 @@ func Run(ctx context.Context, db *sql.DB) error {
 
 		if err := migration.Up(tx); err != nil {
 			tx.Rollback()
-			runtime.LogErrorf(ctx, "Migration %d failed: %v", migration.Version, err)
+			applog.LogErrorf(ctx, "Migration %d failed: %v", migration.Version, err)
 			return fmt.Errorf("migration %d failed: %w", migration.Version, err)
 		}
 
@@ -270,11 +269,11 @@ func Run(ctx context.Context, db *sql.DB) error {
 
 		// 提交事务 - 迁移和版本记录一起提交，保证原子性
 		if err := tx.Commit(); err != nil {
-			runtime.LogErrorf(ctx, "Failed to commit migration %d: %v", migration.Version, err)
+			applog.LogErrorf(ctx, "Failed to commit migration %d: %v", migration.Version, err)
 			return fmt.Errorf("failed to commit migration %d: %w", migration.Version, err)
 		}
 
-		runtime.LogInfof(ctx, "Migration %d completed successfully", migration.Version)
+		applog.LogInfof(ctx, "Migration %d completed successfully", migration.Version)
 	}
 
 	return nil

@@ -60,26 +60,54 @@ if errorlevel 1 exit /b 1
 goto :done
 
 :build_portable
-echo [1/2] Building Portable Version...
+echo [1/3] Building Portable GUI Version...
 echo ----------------------------------------
 wails build -ldflags "%LDFLAGS_PORTABLE%" -o lunabox-portable.exe
 if errorlevel 1 (
-    echo ERROR: Portable build failed!
+    echo ERROR: Portable GUI build failed!
     exit /b 1
 )
-echo Portable build completed: build\bin\lunabox-portable.exe
+echo Portable GUI build completed: build\bin\lunabox-portable.exe
 echo.
 
-REM Create portable ZIP package with default folders
+echo [2/3] Building CLI Version...
+echo ----------------------------------------
+go build -ldflags "%LDFLAGS_PORTABLE%" -o build\bin\lunabox-cli.exe ./cmd/lunacli
+if errorlevel 1 (
+    echo ERROR: CLI build failed!
+    exit /b 1
+)
+echo CLI build completed: build\bin\lunabox-cli.exe
+echo.
+
+REM Create portable ZIP package with both versions
 if exist "build\bin\lunabox-portable.exe" (
-    echo Creating portable ZIP package...
+    echo [3/3] Creating portable ZIP package...
     set "TEMP_PKG_DIR=build\bin\LunaBox-Portable-%VERSION%"
     if exist "!TEMP_PKG_DIR!" rd /s /q "!TEMP_PKG_DIR!"
     mkdir "!TEMP_PKG_DIR!"
     mkdir "!TEMP_PKG_DIR!\backups"
     mkdir "!TEMP_PKG_DIR!\covers"
+    mkdir "!TEMP_PKG_DIR!\backgrounds"
+    mkdir "!TEMP_PKG_DIR!\logs"
     
+    REM Copy GUI version as LunaBox.exe
     copy "build\bin\lunabox-portable.exe" "!TEMP_PKG_DIR!\LunaBox.exe" >nul
+    
+    REM Copy CLI version as lunacli.exe
+    copy "build\bin\lunabox-cli.exe" "!TEMP_PKG_DIR!\lunacli.exe" >nul
+    
+    REM Create README
+    echo LunaBox Portable v%VERSION% > "!TEMP_PKG_DIR!\README.txt"
+    echo. >> "!TEMP_PKG_DIR!\README.txt"
+    echo This package contains: >> "!TEMP_PKG_DIR!\README.txt"
+    echo   - LunaBox.exe  : GUI version (Double-click to launch) >> "!TEMP_PKG_DIR!\README.txt"
+    echo   - lunacli.exe  : CLI version (Use in terminal) >> "!TEMP_PKG_DIR!\README.txt"
+    echo. >> "!TEMP_PKG_DIR!\README.txt"
+    echo CLI Usage: >> "!TEMP_PKG_DIR!\README.txt"
+    echo   lunacli list >> "!TEMP_PKG_DIR!\README.txt"
+    echo   lunacli start ^<game-id^> >> "!TEMP_PKG_DIR!\README.txt"
+    echo   lunacli help >> "!TEMP_PKG_DIR!\README.txt"
     
     if exist "build\bin\LunaBox-Portable-%VERSION%.zip" del "build\bin\LunaBox-Portable-%VERSION%.zip"
     powershell -Command "Compress-Archive -Path '!TEMP_PKG_DIR!' -DestinationPath 'build\bin\LunaBox-Portable-%VERSION%.zip'"
@@ -93,14 +121,24 @@ echo.
 goto :eof
 
 :build_installer
-echo [2/2] Building Installer Version...
+echo [1/2] Building CLI Version for Installer...
+echo ----------------------------------------
+go build -ldflags "%LDFLAGS_INSTALLER%" -o build\bin\lunacli.exe ./cmd/lunacli
+if errorlevel 1 (
+    echo ERROR: CLI build for installer failed!
+    exit /b 1
+)
+echo CLI build completed: build\bin\lunacli.exe
+echo.
+
+echo [2/2] Building Installer GUI Version...
 echo ----------------------------------------
 wails build -ldflags "%LDFLAGS_INSTALLER%" -nsis
 if errorlevel 1 (
-    echo ERROR: Installer build failed!
+    echo ERROR: Installer GUI build failed!
     exit /b 1
 )
-echo Installer build completed!
+echo Installer GUI build completed!
 echo.
 
 REM Rename installer to include version

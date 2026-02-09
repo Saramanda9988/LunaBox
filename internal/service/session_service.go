@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"fmt"
 	"lunabox/internal/appconf"
+	"lunabox/internal/applog"
 	"lunabox/internal/models"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type SessionService struct {
@@ -44,7 +44,7 @@ func (s *SessionService) CreatePendingSession(gameID string, startTime time.Time
 		0,         // 初始时长为 0
 	)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "CreatePendingSession: failed to create session: %v", err)
+		applog.LogErrorf(s.ctx, "CreatePendingSession: failed to create session: %v", err)
 		return "", fmt.Errorf("创建游玩会话失败: %w", err)
 	}
 
@@ -59,7 +59,7 @@ func (s *SessionService) AddPlaySession(gameID string, startTime time.Time, dura
 	var exists bool
 	err := s.db.QueryRowContext(s.ctx, "SELECT EXISTS(SELECT 1 FROM games WHERE id = ?)", gameID).Scan(&exists)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "AddPlaySession: failed to check game existence: %v", err)
+		applog.LogErrorf(s.ctx, "AddPlaySession: failed to check game existence: %v", err)
 		return models.PlaySession{}, fmt.Errorf("检查游戏是否存在失败: %w", err)
 	}
 	if !exists {
@@ -89,11 +89,11 @@ func (s *SessionService) AddPlaySession(gameID string, startTime time.Time, dura
 		session.Duration,
 	)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "AddPlaySession: failed to insert play session: %v", err)
+		applog.LogErrorf(s.ctx, "AddPlaySession: failed to insert play session: %v", err)
 		return models.PlaySession{}, fmt.Errorf("添加游玩记录失败: %w", err)
 	}
 
-	runtime.LogInfof(s.ctx, "AddPlaySession: added play session for game %s, duration: %d minutes", gameID, durationMinutes)
+	applog.LogInfof(s.ctx, "AddPlaySession: added play session for game %s, duration: %d minutes", gameID, durationMinutes)
 	return session, nil
 }
 
@@ -108,7 +108,7 @@ func (s *SessionService) GetPlaySessions(gameID string) ([]models.PlaySession, e
 		gameID,
 	)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "GetPlaySessions: failed to query play sessions: %v", err)
+		applog.LogErrorf(s.ctx, "GetPlaySessions: failed to query play sessions: %v", err)
 		return nil, fmt.Errorf("查询游玩记录失败: %w", err)
 	}
 	defer rows.Close()
@@ -117,7 +117,7 @@ func (s *SessionService) GetPlaySessions(gameID string) ([]models.PlaySession, e
 	for rows.Next() {
 		var session models.PlaySession
 		if err := rows.Scan(&session.ID, &session.GameID, &session.StartTime, &session.EndTime, &session.Duration); err != nil {
-			runtime.LogErrorf(s.ctx, "GetPlaySessions: failed to scan play session: %v", err)
+			applog.LogErrorf(s.ctx, "GetPlaySessions: failed to scan play session: %v", err)
 			return nil, fmt.Errorf("读取游玩记录失败: %w", err)
 		}
 		sessions = append(sessions, session)
@@ -130,7 +130,7 @@ func (s *SessionService) GetPlaySessions(gameID string) ([]models.PlaySession, e
 func (s *SessionService) DeletePlaySession(sessionID string) error {
 	result, err := s.db.ExecContext(s.ctx, "DELETE FROM play_sessions WHERE id = ?", sessionID)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "DeletePlaySession: failed to delete play session: %v", err)
+		applog.LogErrorf(s.ctx, "DeletePlaySession: failed to delete play session: %v", err)
 		return fmt.Errorf("删除游玩记录失败: %w", err)
 	}
 
@@ -142,7 +142,7 @@ func (s *SessionService) DeletePlaySession(sessionID string) error {
 		return fmt.Errorf("游玩记录不存在: %s", sessionID)
 	}
 
-	runtime.LogInfof(s.ctx, "DeletePlaySession: deleted play session %s", sessionID)
+	applog.LogInfof(s.ctx, "DeletePlaySession: deleted play session %s", sessionID)
 	return nil
 }
 
@@ -160,7 +160,7 @@ func (s *SessionService) UpdatePlaySession(session models.PlaySession) error {
 		session.ID,
 	)
 	if err != nil {
-		runtime.LogErrorf(s.ctx, "UpdatePlaySession: failed to update play session: %v", err)
+		applog.LogErrorf(s.ctx, "UpdatePlaySession: failed to update play session: %v", err)
 		return fmt.Errorf("更新游玩记录失败: %w", err)
 	}
 
@@ -172,7 +172,7 @@ func (s *SessionService) UpdatePlaySession(session models.PlaySession) error {
 		return fmt.Errorf("游玩记录不存在: %s", session.ID)
 	}
 
-	runtime.LogInfof(s.ctx, "UpdatePlaySession: updated play session %s", session.ID)
+	applog.LogInfof(s.ctx, "UpdatePlaySession: updated play session %s", session.ID)
 	return nil
 }
 
@@ -198,7 +198,7 @@ func (s *SessionService) BatchAddPlaySessions(sessions []models.PlaySession) err
 	for _, session := range sessions {
 		_, err = stmt.ExecContext(s.ctx, session.ID, session.GameID, session.StartTime, session.EndTime, session.Duration)
 		if err != nil {
-			runtime.LogErrorf(s.ctx, "BatchAddPlaySessions: failed to insert session: %v", err)
+			applog.LogErrorf(s.ctx, "BatchAddPlaySessions: failed to insert session: %v", err)
 			return fmt.Errorf("插入游玩记录失败: %w", err)
 		}
 	}
@@ -207,6 +207,6 @@ func (s *SessionService) BatchAddPlaySessions(sessions []models.PlaySession) err
 		return fmt.Errorf("提交事务失败: %w", err)
 	}
 
-	runtime.LogInfof(s.ctx, "BatchAddPlaySessions: added %d play sessions", len(sessions))
+	applog.LogInfof(s.ctx, "BatchAddPlaySessions: added %d play sessions", len(sessions))
 	return nil
 }

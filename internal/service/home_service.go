@@ -4,11 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"lunabox/internal/appconf"
+	"lunabox/internal/applog"
 	"lunabox/internal/models"
 	"lunabox/internal/vo"
 	"time"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type HomeService struct {
@@ -71,7 +70,7 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 			IsPlaying:      isPlaying,
 		}
 	} else if err != sql.ErrNoRows {
-		runtime.LogErrorf(s.ctx, "查询上次游玩游戏失败: %v", err)
+		applog.LogErrorf(s.ctx, "查询上次游玩游戏失败: %v", err)
 	}
 
 	// 2. 今日游戏时长
