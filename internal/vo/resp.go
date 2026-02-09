@@ -75,14 +75,20 @@ type GameTrendSeries struct {
 }
 
 type PeriodStats struct {
-	Dimension           enums.Period      `json:"dimension"`  // day, week, month
-	StartDate           string            `json:"start_date"` // YYYY-MM-DD
-	EndDate             string            `json:"end_date"`   // YYYY-MM-DD
-	TotalPlayCount      int               `json:"total_play_count"`
-	TotalPlayDuration   int               `json:"total_play_duration"`
-	PlayTimeLeaderboard []GamePlayStats   `json:"play_time_leaderboard"`
-	Timeline            []TimePoint       `json:"timeline"`
-	LeaderboardSeries   []GameTrendSeries `json:"leaderboard_series"`
+	Dimension              enums.Period      `json:"dimension"`  // day, week, month
+	StartDate              string            `json:"start_date"` // YYYY-MM-DD
+	EndDate                string            `json:"end_date"`   // YYYY-MM-DD
+	TotalPlayCount         int               `json:"total_play_count"`
+	TotalPlayDuration      int               `json:"total_play_duration"`
+	TotalGamesCount        int               `json:"total_games_count"`         // 本期间内游玩过的游戏数量
+	CompletedGamesCount    int               `json:"completed_games_count"`     // 本期间内已通关游戏数量
+	LibraryGamesCount      int               `json:"library_games_count"`       // 库中所有游戏数量
+	AllSessionsCount       int               `json:"all_sessions_count"`        // 所有session数量
+	AllSessionsDuration    int               `json:"all_sessions_duration"`     // 所有session总时长
+	AllCompletedGamesCount int               `json:"all_completed_games_count"` // 所有已通关游戏数量
+	PlayTimeLeaderboard    []GamePlayStats   `json:"play_time_leaderboard"`
+	Timeline               []TimePoint       `json:"timeline"`
+	LeaderboardSeries      []GameTrendSeries `json:"leaderboard_series"`
 }
 
 // AISummaryResponse AI总结响应

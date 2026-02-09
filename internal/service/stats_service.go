@@ -291,7 +291,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 		seriesEnd = endDate
 	}
 
-	// 1. Total Play Count & Duration
+	// 总游玩次数和时长
 	queryTotal := fmt.Sprintf("SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions WHERE start_time >= %s AND start_time <= %s + INTERVAL 1 DAY", startDateExpr, endDateExpr)
 	err := s.db.QueryRowContext(s.ctx, queryTotal).Scan(&stats.TotalPlayCount, &stats.TotalPlayDuration)
 	if err != nil {
@@ -299,7 +299,53 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 		return stats, err
 	}
 
-	// 2. Leaderboard (Top 5)
+	// 查询本期间内游玩过的游戏数量、已通关游戏数量和库中所有游戏数量
+	queryGameStats := fmt.Sprintf(`
+		SELECT 
+			COUNT(DISTINCT ps.game_id),
+			COUNT(DISTINCT CASE WHEN g.status = 'completed' THEN g.id END)
+		FROM play_sessions ps
+		JOIN games g ON ps.game_id = g.id
+		WHERE ps.start_time >= %s AND ps.start_time <= %s + INTERVAL 1 DAY
+	`, startDateExpr, endDateExpr)
+	err = s.db.QueryRowContext(s.ctx, queryGameStats).Scan(&stats.TotalGamesCount, &stats.CompletedGamesCount)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to get game stats: %v", err)
+		return stats, err
+	}
+
+	// 查询库中所有游戏，一次查询获取数量和已通关数量
+	queryLibraryGames := "SELECT status FROM games"
+	rows, err := s.db.QueryContext(s.ctx, queryLibraryGames)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to get library games: %v", err)
+		return stats, err
+	}
+	defer rows.Close()
+
+	completedCount := 0
+	totalCount := 0
+	for rows.Next() {
+		var status string
+		if err := rows.Scan(&status); err != nil {
+			applog.LogErrorf(s.ctx, "failed to scan game status: %v", err)
+			return stats, err
+		}
+		totalCount++
+		if status == "completed" {
+			completedCount++
+		}
+	}
+	stats.LibraryGamesCount = totalCount
+	stats.AllCompletedGamesCount = completedCount
+
+	// 查询所有session数量和总时长
+	queryAllSessions := "SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions"
+	err = s.db.QueryRowContext(s.ctx, queryAllSessions).Scan(&stats.AllSessionsCount, &stats.AllSessionsDuration)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to get all sessions stats: %v", err)
+		return stats, err
+	}
 	stats.PlayTimeLeaderboard = make([]vo.GamePlayStats, 0)
 	queryLeaderboard := fmt.Sprintf(`
 		SELECT ps.game_id, g.name, COALESCE(g.cover_url, '') as cover_url, SUM(ps.duration) as total 
@@ -311,7 +357,8 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 		LIMIT 5
 	`, startDateExpr, endDateExpr)
 
-	rows, err := s.db.QueryContext(s.ctx, queryLeaderboard)
+	// 构建Leaderboard
+	rows, err = s.db.QueryContext(s.ctx, queryLeaderboard)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "failed to query leaderboard: %v", err)
 		return stats, err
