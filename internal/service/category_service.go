@@ -112,6 +112,26 @@ func (s *CategoryService) AddCategory(name string) error {
 	return err
 }
 
+func (s *CategoryService) UpdateCategory(id, name string) error {
+	var isSystem bool
+	err := s.db.QueryRow("SELECT is_system FROM categories WHERE id = ?", id).Scan(&isSystem)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "UpdateCategory: failed to query is_system for id %s: %v", id, err)
+		return err
+	}
+	if isSystem {
+		applog.LogWarningf(s.ctx, "UpdateCategory: attempt to update system category %s", id)
+		return fmt.Errorf("cannot update system category")
+	}
+
+	now := time.Now()
+	_, err = s.db.Exec("UPDATE categories SET name = ?, updated_at = ? WHERE id = ?", name, now, id)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "UpdateCategory: failed to update category %s to name %s: %v", id, name, err)
+	}
+	return err
+}
+
 func (s *CategoryService) AddGameToCategory(gameID, categoryID string) error {
 	_, err := s.db.Exec("INSERT INTO game_categories (game_id, category_id) VALUES (?, ?)", gameID, categoryID)
 	if err != nil {

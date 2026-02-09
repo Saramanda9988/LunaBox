@@ -37,3 +37,7 @@ export function Init(arg1, arg2, arg3) {
 export function RemoveGameFromCategory(arg1, arg2) {
   return window['go']['service']['CategoryService']['RemoveGameFromCategory'](arg1, arg2);
 }
+
+export function UpdateCategory(arg1, arg2) {
+  return window['go']['service']['CategoryService']['UpdateCategory'](arg1, arg2);
+}

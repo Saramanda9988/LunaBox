@@ -23,3 +23,5 @@ export function GetGamesByCategory(arg1:string):Promise<Array<models.Game>>;
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;
 
 export function RemoveGameFromCategory(arg1:string,arg2:string):Promise<void>;
+
+export function UpdateCategory(arg1:string,arg2:string):Promise<void>;

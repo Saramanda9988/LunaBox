@@ -6,10 +6,11 @@ import {
   AddCategory,
   DeleteCategory,
   GetCategories,
+  UpdateCategory,
 } from "../../wailsjs/go/service/CategoryService";
 import { FilterBar } from "../components/bar/FilterBar";
 import { CategoryCard } from "../components/card/CategoryCard";
-import { AddCategoryModal } from "../components/modal/AddCategoryModal";
+import { CategoryModal } from "../components/modal/CategoryModal";
 import { ConfirmModal } from "../components/modal/ConfirmModal";
 import { CategoriesSkeleton } from "../components/skeleton/CategoriesSkeleton";
 import { Route as rootRoute } from "./__root";
@@ -25,7 +26,10 @@ function CategoriesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
+  const [isEditCategoryModalOpen, setIsEditCategoryModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [editingCategory, setEditingCategory] = useState<vo.CategoryVO | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "game_count" | "created_at" | "updated_at">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -42,7 +46,7 @@ function CategoriesPage() {
     title: "",
     message: "",
     type: "info",
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
   const loadCategories = async () => {
@@ -72,6 +76,30 @@ function CategoriesPage() {
     catch (error) {
       console.error("Failed to add category:", error);
       toast.error("创建收藏夹失败");
+    }
+  };
+
+  const handleEditCategory = (e: React.MouseEvent, category: vo.CategoryVO) => {
+    e.stopPropagation();
+    setEditingCategory(category);
+    setEditCategoryName(category.name);
+    setIsEditCategoryModalOpen(true);
+  };
+
+  const handleUpdateCategory = async () => {
+    if (!editCategoryName.trim() || !editingCategory)
+      return;
+    try {
+      await UpdateCategory(editingCategory.id, editCategoryName);
+      setEditCategoryName("");
+      setEditingCategory(null);
+      setIsEditCategoryModalOpen(false);
+      await loadCategories();
+      toast.success("收藏夹已更新");
+    }
+    catch (error) {
+      console.error("Failed to update category:", error);
+      toast.error("更新收藏夹失败");
     }
   };
 
@@ -182,17 +210,31 @@ function CategoriesPage() {
           <CategoryCard
             key={category.id}
             category={category}
+            onEdit={e => handleEditCategory(e, category)}
             onDelete={e => handleDeleteCategory(e, category)}
           />
         ))}
       </div>
 
-      <AddCategoryModal
+      <CategoryModal
         isOpen={isAddCategoryModalOpen}
         value={newCategoryName}
         onChange={setNewCategoryName}
         onClose={() => setIsAddCategoryModalOpen(false)}
         onSubmit={handleAddCategory}
+      />
+
+      <CategoryModal
+        isOpen={isEditCategoryModalOpen}
+        value={editCategoryName}
+        onChange={setEditCategoryName}
+        onClose={() => {
+          setIsEditCategoryModalOpen(false);
+          setEditingCategory(null);
+          setEditCategoryName("");
+        }}
+        onSubmit={handleUpdateCategory}
+        mode="edit"
       />
 
       <ConfirmModal
