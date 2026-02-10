@@ -187,52 +187,66 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 		}
 	} else {
 		// 情况2: 没有保存的process_name，或process_name与启动器相同
-		// 使用分阶段检测策略来准确判断启动器类型
 
-		applog.LogInfof(s.ctx, "Starting staged detection for game %s, launcher: %s (PID %d)", gameID, launcherExeName, launcherPID)
+		// 检查是否启用自动进程检测
+		if !s.config.AutoDetectGameProcess {
+			// 用户禁用了自动检测，直接使用启动器进程
+			applog.LogInfof(s.ctx, "Auto-detect disabled for game %s, using launcher process: %s (PID %d)", gameID, launcherExeName, launcherPID)
+			actualProcessID = launcherPID
+			actualProcessName = launcherExeName
+			needExternalMonitor = false
 
-		// 阶段1: 初始等待5秒，让启动器有时间启动实际游戏
-		time.Sleep(5 * time.Second)
+			// 保存进程名
+			if savedProcessName == "" {
+				s.updateGameProcessName(gameID, launcherExeName)
+			}
+		} else {
+			// 启用了自动检测，使用分阶段检测策略来准确判断启动器类型
+			applog.LogInfof(s.ctx, "Starting staged detection for game %s, launcher: %s (PID %d)", gameID, launcherExeName, launcherPID)
 
-		// 阶段2: 第一次检测
-		launcherStillRunning := utils.IsProcessRunningByPID(launcherPID, s.ctx)
+			// 阶段1: 初始等待5秒，让启动器有时间启动实际游戏
+			time.Sleep(5 * time.Second)
 
-		if !launcherStillRunning {
-			// 启动器在5秒内就退出了，说明是快速启动器（如Steam）
-			applog.LogInfof(s.ctx, "Launcher %s exited quickly (within 5s), will prompt for actual game process", launcherExeName)
-			s.promptUserToSelectProcess(sessionID, gameID, startTime, launcherExeName)
-			return
-		}
+			// 阶段2: 第一次检测
+			launcherStillRunning := utils.IsProcessRunningByPID(launcherPID, s.ctx)
 
-		// 阶段3: 启动器还在运行，进入观察期（15秒）
-		// 每2秒检查一次，看启动器是否会退出
-		applog.LogInfof(s.ctx, "Launcher %s still running, entering observation period (15s)", launcherExeName)
-
-		observationPeriod := 15 * time.Second
-		checkInterval := 2 * time.Second
-		observationStart := time.Now()
-
-		for time.Since(observationStart) < observationPeriod {
-			time.Sleep(checkInterval)
-
-			if !utils.IsProcessRunningByPID(launcherPID, s.ctx) {
-				// 启动器在观察期内退出了，说明它只是个启动器
-				applog.LogInfof(s.ctx, "Launcher %s exited during observation period, will prompt for actual game process", launcherExeName)
+			if !launcherStillRunning {
+				// 启动器在5秒内就退出了，说明是快速启动器（如Steam）
+				applog.LogInfof(s.ctx, "Launcher %s exited quickly (within 5s), will prompt for actual game process", launcherExeName)
 				s.promptUserToSelectProcess(sessionID, gameID, startTime, launcherExeName)
 				return
 			}
-		}
 
-		// 阶段4: 观察期结束，启动器仍在运行
-		// 说明启动器本身就是游戏进程（如普通单exe游戏）
-		applog.LogInfof(s.ctx, "Launcher %s still running after 20s total, treating it as the game process", launcherExeName)
-		actualProcessID = launcherPID
-		actualProcessName = launcherExeName
-		needExternalMonitor = false
+			// 阶段3: 启动器还在运行，进入观察期（15秒）
+			// 每2秒检查一次，看启动器是否会退出
+			applog.LogInfof(s.ctx, "Launcher %s still running, entering observation period (15s)", launcherExeName)
 
-		// 保存进程名
-		if savedProcessName == "" {
-			s.updateGameProcessName(gameID, launcherExeName)
+			observationPeriod := 15 * time.Second
+			checkInterval := 2 * time.Second
+			observationStart := time.Now()
+
+			for time.Since(observationStart) < observationPeriod {
+				time.Sleep(checkInterval)
+
+				if !utils.IsProcessRunningByPID(launcherPID, s.ctx) {
+					// 启动器在观察期内退出了，说明它只是个启动器
+					applog.LogInfof(s.ctx, "Launcher %s exited during observation period, will prompt for actual game process", launcherExeName)
+					s.promptUserToSelectProcess(sessionID, gameID, startTime, launcherExeName)
+					return
+				}
+			}
+
+			// 阶段4: 观察期结束，启动器仍在运行
+			// 说明启动器本身就是游戏进程（如普通单exe游戏）
+			applog.LogInfof(s.ctx, "Launcher %s still running after 20s total, treating it as the game process", launcherExeName)
+			actualProcessID = launcherPID
+			actualProcessName = launcherExeName
+			needExternalMonitor = false
+
+			// 保存进程名
+			if savedProcessName == "" {
+				s.updateGameProcessName(gameID, launcherExeName)
+			}
 		}
 	}
 

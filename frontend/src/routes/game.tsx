@@ -310,7 +310,7 @@ function GameDetailPage() {
                   className="w-full h-auto block"
                   referrerPolicy="no-referrer"
                   draggable="false"
-                  onDragStart={(e) => e.preventDefault()}
+                  onDragStart={e => e.preventDefault()}
                 />
               )
             : (

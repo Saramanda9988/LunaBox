@@ -69,6 +69,8 @@ type AppConfig struct {
 	// Locale Emulator 和 Magpie 配置
 	LocaleEmulatorPath string `json:"locale_emulator_path,omitempty"` // Locale Emulator 可执行文件路径
 	MagpiePath         string `json:"magpie_path,omitempty"`          // Magpie 可执行文件路径
+	// 进程检测配置
+	AutoDetectGameProcess bool `json:"auto_detect_game_process"` // 是否启用自动游戏进程检测（分阶段检测策略）
 	// 时区配置
 	TimeZone string `json:"time_zone,omitempty"` // 数据库使用的 IANA 时区名称（如 "Asia/Shanghai"）
 }
@@ -131,6 +133,7 @@ func LoadConfig() (*AppConfig, error) {
 		BackgroundIsLight:       true,  // 默认是浅色调
 		LocaleEmulatorPath:      "",
 		MagpiePath:              "",
+		AutoDetectGameProcess:   true, // 默认启用自动检测，保持向后兼容
 	}
 
 	// 获取配置文件路径

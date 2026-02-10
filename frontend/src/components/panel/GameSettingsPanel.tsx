@@ -67,6 +67,27 @@ export function GameSettingsPanel({ formData, onChange }: GameSettingsPanelProps
         </div>
       </div>
 
+      {/* 自动进程检测 */}
+      <div className="mt-6 border-t border-brand-200 dark:border-brand-700 pt-6">
+        <div className="flex items-center justify-between p-2">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+              自动进程检测
+            </label>
+            <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
+              启用后，当启动器进程快速退出时，LunaBox 会自动提示您选择实际的游戏进程。
+              禁用后，将直接使用已保存的进程名或可执行程序句柄进行监控，适合单exe游戏或不需要复杂检测的场景。
+            </p>
+          </div>
+          <BetterSwitch
+            id="auto_detect_game_process"
+            checked={formData.auto_detect_game_process ?? true}
+            onCheckedChange={checked =>
+              onChange({ ...formData, auto_detect_game_process: checked } as appconf.AppConfig)}
+          />
+        </div>
+      </div>
+
       {/* Locale Emulator 配置 */}
       <div className="mt-6 border-t border-brand-200 dark:border-brand-700 pt-6">
         <h3 className="text-sm font-semibold text-brand-900 dark:text-white mb-4">游戏启动工具</h3>
