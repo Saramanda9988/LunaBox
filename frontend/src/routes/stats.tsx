@@ -367,10 +367,10 @@ function StatsPage() {
       </div>
 
       {/* Leaderboard */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Top 1 Game Card */}
         {stats.play_time_leaderboard.length > 0 && (
-          <div className="glass-card lg:col-span-1 bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 p-6 flex flex-col items-center text-center relative overflow-hidden">
+          <div className="glass-card md:col-span-1 lg:col-span-1 bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 p-6 flex flex-col items-center text-center relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-yellow-400 to-orange-500" />
             <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded-full flex items-center justify-center text-lg font-bold mb-4 shadow-sm">
               #1
@@ -393,7 +393,7 @@ function StatsPage() {
         )}
 
         {/* Other Games List */}
-        <div className={`glass-card ${stats.play_time_leaderboard.length > 0 ? "lg:col-span-2" : "lg:col-span-3"} bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 overflow-hidden flex flex-col`}>
+        <div className={`glass-card ${stats.play_time_leaderboard.length > 0 ? "md:col-span-1 lg:col-span-2" : "md:col-span-2 lg:col-span-3"} bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 overflow-hidden flex flex-col`}>
           <div className="p-6 border-b border-brand-200 dark:border-brand-700">
             <h3 className="text-lg font-semibold text-brand-900 dark:text-white">
               {stats.play_time_leaderboard.length > 0 ? "排行榜" : "游玩时长排行榜"}
