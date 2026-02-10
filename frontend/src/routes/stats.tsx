@@ -18,6 +18,7 @@ import { AiSummaryCard } from "../components/card/AiSummaryCard";
 import { HorizontalScrollChart } from "../components/chart/HorizontalScrollChart";
 import { TemplateExportModal } from "../components/modal/TemplateExportModal";
 import { StatsSkeleton } from "../components/skeleton/StatsSkeleton";
+import { CollapsibleSection } from "../components/ui/CollapsibleSection";
 import { SlideButton } from "../components/ui/SlideButton";
 import { useChartTheme } from "../hooks/useChartTheme";
 import { useAppStore } from "../store";
@@ -319,23 +320,57 @@ function StatsPage() {
         />
       )}
 
+      {/* Library Summary */}
+      <CollapsibleSection
+        title="库概览"
+        icon="i-mdi-library-shelves"
+        defaultOpen={false}
+      >
+        <div className="flex items-center justify-between">
+          <div className="text-center">
+            <p className="text-2xl font-bold text-brand-900 dark:text-white">{stats.library_games_count}</p>
+            <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">库中所有游戏</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-brand-900 dark:text-white">{stats.all_sessions_count}</p>
+            <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">总游玩次数</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-brand-900 dark:text-white">{formatDurationShort(stats.all_sessions_duration)}</p>
+            <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">总游玩时长</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-brand-900 dark:text-white">{stats.all_completed_games_count}</p>
+            <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">通关游戏数</p>
+          </div>
+        </div>
+      </CollapsibleSection>
+
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
+      <div className="flex flex-wrap gap-6">
+        <div className="flex-1 min-w-[150px] glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
           <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">总游玩次数</h3>
           <p className="text-3xl font-bold text-brand-900 dark:text-white">{stats.total_play_count}</p>
         </div>
-        <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
+        <div className="flex-1 min-w-[150px] glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
           <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">总游玩时长</h3>
           <p className="text-3xl font-bold text-brand-900 dark:text-white">{formatDurationShort(stats.total_play_duration)}</p>
+        </div>
+        <div className="flex-1 min-w-[150px] glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
+          <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">游玩游戏数量</h3>
+          <p className="text-3xl font-bold text-brand-900 dark:text-white">{stats.total_games_count}</p>
+        </div>
+        <div className="flex-1 min-w-[150px] glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
+          <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">通关游戏</h3>
+          <p className="text-3xl font-bold text-brand-900 dark:text-white">{stats.completed_games_count}</p>
         </div>
       </div>
 
       {/* Leaderboard */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Top 1 Game Card */}
         {stats.play_time_leaderboard.length > 0 && (
-          <div className="glass-card lg:col-span-1 bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 p-6 flex flex-col items-center text-center relative overflow-hidden">
+          <div className="glass-card md:col-span-1 lg:col-span-1 bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 p-6 flex flex-col items-center text-center relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-yellow-400 to-orange-500" />
             <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded-full flex items-center justify-center text-lg font-bold mb-4 shadow-sm">
               #1
@@ -358,7 +393,7 @@ function StatsPage() {
         )}
 
         {/* Other Games List */}
-        <div className={`glass-card ${stats.play_time_leaderboard.length > 0 ? "lg:col-span-2" : "lg:col-span-3"} bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 overflow-hidden flex flex-col`}>
+        <div className={`glass-card ${stats.play_time_leaderboard.length > 0 ? "md:col-span-1 lg:col-span-2" : "md:col-span-2 lg:col-span-3"} bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 overflow-hidden flex flex-col`}>
           <div className="p-6 border-b border-brand-200 dark:border-brand-700">
             <h3 className="text-lg font-semibold text-brand-900 dark:text-white">
               {stats.play_time_leaderboard.length > 0 ? "排行榜" : "游玩时长排行榜"}

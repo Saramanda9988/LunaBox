@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import {
   AddCategory,
+  DeleteCategories,
   DeleteCategory,
   GetCategories,
+  UpdateCategory,
 } from "../../wailsjs/go/service/CategoryService";
 import { FilterBar } from "../components/bar/FilterBar";
 import { CategoryCard } from "../components/card/CategoryCard";
-import { AddCategoryModal } from "../components/modal/AddCategoryModal";
+import { CategoryModal } from "../components/modal/CategoryModal";
 import { ConfirmModal } from "../components/modal/ConfirmModal";
 import { CategoriesSkeleton } from "../components/skeleton/CategoriesSkeleton";
 import { Route as rootRoute } from "./__root";
@@ -25,10 +27,15 @@ function CategoriesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
+  const [isEditCategoryModalOpen, setIsEditCategoryModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [editingCategory, setEditingCategory] = useState<vo.CategoryVO | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "game_count" | "created_at" | "updated_at">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
 
   // 确认弹窗状态
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -42,7 +49,7 @@ function CategoriesPage() {
     title: "",
     message: "",
     type: "info",
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
   const loadCategories = async () => {
@@ -72,6 +79,30 @@ function CategoriesPage() {
     catch (error) {
       console.error("Failed to add category:", error);
       toast.error("创建收藏夹失败");
+    }
+  };
+
+  const handleEditCategory = (e: React.MouseEvent, category: vo.CategoryVO) => {
+    e.stopPropagation();
+    setEditingCategory(category);
+    setEditCategoryName(category.name);
+    setIsEditCategoryModalOpen(true);
+  };
+
+  const handleUpdateCategory = async () => {
+    if (!editCategoryName.trim() || !editingCategory)
+      return;
+    try {
+      await UpdateCategory(editingCategory.id, editCategoryName);
+      setEditCategoryName("");
+      setEditingCategory(null);
+      setIsEditCategoryModalOpen(false);
+      await loadCategories();
+      toast.success("收藏夹已更新");
+    }
+    catch (error) {
+      console.error("Failed to update category:", error);
+      toast.error("更新收藏夹失败");
     }
   };
 
@@ -121,6 +152,64 @@ function CategoriesPage() {
       return sortOrder === "asc" ? comparison : -comparison;
     });
 
+  const handleBatchModeChange = (enabled: boolean) => {
+    setBatchMode(enabled);
+    if (!enabled) {
+      setSelectedCategoryIds([]);
+    }
+  };
+
+  const setCategorySelection = (category: vo.CategoryVO, selected: boolean) => {
+    if (category.is_system)
+      return;
+    setSelectedCategoryIds((prev) => {
+      if (selected) {
+        return prev.includes(category.id) ? prev : [...prev, category.id];
+      }
+      return prev.filter(id => id !== category.id);
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedCategoryIds((prev) => {
+      const next = new Set(prev);
+      filteredCategories.forEach((category) => {
+        if (!category.is_system) {
+          next.add(category.id);
+        }
+      });
+      return Array.from(next);
+    });
+  };
+
+  const handleClearSelection = () => {
+    setSelectedCategoryIds([]);
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedCategoryIds.length === 0)
+      return;
+    setConfirmConfig({
+      isOpen: true,
+      title: "批量删除收藏夹",
+      message: `确定要删除选中的 ${selectedCategoryIds.length} 个收藏夹吗？此操作无法撤销。`,
+      type: "danger",
+      onConfirm: async () => {
+        try {
+          await DeleteCategories(selectedCategoryIds);
+          await loadCategories();
+          setSelectedCategoryIds([]);
+          setBatchMode(false);
+          toast.success("批量删除成功");
+        }
+        catch (error) {
+          console.error("Failed to batch delete categories:", error);
+          toast.error("批量删除失败");
+        }
+      },
+    });
+  };
+
   useEffect(() => {
     loadCategories();
   }, []);
@@ -166,6 +255,24 @@ function CategoriesPage() {
         ]}
         sortOrder={sortOrder}
         onSortOrderChange={setSortOrder}
+        batchMode={batchMode}
+        onBatchModeChange={handleBatchModeChange}
+        selectedCount={selectedCategoryIds.length}
+        onSelectAll={handleSelectAll}
+        onClearSelection={handleClearSelection}
+        batchActions={(
+          <button
+            type="button"
+            onClick={handleBatchDelete}
+            disabled={selectedCategoryIds.length === 0}
+            className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
+                        bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
+                        rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-error-600 dark:text-error-400
+                        ${selectedCategoryIds.length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+          >
+            <div className="i-mdi-delete text-lg" />
+          </button>
+        )}
         actionButton={(
           <button
             onClick={() => setIsAddCategoryModalOpen(true)}
@@ -182,17 +289,35 @@ function CategoriesPage() {
           <CategoryCard
             key={category.id}
             category={category}
+            onEdit={e => handleEditCategory(e, category)}
             onDelete={e => handleDeleteCategory(e, category)}
+            selectionMode={batchMode}
+            selected={selectedCategoryIds.includes(category.id)}
+            selectionDisabled={category.is_system}
+            onSelectChange={selected => setCategorySelection(category, selected)}
           />
         ))}
       </div>
 
-      <AddCategoryModal
+      <CategoryModal
         isOpen={isAddCategoryModalOpen}
         value={newCategoryName}
         onChange={setNewCategoryName}
         onClose={() => setIsAddCategoryModalOpen(false)}
         onSubmit={handleAddCategory}
+      />
+
+      <CategoryModal
+        isOpen={isEditCategoryModalOpen}
+        value={editCategoryName}
+        onChange={setEditCategoryName}
+        onClose={() => {
+          setIsEditCategoryModalOpen(false);
+          setEditingCategory(null);
+          setEditCategoryName("");
+        }}
+        onSubmit={handleUpdateCategory}
+        mode="edit"
       />
 
       <ConfirmModal

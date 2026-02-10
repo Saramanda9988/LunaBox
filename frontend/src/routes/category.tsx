@@ -7,6 +7,7 @@ import {
   GetCategoryByID,
   GetGamesByCategory,
   RemoveGameFromCategory,
+  RemoveGamesFromCategory,
 } from "../../wailsjs/go/service/CategoryService";
 import { GetGames } from "../../wailsjs/go/service/GameService";
 import { FilterBar } from "../components/bar/FilterBar";
@@ -35,6 +36,8 @@ function CategoryDetailPage() {
   const [sortBy, setSortBy] = useState<"name" | "created_at">("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
 
   // 延迟显示骨架屏
   useEffect(() => {
@@ -143,10 +146,60 @@ function CategoryDetailPage() {
       return sortOrder === "asc" ? comparison : -comparison;
     });
 
+  const handleBatchModeChange = (enabled: boolean) => {
+    setBatchMode(enabled);
+    if (!enabled) {
+      setSelectedGameIds([]);
+    }
+  };
+
+  const setGameSelection = (gameId: string, selected: boolean) => {
+    setSelectedGameIds((prev) => {
+      if (selected) {
+        return prev.includes(gameId) ? prev : [...prev, gameId];
+      }
+      return prev.filter(id => id !== gameId);
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedGameIds((prev) => {
+      const next = new Set(prev);
+      filteredGames.forEach((game) => {
+        if (game.id) {
+          next.add(game.id);
+        }
+      });
+      return Array.from(next);
+    });
+  };
+
+  const handleClearSelection = () => {
+    setSelectedGameIds([]);
+  };
+
+  const handleBatchRemove = async () => {
+    if (!category || selectedGameIds.length === 0)
+      return;
+    try {
+      await RemoveGamesFromCategory(selectedGameIds, category.id);
+      await Promise.all([loadGames(category.id), loadCategory(category.id)]);
+      toast.success(`已移除 ${selectedGameIds.length} 个游戏`);
+      setSelectedGameIds([]);
+      setBatchMode(false);
+    }
+    catch (error) {
+      console.error("Failed to batch remove games:", error);
+      toast.error("批量移除失败");
+    }
+  };
+
   useEffect(() => {
     if (categoryId) {
       const init = async () => {
         setLoading(true);
+        setBatchMode(false);
+        setSelectedGameIds([]);
         await Promise.all([loadCategory(categoryId), loadGames(categoryId)]);
         setLoading(false);
       };
@@ -212,6 +265,25 @@ function CategoryDetailPage() {
           onStatusFilterChange={setStatusFilter}
           statusOptions={statusOptions}
           storageKey="category"
+          batchMode={batchMode}
+          onBatchModeChange={handleBatchModeChange}
+          selectedCount={selectedGameIds.length}
+          onSelectAll={handleSelectAll}
+          onClearSelection={handleClearSelection}
+          batchActions={(
+            <button
+              type="button"
+              onClick={handleBatchRemove}
+              disabled={selectedGameIds.length === 0}
+              className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
+                          bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
+                          rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-error-600 dark:text-error-400
+                          ${selectedGameIds.length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              <div className="i-mdi-delete text-lg" />
+              批量移除
+            </button>
+          )}
           actionButton={(
             <button
               onClick={openAddGameModal}
@@ -232,17 +304,24 @@ function CategoryDetailPage() {
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
                       {filteredGames.map(game => (
                         <div key={game.id} className="relative group">
-                          <GameCard game={game} />
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveGame(game.id);
-                            }}
-                            className="absolute top-2 right-2 p-1 bg-error-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-error-600"
-                            title="从收藏夹移除"
-                          >
-                            <div className="i-mdi-close text-sm" />
-                          </button>
+                          <GameCard
+                            game={game}
+                            selectionMode={batchMode}
+                            selected={selectedGameIds.includes(game.id)}
+                            onSelectChange={selected => setGameSelection(game.id, selected)}
+                          />
+                          {!batchMode && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveGame(game.id);
+                              }}
+                              className="absolute top-2 right-2 p-1 bg-error-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-error-600"
+                              title="从收藏夹移除"
+                            >
+                              <div className="i-mdi-close text-sm" />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>

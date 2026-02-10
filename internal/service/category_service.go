@@ -7,6 +7,7 @@ import (
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
 	"lunabox/internal/models"
+	"lunabox/internal/utils"
 	"lunabox/internal/vo"
 	"time"
 
@@ -112,6 +113,26 @@ func (s *CategoryService) AddCategory(name string) error {
 	return err
 }
 
+func (s *CategoryService) UpdateCategory(id, name string) error {
+	var isSystem bool
+	err := s.db.QueryRow("SELECT is_system FROM categories WHERE id = ?", id).Scan(&isSystem)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "UpdateCategory: failed to query is_system for id %s: %v", id, err)
+		return err
+	}
+	if isSystem {
+		applog.LogWarningf(s.ctx, "UpdateCategory: attempt to update system category %s", id)
+		return fmt.Errorf("cannot update system category")
+	}
+
+	now := time.Now()
+	_, err = s.db.Exec("UPDATE categories SET name = ?, updated_at = ? WHERE id = ?", name, now, id)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "UpdateCategory: failed to update category %s to name %s: %v", id, name, err)
+	}
+	return err
+}
+
 func (s *CategoryService) AddGameToCategory(gameID, categoryID string) error {
 	_, err := s.db.Exec("INSERT INTO game_categories (game_id, category_id) VALUES (?, ?)", gameID, categoryID)
 	if err != nil {
@@ -120,10 +141,68 @@ func (s *CategoryService) AddGameToCategory(gameID, categoryID string) error {
 	return err
 }
 
+func (s *CategoryService) AddGamesToCategories(gameIDs []string, categoryIDs []string) error {
+	gameIDs = utils.UniqueNonEmptyStrings(gameIDs)
+	categoryIDs = utils.UniqueNonEmptyStrings(categoryIDs)
+	if len(gameIDs) == 0 || len(categoryIDs) == 0 {
+		return nil
+	}
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		applog.LogErrorf(s.ctx, "AddGamesToCategories: failed to begin transaction: %v", err)
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare("INSERT INTO game_categories (game_id, category_id) VALUES (?, ?) ON CONFLICT DO NOTHING")
+	if err != nil {
+		applog.LogErrorf(s.ctx, "AddGamesToCategories: failed to prepare statement: %v", err)
+		return err
+	}
+	defer stmt.Close()
+
+	for _, gameID := range gameIDs {
+		for _, categoryID := range categoryIDs {
+			if _, err := stmt.Exec(gameID, categoryID); err != nil {
+				applog.LogErrorf(s.ctx, "AddGamesToCategories: failed to add game %s to category %s: %v", gameID, categoryID, err)
+				return err
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		applog.LogErrorf(s.ctx, "AddGamesToCategories: failed to commit transaction: %v", err)
+		return err
+	}
+	return nil
+}
+
 func (s *CategoryService) RemoveGameFromCategory(gameID, categoryID string) error {
 	_, err := s.db.Exec("DELETE FROM game_categories WHERE game_id = ? AND category_id = ?", gameID, categoryID)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "RemoveGameFromCategory: failed to remove game %s from category %s: %v", gameID, categoryID, err)
+	}
+	return err
+}
+
+func (s *CategoryService) RemoveGamesFromCategory(gameIDs []string, categoryID string) error {
+	gameIDs = utils.UniqueNonEmptyStrings(gameIDs)
+	if len(gameIDs) == 0 {
+		return nil
+	}
+
+	placeholders := utils.BuildPlaceholders(len(gameIDs))
+	args := make([]interface{}, 0, len(gameIDs)+1)
+	args = append(args, categoryID)
+	for _, gameID := range gameIDs {
+		args = append(args, gameID)
+	}
+
+	query := fmt.Sprintf("DELETE FROM game_categories WHERE category_id = ? AND game_id IN (%s)", placeholders)
+	_, err := s.db.Exec(query, args...)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "RemoveGamesFromCategory: failed to remove games from category %s: %v", categoryID, err)
 	}
 	return err
 }
@@ -166,6 +245,49 @@ func (s *CategoryService) DeleteCategory(id string) error {
 	return nil
 }
 
+func (s *CategoryService) DeleteCategories(ids []string) error {
+	ids = utils.UniqueNonEmptyStrings(ids)
+	if len(ids) == 0 {
+		return nil
+	}
+
+	placeholders := utils.BuildPlaceholders(len(ids))
+	args := make([]interface{}, 0, len(ids))
+	for _, id := range ids {
+		args = append(args, id)
+	}
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		applog.LogErrorf(s.ctx, "DeleteCategories: failed to begin transaction: %v", err)
+		return err
+	}
+	defer tx.Rollback()
+
+	queryDeleteRelations := fmt.Sprintf(`
+		DELETE FROM game_categories
+		WHERE category_id IN (
+			SELECT id FROM categories WHERE id IN (%s) AND is_system = false
+		)
+	`, placeholders)
+	if _, err := tx.Exec(queryDeleteRelations, args...); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteCategories: failed to delete game_categories: %v", err)
+		return err
+	}
+
+	queryDeleteCategories := fmt.Sprintf("DELETE FROM categories WHERE id IN (%s) AND is_system = false", placeholders)
+	if _, err := tx.Exec(queryDeleteCategories, args...); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteCategories: failed to delete categories: %v", err)
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteCategories: failed to commit transaction: %v", err)
+		return err
+	}
+	return nil
+}
+
 func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, error) {
 	query := `
 		SELECT g.id, g.name,
@@ -173,10 +295,15 @@ func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, 
 			COALESCE(g.company, '') as company,
 			COALESCE(g.summary, '') as summary,
 			COALESCE(g.path, '') as path,
+			COALESCE(g.save_path, '') as save_path,
+			COALESCE(g.process_name, '') as process_name,
+			COALESCE(g.status, '') as status,
 			COALESCE(g.source_type, '') as source_type,
 			g.cached_at,
 			COALESCE(g.source_id, '') as source_id,
-			g.created_at
+			g.created_at,
+			COALESCE(g.use_locale_emulator, FALSE) as use_locale_emulator,
+			COALESCE(g.use_magpie, FALSE) as use_magpie
 		FROM games g
 		JOIN game_categories gc ON g.id = gc.game_id
 		WHERE gc.category_id = ?
@@ -192,7 +319,7 @@ func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, 
 	var games []models.Game
 	for rows.Next() {
 		var g models.Game
-		if err := rows.Scan(&g.ID, &g.Name, &g.CoverURL, &g.Company, &g.Summary, &g.Path, &g.SourceType, &g.CachedAt, &g.SourceID, &g.CreatedAt); err != nil {
+		if err := rows.Scan(&g.ID, &g.Name, &g.CoverURL, &g.Company, &g.Summary, &g.Path, &g.SavePath, &g.ProcessName, &g.Status, &g.SourceType, &g.CachedAt, &g.SourceID, &g.CreatedAt, &g.UseLocaleEmulator, &g.UseMagpie); err != nil {
 			applog.LogErrorf(s.ctx, "GetGamesByCategory: failed to scan row for category %s: %v", categoryID, err)
 			return nil, err
 		}

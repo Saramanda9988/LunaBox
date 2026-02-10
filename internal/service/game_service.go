@@ -182,6 +182,59 @@ func (s *GameService) DeleteGame(id string) error {
 	return nil
 }
 
+func (s *GameService) DeleteGames(ids []string) error {
+	ids = utils.UniqueNonEmptyStrings(ids)
+	if len(ids) == 0 {
+		return nil
+	}
+
+	placeholders := utils.BuildPlaceholders(len(ids))
+	args := make([]interface{}, 0, len(ids))
+	for _, id := range ids {
+		args = append(args, id)
+	}
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGames: failed to begin transaction: %v", err)
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(s.ctx, fmt.Sprintf("DELETE FROM game_categories WHERE game_id IN (%s)", placeholders), args...); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGames: failed to delete game_categories: %v", err)
+		return fmt.Errorf("failed to delete game categories: %w", err)
+	}
+
+	if _, err := tx.ExecContext(s.ctx, fmt.Sprintf("DELETE FROM play_sessions WHERE game_id IN (%s)", placeholders), args...); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGames: failed to delete play_sessions: %v", err)
+		return fmt.Errorf("failed to delete play sessions: %w", err)
+	}
+
+	result, err := tx.ExecContext(s.ctx, fmt.Sprintf("DELETE FROM games WHERE id IN (%s)", placeholders), args...)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGames: failed to delete games: %v", err)
+		return fmt.Errorf("failed to delete games: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGames: failed to get rows affected: %v", err)
+		return err
+	}
+	if rowsAffected == 0 {
+		applog.LogWarningf(s.ctx, "DeleteGames: no games deleted")
+		return fmt.Errorf("no games deleted")
+	}
+
+	if err := tx.Commit(); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGames: failed to commit transaction: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 func (s *GameService) GetGames() ([]models.Game, error) {
 	query := `SELECT 
 		id, name, 

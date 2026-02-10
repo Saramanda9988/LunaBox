@@ -294,6 +294,68 @@ func TestGameService_DeleteGame(t *testing.T) {
 	})
 }
 
+func TestGameService_DeleteGames(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	gameService := service.NewGameService()
+	gameService.Init(context.Background(), db, &appconf.AppConfig{})
+
+	t.Run("批量删除游戏", func(t *testing.T) {
+		game1 := createTestGame()
+		game1.ID = "batch-del-001"
+		game2 := createTestGame()
+		game2.ID = "batch-del-002"
+
+		if err := gameService.AddGame(game1); err != nil {
+			t.Fatalf("添加游戏1失败: %v", err)
+		}
+		if err := gameService.AddGame(game2); err != nil {
+			t.Fatalf("添加游戏2失败: %v", err)
+		}
+
+		// 添加关联数据
+		if _, err := db.Exec("INSERT INTO game_categories (game_id, category_id) VALUES (?, ?)", game1.ID, "category-001"); err != nil {
+			t.Fatalf("添加游戏分类失败: %v", err)
+		}
+		if _, err := db.Exec("INSERT INTO game_categories (game_id, category_id) VALUES (?, ?)", game2.ID, "category-002"); err != nil {
+			t.Fatalf("添加游戏分类失败: %v", err)
+		}
+		if _, err := db.Exec("INSERT INTO play_sessions (id, game_id, start_time, end_time, duration) VALUES (?, ?, ?, ?, ?)",
+			"ps-001", game1.ID, time.Now(), time.Now(), 120); err != nil {
+			t.Fatalf("添加游玩会话失败: %v", err)
+		}
+
+		if err := gameService.DeleteGames([]string{game1.ID, game2.ID}); err != nil {
+			t.Fatalf("批量删除失败: %v", err)
+		}
+
+		// 验证游戏已删除
+		if _, err := gameService.GetGameByID(game1.ID); err == nil {
+			t.Error("游戏1应该已被删除")
+		}
+		if _, err := gameService.GetGameByID(game2.ID); err == nil {
+			t.Error("游戏2应该已被删除")
+		}
+
+		// 验证关联已删除
+		var count int
+		if err := db.QueryRow("SELECT COUNT(*) FROM game_categories WHERE game_id IN (?, ?)", game1.ID, game2.ID).Scan(&count); err != nil {
+			t.Fatalf("查询分类关系失败: %v", err)
+		}
+		if count != 0 {
+			t.Errorf("分类关系未清理，剩余 %d 条", count)
+		}
+
+		if err := db.QueryRow("SELECT COUNT(*) FROM play_sessions WHERE game_id IN (?, ?)", game1.ID, game2.ID).Scan(&count); err != nil {
+			t.Fatalf("查询游玩会话失败: %v", err)
+		}
+		if count != 0 {
+			t.Errorf("游玩会话未清理，剩余 %d 条", count)
+		}
+	})
+}
+
 func TestGameService_CompleteWorkflow(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()

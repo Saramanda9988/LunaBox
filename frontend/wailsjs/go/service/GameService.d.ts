@@ -11,6 +11,8 @@ export function AddGame(arg1:models.Game):Promise<void>;
 
 export function DeleteGame(arg1:string):Promise<void>;
 
+export function DeleteGames(arg1:Array<string>):Promise<void>;
+
 export function FetchMetadata(arg1:vo.MetadataRequest):Promise<models.Game>;
 
 export function FetchMetadataByName(arg1:string):Promise<Array<vo.GameMetadataFromWebVO>>;

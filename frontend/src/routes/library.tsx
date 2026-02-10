@@ -1,10 +1,16 @@
+import type { vo } from "../../wailsjs/go/models";
 import type { ImportSource } from "../components/modal/GameImportModal";
 import { createRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "react-hot-toast";
+import { AddGamesToCategories, GetCategories } from "../../wailsjs/go/service/CategoryService";
+import { DeleteGames } from "../../wailsjs/go/service/GameService";
 import { FilterBar } from "../components/bar/FilterBar";
 import { GameCard } from "../components/card/GameCard";
 import { AddGameModal } from "../components/modal/AddGameModal";
+import { AddToCategoryModal } from "../components/modal/AddToCategoryModal";
 import { BatchImportModal } from "../components/modal/BatchImportModal";
+import { ConfirmModal } from "../components/modal/ConfirmModal";
 import { GameImportModal } from "../components/modal/GameImportModal";
 import { LibrarySkeleton } from "../components/skeleton/LibrarySkeleton";
 import { sortOptions, statusOptions } from "../consts/options";
@@ -28,6 +34,23 @@ function LibraryPage() {
   const [sortBy, setSortBy] = useState<"name" | "created_at">("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
+  const [allCategories, setAllCategories] = useState<vo.CategoryVO[]>([]);
+  const [isBatchCategoryModalOpen, setIsBatchCategoryModalOpen] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "danger" | "info";
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+    onConfirm: () => {},
+  });
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // 延迟显示骨架屏
@@ -77,6 +100,91 @@ function LibraryPage() {
       return sortOrder === "asc" ? comparison : -comparison;
     });
 
+  const handleBatchModeChange = (enabled: boolean) => {
+    setBatchMode(enabled);
+    if (!enabled) {
+      setSelectedGameIds([]);
+    }
+  };
+
+  const setGameSelection = (gameId: string, selected: boolean) => {
+    setSelectedGameIds((prev) => {
+      if (selected) {
+        return prev.includes(gameId) ? prev : [...prev, gameId];
+      }
+      return prev.filter(id => id !== gameId);
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedGameIds((prev) => {
+      const next = new Set(prev);
+      filteredGames.forEach((game) => {
+        if (game.id) {
+          next.add(game.id);
+        }
+      });
+      return Array.from(next);
+    });
+  };
+
+  const handleClearSelection = () => {
+    setSelectedGameIds([]);
+  };
+
+  const openBatchAddModal = async () => {
+    if (selectedGameIds.length === 0)
+      return;
+    try {
+      const result = await GetCategories();
+      setAllCategories(result || []);
+      setIsBatchCategoryModalOpen(true);
+    }
+    catch (error) {
+      console.error("Failed to load categories:", error);
+      toast.error("加载收藏夹失败");
+    }
+  };
+
+  const handleBatchAddToCategory = async (categoryIds: string[]) => {
+    if (selectedGameIds.length === 0 || categoryIds.length === 0)
+      return;
+    try {
+      await AddGamesToCategories(selectedGameIds, categoryIds);
+      toast.success(`已添加 ${selectedGameIds.length} 个游戏到收藏`);
+      setSelectedGameIds([]);
+      setBatchMode(false);
+    }
+    catch (error) {
+      console.error("Failed to batch add games to category:", error);
+      toast.error("批量添加失败");
+    }
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedGameIds.length === 0)
+      return;
+    setConfirmConfig({
+      isOpen: true,
+      title: "批量删除游戏",
+      message: `确定要删除选中的 ${selectedGameIds.length} 个游戏吗？此操作将从库中移除这些游戏，但不会删除本地游戏文件。`,
+      type: "danger",
+      onConfirm: async () => {
+        try {
+          await DeleteGames(selectedGameIds);
+          await fetchGames();
+          setSelectedGameIds([]);
+          setBatchMode(false);
+          toast.success("批量删除成功");
+        }
+        catch (error) {
+          console.error("Failed to batch delete games:", error);
+          toast.error("批量删除失败");
+        }
+      },
+    });
+  };
+
   useEffect(() => {
     fetchGames();
   }, [fetchGames]);
@@ -107,6 +215,37 @@ function LibraryPage() {
         onStatusFilterChange={setStatusFilter}
         statusOptions={statusOptions}
         storageKey="library"
+        batchMode={batchMode}
+        onBatchModeChange={handleBatchModeChange}
+        selectedCount={selectedGameIds.length}
+        onSelectAll={handleSelectAll}
+        onClearSelection={handleClearSelection}
+        batchActions={(
+          <>
+            <button
+              type="button"
+              onClick={openBatchAddModal}
+              disabled={selectedGameIds.length === 0}
+              className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
+                          bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
+                          rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300
+                          ${selectedGameIds.length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              <div className="i-mdi-folder-plus-outline text-lg" />
+            </button>
+            <button
+              type="button"
+              onClick={handleBatchDelete}
+              disabled={selectedGameIds.length === 0}
+              className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
+                          bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
+                          rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-error-600 dark:text-error-400
+                          ${selectedGameIds.length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              <div className="i-mdi-delete text-lg" />
+            </button>
+          </>
+        )}
         actionButton={(
           <div className="relative" ref={dropdownRef}>
             <button
@@ -226,7 +365,13 @@ function LibraryPage() {
           : (
               <div className="grid grid-cols-[repeat(auto-fill,minmax(max(8rem,11%),1fr))] gap-3">
                 {filteredGames.map(game => (
-                  <GameCard key={game.id} game={game} />
+                  <GameCard
+                    key={game.id}
+                    game={game}
+                    selectionMode={batchMode}
+                    selected={selectedGameIds.includes(game.id)}
+                    onSelectChange={selected => setGameSelection(game.id, selected)}
+                  />
                 ))}
               </div>
             )}
@@ -248,6 +393,25 @@ function LibraryPage() {
         isOpen={isBatchImportOpen}
         onClose={() => setIsBatchImportOpen(false)}
         onImportComplete={fetchGames}
+      />
+
+      <AddToCategoryModal
+        isOpen={isBatchCategoryModalOpen}
+        allCategories={allCategories}
+        initialSelectedIds={[]}
+        onClose={() => setIsBatchCategoryModalOpen(false)}
+        onSave={handleBatchAddToCategory}
+        title="批量添加到收藏"
+        confirmText="添加"
+      />
+
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        type={confirmConfig.type}
+        onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+        onConfirm={confirmConfig.onConfirm}
       />
     </div>
   );
