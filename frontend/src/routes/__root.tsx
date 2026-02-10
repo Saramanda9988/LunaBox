@@ -38,6 +38,13 @@ function RootLayout() {
   useEffect(() => {
     const handleDragOver = (e: DragEvent) => {
       e.preventDefault();
+
+      // 过滤掉图片元素的拖拽（防止误触发）
+      const target = e.target as HTMLElement;
+      if (target.tagName === "IMG") {
+        return;
+      }
+
       // 检查是否包含文件
       if (e.dataTransfer?.types.includes("Files")) {
         setIsDragOver(true);
@@ -51,7 +58,14 @@ function RootLayout() {
       }
     };
 
-    const handleDrop = () => {
+    const handleDrop = (e: DragEvent) => {
+      // 过滤掉图片元素的拖拽
+      const target = e.target as HTMLElement;
+      if (target.tagName === "IMG") {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       setIsDragOver(false);
     };
 

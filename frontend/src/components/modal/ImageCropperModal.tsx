@@ -165,6 +165,8 @@ export function ImageCropperModal({ imagePath, onConfirm, onCancel, windowWidth,
               src={imagePath}
               onLoad={onImageLoad}
               className="max-w-full max-h-[60vh] object-contain"
+              draggable="false"
+              onDragStart={e => e.preventDefault()}
             />
           </ReactCrop>
         </div>

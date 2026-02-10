@@ -757,7 +757,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                         <div className="aspect-[3/4] w-full overflow-hidden rounded-md bg-brand-200 dark:bg-brand-700">
                           {match.Game!.cover_url
                             ? (
-                                <img src={match.Game!.cover_url} alt={match.Game!.name} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                                <img src={match.Game!.cover_url} alt={match.Game!.name} className="h-full w-full object-cover" referrerPolicy="no-referrer" draggable="false" onDragStart={e => e.preventDefault()} />
                               )
                             : (
                                 <div className="flex h-full items-center justify-center text-brand-400">

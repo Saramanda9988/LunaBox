@@ -105,6 +105,8 @@ function HomePage() {
               alt=""
               referrerPolicy="no-referrer"
               className="w-full h-full object-cover"
+              draggable="false"
+              onDragStart={e => e.preventDefault()}
             />
             {/* 整体柔和遮罩 - 浅色模式用浅色，深色模式用深色 */}
             <div className="absolute inset-0 bg-brand-100/30 dark:bg-black/30" />

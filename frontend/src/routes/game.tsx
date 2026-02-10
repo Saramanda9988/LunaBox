@@ -309,6 +309,8 @@ function GameDetailPage() {
                   alt={game.name}
                   className="w-full h-auto block"
                   referrerPolicy="no-referrer"
+                  draggable="false"
+                  onDragStart={(e) => e.preventDefault()}
                 />
               )
             : (

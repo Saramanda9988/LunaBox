@@ -19,6 +19,15 @@ body {
   -webkit-user-select: none;
 }
 
+/* 禁止所有图片被拖拽 */
+img {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
 input,
 textarea,
 [contenteditable="true"] {

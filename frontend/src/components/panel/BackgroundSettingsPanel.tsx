@@ -197,6 +197,8 @@ export function BackgroundSettingsPanel({ formData, onChange }: BackgroundSettin
               style={{
                 filter: `blur(${(formData.background_blur ?? 10) / 2}px)`,
               }}
+              draggable="false"
+              onDragStart={e => e.preventDefault()}
             />
             <div
               className="absolute inset-0 bg-brand-100 dark:bg-brand-900"

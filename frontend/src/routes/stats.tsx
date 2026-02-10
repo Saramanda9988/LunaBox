@@ -381,6 +381,8 @@ function StatsPage() {
                 alt={stats.play_time_leaderboard[0].game_name}
                 referrerPolicy="no-referrer"
                 className="w-full h-auto block object-cover rounded-lg shadow-md mb-4 transition-transform group-hover:scale-105 bg-brand-200 dark:bg-brand-700"
+                draggable="false"
+                onDragStart={e => e.preventDefault()}
               />
             </div>
             <h3 className="text-lg font-bold text-brand-900 dark:text-white mb-2 line-clamp-2 px-2">
@@ -422,6 +424,8 @@ function StatsPage() {
                           alt={game.game_name}
                           referrerPolicy="no-referrer"
                           className="w-10 h-14 object-cover rounded shadow-sm mr-4 bg-brand-200 dark:bg-brand-700 data-glass:bg-white/5 data-glass:dark:bg-black/5"
+                          draggable="false"
+                          onDragStart={e => e.preventDefault()}
                         />
                         <span className="font-medium text-brand-900 dark:text-white line-clamp-1">{game.game_name}</span>
                       </div>

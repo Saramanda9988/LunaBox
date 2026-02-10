@@ -49,11 +49,13 @@ export function TopBar() {
         src="/topbar-title-dark.png"
         className="h-5 absolute dark:hidden left-1/2 -translate-x-1/2 pointer-events-none"
         draggable="false"
+        onDragStart={e => e.preventDefault()}
       />
       <img
         src="/topbar-title.png"
         className="h-5 absolute hidden dark:block left-1/2 -translate-x-1/2 pointer-events-none"
         draggable="false"
+        onDragStart={e => e.preventDefault()}
       />
 
       {/* 右侧：窗口控制按钮 */}
