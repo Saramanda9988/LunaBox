@@ -21,13 +21,18 @@ const (
 	WAIT_FAILED               = 0xFFFFFFFF
 	INFINITE                  = 0xFFFFFFFF
 	PROCESS_QUERY_INFORMATION = 0x0400
+	TH32CS_SNAPPROCESS        = 0x00000002
+	MAX_PATH                  = 260
 )
 
 var (
-	kernel32                = syscall.NewLazyDLL("kernel32.dll")
-	procOpenProcess         = kernel32.NewProc("OpenProcess")
-	procWaitForSingleObject = kernel32.NewProc("WaitForSingleObject")
-	procCloseHandle         = kernel32.NewProc("CloseHandle")
+	kernel32                     = syscall.NewLazyDLL("kernel32.dll")
+	procOpenProcess              = kernel32.NewProc("OpenProcess")
+	procWaitForSingleObject      = kernel32.NewProc("WaitForSingleObject")
+	procCloseHandle              = kernel32.NewProc("CloseHandle")
+	procCreateToolhelp32Snapshot = kernel32.NewProc("CreateToolhelp32Snapshot")
+	procProcess32First           = kernel32.NewProc("Process32FirstW")
+	procProcess32Next            = kernel32.NewProc("Process32NextW")
 )
 
 // ProcessInfo 进程信息
@@ -36,22 +41,36 @@ type ProcessInfo struct {
 	PID  uint32 `json:"pid"`  // 进程ID
 }
 
-// CheckIfProcessRunning 检查指定进程是否正在运行
-func CheckIfProcessRunning(processName string) (bool, error) {
-	cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("IMAGENAME eq %s", processName), "/FO", "CSV", "/NH")
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	output, err := cmd.Output()
-	if err != nil {
-		return false, fmt.Errorf("failed to execute tasklist: %w", err)
-	}
+// PROCESSENTRY32W Windows API 进程快照结构体
+type PROCESSENTRY32W struct {
+	Size            uint32
+	CntUsage        uint32
+	ProcessID       uint32
+	DefaultHeapID   uintptr
+	ModuleID        uint32
+	CntThreads      uint32
+	ParentProcessID uint32
+	PriClassBase    int32
+	Flags           uint32
+	ExeFile         [MAX_PATH]uint16
+}
 
-	outputStr := string(output)
-	// 检查输出中是否包含进程名
-	return strings.Contains(strings.ToLower(outputStr), strings.ToLower(processName)), nil
+// CheckIfProcessRunning 检查指定进程是否正在运行
+// 使用 Windows API 代替 tasklist，避免编码问题
+func CheckIfProcessRunning(processName string) (bool, error) {
+	_, err := GetProcessPIDByName(processName)
+	if err != nil {
+		if strings.Contains(err.Error(), "process not found") {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 // GetRunningProcesses 获取系统中正在运行的进程列表
 // 只返回有意义的exe进程，过滤掉系统进程和常见的无关进程
+// 使用 Windows API 代替 tasklist，避免编码和语言问题
 func GetRunningProcesses() ([]ProcessInfo, error) {
 	// 使用tasklist获取进程列表，CSV格式便于解析
 	cmd := exec.Command("tasklist", "/FO", "CSV", "/NH")
@@ -165,39 +184,45 @@ func GetRunningProcesses() ([]ProcessInfo, error) {
 
 // GetProcessPIDByName 根据进程名获取PID
 // 如果有多个同名进程，返回第一个找到的
+// 使用 Windows API (CreateToolhelp32Snapshot) 代替 tasklist，避免编码和语言问题
 func GetProcessPIDByName(processName string) (uint32, error) {
-	cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("IMAGENAME eq %s", processName), "/FO", "CSV", "/NH")
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	output, err := cmd.Output()
-	if err != nil {
-		return 0, fmt.Errorf("failed to execute tasklist: %w", err)
+	// 创建进程快照
+	snapshot, _, err := procCreateToolhelp32Snapshot.Call(
+		uintptr(TH32CS_SNAPPROCESS),
+		0,
+	)
+	if snapshot == uintptr(syscall.InvalidHandle) {
+		return 0, fmt.Errorf("failed to create process snapshot: %w", err)
+	}
+	defer procCloseHandle.Call(snapshot)
+
+	// 准备进程信息结构体
+	var pe32 PROCESSENTRY32W
+	pe32.Size = uint32(unsafe.Sizeof(pe32))
+
+	// 获取第一个进程
+	ret, _, _ := procProcess32First.Call(snapshot, uintptr(unsafe.Pointer(&pe32)))
+	if ret == 0 {
+		return 0, fmt.Errorf("failed to get first process")
 	}
 
-	outputStr := strings.TrimSpace(string(output))
-	if outputStr == "" || strings.Contains(outputStr, "No tasks are running") {
-		return 0, fmt.Errorf("process not found: %s", processName)
-	}
+	// 转换进程名为小写以进行不区分大小写的比较
+	targetName := strings.ToLower(processName)
 
-	lines := strings.Split(outputStr, "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
+	// 遍历所有进程
+	for {
+		// 从 UTF-16 转换进程名
+		exeName := syscall.UTF16ToString(pe32.ExeFile[:])
+
+		// 不区分大小写比较
+		if strings.EqualFold(exeName, targetName) {
+			return pe32.ProcessID, nil
 		}
 
-		parts := strings.Split(line, ",")
-		if len(parts) < 2 {
-			continue
-		}
-
-		name := strings.Trim(parts[0], "\"")
-		if strings.EqualFold(name, processName) {
-			pidStr := strings.Trim(parts[1], "\"")
-			pid, err := strconv.ParseUint(pidStr, 10, 32)
-			if err != nil {
-				continue
-			}
-			return uint32(pid), nil
+		// 获取下一个进程
+		ret, _, _ := procProcess32Next.Call(snapshot, uintptr(unsafe.Pointer(&pe32)))
+		if ret == 0 {
+			break
 		}
 	}
 

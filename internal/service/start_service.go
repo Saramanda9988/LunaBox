@@ -150,7 +150,7 @@ func (s *StartService) startGame(gameID string, options LaunchOptions) (bool, er
 	}
 
 	// 启动进程检测和监控 goroutine
-	go s.detectAndMonitorProcess(cmd, sessionID, gameID, startTime, launcherPID, launcherExeName, processName)
+	go s.detectAndMonitorProcess(cmd, sessionID, gameID, startTime, launcherPID, launcherExeName, processName, useLE)
 
 	// 启动成功，返回 true 给前端
 	return true, nil
@@ -158,7 +158,8 @@ func (s *StartService) startGame(gameID string, options LaunchOptions) (bool, er
 
 // detectAndMonitorProcess 检测实际游戏进程并开始监控
 // 采用分阶段检测策略，利用60秒会话记录阈值提供的余裕时间
-func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, gameID string, startTime time.Time, launcherPID uint32, launcherExeName string, savedProcessName string) {
+// usedLE: 是否使用了 Locale Emulator 启动，影响进程检测策略
+func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, gameID string, startTime time.Time, launcherPID uint32, launcherExeName string, savedProcessName string, usedLE bool) {
 	var actualProcessID uint32
 	var actualProcessName string
 	var needExternalMonitor bool // 是否需要外部进程监控（非cmd子进程）
