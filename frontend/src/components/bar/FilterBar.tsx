@@ -177,45 +177,6 @@ export function FilterBar({
           </button>
         )}
 
-        {batchMode && (
-          <>
-            {onSelectAll && (
-              <button
-                type="button"
-                onClick={onSelectAll}
-                className="glass-panel px-3 py-2 text-sm text-brand-600 dark:text-brand-300
-                           bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
-                           rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700"
-              >
-                全选
-              </button>
-            )}
-            {onClearSelection && (
-              <button
-                type="button"
-                onClick={onClearSelection}
-                className="glass-panel px-3 py-2 text-sm text-brand-600 dark:text-brand-300
-                           bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
-                           rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700"
-              >
-                清空
-              </button>
-            )}
-            {typeof selectedCount === "number" && (
-              <div className="px-2 text-sm text-brand-600 dark:text-brand-400">
-                已选
-                {" "}
-                {selectedCount}
-              </div>
-            )}
-            {batchActions && (
-              <div className="flex items-center gap-2">
-                {batchActions}
-              </div>
-            )}
-          </>
-        )}
-
         {/* 状态筛选 */}
         {statusOptions && onStatusFilterChange && (
           <BetterSelect
@@ -249,8 +210,52 @@ export function FilterBar({
         </button>
 
         {extraButtons}
-        {!batchMode && actionButton}
+        {actionButton}
       </div>
+
+      {/* 批量操作按钮 - 第二行 */}
+      {batchMode && (
+        <div className="w-full bg-gradient-to-r from-brand-50 to-brand-50/50 dark:from-brand-800/50 dark:to-brand-900/30 border border-brand-200 dark:border-brand-700/50 rounded-lg px-3 py-2 flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {onSelectAll && (
+              <button
+                type="button"
+                onClick={onSelectAll}
+                className="px-2.5 py-1 text-xs font-medium text-brand-600 dark:text-brand-300
+                           bg-white dark:bg-brand-700/60 border border-brand-200 dark:border-brand-600
+                           rounded-md hover:bg-brand-50 dark:hover:bg-brand-700 transition-colors"
+              >
+                全选
+              </button>
+            )}
+            {onClearSelection && (
+              <button
+                type="button"
+                onClick={onClearSelection}
+                className="px-2.5 py-1 text-xs font-medium text-brand-600 dark:text-brand-300
+                           bg-white dark:bg-brand-700/60 border border-brand-200 dark:border-brand-600
+                           rounded-md hover:bg-brand-50 dark:hover:bg-brand-700 transition-colors"
+              >
+                清空
+              </button>
+            )}
+          </div>
+
+          {typeof selectedCount === "number" && (
+            <div className="px-2.5 py-1 text-xs font-medium text-brand-700 dark:text-brand-300 bg-white dark:bg-brand-700/60 border border-brand-200 dark:border-brand-600 rounded-md">
+              已选
+              {" "}
+              <span className="font-semibold ml-1">{selectedCount}</span>
+            </div>
+          )}
+
+          {batchActions && (
+            <div className="flex items-center gap-1.5 ml-auto">
+              {batchActions}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
