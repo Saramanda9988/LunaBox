@@ -216,7 +216,7 @@ func IsProcessRunningByPID(pid uint32, ctx context.Context) bool {
 
 	// 无法打开句柄，进程不存在
 	if handle == 0 {
-		applog.LogErrorf(ctx, "%s | [PROCESS_CHECK] PID %d NOT running (OpenProcess failed: %v)", time.Now(), pid, err)
+		applog.LogWarningf(ctx, "%s | [PROCESS_CHECK] PID %d NOT running (OpenProcess failed: %v)", time.Now(), pid, err)
 		return false
 	}
 	defer procCloseHandle.Call(handle)
@@ -228,18 +228,18 @@ func IsProcessRunningByPID(pid uint32, ctx context.Context) bool {
 
 	if ret == 0 {
 		// GetExitCodeProcess 失败，假设进程不存在
-		applog.LogErrorf(ctx, "%s | [PROCESS_CHECK] PID %d NOT running (GetExitCodeProcess failed)", time.Now(), pid)
+		applog.LogWarningf(ctx, "%s | [PROCESS_CHECK] PID %d NOT running (GetExitCodeProcess failed)", time.Now(), pid)
 		return false
 	}
 
 	// STILL_ACTIVE = 259，表示进程仍在运行
 	if exitCode == STILL_ACTIVE {
-		applog.LogErrorf(ctx, "%s | [PROCESS_CHECK] PID %d IS running", time.Now(), pid)
+		applog.LogWarningf(ctx, "%s | [PROCESS_CHECK] PID %d IS running", time.Now(), pid)
 		return true
 	}
 
 	// 进程已退出
-	applog.LogErrorf(ctx, "%s | [PROCESS_CHECK] PID %d NOT running (exit code: %d)", time.Now(), pid, exitCode)
+	applog.LogWarningf(ctx, "%s | [PROCESS_CHECK] PID %d NOT running (exit code: %d)", time.Now(), pid, exitCode)
 	return false
 }
 

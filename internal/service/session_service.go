@@ -210,3 +210,80 @@ func (s *SessionService) BatchAddPlaySessions(sessions []models.PlaySession) err
 	applog.LogInfof(s.ctx, "BatchAddPlaySessions: added %d play sessions", len(sessions))
 	return nil
 }
+
+// CleanupUnfinishedSessions 清理所有未完成的会话（程序关闭时调用）
+// 对于 duration == 0 的会话：
+// - 如果实际时长 < 60 秒，删除记录
+// - 如果实际时长 >= 60 秒，更新 end_time 和 duration
+func (s *SessionService) CleanupUnfinishedSessions() error {
+	// 查询所有未完成的会话（duration == 0 表示未完成）
+	rows, err := s.db.QueryContext(
+		s.ctx,
+		`SELECT id, game_id, start_time FROM play_sessions WHERE duration = 0`,
+	)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "CleanupUnfinishedSessions: failed to query unfinished sessions: %v", err)
+		return fmt.Errorf("查询未完成会话失败: %w", err)
+	}
+	defer rows.Close()
+
+	type unfinishedSession struct {
+		ID        string
+		GameID    string
+		StartTime time.Time
+	}
+
+	var sessions []unfinishedSession
+	for rows.Next() {
+		var session unfinishedSession
+		if err := rows.Scan(&session.ID, &session.GameID, &session.StartTime); err != nil {
+			applog.LogErrorf(s.ctx, "CleanupUnfinishedSessions: failed to scan session: %v", err)
+			continue
+		}
+		sessions = append(sessions, session)
+	}
+
+	if len(sessions) == 0 {
+		applog.LogInfof(s.ctx, "CleanupUnfinishedSessions: no unfinished sessions found")
+		return nil
+	}
+
+	applog.LogInfof(s.ctx, "CleanupUnfinishedSessions: found %d unfinished sessions", len(sessions))
+
+	// 处理每个未完成的会话
+	endTime := time.Now()
+	var deleted, updated int
+
+	for _, session := range sessions {
+		duration := int(endTime.Sub(session.StartTime).Seconds())
+
+		if duration < 60 {
+			// 时长小于 60 秒，删除记录
+			_, err := s.db.ExecContext(s.ctx, "DELETE FROM play_sessions WHERE id = ?", session.ID)
+			if err != nil {
+				applog.LogErrorf(s.ctx, "CleanupUnfinishedSessions: failed to delete short session %s: %v", session.ID, err)
+			} else {
+				deleted++
+				applog.LogDebugf(s.ctx, "Deleted short session %s (duration: %d seconds)", session.ID, duration)
+			}
+		} else {
+			// 时长大于等于 60 秒，更新记录
+			_, err := s.db.ExecContext(
+				s.ctx,
+				`UPDATE play_sessions SET end_time = ?, duration = ? WHERE id = ?`,
+				endTime,
+				duration,
+				session.ID,
+			)
+			if err != nil {
+				applog.LogErrorf(s.ctx, "CleanupUnfinishedSessions: failed to update session %s: %v", session.ID, err)
+			} else {
+				updated++
+				applog.LogDebugf(s.ctx, "Updated unfinished session %s (duration: %d seconds)", session.ID, duration)
+			}
+		}
+	}
+
+	applog.LogInfof(s.ctx, "CleanupUnfinishedSessions: deleted %d short sessions, updated %d sessions", deleted, updated)
+	return nil
+}

@@ -475,25 +475,40 @@ func (s *StartService) CancelProcessSelection(gameID string) error {
 }
 
 // CleanupPendingSessions 清理所有待定的进程选择会话
-// 用于程序关闭时的清理
+// 用于程序关闭时的清理，包括：
+// 1. 关闭所有等待的进程选择 channels
+// 2. 停止所有活跃时间追踪
+// 3. 清理数据库中未完成的会话记录
 func (s *StartService) CleanupPendingSessions() {
+	// 1. 清理进程选择 channels
 	s.pendingProcessSelectMu.Lock()
-	defer s.pendingProcessSelectMu.Unlock()
+	if len(s.pendingProcessSelect) > 0 {
+		applog.LogInfof(s.ctx, "Cleaning up %d pending process selections", len(s.pendingProcessSelect))
+		// 关闭所有等待的 channels
+		for gameID, selectChan := range s.pendingProcessSelect {
+			close(selectChan)
+			applog.LogInfof(s.ctx, "Cancelled pending process selection for game %s", gameID)
+		}
+		// 清空 map
+		s.pendingProcessSelect = make(map[string]chan string)
+	}
+	s.pendingProcessSelectMu.Unlock()
 
-	if len(s.pendingProcessSelect) == 0 {
-		return
+	// 2. 停止所有活跃时间追踪
+	if s.activeTimeTracker != nil {
+		s.activeTimeTracker.StopAllTracking()
+		applog.LogInfof(s.ctx, "Stopped all active time tracking")
 	}
 
-	applog.LogInfof(s.ctx, "Cleaning up %d pending process selections", len(s.pendingProcessSelect))
-
-	// 关闭所有等待的 channels
-	for gameID, selectChan := range s.pendingProcessSelect {
-		close(selectChan)
-		applog.LogInfof(s.ctx, "Cancelled pending process selection for game %s", gameID)
+	// 3. 清理数据库中未完成的会话
+	if s.sessionService != nil {
+		err := s.sessionService.CleanupUnfinishedSessions()
+		if err != nil {
+			applog.LogErrorf(s.ctx, "Failed to cleanup unfinished sessions: %v", err)
+		} else {
+			applog.LogInfof(s.ctx, "Successfully cleaned up unfinished sessions")
+		}
 	}
-
-	// 清空 map
-	s.pendingProcessSelect = make(map[string]chan string)
 }
 
 // autoBackupGameSave 自动备份游戏存档

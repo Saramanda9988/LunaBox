@@ -231,3 +231,33 @@ func (s *ActiveTimeTracker) IsTracking(gameID string) bool {
 	_, exists := s.sessions[gameID]
 	return exists
 }
+
+// StopAllTracking 停止所有正在追踪的会话（用于程序关闭时）
+// 返回所有会话的 gameID 和累加秒数的映射
+func (s *ActiveTimeTracker) StopAllTracking() map[string]int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	result := make(map[string]int)
+
+	for gameID, session := range s.sessions {
+		session.cancel()
+
+		session.mu.Lock()
+		accumulated := session.accumulatedSeconds
+		session.mu.Unlock()
+
+		result[gameID] = accumulated
+
+		applog.LogInfof(s.ctx, "[ActiveTimeTracker] Stopped tracking for game %s, accumulated %d seconds", gameID, accumulated)
+		log.Printf("[ActiveTimeTracker] Stopped tracking for game %s, accumulated %d seconds", gameID, accumulated)
+	}
+
+	// 清空所有会话
+	s.sessions = make(map[string]*TrackingSession)
+
+	applog.LogInfof(s.ctx, "[ActiveTimeTracker] Stopped all tracking, cleaned up %d sessions", len(result))
+	log.Printf("[ActiveTimeTracker] Stopped all tracking, cleaned up %d sessions", len(result))
+
+	return result
+}
