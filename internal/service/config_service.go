@@ -139,13 +139,17 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	// OneDrive OAuth
 	s.config.OneDriveClientID = newConfig.OneDriveClientID
 	s.config.OneDriveRefreshToken = newConfig.OneDriveRefreshToken
+	// 备份相关配置
 	s.config.AutoBackupDB = newConfig.AutoBackupDB
 	s.config.AutoBackupGameSave = newConfig.AutoBackupGameSave
 	s.config.AutoUploadToCloud = newConfig.AutoUploadToCloud
 	s.config.LocalBackupRetention = newConfig.LocalBackupRetention
 	s.config.LocalDBBackupRetention = newConfig.LocalDBBackupRetention
+	s.config.LastFullBackupTime = newConfig.LastFullBackupTime
+	s.config.PendingFullRestore = newConfig.PendingFullRestore
 	s.config.RecordActiveTimeOnly = newConfig.RecordActiveTimeOnly
 	s.config.CheckUpdateOnStartup = newConfig.CheckUpdateOnStartup
+	// 更新相关配置
 	s.config.UpdateCheckURL = newConfig.UpdateCheckURL
 	s.config.LastUpdateCheck = newConfig.LastUpdateCheck
 	s.config.SkipVersion = newConfig.SkipVersion

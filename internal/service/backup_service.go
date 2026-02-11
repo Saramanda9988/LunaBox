@@ -137,6 +137,11 @@ func (s *BackupService) GetDBBackupDir() (string, error) {
 	return utils.GetSubDir(filepath.Join("backups", "database"))
 }
 
+// GetFullBackupDir 获取全量数据备份目录
+func (s *BackupService) GetFullBackupDir() (string, error) {
+	return utils.GetSubDir(filepath.Join("backups", "full"))
+}
+
 // OpenBackupFolder 打开备份文件夹
 func (s *BackupService) OpenBackupFolder(gameID string) error {
 	backupDir, err := s.GetBackupDir()
@@ -683,6 +688,197 @@ func (s *BackupService) cleanupOldDBBackups(retention int) {
 	}
 }
 
+// ========== 全量数据本地备份方法 ==========
+
+// CreateFullDataBackup 创建全量数据备份（数据库 + 应用设置 + 数据目录）
+func (s *BackupService) CreateFullDataBackup() (*vo.DBBackupInfo, error) {
+	backupDir, err := s.GetFullBackupDir()
+	if err != nil {
+		return nil, err
+	}
+
+	dataDir, err := utils.GetDataDir()
+	if err != nil {
+		return nil, err
+	}
+	configDir, err := utils.GetConfigDir()
+	if err != nil {
+		return nil, err
+	}
+
+	timestamp := time.Now().Format("2006-01-02T15-04-05")
+	packDir := filepath.Join(backupDir, fmt.Sprintf("pack_%s", timestamp))
+	dbExportDir := filepath.Join(packDir, "database")
+
+	if err := os.MkdirAll(dbExportDir, 0755); err != nil {
+		return nil, fmt.Errorf("创建临时目录失败: %w", err)
+	}
+	defer os.RemoveAll(packDir)
+
+	// 先用 DuckDB EXPORT 获取一致性的数据库快照。
+	exportPath := strings.ReplaceAll(dbExportDir, "\\", "/")
+	_, err = s.db.ExecContext(s.ctx, fmt.Sprintf("EXPORT DATABASE '%s'", exportPath))
+	if err != nil {
+		return nil, fmt.Errorf("导出数据库失败: %w", err)
+	}
+
+	// 复制配置文件
+	configPath := filepath.Join(configDir, "appconf.json")
+	if _, err := os.Stat(configPath); err == nil {
+		if err := utils.CopyFile(configPath, filepath.Join(packDir, "appconf.json")); err != nil {
+			return nil, fmt.Errorf("复制配置文件失败: %w", err)
+		}
+	}
+
+	// 复制关键数据目录
+	for _, dirName := range []string{"covers", "backgrounds", "logs"} {
+		srcDir := filepath.Join(dataDir, dirName)
+		if _, err := os.Stat(srcDir); err != nil {
+			continue
+		}
+		if err := utils.CopyDir(srcDir, filepath.Join(packDir, dirName)); err != nil {
+			return nil, fmt.Errorf("复制目录 %s 失败: %w", dirName, err)
+		}
+	}
+
+	// 复制 backups（排除 full，避免把正在创建的全量备份自身递归打包）
+	backupsSourceDir := filepath.Join(dataDir, "backups")
+	if _, err := os.Stat(backupsSourceDir); err == nil {
+		backupsDestDir := filepath.Join(packDir, "backups")
+		if err := os.MkdirAll(backupsDestDir, 0755); err != nil {
+			return nil, fmt.Errorf("创建备份目录失败: %w", err)
+		}
+		entries, err := os.ReadDir(backupsSourceDir)
+		if err != nil {
+			return nil, fmt.Errorf("读取备份目录失败: %w", err)
+		}
+		for _, entry := range entries {
+			if entry.Name() == "full" {
+				continue
+			}
+			srcPath := filepath.Join(backupsSourceDir, entry.Name())
+			dstPath := filepath.Join(backupsDestDir, entry.Name())
+			if entry.IsDir() {
+				if err := utils.CopyDir(srcPath, dstPath); err != nil {
+					return nil, fmt.Errorf("复制备份子目录失败: %w", err)
+				}
+			} else {
+				if err := utils.CopyFile(srcPath, dstPath); err != nil {
+					return nil, fmt.Errorf("复制备份文件失败: %w", err)
+				}
+			}
+		}
+	}
+
+	backupFileName := fmt.Sprintf("lunabox_full_%s.zip", timestamp)
+	backupPath := filepath.Join(backupDir, backupFileName)
+
+	_, err = utils.ZipDirectory(packDir, backupPath)
+	if err != nil {
+		return nil, fmt.Errorf("压缩全量备份失败: %w", err)
+	}
+
+	stat, err := os.Stat(backupPath)
+	if err != nil {
+		return nil, err
+	}
+
+	s.config.LastFullBackupTime = time.Now().Format(time.RFC3339)
+	//retention := s.config.LocalDBBackupRetention
+	//if retention <= 0 {
+	//	retention = 5
+	//}
+	//s.cleanupOldFullBackups(retention)
+
+	return &vo.DBBackupInfo{
+		Path:      backupPath,
+		Name:      backupFileName,
+		Size:      stat.Size(),
+		CreatedAt: stat.ModTime(),
+	}, nil
+}
+
+// GetFullDataBackups 获取全量数据备份列表
+func (s *BackupService) GetFullDataBackups() (*vo.DBBackupStatus, error) {
+	backupDir, err := s.GetFullBackupDir()
+	if err != nil {
+		return nil, err
+	}
+
+	entries, err := os.ReadDir(backupDir)
+	if err != nil {
+		return nil, err
+	}
+
+	var backups []vo.DBBackupInfo
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".zip") {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		backups = append(backups, vo.DBBackupInfo{
+			Path:      filepath.Join(backupDir, entry.Name()),
+			Name:      entry.Name(),
+			Size:      info.Size(),
+			CreatedAt: info.ModTime(),
+		})
+	}
+
+	sort.Slice(backups, func(i, j int) bool {
+		return backups[i].CreatedAt.After(backups[j].CreatedAt)
+	})
+
+	return &vo.DBBackupStatus{
+		LastBackupTime: s.config.LastFullBackupTime,
+		Backups:        backups,
+	}, nil
+}
+
+// ScheduleFullDataRestore 安排全量数据恢复（下次启动时执行）
+func (s *BackupService) ScheduleFullDataRestore(backupPath string) error {
+	backupDir, err := s.GetFullBackupDir()
+	if err != nil {
+		return err
+	}
+	if !strings.HasPrefix(backupPath, backupDir) {
+		return fmt.Errorf("无效的备份路径")
+	}
+	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+		return fmt.Errorf("备份文件不存在: %s", backupPath)
+	}
+
+	// 全量恢复包含数据库，清理数据库待恢复任务，避免重复恢复。
+	s.config.PendingDBRestore = ""
+	s.config.PendingFullRestore = backupPath
+	return nil
+}
+
+// DeleteFullDataBackup 删除全量数据备份
+func (s *BackupService) DeleteFullDataBackup(backupPath string) error {
+	backupDir, err := s.GetFullBackupDir()
+	if err != nil {
+		return err
+	}
+	if !strings.HasPrefix(backupPath, backupDir) {
+		return fmt.Errorf("无效的备份路径")
+	}
+	return os.Remove(backupPath)
+}
+
+// cleanupOldFullBackups 清理旧的全量数据备份
+func (s *BackupService) cleanupOldFullBackups(retention int) {
+	status, err := s.GetFullDataBackups()
+	if err != nil || len(status.Backups) <= retention {
+		return
+	}
+	for i := retention; i < len(status.Backups); i++ {
+		os.Remove(status.Backups[i].Path)
+	}
+}
+
 // ========== 数据库云备份方法 ==========
 
 // UploadDBBackupToCloud 上传数据库备份到云端
@@ -832,6 +1028,108 @@ func (s *BackupService) parseCloudBackupItems(keys []string, prefix string) []vo
 		return items[i].CreatedAt.After(items[j].CreatedAt)
 	})
 	return items
+}
+
+// ========== 全量数据恢复（启动时调用）==========
+
+// ExecuteFullDataRestore 执行全量数据恢复（在 OnStartup 中、打开数据库前调用）
+func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
+	if config.PendingFullRestore == "" {
+		return false, nil
+	}
+
+	backupPath := config.PendingFullRestore
+	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+		config.PendingFullRestore = ""
+		appconf.SaveConfig(config)
+		return false, fmt.Errorf("备份文件不存在: %s", backupPath)
+	}
+
+	dataDir, err := utils.GetDataDir()
+	if err != nil {
+		return false, err
+	}
+	configDir, err := utils.GetConfigDir()
+	if err != nil {
+		return false, err
+	}
+
+	tempDir, err := os.MkdirTemp("", "lunabox_full_restore_*")
+	if err != nil {
+		return false, fmt.Errorf("创建临时目录失败: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	if err := utils.UnzipForRestore(backupPath, tempDir); err != nil {
+		return false, fmt.Errorf("解压全量备份失败: %w", err)
+	}
+
+	// 先恢复数据库
+	dbPath := filepath.Join(dataDir, "lunabox.db")
+	dbImportDir := filepath.Join(tempDir, "database")
+	rawDBPath := filepath.Join(tempDir, "lunabox.db")
+
+	os.Remove(dbPath)
+	os.Remove(dbPath + ".wal")
+
+	if _, err := os.Stat(dbImportDir); err == nil {
+		db, err := sql.Open("duckdb", dbPath)
+		if err != nil {
+			return false, fmt.Errorf("打开数据库失败: %w", err)
+		}
+
+		importPath := strings.ReplaceAll(dbImportDir, "\\", "/")
+		_, err = db.Exec(fmt.Sprintf("IMPORT DATABASE '%s'", importPath))
+		db.Close()
+		if err != nil {
+			return false, fmt.Errorf("导入数据库失败: %w", err)
+		}
+	} else if _, err := os.Stat(rawDBPath); err == nil {
+		if err := utils.CopyFile(rawDBPath, dbPath); err != nil {
+			return false, fmt.Errorf("恢复数据库文件失败: %w", err)
+		}
+	} else {
+		return false, fmt.Errorf("全量备份中缺少数据库内容")
+	}
+
+	// 恢复应用数据目录
+	for _, dirName := range []string{"covers", "backgrounds", "logs", "backups"} {
+		srcDir := filepath.Join(tempDir, dirName)
+		if _, err := os.Stat(srcDir); err != nil {
+			continue
+		}
+
+		dstDir := filepath.Join(dataDir, dirName)
+		if err := os.RemoveAll(dstDir); err != nil {
+			return false, fmt.Errorf("清理目录 %s 失败: %w", dirName, err)
+		}
+		if err := utils.CopyDir(srcDir, dstDir); err != nil {
+			return false, fmt.Errorf("恢复目录 %s 失败: %w", dirName, err)
+		}
+	}
+
+	// 恢复配置文件
+	backupConfigPath := filepath.Join(tempDir, "appconf.json")
+	if _, err := os.Stat(backupConfigPath); err == nil {
+		configPath := filepath.Join(configDir, "appconf.json")
+		if err := utils.CopyFile(backupConfigPath, configPath); err != nil {
+			return false, fmt.Errorf("恢复配置文件失败: %w", err)
+		}
+	}
+
+	// 重新加载配置并清理待恢复标记，避免重复执行
+	restoredConfig, err := appconf.LoadConfig()
+	if err != nil {
+		restoredConfig = config
+	}
+	restoredConfig.PendingFullRestore = ""
+	restoredConfig.PendingDBRestore = ""
+	if err := appconf.SaveConfig(restoredConfig); err != nil {
+		return false, fmt.Errorf("保存恢复后配置失败: %w", err)
+	}
+	*config = *restoredConfig
+
+	return true, nil
 }
 
 // ========== 数据库恢复（启动时调用）==========
