@@ -14,8 +14,8 @@ export function CreateDBBackup() {
   return window['go']['service']['BackupService']['CreateDBBackup']();
 }
 
-export function CreateFullDataBackup() {
-  return window['go']['service']['BackupService']['CreateFullDataBackup']();
+export function CreateFullDataBackup(arg1) {
+  return window['go']['service']['BackupService']['CreateFullDataBackup'](arg1);
 }
 
 export function DeleteBackup(arg1) {
@@ -24,10 +24,6 @@ export function DeleteBackup(arg1) {
 
 export function DeleteDBBackup(arg1) {
   return window['go']['service']['BackupService']['DeleteDBBackup'](arg1);
-}
-
-export function DeleteFullDataBackup(arg1) {
-  return window['go']['service']['BackupService']['DeleteFullDataBackup'](arg1);
 }
 
 export function DownloadCloudBackup(arg1, arg2) {
@@ -70,10 +66,6 @@ export function GetFullBackupDir() {
   return window['go']['service']['BackupService']['GetFullBackupDir']();
 }
 
-export function GetFullDataBackups() {
-  return window['go']['service']['BackupService']['GetFullDataBackups']();
-}
-
 export function GetGameBackups(arg1) {
   return window['go']['service']['BackupService']['GetGameBackups'](arg1);
 }
@@ -108,6 +100,14 @@ export function ScheduleDBRestoreFromCloud(arg1) {
 
 export function ScheduleFullDataRestore(arg1) {
   return window['go']['service']['BackupService']['ScheduleFullDataRestore'](arg1);
+}
+
+export function SelectBackupRestorePath() {
+  return window['go']['service']['BackupService']['SelectBackupRestorePath']();
+}
+
+export function SelectBackupSavePath() {
+  return window['go']['service']['BackupService']['SelectBackupSavePath']();
 }
 
 export function SetupCloudBackup(arg1) {

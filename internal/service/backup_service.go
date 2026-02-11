@@ -16,6 +16,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type BackupService struct {
@@ -37,6 +39,44 @@ func (s *BackupService) Init(ctx context.Context, db *sql.DB, config *appconf.Ap
 // getCloudProvider 获取云备份提供商
 func (s *BackupService) getCloudProvider() (cloudprovider.CloudStorageProvider, error) {
 	return cloudprovider.NewCloudProvider(s.ctx, s.config)
+}
+
+// SelectBackupSavePath 选择全量备份保存路径
+func (s *BackupService) SelectBackupSavePath() (string, error) {
+	timestamp := time.Now().Format("2006-01-02T15-04-05")
+	defaultFileName := fmt.Sprintf("lunabox_full_%s.zip", timestamp)
+
+	selection, err := runtime.SaveFileDialog(s.ctx, runtime.SaveDialogOptions{
+		Title:           "选择全量备份保存位置",
+		DefaultFilename: defaultFileName,
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "ZIP 压缩包 (*.zip)",
+				Pattern:     "*.zip",
+			},
+		},
+	})
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to open save file dialog: %v", err)
+	}
+	return selection, err
+}
+
+// SelectBackupRestorePath 选择要恢复的全量备份文件
+func (s *BackupService) SelectBackupRestorePath() (string, error) {
+	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+		Title: "选择要恢复的全量备份文件",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "ZIP 压缩包 (*.zip)",
+				Pattern:     "*.zip",
+			},
+		},
+	})
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
+	}
+	return selection, err
 }
 
 // ========== 云备份配置相关方法 ==========
@@ -691,42 +731,50 @@ func (s *BackupService) cleanupOldDBBackups(retention int) {
 // ========== 全量数据本地备份方法 ==========
 
 // CreateFullDataBackup 创建全量数据备份（数据库 + 应用设置 + 数据目录）
-func (s *BackupService) CreateFullDataBackup() (*vo.DBBackupInfo, error) {
-	backupDir, err := s.GetFullBackupDir()
-	if err != nil {
-		return nil, err
+// savePath: 用户选择的保存路径（完整的 .zip 文件路径）
+func (s *BackupService) CreateFullDataBackup(savePath string) error {
+	if savePath == "" {
+		return fmt.Errorf("保存路径不能为空")
+	}
+	if !strings.HasSuffix(strings.ToLower(savePath), ".zip") {
+		return fmt.Errorf("备份文件必须是 .zip 格式")
 	}
 
 	dataDir, err := utils.GetDataDir()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	configDir, err := utils.GetConfigDir()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	timestamp := time.Now().Format("2006-01-02T15-04-05")
-	packDir := filepath.Join(backupDir, fmt.Sprintf("pack_%s", timestamp))
+	// 创建临时打包目录
+	tempDir, err := os.MkdirTemp("", "lunabox_full_backup_*")
+	if err != nil {
+		return fmt.Errorf("创建临时目录失败: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	packDir := filepath.Join(tempDir, "pack")
 	dbExportDir := filepath.Join(packDir, "database")
 
 	if err := os.MkdirAll(dbExportDir, 0755); err != nil {
-		return nil, fmt.Errorf("创建临时目录失败: %w", err)
+		return fmt.Errorf("创建临时目录失败: %w", err)
 	}
-	defer os.RemoveAll(packDir)
 
-	// 先用 DuckDB EXPORT 获取一致性的数据库快照。
+	// 先用 DuckDB EXPORT 获取一致性的数据库快照
 	exportPath := strings.ReplaceAll(dbExportDir, "\\", "/")
 	_, err = s.db.ExecContext(s.ctx, fmt.Sprintf("EXPORT DATABASE '%s'", exportPath))
 	if err != nil {
-		return nil, fmt.Errorf("导出数据库失败: %w", err)
+		return fmt.Errorf("导出数据库失败: %w", err)
 	}
 
 	// 复制配置文件
 	configPath := filepath.Join(configDir, "appconf.json")
 	if _, err := os.Stat(configPath); err == nil {
 		if err := utils.CopyFile(configPath, filepath.Join(packDir, "appconf.json")); err != nil {
-			return nil, fmt.Errorf("复制配置文件失败: %w", err)
+			return fmt.Errorf("复制配置文件失败: %w", err)
 		}
 	}
 
@@ -737,146 +785,49 @@ func (s *BackupService) CreateFullDataBackup() (*vo.DBBackupInfo, error) {
 			continue
 		}
 		if err := utils.CopyDir(srcDir, filepath.Join(packDir, dirName)); err != nil {
-			return nil, fmt.Errorf("复制目录 %s 失败: %w", dirName, err)
+			return fmt.Errorf("复制目录 %s 失败: %w", dirName, err)
 		}
 	}
 
-	// 复制 backups（排除 full，避免把正在创建的全量备份自身递归打包）
+	// 复制 backups 目录（包含游戏存档备份和数据库备份）
 	backupsSourceDir := filepath.Join(dataDir, "backups")
 	if _, err := os.Stat(backupsSourceDir); err == nil {
 		backupsDestDir := filepath.Join(packDir, "backups")
 		if err := os.MkdirAll(backupsDestDir, 0755); err != nil {
-			return nil, fmt.Errorf("创建备份目录失败: %w", err)
+			return fmt.Errorf("创建备份目录失败: %w", err)
 		}
-		entries, err := os.ReadDir(backupsSourceDir)
-		if err != nil {
-			return nil, fmt.Errorf("读取备份目录失败: %w", err)
-		}
-		for _, entry := range entries {
-			if entry.Name() == "full" {
-				continue
-			}
-			srcPath := filepath.Join(backupsSourceDir, entry.Name())
-			dstPath := filepath.Join(backupsDestDir, entry.Name())
-			if entry.IsDir() {
-				if err := utils.CopyDir(srcPath, dstPath); err != nil {
-					return nil, fmt.Errorf("复制备份子目录失败: %w", err)
-				}
-			} else {
-				if err := utils.CopyFile(srcPath, dstPath); err != nil {
-					return nil, fmt.Errorf("复制备份文件失败: %w", err)
-				}
-			}
+		if err := utils.CopyDir(backupsSourceDir, backupsDestDir); err != nil {
+			return fmt.Errorf("复制备份目录失败: %w", err)
 		}
 	}
 
-	backupFileName := fmt.Sprintf("lunabox_full_%s.zip", timestamp)
-	backupPath := filepath.Join(backupDir, backupFileName)
-
-	_, err = utils.ZipDirectory(packDir, backupPath)
+	// 打包到用户指定的路径
+	_, err = utils.ZipDirectory(packDir, savePath)
 	if err != nil {
-		return nil, fmt.Errorf("压缩全量备份失败: %w", err)
-	}
-
-	stat, err := os.Stat(backupPath)
-	if err != nil {
-		return nil, err
+		return fmt.Errorf("压缩全量备份失败: %w", err)
 	}
 
 	s.config.LastFullBackupTime = time.Now().Format(time.RFC3339)
-	//retention := s.config.LocalDBBackupRetention
-	//if retention <= 0 {
-	//	retention = 5
-	//}
-	//s.cleanupOldFullBackups(retention)
-
-	return &vo.DBBackupInfo{
-		Path:      backupPath,
-		Name:      backupFileName,
-		Size:      stat.Size(),
-		CreatedAt: stat.ModTime(),
-	}, nil
-}
-
-// GetFullDataBackups 获取全量数据备份列表
-func (s *BackupService) GetFullDataBackups() (*vo.DBBackupStatus, error) {
-	backupDir, err := s.GetFullBackupDir()
-	if err != nil {
-		return nil, err
-	}
-
-	entries, err := os.ReadDir(backupDir)
-	if err != nil {
-		return nil, err
-	}
-
-	var backups []vo.DBBackupInfo
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".zip") {
-			continue
-		}
-		info, err := entry.Info()
-		if err != nil {
-			continue
-		}
-		backups = append(backups, vo.DBBackupInfo{
-			Path:      filepath.Join(backupDir, entry.Name()),
-			Name:      entry.Name(),
-			Size:      info.Size(),
-			CreatedAt: info.ModTime(),
-		})
-	}
-
-	sort.Slice(backups, func(i, j int) bool {
-		return backups[i].CreatedAt.After(backups[j].CreatedAt)
-	})
-
-	return &vo.DBBackupStatus{
-		LastBackupTime: s.config.LastFullBackupTime,
-		Backups:        backups,
-	}, nil
+	return nil
 }
 
 // ScheduleFullDataRestore 安排全量数据恢复（下次启动时执行）
+// backupPath: 用户选择的备份文件完整路径
 func (s *BackupService) ScheduleFullDataRestore(backupPath string) error {
-	backupDir, err := s.GetFullBackupDir()
-	if err != nil {
-		return err
-	}
-	if !strings.HasPrefix(backupPath, backupDir) {
-		return fmt.Errorf("无效的备份路径")
+	if backupPath == "" {
+		return fmt.Errorf("备份路径不能为空")
 	}
 	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
 		return fmt.Errorf("备份文件不存在: %s", backupPath)
 	}
+	if !strings.HasSuffix(strings.ToLower(backupPath), ".zip") {
+		return fmt.Errorf("备份文件必须是 .zip 格式")
+	}
 
-	// 全量恢复包含数据库，清理数据库待恢复任务，避免重复恢复。
+	// 全量恢复包含数据库，清理数据库待恢复任务，避免重复恢复
 	s.config.PendingDBRestore = ""
 	s.config.PendingFullRestore = backupPath
 	return nil
-}
-
-// DeleteFullDataBackup 删除全量数据备份
-func (s *BackupService) DeleteFullDataBackup(backupPath string) error {
-	backupDir, err := s.GetFullBackupDir()
-	if err != nil {
-		return err
-	}
-	if !strings.HasPrefix(backupPath, backupDir) {
-		return fmt.Errorf("无效的备份路径")
-	}
-	return os.Remove(backupPath)
-}
-
-// cleanupOldFullBackups 清理旧的全量数据备份
-func (s *BackupService) cleanupOldFullBackups(retention int) {
-	status, err := s.GetFullDataBackups()
-	if err != nil || len(status.Backups) <= retention {
-		return
-	}
-	for i := retention; i < len(status.Backups); i++ {
-		os.Remove(status.Backups[i].Path)
-	}
 }
 
 // ========== 数据库云备份方法 ==========

@@ -12,13 +12,11 @@ export function CreateBackup(arg1:string):Promise<models.GameBackup>;
 
 export function CreateDBBackup():Promise<vo.DBBackupInfo>;
 
-export function CreateFullDataBackup():Promise<vo.DBBackupInfo>;
+export function CreateFullDataBackup(arg1:string):Promise<void>;
 
 export function DeleteBackup(arg1:string):Promise<void>;
 
 export function DeleteDBBackup(arg1:string):Promise<void>;
-
-export function DeleteFullDataBackup(arg1:string):Promise<void>;
 
 export function DownloadCloudBackup(arg1:string,arg2:string):Promise<string>;
 
@@ -40,8 +38,6 @@ export function GetDBBackups():Promise<vo.DBBackupStatus>;
 
 export function GetFullBackupDir():Promise<string>;
 
-export function GetFullDataBackups():Promise<vo.DBBackupStatus>;
-
 export function GetGameBackups(arg1:string):Promise<Array<models.GameBackup>>;
 
 export function GetOneDriveAuthURL():Promise<string>;
@@ -59,6 +55,10 @@ export function ScheduleDBRestore(arg1:string):Promise<void>;
 export function ScheduleDBRestoreFromCloud(arg1:string):Promise<void>;
 
 export function ScheduleFullDataRestore(arg1:string):Promise<void>;
+
+export function SelectBackupRestorePath():Promise<string>;
+
+export function SelectBackupSavePath():Promise<string>;
 
 export function SetupCloudBackup(arg1:string):Promise<string>;
 
