@@ -8,6 +8,7 @@ import { BackgroundSettingsPanel } from "../components/panel/BackgroundSettingsP
 import { BasicSettingsPanel } from "../components/panel/BasicSettingsPanel";
 import { CloudBackupSettingsPanel } from "../components/panel/CloudBackupSettingsPanel";
 import { DBBackupPanel } from "../components/panel/DBBackupPanel";
+import { FullDataBackupPanel } from "../components/panel/FullDataBackupPanel";
 import { GameSettingsPanel } from "../components/panel/GameSettingsPanel";
 import { UpdateSettingsPanel } from "../components/panel/UpdateSettingsPanel";
 import { SettingsSkeleton } from "../components/skeleton/SettingsSkeleton";
@@ -132,12 +133,16 @@ function SettingsPage() {
         <AISettingsPanel formData={formData} onChange={handleFormChange} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="应用更新" icon="i-mdi-update" defaultOpen={false}>
-        <UpdateSettingsPanel formData={formData} onChange={handleFormChange} />
-      </CollapsibleSection>
-
       <CollapsibleSection title="数据库备份" icon="i-mdi-database-refresh" defaultOpen={false}>
         <DBBackupPanel />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="全量数据备份" icon="i-mdi-package-variant" defaultOpen={false}>
+        <FullDataBackupPanel />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="应用更新" icon="i-mdi-update" defaultOpen={false}>
+        <UpdateSettingsPanel formData={formData} onChange={handleFormChange} />
       </CollapsibleSection>
 
       <div className="pt-4">

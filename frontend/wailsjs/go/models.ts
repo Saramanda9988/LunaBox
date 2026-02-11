@@ -26,6 +26,8 @@ export namespace appconf {
 	    onedrive_refresh_token?: string;
 	    last_db_backup_time?: string;
 	    pending_db_restore?: string;
+	    last_full_backup_time?: string;
+	    pending_full_restore?: string;
 	    auto_backup_db: boolean;
 	    auto_backup_game_save: boolean;
 	    auto_upload_to_cloud?: boolean;
@@ -82,6 +84,8 @@ export namespace appconf {
 	        this.onedrive_refresh_token = source["onedrive_refresh_token"];
 	        this.last_db_backup_time = source["last_db_backup_time"];
 	        this.pending_db_restore = source["pending_db_restore"];
+	        this.last_full_backup_time = source["last_full_backup_time"];
+	        this.pending_full_restore = source["pending_full_restore"];
 	        this.auto_backup_db = source["auto_backup_db"];
 	        this.auto_backup_game_save = source["auto_backup_game_save"];
 	        this.auto_upload_to_cloud = source["auto_upload_to_cloud"];

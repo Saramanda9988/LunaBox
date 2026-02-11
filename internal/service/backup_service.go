@@ -16,6 +16,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type BackupService struct {
@@ -37,6 +39,44 @@ func (s *BackupService) Init(ctx context.Context, db *sql.DB, config *appconf.Ap
 // getCloudProvider 获取云备份提供商
 func (s *BackupService) getCloudProvider() (cloudprovider.CloudStorageProvider, error) {
 	return cloudprovider.NewCloudProvider(s.ctx, s.config)
+}
+
+// SelectBackupSavePath 选择全量备份保存路径
+func (s *BackupService) SelectBackupSavePath() (string, error) {
+	timestamp := time.Now().Format("2006-01-02T15-04-05")
+	defaultFileName := fmt.Sprintf("lunabox_full_%s.zip", timestamp)
+
+	selection, err := runtime.SaveFileDialog(s.ctx, runtime.SaveDialogOptions{
+		Title:           "选择全量备份保存位置",
+		DefaultFilename: defaultFileName,
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "ZIP 压缩包 (*.zip)",
+				Pattern:     "*.zip",
+			},
+		},
+	})
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to open save file dialog: %v", err)
+	}
+	return selection, err
+}
+
+// SelectBackupRestorePath 选择要恢复的全量备份文件
+func (s *BackupService) SelectBackupRestorePath() (string, error) {
+	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+		Title: "选择要恢复的全量备份文件",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "ZIP 压缩包 (*.zip)",
+				Pattern:     "*.zip",
+			},
+		},
+	})
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
+	}
+	return selection, err
 }
 
 // ========== 云备份配置相关方法 ==========
@@ -135,6 +175,11 @@ func (s *BackupService) GetBackupDir() (string, error) {
 // GetDBBackupDir 获取数据库备份目录
 func (s *BackupService) GetDBBackupDir() (string, error) {
 	return utils.GetSubDir(filepath.Join("backups", "database"))
+}
+
+// GetFullBackupDir 获取全量数据备份目录
+func (s *BackupService) GetFullBackupDir() (string, error) {
+	return utils.GetSubDir(filepath.Join("backups", "full"))
 }
 
 // OpenBackupFolder 打开备份文件夹
@@ -683,6 +728,108 @@ func (s *BackupService) cleanupOldDBBackups(retention int) {
 	}
 }
 
+// ========== 全量数据本地备份方法 ==========
+
+// CreateFullDataBackup 创建全量数据备份（数据库 + 应用设置 + 数据目录）
+// savePath: 用户选择的保存路径（完整的 .zip 文件路径）
+func (s *BackupService) CreateFullDataBackup(savePath string) error {
+	if savePath == "" {
+		return fmt.Errorf("保存路径不能为空")
+	}
+	if !strings.HasSuffix(strings.ToLower(savePath), ".zip") {
+		return fmt.Errorf("备份文件必须是 .zip 格式")
+	}
+
+	dataDir, err := utils.GetDataDir()
+	if err != nil {
+		return err
+	}
+	configDir, err := utils.GetConfigDir()
+	if err != nil {
+		return err
+	}
+
+	// 创建临时打包目录
+	tempDir, err := os.MkdirTemp("", "lunabox_full_backup_*")
+	if err != nil {
+		return fmt.Errorf("创建临时目录失败: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	packDir := filepath.Join(tempDir, "pack")
+	dbExportDir := filepath.Join(packDir, "database")
+
+	if err := os.MkdirAll(dbExportDir, 0755); err != nil {
+		return fmt.Errorf("创建临时目录失败: %w", err)
+	}
+
+	// 先用 DuckDB EXPORT 获取一致性的数据库快照
+	exportPath := strings.ReplaceAll(dbExportDir, "\\", "/")
+	_, err = s.db.ExecContext(s.ctx, fmt.Sprintf("EXPORT DATABASE '%s'", exportPath))
+	if err != nil {
+		return fmt.Errorf("导出数据库失败: %w", err)
+	}
+
+	// 复制配置文件
+	configPath := filepath.Join(configDir, "appconf.json")
+	if _, err := os.Stat(configPath); err == nil {
+		if err := utils.CopyFile(configPath, filepath.Join(packDir, "appconf.json")); err != nil {
+			return fmt.Errorf("复制配置文件失败: %w", err)
+		}
+	}
+
+	// 复制关键数据目录
+	for _, dirName := range []string{"covers", "backgrounds", "logs"} {
+		srcDir := filepath.Join(dataDir, dirName)
+		if _, err := os.Stat(srcDir); err != nil {
+			continue
+		}
+		if err := utils.CopyDir(srcDir, filepath.Join(packDir, dirName)); err != nil {
+			return fmt.Errorf("复制目录 %s 失败: %w", dirName, err)
+		}
+	}
+
+	// 复制 backups 目录（包含游戏存档备份和数据库备份）
+	backupsSourceDir := filepath.Join(dataDir, "backups")
+	if _, err := os.Stat(backupsSourceDir); err == nil {
+		backupsDestDir := filepath.Join(packDir, "backups")
+		if err := os.MkdirAll(backupsDestDir, 0755); err != nil {
+			return fmt.Errorf("创建备份目录失败: %w", err)
+		}
+		if err := utils.CopyDir(backupsSourceDir, backupsDestDir); err != nil {
+			return fmt.Errorf("复制备份目录失败: %w", err)
+		}
+	}
+
+	// 打包到用户指定的路径
+	_, err = utils.ZipDirectory(packDir, savePath)
+	if err != nil {
+		return fmt.Errorf("压缩全量备份失败: %w", err)
+	}
+
+	s.config.LastFullBackupTime = time.Now().Format(time.RFC3339)
+	return nil
+}
+
+// ScheduleFullDataRestore 安排全量数据恢复（下次启动时执行）
+// backupPath: 用户选择的备份文件完整路径
+func (s *BackupService) ScheduleFullDataRestore(backupPath string) error {
+	if backupPath == "" {
+		return fmt.Errorf("备份路径不能为空")
+	}
+	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+		return fmt.Errorf("备份文件不存在: %s", backupPath)
+	}
+	if !strings.HasSuffix(strings.ToLower(backupPath), ".zip") {
+		return fmt.Errorf("备份文件必须是 .zip 格式")
+	}
+
+	// 全量恢复包含数据库，清理数据库待恢复任务，避免重复恢复
+	s.config.PendingDBRestore = ""
+	s.config.PendingFullRestore = backupPath
+	return nil
+}
+
 // ========== 数据库云备份方法 ==========
 
 // UploadDBBackupToCloud 上传数据库备份到云端
@@ -832,6 +979,108 @@ func (s *BackupService) parseCloudBackupItems(keys []string, prefix string) []vo
 		return items[i].CreatedAt.After(items[j].CreatedAt)
 	})
 	return items
+}
+
+// ========== 全量数据恢复（启动时调用）==========
+
+// ExecuteFullDataRestore 执行全量数据恢复（在 OnStartup 中、打开数据库前调用）
+func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
+	if config.PendingFullRestore == "" {
+		return false, nil
+	}
+
+	backupPath := config.PendingFullRestore
+	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+		config.PendingFullRestore = ""
+		appconf.SaveConfig(config)
+		return false, fmt.Errorf("备份文件不存在: %s", backupPath)
+	}
+
+	dataDir, err := utils.GetDataDir()
+	if err != nil {
+		return false, err
+	}
+	configDir, err := utils.GetConfigDir()
+	if err != nil {
+		return false, err
+	}
+
+	tempDir, err := os.MkdirTemp("", "lunabox_full_restore_*")
+	if err != nil {
+		return false, fmt.Errorf("创建临时目录失败: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	if err := utils.UnzipForRestore(backupPath, tempDir); err != nil {
+		return false, fmt.Errorf("解压全量备份失败: %w", err)
+	}
+
+	// 先恢复数据库
+	dbPath := filepath.Join(dataDir, "lunabox.db")
+	dbImportDir := filepath.Join(tempDir, "database")
+	rawDBPath := filepath.Join(tempDir, "lunabox.db")
+
+	os.Remove(dbPath)
+	os.Remove(dbPath + ".wal")
+
+	if _, err := os.Stat(dbImportDir); err == nil {
+		db, err := sql.Open("duckdb", dbPath)
+		if err != nil {
+			return false, fmt.Errorf("打开数据库失败: %w", err)
+		}
+
+		importPath := strings.ReplaceAll(dbImportDir, "\\", "/")
+		_, err = db.Exec(fmt.Sprintf("IMPORT DATABASE '%s'", importPath))
+		db.Close()
+		if err != nil {
+			return false, fmt.Errorf("导入数据库失败: %w", err)
+		}
+	} else if _, err := os.Stat(rawDBPath); err == nil {
+		if err := utils.CopyFile(rawDBPath, dbPath); err != nil {
+			return false, fmt.Errorf("恢复数据库文件失败: %w", err)
+		}
+	} else {
+		return false, fmt.Errorf("全量备份中缺少数据库内容")
+	}
+
+	// 恢复应用数据目录
+	for _, dirName := range []string{"covers", "backgrounds", "logs", "backups"} {
+		srcDir := filepath.Join(tempDir, dirName)
+		if _, err := os.Stat(srcDir); err != nil {
+			continue
+		}
+
+		dstDir := filepath.Join(dataDir, dirName)
+		if err := os.RemoveAll(dstDir); err != nil {
+			return false, fmt.Errorf("清理目录 %s 失败: %w", dirName, err)
+		}
+		if err := utils.CopyDir(srcDir, dstDir); err != nil {
+			return false, fmt.Errorf("恢复目录 %s 失败: %w", dirName, err)
+		}
+	}
+
+	// 恢复配置文件
+	backupConfigPath := filepath.Join(tempDir, "appconf.json")
+	if _, err := os.Stat(backupConfigPath); err == nil {
+		configPath := filepath.Join(configDir, "appconf.json")
+		if err := utils.CopyFile(backupConfigPath, configPath); err != nil {
+			return false, fmt.Errorf("恢复配置文件失败: %w", err)
+		}
+	}
+
+	// 重新加载配置并清理待恢复标记，避免重复执行
+	restoredConfig, err := appconf.LoadConfig()
+	if err != nil {
+		restoredConfig = config
+	}
+	restoredConfig.PendingFullRestore = ""
+	restoredConfig.PendingDBRestore = ""
+	if err := appconf.SaveConfig(restoredConfig); err != nil {
+		return false, fmt.Errorf("保存恢复后配置失败: %w", err)
+	}
+	*config = *restoredConfig
+
+	return true, nil
 }
 
 // ========== 数据库恢复（启动时调用）==========

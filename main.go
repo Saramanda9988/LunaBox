@@ -161,6 +161,16 @@ func main() {
 			appCtx = ctx
 			var err error
 
+			// 检查是否有待恢复的全量数据备份（在打开数据库前执行）
+			if config.PendingFullRestore != "" {
+				restored, restoreErr := service.ExecuteFullDataRestore(config)
+				if restoreErr != nil {
+					appLogger.Error("fail to restore full data: " + restoreErr.Error())
+				} else if restored {
+					appLogger.Info("full data restored successfully")
+				}
+			}
+
 			// 检查是否有待恢复的数据库备份（在打开数据库前执行）
 			if config.PendingDBRestore != "" {
 				restored, restoreErr := service.ExecuteDBRestore(config)
