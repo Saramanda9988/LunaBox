@@ -31,7 +31,10 @@ Manage and play your gal games from the command line.`,
 
 	cmd.AddCommand(newStartCmd(app))
 	cmd.AddCommand(newListCmd(app))
+	cmd.AddCommand(newDetailCmd(app))
+	cmd.AddCommand(newBackupCmd(app))
 	cmd.AddCommand(newVersionCmd(app))
+	cmd.AddCommand(newLunaCmd(app))
 
 	return cmd
 }

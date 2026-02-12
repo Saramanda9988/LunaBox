@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"lunabox/internal/cli"
 	"lunabox/internal/cli/ipc"
 )
 
@@ -13,6 +14,12 @@ func main() {
 		fmt.Println("Error: command required")
 		fmt.Println("Usage: lunacli <command>")
 		os.Exit(1)
+	}
+
+	// Special case for interactive easter egg (must run locally for stdin/stdout)
+	if args[0] == "luna-sama" {
+		cli.RunCommand(os.Stdout, &cli.CoreApp{}, args)
+		return
 	}
 
 	// 1. 尝试通过 IPC 在 GUI 进程中运行命令

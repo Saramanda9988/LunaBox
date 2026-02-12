@@ -245,10 +245,10 @@ func (s *BackupService) CreateBackup(gameID string) (*models.GameBackup, error) 
 		return nil, fmt.Errorf("failed to get game: %w", err)
 	}
 	if savePath == "" {
-		return nil, fmt.Errorf("存档路径未设置")
+		return nil, fmt.Errorf("the save path is not set for this game")
 	}
 	if _, err := os.Stat(savePath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("存档路径不存在: %s", savePath)
+		return nil, fmt.Errorf("the save path is not exist: %s", savePath)
 	}
 
 	backupDir, err := s.GetBackupDir()
@@ -266,7 +266,7 @@ func (s *BackupService) CreateBackup(gameID string) (*models.GameBackup, error) 
 
 	size, err := utils.ZipFileOrDirectory(savePath, backupPath)
 	if err != nil {
-		return nil, fmt.Errorf("备份失败: %w", err)
+		return nil, fmt.Errorf("fail to backup: %w", err)
 	}
 
 	// 获取文件信息以得到准确的修改时间
