@@ -75,7 +75,7 @@ func newStartCmd(app *CoreApp) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("le", false, "Start with Locale Emulator")
+	cmd.Flags().BoolP("le", "l", false, "Start with Locale Emulator")
 	cmd.Flags().BoolP("magpie", "m", false, "Start with Magpie")
 
 	return cmd
