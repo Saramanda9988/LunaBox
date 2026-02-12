@@ -113,11 +113,25 @@ Function .onInit
    SetRegView 64
    ReadRegStr $0 HKLM "${UNINST_KEY}" "CLIInstalled"
    ${If} $0 == "1"
-       # Was installed before, keep it during update
+       # Was installed before (registry flag), keep it during update
        StrCpy $INSTALL_CLI_TO_PATH "1"
+   ${ElseIf} $0 == "0"
+       # Was explicitly NOT installed before, keep it that way
+       StrCpy $INSTALL_CLI_TO_PATH "0"
    ${Else}
+       # Registry flag not found (maybe older version or first install)
+       # Check if lunacli.exe exists in the target directory
+       # Need to find install location first
+       ReadRegStr $1 HKLM "${UNINST_KEY}" "InstallLocation"
+       ${If} $1 != ""
+           IfFileExists "$1\lunacli.exe" 0 +3
+               StrCpy $INSTALL_CLI_TO_PATH "1"
+               Goto cli_check_done
+       ${EndIf}
+       
        # Default to checked for fresh install
        StrCpy $INSTALL_CLI_TO_PATH "1"
+       cli_check_done:
    ${EndIf}
 
    # Check if old version is installed FIRST (before process check)
