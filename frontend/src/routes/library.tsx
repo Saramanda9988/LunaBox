@@ -375,7 +375,7 @@ function LibraryPage() {
               </div>
             )
           : (
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(8.75rem,1fr))] gap-3">
                 {filteredGames.map(game => (
                   <GameCard
                     key={game.id}
