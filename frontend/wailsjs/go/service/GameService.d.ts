@@ -9,6 +9,8 @@ import {appconf} from '../models';
 
 export function AddGame(arg1:models.Game):Promise<void>;
 
+export function BatchUpdateStatus(arg1:Array<string>,arg2:string):Promise<void>;
+
 export function DeleteGame(arg1:string):Promise<void>;
 
 export function DeleteGames(arg1:Array<string>):Promise<void>;

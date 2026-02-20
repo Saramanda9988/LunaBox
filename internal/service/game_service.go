@@ -628,3 +628,44 @@ func (s *GameService) UpdateGameProcessName(gameID string, processName string) e
 	applog.LogInfof(s.ctx, "UpdateGameProcessName: updated process_name for game %s to %s", gameID, processName)
 	return nil
 }
+
+// BatchUpdateStatus 批量更新多个游戏的游玩状态
+func (s *GameService) BatchUpdateStatus(ids []string, status string) error {
+	ids = utils.UniqueNonEmptyStrings(ids)
+	if len(ids) == 0 {
+		return nil
+	}
+
+	placeholders := utils.BuildPlaceholders(len(ids))
+	// args: status + all ids
+	args := make([]interface{}, 0, 1+len(ids))
+	args = append(args, status)
+	for _, id := range ids {
+		args = append(args, id)
+	}
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		applog.LogErrorf(s.ctx, "BatchUpdateStatus: failed to begin transaction: %v", err)
+		return err
+	}
+	defer tx.Rollback()
+
+	result, err := tx.ExecContext(
+		s.ctx,
+		fmt.Sprintf("UPDATE games SET status = ? WHERE id IN (%s)", placeholders),
+		args...,
+	)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "BatchUpdateStatus: failed to update games status: %v", err)
+		return fmt.Errorf("failed to batch update status: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	applog.LogInfof(s.ctx, "BatchUpdateStatus: updated %d games to status %s", rowsAffected, status)
+
+	return tx.Commit()
+}

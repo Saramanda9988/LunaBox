@@ -6,6 +6,10 @@ export function AddGame(arg1) {
   return window['go']['service']['GameService']['AddGame'](arg1);
 }
 
+export function BatchUpdateStatus(arg1, arg2) {
+  return window['go']['service']['GameService']['BatchUpdateStatus'](arg1, arg2);
+}
+
 export function DeleteGame(arg1) {
   return window['go']['service']['GameService']['DeleteGame'](arg1);
 }

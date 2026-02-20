@@ -1,10 +1,11 @@
 import type { vo } from "../../wailsjs/go/models";
 import type { ImportSource } from "../components/modal/GameImportModal";
 import { createRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
+import { enums } from "../../wailsjs/go/models";
 import { AddGamesToCategories, GetCategories } from "../../wailsjs/go/service/CategoryService";
-import { DeleteGames } from "../../wailsjs/go/service/GameService";
+import { BatchUpdateStatus, DeleteGames } from "../../wailsjs/go/service/GameService";
 import { FilterBar } from "../components/bar/FilterBar";
 import { GameCard } from "../components/card/GameCard";
 import { AddGameModal } from "../components/modal/AddGameModal";
@@ -13,6 +14,7 @@ import { BatchImportModal } from "../components/modal/BatchImportModal";
 import { ConfirmModal } from "../components/modal/ConfirmModal";
 import { GameImportModal } from "../components/modal/GameImportModal";
 import { LibrarySkeleton } from "../components/skeleton/LibrarySkeleton";
+import { BetterDropdownMenu } from "../components/ui/BetterDropdownMenu";
 import { sortOptions, statusOptions } from "../consts/options";
 import { useAppStore } from "../store";
 import { Route as rootRoute } from "./__root";
@@ -29,7 +31,6 @@ function LibraryPage() {
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
   const [isBatchImportOpen, setIsBatchImportOpen] = useState(false);
   const [importSource, setImportSource] = useState<ImportSource | null>(null);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "created_at">("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -51,7 +52,6 @@ function LibraryPage() {
     type: "info",
     onConfirm: () => { },
   });
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // 延迟显示骨架屏
   useEffect(() => {
@@ -66,17 +66,6 @@ function LibraryPage() {
     }
     return () => clearTimeout(timer);
   }, [gamesLoading]);
-
-  // 点击外部关闭下拉菜单
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const filteredGames = games
     .filter((game) => {
@@ -130,6 +119,28 @@ function LibraryPage() {
 
   const handleClearSelection = () => {
     setSelectedGameIds([]);
+  };
+
+  const statusConfig = {
+    [enums.GameStatus.NOT_STARTED]: { label: "未开始", icon: "i-mdi-clock-outline", color: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300" },
+    [enums.GameStatus.PLAYING]: { label: "游玩中", icon: "i-mdi-gamepad-variant", color: "bg-neutral-100 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300" },
+    [enums.GameStatus.COMPLETED]: { label: "已通关", icon: "i-mdi-trophy", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300" },
+    [enums.GameStatus.ON_HOLD]: { label: "搁置", icon: "i-mdi-pause-circle-outline", color: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" },
+  };
+
+  const handleBatchStatusUpdate = async (newStatus: string) => {
+    if (selectedGameIds.length === 0)
+      return;
+    try {
+      await BatchUpdateStatus(selectedGameIds, newStatus);
+      await fetchGames();
+      const label = statusConfig[newStatus as keyof typeof statusConfig]?.label ?? newStatus;
+      toast.success(`已将 ${selectedGameIds.length} 个游戏状态更新为「${label}」`);
+    }
+    catch (error) {
+      console.error("Failed to batch update status:", error);
+      toast.error("批量更新状态失败");
+    }
   };
 
   const openBatchAddModal = async () => {
@@ -222,10 +233,38 @@ function LibraryPage() {
         onClearSelection={handleClearSelection}
         batchActions={(
           <>
+            {/* 批量更新状态 */}
+            <BetterDropdownMenu
+              title="设为状态"
+              align="end"
+              menuWidth="min-w-[130px]"
+              disabled={selectedGameIds.length === 0}
+              trigger={(
+                <div
+                  title="批量更新状态"
+                  className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
+                              bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
+                              rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300
+                              ${selectedGameIds.length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                  <div className="i-mdi-tag-edit-outline text-lg" />
+                </div>
+              )}
+              items={Object.entries(statusConfig).map(([key, cfg]) => ({
+                key,
+                label: cfg.label,
+                icon: cfg.icon,
+                pill: true,
+                pillColor: cfg.color,
+                onClick: () => handleBatchStatusUpdate(key),
+              }))}
+            />
+            {/* 批量添加到收藏 */}
             <button
               type="button"
               onClick={openBatchAddModal}
               disabled={selectedGameIds.length === 0}
+              title="批量添加到收藏"
               className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
                           bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
                           rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300
@@ -233,10 +272,12 @@ function LibraryPage() {
             >
               <div className="i-mdi-folder-plus-outline text-lg" />
             </button>
+            {/* 批量删除 */}
             <button
               type="button"
               onClick={handleBatchDelete}
               disabled={selectedGameIds.length === 0}
+              title="批量删除"
               className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
                           bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
                           rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-error-600 dark:text-error-400
@@ -247,85 +288,52 @@ function LibraryPage() {
           </>
         )}
         actionButton={(
-          <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="glass-btn-neutral flex items-center rounded-lg bg-neutral-600 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 focus:outline-none focus:ring-4 focus:ring-neutral-300 dark:bg-neutral-600 dark:hover:bg-neutral-700 dark:focus:ring-neutral-800"
-            >
-              <div className="i-mdi-plus mr-2 text-lg" />
-              添加游戏
-              <div className="i-mdi-chevron-down ml-2 text-lg" />
-            </button>
-
-            {/* Dropdown Menu */}
-            {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-56 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black/5 dark:bg-brand-700 dark:ring-white/10 z-50">
-                <div className="py-1">
-                  <button
-                    onClick={() => {
-                      setIsAddGameModalOpen(true);
-                      setIsDropdownOpen(false);
-                    }}
-                    className="flex w-full items-center px-4 py-3 text-sm text-brand-700 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-600"
-                  >
-                    <div className="i-mdi-gamepad-variant mr-3 text-xl text-neutral-500" />
-                    <div className="text-left">
-                      <div className="font-medium">手动添加</div>
-                      <div className="text-xs text-brand-400 dark:text-brand-400">
-                        选择可执行文件并搜索元数据
-                      </div>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsBatchImportOpen(true);
-                      setIsDropdownOpen(false);
-                    }}
-                    className="flex w-full items-center px-4 py-3 text-sm text-brand-700 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-600"
-                  >
-                    <div className="i-mdi-folder-multiple mr-3 text-xl text-success-500" />
-                    <div className="text-left">
-                      <div className="font-medium">批量导入</div>
-                      <div className="text-xs text-brand-400 dark:text-brand-400">
-                        扫描游戏库目录批量添加
-                      </div>
-                    </div>
-                  </button>
-                  <div className="border-t border-brand-200 dark:border-brand-600 my-1" />
-                  <button
-                    onClick={() => {
-                      setImportSource("potatovn");
-                      setIsDropdownOpen(false);
-                    }}
-                    className="flex w-full items-center px-4 py-3 text-sm text-brand-700 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-600"
-                  >
-                    <div className="i-mdi-database-import mr-3 text-xl text-orange-500" />
-                    <div className="text-left">
-                      <div className="font-medium">从 PotatoVN 导入</div>
-                      <div className="text-xs text-brand-400 dark:text-brand-400">
-                        导入 PotatoVN 导出的 ZIP 文件
-                      </div>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setImportSource("playnite");
-                      setIsDropdownOpen(false);
-                    }}
-                    className="flex w-full items-center px-4 py-3 text-sm text-brand-700 hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-600"
-                  >
-                    <div className="i-mdi-application-import mr-3 text-xl text-purple-500" />
-                    <div className="text-left">
-                      <div className="font-medium">从 Playnite 导入</div>
-                      <div className="text-xs text-brand-400 dark:text-brand-400">
-                        导入 Playnite 导出的 JSON 文件
-                      </div>
-                    </div>
-                  </button>
-                </div>
+          <BetterDropdownMenu
+            align="end"
+            menuWidth="min-w-[220px]"
+            trigger={(
+              <div className="glass-btn-neutral flex items-center rounded-lg bg-neutral-600 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 focus:outline-none focus:ring-4 focus:ring-neutral-300 dark:bg-neutral-600 dark:hover:bg-neutral-700 dark:focus:ring-neutral-800">
+                <div className="i-mdi-plus mr-2 text-lg" />
+                添加游戏
+                <div className="i-mdi-chevron-down ml-2 text-lg" />
               </div>
             )}
-          </div>
+            items={[
+              {
+                key: "manual",
+                label: "手动添加",
+                description: "选择可执行文件并搜索元数据",
+                icon: "i-mdi-gamepad-variant",
+                iconColor: "text-neutral-500",
+                onClick: () => setIsAddGameModalOpen(true),
+              },
+              {
+                key: "batch",
+                label: "批量导入",
+                description: "扫描游戏库目录批量添加",
+                icon: "i-mdi-folder-multiple",
+                iconColor: "text-success-500",
+                onClick: () => setIsBatchImportOpen(true),
+              },
+              {
+                key: "potatovn",
+                label: "从 PotatoVN 导入",
+                description: "导入 PotatoVN 导出的 ZIP 文件",
+                icon: "i-mdi-database-import",
+                iconColor: "text-orange-500",
+                dividerBefore: true,
+                onClick: () => setImportSource("potatovn"),
+              },
+              {
+                key: "playnite",
+                label: "从 Playnite 导入",
+                description: "导入 Playnite 导出的 JSON 文件",
+                icon: "i-mdi-application-import",
+                iconColor: "text-purple-500",
+                onClick: () => setImportSource("playnite"),
+              },
+            ]}
+          />
         )}
       />
 
