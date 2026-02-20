@@ -2,6 +2,7 @@ import type { appconf } from "../../../wailsjs/go/models";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { CheckForUpdates, SkipVersion } from "../../../wailsjs/go/service/UpdateService";
+import { BetterButton } from "../ui/BetterButton";
 import { BetterSwitch } from "../ui/BetterSwitch";
 import { UpdateDialog } from "../ui/UpdateDialog";
 
@@ -83,15 +84,16 @@ export function UpdateSettingsPanel({ formData, onChange }: UpdateSettingsPanelP
 
         {/* 手动检查更新按钮 */}
         <div className="pt-2">
-          <button
-            type="button"
+          <BetterButton
+            variant="primary"
+            size="lg"
             onClick={handleCheckUpdate}
-            disabled={isChecking}
-            className="glass-btn-neutral w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-neutral-600 hover:bg-neutral-700 disabled:bg-brand-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
+            isLoading={isChecking}
+            icon="i-mdi-update"
+            className="w-full justify-center"
           >
-            <span className={`i-mdi-update ${isChecking ? "animate-spin" : ""}`} />
             {isChecking ? "检查中..." : "手动检查更新"}
-          </button>
+          </BetterButton>
         </div>
 
         {/* 错误信息 */}

@@ -1,5 +1,6 @@
 import type { appconf, models } from "../../../wailsjs/go/models";
 import { toast } from "react-hot-toast";
+import { BetterButton } from "../ui/BetterButton";
 import { BetterSwitch } from "../ui/BetterSwitch";
 
 interface GameLaunchPanelProps {
@@ -64,13 +65,11 @@ export function GameLaunchPanel({ game, config, onGameChange, onSelectProcessExe
                 onChange={e => onGameChange({ ...game, process_name: e.target.value } as models.Game)}
                 className="glass-input flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none font-mono"
               />
-              <button
-                type="button"
+              <BetterButton
                 onClick={onSelectProcessExecutable}
-                className="glass-btn-neutral px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
-              >
-                <div className="i-mdi-file text-xl" />
-              </button>
+                icon="i-mdi-file"
+                title="选择进程文件"
+              />
             </div>
             <p className="mt-2 text-xs text-brand-400 leading-relaxed">
               指定实际游戏的进程名称（包含 .exe 后缀）。

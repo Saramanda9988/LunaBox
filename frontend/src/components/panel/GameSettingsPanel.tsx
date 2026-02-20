@@ -1,6 +1,7 @@
 import type { appconf } from "../../../wailsjs/go/models";
 import { toast } from "react-hot-toast";
 import { SelectGameExecutable } from "../../../wailsjs/go/service/GameService";
+import { BetterButton } from "../ui/BetterButton";
 import { BetterSwitch } from "../ui/BetterSwitch";
 
 interface GameSettingsPanelProps {
@@ -105,13 +106,9 @@ export function GameSettingsPanel({ formData, onChange }: GameSettingsPanelProps
                 placeholder="选择 LEProc.exe 文件路径"
                 className="glass-input flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
               />
-              <button
-                type="button"
-                onClick={handleSelectLocaleEmulatorPath}
-                className="glass-btn-neutral px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
-              >
+              <BetterButton onClick={handleSelectLocaleEmulatorPath} icon="i-mdi-file">
                 选择
-              </button>
+              </BetterButton>
             </div>
             <p className="mt-1 text-xs text-brand-500">
               设置后可在游戏编辑界面启用 Locale Emulator 转区启动
@@ -130,13 +127,9 @@ export function GameSettingsPanel({ formData, onChange }: GameSettingsPanelProps
                 placeholder="选择 Magpie.exe 文件路径"
                 className="glass-input flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
               />
-              <button
-                type="button"
-                onClick={handleSelectMagpiePath}
-                className="glass-btn-neutral px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
-              >
+              <BetterButton onClick={handleSelectMagpiePath} icon="i-mdi-file">
                 选择
-              </button>
+              </BetterButton>
             </div>
             <p className="mt-1 text-xs text-brand-500">
               设置后可在游戏编辑界面启用 Magpie 超分辨率缩放启动
