@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { enums } from "../../wailsjs/go/models";
 import { AddGameToCategory, GetCategories, GetCategoriesByGame, RemoveGameFromCategory } from "../../wailsjs/go/service/CategoryService";
 import { DeleteGame, GetGameByID, SelectCoverImage, SelectGameExecutable, SelectSaveDirectory, SelectSaveFile, UpdateGame, UpdateGameFromRemote } from "../../wailsjs/go/service/GameService";
+import { StartGameWithTracking } from "../../wailsjs/go/service/StartService";
 import { AddToCategoryModal } from "../components/modal/AddToCategoryModal";
 import { ConfirmModal } from "../components/modal/ConfirmModal";
 import { GameBackupPanel } from "../components/panel/GameBackupPanel";
@@ -207,6 +208,24 @@ function GameDetailPage() {
     [enums.GameStatus.ON_HOLD]: { label: "搁置", icon: "i-mdi-pause-circle-outline", color: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" },
   };
 
+  const handleStartGame = async () => {
+    if (!game || !game.id)
+      return;
+    try {
+      const started = await StartGameWithTracking(game.id);
+      if (started) {
+        toast.success(`${game.name}启动成功`);
+      }
+      else {
+        toast.error(`${game.name}启动失败（未能启动）`);
+      }
+    }
+    catch (error) {
+      console.error("Failed to start game:", error);
+      toast.error(`${game.name} 启动失败, 查询日志获得帮助`);
+    }
+  };
+
   const handleStatusChange = async (newStatus: string) => {
     if (!game)
       return;
@@ -293,7 +312,7 @@ function GameDetailPage() {
       {/* Back Button */}
       <button
         onClick={() => window.history.back()}
-        className="flex rounded-md items-center text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-200 transition-colors"
+        className="flex rounded-md items-center text-brand-750 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-200 transition-colors"
       >
         <div className="i-mdi-arrow-left text-2xl mr-1" />
         <span>返回</span>
@@ -323,29 +342,43 @@ function GameDetailPage() {
         <div className="flex-1 space-y-4">
           <div className="flex flex-col gap-3">
             <h1 className="text-4xl font-bold text-brand-900 dark:text-white">{game.name}</h1>
-            {/* 状态标签组 */}
-            <div className="flex gap-1.5">
-              {Object.entries(statusConfig).map(([key, config]) => {
-                const isActive = (game.status || enums.GameStatus.NOT_STARTED) === key;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => handleStatusChange(key)}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${isActive
-                      ? `${config.color} ring-2 ring-offset-1 ring-brand-400 dark:ring-offset-brand-900`
-                      : "bg-brand-100 text-brand-500 dark:bg-brand-700 dark:text-brand-400 hover:bg-brand-200 dark:hover:bg-brand-600"
-                    }`}
-                    title={config.label}
-                  >
-                    <div className={`${config.icon} text-sm`} />
-                    {isActive && <span>{config.label}</span>}
-                  </button>
-                );
-              })}
+            {/* 操作和状态标签组 */}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleStartGame}
+                className="flex items-center gap-1.5 rounded-lg bg-neutral-600 text-white shadow-md hover:bg-neutral-700 hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all duration-300 px-4 py-1.5 text-sm font-medium dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
+              >
+                <div className="i-mdi-play text-lg" />
+                启动游戏
+              </button>
+
+              <div className="h-6 w-px bg-brand-200 dark:bg-brand-700" />
+              {" "}
+              {/* 分隔线 */}
+
+              <div className="flex gap-1.5">
+                {Object.entries(statusConfig).map(([key, config]) => {
+                  const isActive = (game.status || enums.GameStatus.NOT_STARTED) === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => handleStatusChange(key)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${isActive
+                        ? `${config.color} ring-2 ring-offset-1 ring-brand-400 dark:ring-offset-brand-900`
+                        : "bg-brand-100 text-brand-500 dark:bg-brand-700 dark:text-brand-400 hover:bg-brand-200 dark:hover:bg-brand-600"
+                      }`}
+                      title={config.label}
+                    >
+                      <div className={`${config.icon} text-base`} />
+                      {isActive && <span>{config.label}</span>}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-4 text-sm text-brand-600 dark:text-brand-400">
+          <div className="grid grid-cols-4 gap-4 text-sm text-brand-750 dark:text-brand-400">
             <div>
               <div className="font-semibold mb-1">数据来源</div>
               <div>{game.source_type}</div>
@@ -363,7 +396,7 @@ function GameDetailPage() {
 
           <div className="mt-4">
             <div className="font-semibold mb-2 text-brand-900 dark:text-white">简介</div>
-            <p className="text-brand-600 dark:text-brand-400 text-sm leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto scrollbar-hide pr-2">
+            <p className="text-brand-750 dark:text-brand-400 text-sm leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto scrollbar-hide pr-2">
               {game.summary || "暂无简介"}
             </p>
           </div>
@@ -381,8 +414,8 @@ function GameDetailPage() {
                 className={`
                   whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
                   ${activeTab === tab
-                ? "border-neutral-500 text-neutral-600 dark:text-neutral-400"
-                : "border-transparent text-brand-500 hover:text-brand-700 hover:border-brand-300 dark:text-brand-400 dark:hover:text-brand-300"}
+                ? "border-neutral-500 text-brand-700 dark:text-neutral-400"
+                : "border-transparent text-brand-700 hover:text-brand-750 hover:border-brand-300 dark:text-brand-400 dark:hover:text-brand-300"}
                 `}
               >
                 {tab === "stats" && "游戏统计"}
@@ -394,7 +427,7 @@ function GameDetailPage() {
           </nav>
           <button
             onClick={openCategoryModal}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-100 text-brand-600 hover:text-brand-200 dark:bg-brand-900 dark:text-brand-400 dark:hover:text-brand-700 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-100 text-brand-750 hover:text-brand-200 dark:bg-brand-900 dark:text-brand-400 dark:hover:text-brand-700 transition-colors"
             title="添加到收藏"
           >
             <div className="i-mdi-folder-plus-outline text-lg" />
