@@ -603,6 +603,16 @@ func (s *GameService) GetRunningProcesses() ([]utils.ProcessInfo, error) {
 	return utils.GetRunningProcesses()
 }
 
+// OpenLocalPath 打开指定的本地文件或目录（通过资源管理器）
+func (s *GameService) OpenLocalPath(path string) error {
+	err := utils.OpenFileOrFolder(path)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "OpenLocalPath failed for path %s: %v", path, err)
+		return fmt.Errorf("打开路径失败: %w", err)
+	}
+	return nil
+}
+
 // UpdateGameProcessName 更新游戏的进程名
 // 当用户选择了实际的游戏进程时调用
 func (s *GameService) UpdateGameProcessName(gameID string, processName string) error {

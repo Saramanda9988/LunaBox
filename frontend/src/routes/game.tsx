@@ -320,7 +320,7 @@ function GameDetailPage() {
 
       {/* Header Section */}
       <div className="flex gap-6 items-center">
-        <div className="relative w-60 flex-shrink-0 rounded-lg overflow-hidden shadow-lg bg-brand-200 dark:bg-brand-800" data-glass="bg-white/5 dark:bg-black/5">
+        <div className="relative w-60 flex-shrink-0 rounded-lg overflow-hidden shadow-lg bg-brand-200 dark:bg-brand-800">
           {game.cover_url
             ? (
                 <img
@@ -346,7 +346,7 @@ function GameDetailPage() {
             <div className="flex items-center gap-4">
               <button
                 onClick={handleStartGame}
-                className="flex items-center gap-1.5 rounded-lg bg-neutral-600 text-white shadow-md hover:bg-neutral-700 hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all duration-300 px-4 py-1.5 text-sm font-medium dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
+                className="flex items-center gap-1.5 rounded-lg bg-neutral-600 text-white shadow-md hover:bg-neutral-700 transition-all duration-300 px-4 py-1.5 text-sm font-medium dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
               >
                 <div className="i-mdi-play text-lg" />
                 启动游戏

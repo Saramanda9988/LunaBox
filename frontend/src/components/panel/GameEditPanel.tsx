@@ -1,4 +1,6 @@
 import type { models } from "../../../wailsjs/go/models";
+import { toast } from "react-hot-toast";
+import { OpenLocalPath } from "../../../wailsjs/go/service/GameService";
 import { BetterSelect } from "../ui/BetterSelect";
 
 interface GameEditFormProps {
@@ -54,7 +56,7 @@ export function GameEditPanel({
               onClick={onSelectCoverImage}
               className="glass-btn-neutral px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
             >
-              选择
+              <div className="i-mdi-file text-xl" />
             </button>
           </div>
           <p className="mt-1 text-xs text-brand-500">支持远端url获取和本地图片选取</p>
@@ -83,13 +85,32 @@ export function GameEditPanel({
               onChange={e => onGameChange({ ...game, path: e.target.value } as models.Game)}
               className="glass-input flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             />
-            <button
-              type="button"
-              onClick={onSelectExecutable}
-              className="glass-btn-neutral px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
-            >
-              选择
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={onSelectExecutable}
+                title="选择文件"
+                className="glass-btn-neutral px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
+              >
+                <div className="i-mdi-file text-xl" />
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await OpenLocalPath(game.path);
+                  }
+                  catch {
+                    toast.error("打开路径失败，文件/目录可能不存在");
+                  }
+                }}
+                disabled={!game.path}
+                title="在文件管理器中打开位置"
+                className="glass-btn-neutral p-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="i-mdi-folder-open text-xl" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -121,6 +142,24 @@ export function GameEditPanel({
                 className="glass-btn-neutral p-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
               >
                 <div className="i-mdi-file text-xl" />
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!game.save_path)
+                    return;
+                  try {
+                    await OpenLocalPath(game.save_path);
+                  }
+                  catch {
+                    toast.error("打开路径失败，文件/目录可能不存在");
+                  }
+                }}
+                disabled={!game.save_path}
+                title="在文件管理器中打开位置"
+                className="glass-btn-neutral p-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="i-mdi-folder-open text-xl" />
               </button>
             </div>
           </div>

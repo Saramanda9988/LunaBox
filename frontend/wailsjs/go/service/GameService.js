@@ -42,6 +42,10 @@ export function Init(arg1, arg2, arg3) {
   return window['go']['service']['GameService']['Init'](arg1, arg2, arg3);
 }
 
+export function OpenLocalPath(arg1) {
+  return window['go']['service']['GameService']['OpenLocalPath'](arg1);
+}
+
 export function SelectCoverImage(arg1) {
   return window['go']['service']['GameService']['SelectCoverImage'](arg1);
 }

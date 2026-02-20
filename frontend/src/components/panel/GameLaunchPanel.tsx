@@ -69,7 +69,7 @@ export function GameLaunchPanel({ game, config, onGameChange, onSelectProcessExe
                 onClick={onSelectProcessExecutable}
                 className="glass-btn-neutral px-4 py-2 bg-brand-100 dark:bg-brand-700 text-brand-700 dark:text-brand-300 rounded-md hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
               >
-                选择
+                <div className="i-mdi-file text-xl" />
               </button>
             </div>
             <p className="mt-2 text-xs text-brand-400 leading-relaxed">
