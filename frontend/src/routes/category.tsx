@@ -301,7 +301,7 @@ function CategoryDetailPage() {
           ? (
               filteredGames.length > 0
                 ? (
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
                       {filteredGames.map(game => (
                         <div key={game.id} className="relative group">
                           <GameCard

@@ -49,7 +49,7 @@ function LibraryPage() {
     title: "",
     message: "",
     type: "info",
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -363,7 +363,7 @@ function LibraryPage() {
               </div>
             )
           : (
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(max(8rem,11%),1fr))] gap-3">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3">
                 {filteredGames.map(game => (
                   <GameCard
                     key={game.id}
