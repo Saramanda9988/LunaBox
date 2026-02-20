@@ -69,9 +69,13 @@ function LibraryPage() {
 
   const filteredGames = games
     .filter((game) => {
-      // 搜索过滤
-      if (searchQuery && !game.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-        return false;
+      // 搜索过滤：同时匹配游戏名和开发商/公司
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const matchName = game.name.toLowerCase().includes(q);
+        const matchCompany = (game.company || "").toLowerCase().includes(q);
+        if (!matchName && !matchCompany)
+          return false;
       }
       // 状态过滤
       return !(statusFilter && game.status !== statusFilter);
@@ -376,6 +380,7 @@ function LibraryPage() {
                   <GameCard
                     key={game.id}
                     game={game}
+                    searchQuery={searchQuery}
                     selectionMode={batchMode}
                     selected={selectedGameIds.includes(game.id)}
                     onSelectChange={selected => setGameSelection(game.id, selected)}

@@ -4,11 +4,36 @@ import { toast } from "react-hot-toast";
 import { enums } from "../../../wailsjs/go/models";
 import { StartGameWithTracking } from "../../../wailsjs/go/service/StartService";
 
+// ── 高亮工具：将文本中匹配 query 的部分高亮显示 ──────────────────────────────
+function HighlightText({ text, query }: { text: string; query: string }) {
+  if (!query || !text) {
+    return <>{text}</>;
+  }
+  const q = query.toLowerCase();
+  const idx = text.toLowerCase().indexOf(q);
+  if (idx === -1) {
+    return <>{text}</>;
+  }
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-yellow-300/80 dark:bg-yellow-500/50 text-inherit rounded-[2px] px-[1px]">
+        {text.slice(idx, idx + query.length)}
+      </mark>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface GameCardProps {
   game: models.Game;
   selectionMode?: boolean;
   selected?: boolean;
   onSelectChange?: (selected: boolean) => void;
+  /** 当前搜索词，用于高亮游戏名和开发商 */
+  searchQuery?: string;
 }
 
 export function GameCard({
@@ -16,6 +41,7 @@ export function GameCard({
   selectionMode = false,
   selected = false,
   onSelectChange,
+  searchQuery = "",
 }: GameCardProps) {
   const navigate = useNavigate();
 
@@ -38,8 +64,7 @@ export function GameCard({
       }
       catch (error) {
         console.error("Failed to start game:", error);
-        const notyfication = `${game.name} 启动失败, 查询日志获得帮助`;
-        toast.error(notyfication);
+        toast.error(`${game.name} 启动失败, 查询日志获得帮助`);
       }
     }
   };
@@ -49,6 +74,7 @@ export function GameCard({
   };
 
   const isCompleted = game.status === enums.GameStatus.COMPLETED;
+  const companyDisplay = game.company || "Unknown Developer";
 
   return (
     <div
@@ -116,10 +142,10 @@ export function GameCard({
 
       <div className="px-2 pt-1 pb-2">
         <h3 className="truncate text-sm font-bold text-brand-900 dark:text-white leading-tight" title={game.name}>
-          {game.name}
+          <HighlightText text={game.name} query={searchQuery} />
         </h3>
-        <p className="truncate text-xs text-brand-500 dark:text-brand-400 leading-tight">
-          {game.company || "Unknown Developer"}
+        <p className="truncate text-xs text-brand-500 dark:text-brand-400 leading-tight" title={companyDisplay}>
+          <HighlightText text={companyDisplay} query={searchQuery} />
         </p>
       </div>
     </div>
