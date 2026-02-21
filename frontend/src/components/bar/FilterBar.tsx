@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { BetterSelect } from "../ui/BetterSelect";
 
 interface SortOption {
@@ -40,7 +41,7 @@ interface FilterBarProps {
 export function FilterBar({
   searchQuery,
   onSearchChange,
-  searchPlaceholder = "搜索...",
+  searchPlaceholder,
   sortBy,
   onSortByChange,
   sortOptions,
@@ -60,6 +61,9 @@ export function FilterBar({
   batchActions,
 }: FilterBarProps) {
   const [initialized, setInitialized] = useState(false);
+  const { t } = useTranslation();
+
+  const finalSearchPlaceholder = searchPlaceholder || `${t("common.search")}...`;
 
   // 初始化时从 localStorage 恢复所有设置
 
@@ -155,7 +159,7 @@ export function FilterBar({
                      placeholder:text-brand-700 dark:placeholder:text-brand-400
                      focus:ring-neutral-600 focus:border-neutral-600
                      dark:focus:ring-neutral-500 dark:focus:border-neutral-500"
-          placeholder={searchPlaceholder}
+          placeholder={finalSearchPlaceholder}
           value={searchQuery}
           onChange={e => handleSearchChange(e.target.value)}
         />
@@ -171,7 +175,7 @@ export function FilterBar({
             ? "text-brand-900 dark:text-white bg-brand-100 dark:bg-brand-700 border-brand-300 dark:border-brand-600"
             : "text-brand-500 dark:text-brand-400 bg-white dark:bg-brand-800 border-brand-200 dark:border-brand-700"}
                        border rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700`}
-            title={batchMode ? "退出批量选择" : "批量选择"}
+            title={batchMode ? t("filterBar.exitBatchSelection") : t("filterBar.enterBatchSelection")}
           >
             <div className={batchMode ? "i-mdi-close-circle-outline text-lg" : "i-mdi-checkbox-multiple-marked-outline text-lg"} />
           </button>
@@ -204,7 +208,7 @@ export function FilterBar({
                      border border-brand-200 dark:border-brand-700
                      rounded-lg
                      hover:bg-brand-100 dark:hover:bg-brand-700"
-          title={sortOrder === "asc" ? "升序" : "降序"}
+          title={sortOrder === "asc" ? t("filterBar.sortAsc") : t("filterBar.sortDesc")}
         >
           <div className={sortOrder === "asc" ? "i-mdi-sort-ascending text-xl" : "i-mdi-sort-descending text-xl"} />
         </button>
@@ -225,7 +229,7 @@ export function FilterBar({
                            bg-white dark:bg-brand-700/60 border border-brand-200 dark:border-brand-600
                            rounded-md hover:bg-brand-50 dark:hover:bg-brand-700 transition-colors"
               >
-                全选
+                {t("common.selectAll")}
               </button>
             )}
             {onClearSelection && (
@@ -236,14 +240,14 @@ export function FilterBar({
                            bg-white dark:bg-brand-700/60 border border-brand-200 dark:border-brand-600
                            rounded-md hover:bg-brand-50 dark:hover:bg-brand-700 transition-colors"
               >
-                清空
+                {t("common.clearStore")}
               </button>
             )}
           </div>
 
           {typeof selectedCount === "number" && (
             <div className="px-2.5 py-1 text-xs font-medium text-brand-700 dark:text-brand-300 bg-white dark:bg-brand-700/60 border border-brand-200 dark:border-brand-600 rounded-md">
-              已选
+              {t("common.selected")}
               {" "}
               <span className="font-semibold ml-1">{selectedCount}</span>
             </div>

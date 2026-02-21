@@ -11,6 +11,7 @@ import {
 } from "chart.js";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import { enums } from "../../../wailsjs/go/models";
 import { DeletePlaySession, GetPlaySessions } from "../../../wailsjs/go/service/SessionService";
 import { GetGameStats } from "../../../wailsjs/go/service/StatsService";
@@ -48,6 +49,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
   const [timeDimension, setTimeDimension] = useState<enums.Period>(enums.Period.WEEK);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const loadStats = useCallback(async () => {
     try {
@@ -61,9 +63,9 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
     }
     catch (error) {
       console.error("Failed to load game stats:", error);
-      toast.error("加载统计数据失败");
+      toast.error(t("gameStats.toast.loadStatsFailed"));
     }
-  }, [gameId, timeDimension]);
+  }, [gameId, timeDimension, t]);
 
   const loadSessions = useCallback(async () => {
     try {
@@ -72,9 +74,9 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
     }
     catch (error) {
       console.error("Failed to load play sessions:", error);
-      toast.error("加载游玩记录失败");
+      toast.error(t("gameStats.toast.loadSessionsFailed"));
     }
-  }, [gameId]);
+  }, [gameId, t]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -95,12 +97,12 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
 
     try {
       await DeletePlaySession(deleteSessionId);
-      toast.success("删除成功");
+      toast.success(t("gameStats.toast.deleteSuccess"));
       await Promise.all([loadStats(), loadSessions()]);
     }
     catch (error) {
       console.error("Failed to delete play session:", error);
-      toast.error("删除失败");
+      toast.error(t("gameStats.toast.deleteFailed"));
     }
     finally {
       setDeleteSessionId(null);
@@ -114,7 +116,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
     labels: stats?.recent_play_history?.map(h => h.date) || [], // 后端已返回本地日期字符串，直接使用
     datasets: [
       {
-        label: "游戏时长 (分钟)",
+        label: t("gameStats.chartLabel"),
         data: stats?.recent_play_history?.map(h => h.duration / 60) || [],
         borderColor: "rgb(59, 130, 246)",
         backgroundColor: "rgba(59, 130, 246, 0.5)",
@@ -164,21 +166,21 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
       {/* 统计卡片 */}
       <div className="grid grid-cols-3 gap-6">
         <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-          <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">累计游戏次数</div>
+          <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">{t("gameStats.totalPlayCount")}</div>
           <div className="text-2xl font-bold text-brand-900 dark:text-white">
             {stats?.total_play_count ?? (isLoading ? "-" : 0)}
           </div>
         </div>
         <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-          <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">今日游戏时长</div>
+          <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">{t("gameStats.todayPlayTime")}</div>
           <div className="text-2xl font-bold text-brand-900 dark:text-white">
-            {stats ? formatDuration(stats.today_play_time) : (isLoading ? "-" : "0分钟")}
+            {stats ? formatDuration(stats.today_play_time) : (isLoading ? "-" : t("gameStats.zeroMinutes"))}
           </div>
         </div>
         <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-          <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">累计总时长</div>
+          <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">{t("gameStats.totalPlayTime")}</div>
           <div className="text-2xl font-bold text-brand-900 dark:text-white">
-            {stats ? formatDuration(stats.total_play_time) : (isLoading ? "-" : "0分钟")}
+            {stats ? formatDuration(stats.total_play_time) : (isLoading ? "-" : t("gameStats.zeroMinutes"))}
           </div>
         </div>
       </div>
@@ -206,7 +208,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
                       ? (
                           <div className="text-center py-12 text-brand-500">
                             <div className="i-mdi-clock-outline text-4xl mx-auto mb-2" />
-                            <p>暂无游玩记录</p>
+                            <p>{t("gameStats.noPlaySessions")}</p>
                           </div>
                         )
                       : (
@@ -220,7 +222,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
                                   {formatLocalDateTime(session.start_time, config?.time_zone)}
                                 </div>
                                 <div className="text-xs text-brand-500 dark:text-brand-400">
-                                  时长:
+                                  {t("gameStats.duration")}
                                   {" "}
                                   {formatDuration(session.duration)}
                                 </div>
@@ -228,7 +230,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
                               <button
                                 onClick={() => setDeleteSessionId(session.id)}
                                 className="p-1.5 text-brand-400 hover:text-error-500 hover:bg-error-50 dark:hover:bg-error-900/20 rounded transition-colors"
-                                title="删除记录"
+                                title={t("gameStats.deleteRecord")}
                                 type="button"
                               >
                                 <div className="i-mdi-delete-outline text-lg" />
@@ -244,9 +246,9 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
             {/* Time Dimension Selector */}
             <SlideButton
               options={[
-                { label: "周", value: enums.Period.WEEK },
-                { label: "月", value: enums.Period.MONTH },
-                { label: "全部", value: enums.Period.ALL },
+                { label: t("gameStats.period.week"), value: enums.Period.WEEK },
+                { label: t("gameStats.period.month"), value: enums.Period.MONTH },
+                { label: t("gameStats.period.all"), value: enums.Period.ALL },
               ]}
               value={timeDimension}
               onChange={setTimeDimension}
@@ -284,7 +286,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
             type="button"
           >
             <div className="i-mdi-plus text-lg" />
-            手动添加
+            {t("gameStats.manualAdd")}
           </button>
         </div>
       </div>
@@ -298,9 +300,9 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
 
       <ConfirmModal
         isOpen={!!deleteSessionId}
-        title="删除游玩记录"
-        message="确定要删除这条游玩记录吗？此操作不可撤销。"
-        confirmText="确认删除"
+        title={t("gameStats.modal.deleteSessionTitle")}
+        message={t("gameStats.modal.deleteSessionMsg")}
+        confirmText={t("common.confirm")}
         type="danger"
         onClose={() => setDeleteSessionId(null)}
         onConfirm={handleDeleteSession}

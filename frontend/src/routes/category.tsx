@@ -2,6 +2,7 @@ import type { models, vo } from "../../wailsjs/go/models";
 import { createRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import {
   AddGameToCategory,
   GetCategoryByID,
@@ -26,6 +27,7 @@ export const Route = createRoute({
 function CategoryDetailPage() {
   const navigate = useNavigate();
   const { categoryId } = Route.useParams();
+  const { t } = useTranslation();
   const [category, setCategory] = useState<vo.CategoryVO | null>(null);
   const [games, setGames] = useState<models.Game[]>([]);
   const [loading, setLoading] = useState(true);
@@ -259,15 +261,15 @@ function CategoryDetailPage() {
         <FilterBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          searchPlaceholder="搜索游戏..."
+          searchPlaceholder={t("library.searchPlaceholder")}
           sortBy={sortBy}
           onSortByChange={val => setSortBy(val as "name" | "created_at")}
-          sortOptions={sortOptions}
+          sortOptions={sortOptions.map(opt => ({ ...opt, label: t(opt.label) }))}
           sortOrder={sortOrder}
           onSortOrderChange={setSortOrder}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
-          statusOptions={statusOptions}
+          statusOptions={statusOptions.map(opt => ({ ...opt, label: t(opt.label) }))}
           storageKey="category"
           batchMode={batchMode}
           onBatchModeChange={handleBatchModeChange}

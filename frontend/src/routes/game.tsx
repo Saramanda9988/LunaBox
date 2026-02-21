@@ -2,6 +2,7 @@ import type { models, vo } from "../../wailsjs/go/models";
 import { createRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import { enums } from "../../wailsjs/go/models";
 import { AddGameToCategory, GetCategories, GetCategoriesByGame, RemoveGameFromCategory } from "../../wailsjs/go/service/CategoryService";
 import { DeleteGame, GetGameByID, SelectCoverImage, SelectGameExecutable, SelectSaveDirectory, SelectSaveFile, UpdateGame, UpdateGameFromRemote } from "../../wailsjs/go/service/GameService";
@@ -27,6 +28,7 @@ function GameDetailPage() {
   const navigate = useNavigate();
   const { gameId } = Route.useParams();
   const config = useAppStore(state => state.config);
+  const { t } = useTranslation();
   const [game, setGame] = useState<models.Game | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
@@ -48,14 +50,14 @@ function GameDetailPage() {
       }
       catch (error) {
         console.error("Failed to load game data:", error);
-        toast.error("加载游戏数据失败");
+        toast.error(t("game.toast.loadDataFailed"));
       }
       finally {
         setIsLoading(false);
       }
     };
     loadData();
-  }, [gameId]);
+  }, [gameId, t]);
 
   // 延迟显示骨架屏
   useEffect(() => {
@@ -87,12 +89,12 @@ function GameDetailPage() {
       }
       catch (error) {
         console.error("Failed to auto-save game:", error);
-        toast.error(`保存失败${(error as Error).message}`);
+        toast.error(t("game.toast.saveFailed", { error: (error as Error).message }));
       }
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [game]);
+  }, [game, t]);
 
   if (isLoading && !game) {
     if (!showSkeleton) {
@@ -105,8 +107,8 @@ function GameDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-4 text-brand-500">
         <div className="i-mdi-gamepad-variant-outline text-6xl" />
-        <p className="text-xl">未找到该游戏</p>
-        <button onClick={() => navigate({ to: "/library" })} className="text-neutral-600 hover:underline">返回库</button>
+        <p className="text-xl">{t("game.notFound")}</p>
+        <button type="button" onClick={() => navigate({ to: "/library" })} className="text-neutral-600 hover:underline">{t("game.backToLibrary")}</button>
       </div>
     );
   }
@@ -120,7 +122,7 @@ function GameDetailPage() {
     }
     catch (error) {
       console.error("Failed to select executable:", error);
-      toast.error("选择可执行文件失败");
+      toast.error(t("game.toast.selectExecutableFailed"));
     }
   };
 
@@ -135,12 +137,12 @@ function GameDetailPage() {
       return;
     try {
       await DeleteGame(game.id);
-      toast.success("删除成功");
+      toast.success(t("game.toast.deleteSuccess"));
       navigate({ to: "/library" });
     }
     catch (error) {
       console.error("Failed to delete game:", error);
-      toast.error("删除失败");
+      toast.error(t("game.toast.deleteFailed"));
     }
   };
 
@@ -153,7 +155,7 @@ function GameDetailPage() {
     }
     catch (error) {
       console.error("Failed to select save directory:", error);
-      toast.error("选择存档路径失败");
+      toast.error(t("game.toast.selectSaveDirFailed"));
     }
   };
 
@@ -166,7 +168,7 @@ function GameDetailPage() {
     }
     catch (error) {
       console.error("Failed to select save file:", error);
-      toast.error("选择存档路径失败");
+      toast.error(t("game.toast.selectSaveFileFailed"));
     }
   };
 
@@ -181,7 +183,7 @@ function GameDetailPage() {
     }
     catch (error) {
       console.error("Failed to select cover image:", error);
-      toast.error("选择封面图片失败");
+      toast.error(t("game.toast.selectCoverFailed"));
     }
   };
 
@@ -193,19 +195,19 @@ function GameDetailPage() {
       const updatedGame = await GetGameByID(game.id);
       setGame(updatedGame);
       originalGameData.current = updatedGame;
-      toast.success("从远程更新成功");
+      toast.success(t("game.toast.updateRemoteSuccess"));
     }
     catch (error) {
       console.error("Failed to update from remote:", error);
-      toast.error(`从远程更新失败: ${error}`);
+      toast.error(t("game.toast.updateRemoteFailed", { error }));
     }
   };
 
   const statusConfig = {
-    [enums.GameStatus.NOT_STARTED]: { label: "未开始", icon: "i-mdi-clock-outline", color: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300" },
-    [enums.GameStatus.PLAYING]: { label: "游玩中", icon: "i-mdi-gamepad-variant", color: "bg-neutral-100 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300" },
-    [enums.GameStatus.COMPLETED]: { label: "已通关", icon: "i-mdi-trophy", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300" },
-    [enums.GameStatus.ON_HOLD]: { label: "搁置", icon: "i-mdi-pause-circle-outline", color: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" },
+    [enums.GameStatus.NOT_STARTED]: { label: t("common.notStarted"), icon: "i-mdi-clock-outline", color: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300" },
+    [enums.GameStatus.PLAYING]: { label: t("common.playing"), icon: "i-mdi-gamepad-variant", color: "bg-neutral-100 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300" },
+    [enums.GameStatus.COMPLETED]: { label: t("common.completed"), icon: "i-mdi-trophy", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300" },
+    [enums.GameStatus.ON_HOLD]: { label: t("common.onHold"), icon: "i-mdi-pause-circle-outline", color: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" },
   };
 
   const handleStartGame = async () => {
@@ -214,15 +216,15 @@ function GameDetailPage() {
     try {
       const started = await StartGameWithTracking(game.id);
       if (started) {
-        toast.success(`${game.name}启动成功`);
+        toast.success(t("gameCard.startSuccess", { name: game.name }));
       }
       else {
-        toast.error(`${game.name}启动失败（未能启动）`);
+        toast.error(t("gameCard.startFailedNotLaunched", { name: game.name }));
       }
     }
     catch (error) {
       console.error("Failed to start game:", error);
-      toast.error(`${game.name} 启动失败, 查询日志获得帮助`);
+      toast.error(t("gameCard.startFailedLog", { name: game.name }));
     }
   };
 
@@ -233,11 +235,11 @@ function GameDetailPage() {
     setGame(updatedGame);
     try {
       await UpdateGame(updatedGame);
-      toast.success("状态已更新");
+      toast.success(t("game.toast.statusUpdated"));
     }
     catch (error) {
       console.error("Failed to update status:", error);
-      toast.error("状态更新失败");
+      toast.error(t("game.toast.statusUpdateFailed"));
     }
   };
 
@@ -253,7 +255,7 @@ function GameDetailPage() {
     }
     catch (error) {
       console.error("Failed to load categories:", error);
-      toast.error("加载收藏夹失败");
+      toast.error(t("game.toast.loadFavFailed"));
     }
   };
 
@@ -281,12 +283,12 @@ function GameDetailPage() {
       setAllCategories(categories || []);
 
       if (toAdd.length > 0 || toRemove.length > 0) {
-        toast.success("收藏已更新");
+        toast.success(t("game.toast.favUpdated"));
       }
     }
     catch (error) {
       console.error("Failed to update categories:", error);
-      toast.error("更新收藏失败");
+      toast.error(t("game.toast.updateFavFailed"));
     }
   };
 
@@ -303,7 +305,7 @@ function GameDetailPage() {
     }
     catch (error) {
       console.error("Failed to select executable:", error);
-      toast.error("选择文件失败");
+      toast.error(t("game.toast.selectFileFailed"));
     }
   };
 
@@ -311,11 +313,12 @@ function GameDetailPage() {
     <div className={`space-y-8 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${isLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
       {/* Back Button */}
       <button
+        type="button"
         onClick={() => window.history.back()}
         className="flex rounded-md items-center text-brand-750 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-200 transition-colors"
       >
         <div className="i-mdi-arrow-left text-2xl mr-1" />
-        <span>返回</span>
+        <span>{t("common.back")}</span>
       </button>
 
       {/* Header Section */}
@@ -334,7 +337,7 @@ function GameDetailPage() {
               )
             : (
                 <div className="w-full h-64 flex items-center justify-center text-brand-400">
-                  No Cover
+                  {t("game.noCover")}
                 </div>
               )}
         </div>
@@ -345,11 +348,12 @@ function GameDetailPage() {
             {/* 操作和状态标签组 */}
             <div className="flex items-center gap-4">
               <button
+                type="button"
                 onClick={handleStartGame}
                 className="flex items-center gap-1.5 rounded-lg bg-neutral-600 text-white shadow-md hover:bg-neutral-700 transition-all duration-300 px-4 py-1.5 text-sm font-medium dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
               >
                 <div className="i-mdi-play text-lg" />
-                启动游戏
+                {t("gameCard.startGame")}
               </button>
 
               <div className="h-6 w-px bg-brand-200 dark:bg-brand-700" />
@@ -361,6 +365,7 @@ function GameDetailPage() {
                   const isActive = (game.status || enums.GameStatus.NOT_STARTED) === key;
                   return (
                     <button
+                      type="button"
                       key={key}
                       onClick={() => handleStatusChange(key)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${isActive
@@ -380,24 +385,24 @@ function GameDetailPage() {
 
           <div className="grid grid-cols-4 gap-4 text-sm text-brand-750 dark:text-brand-400">
             <div>
-              <div className="font-semibold mb-1">数据来源</div>
+              <div className="font-semibold mb-1">{t("game.dataSource")}</div>
               <div>{game.source_type}</div>
             </div>
             <div>
-              <div className="font-semibold mb-1">开发</div>
+              <div className="font-semibold mb-1">{t("game.developer")}</div>
               <div>{game.company || "-"}</div>
             </div>
             <div>
-              <div className="font-semibold mb-1">添加时间</div>
+              <div className="font-semibold mb-1">{t("common.createdAt")}</div>
               <div>{formatLocalDate(game.created_at, config?.time_zone)}</div>
             </div>
             {/* Placeholders for missing data */}
           </div>
 
           <div className="mt-4">
-            <div className="font-semibold mb-2 text-brand-900 dark:text-white">简介</div>
+            <div className="font-semibold mb-2 text-brand-900 dark:text-white">{t("game.summary")}</div>
             <p className="text-brand-750 dark:text-brand-400 text-sm leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto scrollbar-hide pr-2">
-              {game.summary || "暂无简介"}
+              {game.summary || t("game.noSummary")}
             </p>
           </div>
         </div>
@@ -409,6 +414,7 @@ function GameDetailPage() {
           <nav className="-mb-px flex space-x-8">
             {["stats", "edit", "launch", "backup"].map(tab => (
               <button
+                type="button"
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`
@@ -418,17 +424,18 @@ function GameDetailPage() {
                 : "border-transparent text-brand-700 hover:text-brand-750 hover:border-brand-300 dark:text-brand-400 dark:hover:text-brand-300"}
                 `}
               >
-                {tab === "stats" && "游戏统计"}
-                {tab === "edit" && "编辑"}
-                {tab === "launch" && "启动配置"}
-                {tab === "backup" && "备份"}
+                {tab === "stats" && t("game.tabs.stats")}
+                {tab === "edit" && t("common.edit")}
+                {tab === "launch" && t("game.tabs.launch")}
+                {tab === "backup" && t("game.tabs.backup")}
               </button>
             ))}
           </nav>
           <button
+            type="button"
             onClick={openCategoryModal}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-100 text-brand-750 hover:text-brand-200 dark:bg-brand-900 dark:text-brand-400 dark:hover:text-brand-700 transition-colors"
-            title="添加到收藏"
+            title={t("game.addToFav")}
           >
             <div className="i-mdi-folder-plus-outline text-lg" />
           </button>
@@ -468,9 +475,9 @@ function GameDetailPage() {
 
       <ConfirmModal
         isOpen={isDeleteModalOpen}
-        title="删除游戏"
-        message={`确定要删除游戏 "${game.name}" 吗？此操作将从库中移除该游戏，但不会删除本地游戏文件。`}
-        confirmText="确认删除"
+        title={t("game.deleteGame")}
+        message={t("game.deleteConfirmMsg", { name: game.name })}
+        confirmText={t("game.confirmDelete")}
         type="danger"
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDeleteGame}

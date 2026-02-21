@@ -1,5 +1,6 @@
 import type { vo } from "../../../wailsjs/go/models";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface AddToCategoryModalProps {
   isOpen: boolean;
@@ -19,10 +20,13 @@ export function AddToCategoryModal({
   onClose,
   onSave,
   selectionMode = "multiple",
-  title = "添加到收藏",
-  confirmText = "确定",
+  title,
+  confirmText,
 }: AddToCategoryModalProps) {
+  const { t } = useTranslation();
   const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
+  const modalTitle = title || t("addToCategory.title");
+  const modalConfirmText = confirmText || t("common.confirm");
 
   useEffect(() => {
     setSelectedIds(selectionMode === "single" ? initialSelectedIds.slice(0, 1) : initialSelectedIds);
@@ -50,7 +54,7 @@ export function AddToCategoryModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="w-full max-w-md max-h-[70vh] rounded-xl bg-white flex flex-col shadow-xl dark:bg-brand-800">
         <div className="p-6 border-b border-brand-200 dark:border-brand-700 flex justify-between items-center">
-          <h3 className="text-xl font-bold text-brand-900 dark:text-white">{title}</h3>
+          <h3 className="text-xl font-bold text-brand-900 dark:text-white">{modalTitle}</h3>
           <button
             type="button"
             onClick={onClose}
@@ -71,10 +75,9 @@ export function AddToCategoryModal({
                         type="button"
                         key={category.id}
                         onClick={() => toggleCategory(category.id)}
-                        className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
-                          isSelected
-                            ? "bg-neutral-100 dark:bg-neutral-900"
-                            : "bg-brand-50 dark:bg-brand-900 hover:bg-brand-100 dark:hover:bg-brand-700"
+                        className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${isSelected
+                          ? "bg-neutral-100 dark:bg-neutral-900"
+                          : "bg-brand-50 dark:bg-brand-900 hover:bg-brand-100 dark:hover:bg-brand-700"
                         }`}
                       >
                         <span className="font-medium text-brand-900 dark:text-white">
@@ -82,9 +85,7 @@ export function AddToCategoryModal({
                         </span>
                         <div className="flex items-center gap-2 text-sm text-brand-500 dark:text-brand-400">
                           <span>
-                            {category.game_count || 0}
-                            {" "}
-                            个游戏
+                            {t("addToCategory.gameCount", { count: category.game_count || 0 })}
                           </span>
                           {isSelected
                             ? (
@@ -102,7 +103,7 @@ export function AddToCategoryModal({
             : (
                 <div className="flex flex-col items-center justify-center h-full text-brand-500">
                   <div className="i-mdi-folder-outline text-4xl mb-2" />
-                  <p>暂无收藏夹</p>
+                  <p>{t("addToCategory.empty")}</p>
                 </div>
               )}
         </div>
@@ -113,14 +114,14 @@ export function AddToCategoryModal({
             onClick={onClose}
             className="flex-1 py-2 border border-brand-300 text-brand-600 rounded-lg hover:bg-brand-50 dark:border-brand-600 dark:text-brand-400 dark:hover:bg-brand-700 font-medium"
           >
-            取消
+            {t("common.cancel")}
           </button>
           <button
             type="button"
             onClick={handleSave}
             className="flex-1 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 dark:bg-neutral-600 dark:hover:bg-neutral-700 font-medium"
           >
-            {confirmText}
+            {modalConfirmText}
           </button>
         </div>
       </div>
