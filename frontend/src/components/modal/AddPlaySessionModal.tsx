@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import { AddPlaySession } from "../../../wailsjs/go/service/SessionService";
 import { formatDuration, toLocalISOString } from "../../utils/time";
 
@@ -11,6 +12,7 @@ interface AddPlaySessionModalProps {
 }
 
 export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddPlaySessionModalProps) {
+  const { t } = useTranslation();
   const [startTime, setStartTime] = useState(() => {
     const now = new Date();
     now.setHours(now.getHours() - 1);
@@ -41,30 +43,28 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
     const end = new Date(endTime);
 
     if (start >= end) {
-      toast.error("结束时间必须晚于开始时间");
+      toast.error(t("addPlaySession.toast.endBeforeStart"));
       return;
     }
 
     const totalSeconds = calculateDuration();
     if (totalSeconds <= 0) {
-      toast.error("游玩时长必须大于0");
+      toast.error(t("addPlaySession.toast.zeroDuration"));
       return;
     }
 
     if (end > new Date()) {
-      toast.error("结束时间不能晚于当前时间");
+      toast.error(t("addPlaySession.toast.futureEnd"));
       return;
     }
 
     setIsSubmitting(true);
     try {
       const totalMinutes = Math.floor(totalSeconds / 60);
-      // 使用本地时间格式（不带 Z 后缀），后端会直接解析为本地时间
       await AddPlaySession(gameId, toLocalISOString(start), totalMinutes);
-      toast.success("游玩记录添加成功");
+      toast.success(t("addPlaySession.toast.success"));
       onSuccess();
       onClose();
-      // 重置表单
       const now = new Date();
       const oneHourAgo = new Date(now);
       oneHourAgo.setHours(now.getHours() - 1);
@@ -73,7 +73,7 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
     }
     catch (error) {
       console.error("Failed to add play session:", error);
-      toast.error("添加游玩记录失败");
+      toast.error(t("addPlaySession.toast.failed"));
     }
     finally {
       setIsSubmitting(false);
@@ -85,9 +85,10 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
       <div className="relative bg-white dark:bg-brand-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-brand-900 dark:text-white">
-            添加游玩记录
+            {t("addPlaySession.title")}
           </h2>
           <button
+            type="button"
             onClick={onClose}
             className="text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-white transition-colors"
           >
@@ -96,13 +97,13 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
         </div>
 
         <div className="text-sm text-brand-600 dark:text-brand-400 mb-4">
-          您可以对过去的游玩时间进行补充记录，以更准确地统计总游玩时长。
+          {t("addPlaySession.desc")}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
-              开始时间
+              {t("addPlaySession.startTime")}
             </label>
             <input
               type="datetime-local"
@@ -116,7 +117,7 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
 
           <div>
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
-              结束时间
+              {t("addPlaySession.endTime")}
             </label>
             <input
               type="datetime-local"
@@ -129,9 +130,9 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
           </div>
 
           <div className="bg-brand-50 dark:bg-brand-700/50 rounded-lg p-3">
-            <div className="text-sm text-brand-600 dark:text-brand-400 mb-1">游玩时长</div>
+            <div className="text-sm text-brand-600 dark:text-brand-400 mb-1">{t("addPlaySession.duration")}</div>
             <div className="text-lg font-semibold text-brand-900 dark:text-white">
-              {formatDuration(calculateDuration())}
+              {formatDuration(calculateDuration(), t)}
             </div>
           </div>
 
@@ -141,14 +142,14 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
               onClick={onClose}
               className="px-4 py-2 text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-700 rounded-md transition-colors"
             >
-              取消
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="px-4 py-2 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "添加中..." : "添加"}
+              {isSubmitting ? t("addPlaySession.submitting") : t("common.add")}
             </button>
           </div>
         </form>

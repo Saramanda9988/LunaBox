@@ -30,7 +30,13 @@
     "action": "操作",
     "loading": "加载中...",
     "complete": "完成",
-    "stop": "停止匹配"
+    "stop": "停止匹配",
+    "duration": {
+      "hours": "小时",
+      "minutes": "分钟",
+      "hoursShort": "时",
+      "minutesShort": "分"
+    }
   },
   "modal": {
     "titles": {
@@ -805,5 +811,46 @@
     "githubDownload": "GitHub 下载",
     "giteeDownload": "Gitee 下载",
     "skipVersion": "跳过此版本"
+  },
+  "category": {
+    "notFound": "未找到该分类",
+    "backToList": "返回列表",
+    "back": "返回",
+    "systemTag": "系统",
+    "gameCount": "共 {{count}} 个游戏",
+    "batchRemoveBtn": "批量移除",
+    "addGameBtn": "添加游戏",
+    "removeFromCategory": "从收藏夹移除",
+    "noMatchingGames": "未找到匹配的游戏",
+    "emptyCategory": "这个收藏夹还没有游戏",
+    "addFirstGame": "添加游戏",
+    "toast": {
+      "loadCategoryFailed": "加载收藏夹失败",
+      "loadGamesFailed": "加载收藏夹中游戏失败",
+      "removeGameFailed": "从收藏夹中移除游戏失败",
+      "loadAllGamesFailed": "加载库中所有游戏失败",
+      "addGameFailed": "添加游戏到收藏夹失败",
+      "batchRemoveSuccess": "已移除 {{count}} 个游戏",
+      "batchRemoveFailed": "批量移除失败"
+    },
+    "addGameModal": {
+      "title": "添加游戏到收藏夹",
+      "noGamesAvailable": "没有可添加的游戏"
+    }
+  },
+  "addPlaySession": {
+    "title": "添加游玩记录",
+    "desc": "您可以对过去的游玩时间进行补充记录，以更准确地统计总游玩时长。",
+    "startTime": "开始时间",
+    "endTime": "结束时间",
+    "duration": "游玩时长",
+    "submitting": "添加中...",
+    "toast": {
+      "endBeforeStart": "结束时间必须晋于开始时间",
+      "zeroDuration": "游玩时长必须大于0",
+      "futureEnd": "结束时间不能晋于当前时间",
+      "success": "游玩记录添加成功",
+      "failed": "添加游玩记录失败"
+    }
   }
 }

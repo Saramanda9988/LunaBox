@@ -78,7 +78,7 @@ function HomePage() {
           <div>
             <div className="text-xs text-brand-500 dark:text-brand-400">{t("home.todayPlayTime")}</div>
             <div className="text-lg font-bold text-neutral-600 dark:text-neutral-400">
-              {formatDuration(homeData.today_play_time_sec)}
+              {formatDuration(homeData.today_play_time_sec, t)}
             </div>
           </div>
         </div>
@@ -129,7 +129,7 @@ function HomePage() {
           <div>
             <div className="text-xs text-brand-500 dark:text-brand-400">{t("home.todayPlayTime")}</div>
             <div className="text-lg font-bold text-neutral-600 dark:text-neutral-400">
-              {formatDuration(homeData.today_play_time_sec)}
+              {formatDuration(homeData.today_play_time_sec, t)}
             </div>
           </div>
         </div>
@@ -146,7 +146,7 @@ function HomePage() {
           {lastPlayed.total_played_dur > 0 && !isPlaying && (
             <p className="text-brand-600 dark:text-white/70 text-sm mt-1 drop-shadow">
               {t("home.totalPlayTime")}
-              {formatDuration(lastPlayed.total_played_dur)}
+              {formatDuration(lastPlayed.total_played_dur, t)}
             </p>
           )}
         </div>

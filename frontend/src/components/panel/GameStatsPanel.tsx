@@ -174,13 +174,13 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
         <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
           <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">{t("gameStats.todayPlayTime")}</div>
           <div className="text-2xl font-bold text-brand-900 dark:text-white">
-            {stats ? formatDuration(stats.today_play_time) : (isLoading ? "-" : t("gameStats.zeroMinutes"))}
+            {stats ? formatDuration(stats.today_play_time, t) : (isLoading ? "-" : t("gameStats.zeroMinutes"))}
           </div>
         </div>
         <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
           <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">{t("gameStats.totalPlayTime")}</div>
           <div className="text-2xl font-bold text-brand-900 dark:text-white">
-            {stats ? formatDuration(stats.total_play_time) : (isLoading ? "-" : t("gameStats.zeroMinutes"))}
+            {stats ? formatDuration(stats.total_play_time, t) : (isLoading ? "-" : t("gameStats.zeroMinutes"))}
           </div>
         </div>
       </div>
@@ -224,7 +224,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
                                 <div className="text-xs text-brand-500 dark:text-brand-400">
                                   {t("gameStats.duration")}
                                   {" "}
-                                  {formatDuration(session.duration)}
+                                  {formatDuration(session.duration, t)}
                                 </div>
                               </div>
                               <button

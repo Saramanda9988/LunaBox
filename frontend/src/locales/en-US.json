@@ -30,7 +30,13 @@
     "action": "Actions",
     "loading": "Loading...",
     "complete": "Complete",
-    "stop": "Stop Matching"
+    "stop": "Stop Matching",
+    "duration": {
+      "hours": "H",
+      "minutes": "M",
+      "hoursShort": "h",
+      "minutesShort": "m"
+    }
   },
   "modal": {
     "titles": {
@@ -805,5 +811,46 @@
     "githubDownload": "Download from GitHub",
     "giteeDownload": "Download from Gitee",
     "skipVersion": "Skip This Version"
+  },
+  "category": {
+    "notFound": "Category not found",
+    "backToList": "Back to list",
+    "back": "Back",
+    "systemTag": "System",
+    "gameCount": "{{count}} games",
+    "batchRemoveBtn": "Batch Remove",
+    "addGameBtn": "Add Game",
+    "removeFromCategory": "Remove from Collection",
+    "noMatchingGames": "No matching games found",
+    "emptyCategory": "This collection has no games yet",
+    "addFirstGame": "Add a game",
+    "toast": {
+      "loadCategoryFailed": "Failed to load collection",
+      "loadGamesFailed": "Failed to load games in collection",
+      "removeGameFailed": "Failed to remove game from collection",
+      "loadAllGamesFailed": "Failed to load all games in library",
+      "addGameFailed": "Failed to add game to collection",
+      "batchRemoveSuccess": "Removed {{count}} games",
+      "batchRemoveFailed": "Batch remove failed"
+    },
+    "addGameModal": {
+      "title": "Add Game to Collection",
+      "noGamesAvailable": "No games available to add"
+    }
+  },
+  "addPlaySession": {
+    "title": "Add Play Record",
+    "desc": "You can add past play sessions to more accurately track your total play time.",
+    "startTime": "Start Time",
+    "endTime": "End Time",
+    "duration": "Duration",
+    "submitting": "Adding...",
+    "toast": {
+      "endBeforeStart": "End time must be after start time",
+      "zeroDuration": "Play duration must be greater than 0",
+      "futureEnd": "End time cannot be in the future",
+      "success": "Play record added successfully",
+      "failed": "Failed to add play record"
+    }
   }
 }

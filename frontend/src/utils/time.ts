@@ -1,23 +1,32 @@
+type TFunc = (key: string) => string;
+
 /**
- * 将秒数格式化为中文时间字符串 (X小时Y分钟)
+ * 将秒数格式化为本地化时间字符串 (X小时Y分钟 / X hours Y minutes)
+ * @param seconds - 秒数
+ * @param t - 可选的 i18n t 函数；不传时输出中文（向后兼容）
  */
-export function formatDuration(seconds: number): string {
+export function formatDuration(seconds: number, t?: TFunc): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
+  const hourStr = t ? t("common.duration.hours") : "小时";
+  const minStr = t ? t("common.duration.minutes") : "分钟";
   if (hours > 0) {
-    return minutes > 0 ? `${hours}小时${minutes}分钟` : `${hours}小时`;
+    return minutes > 0 ? `${hours}${hourStr}${minutes}${minStr}` : `${hours}${hourStr}`;
   }
-  return `${minutes}分钟`;
+  return `${minutes}${minStr}`;
 }
 
 /**
- * 将秒数格式化为简短时间字符串 (Xh Ym)
- * TODO: i18n
+ * 将秒数格式化为简短时间字符串
+ * @param seconds - 秒数
+ * @param t - 可选的 i18n t 函数；不传时输出英文缩写 "Xh Ym"（向后兼容）
  */
-export function formatDurationShort(seconds: number): string {
+export function formatDurationShort(seconds: number, t?: TFunc): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  return `${hours}h ${minutes}m`;
+  const h = t ? t("common.duration.hoursShort") : "h";
+  const m = t ? t("common.duration.minutesShort") : "m";
+  return `${hours}${h} ${minutes}${m}`;
 }
 
 /**

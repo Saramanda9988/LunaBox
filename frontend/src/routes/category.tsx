@@ -41,7 +41,6 @@ function CategoryDetailPage() {
   const [batchMode, setBatchMode] = useState(false);
   const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
 
-  // 延迟显示骨架屏
   useEffect(() => {
     let timer: number;
     if (loading) {
@@ -62,7 +61,7 @@ function CategoryDetailPage() {
     }
     catch (error) {
       console.error("Failed to load category:", error);
-      toast.error("加载收藏夹失败");
+      toast.error(t("category.toast.loadCategoryFailed"));
     }
   };
 
@@ -73,7 +72,7 @@ function CategoryDetailPage() {
     }
     catch (error) {
       console.error("Failed to load games for category:", error);
-      toast.error("加载文件夹中游戏失败");
+      toast.error(t("category.toast.loadGamesFailed"));
     }
   };
 
@@ -91,7 +90,7 @@ function CategoryDetailPage() {
     }
     catch (error) {
       console.error("Failed to remove game from category:", error);
-      toast.error("从收藏夹中移除游戏失败");
+      toast.error(t("category.toast.removeGameFailed"));
     }
   };
 
@@ -104,7 +103,7 @@ function CategoryDetailPage() {
     }
     catch (error) {
       console.error("Failed to load all games:", error);
-      toast.error("加载库中所有游戏失败");
+      toast.error(t("category.toast.loadAllGamesFailed"));
     }
   };
 
@@ -119,13 +118,12 @@ function CategoryDetailPage() {
     }
     catch (error) {
       console.error("Failed to add game to category:", error);
-      toast.error("添加游戏到收藏夹失败");
+      toast.error(t("category.toast.addGameFailed"));
     }
   };
 
   const filteredGames = games
     .filter((game) => {
-      // 搜索过滤：同时匹配游戏名和开发商/公司
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         const matchName = game.name.toLowerCase().includes(q);
@@ -133,7 +131,6 @@ function CategoryDetailPage() {
         if (!matchName && !matchCompany)
           return false;
       }
-      // 状态过滤
       if (statusFilter && game.status !== statusFilter) {
         return false;
       }
@@ -190,13 +187,13 @@ function CategoryDetailPage() {
     try {
       await RemoveGamesFromCategory(selectedGameIds, category.id);
       await Promise.all([loadGames(category.id), loadCategory(category.id)]);
-      toast.success(`已移除 ${selectedGameIds.length} 个游戏`);
+      toast.success(t("category.toast.batchRemoveSuccess", { count: selectedGameIds.length }));
       setSelectedGameIds([]);
       setBatchMode(false);
     }
     catch (error) {
       console.error("Failed to batch remove games:", error);
-      toast.error("批量移除失败");
+      toast.error(t("category.toast.batchRemoveFailed"));
     }
   };
 
@@ -224,8 +221,8 @@ function CategoryDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-4 text-brand-500">
         <div className="i-mdi-alert-circle-outline text-6xl" />
-        <p className="text-xl">未找到该分类</p>
-        <button onClick={onBack} className="text-neutral-600 hover:underline">返回列表</button>
+        <p className="text-xl">{t("category.notFound")}</p>
+        <button type="button" onClick={onBack} className="text-neutral-600 hover:underline">{t("category.backToList")}</button>
       </div>
     );
   }
@@ -234,11 +231,12 @@ function CategoryDetailPage() {
     <div className={`h-full w-full overflow-y-auto p-8 transition-opacity duration-300 ${loading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
       {/* Back Button */}
       <button
+        type="button"
         onClick={onBack}
         className="flex rounded-md items-center text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-200 transition-colors mb-6"
       >
         <div className="i-mdi-arrow-left text-2xl mr-1" />
-        <span>返回</span>
+        <span>{t("category.back")}</span>
       </button>
 
       <div className="flex flex-col gap-6">
@@ -246,14 +244,10 @@ function CategoryDetailPage() {
           <div>
             <h1 className="text-4xl font-bold text-brand-900 dark:text-white flex items-center gap-3">
               {category.name}
-              {category.is_system && <span className="text-sm bg-neutral-100 text-neutral-800 px-2 py-1 rounded-md dark:bg-neutral-900 dark:text-neutral-300 align-middle">系统</span>}
+              {category.is_system && <span className="text-sm bg-neutral-100 text-neutral-800 px-2 py-1 rounded-md dark:bg-neutral-900 dark:text-neutral-300 align-middle">{t("category.systemTag")}</span>}
             </h1>
             <p className="text-brand-500 dark:text-brand-400 mt-2">
-              共
-              {" "}
-              {games.length}
-              {" "}
-              个游戏
+              {t("category.gameCount", { count: games.length })}
             </p>
           </div>
         </div>
@@ -287,16 +281,17 @@ function CategoryDetailPage() {
                           ${selectedGameIds.length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <div className="i-mdi-delete text-lg" />
-              批量移除
+              {t("category.batchRemoveBtn")}
             </button>
           )}
           actionButton={(
             <button
+              type="button"
               onClick={openAddGameModal}
               className="glass-btn-neutral flex items-center rounded-lg bg-neutral-600 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 focus:outline-none focus:ring-4 focus:ring-neutral-300 dark:bg-neutral-600 dark:hover:bg-neutral-700 dark:focus:ring-neutral-800"
             >
               <div className="i-mdi-plus mr-2 text-lg" />
-              添加游戏
+              {t("category.addGameBtn")}
             </button>
           )}
         />
@@ -319,12 +314,13 @@ function CategoryDetailPage() {
                           />
                           {!batchMode && (
                             <button
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleRemoveGame(game.id);
                               }}
                               className="absolute top-2 right-2 p-1 bg-error-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-error-600"
-                              title="从收藏夹移除"
+                              title={t("category.removeFromCategory")}
                             >
                               <div className="i-mdi-close text-sm" />
                             </button>
@@ -336,19 +332,20 @@ function CategoryDetailPage() {
                 : (
                     <div className="flex flex-col items-center justify-center h-64 text-brand-500 dark:text-brand-400">
                       <div className="i-mdi-magnify text-6xl mb-4" />
-                      <p className="text-lg">未找到匹配的游戏</p>
+                      <p className="text-lg">{t("category.noMatchingGames")}</p>
                     </div>
                   )
             )
           : (
               <div className="flex flex-col items-center justify-center h-64 text-brand-500 dark:text-brand-400">
                 <div className="i-mdi-gamepad-variant-outline text-6xl mb-4" />
-                <p className="text-lg">这个收藏夹还没有游戏</p>
+                <p className="text-lg">{t("category.emptyCategory")}</p>
                 <button
+                  type="button"
                   onClick={openAddGameModal}
                   className="mt-4 text-neutral-600 hover:underline dark:text-neutral-400"
                 >
-                  添加游戏
+                  {t("category.addFirstGame")}
                 </button>
               </div>
             )}
