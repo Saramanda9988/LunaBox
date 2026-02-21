@@ -681,5 +681,79 @@
       "confirmPlaceholder": "Re-enter password",
       "passwordMismatch": "Passwords do not match"
     }
+  },
+  "stats": {
+    "title": "Statistics",
+    "period": {
+      "week": "Week",
+      "month": "Month"
+    },
+    "customRange": "Custom",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "applyBtn": "Apply",
+    "resetBtn": "Reset",
+    "exportTitle": "Export",
+    "aiSummarizeTitle": "AI Summary",
+    "chartYAxis": "Hours",
+    "totalDurationDataset": "Total Play Duration (hours)",
+    "library": {
+      "sectionTitle": "Library Overview",
+      "totalGames": "All Games in Library",
+      "totalSessions": "Total Play Sessions",
+      "totalDuration": "Total Play Duration",
+      "completedGames": "Games Completed"
+    },
+    "summary": {
+      "totalPlayCount": "Total Play Sessions",
+      "totalPlayDuration": "Total Play Duration",
+      "gamesPlayed": "Games Played",
+      "completedGames": "Completed Games"
+    },
+    "leaderboard": {
+      "title": "Leaderboard",
+      "fullTitle": "Play Time Leaderboard",
+      "rankCol": "Rank",
+      "gameCol": "Game",
+      "durationCol": "Duration",
+      "noData": "No data yet",
+      "noMoreData": "No more leaderboard data"
+    },
+    "charts": {
+      "totalTrend": "Play Duration Trend",
+      "gameTrend": "Most Played Games Trend"
+    },
+    "ai": {
+      "title": "AI Analysis",
+      "thinking": "Thinking...",
+      "summarizeFailed": "AI summary failed. Please check your AI configuration."
+    },
+    "templateExport": {
+      "title": "Export",
+      "selectTemplate": "Select Template",
+      "selectTemplateHint": "Choose a template to beautify your statistics",
+      "openTemplatesDir": "Open Templates Directory",
+      "templatePreviewTitle": "Template Preview",
+      "rendering": "Rendering preview...",
+      "selectToPreview": "Select a template to preview",
+      "authorPrefix": "Author:",
+      "versionPrefix": "Version",
+      "builtinTag": "· Built-in",
+      "tipText": "Tip: You can create custom HTML templates in the templates directory",
+      "cancelBtn": "Cancel",
+      "exportBtn": "Export Image",
+      "exporting": "Exporting...",
+      "toast": {
+        "loadTemplatesFailed": "Failed to load template list",
+        "renderFailed": "Failed to render template",
+        "exportFailed": "Failed to export image: {{error}}",
+        "openDirFailed": "Failed to open templates directory"
+      }
+    },
+    "toast": {
+      "loadStatsFailed": "Failed to load statistics",
+      "selectDateRange": "Please select a start and end date",
+      "startBeforeEnd": "Start date must be before end date"
+    }
   }
 }
