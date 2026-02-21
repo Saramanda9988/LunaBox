@@ -1,6 +1,7 @@
 import type { appconf } from "../../wailsjs/go/models";
 import { createRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { GetVersionInfo } from "../../wailsjs/go/service/VersionService";
 import { AISettingsPanel } from "../components/panel/AISettingsPanel";
 import { AutoBackupSettingsPanel } from "../components/panel/AutoBackupSettingsPanel";
@@ -23,6 +24,7 @@ export const Route = createRoute({
 });
 
 function SettingsPage() {
+  const { t } = useTranslation();
   const { config, fetchConfig, updateConfig } = useAppStore();
   const [formData, setFormData] = useState<appconf.AppConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,7 +100,7 @@ function SettingsPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[80vh] space-y-4 text-brand-500">
         <div className="i-mdi-cog-outline text-6xl animate-spin-slow" />
-        <p className="text-xl">正在准备设置...</p>
+        <p className="text-xl">{t("settings.preparingSettings")}</p>
       </div>
     );
   }
@@ -106,42 +108,42 @@ function SettingsPage() {
   return (
     <div className={`space-y-6 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${isLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
       <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-bold text-brand-900 dark:text-white">设置</h1>
+        <h1 className="text-4xl font-bold text-brand-900 dark:text-white">{t("settings.title")}</h1>
       </div>
 
-      <CollapsibleSection title="基础配置" icon="i-mdi-database-settings" defaultOpen={true}>
+      <CollapsibleSection title={t("settings.sections.basic")} icon="i-mdi-database-settings" defaultOpen={true}>
         <BasicSettingsPanel formData={formData} onChange={handleFormChange} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="外观设置" icon="i-mdi-palette" defaultOpen={false}>
+      <CollapsibleSection title={t("settings.sections.appearance")} icon="i-mdi-palette" defaultOpen={false}>
         <BackgroundSettingsPanel formData={formData} onChange={handleFormChange} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="游玩配置" icon="i-mdi-timer-play-outline" defaultOpen={false}>
+      <CollapsibleSection title={t("settings.sections.game")} icon="i-mdi-timer-play-outline" defaultOpen={false}>
         <GameSettingsPanel formData={formData} onChange={handleFormChange} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="云备份配置" icon="i-mdi-cloud-upload" defaultOpen={false}>
+      <CollapsibleSection title={t("settings.sections.cloudBackup")} icon="i-mdi-cloud-upload" defaultOpen={false}>
         <CloudBackupSettingsPanel formData={formData} onChange={handleFormChange} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="自动备份" icon="i-mdi-backup-restore" defaultOpen={false}>
+      <CollapsibleSection title={t("settings.sections.autoBackup")} icon="i-mdi-backup-restore" defaultOpen={false}>
         <AutoBackupSettingsPanel formData={formData} onChange={handleFormChange} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="AI 配置" icon="i-mdi-robot-happy" defaultOpen={false}>
+      <CollapsibleSection title={t("settings.sections.ai")} icon="i-mdi-robot-happy" defaultOpen={false}>
         <AISettingsPanel formData={formData} onChange={handleFormChange} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="数据库备份" icon="i-mdi-database-refresh" defaultOpen={false}>
+      <CollapsibleSection title={t("settings.sections.dbBackup")} icon="i-mdi-database-refresh" defaultOpen={false}>
         <DBBackupPanel />
       </CollapsibleSection>
 
-      <CollapsibleSection title="全量数据备份" icon="i-mdi-package-variant" defaultOpen={false}>
+      <CollapsibleSection title={t("settings.sections.fullDataBackup")} icon="i-mdi-package-variant" defaultOpen={false}>
         <FullDataBackupPanel />
       </CollapsibleSection>
 
-      <CollapsibleSection title="应用更新" icon="i-mdi-update" defaultOpen={false}>
+      <CollapsibleSection title={t("settings.sections.update")} icon="i-mdi-update" defaultOpen={false}>
         <UpdateSettingsPanel formData={formData} onChange={handleFormChange} />
       </CollapsibleSection>
 

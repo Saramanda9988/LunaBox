@@ -1,6 +1,7 @@
 import type { appconf } from "../../../wailsjs/go/models";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import { CheckForUpdates, SkipVersion } from "../../../wailsjs/go/service/UpdateService";
 import { BetterButton } from "../ui/BetterButton";
 import { BetterSwitch } from "../ui/BetterSwitch";
@@ -21,6 +22,7 @@ interface UpdateInfo {
 }
 
 export function UpdateSettingsPanel({ formData, onChange }: UpdateSettingsPanelProps) {
+  const { t } = useTranslation();
   const [isChecking, setIsChecking] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [showDialog, setShowDialog] = useState(false);
@@ -41,7 +43,7 @@ export function UpdateSettingsPanel({ formData, onChange }: UpdateSettingsPanelP
       }
     }
     catch (err) {
-      setError(err instanceof Error ? err.message : "检查更新失败");
+      setError(err instanceof Error ? err.message : t("settings.update.checkFailed"));
     }
     finally {
       setIsChecking(false);
@@ -57,22 +59,21 @@ export function UpdateSettingsPanel({ formData, onChange }: UpdateSettingsPanelP
       setShowDialog(false);
     }
     catch (err) {
-      const msg = `修改失败：${err}`;
-      toast.error(msg);
+      toast.error(t("settings.update.skipFailed", { error: err }));
     }
   };
 
   return (
     <>
       <div className="space-y-4">
-        {/* 启动时自动检查更新 */}
+        {/* Auto check on startup */}
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <label htmlFor="check_update_on_startup" className="text-sm font-medium text-brand-700 dark:text-brand-300 cursor-pointer">
-              启动时自动检查更新
+              {t("settings.update.autoCheckLabel")}
             </label>
             <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
-              应用启动时自动检查是否有新版本（每天最多检查一次）
+              {t("settings.update.autoCheckHint")}
             </p>
           </div>
           <BetterSwitch
@@ -82,7 +83,7 @@ export function UpdateSettingsPanel({ formData, onChange }: UpdateSettingsPanelP
           />
         </div>
 
-        {/* 手动检查更新按钮 */}
+        {/* Manual check button */}
         <div className="pt-2">
           <BetterButton
             variant="primary"
@@ -92,24 +93,24 @@ export function UpdateSettingsPanel({ formData, onChange }: UpdateSettingsPanelP
             icon="i-mdi-update"
             className="w-full justify-center"
           >
-            {isChecking ? "检查中..." : "手动检查更新"}
+            {isChecking ? t("settings.update.checking") : t("settings.update.manualCheckBtn")}
           </BetterButton>
         </div>
 
-        {/* 错误信息 */}
+        {/* Error Info */}
         {error && (
           <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
             <div className="flex items-start gap-2">
               <span className="i-mdi-alert-circle text-red-600 dark:text-red-400 text-lg mt-0.5" />
               <div className="text-xs text-red-700 dark:text-red-300">
-                <p className="font-medium">检查更新失败</p>
+                <p className="font-medium">{t("settings.update.checkFailedTitle")}</p>
                 <p className="mt-1">{error}</p>
               </div>
             </div>
           </div>
         )}
 
-        {/* 发现新版本提示（对话框关闭但有更新时显示） */}
+        {/* New version hint (shown when dialog is closed but update exists) */}
         {updateInfo && updateInfo.has_update && !showDialog && !error && (
           <button
             type="button"
@@ -119,7 +120,7 @@ export function UpdateSettingsPanel({ formData, onChange }: UpdateSettingsPanelP
             <div className="flex items-center gap-2">
               <span className="i-mdi-update text-accent-600 dark:text-accent-400 text-xl" />
               <div className="flex-1 text-sm text-accent-700 dark:text-accent-300">
-                <span className="font-medium">发现新版本</span>
+                <span className="font-medium">{t("settings.update.newVersion")}</span>
                 <span className="ml-2 font-mono font-semibold">
                   v
                   {updateInfo.latest_ver}
@@ -130,13 +131,13 @@ export function UpdateSettingsPanel({ formData, onChange }: UpdateSettingsPanelP
           </button>
         )}
 
-        {/* 已是最新版本提示 */}
+        {/* Already up to date hint */}
         {updateInfo && !updateInfo.has_update && !error && (
           <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
             <div className="flex items-center gap-2">
               <span className="i-mdi-check-circle text-green-600 dark:text-green-400 text-xl" />
               <div className="text-sm text-green-700 dark:text-green-300">
-                <span className="font-medium">已是最新版本</span>
+                <span className="font-medium">{t("settings.update.upToDate")}</span>
                 <span className="ml-2 font-mono">{updateInfo.current_ver}</span>
               </div>
             </div>
@@ -144,7 +145,7 @@ export function UpdateSettingsPanel({ formData, onChange }: UpdateSettingsPanelP
         )}
       </div>
 
-      {/* 更新对话框 */}
+      {/* Update Dialog */}
       {showDialog && updateInfo && (
         <UpdateDialog
           updateInfo={updateInfo}

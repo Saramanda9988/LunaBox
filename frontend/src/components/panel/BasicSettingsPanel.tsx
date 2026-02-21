@@ -1,4 +1,5 @@
 import type { appconf } from "../../../wailsjs/go/models";
+import { useTranslation } from "react-i18next";
 import { BetterSelect } from "../ui/BetterSelect";
 import { BetterSwitch } from "../ui/BetterSwitch";
 
@@ -7,35 +8,37 @@ interface BetterSelectOption {
   label: string;
 }
 
-const COMMON_TIMEZONES: BetterSelectOption[] = [
-  { value: "Asia/Shanghai", label: "中国标准时间 (UTC+8)" },
-  { value: "Asia/Tokyo", label: "日本标准时间 (UTC+9)" },
-  { value: "Asia/Seoul", label: "韩国标准时间 (UTC+9)" },
-  { value: "Asia/Hong_Kong", label: "香港时间 (UTC+8)" },
-  { value: "Asia/Taipei", label: "台北时间 (UTC+8)" },
-  { value: "Asia/Singapore", label: "新加坡时间 (UTC+8)" },
-  { value: "Asia/Bangkok", label: "曼谷时间 (UTC+7)" },
-  { value: "Asia/Dubai", label: "迪拜时间 (UTC+4)" },
-  { value: "Europe/London", label: "伦敦时间 (UTC+0)" },
-  { value: "Europe/Paris", label: "巴黎时间 (UTC+1)" },
-  { value: "Europe/Berlin", label: "柏林时间 (UTC+1)" },
-  { value: "Europe/Moscow", label: "莫斯科时间 (UTC+3)" },
-  { value: "America/New_York", label: "纽约时间 (UTC-5)" },
-  { value: "America/Chicago", label: "芝加哥时间 (UTC-6)" },
-  { value: "America/Denver", label: "丹佛时间 (UTC-7)" },
-  { value: "America/Los_Angeles", label: "洛杉矶时间 (UTC-8)" },
-  { value: "America/Sao_Paulo", label: "圣保罗时间 (UTC-3)" },
-  { value: "Australia/Sydney", label: "悉尼时间 (UTC+10)" },
-  { value: "Pacific/Auckland", label: "奥克兰时间 (UTC+12)" },
-  { value: "UTC", label: "世界协调时间 (UTC)" },
-];
-
 interface BasicSettingsProps {
   formData: appconf.AppConfig;
   onChange: (data: appconf.AppConfig) => void;
 }
 
 export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
+  const { t } = useTranslation();
+
+  const COMMON_TIMEZONES: BetterSelectOption[] = [
+    { value: "Asia/Shanghai", label: "China Standard Time (UTC+8)" },
+    { value: "Asia/Tokyo", label: "Japan Standard Time (UTC+9)" },
+    { value: "Asia/Seoul", label: "Korea Standard Time (UTC+9)" },
+    { value: "Asia/Hong_Kong", label: "Hong Kong Time (UTC+8)" },
+    { value: "Asia/Taipei", label: "Taipei Time (UTC+8)" },
+    { value: "Asia/Singapore", label: "Singapore Time (UTC+8)" },
+    { value: "Asia/Bangkok", label: "Bangkok Time (UTC+7)" },
+    { value: "Asia/Dubai", label: "Dubai Time (UTC+4)" },
+    { value: "Europe/London", label: "London Time (UTC+0)" },
+    { value: "Europe/Paris", label: "Paris Time (UTC+1)" },
+    { value: "Europe/Berlin", label: "Berlin Time (UTC+1)" },
+    { value: "Europe/Moscow", label: "Moscow Time (UTC+3)" },
+    { value: "America/New_York", label: "New York Time (UTC-5)" },
+    { value: "America/Chicago", label: "Chicago Time (UTC-6)" },
+    { value: "America/Denver", label: "Denver Time (UTC-7)" },
+    { value: "America/Los_Angeles", label: "Los Angeles Time (UTC-8)" },
+    { value: "America/Sao_Paulo", label: "São Paulo Time (UTC-3)" },
+    { value: "Australia/Sydney", label: "Sydney Time (UTC+10)" },
+    { value: "Pacific/Auckland", label: "Auckland Time (UTC+12)" },
+    { value: "UTC", label: "Coordinated Universal Time (UTC)" },
+  ];
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const newValue = type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
@@ -53,7 +56,7 @@ export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
           onChange={handleChange}
           className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
         />
-        <p className="text-xs text-brand-500 dark:text-brand-400">如果您想使用Bangumi数据源，请一定填写</p>
+        <p className="text-xs text-brand-500 dark:text-brand-400">{t("settings.basic.bangumiTokenHint")}</p>
       </div>
 
       <div className="space-y-2">
@@ -68,21 +71,21 @@ export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
       </div>
 
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">主题</label>
+        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">{t("settings.basic.themeLabel")}</label>
         <BetterSelect
           name="theme"
           value={formData.theme}
           onChange={value => onChange({ ...formData, theme: value } as appconf.AppConfig)}
           options={[
-            { value: "light", label: "浅色" },
-            { value: "dark", label: "深色" },
-            { value: "system", label: "跟随系统" },
+            { value: "light", label: t("settings.basic.themeLight") },
+            { value: "dark", label: t("settings.basic.themeDark") },
+            { value: "system", label: t("settings.basic.themeSystem") },
           ]}
         />
       </div>
 
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">语言</label>
+        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">{t("settings.basic.languageLabel")}</label>
         <BetterSelect
           name="language"
           value={formData.language}
@@ -95,20 +98,20 @@ export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
       </div>
 
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">时区</label>
-        <span className="text-xs text-brand-500 dark:text-brand-400">用于正确显示和记录游戏时长,修改后请重启应用</span>
+        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">{t("settings.basic.timezoneLabel")}</label>
+        <span className="text-xs text-brand-500 dark:text-brand-400">{t("settings.basic.timezoneHint")}</span>
         <BetterSelect
           name="timezone"
           value={formData.time_zone || "Asia/Shanghai"}
           onChange={value => onChange({ ...formData, time_zone: value } as appconf.AppConfig)}
           options={COMMON_TIMEZONES}
-          placeholder="请选择时区"
+          placeholder={t("settings.basic.timezonePlaceholder")}
         />
       </div>
 
       <div className="flex items-center justify-between p-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-          关闭窗口时最小化到系统托盘
+          {t("settings.basic.closeToTray")}
         </label>
         <BetterSwitch
           id="close_to_tray"

@@ -1,5 +1,6 @@
 import type { vo } from "../../../wailsjs/go/models";
 import { useNavigate } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 
 interface CategoryCardProps {
   category: vo.CategoryVO;
@@ -21,6 +22,7 @@ export function CategoryCard({
   onSelectChange,
 }: CategoryCardProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleViewDetails = () => {
     navigate({ to: `/categories/${category.id}` });
@@ -61,9 +63,7 @@ export function CategoryCard({
           {category.name}
         </h3>
         <p className="text-sm text-brand-500 dark:text-brand-400">
-          {category.game_count}
-          {" "}
-          个游戏
+          {t("categories.gameCount", { count: category.game_count })}
         </p>
       </div>
 
@@ -72,7 +72,7 @@ export function CategoryCard({
           type="button"
           onClick={handleToggleSelect}
           className="absolute right-3 top-1/2 -translate-y-1/2"
-          title={selectionDisabled ? "系统收藏夹不可批量删除" : (selected ? "取消选择" : "选择")}
+          title={selectionDisabled ? t("categories.systemLocked") : (selected ? t("common.select") : t("common.select"))}
         >
           {selectionDisabled
             ? (
@@ -95,12 +95,12 @@ export function CategoryCard({
             <button
               type="button"
               onClick={(e) => {
-                e.preventDefault(); // Prevent navigation
+                e.preventDefault();
                 e.stopPropagation();
                 onEdit(e);
               }}
               className="p-2 text-brand-400 hover:text-neutral-500"
-              title="编辑收藏夹"
+              title={t("categories.editBtnTitle")}
             >
               <div className="i-mdi-pencil text-lg" />
             </button>
@@ -109,12 +109,12 @@ export function CategoryCard({
             <button
               type="button"
               onClick={(e) => {
-                e.preventDefault(); // Prevent navigation
+                e.preventDefault();
                 e.stopPropagation();
                 onDelete(e);
               }}
               className="p-2 text-brand-400 hover:text-error-500"
-              title="删除收藏夹"
+              title={t("categories.deleteBtnTitle")}
             >
               <div className="i-mdi-delete text-lg" />
             </button>

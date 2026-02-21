@@ -1,5 +1,6 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import {
   CreateFullDataBackup,
   ScheduleFullDataRestore,
@@ -12,11 +13,11 @@ import { formatLocalDateTime } from "../../utils/time";
 import { ConfirmModal } from "../modal/ConfirmModal";
 
 export function FullDataBackupPanel() {
+  const { t } = useTranslation();
   const { config } = useAppStore();
   const [isFullBackingUp, setIsFullBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
 
-  // 确认弹窗状态
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -28,7 +29,7 @@ export function FullDataBackupPanel() {
     title: "",
     message: "",
     type: "info",
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
   const handleCreateFullBackup = async () => {
@@ -36,19 +37,18 @@ export function FullDataBackupPanel() {
       return;
 
     try {
-      // 调用后端打开保存文件对话框
       const savePath = await SelectBackupSavePath();
 
       if (!savePath) {
-        return; // 用户取消
+        return;
       }
 
       setIsFullBackingUp(true);
       await CreateFullDataBackup(savePath);
-      toast.success(`全量数据备份成功: ${savePath}`);
+      toast.success(t("settings.fullDataBackup.toast.exportSuccess", { path: savePath }));
     }
     catch (err: any) {
-      toast.error(`全量备份失败: ${err}`);
+      toast.error(t("settings.fullDataBackup.toast.exportFailed", { error: err }));
     }
     finally {
       setIsFullBackingUp(false);
@@ -60,34 +60,33 @@ export function FullDataBackupPanel() {
       return;
 
     try {
-      // 调用后端打开文件选择对话框
       const backupPath = await SelectBackupRestorePath();
 
       if (!backupPath) {
-        return; // 用户取消
+        return;
       }
 
       setConfirmConfig({
         isOpen: true,
-        title: "恢复全量数据",
-        message: `确定要恢复全量数据吗？\n\n备份文件: ${backupPath}\n\n将覆盖应用配置、数据库和资源目录，程序会退出并在下次启动时恢复。`,
+        title: t("settings.fullDataBackup.modal.restoreTitle"),
+        message: t("settings.fullDataBackup.modal.restoreMsg", { path: backupPath }),
         type: "danger",
         onConfirm: async () => {
           setIsRestoring(true);
           try {
             await ScheduleFullDataRestore(backupPath);
-            toast.success("已安排全量恢复，程序即将退出...");
+            toast.success(t("settings.fullDataBackup.toast.restoreScheduled"));
             setTimeout(() => SafeQuit(), 1500);
           }
           catch (err: any) {
-            toast.error(`安排全量恢复失败: ${err}`);
+            toast.error(t("settings.fullDataBackup.toast.restoreScheduleFailed", { error: err }));
             setIsRestoring(false);
           }
         },
       });
     }
     catch (err: any) {
-      toast.error(`选择文件失败: ${err}`);
+      toast.error(t("settings.fullDataBackup.toast.selectFileFailed", { error: err }));
     }
   };
 
@@ -95,45 +94,46 @@ export function FullDataBackupPanel() {
 
   return (
     <div className="space-y-6">
-      {/* 全量数据备份说明和操作区 */}
       <div className="rounded-lg">
         <div className="mb-6">
           <div className="space-y-2 text-sm">
             <p className="text-brand-600 dark:text-brand-300">
-              备份应用配置、数据库、封面与背景、图片缓存、日志及本地备份目录
+              {t("settings.fullDataBackup.hint")}
             </p>
             <p className="text-error-600 dark:text-error-400">
-              <span className="font-medium">注意：</span>
-              适合在进行重大更改前备份，或在不同设备间迁移数据使用。恢复后会覆盖现有数据，请谨慎操作。
+              <span className="font-medium">{t("settings.fullDataBackup.warningNote")}</span>
+              {t("settings.fullDataBackup.warningHint")}
             </p>
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
           <button
+            type="button"
             onClick={handleCreateFullBackup}
             disabled={isDisabled}
             className="glass-btn-neutral px-6 py-3 bg-brand-600 text-white rounded-md hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isFullBackingUp && <div className="i-mdi-loading animate-spin" />}
             <div className="i-mdi-export text-xl" />
-            {isFullBackingUp ? "正在打包..." : "导出备份"}
+            {isFullBackingUp ? t("settings.fullDataBackup.exporting") : t("settings.fullDataBackup.exportBtn")}
           </button>
 
           <button
+            type="button"
             onClick={handleRestoreFullBackup}
             disabled={isDisabled}
             className="glass-btn-neutral px-6 py-3 bg-warning-600 text-white rounded-md hover:bg-warning-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isRestoring && <div className="i-mdi-loading animate-spin" />}
             <div className="i-mdi-import text-xl" />
-            {isRestoring ? "正在准备..." : "导入恢复"}
+            {isRestoring ? t("settings.fullDataBackup.importing") : t("settings.fullDataBackup.importBtn")}
           </button>
         </div>
 
         {config?.last_full_backup_time && (
           <p className="text-xs text-brand-500 dark:text-brand-400 mt-4">
-            上次备份时间：
+            {t("settings.fullDataBackup.lastBackup")}
             {formatLocalDateTime(config.last_full_backup_time, config?.time_zone)}
           </p>
         )}

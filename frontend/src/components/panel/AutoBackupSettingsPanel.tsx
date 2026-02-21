@@ -1,4 +1,5 @@
 import type { appconf } from "../../../wailsjs/go/models";
+import { useTranslation } from "react-i18next";
 import { BetterSwitch } from "../ui/BetterSwitch";
 
 interface AutoBackupSettingsProps {
@@ -7,15 +8,17 @@ interface AutoBackupSettingsProps {
 }
 
 export function AutoBackupSettingsPanel({ formData, onChange }: AutoBackupSettingsProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <label htmlFor="auto_backup_db" className="text-sm font-medium text-brand-700 dark:text-brand-300 cursor-pointer">
-            应用退出时自动备份数据库
+            {t("settings.autoBackup.backupDbOnExit")}
           </label>
           <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
-            在应用关闭时自动创建数据库备份，保护您的游戏库数据
+            {t("settings.autoBackup.backupDbOnExitHint")}
           </p>
         </div>
         <BetterSwitch
@@ -28,10 +31,10 @@ export function AutoBackupSettingsPanel({ formData, onChange }: AutoBackupSettin
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <label htmlFor="auto_backup_game_save" className="text-sm font-medium text-brand-700 dark:text-brand-300 cursor-pointer">
-            游戏退出时自动备份存档
+            {t("settings.autoBackup.backupSaveOnExit")}
           </label>
           <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
-            在游戏进程结束时自动备份存档目录（需要先设置存档目录）
+            {t("settings.autoBackup.backupSaveOnExitHint")}
           </p>
         </div>
         <BetterSwitch
@@ -44,10 +47,10 @@ export function AutoBackupSettingsPanel({ formData, onChange }: AutoBackupSettin
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <label htmlFor="auto_upload_db_to_cloud" className={`text-sm font-medium cursor-pointer ${formData.cloud_backup_enabled ? "text-brand-700 dark:text-brand-300" : "text-brand-400 dark:text-brand-500"}`}>
-            自动上传数据库备份到云端
+            {t("settings.autoBackup.autoUploadDb")}
           </label>
           <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
-            在创建数据库备份后自动上传到云存储（需要先启用云备份）
+            {t("settings.autoBackup.autoUploadDbHint")}
           </p>
         </div>
         <BetterSwitch
@@ -61,10 +64,10 @@ export function AutoBackupSettingsPanel({ formData, onChange }: AutoBackupSettin
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <label htmlFor="auto_upload_game_save_to_cloud" className={`text-sm font-medium cursor-pointer ${formData.cloud_backup_enabled ? "text-brand-700 dark:text-brand-300" : "text-brand-400 dark:text-brand-500"}`}>
-            自动上传游戏存档备份到云端
+            {t("settings.autoBackup.autoUploadSave")}
           </label>
           <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
-            在游戏退出并备份存档后自动上传到云存储（需要先启用云备份）
+            {t("settings.autoBackup.autoUploadSaveHint")}
           </p>
         </div>
         <BetterSwitch
@@ -77,7 +80,7 @@ export function AutoBackupSettingsPanel({ formData, onChange }: AutoBackupSettin
 
       <div className="pt-4 border-t border-brand-300 dark:border-brand-700 grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">本地游戏备份保留数量</label>
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">{t("settings.autoBackup.localGameRetention")}</label>
           <input
             type="number"
             name="local_backup_retention"
@@ -85,11 +88,11 @@ export function AutoBackupSettingsPanel({ formData, onChange }: AutoBackupSettin
             onChange={e => onChange({ ...formData, local_backup_retention: Number.parseInt(e.target.value) || 0 } as appconf.AppConfig)}
             className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
           />
-          <p className="text-xs text-brand-500 dark:text-brand-400">每个游戏在本地保留的最大备份数量</p>
+          <p className="text-xs text-brand-500 dark:text-brand-400">{t("settings.autoBackup.localGameRetentionHint")}</p>
         </div>
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">本地数据库备份保留数量</label>
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">{t("settings.autoBackup.localDbRetention")}</label>
           <input
             type="number"
             name="local_db_backup_retention"
@@ -97,7 +100,7 @@ export function AutoBackupSettingsPanel({ formData, onChange }: AutoBackupSettin
             onChange={e => onChange({ ...formData, local_db_backup_retention: Number.parseInt(e.target.value) || 0 } as appconf.AppConfig)}
             className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
           />
-          <p className="text-xs text-brand-500 dark:text-brand-400">数据库在本地保留的最大备份数量</p>
+          <p className="text-xs text-brand-500 dark:text-brand-400">{t("settings.autoBackup.localDbRetentionHint")}</p>
         </div>
       </div>
     </div>
