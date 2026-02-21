@@ -755,5 +755,55 @@
       "selectDateRange": "Please select a start and end date",
       "startBeforeEnd": "Start date must be before end date"
     }
+  },
+  "root": {
+    "dragDrop": {
+      "dropToImport": "Drop to import games",
+      "dropHint": "Supports game folders and executables"
+    }
+  },
+  "sideBar": {
+    "home": "Home",
+    "library": "Library",
+    "stats": "Statistics",
+    "categories": "Collections",
+    "settings": "Settings",
+    "github": "GitHub"
+  },
+  "processSelectModal": {
+    "title": "Select Game Process",
+    "desc": "Detected that {{launcher}} has exited. If you did not quit manually, the imported executable may not be the actual game process. Please select the actual running process.",
+    "searchPlaceholder": "Search processes...",
+    "loading": "Loading...",
+    "noMatch": "No matching processes found",
+    "noProcesses": "No processes available",
+    "refreshBtn": "Refresh List",
+    "cancelBtn": "Cancel",
+    "confirmBtn": "Confirm Selection",
+    "toast": {
+      "loadFailed": "Failed to load process list",
+      "selectProcess": "Please select a process",
+      "setSuccess": "Monitoring process set: {{name}}",
+      "saveFailed": "Save failed, please try again"
+    }
+  },
+  "timezoneModal": {
+    "title": "Select Timezone",
+    "desc": "No timezone has been configured yet. Please select your timezone to correctly display and record play time.",
+    "detectedLabel": "Detected timezone:",
+    "unknown": "Unknown",
+    "placeholder": "Select a timezone",
+    "confirmBtn": "Confirm and Restart"
+  },
+  "updateDialog": {
+    "newVersion": "New Version Available",
+    "available": "An update is available for LunaBox",
+    "currentVersion": "Current Version",
+    "latestVersion": "Latest Version",
+    "releaseDate": "Release Date",
+    "changelog": "Changelog",
+    "githubDownload": "Download from GitHub",
+    "giteeDownload": "Download from Gitee",
+    "skipVersion": "Skip This Version"
   }
 }

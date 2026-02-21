@@ -755,5 +755,55 @@
       "selectDateRange": "请选择开始和结束日期",
       "startBeforeEnd": "开始日期必须早于结束日期"
     }
+  },
+  "root": {
+    "dragDrop": {
+      "dropToImport": "释放以导入游戏",
+      "dropHint": "支持游戏文件夹和可执行文件"
+    }
+  },
+  "sideBar": {
+    "home": "首页",
+    "library": "游戏库",
+    "stats": "统计",
+    "categories": "收藏",
+    "settings": "设置",
+    "github": "GitHub"
+  },
+  "processSelectModal": {
+    "title": "选择游戏进程",
+    "desc": "检测到 {{launcher}} 已退出，如果你没有手动退出，代表你导入游戏的不是实际的运行进程，请选择实际运行的游戏进程",
+    "searchPlaceholder": "搜索进程...",
+    "loading": "加载中...",
+    "noMatch": "未找到匹配的进程",
+    "noProcesses": "无可用进程",
+    "refreshBtn": "刷新列表",
+    "cancelBtn": "取消",
+    "confirmBtn": "确认选择",
+    "toast": {
+      "loadFailed": "获取进程列表失败",
+      "selectProcess": "请选择一个进程",
+      "setSuccess": "已设置监控进程: {{name}}",
+      "saveFailed": "保存失败，请重试"
+    }
+  },
+  "timezoneModal": {
+    "title": "选择时区",
+    "desc": "检测到您尚未配置时区。为了正确显示并记录游戏时长，请选择您所在的时区。",
+    "detectedLabel": "当前检测到的时区:",
+    "unknown": "未知",
+    "placeholder": "请选择时区",
+    "confirmBtn": "确认并重启应用"
+  },
+  "updateDialog": {
+    "newVersion": "发现新版本",
+    "available": "LunaBox 有可用的更新",
+    "currentVersion": "当前版本",
+    "latestVersion": "最新版本",
+    "releaseDate": "发布日期",
+    "changelog": "更新内容",
+    "githubDownload": "GitHub 下载",
+    "giteeDownload": "Gitee 下载",
+    "skipVersion": "跳过此版本"
   }
 }
