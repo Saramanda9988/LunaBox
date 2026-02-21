@@ -1,0 +1,856 @@
+{
+  "common": {
+    "confirm": "确定",
+    "cancel": "取消",
+    "save": "保存",
+    "saving": "保存中...",
+    "search": "搜索",
+    "searching": "搜索中...",
+    "delete": "删除",
+    "edit": "编辑",
+    "add": "添加",
+    "manualAdd": "手动添加",
+    "back": "返回",
+    "previousStep": "返回上一步",
+    "allStatus": "全部状态",
+    "notStarted": "未开始",
+    "playing": "游玩中",
+    "completed": "已通关",
+    "onHold": "搁置",
+    "name": "名称",
+    "createdAt": "添加时间",
+    "selectAll": "全选",
+    "clearStore": "清空",
+    "selected": "已选",
+    "unknownDeveloper": "Unknown Developer",
+    "select": "选择",
+    "find": "查找",
+    "finish": "完成",
+    "reselect": "← 重新选择",
+    "action": "操作",
+    "loading": "加载中...",
+    "complete": "完成",
+    "stop": "停止匹配",
+    "duration": {
+      "hours": "小时",
+      "minutes": "分钟",
+      "hoursShort": "时",
+      "minutesShort": "分"
+    }
+  },
+  "modal": {
+    "titles": {
+      "warning": "警告",
+      "info": "提示"
+    }
+  },
+  "library": {
+    "title": "游戏库",
+    "searchPlaceholder": "搜索游戏...",
+    "emptyState": "暂无游戏",
+    "emptyStateAction": "添加一些游戏开始吧",
+    "notFound": "未找到匹配的游戏",
+    "batchUpdateStatus": "批量更新状态",
+    "setStatus": "设为状态",
+    "batchAddToFilter": "批量添加到收藏",
+    "batchDelete": "批量删除",
+    "addGame": "添加游戏",
+    "addGameDesc1": "选择可执行文件并搜索元数据",
+    "batchImport": "批量导入",
+    "batchImportDesc": "扫描游戏库目录批量添加",
+    "importPotatoVN": "从 PotatoVN 导入",
+    "importPotatoVNDesc": "导入 PotatoVN 导出的 ZIP 文件",
+    "importPlaynite": "从 Playnite 导入",
+    "importPlayniteDesc": "导入 Playnite 导出的 JSON 文件",
+    "toast": {
+      "batchStatusUpdated": "已将 {{count}} 个游戏状态更新为「{{status}}」",
+      "batchStatusFailed": "批量更新状态失败",
+      "loadFavFailed": "加载收藏夹失败",
+      "batchAddFavSuccess": "已添加 {{count}} 个游戏到收藏",
+      "batchAddFavFailed": "批量添加失败",
+      "batchDeleteTitle": "批量删除游戏",
+      "batchDeleteConfirmMsg": "确定要删除选中的 {{count}} 个游戏吗？此操作将从库中移除这些游戏，但不会删除本地游戏文件。",
+      "batchDeleteSuccess": "批量删除成功",
+      "batchDeleteFailed": "批量删除失败"
+    }
+  },
+  "filterBar": {
+    "exitBatchSelection": "退出批量选择",
+    "enterBatchSelection": "批量选择",
+    "sortAsc": "升序",
+    "sortDesc": "降序"
+  },
+  "gameCard": {
+    "deselect": "取消选择",
+    "select": "选择",
+    "startGame": "启动游戏",
+    "viewDetails": "查看详情",
+    "startSuccess": "{{name}} 启动成功",
+    "startFailedNotLaunched": "{{name}} 启动失败（未能启动）",
+    "startFailedLog": "{{name}} 启动失败, 查询日志获得帮助"
+  },
+  "addGameModal": {
+    "title": "添加游戏",
+    "selectExecutable": "选择启动程序",
+    "selectExecutablePlaceholder": "请选择一个可执行程序",
+    "gameNameLabel": "游戏名称 *",
+    "fetchMetadata": "搜索元信息",
+    "whichResultExpected": "哪个结果是您期望的？",
+    "fromSource": "来自 {{source}}",
+    "notMatched": "都不是?",
+    "inputManual": "手动填写",
+    "searchById": "输入id查找",
+    "dataSourceLabel": "数据源",
+    "gameIdLabel": "游戏 ID",
+    "gameIdPlaceholder": "请输入游戏 ID",
+    "confirm": "确认",
+    "manualFillTitle": "手动填写游戏信息",
+    "coverImageLabel": "封面图片",
+    "coverImagePlaceholder": "输入图片 URL 或选择本地图片",
+    "coverImageSupportTip": "支持远端 URL 和本地图片选取",
+    "developerLabel": "开发商",
+    "summaryLabel": "简介",
+    "toast": {
+      "openSelectorFailed": "打开系统选择器失败",
+      "fetchMetaFailed": "获取元信息失败,请检查网络或token的有效性",
+      "saveFailed": "保存游戏失败",
+      "fetchByIdFailed": "通过id获取元信息失败, 请检查网络或token的有效性",
+      "selectCoverFailed": "选择封面图片失败",
+      "nameRequired": "请填写游戏名称",
+      "saveGameFailed": "保存游戏失败",
+      "fetchMetaByIdFailed": "通过id获取元信息失败, 请检查网络或token的有效性",
+      "fillGameName": "请填写游戏名称"
+    },
+    "executablePlaceholder": "请选择一个可执行程序",
+    "gameName": "游戏名称",
+    "searchMeta": "搜索元信息",
+    "whichResult": "哪个结果是您期望的？",
+    "goBack": "返回",
+    "noneOfAbove": "都不是?",
+    "fillManually": "手动填写",
+    "dataSource": "数据源",
+    "gameId": "游戏 ID",
+    "manualFillInfo": "手动填写游戏信息",
+    "coverImage": "封面图片",
+    "coverPlaceholder": "输入图片 URL 或选择本地图片",
+    "coverHint": "支持远端 URL 和本地图片选取",
+    "developer": "开发商",
+    "summary": "简介"
+  },
+  "batchImportModal": {
+    "title": "批量导入游戏库",
+    "selectDir": "选择您的游戏库目录",
+    "scanHint": "程序将扫描一级子文件夹，每个包含可执行文件的文件夹将被识别为一个游戏",
+    "btn": {
+      "selectDir": "选择游戏库目录"
+    },
+    "scanning": "正在扫描目录...",
+    "detected": "检测到",
+    "matched": "已匹配",
+    "notMatched": "未匹配",
+    "pending": "待匹配",
+    "noFolderDetected": "未检测到游戏文件夹",
+    "searchName": "搜索名称",
+    "executable": "启动程序",
+    "matchStatus": "匹配状态",
+    "status": {
+      "pending": "待匹配",
+      "matched": "已匹配",
+      "notFound": "未找到",
+      "error": "错误"
+    },
+    "manualSelect": "手动选择",
+    "startMatching": "开始匹配元数据",
+    "importCount": "导入 {{count}} 个游戏",
+    "matching": "正在匹配元数据...",
+    "matchHint": "为避免触发限流，匹配速度可能较慢，请耐心等待",
+    "importing": "正在导入游戏...",
+    "result": {
+      "success": "成功导入",
+      "skipped": "已跳过",
+      "failed": "导入失败"
+    },
+    "skippedGames": "跳过的游戏:",
+    "failedGames": "导入失败的游戏:",
+    "reselect": "重新选择目录",
+    "noMatchResult": "未找到匹配结果",
+    "searchById": "通过 ID 查找",
+    "importWithoutMeta": "不匹配元数据，仅导入路径",
+    "inputId": "输入 ID",
+    "toast": {
+      "scanFailed": "扫描目录失败",
+      "selectDirFailed": "选择目录失败",
+      "importSuccess": "成功导入 {{count}} 个游戏",
+      "importFailed": "导入失败",
+      "gameNotFound": "未找到游戏",
+      "fetchFailed": "获取失败"
+    }
+  },
+  "gameImportModal": {
+    "playnite": {
+      "title": "从 Playnite 导入",
+      "desc": "选择 Playnite 导出的 JSON 文件",
+      "hint": "支持通过 Playnite 导出脚本生成的游戏数据文件",
+      "btn": "选择 JSON 文件"
+    },
+    "potatovn": {
+      "title": "从 PotatoVN 导入",
+      "desc": "选择 PotatoVN 导出的 ZIP 文件",
+      "hint": "支持包含 data.galgames.json 的 PotatoVN 备份文件",
+      "btn": "选择 ZIP 文件"
+    },
+    "loading": "加载中...",
+    "willImport": "将导入",
+    "exists": "已存在",
+    "noPath": "无路径",
+    "skipNoPath": "跳过无路径的游戏",
+    "noPathHint": "有 {{count}} 个游戏没有本地路径，这些可能是网络游戏或已删除的游戏。",
+    "noPathHintCheck": "勾选此项将跳过这些游戏。",
+    "noPathHintUncheck": "取消勾选以导入这些游戏（不含启动路径）。",
+    "noGameDataFound": "未找到游戏数据",
+    "gameName": "游戏名称",
+    "developer": "开发商",
+    "status": {
+      "skipped": "将跳过"
+    },
+    "willSkip": "将跳过",
+    "newAdd": "新增",
+    "importCount": "导入 {{count}} 个游戏",
+    "importing": "正在导入...",
+    "doNotCloseWarning": "这可能需要一些时间，请勿关闭窗口",
+    "toast": {
+      "previewFailed": "预览导入内容失败",
+      "selectFileFailed": "选择文件失败",
+      "importSuccess": "成功导入 {{count}} 个游戏",
+      "importFailed": "导入失败"
+    },
+    "skipNoPathHint1": "有 {{count}} 个游戏没有本地路径，这些可能是网络游戏或已删除的游戏。",
+    "skipNoPathHintUncheck": "取消勾选以导入这些游戏（不含启动路径）。",
+    "skipNoPathHintCheck": "勾选此项将跳过这些游戏。",
+    "noGameData": "未找到游戏数据",
+    "noPathLabel": "无路径",
+    "reselect": "重新选择",
+    "importHint": "这可能需要一些时间，请勿关闭窗口",
+    "result": {
+      "success": "成功导入",
+      "skipped": "已跳过",
+      "failed": "导入失败"
+    },
+    "skippedGames": "跳过的游戏:",
+    "failedGames": "导入失败的游戏:"
+  },
+  "game": {
+    "notFound": "未找到该游戏",
+    "backToLibrary": "返回库",
+    "dataSource": "数据来源",
+    "developer": "开发",
+    "summary": "简介",
+    "noSummary": "暂无简介",
+    "noCover": "没有封面",
+    "addToFav": "添加到收藏",
+    "deleteGame": "删除游戏",
+    "deleteConfirmMsg": "确定要删除游戏 \"{{name}}\" 吗？此操作将从库中移除该游戏，但不会删除本地游戏文件。",
+    "confirmDelete": "确认删除",
+    "tabs": {
+      "stats": "游戏统计",
+      "launch": "启动配置",
+      "backup": "备份"
+    },
+    "toast": {
+      "loadDataFailed": "加载游戏数据失败",
+      "saveFailed": "保存失败: {{error}}",
+      "selectExecutableFailed": "选择可执行文件失败",
+      "deleteSuccess": "删除成功",
+      "deleteFailed": "删除失败",
+      "selectSaveDirFailed": "选择存档路径失败",
+      "selectSaveFileFailed": "选择存档文件失败",
+      "selectCoverFailed": "选择封面图片失败",
+      "updateRemoteSuccess": "从远程更新成功",
+      "updateRemoteFailed": "从远程更新失败: {{error}}",
+      "statusUpdated": "状态已更新",
+      "statusUpdateFailed": "状态更新失败",
+      "loadFavFailed": "加载收藏夹失败",
+      "favUpdated": "收藏已更新",
+      "updateFavFailed": "更新收藏失败",
+      "selectFileFailed": "选择文件失败"
+    }
+  },
+  "gameBackup": {
+    "title": "存档备份",
+    "pathLabel": "存档路径: {{path}}",
+    "pathPlaceholder": "请先在编辑页面设置存档路径（文件或文件夹）",
+    "openFolder": "打开备份文件夹",
+    "backingUp": "备份中...",
+    "backupNow": "立即备份",
+    "localBackups": "本地备份",
+    "autoBackupEnabled": "自动备份已启用",
+    "noLocalBackups": "暂无本地备份记录",
+    "size": "大小: ",
+    "uploadToCloud": "上传到云端",
+    "restore": "恢复备份",
+    "cloudBackups": "云端备份",
+    "refreshCloudList": "刷新云端备份列表",
+    "noCloudBackups": "暂无云端备份记录",
+    "restoreFromCloud": "从云端恢复",
+    "cloudNotEnabled": "云备份未启用",
+    "cloudConfigHint": "前往设置页面配置云备份，将存档同步到云端",
+    "modal": {
+      "restoreTitle": "恢复存档",
+      "restoreMsg": "确定要恢复到 {{time}} 的备份吗？当前存档将被覆盖。",
+      "deleteTitle": "删除备份",
+      "deleteMsg": "确定要删除此本地备份吗？此操作无法撤销。",
+      "restoreCloudTitle": "从云端恢复",
+      "restoreCloudMsg": "确定要从云端恢复 {{name}} 吗？当前存档将被覆盖。"
+    },
+    "toast": {
+      "savePathRequired": "请先设置存档路径",
+      "backupCreated": "备份创建成功",
+      "backupFailed": "备份失败: {{error}}",
+      "restored": "存档已恢复",
+      "restoreFailed": "恢复失败: {{error}}",
+      "deleted": "备份已删除",
+      "deleteFailed": "删除失败: {{error}}",
+      "openFolderFailed": "打开文件夹失败: {{error}}",
+      "uploaded": "已上传到云端",
+      "uploadFailed": "上传失败: {{error}}",
+      "restoredFromCloud": "存档已从云端恢复"
+    }
+  },
+  "gameLaunch": {
+    "processMonitor": "进程监控",
+    "executable": "可执行程序",
+    "noPathSet": "未设置游戏路径",
+    "executableHint": "LunaBox 使用此可执行文件启动游戏。这里是您一开始选择的可执行文件路径",
+    "actualProcess": "实际游戏进程",
+    "selectProcessFile": "选择进程文件",
+    "processHint": "指定实际游戏的进程名称（包含 .exe 后缀）。\n如果不指定，LunaBox 会尝试监控可执行路径。如果之前的选择是启动器，您需要在游戏启动后弹出的选择框中手动指定此进程。\n在此处预先填写可避免每次启动时手动选择。",
+    "enhancementTools": "启动增强工具",
+    "leLabel": "转区工具",
+    "leDesc": "使用日文环境模拟启动游戏，解决乱码和区域限制问题。",
+    "leNotConfigured": "请先在设置中配置 LEProc.exe 路径",
+    "magpieLabel": "超分缩放",
+    "magpieDesc": "游戏启动后自动启动 Magpie 进行全屏超分辨率缩放。",
+    "magpieNotConfigured": "请先在设置中配置 Magpie.exe 路径",
+    "toast": {
+      "lePathRequired": "请先在设置中配置 Locale Emulator 路径",
+      "magpiePathRequired": "请先在设置中配置 Magpie 路径"
+    }
+  },
+  "gameStats": {
+    "totalPlayCount": "累计游戏次数",
+    "todayPlayTime": "今日游戏时长",
+    "totalPlayTime": "累计总时长",
+    "zeroMinutes": "0分钟",
+    "chartLabel": "游戏时长 (分钟)",
+    "noPlaySessions": "暂无游玩记录",
+    "duration": "时长:",
+    "deleteRecord": "删除记录",
+    "period": {
+      "week": "周",
+      "month": "月",
+      "all": "全部"
+    },
+    "manualAdd": "手动添加",
+    "modal": {
+      "deleteSessionTitle": "删除游玩记录",
+      "deleteSessionMsg": "确定要删除这条游玩记录吗？此操作不可撤销。"
+    },
+    "toast": {
+      "loadStatsFailed": "加载统计数据失败",
+      "loadSessionsFailed": "加载游玩记录失败",
+      "deleteSuccess": "删除成功",
+      "deleteFailed": "删除失败"
+    }
+  },
+  "addToCategory": {
+    "title": "添加到收藏",
+    "gameCount": "{{count}} 个游戏",
+    "empty": "暂无收藏夹"
+  },
+  "gameEdit": {
+    "name": "游戏名称",
+    "cover": "封面图片",
+    "coverPlaceholder": "输入图片 URL 或选择图片",
+    "selectImage": "选择图片",
+    "coverHint": "支持远端 URL 和本地图片选取",
+    "developer": "开发商",
+    "path": "启动路径",
+    "selectFile": "选择文件",
+    "openPathFailed": "打开路径失败",
+    "openInExplorer": "在资源管理器中打开",
+    "savePath": "存档路径",
+    "savePathPlaceholder": "请设置存档路径",
+    "selectFolder": "选择目录",
+    "savePathHint": "您可以指定游戏的存档目录或文件，用于云端备份和多端同步",
+    "summary": "简介",
+    "sourceType": "数据源类型",
+    "sourceNone": "无",
+    "sourceLocal": "本地",
+    "sourceYmgal": "月幕gal",
+    "sourceId": "数据源 ID",
+    "sourceIdPlaceholder": "输入平台对应的游戏ID",
+    "updateFromRemote": "从远端更新信息"
+  },
+  "dragDropImportModal": {
+    "toast": {
+      "noValidGames": "未检测到有效的游戏文件",
+      "processFailed": "处理拖入的文件失败"
+    },
+    "title": "拖拽导入游戏",
+    "processing": "正在处理拖入的文件",
+    "fileCount": "共 {{count}} 个文件/文件夹",
+    "noValidGamesFound": "未检测到有效的游戏",
+    "enterId": "输入 ID"
+  },
+  "home": {
+    "title": "首页",
+    "welcome": "欢迎回来！",
+    "welcomeBack": "欢迎回来",
+    "todayPlayTime": "今日游玩时间",
+    "noPlayRecord": "还没有游玩记录",
+    "noPlayRecordHint": "去游戏库选择一款游戏开始吧",
+    "browseLibrary": "浏览游戏库",
+    "noData": "暂无数据",
+    "retry": "重试",
+    "playingNow": "正在游玩中...",
+    "lastPlayed": "上次游玩：{{time}}",
+    "totalPlayTime": "总游玩时长：",
+    "gaming": "正在游戏",
+    "continueGame": "继续游戏",
+    "toast": {
+      "launching": "正在启动 {{name}}",
+      "launchFailed": "启动游戏失败"
+    }
+  },
+  "categories": {
+    "title": "收藏",
+    "searchPlaceholder": "搜索收藏夹...",
+    "newCategory": "新建收藏夹",
+    "gameCount": "{{count}} 个游戏",
+    "editBtnTitle": "编辑收藏夹",
+    "deleteBtnTitle": "删除收藏夹",
+    "systemLocked": "系统收藏夹不可批量删除",
+    "sortOptions": {
+      "name": "名称",
+      "gameCount": "游戏数量",
+      "createdAt": "创建时间",
+      "updatedAt": "更新时间"
+    },
+    "modal": {
+      "addTitle": "新建收藏夹",
+      "editTitle": "编辑收藏夹",
+      "namePlaceholder": "收藏夹名称",
+      "create": "创建"
+    },
+    "toast": {
+      "loadFailed": "加载收藏夹失败",
+      "createSuccess": "收藏夹创建成功",
+      "createFailed": "创建收藏夹失败",
+      "updateSuccess": "收藏夹已更新",
+      "updateFailed": "更新收藏夹失败",
+      "deleteTitle": "删除收藏夹",
+      "deleteMsg": "确定要删除收藏夹 \"{{name}}\" 吗？此操作无法撤销。",
+      "deleteSuccess": "收藏夹已删除",
+      "deleteFailed": "删除收藏夹失败",
+      "batchDeleteTitle": "批量删除收藏夹",
+      "batchDeleteMsg": "确定要删除选中的 {{count}} 个收藏夹吗？此操作无法撤销。",
+      "batchDeleteSuccess": "批量删除成功",
+      "batchDeleteFailed": "批量删除失败"
+    }
+  },
+  "settings": {
+    "title": "设置",
+    "preparingSettings": "正在准备设置...",
+    "sections": {
+      "basic": "基础配置",
+      "appearance": "外观设置",
+      "game": "游玩配置",
+      "cloudBackup": "云备份配置",
+      "autoBackup": "自动备份",
+      "ai": "AI 配置",
+      "dbBackup": "数据库备份",
+      "fullDataBackup": "全量数据备份",
+      "update": "应用更新"
+    },
+    "basic": {
+      "bangumiTokenHint": "如果您想使用Bangumi数据源，请一定填写",
+      "themeLabel": "主题",
+      "themeLight": "浅色",
+      "themeDark": "深色",
+      "themeSystem": "跟随系统",
+      "languageLabel": "语言",
+      "timezoneLabel": "时区",
+      "timezoneHint": "用于正确显示和记录游戏时长,修改后请重启应用",
+      "timezonePlaceholder": "请选择时区",
+      "closeToTray": "关闭窗口时最小化到系统托盘"
+    },
+    "appearance": {
+      "enableBg": "启用自定义背景",
+      "enableBgHint": "开启后将使用自定义图片作为应用背景，并自动调整主题配色",
+      "hideGameCover": "隐藏首页游戏封面",
+      "hideGameCoverHint": "启用自定义背景时，隐藏首页上一次游玩游戏的封面图片",
+      "bgImage": "背景图片",
+      "noImageSelected": "未选择图片",
+      "selectBtn": "选择",
+      "clearBtn": "清除",
+      "bgImageHint": "支持 PNG、JPG、JPEG、GIF、WebP、BMP 格式，选择后可裁剪所需区域",
+      "preview": "预览",
+      "bgPreviewAlt": "背景预览",
+      "effectPreview": "效果预览",
+      "blurLabel": "背景模糊度",
+      "blurSharp": "清晰",
+      "blurBlurry": "模糊",
+      "opacityLabel": "遮罩不透明度",
+      "opacityTransparent": "透明",
+      "opacityOpaque": "不透明",
+      "opacityHint": "调节内容区域的遮罩层不透明度，数值越低背景图越明显",
+      "toast": {
+        "selectFailed": "选择背景图片失败: {{error}}",
+        "cropFailed": "裁剪保存失败: {{error}}"
+      }
+    },
+    "game": {
+      "recordActiveOnly": "仅记录活跃游玩时长",
+      "recordActiveOnlyHint": "启用后，仅当游戏窗口处于前台焦点时才会记录游玩时间。这可以更准确地统计实际游玩时长，排除挂机和后台运行时间。",
+      "warningTitle": "注意：",
+      "warningItem1": "开启此选项将记录游戏进程的非完整运行时间（不包括后台时间）",
+      "warningItem2": "已有的游玩记录不会受到此设置影响",
+      "warningItem3": "某些全屏游戏可能影响焦点检测的准确性",
+      "autoDetectProcess": "自动进程检测",
+      "autoDetectProcessHint": "启用后，当启动器进程快速退出时，LunaBox 会自动提示您选择实际的游戏进程。禁用后，将直接使用已保存的进程名或可执行程序句柄进行监控，适合单exe游戏或不需要复杂检测的场景。",
+      "launchTools": "游戏启动工具",
+      "lePath": "Locale Emulator 路径",
+      "lePathPlaceholder": "选择 LEProc.exe 文件路径",
+      "lePathHint": "设置后可在游戏编辑界面启用 Locale Emulator 转区启动",
+      "magpiePath": "Magpie 路径",
+      "magpiePathPlaceholder": "选择 Magpie.exe 文件路径",
+      "magpiePathHint": "设置后可在游戏编辑界面启用 Magpie 超分辨率缩放启动",
+      "selectBtn": "选择",
+      "toast": {
+        "leSelectFailed": "选择 Locale Emulator 失败",
+        "magpieSelectFailed": "选择 Magpie 失败"
+      }
+    },
+    "cloudBackup": {
+      "enableLabel": "启用云备份",
+      "enableHint": "将您的数据同步到云端存储",
+      "providerLabel": "云存储提供商",
+      "providerS3": "S3 兼容存储",
+      "s3Section": "S3 配置",
+      "backupPasswordLabel": "备份密码",
+      "passwordSet": "✓ 密码已设置，用户ID:",
+      "setPasswordBtn": "设置备份密码",
+      "passwordForIdHint": "用于生成用户标识",
+      "passwordWarning": "重要：密码只能设置一次，设置后无法修改，请牢记",
+      "clientIdUsingDefault": "(使用默认)",
+      "clientIdHint": "如需自定义，请在",
+      "clientIdHint2": "中注册应用",
+      "authStatusLabel": "授权状态",
+      "authorized": "已授权",
+      "revokeAuth": "取消授权",
+      "waitingAuth": "等待授权中...",
+      "authOneDriveBtn": "授权 OneDrive",
+      "authWaitHint": "请在浏览器中完成授权，授权成功后会自动返回",
+      "retentionLabel": "保留备份数量",
+      "retentionHint": "云端每个游戏保留的最大备份数量",
+      "oneDriveSection": "OneDrive 配置",
+      "oneDriveNote": "注意：",
+      "oneDriveNoteItem1": "默认使用项目提供的 Client ID，方便开箱即用",
+      "oneDriveNoteItem2": "您的数据完全保存在您自己的 OneDrive 账户的应用文件夹中，其他人无法访问",
+      "oneDriveNoteItem3": "所有敏感数据均保存在本地(如Refresh Token)，不会上传到云端",
+      "oneDriveNoteItem4": "使用默认 Client ID 产生的任何问题，作者不承担责任",
+      "oneDriveNoteItem5": "如需更高安全性，可在下方自定义 Client ID",
+      "testing": "测试中...",
+      "testConnection": "测试连接",
+      "toast": {
+        "passwordTooShort": "密码长度至少为6位",
+        "passwordMismatch": "两次输入的密码不一致",
+        "passwordSetSuccess": "密码设置成功！用户ID: {{id}}...",
+        "setupFailed": "设置失败: {{error}}",
+        "s3TestSuccess": "S3 连接测试成功",
+        "s3TestFailed": "S3 连接测试失败: {{error}}",
+        "oneDriveTestSuccess": "OneDrive 连接测试成功",
+        "oneDriveTestFailed": "OneDrive 连接测试失败: {{error}}",
+        "oneDriveAuthSuccess": "OneDrive 授权成功",
+        "oneDriveAuthFailed": "授权失败: {{error}}"
+      }
+    },
+    "autoBackup": {
+      "backupDbOnExit": "应用退出时自动备份数据库",
+      "backupDbOnExitHint": "在应用关闭时自动创建数据库备份，保护您的游戏库数据",
+      "backupSaveOnExit": "游戏退出时自动备份存档",
+      "backupSaveOnExitHint": "在游戏进程结束时自动备份存档目录（需要先设置存档目录）",
+      "autoUploadDb": "自动上传数据库备份到云端",
+      "autoUploadDbHint": "在创建数据库备份后自动上传到云存储（需要先启用云备份）",
+      "autoUploadSave": "自动上传游戏存档备份到云端",
+      "autoUploadSaveHint": "在游戏退出并备份存档后自动上传到云存储（需要先启用云备份）",
+      "localGameRetention": "本地游戏备份保留数量",
+      "localGameRetentionHint": "每个游戏在本地保留的最大备份数量",
+      "localDbRetention": "本地数据库备份保留数量",
+      "localDbRetentionHint": "数据库在本地保留的最大备份数量"
+    },
+    "ai": {
+      "providerLabel": "AI 服务商",
+      "providerPlaceholder": "请选择",
+      "providerCustom": "自定义 (OpenAI兼容)",
+      "modelLabel": "模型名称",
+      "systemPromptLabel": "系统提示语 (System Prompt)",
+      "systemPromptPlaceholder": "输入自定义的 AI 系统提示语...",
+      "systemPromptHint": "AI 将根据此提示语来生成统计总结。你可以点击上方预设快速填充。",
+      "promptLabels": {
+        "DEFAULT_SYSTEM": "幽默评论员",
+        "MEOW_ZAKO": "雌小鬼猫娘",
+        "STRICT_TUTOR": "严厉导师"
+      }
+    },
+    "dbBackup": {
+      "sectionTitle": "数据库备份",
+      "sectionHint": "备份游戏库元数据、分类、游玩记录等应用数据",
+      "backupBtn": "立即备份",
+      "backingUp": "备份中...",
+      "lastBackup": "上次备份:",
+      "localBackups": "本地备份",
+      "autoBackupEnabled": "自动备份已启用",
+      "noLocalBackups": "暂无本地备份记录",
+      "sizeLabel": "大小:",
+      "uploadToCloud": "上传到云端",
+      "restoreBackup": "恢复此备份",
+      "deleteBackup": "删除备份",
+      "cloudBackups": "云端备份",
+      "refreshCloudList": "刷新云端备份列表",
+      "noCloudBackups": "暂无云端备份记录",
+      "restoreFromCloud": "从云端恢复",
+      "cloudNotEnabled": "云备份未启用",
+      "cloudNotEnabledHint": "在上方配置云备份后，可将数据库同步到云端",
+      "modal": {
+        "restoreTitle": "恢复数据库",
+        "restoreMsg": "确定要恢复到此备份吗？程序将退出并在下次启动时完成恢复。",
+        "deleteTitle": "删除备份",
+        "deleteMsg": "确定要删除此本地备份吗？此操作无法撤销。",
+        "restoreCloudTitle": "从云端恢复",
+        "restoreCloudMsg": "确定要从云端恢复此备份吗？程序将退出并在下次启动时完成恢复。"
+      },
+      "toast": {
+        "backupSuccessCloud": "数据库备份成功并已上传云端",
+        "backupSuccess": "数据库备份成功",
+        "localBackupSuccess": "本地备份成功",
+        "backupFailed": "备份失败: {{error}}",
+        "restoreScheduled": "已安排恢复，程序即将退出...",
+        "restoreScheduleFailed": "安排恢复失败: {{error}}",
+        "deleteSuccess": "备份已删除",
+        "deleteFailed": "删除失败: {{error}}",
+        "uploadSuccess": "已上传到云端",
+        "uploadFailed": "上传失败: {{error}}"
+      }
+    },
+    "fullDataBackup": {
+      "hint": "备份应用配置、数据库、封面与背景、图片缓存、日志及本地备份目录",
+      "warningNote": "注意：",
+      "warningHint": "适合在进行重大更改前备份，或在不同设备间迁移数据使用。恢复后会覆盖现有数据，请谨慎操作。",
+      "exportBtn": "导出备份",
+      "exporting": "正在打包...",
+      "importBtn": "导入恢复",
+      "importing": "正在准备...",
+      "lastBackup": "上次备份时间：",
+      "modal": {
+        "restoreTitle": "恢复全量数据",
+        "restoreMsg": "确定要恢复全量数据吗？\n\n备份文件: {{path}}\n\n将覆盖应用配置、数据库和资源目录，程序会退出并在下次启动时恢复。"
+      },
+      "toast": {
+        "exportSuccess": "全量数据备份成功: {{path}}",
+        "exportFailed": "全量备份失败: {{error}}",
+        "restoreScheduled": "已安排全量恢复，程序即将退出...",
+        "restoreScheduleFailed": "安排全量恢复失败: {{error}}",
+        "selectFileFailed": "选择文件失败: {{error}}"
+      }
+    },
+    "update": {
+      "autoCheckLabel": "启动时自动检查更新",
+      "autoCheckHint": "应用启动时自动检查是否有新版本（每天最多检查一次）",
+      "manualCheckBtn": "手动检查更新",
+      "checking": "检查中...",
+      "checkFailedTitle": "检查更新失败",
+      "checkFailed": "检查更新失败",
+      "newVersion": "发现新版本",
+      "upToDate": "已是最新版本",
+      "skipFailed": "修改失败：{{error}}"
+    },
+    "passwordModal": {
+      "title": "设置备份密码",
+      "desc1": "备份密码用于生成您的唯一用户ID和加密云端数据。",
+      "desc2": "密码只能设置一次，设置后无法修改！",
+      "desc3": "请务必牢记您的密码，遗忘将无法恢复云端备份。",
+      "passwordLabel": "输入密码",
+      "passwordPlaceholder": "至少6位字符",
+      "passwordTooShort": "密码长度至少为6位",
+      "confirmLabel": "确认密码",
+      "confirmPlaceholder": "再次输入密码",
+      "passwordMismatch": "两次输入的密码不一致"
+    }
+  },
+  "stats": {
+    "title": "统计",
+    "period": {
+      "week": "周",
+      "month": "月"
+    },
+    "customRange": "自定义",
+    "startDate": "开始日期",
+    "endDate": "结束日期",
+    "applyBtn": "应用",
+    "resetBtn": "重置",
+    "exportTitle": "美化导出",
+    "aiSummarizeTitle": "AI总结",
+    "chartYAxis": "小时",
+    "totalDurationDataset": "总游玩时长 (小时)",
+    "library": {
+      "sectionTitle": "库概览",
+      "totalGames": "库中所有游戏",
+      "totalSessions": "总游玩次数",
+      "totalDuration": "总游玩时长",
+      "completedGames": "通关游戏数"
+    },
+    "summary": {
+      "totalPlayCount": "总游玩次数",
+      "totalPlayDuration": "总游玩时长",
+      "gamesPlayed": "游玩游戏数量",
+      "completedGames": "通关游戏"
+    },
+    "leaderboard": {
+      "title": "排行榜",
+      "fullTitle": "游玩时长排行榜",
+      "rankCol": "排名",
+      "gameCol": "游戏",
+      "durationCol": "时长",
+      "noData": "暂无数据",
+      "noMoreData": "暂无更多排行数据"
+    },
+    "charts": {
+      "totalTrend": "游玩时长趋势",
+      "gameTrend": "常玩游戏趋势"
+    },
+    "ai": {
+      "title": "AI 分析",
+      "thinking": "思考中...",
+      "summarizeFailed": "AI总结失败，请检查AI配置是否正确"
+    },
+    "templateExport": {
+      "title": "美化导出",
+      "selectTemplate": "选择模板",
+      "selectTemplateHint": "选择一个模板来美化你的统计数据",
+      "openTemplatesDir": "打开模板目录",
+      "templatePreviewTitle": "模板预览",
+      "rendering": "正在渲染预览...",
+      "selectToPreview": "选择模板以预览效果",
+      "authorPrefix": "作者:",
+      "versionPrefix": "版本",
+      "builtinTag": "· 内置模板",
+      "tipText": "提示：你可以在模板目录中创建自定义 HTML 模板",
+      "cancelBtn": "取消",
+      "exportBtn": "导出图片",
+      "exporting": "导出中...",
+      "toast": {
+        "loadTemplatesFailed": "加载模板列表失败",
+        "renderFailed": "渲染模板失败",
+        "exportFailed": "导出图片失败: {{error}}",
+        "openDirFailed": "打开模板目录失败"
+      }
+    },
+    "toast": {
+      "loadStatsFailed": "加载统计数据失败",
+      "selectDateRange": "请选择开始和结束日期",
+      "startBeforeEnd": "开始日期必须早于结束日期"
+    }
+  },
+  "root": {
+    "dragDrop": {
+      "dropToImport": "释放以导入游戏",
+      "dropHint": "支持游戏文件夹和可执行文件"
+    }
+  },
+  "sideBar": {
+    "home": "首页",
+    "library": "游戏库",
+    "stats": "统计",
+    "categories": "收藏",
+    "settings": "设置",
+    "github": "GitHub"
+  },
+  "processSelectModal": {
+    "title": "选择游戏进程",
+    "desc": "检测到 {{launcher}} 已退出，如果你没有手动退出，代表你导入游戏的不是实际的运行进程，请选择实际运行的游戏进程",
+    "searchPlaceholder": "搜索进程...",
+    "loading": "加载中...",
+    "noMatch": "未找到匹配的进程",
+    "noProcesses": "无可用进程",
+    "refreshBtn": "刷新列表",
+    "cancelBtn": "取消",
+    "confirmBtn": "确认选择",
+    "toast": {
+      "loadFailed": "获取进程列表失败",
+      "selectProcess": "请选择一个进程",
+      "setSuccess": "已设置监控进程: {{name}}",
+      "saveFailed": "保存失败，请重试"
+    }
+  },
+  "timezoneModal": {
+    "title": "选择时区",
+    "desc": "检测到您尚未配置时区。为了正确显示并记录游戏时长，请选择您所在的时区。",
+    "detectedLabel": "当前检测到的时区:",
+    "unknown": "未知",
+    "placeholder": "请选择时区",
+    "confirmBtn": "确认并重启应用"
+  },
+  "updateDialog": {
+    "newVersion": "发现新版本",
+    "available": "LunaBox 有可用的更新",
+    "currentVersion": "当前版本",
+    "latestVersion": "最新版本",
+    "releaseDate": "发布日期",
+    "changelog": "更新内容",
+    "githubDownload": "GitHub 下载",
+    "giteeDownload": "Gitee 下载",
+    "skipVersion": "跳过此版本"
+  },
+  "category": {
+    "notFound": "未找到该分类",
+    "backToList": "返回列表",
+    "back": "返回",
+    "systemTag": "系统",
+    "gameCount": "共 {{count}} 个游戏",
+    "batchRemoveBtn": "批量移除",
+    "addGameBtn": "添加游戏",
+    "removeFromCategory": "从收藏夹移除",
+    "noMatchingGames": "未找到匹配的游戏",
+    "emptyCategory": "这个收藏夹还没有游戏",
+    "addFirstGame": "添加游戏",
+    "toast": {
+      "loadCategoryFailed": "加载收藏夹失败",
+      "loadGamesFailed": "加载收藏夹中游戏失败",
+      "removeGameFailed": "从收藏夹中移除游戏失败",
+      "loadAllGamesFailed": "加载库中所有游戏失败",
+      "addGameFailed": "添加游戏到收藏夹失败",
+      "batchRemoveSuccess": "已移除 {{count}} 个游戏",
+      "batchRemoveFailed": "批量移除失败"
+    },
+    "addGameModal": {
+      "title": "添加游戏到收藏夹",
+      "noGamesAvailable": "没有可添加的游戏"
+    }
+  },
+  "addPlaySession": {
+    "title": "添加游玩记录",
+    "desc": "您可以对过去的游玩时间进行补充记录，以更准确地统计总游玩时长。",
+    "startTime": "开始时间",
+    "endTime": "结束时间",
+    "duration": "游玩时长",
+    "submitting": "添加中...",
+    "toast": {
+      "endBeforeStart": "结束时间必须晋于开始时间",
+      "zeroDuration": "游玩时长必须大于0",
+      "futureEnd": "结束时间不能晋于当前时间",
+      "success": "游玩记录添加成功",
+      "failed": "添加游玩记录失败"
+    }
+  }
+}

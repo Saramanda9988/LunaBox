@@ -3,6 +3,7 @@ import type { ImportSource } from "../components/modal/GameImportModal";
 import { createRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import { enums } from "../../wailsjs/go/models";
 import { AddGamesToCategories, GetCategories } from "../../wailsjs/go/service/CategoryService";
 import { BatchUpdateStatus, DeleteGames } from "../../wailsjs/go/service/GameService";
@@ -27,6 +28,7 @@ export const Route = createRoute({
 
 function LibraryPage() {
   const { games, gamesLoading, fetchGames } = useAppStore();
+  const { t } = useTranslation();
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
   const [isBatchImportOpen, setIsBatchImportOpen] = useState(false);
@@ -126,10 +128,10 @@ function LibraryPage() {
   };
 
   const statusConfig = {
-    [enums.GameStatus.NOT_STARTED]: { label: "未开始", icon: "i-mdi-clock-outline", color: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300" },
-    [enums.GameStatus.PLAYING]: { label: "游玩中", icon: "i-mdi-gamepad-variant", color: "bg-neutral-100 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300" },
-    [enums.GameStatus.COMPLETED]: { label: "已通关", icon: "i-mdi-trophy", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300" },
-    [enums.GameStatus.ON_HOLD]: { label: "搁置", icon: "i-mdi-pause-circle-outline", color: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" },
+    [enums.GameStatus.NOT_STARTED]: { label: t("common.notStarted"), icon: "i-mdi-clock-outline", color: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300" },
+    [enums.GameStatus.PLAYING]: { label: t("common.playing"), icon: "i-mdi-gamepad-variant", color: "bg-neutral-100 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300" },
+    [enums.GameStatus.COMPLETED]: { label: t("common.completed"), icon: "i-mdi-trophy", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300" },
+    [enums.GameStatus.ON_HOLD]: { label: t("common.onHold"), icon: "i-mdi-pause-circle-outline", color: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" },
   };
 
   const handleBatchStatusUpdate = async (newStatus: string) => {
@@ -139,11 +141,11 @@ function LibraryPage() {
       await BatchUpdateStatus(selectedGameIds, newStatus);
       await fetchGames();
       const label = statusConfig[newStatus as keyof typeof statusConfig]?.label ?? newStatus;
-      toast.success(`已将 ${selectedGameIds.length} 个游戏状态更新为「${label}」`);
+      toast.success(t("library.toast.batchStatusUpdated", { count: selectedGameIds.length, status: label }));
     }
     catch (error) {
       console.error("Failed to batch update status:", error);
-      toast.error("批量更新状态失败");
+      toast.error(t("library.toast.batchStatusFailed"));
     }
   };
 
@@ -157,7 +159,7 @@ function LibraryPage() {
     }
     catch (error) {
       console.error("Failed to load categories:", error);
-      toast.error("加载收藏夹失败");
+      toast.error(t("library.toast.loadFavFailed"));
     }
   };
 
@@ -166,13 +168,13 @@ function LibraryPage() {
       return;
     try {
       await AddGamesToCategories(selectedGameIds, categoryIds);
-      toast.success(`已添加 ${selectedGameIds.length} 个游戏到收藏`);
+      toast.success(t("library.toast.batchAddFavSuccess", { count: selectedGameIds.length }));
       setSelectedGameIds([]);
       setBatchMode(false);
     }
     catch (error) {
       console.error("Failed to batch add games to category:", error);
-      toast.error("批量添加失败");
+      toast.error(t("library.toast.batchAddFavFailed"));
     }
   };
 
@@ -181,8 +183,8 @@ function LibraryPage() {
       return;
     setConfirmConfig({
       isOpen: true,
-      title: "批量删除游戏",
-      message: `确定要删除选中的 ${selectedGameIds.length} 个游戏吗？此操作将从库中移除这些游戏，但不会删除本地游戏文件。`,
+      title: t("library.toast.batchDeleteTitle"),
+      message: t("library.toast.batchDeleteConfirmMsg", { count: selectedGameIds.length }),
       type: "danger",
       onConfirm: async () => {
         try {
@@ -190,11 +192,11 @@ function LibraryPage() {
           await fetchGames();
           setSelectedGameIds([]);
           setBatchMode(false);
-          toast.success("批量删除成功");
+          toast.success(t("library.toast.batchDeleteSuccess"));
         }
         catch (error) {
           console.error("Failed to batch delete games:", error);
-          toast.error("批量删除失败");
+          toast.error(t("library.toast.batchDeleteFailed"));
         }
       },
     });
@@ -214,21 +216,21 @@ function LibraryPage() {
   return (
     <div className={`space-y-6 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${gamesLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
       <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-bold text-brand-900 dark:text-white">游戏库</h1>
+        <h1 className="text-4xl font-bold text-brand-900 dark:text-white">{t("library.title")}</h1>
       </div>
 
       <FilterBar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        searchPlaceholder="搜索游戏..."
+        searchPlaceholder={t("library.searchPlaceholder")}
         sortBy={sortBy}
         onSortByChange={val => setSortBy(val as "name" | "created_at")}
-        sortOptions={sortOptions}
+        sortOptions={sortOptions.map(opt => ({ ...opt, label: t(opt.label) }))}
         sortOrder={sortOrder}
         onSortOrderChange={setSortOrder}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
-        statusOptions={statusOptions}
+        statusOptions={statusOptions.map(opt => ({ ...opt, label: t(opt.label) }))}
         storageKey="library"
         batchMode={batchMode}
         onBatchModeChange={handleBatchModeChange}
@@ -239,13 +241,13 @@ function LibraryPage() {
           <>
             {/* 批量更新状态 */}
             <BetterDropdownMenu
-              title="设为状态"
+              title={t("library.setStatus")}
               align="end"
               menuWidth="min-w-[130px]"
               disabled={selectedGameIds.length === 0}
               trigger={(
                 <div
-                  title="批量更新状态"
+                  title={t("library.batchUpdateStatus")}
                   className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
                               bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
                               rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300
@@ -268,7 +270,7 @@ function LibraryPage() {
               type="button"
               onClick={openBatchAddModal}
               disabled={selectedGameIds.length === 0}
-              title="批量添加到收藏"
+              title={t("library.batchAddToFilter")}
               className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
                           bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
                           rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300
@@ -281,7 +283,7 @@ function LibraryPage() {
               type="button"
               onClick={handleBatchDelete}
               disabled={selectedGameIds.length === 0}
-              title="批量删除"
+              title={t("library.batchDelete")}
               className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
                           bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
                           rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-error-600 dark:text-error-400
@@ -298,31 +300,31 @@ function LibraryPage() {
             trigger={(
               <div className="glass-btn-neutral flex items-center rounded-lg bg-neutral-600 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 focus:outline-none focus:ring-4 focus:ring-neutral-300 dark:bg-neutral-600 dark:hover:bg-neutral-700 dark:focus:ring-neutral-800">
                 <div className="i-mdi-plus mr-2 text-lg" />
-                添加游戏
+                {t("library.addGame")}
                 <div className="i-mdi-chevron-down ml-2 text-lg" />
               </div>
             )}
             items={[
               {
                 key: "manual",
-                label: "手动添加",
-                description: "选择可执行文件并搜索元数据",
+                label: t("common.manualAdd"),
+                description: t("library.addGameDesc1"),
                 icon: "i-mdi-gamepad-variant",
                 iconColor: "text-neutral-500",
                 onClick: () => setIsAddGameModalOpen(true),
               },
               {
                 key: "batch",
-                label: "批量导入",
-                description: "扫描游戏库目录批量添加",
+                label: t("library.batchImport"),
+                description: t("library.batchImportDesc"),
                 icon: "i-mdi-folder-multiple",
                 iconColor: "text-success-500",
                 onClick: () => setIsBatchImportOpen(true),
               },
               {
                 key: "potatovn",
-                label: "从 PotatoVN 导入",
-                description: "导入 PotatoVN 导出的 ZIP 文件",
+                label: t("library.importPotatoVN"),
+                description: t("library.importPotatoVNDesc"),
                 icon: "i-mdi-database-import",
                 iconColor: "text-orange-500",
                 dividerBefore: true,
@@ -330,8 +332,8 @@ function LibraryPage() {
               },
               {
                 key: "playnite",
-                label: "从 Playnite 导入",
-                description: "导入 Playnite 导出的 JSON 文件",
+                label: t("library.importPlaynite"),
+                description: t("library.importPlayniteDesc"),
                 icon: "i-mdi-application-import",
                 iconColor: "text-purple-500",
                 onClick: () => setImportSource("playnite"),
@@ -346,20 +348,20 @@ function LibraryPage() {
             <div className="flex-1 flex items-center justify-center w-full">
               <div className="flex flex-col items-center justify-center py-20 text-brand-500 dark:text-brand-400">
                 <div className="i-mdi-gamepad-variant-outline text-6xl mb-4" />
-                <p className="text-xl">暂无游戏</p>
-                <p className="text-sm mt-2">添加一些游戏开始吧</p>
+                <p className="text-xl">{t("library.emptyState")}</p>
+                <p className="text-sm mt-2">{t("library.emptyStateAction")}</p>
                 <div className="flex flex-col gap-3 mt-4">
                   <button
                     onClick={() => setImportSource("potatovn")}
                     className="rounded-lg border border-success-600 px-5 py-2.5 text-sm font-medium text-success-600 hover:bg-success-50 focus:outline-none focus:ring-4 focus:ring-success-300 dark:border-success-500 dark:text-success-500 dark:hover:bg-success-900/20"
                   >
-                    从 PotatoVN 导入
+                    {t("library.importPotatoVN")}
                   </button>
                   <button
                     onClick={() => setImportSource("playnite")}
                     className="rounded-lg border border-purple-600 px-5 py-2.5 text-sm font-medium text-purple-600 hover:bg-purple-50 focus:outline-none focus:ring-4 focus:ring-purple-300 dark:border-purple-500 dark:text-purple-500 dark:hover:bg-purple-900/20"
                   >
-                    从 Playnite 导入
+                    {t("library.importPlaynite")}
                   </button>
                 </div>
               </div>
@@ -370,7 +372,7 @@ function LibraryPage() {
               <div className="flex-1 flex items-center justify-center w-full text-brand-500 dark:text-brand-400">
                 <div className="flex flex-col items-center">
                   <div className="i-mdi-magnify text-4xl mb-2" />
-                  <p>未找到匹配的游戏</p>
+                  <p>{t("library.notFound")}</p>
                 </div>
               </div>
             )
@@ -414,8 +416,8 @@ function LibraryPage() {
         initialSelectedIds={[]}
         onClose={() => setIsBatchCategoryModalOpen(false)}
         onSave={handleBatchAddToCategory}
-        title="批量添加到收藏"
-        confirmText="添加"
+        title={t("library.batchAddToFilter")}
+        confirmText={t("common.add")}
       />
 
       <ConfirmModal

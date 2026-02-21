@@ -1,10 +1,10 @@
 import type { models } from "../../../wailsjs/go/models";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import { enums } from "../../../wailsjs/go/models";
 import { StartGameWithTracking } from "../../../wailsjs/go/service/StartService";
 
-// ── 高亮工具：将文本中匹配 query 的部分高亮显示 ──────────────────────────────
 function HighlightText({ text, query }: { text: string; query: string }) {
   if (!query || !text) {
     return <>{text}</>;
@@ -44,6 +44,7 @@ export function GameCard({
   searchQuery = "",
 }: GameCardProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleToggleSelect = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -56,15 +57,15 @@ export function GameCard({
       try {
         const started = await StartGameWithTracking(game.id);
         if (started) {
-          toast.success(`${game.name} 启动成功`);
+          toast.success(t("gameCard.startSuccess", { name: game.name }));
         }
         else {
-          toast.error(`${game.name} 启动失败（未能启动）`);
+          toast.error(t("gameCard.startFailedNotLaunched", { name: game.name }));
         }
       }
       catch (error) {
         console.error("Failed to start game:", error);
-        toast.error(`${game.name} 启动失败, 查询日志获得帮助`);
+        toast.error(t("gameCard.startFailedLog", { name: game.name }));
       }
     }
   };
@@ -74,7 +75,7 @@ export function GameCard({
   };
 
   const isCompleted = game.status === enums.GameStatus.COMPLETED;
-  const companyDisplay = game.company || "Unknown Developer";
+  const companyDisplay = game.company || t("common.unknownDeveloper");
 
   return (
     <div
@@ -90,7 +91,7 @@ export function GameCard({
           ? "bg-neutral-600 text-white border-neutral-600"
           : "bg-white/90 text-transparent border-brand-300 dark:bg-brand-800/90 dark:border-brand-600"}
                       shadow-sm`}
-          title={selected ? "取消选择" : "选择"}
+          title={selected ? t("gameCard.deselect") : t("gameCard.select")}
         >
           <div className="i-mdi-check text-sm" />
         </button>
@@ -125,14 +126,14 @@ export function GameCard({
             <button
               onClick={handleStartGame}
               className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-600 text-white shadow-lg transition-transform hover:scale-110 hover:bg-neutral-500 active:scale-95"
-              title="启动游戏"
+              title={t("gameCard.startGame")}
             >
               <div className="i-mdi-play text-lg" />
             </button>
             <button
               onClick={handleViewDetails}
               className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-md transition-transform hover:scale-110 hover:bg-white/30 active:scale-95"
-              title="查看详情"
+              title={t("gameCard.viewDetails")}
             >
               <div className="i-mdi-information-variant text-lg" />
             </button>

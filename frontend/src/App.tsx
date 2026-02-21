@@ -1,6 +1,7 @@
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Toaster } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import { SafeQuit } from "../wailsjs/go/service/ConfigService";
 import { EventsOff, EventsOn, WindowShow } from "../wailsjs/runtime/runtime";
 import { ProcessSelectModal } from "./components/modal/ProcessSelectModal";
@@ -36,10 +37,17 @@ function App() {
     gameID: string;
     launcherExeName: string;
   }>({ isOpen: false, gameID: "", launcherExeName: "" });
+  const { i18n } = useTranslation();
 
   useEffect(() => {
     fetchConfig();
   }, [fetchConfig]);
+
+  useEffect(() => {
+    if (config?.language && i18n.language !== config.language) {
+      i18n.changeLanguage(config.language);
+    }
+  }, [config, i18n]);
 
   // 监听后端发送的进程选择事件
   useEffect(() => {

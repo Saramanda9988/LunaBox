@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface PasswordInputModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ export function PasswordInputModal({
   onClose,
   onConfirm,
 }: PasswordInputModalProps) {
+  const { t } = useTranslation();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -27,7 +29,6 @@ export function PasswordInputModal({
     }
     onConfirm(password, confirmPassword);
     onClose();
-    // 清空输入
     setPassword("");
     setConfirmPassword("");
     setShowPassword(false);
@@ -35,7 +36,6 @@ export function PasswordInputModal({
 
   const handleClose = () => {
     onClose();
-    // 清空输入
     setPassword("");
     setConfirmPassword("");
     setShowPassword(false);
@@ -52,13 +52,13 @@ export function PasswordInputModal({
             <div className="i-mdi-lock-plus text-2xl" />
           </div>
           <div className="flex-1">
-            <h3 className="text-xl font-bold text-brand-900 dark:text-white mb-2">设置备份密码</h3>
+            <h3 className="text-xl font-bold text-brand-900 dark:text-white mb-2">{t("settings.passwordModal.title")}</h3>
             <div className="text-brand-600 dark:text-brand-400 text-sm leading-relaxed space-y-2">
-              <p>备份密码用于生成您的唯一用户ID和加密云端数据。</p>
+              <p>{t("settings.passwordModal.desc1")}</p>
               <p className="font-semibold text-warning-600 dark:text-warning-400">
-                密码只能设置一次，设置后无法修改！
+                {t("settings.passwordModal.desc2")}
               </p>
-              <p>请务必牢记您的密码，遗忘将无法恢复云端备份。</p>
+              <p>{t("settings.passwordModal.desc3")}</p>
             </div>
           </div>
         </div>
@@ -66,14 +66,14 @@ export function PasswordInputModal({
         <div className="space-y-4 mb-6">
           <div>
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-2">
-              输入密码
+              {t("settings.passwordModal.passwordLabel")}
             </label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="至少6位字符"
+                placeholder={t("settings.passwordModal.passwordPlaceholder")}
                 className="w-full px-3 py-2 pr-10 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
                 autoFocus
               />
@@ -87,25 +87,25 @@ export function PasswordInputModal({
             </div>
             {password && password.length < 6 && (
               <p className="text-xs text-error-600 dark:text-error-400 mt-1">
-                密码长度至少为6位
+                {t("settings.passwordModal.passwordTooShort")}
               </p>
             )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-2">
-              确认密码
+              {t("settings.passwordModal.confirmLabel")}
             </label>
             <input
               type={showPassword ? "text" : "password"}
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
-              placeholder="再次输入密码"
+              placeholder={t("settings.passwordModal.confirmPlaceholder")}
               className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
             />
             {confirmPassword && !passwordsMatch && (
               <p className="text-xs text-error-600 dark:text-error-400 mt-1">
-                两次输入的密码不一致
+                {t("settings.passwordModal.passwordMismatch")}
               </p>
             )}
           </div>
@@ -113,17 +113,19 @@ export function PasswordInputModal({
 
         <div className="flex justify-end gap-3">
           <button
+            type="button"
             onClick={handleClose}
             className="px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 rounded-lg dark:text-brand-300 dark:hover:bg-brand-700 transition-colors"
           >
-            取消
+            {t("common.cancel")}
           </button>
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={!canSubmit}
             className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors bg-brand-600 hover:bg-brand-700 shadow-sm shadow-brand-200 dark:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            确定设置
+            {t("common.confirm")}
           </button>
         </div>
       </div>

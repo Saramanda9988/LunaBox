@@ -1,5 +1,6 @@
 import type { appconf, models } from "../../../wailsjs/go/models";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import { BetterButton } from "../ui/BetterButton";
 import { BetterSwitch } from "../ui/BetterSwitch";
 
@@ -11,12 +12,13 @@ interface GameLaunchPanelProps {
 }
 
 export function GameLaunchPanel({ game, config, onGameChange, onSelectProcessExecutable }: GameLaunchPanelProps) {
+  const { t } = useTranslation();
   const hasLocaleEmulatorPath = config?.locale_emulator_path && config?.locale_emulator_path.length > 0;
   const hasMagpiePath = config?.magpie_path && config?.magpie_path.length > 0;
 
   const handleLocaleEmulatorToggle = (checked: boolean) => {
     if (checked && !hasLocaleEmulatorPath) {
-      toast.error("请先在设置中配置 Locale Emulator 路径");
+      toast.error(t("gameLaunch.toast.lePathRequired"));
       return;
     }
     onGameChange({ ...game, use_locale_emulator: checked } as models.Game);
@@ -24,7 +26,7 @@ export function GameLaunchPanel({ game, config, onGameChange, onSelectProcessExe
 
   const handleMagpieToggle = (checked: boolean) => {
     if (checked && !hasMagpiePath) {
-      toast.error("请先在设置中配置 Magpie 路径");
+      toast.error(t("gameLaunch.toast.magpiePathRequired"));
       return;
     }
     onGameChange({ ...game, use_magpie: checked } as models.Game);
@@ -36,19 +38,19 @@ export function GameLaunchPanel({ game, config, onGameChange, onSelectProcessExe
         {/* 进程监控配置 */}
         <div className="flex items-center gap-2">
           <div className="i-mdi-monitor text-xl text-brand-600 dark:text-brand-400" />
-          <h3 className="text-sm font-semibold text-brand-900 dark:text-white">进程监控</h3>
+          <h3 className="text-sm font-semibold text-brand-900 dark:text-white">{t("gameLaunch.processMonitor")}</h3>
         </div>
 
         <div className="rounded-lg space-y-4">
           <div>
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-2">
-              可执行程序
+              {t("gameLaunch.executable")}
             </label>
             <div className="text-sm text-neutral-600 dark:text-neutral-400 font-mono bg-white dark:bg-brand-800 px-3 py-1.5 rounded border border-brand-200 dark:border-brand-700">
-              {game.path ? game.path.split(/[\\/]/).pop() : "未设置游戏路径"}
+              {game.path ? game.path.split(/[\\/]/).pop() : t("gameLaunch.noPathSet")}
             </div>
             <p className="mt-1 text-xs text-brand-400">
-              LunaBox 使用此可执行文件启动游戏。这里是您一开始选择的可执行文件路径
+              {t("gameLaunch.executableHint")}
             </p>
           </div>
 
@@ -56,7 +58,7 @@ export function GameLaunchPanel({ game, config, onGameChange, onSelectProcessExe
 
           <div>
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-2">
-              实际游戏进程
+              {t("gameLaunch.actualProcess")}
             </label>
             <div className="flex items-center gap-2">
               <input
@@ -68,14 +70,11 @@ export function GameLaunchPanel({ game, config, onGameChange, onSelectProcessExe
               <BetterButton
                 onClick={onSelectProcessExecutable}
                 icon="i-mdi-file"
-                title="选择进程文件"
+                title={t("gameLaunch.selectProcessFile")}
               />
             </div>
-            <p className="mt-2 text-xs text-brand-400 leading-relaxed">
-              指定实际游戏的进程名称（包含 .exe 后缀）。
-              <br />
-              如果不指定，LunaBox 会尝试监控可执行路径。如果之前的选择是启动器，您需要在游戏启动后弹出的选择框中手动指定此进程。
-              在此处预先填写可避免每次启动时手动选择。
+            <p className="mt-2 text-xs text-brand-400 leading-relaxed whitespace-pre-line">
+              {t("gameLaunch.processHint")}
             </p>
           </div>
         </div>
@@ -84,23 +83,23 @@ export function GameLaunchPanel({ game, config, onGameChange, onSelectProcessExe
         <div>
           <div className="flex items-center gap-2 mb-4">
             <div className="i-mdi-tools text-xl text-brand-600 dark:text-brand-400" />
-            <h3 className="text-sm font-semibold text-brand-900 dark:text-white">启动增强工具</h3>
+            <h3 className="text-sm font-semibold text-brand-900 dark:text-white">{t("gameLaunch.enhancementTools")}</h3>
           </div>
 
           <div className="flex items-center justify-between p-4">
             <div className="flex-1 mr-4">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-brand-700 dark:text-brand-300">Locale Emulator</span>
-                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-brand-200 dark:bg-brand-600 text-brand-800 dark:text-brand-100 rounded">转区工具</span>
+                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-brand-200 dark:bg-brand-600 text-brand-800 dark:text-brand-100 rounded">{t("gameLaunch.leLabel")}</span>
               </div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                使用日文环境模拟启动游戏，解决乱码和区域限制问题。
+                {t("gameLaunch.leDesc")}
               </p>
               {!hasLocaleEmulatorPath && (
                 <p className="text-xs text-error-500 mt-1 flex items-center gap-1">
                   <div className="i-mdi-alert-circle text-sm" />
                   {" "}
-                  请先在设置中配置 LEProc.exe 路径
+                  {t("gameLaunch.leNotConfigured")}
                 </p>
               )}
             </div>
@@ -116,16 +115,16 @@ export function GameLaunchPanel({ game, config, onGameChange, onSelectProcessExe
             <div className="flex-1 mr-4">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-brand-700 dark:text-brand-300">Magpie</span>
-                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-brand-200 dark:bg-brand-600 text-brand-800 dark:text-brand-100 rounded">超分缩放</span>
+                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-brand-200 dark:bg-brand-600 text-brand-800 dark:text-brand-100 rounded">{t("gameLaunch.magpieLabel")}</span>
               </div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-                游戏启动后自动启动 Magpie 进行全屏超分辨率缩放。
+                {t("gameLaunch.magpieDesc")}
               </p>
               {!hasMagpiePath && (
                 <p className="text-xs text-error-500 mt-1 flex items-center gap-1">
                   <div className="i-mdi-alert-circle text-sm" />
                   {" "}
-                  请先在设置中配置 Magpie.exe 路径
+                  {t("gameLaunch.magpieNotConfigured")}
                 </p>
               )}
             </div>

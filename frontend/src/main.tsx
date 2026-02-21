@@ -4,6 +4,7 @@ import App from "./App";
 import "@unocss/reset/tailwind.css";
 import "virtual:uno.css";
 import "./style.css";
+import "./i18n";
 
 const container = document.getElementById("root");
 

@@ -91,7 +91,7 @@ func LoadConfig() (*AppConfig, error) {
 		BangumiAccessToken:     "",
 		VNDBAccessToken:        "",
 		Theme:                  "light",
-		Language:               "zh",
+		Language:               "zh-CN",
 		SidebarOpen:            true,
 		CloseToTray:            false,
 		AIProvider:             "",

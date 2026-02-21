@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import { vo } from "../../../wailsjs/go/models";
 import {
   ExportRenderedHTML,
@@ -22,6 +23,7 @@ export function TemplateExportModal({
   stats,
   aiSummary,
 }: TemplateExportModalProps) {
+  const { t } = useTranslation();
   const [templates, setTemplates] = useState<vo.TemplateInfo[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [previewHtml, setPreviewHtml] = useState<string>("");
@@ -39,7 +41,7 @@ export function TemplateExportModal({
     }
     catch (err) {
       console.error("Failed to load templates:", err);
-      toast.error("加载模板列表失败");
+      toast.error(t("stats.templateExport.toast.loadTemplatesFailed"));
     }
   };
 
@@ -49,10 +51,7 @@ export function TemplateExportModal({
 
     setLoading(true);
     try {
-      // 准备导出数据（包含图表数据，由后端处理）
       const exportData = await PrepareExportData(stats, aiSummary);
-
-      // 渲染模板
       const req = new vo.RenderTemplateRequest({
         template_id: selectedTemplateId,
         data: exportData,
@@ -62,7 +61,7 @@ export function TemplateExportModal({
     }
     catch (err) {
       console.error("Failed to render template:", err);
-      toast.error("渲染模板失败");
+      toast.error(t("stats.templateExport.toast.renderFailed"));
     }
     finally {
       setLoading(false);
@@ -75,33 +74,26 @@ export function TemplateExportModal({
 
     setExporting(true);
     try {
-      // 获取 iframe
       const iframe = previewRef.current.querySelector("iframe") as HTMLIFrameElement;
       if (!iframe || !iframe.contentWindow) {
-        throw new Error("无法获取预览内容");
+        throw new Error("Cannot access preview content");
       }
 
       const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
       if (!iframeDoc || !iframeDoc.body) {
-        throw new Error("无法获取预览内容");
+        throw new Error("Cannot access preview content");
       }
 
-      // 等待字体加载完成
       try {
         await (iframeDoc as Document & { fonts?: FontFaceSet }).fonts?.ready;
       }
       catch {
-        // Fallback: wait a bit for fonts to load
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
-      // 动态导入 html2canvas
       const html2canvas = (await import("html2canvas")).default;
-
-      // 在 iframe 内注入 html2canvas 并执行截图
       const iframeWindow = iframe.contentWindow as Window & { html2canvas?: typeof html2canvas };
 
-      // 注入 html2canvas 到 iframe
       if (!iframeWindow.html2canvas) {
         const script = iframeDoc.createElement("script");
         script.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
@@ -109,20 +101,17 @@ export function TemplateExportModal({
         await new Promise<void>((resolve, reject) => {
           script.onload = () => resolve();
           script.onerror = () => reject(new Error("Failed to load html2canvas"));
-          setTimeout(() => resolve(), 3000); // Timeout fallback
+          setTimeout(() => resolve(), 3000);
         });
       }
 
-      // 使用 iframe 内的 html2canvas 或外部的
       const h2c = iframeWindow.html2canvas || html2canvas;
       const targetElement = iframeDoc.body;
 
-      // 重置滚动位置，避免偏移
       iframeWindow.scrollTo(0, 0);
       iframeDoc.documentElement.scrollTop = 0;
       iframeDoc.body.scrollTop = 0;
 
-      // 等待一帧确保滚动位置已重置
       await new Promise(resolve => requestAnimationFrame(resolve));
 
       const canvas = await h2c(targetElement, {
@@ -138,10 +127,8 @@ export function TemplateExportModal({
         windowWidth: targetElement.scrollWidth,
         windowHeight: targetElement.scrollHeight,
         onclone: (clonedDoc: Document) => {
-          // 重置克隆文档的滚动位置
           clonedDoc.documentElement.scrollTop = 0;
           clonedDoc.body.scrollTop = 0;
-          // 确保克隆的文档使用正确的字体
           const style = clonedDoc.createElement("style");
           style.textContent = `
             * {
@@ -158,19 +145,17 @@ export function TemplateExportModal({
       });
 
       const dataUrl = canvas.toDataURL("image/png");
-
-      // 保存图片
       await ExportRenderedHTML(dataUrl);
       onClose();
     }
     catch (err) {
       console.error("Failed to export image:", err);
-      toast.error(`导出图片失败: ${err instanceof Error ? err.message : String(err)}`);
+      toast.error(t("stats.templateExport.toast.exportFailed", { error: err instanceof Error ? err.message : String(err) }));
     }
     finally {
       setExporting(false);
     }
-  }, [previewRef, onClose]);
+  }, [previewRef, onClose, t]);
 
   const handleOpenTemplatesDir = async () => {
     try {
@@ -178,18 +163,16 @@ export function TemplateExportModal({
     }
     catch (err) {
       console.error("Failed to open templates dir:", err);
-      toast.error("打开模板目录失败");
+      toast.error(t("stats.templateExport.toast.openDirFailed"));
     }
   };
 
-  // 加载模板列表
   useEffect(() => {
     if (isOpen) {
       loadTemplates();
     }
   }, [isOpen]);
 
-  // 当选择模板或数据变化时，渲染预览
   useEffect(() => {
     if (isOpen && selectedTemplateId && stats) {
       renderPreview();
@@ -199,18 +182,19 @@ export function TemplateExportModal({
   if (!isOpen)
     return null;
 
-  const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+  const selectedTemplate = templates.find(tmpl => tmpl.id === selectedTemplateId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="w-full max-w-6xl h-[85vh] rounded-xl bg-white shadow-xl dark:bg-brand-800 border border-brand-200 dark:border-brand-700 flex flex-col overflow-hidden">
-        {/* 头部 */}
+        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-brand-200 dark:border-brand-700">
           <div className="flex items-center gap-3">
             <span className="i-mdi-image-filter-hdr text-2xl text-neutral-600 dark:text-neutral-400" />
-            <h2 className="text-xl font-bold text-brand-900 dark:text-white">美化导出</h2>
+            <h2 className="text-xl font-bold text-brand-900 dark:text-white">{t("stats.templateExport.title")}</h2>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 transition-colors"
           >
@@ -218,25 +202,25 @@ export function TemplateExportModal({
           </button>
         </div>
 
-        {/* 主体 */}
+        {/* Body */}
         <div className="flex-1 flex overflow-hidden">
-          {/* 左侧：模板选择 */}
+          {/* Left: Template Selection */}
           <div className="w-64 border-r border-brand-200 dark:border-brand-700 flex flex-col">
             <div className="p-4 border-b border-brand-200 dark:border-brand-700">
-              <h3 className="text-sm font-semibold text-brand-900 dark:text-white mb-1">选择模板</h3>
+              <h3 className="text-sm font-semibold text-brand-900 dark:text-white mb-1">{t("stats.templateExport.selectTemplate")}</h3>
               <p className="text-xs text-brand-500 dark:text-brand-400">
-                选择一个模板来美化你的统计数据
+                {t("stats.templateExport.selectTemplateHint")}
               </p>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
               {templates.map(template => (
                 <button
                   key={template.id}
+                  type="button"
                   onClick={() => setSelectedTemplateId(template.id)}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors ${
-                    selectedTemplateId === template.id
-                      ? "bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300"
-                      : "hover:bg-brand-50 dark:hover:bg-brand-700/50 text-brand-700 dark:text-brand-300"
+                  className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors ${selectedTemplateId === template.id
+                    ? "bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300"
+                    : "hover:bg-brand-50 dark:hover:bg-brand-700/50 text-brand-700 dark:text-brand-300"
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -259,18 +243,19 @@ export function TemplateExportModal({
             </div>
             <div className="p-3 border-t border-brand-200 dark:border-brand-700">
               <button
+                type="button"
                 onClick={handleOpenTemplatesDir}
                 className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-700/50 rounded-lg transition-colors"
               >
                 <span className="i-mdi-folder-open" />
-                打开模板目录
+                {t("stats.templateExport.openTemplatesDir")}
               </button>
             </div>
           </div>
 
-          {/* 右侧：预览 */}
+          {/* Right: Preview */}
           <div className="flex-1 flex flex-col overflow-hidden bg-brand-50 dark:bg-brand-900/50">
-            {/* 模板信息 */}
+            {/* Template Info */}
             {selectedTemplate && (
               <div className="px-4 py-3 border-b border-brand-200 dark:border-brand-700 bg-white dark:bg-brand-800">
                 <div className="flex items-center justify-between">
@@ -279,25 +264,25 @@ export function TemplateExportModal({
                       {selectedTemplate.name}
                     </h4>
                     <p className="text-xs text-brand-500 dark:text-brand-400">
-                      {selectedTemplate.author && `作者: ${selectedTemplate.author} · `}
-                      版本
+                      {selectedTemplate.author && `${t("stats.templateExport.authorPrefix")} ${selectedTemplate.author} · `}
+                      {t("stats.templateExport.versionPrefix")}
                       {" "}
                       {selectedTemplate.version}
-                      {selectedTemplate.is_builtin && " · 内置模板"}
+                      {selectedTemplate.is_builtin && t("stats.templateExport.builtinTag")}
                     </p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* 预览区域 */}
+            {/* Preview Area */}
             <div ref={previewRef} className="flex-1 overflow-auto p-4">
               {loading
                 ? (
                     <div className="flex items-center justify-center h-full">
                       <div className="flex items-center gap-3 text-brand-500 dark:text-brand-400">
                         <span className="i-mdi-loading animate-spin text-2xl" />
-                        <span>正在渲染预览...</span>
+                        <span>{t("stats.templateExport.rendering")}</span>
                       </div>
                     </div>
                   )
@@ -306,33 +291,35 @@ export function TemplateExportModal({
                       <iframe
                         srcDoc={previewHtml}
                         className="w-full h-full border-0 rounded-lg shadow-lg bg-white"
-                        title="模板预览"
+                        title={t("stats.templateExport.templatePreviewTitle")}
                         sandbox="allow-same-origin allow-scripts"
                       />
                     )
                   : (
                       <div className="flex items-center justify-center h-full text-brand-500 dark:text-brand-400">
-                        选择模板以预览效果
+                        {t("stats.templateExport.selectToPreview")}
                       </div>
                     )}
             </div>
           </div>
         </div>
 
-        {/* 底部按钮 */}
+        {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-brand-200 dark:border-brand-700 bg-brand-50 dark:bg-brand-900/30">
           <p className="text-xs text-brand-500 dark:text-brand-400">
             <span className="i-mdi-information-outline mr-1" />
-            提示：你可以在模板目录中创建自定义 HTML 模板
+            {t("stats.templateExport.tipText")}
           </p>
           <div className="flex gap-3">
             <button
+              type="button"
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 rounded-lg dark:text-brand-300 dark:hover:bg-brand-700 transition-colors"
             >
-              取消
+              {t("stats.templateExport.cancelBtn")}
             </button>
             <button
+              type="button"
               onClick={handleExport}
               disabled={!previewHtml || exporting}
               className="px-4 py-2 text-sm font-medium text-white bg-neutral-600 hover:bg-neutral-700 rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
@@ -341,13 +328,13 @@ export function TemplateExportModal({
                 ? (
                     <>
                       <span className="i-mdi-loading animate-spin" />
-                      导出中...
+                      {t("stats.templateExport.exporting")}
                     </>
                   )
                 : (
                     <>
                       <span className="i-mdi-download" />
-                      导出图片
+                      {t("stats.templateExport.exportBtn")}
                     </>
                   )}
             </button>

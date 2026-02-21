@@ -11,6 +11,7 @@ import {
 } from "chart.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import { enums, vo } from "../../wailsjs/go/models";
 import { AISummarize } from "../../wailsjs/go/service/AiService";
 import { GetGlobalPeriodStats } from "../../wailsjs/go/service/StatsService";
@@ -42,6 +43,7 @@ export const Route = createRoute({
 });
 
 function StatsPage() {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   const { textColor, gridColor } = useChartTheme();
   const [dimension, setDimension] = useState<enums.Period>(enums.Period.WEEK);
@@ -51,12 +53,12 @@ function StatsPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
 
-  // 自定义日期范围
+  // Custom date range
   const [customDateRange, setCustomDateRange] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  // 延迟显示骨架屏，避免闪烁
+  // Delay skeleton display to avoid flash
   useEffect(() => {
     let timer: number;
     if (loading) {
@@ -70,7 +72,7 @@ function StatsPage() {
     return () => clearTimeout(timer);
   }, [loading]);
 
-  // 从 store 获取缓存的 AI 总结
+  // Get cached AI summary from store
   const { aiSummaryCache, setAISummary } = useAppStore();
   const aiSummary = aiSummaryCache[dimension] || "";
 
@@ -84,12 +86,12 @@ function StatsPage() {
     catch (err) {
       console.error("AI summarize failed:", err);
       setAISummary(dimension, "");
-      toast.error("AI总结失败，请检查AI配置是否正确");
+      toast.error(t("stats.ai.summarizeFailed"));
     }
     finally {
       setAiLoading(false);
     }
-  }, [dimension, setAISummary]);
+  }, [dimension, setAISummary, t]);
 
   const loadStats = async (dim: enums.Period, start?: string, end?: string) => {
     setLoading(true);
@@ -104,7 +106,7 @@ function StatsPage() {
     }
     catch (error) {
       console.error("Failed to load stats:", error);
-      toast.error("加载统计数据失败");
+      toast.error(t("stats.toast.loadStatsFailed"));
     }
     finally {
       setLoading(false);
@@ -113,14 +115,13 @@ function StatsPage() {
 
   const handleApplyDateRange = () => {
     if (!startDate || !endDate) {
-      toast.error("请选择开始和结束日期");
+      toast.error(t("stats.toast.selectDateRange"));
       return;
     }
     if (new Date(startDate) >= new Date(endDate)) {
-      toast.error("开始日期必须早于结束日期");
+      toast.error(t("stats.toast.startBeforeEnd"));
       return;
     }
-    // 自定义日期范围统一使用 DAY 维度（按日聚合）
     loadStats(enums.Period.DAY, startDate, endDate);
   };
 
@@ -137,7 +138,7 @@ function StatsPage() {
     }
   }, [dimension]);
 
-  // 当切换到自定义日期范围时，初始化日期为今天
+  // When switching to custom date range, initialize dates to today
   useEffect(() => {
     if (customDateRange && !startDate && !endDate) {
       const today = formatDateToYYYYMMDD(new Date());
@@ -159,10 +160,10 @@ function StatsPage() {
 
   // Chart 1: Total Play Duration Trend
   const totalTrendData = {
-    labels: stats.timeline.map(p => p.label), // 后端已返回本地日期字符串，直接使用
+    labels: stats.timeline.map(p => p.label),
     datasets: [
       {
-        label: "总游玩时长 (小时)",
+        label: t("stats.totalDurationDataset"),
         data: stats.timeline.map(p => formatDurationHours(p.duration)),
         borderColor: "rgb(75, 192, 192)",
         backgroundColor: "rgba(75, 192, 192, 0.5)",
@@ -173,7 +174,7 @@ function StatsPage() {
 
   // Chart 2: Game Play Duration Trend (Multi-line)
   const gameTrendData = {
-    labels: stats.timeline.map(p => p.label), // 后端已返回本地日期字符串，直接使用
+    labels: stats.timeline.map(p => p.label),
     datasets: stats.leaderboard_series.map((series, index) => {
       const colors = [
         "rgb(255, 99, 132)",
@@ -217,7 +218,7 @@ function StatsPage() {
         beginAtZero: true,
         title: {
           display: true,
-          text: "小时",
+          text: t("stats.chartYAxis"),
           color: textColor,
         },
         grid: {
@@ -237,14 +238,14 @@ function StatsPage() {
       className={`space-y-6 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${loading ? "opacity-50 pointer-events-none" : "opacity-100"}`}
     >
       <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-bold text-brand-900 dark:text-white">统计</h1>
+        <h1 className="text-4xl font-bold text-brand-900 dark:text-white">{t("stats.title")}</h1>
       </div>
       <div className="flex justify-between items-center no-export">
         <div className="flex items-center space-x-4">
           <SlideButton
             options={[
-              { label: "周", value: enums.Period.WEEK },
-              { label: "月", value: enums.Period.MONTH },
+              { label: t("stats.period.week"), value: enums.Period.WEEK },
+              { label: t("stats.period.month"), value: enums.Period.MONTH },
             ]}
             value={customDateRange ? "" as enums.Period : dimension}
             onChange={(value) => {
@@ -258,8 +259,9 @@ function StatsPage() {
             disabled={loading}
           />
 
-          {/* 自定义日期范围按钮 */}
+          {/* Custom Date Range Toggle */}
           <button
+            type="button"
             onClick={() => setCustomDateRange(!customDateRange)}
             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${customDateRange
               ? "bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400"
@@ -267,20 +269,20 @@ function StatsPage() {
             }`}
           >
             <span className="i-mdi-calendar-range text-lg" />
-            自定义
+            {t("stats.customRange")}
           </button>
         </div>
         <div className="flex space-x-2 items-center">
-          <button onClick={() => setShowTemplateModal(true)} className="flex justify-end i-mdi-image-filter-hdr text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors" title="美化导出" />
-          <button onClick={handleAISummarize} className="flex justify-end i-mdi-robot-happy text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors" title="AI总结" />
+          <button type="button" onClick={() => setShowTemplateModal(true)} className="flex justify-end i-mdi-image-filter-hdr text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors" title={t("stats.exportTitle")} />
+          <button type="button" onClick={handleAISummarize} className="flex justify-end i-mdi-robot-happy text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors" title={t("stats.aiSummarizeTitle")} />
         </div>
       </div>
 
-      {/* 自定义日期范围选择器 */}
+      {/* Custom Date Range Picker */}
       {customDateRange && (
         <div className="glass-panel flex items-center gap-4 p-4 bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 no-export">
           <div className="flex items-center gap-2">
-            <label className="text-sm text-brand-600 dark:text-brand-400">开始日期</label>
+            <label className="text-sm text-brand-600 dark:text-brand-400">{t("stats.startDate")}</label>
             <input
               type="date"
               value={startDate}
@@ -289,7 +291,7 @@ function StatsPage() {
             />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-sm text-brand-600 dark:text-brand-400">结束日期</label>
+            <label className="text-sm text-brand-600 dark:text-brand-400">{t("stats.endDate")}</label>
             <input
               type="date"
               value={endDate}
@@ -298,21 +300,23 @@ function StatsPage() {
             />
           </div>
           <button
+            type="button"
             onClick={handleApplyDateRange}
             className="px-4 py-1.5 bg-neutral-600 hover:bg-neutral-700 text-white rounded-md text-sm font-medium transition-colors"
           >
-            应用
+            {t("stats.applyBtn")}
           </button>
           <button
+            type="button"
             onClick={handleResetDateRange}
             className="px-4 py-1.5 bg-brand-200 dark:bg-brand-700 hover:bg-brand-300 dark:hover:bg-brand-600 text-brand-700 dark:text-brand-300 rounded-md text-sm font-medium transition-colors"
           >
-            重置
+            {t("stats.resetBtn")}
           </button>
         </div>
       )}
 
-      {/* AI Summary Card - 显示在页面顶部 */}
+      {/* AI Summary Card */}
       {(aiLoading || aiSummary) && (
         <AiSummaryCard
           aiSummary={aiSummary}
@@ -322,26 +326,26 @@ function StatsPage() {
 
       {/* Library Summary */}
       <CollapsibleSection
-        title="库概览"
+        title={t("stats.library.sectionTitle")}
         icon="i-mdi-library-shelves"
         defaultOpen={false}
       >
         <div className="flex items-center justify-between">
           <div className="text-center">
             <p className="text-2xl font-bold text-brand-900 dark:text-white">{stats.library_games_count}</p>
-            <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">库中所有游戏</p>
+            <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">{t("stats.library.totalGames")}</p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-brand-900 dark:text-white">{stats.all_sessions_count}</p>
-            <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">总游玩次数</p>
+            <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">{t("stats.library.totalSessions")}</p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-brand-900 dark:text-white">{formatDurationShort(stats.all_sessions_duration)}</p>
-            <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">总游玩时长</p>
+            <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">{t("stats.library.totalDuration")}</p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-brand-900 dark:text-white">{stats.all_completed_games_count}</p>
-            <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">通关游戏数</p>
+            <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">{t("stats.library.completedGames")}</p>
           </div>
         </div>
       </CollapsibleSection>
@@ -349,19 +353,19 @@ function StatsPage() {
       {/* Summary Cards */}
       <div className="flex flex-wrap gap-6">
         <div className="flex-1 min-w-[150px] glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
-          <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">总游玩次数</h3>
+          <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">{t("stats.summary.totalPlayCount")}</h3>
           <p className="text-3xl font-bold text-brand-900 dark:text-white">{stats.total_play_count}</p>
         </div>
         <div className="flex-1 min-w-[150px] glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
-          <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">总游玩时长</h3>
+          <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">{t("stats.summary.totalPlayDuration")}</h3>
           <p className="text-3xl font-bold text-brand-900 dark:text-white">{formatDurationShort(stats.total_play_duration)}</p>
         </div>
         <div className="flex-1 min-w-[150px] glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
-          <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">游玩游戏数量</h3>
+          <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">{t("stats.summary.gamesPlayed")}</h3>
           <p className="text-3xl font-bold text-brand-900 dark:text-white">{stats.total_games_count}</p>
         </div>
         <div className="flex-1 min-w-[150px] glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
-          <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">通关游戏</h3>
+          <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">{t("stats.summary.completedGames")}</h3>
           <p className="text-3xl font-bold text-brand-900 dark:text-white">{stats.completed_games_count}</p>
         </div>
       </div>
@@ -398,16 +402,16 @@ function StatsPage() {
         <div className={`glass-card ${stats.play_time_leaderboard.length > 0 ? "md:col-span-1 lg:col-span-2" : "md:col-span-2 lg:col-span-3"} bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 overflow-hidden flex flex-col`}>
           <div className="p-6 border-b border-brand-200 dark:border-brand-700">
             <h3 className="text-lg font-semibold text-brand-900 dark:text-white">
-              {stats.play_time_leaderboard.length > 0 ? "排行榜" : "游玩时长排行榜"}
+              {stats.play_time_leaderboard.length > 0 ? t("stats.leaderboard.title") : t("stats.leaderboard.fullTitle")}
             </h3>
           </div>
           <div className="overflow-x-auto flex-1">
             <table className="w-full text-left text-sm">
               <thead className="data-glass:bg-white/5 data-glass:dark:bg-black/5 bg-brand-50 dark:bg-brand-700/50">
                 <tr>
-                  <th className="px-6 py-3 font-medium text-brand-500 dark:text-brand-400 w-20">排名</th>
-                  <th className="px-6 py-3 font-medium text-brand-500 dark:text-brand-400">游戏</th>
-                  <th className="px-6 py-3 font-medium text-brand-500 dark:text-brand-400 text-right">时长</th>
+                  <th className="px-6 py-3 font-medium text-brand-500 dark:text-brand-400 w-20">{t("stats.leaderboard.rankCol")}</th>
+                  <th className="px-6 py-3 font-medium text-brand-500 dark:text-brand-400">{t("stats.leaderboard.gameCol")}</th>
+                  <th className="px-6 py-3 font-medium text-brand-500 dark:text-brand-400 text-right">{t("stats.leaderboard.durationCol")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-200 dark:divide-brand-700">
@@ -438,7 +442,7 @@ function StatsPage() {
                 {stats.play_time_leaderboard.length <= 1 && (
                   <tr>
                     <td colSpan={3} className="px-6 py-12 text-center text-brand-500 dark:text-brand-400">
-                      {stats.play_time_leaderboard.length === 0 ? "暂无数据" : "暂无更多排行数据"}
+                      {stats.play_time_leaderboard.length === 0 ? t("stats.leaderboard.noData") : t("stats.leaderboard.noMoreData")}
                     </td>
                   </tr>
                 )}
@@ -451,7 +455,7 @@ function StatsPage() {
       {/* Charts */}
       <div className="space-y-6">
         <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
-          <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">游玩时长趋势</h3>
+          <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">{t("stats.charts.totalTrend")}</h3>
           <HorizontalScrollChart
             data={totalTrendData}
             options={chartOptions}
@@ -459,7 +463,7 @@ function StatsPage() {
           />
         </div>
         <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
-          <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">常玩游戏趋势</h3>
+          <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">{t("stats.charts.gameTrend")}</h3>
           <HorizontalScrollChart
             data={gameTrendData}
             options={chartOptions}
@@ -468,7 +472,7 @@ function StatsPage() {
         </div>
       </div>
 
-      {/* 模板导出弹窗 */}
+      {/* Template Export Modal */}
       <TemplateExportModal
         isOpen={showTemplateModal}
         onClose={() => setShowTemplateModal(false)}
