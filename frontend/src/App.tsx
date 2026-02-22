@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 import { Toaster } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { SafeQuit } from "../wailsjs/go/service/ConfigService";
+import { GetPendingInstall } from "../wailsjs/go/service/DownloadService";
 import { EventsOff, EventsOn, WindowShow } from "../wailsjs/runtime/runtime";
+import { InstallConfirmModal } from "./components/modal/InstallConfirmModal";
 import { ProcessSelectModal } from "./components/modal/ProcessSelectModal";
 import { TimezoneSelectModal } from "./components/modal/TimezoneSelectModal";
 import { UpdateDialog } from "./components/ui/UpdateDialog";
@@ -37,6 +39,12 @@ function App() {
     gameID: string;
     launcherExeName: string;
   }>({ isOpen: false, gameID: "", launcherExeName: "" });
+  const [installRequest, setInstallRequest] = useState<{
+    url: string;
+    title: string;
+    vndb_id: string;
+    size: number;
+  } | null>(null);
   const { i18n } = useTranslation();
 
   useEffect(() => {
@@ -133,15 +141,31 @@ function App() {
     }
   }, [config?.theme]);
 
-  // 配置加载完成后显示窗口
+  // 配置加载完成后显示窗口，并检查是否有待安装任务
   useEffect(() => {
     if (config) {
       // 标记内容已准备好，触发淡入动画
       document.getElementById("root")?.classList.add("ready");
       // 显示窗口
       WindowShow();
+      // 检查是否有从 lunabox:// 触发的待安装请求
+      GetPendingInstall().then((req) => {
+        if (req) {
+          setInstallRequest(req);
+          WindowShow();
+        }
+      });
     }
   }, [config]);
+
+  // 监听运行时通过 IPC 转发过来的安装请求（GUI 已在运行时）
+  useEffect(() => {
+    EventsOn("install:pending", (req: { url: string; title: string; vndb_id: string; size: number }) => {
+      setInstallRequest(req);
+      WindowShow();
+    });
+    return () => EventsOff("install:pending");
+  }, []);
 
   return (
     <>
@@ -185,6 +209,10 @@ function App() {
         launcherExeName={processSelectData.launcherExeName}
         onClose={() => setProcessSelectData({ isOpen: false, gameID: "", launcherExeName: "" })}
         onSelected={() => setProcessSelectData({ isOpen: false, gameID: "", launcherExeName: "" })}
+      />
+      <InstallConfirmModal
+        request={installRequest}
+        onClose={() => setInstallRequest(null)}
       />
     </>
   );

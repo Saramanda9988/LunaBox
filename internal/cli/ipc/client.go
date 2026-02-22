@@ -20,6 +20,20 @@ func IsServerRunning() bool {
 	return resp.StatusCode == http.StatusOK
 }
 
+// RemoteInstall 将 InstallRequest 转发给运行中的 GUI 处理
+func RemoteInstall(req interface{}) error {
+	jsonBody, _ := json.Marshal(req)
+	resp, err := http.Post(ServerURL+"/install", "application/json", bytes.NewReader(jsonBody))
+	if err != nil {
+		return fmt.Errorf("failed to connect to LunaBox: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("LunaBox returned error status: %d", resp.StatusCode)
+	}
+	return nil
+}
+
 // RemoteRun 在远程 Server 上执行命令
 func RemoteRun(args []string) error {
 	reqBody := CommandRequest{Args: args}

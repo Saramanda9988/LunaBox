@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"lunabox/internal/cli"
 	"lunabox/internal/cli/ipc"
+	"lunabox/internal/protocol"
 	"lunabox/internal/utils"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -52,6 +54,52 @@ var systrayReady chan struct{}
 var forceQuit bool
 
 func main() {
+	// ================================================================
+	// 启动参数预处理：在 Wails 初始化之前处理协议参数
+	// ================================================================
+	args := os.Args[1:]
+
+	// --register-protocol: 注册注册表并退出
+	if len(args) == 1 && args[0] == "--register-protocol" {
+		if err := protocol.RegisterURLScheme(""); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("lunabox:// protocol registered successfully")
+		return
+	}
+
+	// --unregister-protocol: 删除注册表并退出
+	if len(args) == 1 && args[0] == "--unregister-protocol" {
+		if err := protocol.UnregisterURLScheme(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("lunabox:// protocol unregistered")
+		return
+	}
+
+	// lunabox:// URL：检查 GUI 是否已运行
+	var pendingURL string
+	if len(args) == 1 && protocol.IsProtocolURL(args[0]) {
+		pendingURL = args[0]
+		// 如果 GUI 已运行，转发安装请求给它并退出
+		if ipc.IsServerRunning() {
+			req, err := protocol.ParseURL(pendingURL)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error parsing URL: %v\n", err)
+				os.Exit(1)
+			}
+			if err := ipc.RemoteInstall(req); err != nil {
+				fmt.Fprintf(os.Stderr, "Error forwarding to LunaBox: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		}
+		// GUI 未运行，当前进程继续启动 GUI
+	}
+
+	// ================================================================
 	logDir, _ := utils.GetSubDir("logs")
 	appLogger := logger.NewFileLogger(filepath.Join(logDir, "app.log"))
 
@@ -74,6 +122,14 @@ func main() {
 	templateService := service.NewTemplateService()
 	updateService := service.NewUpdateService()
 	sessionService := service.NewSessionService()
+	downloadService := service.NewDownloadService()
+
+	// 如果有待安装 URL，解析并暂存到 downloadService
+	if pendingURL != "" {
+		if req, err := protocol.ParseURL(pendingURL); err == nil {
+			downloadService.SetPendingInstall(req)
+		}
+	}
 
 	// 创建本地文件处理器
 	localFileHandler, err := utils.NewLocalFileHandler()
@@ -225,6 +281,7 @@ func main() {
 				forceQuit = true
 				runtime.Quit(ctx)
 			})
+			downloadService.Init(ctx)
 			gameService.Init(ctx, db, config)
 			aiService.Init(ctx, db, config)
 			backupService.Init(ctx, db, config)
@@ -327,6 +384,7 @@ func main() {
 			templateService,
 			updateService,
 			sessionService,
+			downloadService,
 		},
 		EnumBind: []interface{}{
 			enums.AllSourceTypes,

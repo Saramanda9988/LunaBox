@@ -8,6 +8,9 @@ import (
 
 	"lunabox/internal/applog"
 	"lunabox/internal/cli"
+	"lunabox/internal/vo"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // StartServer 启动 IPC 服务器 (在 GUI 进程中运行)
@@ -52,6 +55,24 @@ func StartServer(app *cli.CoreApp) {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
+	})
+
+	// /install: 接收来自新启动实例转发的 lunabox:// 安装请求
+	mux.HandleFunc("/install", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var req vo.InstallRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+		// 不直接开始下载，只推送事件让前端弹出确认窗口
+		// 用户确认后前端调用 DownloadService.StartDownload
+		runtime.EventsEmit(app.Ctx, "install:pending", req)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(InstallResponse{TaskID: ""})
 	})
 
 	server := &http.Server{

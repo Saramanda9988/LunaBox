@@ -1,6 +1,8 @@
 package ipc
 
-import "time"
+import (
+	"time"
+)
 
 const (
 	ServerAddr  = "127.0.0.1"
@@ -15,5 +17,11 @@ type CommandRequest struct {
 
 type CommandResponse struct {
 	Output string `json:"output"`
+	Error  string `json:"error,omitempty"`
+}
+
+// InstallResponse IPC /install 响应
+type InstallResponse struct {
+	TaskID string `json:"task_id,omitempty"`
 	Error  string `json:"error,omitempty"`
 }

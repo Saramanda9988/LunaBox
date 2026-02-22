@@ -8,6 +8,11 @@ import (
 	"lunabox/internal/cli/ipc"
 )
 
+// localOnlyCommands 必须在本地运行、不转发给 GUI 的命令
+var localOnlyCommands = map[string]bool{
+	"luna-sama": true,
+}
+
 func main() {
 	args := os.Args[1:]
 	if len(args) == 0 {
@@ -16,23 +21,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Special case for interactive easter egg (must run locally for stdin/stdout)
-	if args[0] == "luna-sama" {
-		cli.RunCommand(os.Stdout, &cli.CoreApp{}, args)
-		return
-	}
-
-	// 1. 尝试通过 IPC 在 GUI 进程中运行命令
-	if ipc.IsServerRunning() {
-		err := ipc.RemoteRun(args)
-		if err != nil {
+	// 本地命令：不需要 GUI 进程，直接在当前进程执行
+	if localOnlyCommands[args[0]] {
+		if err := cli.RunCommand(os.Stdout, &cli.CoreApp{}, args); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 		return
 	}
 
-	// 2. 如果 GUI 未运行，提示用户启动
+	// 其余命令：必须有 GUI 进程（通过 IPC 执行）
+	if ipc.IsServerRunning() {
+		if err := ipc.RemoteRun(args); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	fmt.Println("Error: LunaBox application is not running.")
 	fmt.Println("Please start LunaBox first to use CLI commands.")
 	os.Exit(1)

@@ -63,3 +63,11 @@ type RenderTemplateRequest struct {
 	TemplateID string          `json:"template_id"` // 模板ID
 	Data       StatsExportData `json:"data"`        // 导出数据
 }
+
+// InstallRequest 通过 lunabox://install?... 触发的安装请求
+type InstallRequest struct {
+	URL    string `json:"url"`     // 下载直链（必填）
+	Title  string `json:"title"`   // 游戏标题（fallback 展示用）
+	VndbID string `json:"vndb_id"` // VNDB ID，如 V2920（可选，用于元数据刮削）
+	Size   int64  `json:"size"`    // 文件大小（bytes，可选，用于进度与有效期预判）
+}
