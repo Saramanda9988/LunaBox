@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
 	"lunabox/internal/vo"
 	"net/http"
@@ -54,6 +55,7 @@ type DownloadProgressEvent struct {
 // DownloadService 管理所有下载任务
 type DownloadService struct {
 	ctx            context.Context
+	config         *appconf.AppConfig
 	mu             sync.RWMutex
 	tasks          map[string]*DownloadTask
 	pendingInstall *vo.InstallRequest // 从 lunabox:// URI 传入的待安装请求，在 GUI 就绪前暂存
@@ -65,8 +67,9 @@ func NewDownloadService() *DownloadService {
 	}
 }
 
-func (s *DownloadService) Init(ctx context.Context) {
+func (s *DownloadService) Init(ctx context.Context, config *appconf.AppConfig) {
 	s.ctx = ctx
+	s.config = config
 }
 
 // SetPendingInstall 在 Wails 启动前由 main.go 调用，暂存待安装请求
@@ -152,7 +155,7 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 	applog.LogInfof(s.ctx, "Download started: %s  url=%s", task.ID, task.Request.URL)
 
 	// 确定下载目标路径
-	destDir, err := getDownloadDir()
+	destDir, err := s.getDownloadDir()
 	if err != nil {
 		s.failTask(task, fmt.Sprintf("failed to get download dir: %v", err))
 		return
@@ -275,7 +278,10 @@ func (s *DownloadService) failTask(task *DownloadTask, msg string) {
 
 // =================== 辅助函数 ===================
 
-func getDownloadDir() (string, error) {
+func (s *DownloadService) getDownloadDir() (string, error) {
+	if s.config != nil && s.config.DownloadDir != "" {
+		return s.config.DownloadDir, os.MkdirAll(s.config.DownloadDir, 0755)
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err

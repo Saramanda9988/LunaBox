@@ -9,6 +9,7 @@ import { BackgroundSettingsPanel } from "../components/panel/BackgroundSettingsP
 import { BasicSettingsPanel } from "../components/panel/BasicSettingsPanel";
 import { CloudBackupSettingsPanel } from "../components/panel/CloudBackupSettingsPanel";
 import { DBBackupPanel } from "../components/panel/DBBackupPanel";
+import { DownloadSettingsPanel } from "../components/panel/DownloadSettingsPanel";
 import { FullDataBackupPanel } from "../components/panel/FullDataBackupPanel";
 import { GameSettingsPanel } from "../components/panel/GameSettingsPanel";
 import { UpdateSettingsPanel } from "../components/panel/UpdateSettingsPanel";
@@ -121,6 +122,10 @@ function SettingsPage() {
 
       <CollapsibleSection title={t("settings.sections.game")} icon="i-mdi-timer-play-outline" defaultOpen={false}>
         <GameSettingsPanel formData={formData} onChange={handleFormChange} />
+      </CollapsibleSection>
+
+      <CollapsibleSection title={t("settings.sections.download")} icon="i-mdi-download" defaultOpen={false}>
+        <DownloadSettingsPanel formData={formData} onChange={handleFormChange} />
       </CollapsibleSection>
 
       <CollapsibleSection title={t("settings.sections.cloudBackup")} icon="i-mdi-cloud-upload" defaultOpen={false}>

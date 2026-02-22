@@ -75,6 +75,9 @@ type AppConfig struct {
 	AutoDetectGameProcess bool `json:"auto_detect_game_process"` // 是否启用自动游戏进程检测（分阶段检测策略）
 	// 时区配置
 	TimeZone string `json:"time_zone,omitempty"` // 数据库使用的 IANA 时区名称（如 "Asia/Shanghai"）
+	// 路径配置
+	DownloadDir    string `json:"download_dir,omitempty"`     // 默认下载目录（空则使用 ~/Downloads/LunaBox）
+	GameLibraryDir string `json:"game_library_dir,omitempty"` // 游戏库目录（信息展示用）
 }
 
 // getConfigPath 获取配置文件路径
@@ -138,6 +141,8 @@ func LoadConfig() (*AppConfig, error) {
 		LocaleEmulatorPath:      "",
 		MagpiePath:              "",
 		AutoDetectGameProcess:   true, // 默认启用自动检测，保持向后兼容
+		DownloadDir:             "",
+		GameLibraryDir:          "",
 	}
 
 	// 获取配置文件路径

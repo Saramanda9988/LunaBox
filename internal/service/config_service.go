@@ -32,6 +32,18 @@ func (s *ConfigService) GetAppConfig() (appconf.AppConfig, error) {
 	return *s.config, nil
 }
 
+// SelectDirectory 打开目录选择对话框
+func (s *ConfigService) SelectDirectory(title string) (string, error) {
+	selection, err := runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{
+		Title: title,
+	})
+	if err != nil {
+		applog.LogErrorf(s.ctx, "SelectDirectory failed: %v", err)
+		return "", err
+	}
+	return selection, nil
+}
+
 // SelectBackgroundImage 打开文件选择对话框选择背景图片，并保存到应用目录
 func (s *ConfigService) SelectBackgroundImage() (string, error) {
 	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
@@ -166,6 +178,9 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.AutoDetectGameProcess = newConfig.AutoDetectGameProcess
 	// 时区相关配置
 	s.config.TimeZone = newConfig.TimeZone
+	// 路径配置
+	s.config.DownloadDir = newConfig.DownloadDir
+	s.config.GameLibraryDir = newConfig.GameLibraryDir
 	return nil
 }
 

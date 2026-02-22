@@ -14,8 +14,8 @@ export function GetPendingInstall() {
   return window['go']['service']['DownloadService']['GetPendingInstall']();
 }
 
-export function Init(arg1) {
-  return window['go']['service']['DownloadService']['Init'](arg1);
+export function Init(arg1, arg2) {
+  return window['go']['service']['DownloadService']['Init'](arg1, arg2);
 }
 
 export function SetPendingInstall(arg1) {

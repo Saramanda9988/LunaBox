@@ -16,6 +16,8 @@ export function SelectAndCropBackgroundImage():Promise<string>;
 
 export function SelectBackgroundImage():Promise<string>;
 
+export function SelectDirectory(arg1:string):Promise<string>;
+
 export function SetQuitHandler(arg1:any):Promise<void>;
 
 export function UpdateAppConfig(arg1:appconf.AppConfig):Promise<void>;

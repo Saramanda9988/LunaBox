@@ -3,6 +3,7 @@
 import {service} from '../models';
 import {vo} from '../models';
 import {context} from '../models';
+import {appconf} from '../models';
 
 export function CancelDownload(arg1:string):Promise<void>;
 
@@ -10,7 +11,7 @@ export function GetDownloadTasks():Promise<Array<service.DownloadTask>>;
 
 export function GetPendingInstall():Promise<vo.InstallRequest>;
 
-export function Init(arg1:context.Context):Promise<void>;
+export function Init(arg1:context.Context,arg2:appconf.AppConfig):Promise<void>;
 
 export function SetPendingInstall(arg1:vo.InstallRequest):Promise<void>;
 
