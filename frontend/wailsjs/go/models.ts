@@ -1047,7 +1047,9 @@ export namespace vo {
 	export class InstallRequest {
 	    url: string;
 	    title: string;
-	    vndb_id: string;
+	    download_source: string;
+	    meta_source: string;
+	    meta_id: string;
 	    size: number;
 	
 	    static createFrom(source: any = {}) {
@@ -1058,7 +1060,9 @@ export namespace vo {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.url = source["url"];
 	        this.title = source["title"];
-	        this.vndb_id = source["vndb_id"];
+	        this.download_source = source["download_source"];
+	        this.meta_source = source["meta_source"];
+	        this.meta_id = source["meta_id"];
 	        this.size = source["size"];
 	    }
 	}

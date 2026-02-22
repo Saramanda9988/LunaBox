@@ -66,8 +66,10 @@ type RenderTemplateRequest struct {
 
 // InstallRequest 通过 lunabox://install?... 触发的安装请求
 type InstallRequest struct {
-	URL    string `json:"url"`     // 下载直链（必填）
-	Title  string `json:"title"`   // 游戏标题（fallback 展示用）
-	VndbID string `json:"vndb_id"` // VNDB ID，如 V2920（可选，用于元数据刮削）
-	Size   int64  `json:"size"`    // 文件大小（bytes，可选，用于进度与有效期预判）
+	URL            string `json:"url"`             // 下载直链（必填）
+	Title          string `json:"title"`           // 游戏标题（fallback 展示用）
+	DownloadSource string `json:"download_source"` // 下载来源：Shionlib / Umbra 等（可选，用于用户识别）
+	MetaSource     string `json:"meta_source"`     // 元数据来源：bangumi / vndb / ymgal（可选）
+	MetaID         string `json:"meta_id"`         // 元数据 ID，对应刮削源的 ID（可选）
+	Size           int64  `json:"size"`            // 文件大小（bytes，可选，用于进度与有效期预判）
 }

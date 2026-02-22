@@ -11,7 +11,8 @@ import (
 const Scheme = "lunabox"
 
 // ParseURL parses a lunabox:// URI into an InstallRequest.
-// Supports: lunabox://install?url=...&title=...&vndb=...&size=...
+// Supports: lunabox://install?url=...&title=...&download_source=Shionlib&source=vndb&meta_id=V2920&size=...
+// Legacy compat: &vndb=V2920 is treated as source=vndb&meta_id=V2920
 func ParseURL(rawURL string) (*vo.InstallRequest, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -26,9 +27,18 @@ func ParseURL(rawURL string) (*vo.InstallRequest, error) {
 
 	q := u.Query()
 	req := &vo.InstallRequest{
-		URL:    q.Get("url"),
-		Title:  q.Get("title"),
-		VndbID: q.Get("vndb"),
+		URL:            q.Get("url"),
+		Title:          q.Get("title"),
+		DownloadSource: q.Get("download_source"),
+		MetaSource:     q.Get("source"),
+		MetaID:         q.Get("meta_id"),
+	}
+	// 兼容旧版 ?vndb=V2920 写法
+	if req.MetaID == "" && req.MetaSource == "" {
+		if vndb := q.Get("vndb"); vndb != "" {
+			req.MetaSource = "vndb"
+			req.MetaID = vndb
+		}
 	}
 	if req.URL == "" {
 		return nil, fmt.Errorf("missing required parameter: url")

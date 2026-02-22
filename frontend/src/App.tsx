@@ -42,7 +42,9 @@ function App() {
   const [installRequest, setInstallRequest] = useState<{
     url: string;
     title: string;
-    vndb_id: string;
+    download_source: string;
+    meta_source: string;
+    meta_id: string;
     size: number;
   } | null>(null);
   const { i18n } = useTranslation();
@@ -160,7 +162,7 @@ function App() {
 
   // 监听运行时通过 IPC 转发过来的安装请求（GUI 已在运行时）
   useEffect(() => {
-    EventsOn("install:pending", (req: { url: string; title: string; vndb_id: string; size: number }) => {
+    EventsOn("install:pending", (req: { url: string; title: string; download_source: string; meta_source: string; meta_id: string; size: number }) => {
       setInstallRequest(req);
       WindowShow();
     });

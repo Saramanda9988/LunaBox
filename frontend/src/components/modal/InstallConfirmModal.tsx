@@ -5,8 +5,25 @@ import { StartDownload } from "../../../wailsjs/go/service/DownloadService";
 interface InstallRequest {
   url: string;
   title: string;
-  vndb_id: string;
+  download_source: string;
+  meta_source: string;
+  meta_id: string;
   size: number;
+}
+
+const META_SOURCE_LABELS: Record<string, string> = {
+  vndb: "VNDB",
+  bangumi: "Bangumi",
+  ymgal: "月幕Galgame",
+};
+
+function metaUrl(source: string, id: string): string {
+  switch (source) {
+    case "vndb": return `https://vndb.org/${id}`;
+    case "bangumi": return `https://bgm.tv/subject/${id}`;
+    case "ymgal": return `https://www.ymgal.games/ga/${id}`;
+    default: return "";
+  }
 }
 
 interface InstallConfirmModalProps {
@@ -71,19 +88,38 @@ export function InstallConfirmModal({ request, onClose }: InstallConfirmModalPro
             </span>
           </div>
 
-          {request.vndb_id && (
+          {request.download_source && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-brand-500 dark:text-brand-400 w-14 shrink-0">VNDB</span>
-              <a
-                href={`https://vndb.org/${request.vndb_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary-600 dark:text-primary-400 hover:underline font-mono"
-              >
-                {request.vndb_id}
-              </a>
+              <span className="text-xs text-brand-500 dark:text-brand-400 w-14 shrink-0">
+                {t("installModal.source", "来源")}
+              </span>
+              <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
+                {request.download_source}
+              </span>
             </div>
           )}
+
+          {request.meta_source && request.meta_id && (() => {
+            const label = META_SOURCE_LABELS[request.meta_source] ?? request.meta_source;
+            const href = metaUrl(request.meta_source, request.meta_id);
+            return (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-brand-500 dark:text-brand-400 w-14 shrink-0">{label}</span>
+                {href
+                  ? (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary-600 dark:text-primary-400 hover:underline font-mono"
+                      >
+                        {request.meta_id}
+                      </a>
+                    )
+                  : <span className="text-sm text-brand-700 dark:text-brand-300 font-mono">{request.meta_id}</span>}
+              </div>
+            );
+          })()}
 
           {request.size > 0 && (
             <div className="flex items-center gap-2">
