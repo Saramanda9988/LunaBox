@@ -52,8 +52,7 @@ export namespace appconf {
 	    magpie_path?: string;
 	    auto_detect_game_process: boolean;
 	    time_zone?: string;
-	    download_dir?: string;
-	    game_library_dir?: string;
+	    game_library_path?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -112,8 +111,7 @@ export namespace appconf {
 	        this.magpie_path = source["magpie_path"];
 	        this.auto_detect_game_process = source["auto_detect_game_process"];
 	        this.time_zone = source["time_zone"];
-	        this.download_dir = source["download_dir"];
-	        this.game_library_dir = source["game_library_dir"];
+	        this.game_library_path = source["game_library_path"];
 	    }
 	}
 
@@ -121,6 +119,12 @@ export namespace appconf {
 
 export namespace enums {
 	
+	export enum SourceType {
+	    LOCAL = "local",
+	    BANGUMI = "bangumi",
+	    VNDB = "vndb",
+	    YMGAL = "ymgal",
+	}
 	export enum Period {
 	    DAY = "day",
 	    WEEK = "week",
@@ -137,12 +141,6 @@ export namespace enums {
 	    PLAYING = "playing",
 	    COMPLETED = "completed",
 	    ON_HOLD = "on_hold",
-	}
-	export enum SourceType {
-	    LOCAL = "local",
-	    BANGUMI = "bangumi",
-	    VNDB = "vndb",
-	    YMGAL = "ymgal",
 	}
 
 }

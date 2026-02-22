@@ -279,14 +279,14 @@ func (s *DownloadService) failTask(task *DownloadTask, msg string) {
 // =================== 辅助函数 ===================
 
 func (s *DownloadService) getDownloadDir() (string, error) {
-	if s.config != nil && s.config.DownloadDir != "" {
-		return s.config.DownloadDir, os.MkdirAll(s.config.DownloadDir, 0755)
+	if s.config != nil && s.config.GameLibraryPath != "" {
+		return s.config.GameLibraryPath, os.MkdirAll(s.config.GameLibraryPath, 0755)
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(home, "Downloads", "LunaBox")
+	dir := filepath.Join(home, "Games")
 	return dir, os.MkdirAll(dir, 0755)
 }
 

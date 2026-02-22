@@ -178,9 +178,8 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.AutoDetectGameProcess = newConfig.AutoDetectGameProcess
 	// 时区相关配置
 	s.config.TimeZone = newConfig.TimeZone
-	// 路径配置
-	s.config.DownloadDir = newConfig.DownloadDir
-	s.config.GameLibraryDir = newConfig.GameLibraryDir
+	// 游戏库路径配置
+	s.config.GameLibraryPath = newConfig.GameLibraryPath
 	return nil
 }
 
