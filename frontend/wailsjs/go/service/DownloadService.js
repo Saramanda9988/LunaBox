@@ -6,6 +6,10 @@ export function CancelDownload(arg1) {
   return window['go']['service']['DownloadService']['CancelDownload'](arg1);
 }
 
+export function DeleteDownloadTask(arg1) {
+  return window['go']['service']['DownloadService']['DeleteDownloadTask'](arg1);
+}
+
 export function GetDownloadTasks() {
   return window['go']['service']['DownloadService']['GetDownloadTasks']();
 }
@@ -14,8 +18,12 @@ export function GetPendingInstall() {
   return window['go']['service']['DownloadService']['GetPendingInstall']();
 }
 
-export function Init(arg1, arg2) {
-  return window['go']['service']['DownloadService']['Init'](arg1, arg2);
+export function Init(arg1, arg2, arg3) {
+  return window['go']['service']['DownloadService']['Init'](arg1, arg2, arg3);
+}
+
+export function OpenDownloadTaskLocation(arg1) {
+  return window['go']['service']['DownloadService']['OpenDownloadTaskLocation'](arg1);
 }
 
 export function SetPendingInstall(arg1) {

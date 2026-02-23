@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BrowserOpenURL } from "../../../wailsjs/runtime/runtime";
+import { BrowserOpenURL, EventsOff, EventsOn } from "../../../wailsjs/runtime/runtime";
 import { useAppStore } from "../../store";
 
 interface SideBarProps {
@@ -11,6 +12,18 @@ interface SideBarProps {
 export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
   const { t } = useTranslation();
   const { isSidebarOpen, toggleSidebar } = useAppStore();
+  const [activeDownloads, setActiveDownloads] = useState(0);
+
+  // 监听下载进度事件，统计进行中的任务数
+  useEffect(() => {
+    const counts: Record<string, string> = {};
+    EventsOn("download:progress", (evt: { id: string; status: string }) => {
+      counts[evt.id] = evt.status;
+      const active = Object.values(counts).filter(s => s === "downloading" || s === "pending").length;
+      setActiveDownloads(active);
+    });
+    return () => EventsOff("download:progress");
+  }, []);
 
   const navItems = [
     { to: "/", label: t("sideBar.home"), icon: "i-mdi-home" },
@@ -61,8 +74,10 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
                 className={`flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 no-underline [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100 select-none data-glass:hover:bg-white/10 data-glass:hover:dark:bg-black/10 data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20 ${isSidebarOpen ? "" : "justify-center"}`}
                 onDragStart={e => e.preventDefault()}
               >
-                <div className={`${item.icon} text-xl pointer-events-none`} />
-                {isSidebarOpen && <span className="ml-3 pointer-events-none">{item.label}</span>}
+                <div className="relative shrink-0">
+                  <div className={`${item.icon} text-xl pointer-events-none`} />
+                </div>
+                {isSidebarOpen && <span className="ml-3 pointer-events-none flex-1">{item.label}</span>}
               </Link>
             </li>
           ))}
@@ -70,6 +85,21 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
       </nav>
 
       <div className={`p-4 ${bgEnabled ? "border-white/20 dark:border-white/10" : "border-brand-200 dark:border-brand-700"} flex ${isSidebarOpen ? "flex-row items-center justify-end gap-1" : "flex-col items-center gap-2"}`}>
+        <Link
+          to="/downloads"
+          className="flex items-center relative p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 no-underline [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100 select-none data-glass:hover:bg-white/10 data-glass:hover:dark:bg-black/10 data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20"
+          title={t("sideBar.downloads", "下载")}
+          onDragStart={e => e.preventDefault()}
+        >
+          <div className="relative shrink-0">
+            <div className="i-mdi-download text-xl pointer-events-none" />
+            {activeDownloads > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 flex items-center justify-center bg-blue-500 text-white text-[10px] font-bold rounded-full leading-none pointer-events-none">
+                {activeDownloads > 99 ? "99+" : activeDownloads}
+              </span>
+            )}
+          </div>
+        </Link>
         <div
           onClick={() => BrowserOpenURL("https://github.com/Saramanda9988/LunaBox")}
           className="flex items-center p-2 rounded hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300 cursor-pointer select-none data-glass:hover:bg-white/10 data-glass:hover:dark:bg:black/10"

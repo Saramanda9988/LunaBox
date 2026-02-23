@@ -2,10 +2,13 @@ package service
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
+	"lunabox/internal/utils"
 	"lunabox/internal/vo"
 	"net/http"
 	"os"
@@ -43,18 +46,20 @@ type DownloadTask struct {
 
 // DownloadProgressEvent 通过 Wails event 推送的进度事件
 type DownloadProgressEvent struct {
-	ID         string         `json:"id"`
-	Status     DownloadStatus `json:"status"`
-	Progress   float64        `json:"progress"`
-	Downloaded int64          `json:"downloaded"`
-	Total      int64          `json:"total"`
-	Error      string         `json:"error,omitempty"`
-	FilePath   string         `json:"file_path,omitempty"`
+	ID         string            `json:"id"`
+	Request    vo.InstallRequest `json:"request"`
+	Status     DownloadStatus    `json:"status"`
+	Progress   float64           `json:"progress"`
+	Downloaded int64             `json:"downloaded"`
+	Total      int64             `json:"total"`
+	Error      string            `json:"error,omitempty"`
+	FilePath   string            `json:"file_path,omitempty"`
 }
 
 // DownloadService 管理所有下载任务
 type DownloadService struct {
 	ctx            context.Context
+	db             *sql.DB
 	config         *appconf.AppConfig
 	mu             sync.RWMutex
 	tasks          map[string]*DownloadTask
@@ -67,9 +72,13 @@ func NewDownloadService() *DownloadService {
 	}
 }
 
-func (s *DownloadService) Init(ctx context.Context, config *appconf.AppConfig) {
+func (s *DownloadService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
+	s.db = db
 	s.config = config
+	if err := s.loadTasksFromDB(); err != nil {
+		applog.LogErrorf(s.ctx, "failed to load download tasks from db: %v", err)
+	}
 }
 
 // SetPendingInstall 在 Wails 启动前由 main.go 调用，暂存待安装请求
@@ -105,6 +114,10 @@ func (s *DownloadService) StartDownload(req vo.InstallRequest) (string, error) {
 	s.tasks[taskID] = task
 	s.mu.Unlock()
 
+	if err := s.upsertTask(task); err != nil {
+		applog.LogErrorf(s.ctx, "failed to persist download task %s: %v", task.ID, err)
+	}
+
 	go s.runDownload(ctx, task)
 	return taskID, nil
 }
@@ -134,14 +147,58 @@ func (s *DownloadService) GetDownloadTasks() []DownloadTask {
 	return result
 }
 
+// DeleteDownloadTask 删除已结束的下载任务记录
+func (s *DownloadService) DeleteDownloadTask(taskID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	task, ok := s.tasks[taskID]
+	if ok && (task.Status == DownloadStatusPending || task.Status == DownloadStatusDownloading) {
+		return fmt.Errorf("cannot delete active task %s", taskID)
+	}
+
+	delete(s.tasks, taskID)
+	if s.db == nil {
+		return nil
+	}
+
+	if _, err := s.db.Exec(`DELETE FROM download_tasks WHERE id = ?`, taskID); err != nil {
+		return fmt.Errorf("failed to delete download task %s: %w", taskID, err)
+	}
+
+	return nil
+}
+
+// OpenDownloadTaskLocation 打开下载任务对应文件所在位置
+func (s *DownloadService) OpenDownloadTaskLocation(taskID string) error {
+	s.mu.RLock()
+	task, ok := s.tasks[taskID]
+	s.mu.RUnlock()
+	if !ok {
+		return fmt.Errorf("task %s not found", taskID)
+	}
+	if task.FilePath == "" {
+		return fmt.Errorf("task %s has no file path", taskID)
+	}
+	if err := utils.OpenFileOrFolder(task.FilePath); err != nil {
+		return fmt.Errorf("open download task location failed: %w", err)
+	}
+	return nil
+}
+
 // =================== 内部下载逻辑 ===================
 
 func (s *DownloadService) emitProgress(task *DownloadTask) {
+	if err := s.upsertTask(task); err != nil {
+		applog.LogErrorf(s.ctx, "failed to persist download task progress %s: %v", task.ID, err)
+	}
+
 	if s.ctx == nil {
 		return
 	}
 	runtime.EventsEmit(s.ctx, "download:progress", DownloadProgressEvent{
 		ID:         task.ID,
+		Request:    task.Request,
 		Status:     task.Status,
 		Progress:   task.Progress,
 		Downloaded: task.Downloaded,
@@ -176,7 +233,7 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 		s.failTask(task, fmt.Sprintf("build request: %v", err))
 		return
 	}
-	req.Header.Set("User-Agent", "LunaBox/1.0")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 LunaBox/1.0")
 
 	client := &http.Client{Timeout: 0} // 大文件不设超时，靠 context cancel
 	resp, err := client.Do(req)
@@ -274,6 +331,115 @@ func (s *DownloadService) failTask(task *DownloadTask, msg string) {
 	task.Error = msg
 	s.mu.Unlock()
 	s.emitProgress(task)
+}
+
+func (s *DownloadService) loadTasksFromDB() error {
+	if s.db == nil {
+		return nil
+	}
+
+	rows, err := s.db.Query(`
+		SELECT id, request_json, status, progress, downloaded, total, error, file_path
+		FROM download_tasks
+	`)
+	if err != nil {
+		return fmt.Errorf("query download_tasks: %w", err)
+	}
+	defer rows.Close()
+
+	loaded := make(map[string]*DownloadTask)
+	for rows.Next() {
+		var (
+			id          string
+			requestJSON string
+			status      string
+			progress    float64
+			downloaded  int64
+			total       int64
+			errorMsg    sql.NullString
+			filePath    sql.NullString
+		)
+
+		if err := rows.Scan(&id, &requestJSON, &status, &progress, &downloaded, &total, &errorMsg, &filePath); err != nil {
+			return fmt.Errorf("scan download task: %w", err)
+		}
+
+		var request vo.InstallRequest
+		if requestJSON != "" {
+			if err := json.Unmarshal([]byte(requestJSON), &request); err != nil {
+				applog.LogErrorf(s.ctx, "failed to unmarshal request_json for task %s: %v", id, err)
+			}
+		}
+
+		taskStatus := DownloadStatus(status)
+		taskError := errorMsg.String
+		if taskStatus == DownloadStatusPending || taskStatus == DownloadStatusDownloading {
+			taskStatus = DownloadStatusError
+			if taskError == "" {
+				taskError = "download interrupted by app restart"
+			}
+		}
+
+		loaded[id] = &DownloadTask{
+			ID:         id,
+			Request:    request,
+			Status:     taskStatus,
+			Progress:   progress,
+			Downloaded: downloaded,
+			Total:      total,
+			Error:      taskError,
+			FilePath:   filePath.String,
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate download tasks: %w", err)
+	}
+
+	s.mu.Lock()
+	for id, task := range loaded {
+		s.tasks[id] = task
+	}
+	s.mu.Unlock()
+
+	for _, task := range loaded {
+		if err := s.upsertTask(task); err != nil {
+			applog.LogErrorf(s.ctx, "failed to normalize loaded task %s: %v", task.ID, err)
+		}
+	}
+
+	return nil
+}
+
+func (s *DownloadService) upsertTask(task *DownloadTask) error {
+	if s.db == nil {
+		return nil
+	}
+
+	requestJSON, err := json.Marshal(task.Request)
+	if err != nil {
+		return fmt.Errorf("marshal request: %w", err)
+	}
+
+	_, err = s.db.Exec(`
+		INSERT INTO download_tasks (
+			id, request_json, status, progress, downloaded, total, error, file_path
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET
+			request_json = excluded.request_json,
+			status = excluded.status,
+			progress = excluded.progress,
+			downloaded = excluded.downloaded,
+			total = excluded.total,
+			error = excluded.error,
+			file_path = excluded.file_path,
+			updated_at = now()
+	`, task.ID, string(requestJSON), string(task.Status), task.Progress, task.Downloaded, task.Total, task.Error, task.FilePath)
+	if err != nil {
+		return fmt.Errorf("upsert download task: %w", err)
+	}
+
+	return nil
 }
 
 // =================== 辅助函数 ===================

@@ -13,6 +13,7 @@ import { useUpdateCheck } from "./hooks/useUpdateCheck";
 import { Route as rootRoute } from "./routes/__root";
 import { Route as categoriesRoute } from "./routes/categories";
 import { Route as categoryRoute } from "./routes/category";
+import { Route as downloadsRoute } from "./routes/downloads";
 import { Route as gameRoute } from "./routes/game";
 import { Route as indexRoute } from "./routes/index";
 import { Route as libraryRoute } from "./routes/library";
@@ -20,7 +21,7 @@ import { Route as settingsRoute } from "./routes/settings";
 import { Route as statsRoute } from "./routes/stats";
 import { useAppStore } from "./store";
 
-const routeTree = rootRoute.addChildren([indexRoute, libraryRoute, gameRoute, statsRoute, categoriesRoute, categoryRoute, settingsRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, libraryRoute, gameRoute, statsRoute, categoriesRoute, categoryRoute, settingsRoute, downloadsRoute]);
 
 const router = createRouter({ routeTree });
 

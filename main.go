@@ -281,7 +281,7 @@ func main() {
 				forceQuit = true
 				runtime.Quit(ctx)
 			})
-			downloadService.Init(ctx, config)
+			downloadService.Init(ctx, db, config)
 			gameService.Init(ctx, db, config)
 			aiService.Init(ctx, db, config)
 			backupService.Init(ctx, db, config)

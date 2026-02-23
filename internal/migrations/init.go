@@ -44,6 +44,18 @@ func InitSchema(db *sql.DB) error {
 			end_time TIMESTAMPTZ,
 			duration INTEGER
 		)`,
+		`CREATE TABLE IF NOT EXISTS download_tasks (
+			id TEXT PRIMARY KEY,
+			request_json TEXT,
+			status TEXT,
+			progress DOUBLE,
+			downloaded BIGINT,
+			total BIGINT,
+			error TEXT,
+			file_path TEXT,
+			created_at TIMESTAMPTZ,
+			updated_at TIMESTAMPTZ
+		)`,
 	}
 
 	for _, query := range queries {
