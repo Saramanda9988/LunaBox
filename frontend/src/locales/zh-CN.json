@@ -423,6 +423,7 @@
     }
   },
   "categories": {
+    "favorites": "最喜欢的游戏",
     "title": "收藏",
     "searchPlaceholder": "搜索收藏夹...",
     "newCategory": "新建收藏夹",
@@ -472,6 +473,17 @@
       "dbBackup": "数据库备份",
       "fullDataBackup": "全量数据备份",
       "update": "应用更新"
+    },
+    "download": {
+      "selectGameLibraryTitle": "选择游戏库目录",
+      "gameLibraryPath": "游戏库目录",
+      "gameLibraryPathHint": "下载的游戏将解压到此目录。留空则使用 ~/Games",
+      "gameLibraryPathPlaceholder": "例如 D:\\Games 或 /home/user/games",
+      "effectivePath": "游戏库路径：{{path}}",
+      "defaultPath": "游戏库路径：~/Games（默认）",
+      "toast": {
+        "selectFailed": "选择目录失败"
+      }
     },
     "basic": {
       "bangumiTokenHint": "如果您想使用Bangumi数据源，请一定填写",

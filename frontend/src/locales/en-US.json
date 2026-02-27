@@ -423,6 +423,7 @@
     }
   },
   "categories": {
+    "favorites": "Favorites",
     "title": "Collections",
     "searchPlaceholder": "Search collections...",
     "newCategory": "New Collection",
@@ -472,6 +473,17 @@
       "dbBackup": "Database Backup",
       "fullDataBackup": "Full Data Backup",
       "update": "App Updates"
+    },
+    "download": {
+      "selectGameLibraryTitle": "Select Game Library Directory",
+      "gameLibraryPath": "Game Library Directory",
+      "gameLibraryPathHint": "Downloaded games will be extracted into this directory. Leave empty to use ~/Games.",
+      "gameLibraryPathPlaceholder": "e.g. D:\\Games or /home/user/games",
+      "effectivePath": "Game library path: {{path}}",
+      "defaultPath": "Game library path: ~/Games (default)",
+      "toast": {
+        "selectFailed": "Failed to select directory"
+      }
     },
     "basic": {
       "bangumiTokenHint": "Required if you want to use the Bangumi data source",

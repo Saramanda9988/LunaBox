@@ -60,7 +60,7 @@ export function CategoryCard({
       </div>
       <div className="flex-1">
         <h3 className="font-semibold text-brand-900 dark:text-white group-hover:text-neutral-600 dark:group-hover:text-neutral-400 transition-colors">
-          {category.name}
+          {category.is_system ? t("categories.favorites") : category.name}
         </h3>
         <p className="text-sm text-brand-500 dark:text-brand-400">
           {t("categories.gameCount", { count: category.game_count })}
