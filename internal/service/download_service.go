@@ -36,6 +36,7 @@ const (
 	DownloadStatusDone        DownloadStatus = "done"
 	DownloadStatusError       DownloadStatus = "error"
 	DownloadStatusCancelled   DownloadStatus = "cancelled"
+	DownloadManualExtractFlag                = "manual_extract_required"
 )
 
 // DownloadTask 单个下载任务
@@ -222,14 +223,20 @@ func (s *DownloadService) ImportDownloadTaskAsGame(taskID string) error {
 		return fmt.Errorf("task %s has no file path", taskID)
 	}
 
-	importPath, err := s.gameService.ResolveExecutablePathForImport(task.FilePath)
+	importPath, resolvedByStartupPath, err := resolveExecutablePathFromRequest(task.FilePath, task.Request.StartupPath)
 	if err != nil {
-		applog.LogErrorf(s.ctx, "resolve executable path for task %s failed: %v", task.ID, err)
-		return fmt.Errorf("resolve executable path: %w", err)
+		return fmt.Errorf("resolve startup_path: %w", err)
 	}
-	importPath = strings.TrimSpace(importPath)
-	if importPath == "" {
-		return fmt.Errorf("select executable cancelled")
+	if !resolvedByStartupPath {
+		importPath, err = s.gameService.ResolveExecutablePathForImport(task.FilePath)
+		if err != nil {
+			applog.LogErrorf(s.ctx, "resolve executable path for task %s failed: %v", task.ID, err)
+			return fmt.Errorf("resolve executable path: %w", err)
+		}
+		importPath = strings.TrimSpace(importPath)
+		if importPath == "" {
+			return fmt.Errorf("select executable cancelled")
+		}
 	}
 
 	metaSource, sourceOk := parseMetaSource(task.Request.MetaSource)
@@ -466,7 +473,7 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 	}
 
 	// 下载完成后处理（压缩包解压/路径归一）
-	finalPath, err := s.handleDownloadedFile(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
+	finalPath, manualExtractRequired, err := s.handleDownloadedFile(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
 	if err != nil {
 		s.failTask(task, fmt.Sprintf("post process download file: %v", err))
 		return
@@ -482,6 +489,11 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 	task.Status = DownloadStatusDone
 	task.Progress = 100
 	task.FilePath = finalPath
+	if manualExtractRequired {
+		task.Error = DownloadManualExtractFlag
+	} else {
+		task.Error = ""
+	}
 	s.mu.Unlock()
 	s.emitProgress(task)
 	applog.LogInfof(s.ctx, "Download complete: %s  path=%s", task.ID, finalPath)
@@ -638,13 +650,13 @@ func (s *DownloadService) fetchMetadataForTask(task *DownloadTask) *models.Game 
 	return &game
 }
 
-func (s *DownloadService) handleDownloadedFile(downloadedPath string, fileName string, archiveFormat string, title string) (string, error) {
+func (s *DownloadService) handleDownloadedFile(downloadedPath string, fileName string, archiveFormat string, title string) (string, bool, error) {
 	format := normalizeArchiveFormat(archiveFormat)
 	if format == "none" {
-		return downloadedPath, nil
+		return downloadedPath, false, nil
 	}
 	if !isSupportedArchiveFormat(format) {
-		return "", fmt.Errorf("unsupported archive_format: %s", archiveFormat)
+		return "", false, fmt.Errorf("unsupported archive_format: %s", archiveFormat)
 	}
 
 	baseName := trimArchiveSuffixByFormat(strings.TrimSpace(fileName), format)
@@ -658,18 +670,29 @@ func (s *DownloadService) handleDownloadedFile(downloadedPath string, fileName s
 
 	extractDir := filepath.Join(filepath.Dir(downloadedPath), baseName)
 	if err := os.MkdirAll(extractDir, 0755); err != nil {
-		return "", fmt.Errorf("create extract dir: %w", err)
+		return "", false, fmt.Errorf("create extract dir: %w", err)
 	}
 
-	if err := utils.ExtractArchive(downloadedPath, extractDir); err != nil {
-		return "", fmt.Errorf("extract archive: %w", err)
+	extracted, extractErr := utils.ExtractArchive(downloadedPath, extractDir)
+	if extractErr != nil {
+		if !extracted {
+			applog.LogErrorf(s.ctx, "extract archive failed, fallback to manual extract mode: %v", extractErr)
+			applog.LogWarningf(s.ctx, "archive kept at %s, created/kept empty dir %s for manual extraction", downloadedPath, extractDir)
+			return extractDir, true, nil
+		}
+		return "", false, fmt.Errorf("extract archive: %w", extractErr)
 	}
 
 	if err := os.Remove(downloadedPath); err != nil {
 		applog.LogWarningf(s.ctx, "failed to delete source archive after unzip: %v", err)
 	}
 
-	return extractDir, nil
+	finalExtractDir := extractDir
+	if collapsed, ok := collapseSingleRootDirectory(extractDir); ok {
+		finalExtractDir = collapsed
+	}
+
+	return finalExtractDir, false, nil
 }
 
 func (s *DownloadService) autoCreateOrUpdateGame(task *DownloadTask, gamePath string, metadata *models.Game) {
@@ -677,24 +700,31 @@ func (s *DownloadService) autoCreateOrUpdateGame(task *DownloadTask, gamePath st
 		return
 	}
 
+	importPath := gamePath
+	if resolvedPath, ok, err := resolveExecutablePathFromRequest(gamePath, task.Request.StartupPath); err != nil {
+		applog.LogWarningf(s.ctx, "invalid startup_path for task %s: %v", task.ID, err)
+	} else if ok {
+		importPath = resolvedPath
+	}
+
 	metaSource, sourceOk := parseMetaSource(task.Request.MetaSource)
 	metaID := strings.TrimSpace(task.Request.MetaID)
 
 	if sourceOk && metaID != "" {
 		if existingID, ok := s.gameService.findGameIDBySource(metaSource, metaID); ok {
-			s.updateExistingGame(existingID, gamePath, metaSource, metaID, metadata)
+			s.updateExistingGame(existingID, importPath, metaSource, metaID, metadata)
 			return
 		}
 	}
 
-	if existingID, ok := s.gameService.findGameIDByPath(gamePath); ok {
-		s.updateExistingGame(existingID, gamePath, metaSource, metaID, metadata)
+	if existingID, ok := s.gameService.findGameIDByPath(importPath); ok {
+		s.updateExistingGame(existingID, importPath, metaSource, metaID, metadata)
 		return
 	}
 
 	game := models.Game{
 		Name:       strings.TrimSpace(task.Request.Title),
-		Path:       gamePath,
+		Path:       importPath,
 		SourceType: enums.Local,
 		SourceID:   "",
 	}
@@ -706,7 +736,7 @@ func (s *DownloadService) autoCreateOrUpdateGame(task *DownloadTask, gamePath st
 
 	if metadata != nil {
 		mergeMetadataIntoGame(&game, *metadata)
-		game.Path = gamePath
+		game.Path = importPath
 	}
 
 	if sourceOk && game.SourceType == enums.Local {
@@ -717,7 +747,7 @@ func (s *DownloadService) autoCreateOrUpdateGame(task *DownloadTask, gamePath st
 	}
 
 	if strings.TrimSpace(game.Name) == "" {
-		game.Name = strings.TrimSuffix(filepath.Base(gamePath), filepath.Ext(gamePath))
+		game.Name = strings.TrimSuffix(filepath.Base(importPath), filepath.Ext(importPath))
 	}
 
 	if err := s.gameService.AddGame(game); err != nil {
@@ -824,6 +854,24 @@ func normalizeGamePath(path string) (string, error) {
 		return "", err
 	}
 	return absPath, nil
+}
+
+func collapseSingleRootDirectory(dir string) (string, bool) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return "", false
+	}
+
+	if len(entries) != 1 {
+		return "", false
+	}
+
+	only := entries[0]
+	if !only.IsDir() {
+		return "", false
+	}
+
+	return filepath.Join(dir, only.Name()), true
 }
 
 // =================== 辅助函数 ===================
@@ -941,6 +989,10 @@ func validateInstallRequest(req vo.InstallRequest) error {
 		return fmt.Errorf("unsupported archive_format: %s", req.ArchiveFormat)
 	}
 
+	if _, _, err := resolveExecutablePathFromRequest("", req.StartupPath); err != nil {
+		return fmt.Errorf("invalid startup_path: %w", err)
+	}
+
 	if req.Size < 0 {
 		return fmt.Errorf("size must be >= 0")
 	}
@@ -962,6 +1014,48 @@ func validateInstallRequest(req vo.InstallRequest) error {
 	}
 
 	return nil
+}
+
+func resolveExecutablePathFromRequest(downloadPath string, startupPath string) (string, bool, error) {
+	trimmedStartup := strings.TrimSpace(startupPath)
+	if trimmedStartup == "" {
+		return "", false, nil
+	}
+
+	normalized := strings.ReplaceAll(trimmedStartup, "\\", "/")
+	if strings.HasPrefix(normalized, "/") {
+		return "", false, fmt.Errorf("must be relative path")
+	}
+
+	cleanRelative := filepath.Clean(strings.ReplaceAll(normalized, "/", string(filepath.Separator)))
+	if cleanRelative == "." || cleanRelative == "" {
+		return "", false, fmt.Errorf("must not be empty")
+	}
+	if filepath.IsAbs(cleanRelative) {
+		return "", false, fmt.Errorf("must be relative path")
+	}
+	if strings.HasPrefix(cleanRelative, "..") {
+		return "", false, fmt.Errorf("must not escape download directory")
+	}
+
+	if strings.TrimSpace(downloadPath) == "" {
+		return "", false, nil
+	}
+
+	basePath := downloadPath
+	if info, err := os.Stat(downloadPath); err == nil {
+		if !info.IsDir() {
+			basePath = filepath.Dir(downloadPath)
+		}
+	}
+
+	joined := filepath.Join(basePath, cleanRelative)
+	absJoined, err := filepath.Abs(filepath.Clean(joined))
+	if err != nil {
+		return "", false, fmt.Errorf("normalize startup executable path: %w", err)
+	}
+
+	return absJoined, true, nil
 }
 
 type checksumWriter struct {

@@ -715,6 +715,7 @@
     "importAsGame": "Import as game",
     "importing": "Importing...",
     "imported": "Imported",
+    "manualExtractHint": "Auto extraction failed and the archive was kept. Please extract it manually to the folder above before importing/launching.",
     "status": {
       "pending": "Pending",
       "downloading": "Downloading",

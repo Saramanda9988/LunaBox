@@ -715,6 +715,7 @@
     "importAsGame": "导入为游戏",
     "importing": "导入中...",
     "imported": "已导入",
+    "manualExtractHint": "自动解压失败，已保留压缩包。请手动解压到上述目录后再导入/启动。",
     "status": {
       "pending": "等待中",
       "downloading": "下载中",

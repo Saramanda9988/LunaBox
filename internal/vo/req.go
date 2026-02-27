@@ -69,6 +69,7 @@ type InstallRequest struct {
 	URL            string `json:"url"`             // 下载直链（必填）
 	FileName       string `json:"file_name"`       // 下载文件名（必填，不再从 URL 猜测）
 	ArchiveFormat  string `json:"archive_format"`  // 压缩格式：none/zip/rar/7z/tar/tar.gz/tar.bz2/tar.xz/tar.zst/tgz/tbz2/txz/tzst（必填）
+	StartupPath    string `json:"startup_path"`    // 启动相对路径（可选；有值时拼接下载目录作为可执行路径）
 	Title          string `json:"title"`           // 游戏标题（fallback 展示用）
 	DownloadSource string `json:"download_source"` // 下载来源：Shionlib / Umbra 等（可选，用于用户识别）
 	MetaSource     string `json:"meta_source"`     // 元数据来源：bangumi / vndb / ymgal（可选）

@@ -31,12 +31,16 @@ func ParseURL(rawURL string) (*vo.InstallRequest, error) {
 		URL:            q.Get("url"),
 		FileName:       q.Get("file_name"),
 		ArchiveFormat:  strings.ToLower(strings.TrimSpace(q.Get("archive_format"))),
+		StartupPath:    q.Get("startup_path"),
 		Title:          q.Get("title"),
 		DownloadSource: q.Get("download_source"),
 		MetaSource:     q.Get("source"),
 		MetaID:         q.Get("meta_id"),
 		ChecksumAlgo:   strings.ToLower(strings.TrimSpace(q.Get("checksum_algo"))),
 		Checksum:       strings.ToLower(strings.TrimSpace(q.Get("checksum"))),
+	}
+	if req.StartupPath == "" {
+		req.StartupPath = q.Get("launch_path")
 	}
 	if req.MetaSource == "" {
 		req.MetaSource = q.Get("meta_source")

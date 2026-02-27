@@ -40,6 +40,7 @@ export function DownloadCard({
   const isActive = task.status === "pending" || task.status === "downloading";
   const progress = Math.max(0, Math.min(100, task.progress ?? 0));
   const canOpenFolder = !!task.file_path;
+  const manualExtractRequired = task.status === "done" && task.error === "manual_extract_required";
 
   return (
     <div className="glass-card flex flex-col gap-3 rounded-xl border border-brand-200 bg-white/90 p-4 shadow-sm transition-all duration-300 hover:shadow-md dark:border-brand-700 dark:bg-brand-800/80">
@@ -124,6 +125,14 @@ export function DownloadCard({
             <span className="i-mdi-folder-check shrink-0" />
             <span className="truncate" title={task.file_path}>{task.file_path}</span>
           </div>
+          {manualExtractRequired && (
+            <div className="flex items-start gap-1 text-xs text-warning-600 dark:text-warning-300">
+              <span className="i-mdi-alert-outline shrink-0 mt-0.5" />
+              <span>
+                {t("downloads.manualExtractHint", "自动解压失败，已保留压缩包。请手动解压到上述目录后再导入/启动。")}
+              </span>
+            </div>
+          )}
           <div className="flex items-center justify-end">
             <button
               type="button"
