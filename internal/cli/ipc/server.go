@@ -75,14 +75,17 @@ func StartServer(app *cli.CoreApp) {
 		json.NewEncoder(w).Encode(InstallResponse{TaskID: ""})
 	})
 
-	server := &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", ServerAddr, Port),
-		Handler: mux,
+	listener, port, err := chooseIPCListener()
+	if err != nil {
+		applog.LogErrorf(app.Ctx, "IPC Server failed to acquire port: %v", err)
+		return
 	}
+	savePort(port)
+	server := &http.Server{Handler: mux}
 
-	applog.LogInfof(app.Ctx, "IPC Server starting on %s", server.Addr)
+	applog.LogInfof(app.Ctx, "IPC Server starting on %s", listener.Addr().String())
 	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
 			applog.LogErrorf(app.Ctx, "IPC Server failed: %v", err)
 		}
 	}()

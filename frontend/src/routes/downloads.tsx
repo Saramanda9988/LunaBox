@@ -1,12 +1,32 @@
 import type { service } from "../../wailsjs/go/models";
 import { createRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
+import { enums, models } from "../../wailsjs/go/models";
 import { CancelDownload, DeleteDownloadTask, GetDownloadTasks, OpenDownloadTaskLocation } from "../../wailsjs/go/service/DownloadService";
+import { AddGame, FetchMetadata, GetGames, ResolveExecutablePathForImport } from "../../wailsjs/go/service/GameService";
 import { ClipboardSetText, EventsOff, EventsOn } from "../../wailsjs/runtime/runtime";
 import { DownloadCard } from "../components/card/DownloadCard";
 import { Route as rootRoute } from "./__root";
+
+interface DownloadTaskVM {
+  id: string;
+  request: {
+    url: string;
+    title: string;
+    download_source: string;
+    meta_source: string;
+    meta_id: string;
+    size: number;
+  };
+  status: string;
+  progress: number;
+  downloaded: number;
+  total: number;
+  error?: string;
+  file_path?: string;
+}
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -16,20 +36,53 @@ export const Route = createRoute({
 
 function DownloadsPage() {
   const { t } = useTranslation();
-  const [tasks, setTasks] = useState<service.DownloadTask[]>([]);
+  const [tasks, setTasks] = useState<DownloadTaskVM[]>([]);
+  const [metadataByTask, setMetadataByTask] = useState<Record<string, models.Game>>({});
+  const [importingTaskId, setImportingTaskId] = useState<string | null>(null);
+  const [importedTaskIds, setImportedTaskIds] = useState<Record<string, boolean>>({});
+
+  const normalizeSource = useCallback((source: string) => source.trim().toLowerCase(), []);
+
+  const markImportedTasks = useCallback(async (targetTasks: DownloadTaskVM[]) => {
+    const games = await GetGames();
+    const gameList = (games as models.Game[]) ?? [];
+
+    const nextImported: Record<string, boolean> = {};
+    for (const task of targetTasks) {
+      const taskSource = normalizeSource(task.request.meta_source || "");
+      const taskSourceID = (task.request.meta_id || "").trim();
+
+      const imported = gameList.some((game) => {
+        const byPath = !!task.file_path && game.path === task.file_path;
+        const bySource = taskSource !== ""
+          && taskSourceID !== ""
+          && normalizeSource(game.source_type || "") === taskSource
+          && (game.source_id || "").trim() === taskSourceID;
+        return byPath || bySource;
+      });
+
+      if (imported) {
+        nextImported[task.id] = true;
+      }
+    }
+
+    setImportedTaskIds(nextImported);
+  }, [normalizeSource]);
 
   // 加载已有任务
-  const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
     const list = await GetDownloadTasks();
-    setTasks((list as service.DownloadTask[]) ?? []);
-  };
+    const normalized = (list as DownloadTaskVM[]) ?? [];
+    setTasks(normalized);
+    await markImportedTasks(normalized);
+  }, [markImportedTasks]);
 
   useEffect(() => {
     loadTasks();
-  }, []);
+  }, [loadTasks]);
 
   useEffect(() => {
-    EventsOn("download:progress", (evt: service.DownloadTask) => {
+    EventsOn("download:progress", async (evt: DownloadTaskVM) => {
       setTasks((prev) => {
         const idx = prev.findIndex(t => t.id === evt.id);
         if (idx === -1) {
@@ -37,12 +90,28 @@ function DownloadsPage() {
           return [...prev, evt];
         }
         const next = [...prev];
-        next[idx] = { ...next[idx], ...evt } as service.DownloadTask;
+        next[idx] = { ...next[idx], ...evt };
         return next;
       });
+
+      if (evt.status === "done") {
+        const latest = await GetDownloadTasks();
+        await markImportedTasks((latest as DownloadTaskVM[]) ?? []);
+      }
     });
-    return () => EventsOff("download:progress");
-  }, []);
+
+    EventsOn("download:metadata-prefetched", (evt: { task_id: string; game?: models.Game }) => {
+      if (!evt?.task_id || !evt?.game) {
+        return;
+      }
+      setMetadataByTask(prev => ({ ...prev, [evt.task_id]: evt.game as models.Game }));
+    });
+
+    return () => {
+      EventsOff("download:progress");
+      EventsOff("download:metadata-prefetched");
+    };
+  }, [markImportedTasks]);
 
   const handleCancel = async (id: string) => {
     await CancelDownload(id);
@@ -69,6 +138,83 @@ function DownloadsPage() {
     }
     catch {
       toast.error(t("downloads.toast.openFolderFailed", "打开文件夹失败"));
+    }
+  };
+
+  const buildGameFromTask = async (task: DownloadTaskVM): Promise<models.Game> => {
+    const prefetched = metadataByTask[task.id];
+    if (prefetched) {
+      const game = new models.Game(prefetched as unknown as Record<string, unknown>);
+      game.path = task.file_path || "";
+      if (!game.name?.trim()) {
+        game.name = task.request.title || t("downloads.unknownTitle", "未知标题");
+      }
+      return game;
+    }
+
+    const source = normalizeSource(task.request.meta_source || "");
+    const id = (task.request.meta_id || "").trim();
+    const sourceMap: Record<string, enums.SourceType> = {
+      bangumi: enums.SourceType.BANGUMI,
+      vndb: enums.SourceType.VNDB,
+      ymgal: enums.SourceType.YMGAL,
+    };
+    if (source !== "" && id !== "") {
+      const mappedSource = sourceMap[source];
+      if (mappedSource) {
+        const remote = await FetchMetadata({ source: mappedSource, id });
+        const game = new models.Game(remote as unknown as Record<string, unknown>);
+        game.path = task.file_path || "";
+        if (!game.name?.trim()) {
+          game.name = task.request.title || t("downloads.unknownTitle", "未知标题");
+        }
+        return game;
+      }
+    }
+
+    return new models.Game({
+      name: task.request.title || t("downloads.unknownTitle", "未知标题"),
+      path: task.file_path || "",
+      source_type: enums.SourceType.LOCAL,
+      status: enums.GameStatus.NOT_STARTED,
+    });
+  };
+
+  const handleImportAsGame = async (id: string) => {
+    const task = tasks.find(item => item.id === id);
+    if (!task) {
+      return;
+    }
+    if (!task.file_path) {
+      toast.error(t("downloads.toast.noFilePath", "下载文件路径不存在"));
+      return;
+    }
+    if (importedTaskIds[id]) {
+      toast.success(t("downloads.toast.alreadyImported", "该任务已导入为游戏"));
+      return;
+    }
+
+    setImportingTaskId(id);
+    try {
+      const game = await buildGameFromTask(task);
+
+      const resolvedPath = await ResolveExecutablePathForImport(game.path || task.file_path || "");
+      if (!resolvedPath) {
+        toast(t("downloads.toast.selectExecutableCancelled", "已取消选择可执行文件"), { icon: "⚠️" });
+        return;
+      }
+      game.path = resolvedPath;
+
+      await AddGame(game);
+      toast.success(t("downloads.toast.importGameSuccess", "导入为游戏成功"));
+      await markImportedTasks(tasks);
+    }
+    catch (error) {
+      console.error("Failed to import game from download task:", error);
+      toast.error(t("downloads.toast.importGameFailed", "导入为游戏失败"));
+    }
+    finally {
+      setImportingTaskId(null);
     }
   };
 
@@ -113,11 +259,14 @@ function DownloadsPage() {
                 {sorted.map(task => (
                   <DownloadCard
                     key={task.id}
-                    task={task}
+                    task={task as unknown as service.DownloadTask}
                     onCancel={handleCancel}
                     onDelete={handleDelete}
                     onCopyURL={handleCopyURL}
                     onOpenFolder={handleOpenFolder}
+                    onImportAsGame={handleImportAsGame}
+                    importing={importingTaskId === task.id}
+                    imported={!!importedTaskIds[task.id]}
                   />
                 ))}
               </div>

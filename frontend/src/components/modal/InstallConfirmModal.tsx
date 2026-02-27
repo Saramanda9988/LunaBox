@@ -1,15 +1,7 @@
+import type { vo } from "../../../wailsjs/go/models";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StartDownload } from "../../../wailsjs/go/service/DownloadService";
-
-interface InstallRequest {
-  url: string;
-  title: string;
-  download_source: string;
-  meta_source: string;
-  meta_id: string;
-  size: number;
-}
 
 const META_SOURCE_LABELS: Record<string, string> = {
   vndb: "VNDB",
@@ -27,7 +19,7 @@ function metaUrl(source: string, id: string): string {
 }
 
 interface InstallConfirmModalProps {
-  request: InstallRequest | null;
+  request: vo.InstallRequest | null;
   onClose: () => void;
 }
 

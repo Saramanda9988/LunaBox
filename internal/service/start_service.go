@@ -9,8 +9,10 @@ import (
 	"lunabox/internal/models"
 	"lunabox/internal/service/timer"
 	"lunabox/internal/utils"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -94,6 +96,24 @@ func (s *StartService) startGame(gameID string, options LaunchOptions) (bool, er
 	if path == "" {
 		applog.LogErrorf(s.ctx, "game path is empty for game: %s", gameID)
 		return false, fmt.Errorf("game path is empty for game: %s", gameID)
+	}
+
+	// 如果配置的是文件夹，则在首次启动时要求用户选择可执行文件并写回游戏路径
+	resolvedPath, resolvedProcessName, cancelled, err := s.resolveExecutablePath(gameID, path, processName)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to resolve executable path: %v", err)
+		return false, fmt.Errorf("failed to resolve executable path: %w", err)
+	}
+	if cancelled {
+		applog.LogInfof(s.ctx, "user cancelled executable selection for game: %s", gameID)
+		return false, nil
+	}
+	path = resolvedPath
+	if strings.TrimSpace(resolvedProcessName) != "" {
+		processName = resolvedProcessName
+	}
+	if strings.TrimSpace(processName) == "" {
+		processName = filepath.Base(path)
 	}
 
 	// 获取启动exe的名称
@@ -563,6 +583,68 @@ func (s *StartService) getGamePathAndProcess(gameID string) (path string, proces
 		return "", "", err
 	}
 	return game.Path, game.ProcessName, nil
+}
+
+// resolveExecutablePath 当路径是目录时，引导用户选择可执行文件并保存到游戏配置
+func (s *StartService) resolveExecutablePath(gameID string, path string, processName string) (string, string, bool, error) {
+	trimmedPath := strings.TrimSpace(path)
+	if trimmedPath == "" {
+		return "", "", false, fmt.Errorf("game path is empty")
+	}
+
+	normalizedPath, err := filepath.Abs(filepath.Clean(trimmedPath))
+	if err != nil {
+		return "", "", false, fmt.Errorf("normalize game path failed: %w", err)
+	}
+
+	info, err := os.Stat(normalizedPath)
+	if err != nil {
+		return "", "", false, fmt.Errorf("stat game path: %w", err)
+	}
+	if !info.IsDir() {
+		return normalizedPath, strings.TrimSpace(processName), false, nil
+	}
+
+	selection, err := s.gameService.ResolveExecutablePathForImport(normalizedPath)
+	if err != nil {
+		return "", "", false, fmt.Errorf("open executable dialog failed: %w", err)
+	}
+	if selection == "" {
+		return "", "", true, nil
+	}
+
+	selection = strings.TrimSpace(selection)
+	resolvedSelection, err := filepath.Abs(filepath.Clean(selection))
+	if err != nil {
+		return "", "", false, fmt.Errorf("normalize selected executable failed: %w", err)
+	}
+	selectionInfo, err := os.Stat(resolvedSelection)
+	if err != nil {
+		return "", "", false, fmt.Errorf("stat selected executable failed: %w", err)
+	}
+	if selectionInfo.IsDir() {
+		return "", "", false, fmt.Errorf("selected path is a directory, not executable")
+	}
+
+	game, err := s.gameService.GetGameByID(gameID)
+	if err != nil {
+		return "", "", false, fmt.Errorf("failed to load game for path update: %w", err)
+	}
+
+	resolvedProcessName := strings.TrimSpace(processName)
+	if resolvedProcessName == "" {
+		resolvedProcessName = filepath.Base(resolvedSelection)
+	}
+
+	game.Path = resolvedSelection
+	if strings.TrimSpace(game.ProcessName) == "" {
+		game.ProcessName = resolvedProcessName
+	}
+	if err := s.gameService.UpdateGame(game); err != nil {
+		return "", "", false, fmt.Errorf("failed to save selected executable: %w", err)
+	}
+
+	return resolvedSelection, resolvedProcessName, false, nil
 }
 
 // getGameLaunchConfig 获取游戏的启动配置

@@ -1048,11 +1048,16 @@ export namespace vo {
 	}
 	export class InstallRequest {
 	    url: string;
+	    file_name: string;
+	    archive_format: string;
 	    title: string;
 	    download_source: string;
 	    meta_source: string;
 	    meta_id: string;
 	    size: number;
+	    checksum_algo: string;
+	    checksum: string;
+	    expires_at: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new InstallRequest(source);
@@ -1061,11 +1066,16 @@ export namespace vo {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.url = source["url"];
+	        this.file_name = source["file_name"];
+	        this.archive_format = source["archive_format"];
 	        this.title = source["title"];
 	        this.download_source = source["download_source"];
 	        this.meta_source = source["meta_source"];
 	        this.meta_id = source["meta_id"];
 	        this.size = source["size"];
+	        this.checksum_algo = source["checksum_algo"];
+	        this.checksum = source["checksum"];
+	        this.expires_at = source["expires_at"];
 	    }
 	}
 	

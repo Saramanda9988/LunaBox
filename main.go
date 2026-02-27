@@ -9,6 +9,7 @@ import (
 	"lunabox/internal/cli/ipc"
 	"lunabox/internal/protocol"
 	"lunabox/internal/utils"
+	"lunabox/internal/vo"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -81,15 +82,18 @@ func main() {
 
 	// lunabox:// URL：检查 GUI 是否已运行
 	var pendingURL string
+	var pendingInstallReq *vo.InstallRequest
 	if len(args) == 1 && protocol.IsProtocolURL(args[0]) {
 		pendingURL = args[0]
+		req, err := protocol.ParseURL(pendingURL)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing URL: %v\n", err)
+			os.Exit(1)
+		}
+		pendingInstallReq = req
+
 		// 如果 GUI 已运行，转发安装请求给它并退出
 		if ipc.IsServerRunning() {
-			req, err := protocol.ParseURL(pendingURL)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error parsing URL: %v\n", err)
-				os.Exit(1)
-			}
 			if err := ipc.RemoteInstall(req); err != nil {
 				fmt.Fprintf(os.Stderr, "Error forwarding to LunaBox: %v\n", err)
 				os.Exit(1)
@@ -126,8 +130,8 @@ func main() {
 
 	// 如果有待安装 URL，解析并暂存到 downloadService
 	if pendingURL != "" {
-		if req, err := protocol.ParseURL(pendingURL); err == nil {
-			downloadService.SetPendingInstall(req)
+		if pendingInstallReq != nil {
+			downloadService.SetPendingInstall(pendingInstallReq)
 		}
 	}
 
@@ -299,6 +303,7 @@ func main() {
 			startService.SetBackupService(backupService)
 			startService.SetGameService(gameService)
 			startService.SetSessionService(sessionService)
+			downloadService.SetGameService(gameService)
 
 			// 设置 ImportService 的 SessionService 依赖（用于导入游玩记录）
 			importService.SetSessionService(sessionService)

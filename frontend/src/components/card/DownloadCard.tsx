@@ -23,12 +23,18 @@ export function DownloadCard({
   onDelete,
   onCopyURL,
   onOpenFolder,
+  onImportAsGame,
+  importing,
+  imported,
 }: {
   task: service.DownloadTask;
   onCancel: (id: string) => void;
   onDelete: (id: string) => void;
   onCopyURL: (url: string) => void;
   onOpenFolder: (id: string) => void;
+  onImportAsGame: (id: string) => void;
+  importing?: boolean;
+  imported?: boolean;
 }) {
   const { t } = useTranslation();
   const isActive = task.status === "pending" || task.status === "downloading";
@@ -113,10 +119,27 @@ export function DownloadCard({
       )}
 
       {task.status === "done" && task.file_path && (
-        <div className="flex items-center gap-1 text-xs text-brand-500 dark:text-brand-400">
-          <span className="i-mdi-folder-check shrink-0" />
-          <span className="truncate" title={task.file_path}>{task.file_path}</span>
-        </div>
+        <>
+          <div className="flex items-center gap-1 text-xs text-brand-500 dark:text-brand-400">
+            <span className="i-mdi-folder-check shrink-0" />
+            <span className="truncate" title={task.file_path}>{task.file_path}</span>
+          </div>
+          <div className="flex items-center justify-end">
+            <button
+              type="button"
+              onClick={() => onImportAsGame(task.id)}
+              disabled={importing || imported}
+              className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+            >
+              <span className={importing ? "i-mdi-loading animate-spin" : imported ? "i-mdi-check-circle-outline" : "i-mdi-gamepad-variant-outline"} />
+              {imported
+                ? t("downloads.imported", "已导入")
+                : importing
+                  ? t("downloads.importing", "导入中...")
+                  : t("downloads.importAsGame", "导入为游戏")}
+            </button>
+          </div>
+        </>
       )}
 
       {task.status === "error" && task.error && (

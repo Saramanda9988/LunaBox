@@ -1,3 +1,4 @@
+import type { vo } from "../wailsjs/go/models";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Toaster } from "react-hot-toast";
@@ -40,14 +41,7 @@ function App() {
     gameID: string;
     launcherExeName: string;
   }>({ isOpen: false, gameID: "", launcherExeName: "" });
-  const [installRequest, setInstallRequest] = useState<{
-    url: string;
-    title: string;
-    download_source: string;
-    meta_source: string;
-    meta_id: string;
-    size: number;
-  } | null>(null);
+  const [installRequest, setInstallRequest] = useState<vo.InstallRequest | null>(null);
   const { i18n } = useTranslation();
 
   useEffect(() => {
@@ -163,7 +157,7 @@ function App() {
 
   // 监听运行时通过 IPC 转发过来的安装请求（GUI 已在运行时）
   useEffect(() => {
-    EventsOn("install:pending", (req: { url: string; title: string; download_source: string; meta_source: string; meta_id: string; size: number }) => {
+    EventsOn("install:pending", (req: vo.InstallRequest) => {
       setInstallRequest(req);
       WindowShow();
     });

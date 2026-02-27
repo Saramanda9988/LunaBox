@@ -26,6 +26,10 @@ export function OpenDownloadTaskLocation(arg1) {
   return window['go']['service']['DownloadService']['OpenDownloadTaskLocation'](arg1);
 }
 
+export function SetGameService(arg1) {
+  return window['go']['service']['DownloadService']['SetGameService'](arg1);
+}
+
 export function SetPendingInstall(arg1) {
   return window['go']['service']['DownloadService']['SetPendingInstall'](arg1);
 }

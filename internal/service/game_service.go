@@ -11,6 +11,7 @@ import (
 	"lunabox/internal/models"
 	"lunabox/internal/utils"
 	"lunabox/internal/vo"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -53,6 +54,46 @@ func (s *GameService) SelectGameExecutable() (string, error) {
 		applog.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
 	}
 	return selection, err
+}
+
+// ResolveExecutablePathForImport 解析导入时的可执行路径：
+// - 如果是可执行文件路径，直接返回
+// - 如果是目录，弹出文件选择器让用户手动选择可执行文件
+func (s *GameService) ResolveExecutablePathForImport(path string) (string, error) {
+	trimmedPath := strings.TrimSpace(path)
+	if trimmedPath == "" {
+		return "", nil
+	}
+
+	info, err := os.Stat(trimmedPath)
+	if err != nil {
+		return "", fmt.Errorf("stat import path failed: %w", err)
+	}
+
+	if !info.IsDir() {
+		return trimmedPath, nil
+	}
+
+	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+		Title:            "选择游戏可执行文件",
+		DefaultDirectory: trimmedPath,
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "Executables",
+				Pattern:     "*.exe;*.bat;*.cmd;*.lnk",
+			},
+			{
+				DisplayName: "All Files",
+				Pattern:     "*.*",
+			},
+		},
+	})
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to open import executable dialog: %v", err)
+		return "", err
+	}
+
+	return selection, nil
 }
 
 func (s *GameService) AddGame(game models.Game) error {
@@ -678,4 +719,44 @@ func (s *GameService) BatchUpdateStatus(ids []string, status string) error {
 	applog.LogInfof(s.ctx, "BatchUpdateStatus: updated %d games to status %s", rowsAffected, status)
 
 	return tx.Commit()
+}
+
+func (s *GameService) findGameIDBySource(source enums.SourceType, sourceID string) (string, bool) {
+	if s.db == nil || sourceID == "" {
+		return "", false
+	}
+	var id string
+	err := s.db.QueryRowContext(s.ctx, `
+		SELECT id FROM games
+		WHERE source_type = ? AND source_id = ?
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, string(source), sourceID).Scan(&id)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			applog.LogWarningf(s.ctx, "findGameIDBySource query failed: %v", err)
+		}
+		return "", false
+	}
+	return id, true
+}
+
+func (s *GameService) findGameIDByPath(path string) (string, bool) {
+	if s.db == nil || path == "" {
+		return "", false
+	}
+	var id string
+	err := s.db.QueryRowContext(s.ctx, `
+		SELECT id FROM games
+		WHERE path = ?
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, path).Scan(&id)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			applog.LogWarningf(s.ctx, "findGameIDByPath query failed: %v", err)
+		}
+		return "", false
+	}
+	return id, true
 }

@@ -46,6 +46,10 @@ export function OpenLocalPath(arg1) {
   return window['go']['service']['GameService']['OpenLocalPath'](arg1);
 }
 
+export function ResolveExecutablePathForImport(arg1) {
+  return window['go']['service']['GameService']['ResolveExecutablePathForImport'](arg1);
+}
+
 export function SelectCoverImage(arg1) {
   return window['go']['service']['GameService']['SelectCoverImage'](arg1);
 }
