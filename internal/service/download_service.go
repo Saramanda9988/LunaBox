@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash"
 	"io"
@@ -423,21 +424,38 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 	s.mu.Unlock()
 
 	// 创建 HTTP 请求（支持取消）
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, task.Request.URL, nil)
-	if err != nil {
-		s.failTask(task, fmt.Sprintf("build request: %v", err))
-		return
-	}
-	if resumeOffset > 0 {
-		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", resumeOffset))
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 LunaBox/1.0")
-
 	client := &http.Client{Timeout: 0} // 大文件不设超时，靠 context cancel
-	resp, err := client.Do(req)
+	buildRequest := func(offset int64) (*http.Response, error) {
+		req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, task.Request.URL, nil)
+		if reqErr != nil {
+			return nil, reqErr
+		}
+		if offset > 0 {
+			req.Header.Set("Range", fmt.Sprintf("bytes=%d-", offset))
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 LunaBox/1.0")
+		return client.Do(req)
+	}
+
+	resp, err := buildRequest(resumeOffset)
 	if err != nil {
 		s.failTask(task, fmt.Sprintf("http request: %v", err))
 		return
+	}
+	if resumeOffset > 0 && resp.StatusCode == http.StatusRequestedRangeNotSatisfiable {
+		_ = resp.Body.Close()
+		applog.LogWarningf(s.ctx, "range request got 416 for task %s, reset partial file and retry full download", task.ID)
+		_ = os.Remove(destPath)
+		resumeOffset = 0
+		s.mu.Lock()
+		task.Downloaded = 0
+		task.Progress = 0
+		s.mu.Unlock()
+		resp, err = buildRequest(0)
+		if err != nil {
+			s.failTask(task, fmt.Sprintf("http request after range reset: %v", err))
+			return
+		}
 	}
 	defer resp.Body.Close()
 
@@ -497,6 +515,13 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 		_ = closeFile()
 		s.failTask(task, fmt.Sprintf("invalid checksum algo: %v", err))
 		return
+	}
+	if checksumState != nil && resumeOffset > 0 {
+		if err := hashExistingFilePortion(destPath, resumeOffset, checksumState); err != nil {
+			_ = closeFile()
+			s.failTask(task, fmt.Sprintf("prepare checksum state: %v", err))
+			return
+		}
 	}
 
 	// 流式写入 + 进度上报（每 500ms 或每 5MB 上报一次）
@@ -568,6 +593,31 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 			break
 		}
 		if readErr != nil {
+			if errors.Is(readErr, context.Canceled) {
+				_ = closeFile()
+				s.mu.Lock()
+				pauseRequested := task.pauseReq
+				task.pauseReq = false
+				if pauseRequested {
+					task.Status = DownloadStatusPaused
+					task.Error = ""
+				} else {
+					_ = os.Remove(destPath)
+					task.Status = DownloadStatusCancelled
+					task.Error = ""
+					task.Progress = 0
+					task.Downloaded = 0
+					task.Total = task.Request.Size
+				}
+				s.mu.Unlock()
+				s.emitProgress(task)
+				if pauseRequested {
+					applog.LogInfof(s.ctx, "Download paused (read canceled): %s", task.ID)
+				} else {
+					applog.LogInfof(s.ctx, "Download cancelled (read canceled): %s", task.ID)
+				}
+				return
+			}
 			_ = closeFile()
 			s.failTask(task, fmt.Sprintf("read response: %v", readErr))
 			return
@@ -1284,6 +1334,25 @@ func (w *checksumWriter) Write(p []byte) (int, error) {
 		return len(p), nil
 	}
 	return w.h.Write(p)
+}
+
+func hashExistingFilePortion(path string, bytesToHash int64, writer *checksumWriter) error {
+	if writer == nil || writer.h == nil || bytesToHash <= 0 {
+		return nil
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("open existing file: %w", err)
+	}
+	defer file.Close()
+
+	limited := io.LimitReader(file, bytesToHash)
+	if _, err := io.Copy(writer, limited); err != nil {
+		return fmt.Errorf("hash existing file: %w", err)
+	}
+
+	return nil
 }
 
 func verifyChecksum(algo string, expected string, writer *checksumWriter) error {
