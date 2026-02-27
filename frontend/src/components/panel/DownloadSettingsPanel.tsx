@@ -39,7 +39,7 @@ export function DownloadSettingsPanel({ formData, onChange }: GameLibrarySetting
         <p className="text-xs text-brand-500 dark:text-brand-400 mb-2">
           {t(
             "settings.game.gameLibraryPathHint",
-            "通过 lunabox:// 协议下载的游戏将解压到此目录。留空则使用 ~/Games"
+            "下载的游戏将解压到此目录。留空则使用 ~/Games",
           )}
         </p>
         <div className="flex gap-2">

@@ -465,6 +465,7 @@
       "basic": "基础配置",
       "appearance": "外观设置",
       "game": "游玩配置",
+      "download": "下载配置",
       "cloudBackup": "云备份配置",
       "autoBackup": "自动备份",
       "ai": "AI 配置",
@@ -687,6 +688,48 @@
       "confirmPlaceholder": "再次输入密码",
       "passwordMismatch": "两次输入的密码不一致"
     }
+  },
+  "downloads": {
+    "title": "下载管理",
+    "activeCount": "{{count}} 个任务进行中",
+    "noActive": "暂无进行中的任务",
+    "empty": "暂无下载任务",
+    "unknownTitle": "未知标题",
+    "unknownSource": "未知来源",
+    "copyURL": "复制下载地址",
+    "openFolder": "打开所在文件夹",
+    "cancel": "取消下载",
+    "delete": "删除记录",
+    "importAsGame": "导入为游戏",
+    "importing": "导入中...",
+    "imported": "已导入",
+    "status": {
+      "pending": "等待中",
+      "downloading": "下载中",
+      "done": "已完成",
+      "error": "错误",
+      "cancelled": "已取消"
+    },
+    "toast": {
+      "copyURLSuccess": "下载地址已复制",
+      "copyURLFailed": "复制失败",
+      "openFolderFailed": "打开文件夹失败",
+      "noFilePath": "下载文件路径不存在",
+      "alreadyImported": "该任务已导入为游戏",
+      "importGameSuccess": "导入为游戏成功",
+      "selectExecutableCancelled": "已取消选择可执行文件",
+      "importGameFailed": "导入为游戏失败"
+    }
+  },
+  "installModal": {
+    "title": "安装游戏",
+    "subtitle": "来自外部链接的安装请求",
+    "name": "游戏名",
+    "unknown": "未知",
+    "source": "来源",
+    "size": "大小",
+    "warning": "请确认来源可信后再继续。下载完成后需手动配置启动路径。",
+    "confirm": "确认下载"
   },
   "stats": {
     "title": "统计",

@@ -1,9 +1,9 @@
-import type { service } from "../../wailsjs/go/models";
+import type { models, service } from "../../wailsjs/go/models";
 import { createRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { models } from "../../wailsjs/go/models";
+
 import { CancelDownload, DeleteDownloadTask, GetDownloadTasks, ImportDownloadTaskAsGame, OpenDownloadTaskLocation } from "../../wailsjs/go/service/DownloadService";
 import { GetGames } from "../../wailsjs/go/service/GameService";
 import { ClipboardSetText, EventsOff, EventsOn } from "../../wailsjs/runtime/runtime";

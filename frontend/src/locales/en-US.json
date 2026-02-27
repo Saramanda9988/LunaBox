@@ -465,6 +465,7 @@
       "basic": "Basic Configuration",
       "appearance": "Appearance",
       "game": "Game Settings",
+      "download": "Download Settings",
       "cloudBackup": "Cloud Backup",
       "autoBackup": "Auto Backup",
       "ai": "AI Configuration",
@@ -687,6 +688,48 @@
       "confirmPlaceholder": "Re-enter password",
       "passwordMismatch": "Passwords do not match"
     }
+  },
+  "downloads": {
+    "title": "Downloads",
+    "activeCount": "{{count}} active task(s)",
+    "noActive": "No active tasks",
+    "empty": "No download tasks",
+    "unknownTitle": "Unknown title",
+    "unknownSource": "Unknown source",
+    "copyURL": "Copy download URL",
+    "openFolder": "Open containing folder",
+    "cancel": "Cancel download",
+    "delete": "Delete record",
+    "importAsGame": "Import as game",
+    "importing": "Importing...",
+    "imported": "Imported",
+    "status": {
+      "pending": "Pending",
+      "downloading": "Downloading",
+      "done": "Done",
+      "error": "Error",
+      "cancelled": "Cancelled"
+    },
+    "toast": {
+      "copyURLSuccess": "Download URL copied",
+      "copyURLFailed": "Copy failed",
+      "openFolderFailed": "Failed to open folder",
+      "noFilePath": "Downloaded file path is missing",
+      "alreadyImported": "This task has already been imported",
+      "importGameSuccess": "Imported as game successfully",
+      "selectExecutableCancelled": "Executable selection canceled",
+      "importGameFailed": "Failed to import as game"
+    }
+  },
+  "installModal": {
+    "title": "Install Game",
+    "subtitle": "Installation request from external link",
+    "name": "Game",
+    "unknown": "Unknown",
+    "source": "Source",
+    "size": "Size",
+    "warning": "Please confirm the source is trusted before continuing. After download, you still need to configure the launch path manually.",
+    "confirm": "Confirm download"
   },
   "stats": {
     "title": "Statistics",
