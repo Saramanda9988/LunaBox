@@ -102,6 +102,8 @@ Var INSTALL_CLI_TO_PATH
 # Variable to store the checkbox handle
 Var CHECKBOX_CLI
 
+!define LUNABOX_PROTOCOL_SCHEME "lunabox"
+
 Function .onInit
    !insertmacro wails.checkArchitecture
 
@@ -260,6 +262,34 @@ Function ValidateCLIOptions
    ${EndIf}
 FunctionEnd
 
+# Register lunabox:// protocol in HKCU (same scope as app-side protocol registration)
+Function RegisterLunaBoxProtocol
+    SetRegView 64
+
+    WriteRegStr HKCU "Software\Classes\${LUNABOX_PROTOCOL_SCHEME}" "" "URL:LunaBox Protocol"
+    WriteRegStr HKCU "Software\Classes\${LUNABOX_PROTOCOL_SCHEME}" "URL Protocol" ""
+    WriteRegStr HKCU "Software\Classes\${LUNABOX_PROTOCOL_SCHEME}\DefaultIcon" "" "$INSTDIR\${PRODUCT_EXECUTABLE},0"
+    WriteRegStr HKCU "Software\Classes\${LUNABOX_PROTOCOL_SCHEME}\shell" "" "open"
+    WriteRegStr HKCU "Software\Classes\${LUNABOX_PROTOCOL_SCHEME}\shell\open" "" "Open with LunaBox"
+    WriteRegStr HKCU "Software\Classes\${LUNABOX_PROTOCOL_SCHEME}\shell\open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" "%1"'
+
+    # Notify shell that protocol associations changed
+    System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
+FunctionEnd
+
+# Remove lunabox:// protocol from HKCU
+Function un.RemoveLunaBoxProtocol
+    SetRegView 64
+    DeleteRegKey HKCU "Software\Classes\${LUNABOX_PROTOCOL_SCHEME}\shell\open\command"
+    DeleteRegKey HKCU "Software\Classes\${LUNABOX_PROTOCOL_SCHEME}\shell\open"
+    DeleteRegKey HKCU "Software\Classes\${LUNABOX_PROTOCOL_SCHEME}\shell"
+    DeleteRegKey HKCU "Software\Classes\${LUNABOX_PROTOCOL_SCHEME}\DefaultIcon"
+    DeleteRegKey HKCU "Software\Classes\${LUNABOX_PROTOCOL_SCHEME}"
+
+    # Notify shell that protocol associations changed
+    System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
+FunctionEnd
+
 # Uninstaller: Initialize the user data options page
 Function un.ShowUserDataOptions
    # Skip this page in silent mode (preserve user data)
@@ -355,6 +385,9 @@ Section
     !insertmacro wails.associateFiles
     !insertmacro wails.associateCustomProtocols
 
+   # Ensure lunabox:// protocol is registered for current user
+   Call RegisterLunaBoxProtocol
+
     !insertmacro wails.writeUninstaller
 
     # Write InstallLocation to registry for update detection
@@ -404,6 +437,9 @@ Section "uninstall"
 
     !insertmacro wails.unassociateFiles
     !insertmacro wails.unassociateCustomProtocols
+
+   # Ensure lunabox:// protocol is unregistered for current user
+   Call un.RemoveLunaBoxProtocol
 
     !insertmacro wails.deleteUninstaller
 SectionEnd
