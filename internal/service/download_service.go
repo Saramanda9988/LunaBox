@@ -33,6 +33,7 @@ type DownloadStatus string
 const (
 	DownloadStatusPending     DownloadStatus = "pending"
 	DownloadStatusDownloading DownloadStatus = "downloading"
+	DownloadStatusPaused      DownloadStatus = "paused"
 	DownloadStatusDone        DownloadStatus = "done"
 	DownloadStatusError       DownloadStatus = "error"
 	DownloadStatusCancelled   DownloadStatus = "cancelled"
@@ -50,6 +51,7 @@ type DownloadTask struct {
 	Error      string            `json:"error,omitempty"`
 	FilePath   string            `json:"file_path,omitempty"` // 下载完成后的本地路径
 	cancel     context.CancelFunc
+	pauseReq   bool
 }
 
 // DownloadProgressEvent 通过 Wails event 推送的进度事件
@@ -142,13 +144,84 @@ func (s *DownloadService) StartDownload(req vo.InstallRequest) (string, error) {
 
 // CancelDownload 取消指定任务
 func (s *DownloadService) CancelDownload(taskID string) error {
-	s.mu.RLock()
+	s.mu.Lock()
 	task, ok := s.tasks[taskID]
-	s.mu.RUnlock()
 	if !ok {
+		s.mu.Unlock()
 		return fmt.Errorf("task %s not found", taskID)
 	}
-	task.cancel()
+	task.pauseReq = false
+	status := task.Status
+	cancel := task.cancel
+	s.mu.Unlock()
+
+	if status == DownloadStatusPaused {
+		destPath, err := s.getTaskDestPath(task.Request)
+		if err == nil {
+			_ = os.Remove(destPath)
+		}
+		s.mu.Lock()
+		task.Status = DownloadStatusCancelled
+		task.Error = ""
+		task.Progress = 0
+		task.Downloaded = 0
+		task.Total = task.Request.Size
+		s.mu.Unlock()
+		s.emitProgress(task)
+		return nil
+	}
+
+	if cancel != nil {
+		cancel()
+	}
+	return nil
+}
+
+// PauseDownload 暂停下载任务（保留已下载部分，可恢复）
+func (s *DownloadService) PauseDownload(taskID string) error {
+	s.mu.Lock()
+	task, ok := s.tasks[taskID]
+	if !ok {
+		s.mu.Unlock()
+		return fmt.Errorf("task %s not found", taskID)
+	}
+	if task.Status == DownloadStatusPaused {
+		s.mu.Unlock()
+		return nil
+	}
+	if task.Status != DownloadStatusDownloading && task.Status != DownloadStatusPending {
+		s.mu.Unlock()
+		return fmt.Errorf("task %s is not active", taskID)
+	}
+	task.pauseReq = true
+	cancel := task.cancel
+	s.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+	return nil
+}
+
+// ResumeDownload 恢复已暂停任务
+func (s *DownloadService) ResumeDownload(taskID string) error {
+	s.mu.Lock()
+	task, ok := s.tasks[taskID]
+	if !ok {
+		s.mu.Unlock()
+		return fmt.Errorf("task %s not found", taskID)
+	}
+	if task.Status != DownloadStatusPaused {
+		s.mu.Unlock()
+		return fmt.Errorf("task %s is not paused", taskID)
+	}
+	task.pauseReq = false
+	ctx, cancel := context.WithCancel(s.ctx)
+	task.cancel = cancel
+	task.Status = DownloadStatusPending
+	task.Error = ""
+	s.mu.Unlock()
+	s.emitProgress(task)
+	go s.runDownload(ctx, task)
 	return nil
 }
 
@@ -337,11 +410,26 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 	}
 	destPath := filepath.Join(destDir, fileName)
 
+	resumeOffset := int64(0)
+	if fileInfo, statErr := os.Stat(destPath); statErr == nil && !fileInfo.IsDir() {
+		resumeOffset = fileInfo.Size()
+	}
+
+	s.mu.Lock()
+	if resumeOffset > 0 {
+		task.Downloaded = resumeOffset
+	}
+	task.pauseReq = false
+	s.mu.Unlock()
+
 	// 创建 HTTP 请求（支持取消）
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, task.Request.URL, nil)
 	if err != nil {
 		s.failTask(task, fmt.Sprintf("build request: %v", err))
 		return
+	}
+	if resumeOffset > 0 {
+		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", resumeOffset))
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 LunaBox/1.0")
 
@@ -353,11 +441,23 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resumeOffset > 0 && resp.StatusCode != http.StatusPartialContent && resp.StatusCode != http.StatusOK {
+		s.failTask(task, fmt.Sprintf("server returned %d for range request", resp.StatusCode))
+		return
+	}
+	if resumeOffset == 0 && resp.StatusCode != http.StatusOK {
 		s.failTask(task, fmt.Sprintf("server returned %d", resp.StatusCode))
 		return
 	}
-	if task.Request.Size > 0 && resp.ContentLength > 0 && task.Request.Size != resp.ContentLength {
+
+	if resumeOffset > 0 && resp.StatusCode == http.StatusOK {
+		resumeOffset = 0
+		s.mu.Lock()
+		task.Downloaded = 0
+		task.Progress = 0
+		s.mu.Unlock()
+	}
+	if task.Request.Size > 0 && resp.ContentLength > 0 && task.Request.Size != resp.ContentLength+resumeOffset {
 		s.failTask(task, fmt.Sprintf("size mismatch before download: expected=%d got=%d", task.Request.Size, resp.ContentLength))
 		return
 	}
@@ -365,14 +465,20 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 	// 如果请求中没有 size，用 Content-Length 补充
 	s.mu.Lock()
 	if task.Total == 0 && resp.ContentLength > 0 {
-		task.Total = resp.ContentLength
+		task.Total = resp.ContentLength + resumeOffset
+	} else if resp.ContentLength > 0 && resumeOffset > 0 {
+		task.Total = resp.ContentLength + resumeOffset
 	}
 	task.Status = DownloadStatusDownloading
 	s.mu.Unlock()
 	s.emitProgress(task)
 
-	// 创建目标文件
-	f, err := os.Create(destPath)
+	// 创建/追加目标文件
+	fileFlags := os.O_CREATE | os.O_WRONLY | os.O_TRUNC
+	if resumeOffset > 0 {
+		fileFlags = os.O_CREATE | os.O_WRONLY | os.O_APPEND
+	}
+	f, err := os.OpenFile(destPath, fileFlags, 0644)
 	if err != nil {
 		s.failTask(task, fmt.Sprintf("create file: %v", err))
 		return
@@ -401,13 +507,30 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 	for {
 		select {
 		case <-ctx.Done():
-			_ = closeFile()
-			os.Remove(destPath)
 			s.mu.Lock()
-			task.Status = DownloadStatusCancelled
+			pauseRequested := task.pauseReq
+			task.pauseReq = false
+			s.mu.Unlock()
+			_ = closeFile()
+			s.mu.Lock()
+			if pauseRequested {
+				task.Status = DownloadStatusPaused
+				task.Error = ""
+			} else {
+				_ = os.Remove(destPath)
+				task.Status = DownloadStatusCancelled
+				task.Error = ""
+				task.Progress = 0
+				task.Downloaded = 0
+				task.Total = task.Request.Size
+			}
 			s.mu.Unlock()
 			s.emitProgress(task)
-			applog.LogInfof(s.ctx, "Download cancelled: %s", task.ID)
+			if pauseRequested {
+				applog.LogInfof(s.ctx, "Download paused: %s", task.ID)
+			} else {
+				applog.LogInfof(s.ctx, "Download cancelled: %s", task.ID)
+			}
 			return
 		default:
 		}
@@ -588,6 +711,18 @@ func (s *DownloadService) loadTasksFromDB() error {
 	}
 
 	return nil
+}
+
+func (s *DownloadService) getTaskDestPath(req vo.InstallRequest) (string, error) {
+	dir, err := s.getDownloadDir()
+	if err != nil {
+		return "", err
+	}
+	name := sanitizeDownloadedFileName(req.FileName)
+	if name == "" {
+		return "", fmt.Errorf("invalid file_name")
+	}
+	return filepath.Join(dir, name), nil
 }
 
 func (s *DownloadService) upsertTask(task *DownloadTask) error {

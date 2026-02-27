@@ -710,6 +710,8 @@
     "unknownSource": "Unknown source",
     "copyURL": "Copy download URL",
     "openFolder": "Open containing folder",
+    "pause": "Pause download",
+    "resume": "Resume download",
     "cancel": "Cancel download",
     "delete": "Delete record",
     "importAsGame": "Import as game",
@@ -719,6 +721,7 @@
     "status": {
       "pending": "Pending",
       "downloading": "Downloading",
+      "paused": "Paused",
       "done": "Done",
       "error": "Error",
       "cancelled": "Cancelled"
@@ -727,6 +730,8 @@
       "copyURLSuccess": "Download URL copied",
       "copyURLFailed": "Copy failed",
       "openFolderFailed": "Failed to open folder",
+      "pauseFailed": "Failed to pause download",
+      "resumeFailed": "Failed to resume download",
       "noFilePath": "Downloaded file path is missing",
       "alreadyImported": "This task has already been imported",
       "importGameSuccess": "Imported as game successfully",

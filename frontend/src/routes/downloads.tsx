@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
-import { CancelDownload, DeleteDownloadTask, GetDownloadTasks, ImportDownloadTaskAsGame, OpenDownloadTaskLocation } from "../../wailsjs/go/service/DownloadService";
+import { CancelDownload, DeleteDownloadTask, GetDownloadTasks, ImportDownloadTaskAsGame, OpenDownloadTaskLocation, PauseDownload, ResumeDownload } from "../../wailsjs/go/service/DownloadService";
 import { GetGames } from "../../wailsjs/go/service/GameService";
 import { ClipboardSetText, EventsOff, EventsOn } from "../../wailsjs/runtime/runtime";
 import { DownloadCard } from "../components/card/DownloadCard";
@@ -108,6 +108,24 @@ function DownloadsPage() {
     await CancelDownload(id);
   };
 
+  const handlePause = async (id: string) => {
+    try {
+      await PauseDownload(id);
+    }
+    catch {
+      toast.error(t("downloads.toast.pauseFailed", "暂停下载失败"));
+    }
+  };
+
+  const handleResume = async (id: string) => {
+    try {
+      await ResumeDownload(id);
+    }
+    catch {
+      toast.error(t("downloads.toast.resumeFailed", "继续下载失败"));
+    }
+  };
+
   const handleDelete = async (id: string) => {
     await DeleteDownloadTask(id);
     setTasks(prev => prev.filter(task => task.id !== id));
@@ -170,7 +188,7 @@ function DownloadsPage() {
 
   // 排序：活跃任务在前
   const sorted = [...tasks].sort((a, b) => {
-    const order: Record<string, number> = { downloading: 0, pending: 1, error: 2, done: 3, cancelled: 4 };
+    const order: Record<string, number> = { downloading: 0, paused: 1, pending: 2, error: 3, done: 4, cancelled: 5 };
     return (order[a.status] ?? 5) - (order[b.status] ?? 5);
   });
 
@@ -208,6 +226,8 @@ function DownloadsPage() {
                     key={task.id}
                     task={task as unknown as service.DownloadTask}
                     onCancel={handleCancel}
+                    onPause={handlePause}
+                    onResume={handleResume}
                     onDelete={handleDelete}
                     onCopyURL={handleCopyURL}
                     onOpenFolder={handleOpenFolder}

@@ -20,6 +20,10 @@ export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Pr
 
 export function OpenDownloadTaskLocation(arg1:string):Promise<void>;
 
+export function PauseDownload(arg1:string):Promise<void>;
+
+export function ResumeDownload(arg1:string):Promise<void>;
+
 export function SetGameService(arg1:service.GameService):Promise<void>;
 
 export function SetPendingInstall(arg1:vo.InstallRequest):Promise<void>;

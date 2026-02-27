@@ -30,6 +30,14 @@ export function OpenDownloadTaskLocation(arg1) {
   return window['go']['service']['DownloadService']['OpenDownloadTaskLocation'](arg1);
 }
 
+export function PauseDownload(arg1) {
+  return window['go']['service']['DownloadService']['PauseDownload'](arg1);
+}
+
+export function ResumeDownload(arg1) {
+  return window['go']['service']['DownloadService']['ResumeDownload'](arg1);
+}
+
 export function SetGameService(arg1) {
   return window['go']['service']['DownloadService']['SetGameService'](arg1);
 }
