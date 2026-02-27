@@ -14,6 +14,8 @@ export function GetDownloadTasks():Promise<Array<service.DownloadTask>>;
 
 export function GetPendingInstall():Promise<vo.InstallRequest>;
 
+export function ImportDownloadTaskAsGame(arg1:string):Promise<void>;
+
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;
 
 export function OpenDownloadTaskLocation(arg1:string):Promise<void>;

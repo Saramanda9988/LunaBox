@@ -18,6 +18,10 @@ export function GetPendingInstall() {
   return window['go']['service']['DownloadService']['GetPendingInstall']();
 }
 
+export function ImportDownloadTaskAsGame(arg1) {
+  return window['go']['service']['DownloadService']['ImportDownloadTaskAsGame'](arg1);
+}
+
 export function Init(arg1, arg2, arg3) {
   return window['go']['service']['DownloadService']['Init'](arg1, arg2, arg3);
 }

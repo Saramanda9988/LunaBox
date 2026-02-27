@@ -203,6 +203,90 @@ func (s *DownloadService) OpenDownloadTaskLocation(taskID string) error {
 	return nil
 }
 
+// ImportDownloadTaskAsGame 将下载任务导入到游戏库（含元数据与可执行文件选择）
+func (s *DownloadService) ImportDownloadTaskAsGame(taskID string) error {
+	if s.gameService == nil {
+		return fmt.Errorf("game service not initialized")
+	}
+
+	s.mu.RLock()
+	task, ok := s.tasks[taskID]
+	s.mu.RUnlock()
+	if !ok {
+		return fmt.Errorf("task %s not found", taskID)
+	}
+	if task.Status != DownloadStatusDone {
+		return fmt.Errorf("task %s is not completed", taskID)
+	}
+	if strings.TrimSpace(task.FilePath) == "" {
+		return fmt.Errorf("task %s has no file path", taskID)
+	}
+
+	importPath, err := s.gameService.ResolveExecutablePathForImport(task.FilePath)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "resolve executable path for task %s failed: %v", task.ID, err)
+		return fmt.Errorf("resolve executable path: %w", err)
+	}
+	importPath = strings.TrimSpace(importPath)
+	if importPath == "" {
+		return fmt.Errorf("select executable cancelled")
+	}
+
+	metaSource, sourceOk := parseMetaSource(task.Request.MetaSource)
+	metaID := strings.TrimSpace(task.Request.MetaID)
+	metadata := s.fetchMetadataForTask(task)
+
+	if sourceOk && metaID != "" {
+		if existingID, exists := s.gameService.findGameIDBySource(metaSource, metaID); exists {
+			s.updateExistingGame(existingID, importPath, metaSource, metaID, metadata)
+			applog.LogInfof(s.ctx, "import task %s as game: updated existing game by source", task.ID)
+			return nil
+		}
+	}
+
+	if existingID, exists := s.gameService.findGameIDByPath(importPath); exists {
+		s.updateExistingGame(existingID, importPath, metaSource, metaID, metadata)
+		applog.LogInfof(s.ctx, "import task %s as game: updated existing game by path", task.ID)
+		return nil
+	}
+
+	game := models.Game{
+		Name:       strings.TrimSpace(task.Request.Title),
+		Path:       importPath,
+		SourceType: enums.Local,
+		SourceID:   "",
+		Status:     enums.StatusNotStarted,
+	}
+
+	if sourceOk {
+		game.SourceType = metaSource
+		game.SourceID = metaID
+	}
+
+	if metadata != nil {
+		mergeMetadataIntoGame(&game, *metadata)
+		game.Path = importPath
+	}
+
+	if sourceOk && game.SourceType == enums.Local {
+		game.SourceType = metaSource
+	}
+	if game.SourceID == "" {
+		game.SourceID = metaID
+	}
+	if strings.TrimSpace(game.Name) == "" {
+		game.Name = "未知标题"
+	}
+
+	if err := s.gameService.AddGame(game); err != nil {
+		applog.LogErrorf(s.ctx, "import task %s as game failed: %v", task.ID, err)
+		return fmt.Errorf("add game: %w", err)
+	}
+
+	applog.LogInfof(s.ctx, "import task %s as game success: %s", task.ID, game.Name)
+	return nil
+}
+
 // =================== 内部下载逻辑 ===================
 
 func (s *DownloadService) emitProgress(task *DownloadTask) {
@@ -286,10 +370,18 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 		s.failTask(task, fmt.Sprintf("create file: %v", err))
 		return
 	}
-	defer f.Close()
+	fileClosed := false
+	closeFile := func() error {
+		if fileClosed {
+			return nil
+		}
+		fileClosed = true
+		return f.Close()
+	}
 
 	checksumState, err := newChecksumState(task.Request.ChecksumAlgo)
 	if err != nil {
+		_ = closeFile()
 		s.failTask(task, fmt.Sprintf("invalid checksum algo: %v", err))
 		return
 	}
@@ -302,7 +394,7 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 	for {
 		select {
 		case <-ctx.Done():
-			f.Close()
+			_ = closeFile()
 			os.Remove(destPath)
 			s.mu.Lock()
 			task.Status = DownloadStatusCancelled
@@ -316,11 +408,13 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 		n, readErr := resp.Body.Read(buf)
 		if n > 0 {
 			if _, writeErr := f.Write(buf[:n]); writeErr != nil {
+				_ = closeFile()
 				s.failTask(task, fmt.Sprintf("write file: %v", writeErr))
 				return
 			}
 			if checksumState != nil {
 				if _, hashErr := checksumState.Write(buf[:n]); hashErr != nil {
+					_ = closeFile()
 					s.failTask(task, fmt.Sprintf("hash file: %v", hashErr))
 					return
 				}
@@ -344,6 +438,7 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 			break
 		}
 		if readErr != nil {
+			_ = closeFile()
 			s.failTask(task, fmt.Sprintf("read response: %v", readErr))
 			return
 		}
@@ -354,12 +449,19 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 	s.mu.RUnlock()
 
 	if task.Request.Size > 0 && downloadedBytes != task.Request.Size {
+		_ = closeFile()
 		s.failTask(task, fmt.Sprintf("size mismatch after download: expected=%d got=%d", task.Request.Size, downloadedBytes))
 		return
 	}
 
 	if err := verifyChecksum(task.Request.ChecksumAlgo, task.Request.Checksum, checksumState); err != nil {
+		_ = closeFile()
 		s.failTask(task, fmt.Sprintf("checksum verify failed: %v", err))
+		return
+	}
+
+	if err := closeFile(); err != nil {
+		s.failTask(task, fmt.Sprintf("close file before post process: %v", err))
 		return
 	}
 

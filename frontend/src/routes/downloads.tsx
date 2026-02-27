@@ -3,9 +3,9 @@ import { createRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { enums, models } from "../../wailsjs/go/models";
-import { CancelDownload, DeleteDownloadTask, GetDownloadTasks, OpenDownloadTaskLocation } from "../../wailsjs/go/service/DownloadService";
-import { AddGame, FetchMetadata, GetGames, ResolveExecutablePathForImport } from "../../wailsjs/go/service/GameService";
+import { models } from "../../wailsjs/go/models";
+import { CancelDownload, DeleteDownloadTask, GetDownloadTasks, ImportDownloadTaskAsGame, OpenDownloadTaskLocation } from "../../wailsjs/go/service/DownloadService";
+import { GetGames } from "../../wailsjs/go/service/GameService";
 import { ClipboardSetText, EventsOff, EventsOn } from "../../wailsjs/runtime/runtime";
 import { DownloadCard } from "../components/card/DownloadCard";
 import { Route as rootRoute } from "./__root";
@@ -37,7 +37,6 @@ export const Route = createRoute({
 function DownloadsPage() {
   const { t } = useTranslation();
   const [tasks, setTasks] = useState<DownloadTaskVM[]>([]);
-  const [metadataByTask, setMetadataByTask] = useState<Record<string, models.Game>>({});
   const [importingTaskId, setImportingTaskId] = useState<string | null>(null);
   const [importedTaskIds, setImportedTaskIds] = useState<Record<string, boolean>>({});
 
@@ -100,16 +99,8 @@ function DownloadsPage() {
       }
     });
 
-    EventsOn("download:metadata-prefetched", (evt: { task_id: string; game?: models.Game }) => {
-      if (!evt?.task_id || !evt?.game) {
-        return;
-      }
-      setMetadataByTask(prev => ({ ...prev, [evt.task_id]: evt.game as models.Game }));
-    });
-
     return () => {
       EventsOff("download:progress");
-      EventsOff("download:metadata-prefetched");
     };
   }, [markImportedTasks]);
 
@@ -141,45 +132,6 @@ function DownloadsPage() {
     }
   };
 
-  const buildGameFromTask = async (task: DownloadTaskVM): Promise<models.Game> => {
-    const prefetched = metadataByTask[task.id];
-    if (prefetched) {
-      const game = new models.Game(prefetched as unknown as Record<string, unknown>);
-      game.path = task.file_path || "";
-      if (!game.name?.trim()) {
-        game.name = task.request.title || t("downloads.unknownTitle", "未知标题");
-      }
-      return game;
-    }
-
-    const source = normalizeSource(task.request.meta_source || "");
-    const id = (task.request.meta_id || "").trim();
-    const sourceMap: Record<string, enums.SourceType> = {
-      bangumi: enums.SourceType.BANGUMI,
-      vndb: enums.SourceType.VNDB,
-      ymgal: enums.SourceType.YMGAL,
-    };
-    if (source !== "" && id !== "") {
-      const mappedSource = sourceMap[source];
-      if (mappedSource) {
-        const remote = await FetchMetadata({ source: mappedSource, id });
-        const game = new models.Game(remote as unknown as Record<string, unknown>);
-        game.path = task.file_path || "";
-        if (!game.name?.trim()) {
-          game.name = task.request.title || t("downloads.unknownTitle", "未知标题");
-        }
-        return game;
-      }
-    }
-
-    return new models.Game({
-      name: task.request.title || t("downloads.unknownTitle", "未知标题"),
-      path: task.file_path || "",
-      source_type: enums.SourceType.LOCAL,
-      status: enums.GameStatus.NOT_STARTED,
-    });
-  };
-
   const handleImportAsGame = async (id: string) => {
     const task = tasks.find(item => item.id === id);
     if (!task) {
@@ -196,20 +148,18 @@ function DownloadsPage() {
 
     setImportingTaskId(id);
     try {
-      const game = await buildGameFromTask(task);
-
-      const resolvedPath = await ResolveExecutablePathForImport(game.path || task.file_path || "");
-      if (!resolvedPath) {
+      await ImportDownloadTaskAsGame(id);
+      toast.success(t("downloads.toast.importGameSuccess", "导入为游戏成功"));
+      const latest = await GetDownloadTasks();
+      const normalized = (latest as DownloadTaskVM[]) ?? [];
+      setTasks(normalized);
+      await markImportedTasks(normalized);
+    }
+    catch (error) {
+      if (error instanceof Error && error.message.includes("select executable cancelled")) {
         toast(t("downloads.toast.selectExecutableCancelled", "已取消选择可执行文件"), { icon: "⚠️" });
         return;
       }
-      game.path = resolvedPath;
-
-      await AddGame(game);
-      toast.success(t("downloads.toast.importGameSuccess", "导入为游戏成功"));
-      await markImportedTasks(tasks);
-    }
-    catch (error) {
       console.error("Failed to import game from download task:", error);
       toast.error(t("downloads.toast.importGameFailed", "导入为游戏失败"));
     }
