@@ -199,9 +199,6 @@ function DownloadsPage() {
               <div className="glass-panel mx-auto flex h-full w-full max-w-5xl flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-brand-300 text-brand-400 select-none dark:border-brand-700 dark:text-brand-500">
                 <span className="i-mdi-download-off text-5xl" />
                 <p className="text-sm">{t("downloads.empty", "暂无下载任务")}</p>
-                <p className="text-xs text-center max-w-xs">
-                  {t("downloads.emptyHint", "点击 GAL 游戏站的「下载到 LunaBox」按钮后，任务将出现在这里")}
-                </p>
               </div>
             )
           : (

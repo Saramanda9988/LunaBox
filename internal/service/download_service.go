@@ -1049,6 +1049,8 @@ func resolveExecutablePathFromRequest(downloadPath string, startupPath string) (
 		}
 	}
 
+	cleanRelative = optimizeStartupRelativePath(basePath, cleanRelative)
+
 	joined := filepath.Join(basePath, cleanRelative)
 	absJoined, err := filepath.Abs(filepath.Clean(joined))
 	if err != nil {
@@ -1056,6 +1058,71 @@ func resolveExecutablePathFromRequest(downloadPath string, startupPath string) (
 	}
 
 	return absJoined, true, nil
+}
+
+func optimizeStartupRelativePath(basePath string, relativePath string) string {
+	current := filepath.Clean(strings.TrimSpace(relativePath))
+	if current == "" || current == "." {
+		return relativePath
+	}
+
+	baseName := filepath.Base(filepath.Clean(basePath))
+	if baseName == "" || baseName == "." {
+		return current
+	}
+
+	for {
+		first, rest, ok := splitFirstRelativeSegment(current)
+		if !ok || rest == "" || rest == "." {
+			break
+		}
+		if !pathSegmentEquals(first, baseName) {
+			break
+		}
+
+		fullCurrent := filepath.Join(basePath, current)
+		fullRest := filepath.Join(basePath, rest)
+		currentExists := pathExists(fullCurrent)
+		restExists := pathExists(fullRest)
+
+		if restExists && !currentExists {
+			current = rest
+			continue
+		}
+
+		if !currentExists && !restExists {
+			current = rest
+			continue
+		}
+
+		break
+	}
+
+	return current
+}
+
+func splitFirstRelativeSegment(path string) (string, string, bool) {
+	normalized := strings.Trim(filepath.ToSlash(path), "/")
+	if normalized == "" {
+		return "", "", false
+	}
+	parts := strings.Split(normalized, "/")
+	if len(parts) == 1 {
+		return parts[0], "", true
+	}
+	return parts[0], filepath.FromSlash(strings.Join(parts[1:], "/")), true
+}
+
+func pathSegmentEquals(a string, b string) bool {
+	if os.PathSeparator == '\\' {
+		return strings.EqualFold(a, b)
+	}
+	return a == b
+}
+
+func pathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 type checksumWriter struct {
