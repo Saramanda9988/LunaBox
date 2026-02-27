@@ -18,6 +18,11 @@ func ExtractArchive(source, target string) (extracted bool, err error) {
 		return false, fmt.Errorf("create target dir: %w", err)
 	}
 
+	sevenZipExtracted, sevenZipErr := extractArchiveWithEmbedded7z(source, target)
+	if sevenZipExtracted {
+		return true, nil
+	}
+
 	xfile := &xtractr.XFile{
 		FilePath:  source,
 		OutputDir: target,
@@ -28,7 +33,13 @@ func ExtractArchive(source, target string) (extracted bool, err error) {
 	_, _, _, err = xtractr.ExtractFile(xfile)
 	if err != nil {
 		if isRecoverableExtractPathError(err) {
+			if sevenZipErr != nil {
+				return false, fmt.Errorf("extract archive entries: embedded7z=%v; xtractr=%w", sevenZipErr, err)
+			}
 			return false, fmt.Errorf("extract archive entries: %w", err)
+		}
+		if sevenZipErr != nil {
+			return true, fmt.Errorf("extract archive entries: embedded7z=%v; xtractr=%w", sevenZipErr, err)
 		}
 		return true, fmt.Errorf("extract archive entries: %w", err)
 	}
