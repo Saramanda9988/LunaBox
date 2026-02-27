@@ -577,16 +577,23 @@ func (s *GameService) FetchMetadata(req vo.MetadataRequest) (models.Game, error)
 		return game, nil
 	}
 
+	sourceId := strings.ToLower(req.ID)
 	switch req.Source {
 	case enums.Bangumi:
 		bgmGetter := utils.NewBangumiInfoGetter()
-		game, e = bgmGetter.FetchMetadata(req.ID, s.config.BangumiAccessToken)
+		game, e = bgmGetter.FetchMetadata(sourceId, s.config.BangumiAccessToken)
 	case enums.VNDB:
+		if !isVndbId(sourceId) {
+			return game, fmt.Errorf("invalid VNDB ID format: %s", req.ID)
+		}
 		vndbGetter := utils.NewVNDBInfoGetter()
-		game, e = vndbGetter.FetchMetadata(req.ID, s.config.VNDBAccessToken)
+		game, e = vndbGetter.FetchMetadata(sourceId, s.config.VNDBAccessToken)
 	case enums.Ymgal:
+		if !isYmgalId(sourceId) {
+			return game, fmt.Errorf("invalid Ymgal ID format: %s", req.ID)
+		}
 		ymgalGetter := utils.NewYmgalInfoGetter()
-		game, e = ymgalGetter.FetchMetadata(req.ID, "")
+		game, e = ymgalGetter.FetchMetadata(sourceId, "")
 	}
 	return game, e
 }
@@ -595,6 +602,16 @@ func fetchFromLocal(id string) (models.Game, error) {
 	// 这个函数暂时返回错误，表示未实现从本地数据库获取
 	// 如果需要实现，应该在这里查询数据库
 	return models.Game{}, fmt.Errorf("game not found in local cache")
+}
+
+// isVndbId 判断是否符合VNDB ID的格式（以字母v开头，后面跟数字）
+func isVndbId(sourceId string) bool {
+	return strings.HasPrefix(sourceId, "v") && len(sourceId) > 1
+}
+
+// isYmgalId 判断是否符合Ymgal ID的格式（以字母ga开头，后面跟数字）
+func isYmgalId(sourceId string) bool {
+	return strings.HasPrefix(sourceId, "ga") && len(sourceId) > 2
 }
 
 // UpdateGameFromRemote 从远程数据源更新游戏信息
