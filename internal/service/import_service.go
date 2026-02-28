@@ -14,6 +14,7 @@ import (
 	"lunabox/internal/models"
 	"lunabox/internal/models/playnite"
 	"lunabox/internal/models/potatovn"
+	"lunabox/internal/models/vnite"
 	"lunabox/internal/utils"
 	"lunabox/internal/vo"
 	"os"
@@ -619,6 +620,306 @@ func (s *ImportService) stringToSourceType(sourceType string) enums.SourceType {
 	default:
 		return enums.Local
 	}
+}
+
+// =================== Vnite 导入功能 ====================
+
+// SelectVniteDirectory 选择 Vnite 导出的数据库目录
+func (s *ImportService) SelectVniteDirectory() (string, error) {
+	selection, err := runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{
+		Title: "选择 Vnite 导出的数据库目录",
+	})
+	return selection, err
+}
+
+// PreviewVniteImport 预览 Vnite 导入内容（不实际导入）
+func (s *ImportService) PreviewVniteImport(vniteDir string) ([]PreviewGame, error) {
+	data, err := vnite.LoadExportData(vniteDir)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "PreviewVniteImport: failed to load vnite data: %v", err)
+		return nil, fmt.Errorf("读取 Vnite 导出目录失败: %w", err)
+	}
+
+	existingGames, err := s.gameService.GetGames()
+	if err != nil {
+		applog.LogErrorf(s.ctx, "PreviewVniteImport: failed to get existing games: %v", err)
+		return nil, fmt.Errorf("获取现有游戏列表失败: %w", err)
+	}
+	existingNames := make(map[string]bool)
+	for _, g := range existingGames {
+		existingNames[strings.ToLower(g.Name)] = true
+	}
+
+	allIDs := make(map[string]bool)
+	for id := range data.GameDocs {
+		allIDs[id] = true
+	}
+	for id := range data.GameLocalDocs {
+		allIDs[id] = true
+	}
+
+	previews := make([]PreviewGame, 0, len(allIDs))
+	for id := range allIDs {
+		gameDoc, hasGame := data.GameDocs[id]
+		localDoc, hasLocal := data.GameLocalDocs[id]
+
+		if !hasGame {
+			continue
+		}
+
+		name := s.pickVniteName(gameDoc)
+		if name == "" {
+			continue
+		}
+
+		preview := PreviewGame{
+			Name:       name,
+			Developer:  s.pickVniteDeveloper(gameDoc),
+			SourceType: string(s.mapVniteSourceType(gameDoc)),
+			Exists:     existingNames[strings.ToLower(name)],
+			AddTime:    s.parseVniteTimeOrNow(gameDoc.Record.AddDate),
+			HasPath:    hasLocal && s.pickVniteGamePath(localDoc) != "",
+		}
+		previews = append(previews, preview)
+	}
+
+	return previews, nil
+}
+
+// ImportFromVnite 从 Vnite 导出的数据库目录导入数据
+func (s *ImportService) ImportFromVnite(vniteDir string, skipNoPath bool) (ImportResult, error) {
+	result := ImportResult{
+		FailedNames:  []string{},
+		SkippedNames: []string{},
+	}
+
+	data, err := vnite.LoadExportData(vniteDir)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "ImportFromVnite: failed to load vnite data: %v", err)
+		return result, fmt.Errorf("读取 Vnite 导出目录失败: %w", err)
+	}
+
+	existingGames, err := s.gameService.GetGames()
+	if err != nil {
+		applog.LogErrorf(s.ctx, "ImportFromVnite: failed to get existing games: %v", err)
+		return result, fmt.Errorf("获取现有游戏列表失败: %w", err)
+	}
+
+	existingNames := make(map[string]string)
+	existingPaths := make(map[string]string)
+	for _, g := range existingGames {
+		if g.Name != "" {
+			existingNames[strings.ToLower(g.Name)] = g.ID
+		}
+		if g.Path != "" {
+			existingPaths[g.Path] = g.Name
+		}
+	}
+
+	allIDs := make(map[string]bool)
+	for id := range data.GameDocs {
+		allIDs[id] = true
+	}
+	for id := range data.GameLocalDocs {
+		allIDs[id] = true
+	}
+
+	for id := range allIDs {
+		gameDoc, hasGame := data.GameDocs[id]
+		localDoc := data.GameLocalDocs[id]
+		if !hasGame {
+			continue
+		}
+
+		gameName := s.pickVniteName(gameDoc)
+		if gameName == "" {
+			continue
+		}
+
+		exePath := s.pickVniteGamePath(localDoc)
+		hasPath := exePath != ""
+
+		if hasPath {
+			if existingName, exists := existingPaths[exePath]; exists {
+				result.Skipped++
+				result.SkippedNames = append(result.SkippedNames, gameName+" (路径已存在: "+existingName+")")
+				continue
+			}
+		}
+
+		if existingID, exists := existingNames[strings.ToLower(gameName)]; exists {
+			isSame := false
+			for _, g := range existingGames {
+				if g.ID == existingID && g.Path == exePath {
+					isSame = true
+					break
+				}
+			}
+			if isSame {
+				result.Skipped++
+				result.SkippedNames = append(result.SkippedNames, gameName+" (已存在)")
+				continue
+			}
+			applog.LogInfof(s.ctx, "ImportFromVnite: importing duplicate name %s with different path: %s", gameName, exePath)
+		}
+
+		if skipNoPath && !hasPath {
+			result.Skipped++
+			result.SkippedNames = append(result.SkippedNames, gameName+" (无路径)")
+			continue
+		}
+
+		game, sessions := s.convertVniteToGame(gameDoc, localDoc)
+		if err := s.gameService.AddGame(game); err != nil {
+			applog.LogErrorf(s.ctx, "ImportFromVnite: failed to add game %s: %v", gameName, err)
+			result.Failed++
+			result.FailedNames = append(result.FailedNames, gameName)
+			continue
+		}
+
+		if len(sessions) > 0 && s.sessionService != nil {
+			if err := s.sessionService.BatchAddPlaySessions(sessions); err != nil {
+				applog.LogWarningf(s.ctx, "ImportFromVnite: failed to import play sessions for game %s: %v", gameName, err)
+			} else {
+				result.SessionsImported += len(sessions)
+			}
+		}
+
+		existingNames[strings.ToLower(gameName)] = game.ID
+		if hasPath {
+			existingPaths[exePath] = gameName
+		}
+		result.Success++
+	}
+
+	return result, nil
+}
+
+func (s *ImportService) convertVniteToGame(gameDoc vnite.GameDoc, localDoc vnite.GameLocalDoc) (models.Game, []models.PlaySession) {
+	gameID := uuid.New().String()
+	game := models.Game{
+		ID:         gameID,
+		Name:       s.pickVniteName(gameDoc),
+		Company:    s.pickVniteDeveloper(gameDoc),
+		Summary:    gameDoc.Metadata.Description,
+		Path:       s.pickVniteGamePath(localDoc),
+		SavePath:   s.pickVniteSavePath(localDoc),
+		SourceType: s.mapVniteSourceType(gameDoc),
+		SourceID:   s.pickVniteSourceID(gameDoc),
+		CreatedAt:  s.parseVniteTimeOrNow(gameDoc.Record.AddDate),
+		CachedAt:   time.Now(),
+		UseMagpie:  localDoc.Launcher.UseMagpie,
+	}
+
+	sessions := s.parseVniteTimers(gameID, gameDoc.Record.Timers)
+	return game, sessions
+}
+
+func (s *ImportService) pickVniteName(gameDoc vnite.GameDoc) string {
+	if gameDoc.Metadata.Name != "" {
+		return gameDoc.Metadata.Name
+	}
+	return gameDoc.Metadata.OriginalName
+}
+
+func (s *ImportService) pickVniteDeveloper(gameDoc vnite.GameDoc) string {
+	if len(gameDoc.Metadata.Developers) > 0 {
+		return gameDoc.Metadata.Developers[0]
+	}
+	if len(gameDoc.Metadata.Publishers) > 0 {
+		return gameDoc.Metadata.Publishers[0]
+	}
+	return ""
+}
+
+func (s *ImportService) pickVniteGamePath(localDoc vnite.GameLocalDoc) string {
+	if localDoc.Path.GamePath != "" {
+		return localDoc.Path.GamePath
+	}
+	return localDoc.Launcher.FileConfig.Path
+}
+
+func (s *ImportService) pickVniteSavePath(localDoc vnite.GameLocalDoc) string {
+	if len(localDoc.Path.SavePaths) > 0 {
+		return localDoc.Path.SavePaths[0]
+	}
+	return ""
+}
+
+func (s *ImportService) pickVniteSourceID(gameDoc vnite.GameDoc) string {
+	if gameDoc.Metadata.VNDBID != "" {
+		return gameDoc.Metadata.VNDBID
+	}
+	if gameDoc.Metadata.YmgalID != "" {
+		return gameDoc.Metadata.YmgalID
+	}
+	if gameDoc.Metadata.BangumiID != "" {
+		return gameDoc.Metadata.BangumiID
+	}
+	if gameDoc.Metadata.SteamID != "" {
+		return gameDoc.Metadata.SteamID
+	}
+	return ""
+}
+
+func (s *ImportService) mapVniteSourceType(gameDoc vnite.GameDoc) enums.SourceType {
+	if gameDoc.Metadata.VNDBID != "" {
+		return enums.VNDB
+	}
+	if gameDoc.Metadata.YmgalID != "" {
+		return enums.Ymgal
+	}
+	if gameDoc.Metadata.BangumiID != "" {
+		return enums.Bangumi
+	}
+	return enums.Local
+}
+
+func (s *ImportService) parseVniteTimeOrNow(raw string) time.Time {
+	if raw == "" {
+		return time.Now()
+	}
+
+	layouts := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02 15:04:05",
+		"2006-01-02",
+	}
+
+	for _, layout := range layouts {
+		if parsed, err := time.Parse(layout, raw); err == nil {
+			return parsed
+		}
+	}
+
+	return time.Now()
+}
+
+func (s *ImportService) parseVniteTimers(gameID string, timers []vnite.GameTimer) []models.PlaySession {
+	sessions := make([]models.PlaySession, 0, len(timers))
+	for _, timer := range timers {
+		if timer.Start == "" || timer.End == "" {
+			continue
+		}
+
+		startTime := s.parseVniteTimeOrNow(timer.Start)
+		endTime := s.parseVniteTimeOrNow(timer.End)
+		duration := int(endTime.Sub(startTime).Seconds())
+		if duration <= 0 {
+			continue
+		}
+
+		sessions = append(sessions, models.PlaySession{
+			ID:        uuid.New().String(),
+			GameID:    gameID,
+			StartTime: startTime,
+			EndTime:   endTime,
+			Duration:  duration,
+		})
+	}
+
+	return sessions
 }
 
 // ==================== 批量导入功能 ====================

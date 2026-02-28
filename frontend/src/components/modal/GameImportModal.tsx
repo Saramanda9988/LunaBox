@@ -5,13 +5,16 @@ import { useTranslation } from "react-i18next";
 import {
   ImportFromPlaynite,
   ImportFromPotatoVN,
+  ImportFromVnite,
   PreviewImport,
   PreviewPlayniteImport,
+  PreviewVniteImport,
   SelectJSONFile,
+  SelectVniteDirectory,
   SelectZipFile,
 } from "../../../wailsjs/go/service/ImportService";
 
-export type ImportSource = "playnite" | "potatovn";
+export type ImportSource = "playnite" | "potatovn" | "vnite";
 
 interface GameImportModalProps {
   isOpen: boolean;
@@ -64,6 +67,19 @@ function getImportConfigs(t: any): Record<ImportSource, ImportConfig> {
       selectFile: SelectZipFile,
       previewImport: PreviewImport,
       doImport: ImportFromPotatoVN,
+    },
+    vnite: {
+      title: t("gameImportModal.vnite.title"),
+      icon: "i-mdi-folder-cog-outline",
+      fileType: "DIR",
+      fileDescription: t("gameImportModal.vnite.desc"),
+      fileHint: t("gameImportModal.vnite.hint"),
+      buttonText: t("gameImportModal.vnite.btn"),
+      primaryColor: "bg-sky-500",
+      hoverColor: "hover:bg-sky-600",
+      selectFile: SelectVniteDirectory,
+      previewImport: PreviewVniteImport,
+      doImport: ImportFromVnite,
     },
   };
 }
@@ -150,14 +166,18 @@ export function GameImportModal({ isOpen, source, onClose, onImportComplete }: G
 
   // 动态颜色类
   const buttonPrimaryClass = `${config.primaryColor} ${config.hoverColor}`;
-  const iconColorClass = source === "playnite" ? "text-purple-500" : "text-neutral-500";
-  const spinnerColorClass = source === "playnite" ? "text-purple-500" : "text-neutral-500";
+  const iconColorClass = source === "playnite"
+    ? "text-purple-500"
+    : source === "vnite"
+      ? "text-sky-500"
+      : "text-neutral-500";
+  const spinnerColorClass = iconColorClass;
   const resultButtonClass = source === "playnite"
     ? "bg-purple-600 hover:bg-purple-700"
-    : "bg-neutral-600 hover:bg-neutral-700";
-  const importButtonClass = source === "playnite"
-    ? "bg-purple-600 hover:bg-purple-700"
-    : "bg-neutral-600 hover:bg-neutral-700";
+    : source === "vnite"
+      ? "bg-sky-600 hover:bg-sky-700"
+      : "bg-neutral-600 hover:bg-neutral-700";
+  const importButtonClass = resultButtonClass;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -185,7 +205,9 @@ export function GameImportModal({ isOpen, source, onClose, onImportComplete }: G
           {step === "select" && (
             <div className="space-y-6">
               <div className="text-center py-8">
-                <div className={`${source === "playnite" ? "i-mdi-file-document" : "i-mdi-folder-zip"} text-6xl text-brand-400 mx-auto mb-4`} />
+                <div
+                  className={`${source === "playnite" ? "i-mdi-file-document" : source === "vnite" ? "i-mdi-folder-cog-outline" : "i-mdi-folder-zip"} text-6xl text-brand-400 mx-auto mb-4`}
+                />
                 <p className="text-brand-600 dark:text-brand-300 mb-2">
                   {config.fileDescription}
                 </p>

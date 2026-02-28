@@ -18,6 +18,10 @@ export function ImportFromPotatoVN(arg1, arg2) {
   return window['go']['service']['ImportService']['ImportFromPotatoVN'](arg1, arg2);
 }
 
+export function ImportFromVnite(arg1, arg2) {
+  return window['go']['service']['ImportService']['ImportFromVnite'](arg1, arg2);
+}
+
 export function Init(arg1, arg2, arg3, arg4) {
   return window['go']['service']['ImportService']['Init'](arg1, arg2, arg3, arg4);
 }
@@ -28,6 +32,10 @@ export function PreviewImport(arg1) {
 
 export function PreviewPlayniteImport(arg1) {
   return window['go']['service']['ImportService']['PreviewPlayniteImport'](arg1);
+}
+
+export function PreviewVniteImport(arg1) {
+  return window['go']['service']['ImportService']['PreviewVniteImport'](arg1);
 }
 
 export function ProcessDroppedPaths(arg1) {
@@ -44,6 +52,10 @@ export function SelectJSONFile() {
 
 export function SelectLibraryDirectory() {
   return window['go']['service']['ImportService']['SelectLibraryDirectory']();
+}
+
+export function SelectVniteDirectory() {
+  return window['go']['service']['ImportService']['SelectVniteDirectory']();
 }
 
 export function SelectZipFile() {

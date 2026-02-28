@@ -13,6 +13,7 @@ require (
 	github.com/labstack/gommon v0.4.2
 	github.com/mattn/go-runewidth v0.0.19
 	github.com/spf13/cobra v1.10.2
+	github.com/syndtr/goleveldb v1.0.0
 	github.com/wailsapp/wails/v2 v2.11.0
 	github.com/zeebo/blake3 v0.2.4
 	golang.org/x/image v0.35.0
@@ -58,6 +59,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
+	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/flatbuffers v25.2.10+incompatible // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect

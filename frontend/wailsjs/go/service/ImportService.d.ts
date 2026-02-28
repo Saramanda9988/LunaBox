@@ -14,11 +14,15 @@ export function ImportFromPlaynite(arg1:string,arg2:boolean):Promise<service.Imp
 
 export function ImportFromPotatoVN(arg1:string,arg2:boolean):Promise<service.ImportResult>;
 
+export function ImportFromVnite(arg1:string,arg2:boolean):Promise<service.ImportResult>;
+
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig,arg4:service.GameService):Promise<void>;
 
 export function PreviewImport(arg1:string):Promise<Array<service.PreviewGame>>;
 
 export function PreviewPlayniteImport(arg1:string):Promise<Array<service.PreviewGame>>;
+
+export function PreviewVniteImport(arg1:string):Promise<Array<service.PreviewGame>>;
 
 export function ProcessDroppedPaths(arg1:Array<string>):Promise<Array<vo.BatchImportCandidate>>;
 
@@ -27,6 +31,8 @@ export function ScanLibraryDirectory(arg1:string):Promise<Array<vo.BatchImportCa
 export function SelectJSONFile():Promise<string>;
 
 export function SelectLibraryDirectory():Promise<string>;
+
+export function SelectVniteDirectory():Promise<string>;
 
 export function SelectZipFile():Promise<string>;
 

@@ -338,6 +338,14 @@ function LibraryPage() {
                 iconColor: "text-purple-500",
                 onClick: () => setImportSource("playnite"),
               },
+              {
+                key: "vnite",
+                label: t("library.importVnite"),
+                description: t("library.importVniteDesc"),
+                icon: "i-mdi-folder-cog-outline",
+                iconColor: "text-sky-500",
+                onClick: () => setImportSource("vnite"),
+              },
             ]}
           />
         )}
@@ -352,16 +360,25 @@ function LibraryPage() {
                 <p className="text-sm mt-2">{t("library.emptyStateAction")}</p>
                 <div className="flex flex-col gap-3 mt-4">
                   <button
+                    type="button"
                     onClick={() => setImportSource("potatovn")}
                     className="rounded-lg border border-success-600 px-5 py-2.5 text-sm font-medium text-success-600 hover:bg-success-50 focus:outline-none focus:ring-4 focus:ring-success-300 dark:border-success-500 dark:text-success-500 dark:hover:bg-success-900/20"
                   >
                     {t("library.importPotatoVN")}
                   </button>
                   <button
+                    type="button"
                     onClick={() => setImportSource("playnite")}
                     className="rounded-lg border border-purple-600 px-5 py-2.5 text-sm font-medium text-purple-600 hover:bg-purple-50 focus:outline-none focus:ring-4 focus:ring-purple-300 dark:border-purple-500 dark:text-purple-500 dark:hover:bg-purple-900/20"
                   >
                     {t("library.importPlaynite")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImportSource("vnite")}
+                    className="rounded-lg border border-sky-600 px-5 py-2.5 text-sm font-medium text-sky-600 hover:bg-sky-50 focus:outline-none focus:ring-4 focus:ring-sky-300 dark:border-sky-500 dark:text-sky-500 dark:hover:bg-sky-900/20"
+                  >
+                    {t("library.importVnite")}
                   </button>
                 </div>
               </div>

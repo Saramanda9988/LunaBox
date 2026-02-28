@@ -62,6 +62,8 @@
     "importPotatoVNDesc": "PotatoVN が出力した ZIP ファイルをインポート",
     "importPlaynite": "Playnite からインポート",
     "importPlayniteDesc": "Playnite が出力した JSON ファイルをインポート",
+    "importVnite": "Vnite からインポート",
+    "importVniteDesc": "Vnite が出力したローカルDBフォルダをインポート",
     "toast": {
       "batchStatusUpdated": "{{count}} 件のゲーム状態を「{{status}}」に更新しました",
       "batchStatusFailed": "状態の一括更新に失敗しました",
@@ -198,6 +200,12 @@
       "desc": "PotatoVN が出力した ZIP ファイルを選択",
       "hint": "data.galgames.json を含む PotatoVN バックアップファイルに対応",
       "btn": "ZIP ファイルを選択"
+    },
+    "vnite": {
+      "title": "Vnite からインポート",
+      "desc": "Vnite が出力したデータベースフォルダを選択",
+      "hint": "game と game-local サブフォルダを含む必要があります",
+      "btn": "フォルダを選択"
     },
     "loading": "読み込み中...",
     "willImport": "インポート予定",

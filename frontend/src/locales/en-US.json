@@ -62,6 +62,8 @@
     "importPotatoVNDesc": "Import exported ZIP from PotatoVN",
     "importPlaynite": "Import from Playnite",
     "importPlayniteDesc": "Import exported JSON from Playnite",
+    "importVnite": "Import from Vnite",
+    "importVniteDesc": "Import local database directory exported from Vnite",
     "toast": {
       "batchStatusUpdated": "Updated {{count}} games to status '{{status}}'",
       "batchStatusFailed": "Failed to batch update status",
@@ -198,6 +200,12 @@
       "desc": "Select ZIP file exported from PotatoVN",
       "hint": "Supports PotatoVN backup files containing data.galgames.json",
       "btn": "Select ZIP File"
+    },
+    "vnite": {
+      "title": "Import from Vnite",
+      "desc": "Select database directory exported from Vnite",
+      "hint": "The folder should contain game and game-local subdirectories",
+      "btn": "Select Directory"
     },
     "loading": "Loading...",
     "willImport": "Will Import",

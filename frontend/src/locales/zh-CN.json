@@ -62,6 +62,8 @@
     "importPotatoVNDesc": "导入 PotatoVN 导出的 ZIP 文件",
     "importPlaynite": "从 Playnite 导入",
     "importPlayniteDesc": "导入 Playnite 导出的 JSON 文件",
+    "importVnite": "从 Vnite 导入",
+    "importVniteDesc": "导入 Vnite 导出的本地数据库目录",
     "toast": {
       "batchStatusUpdated": "已将 {{count}} 个游戏状态更新为「{{status}}」",
       "batchStatusFailed": "批量更新状态失败",
@@ -198,6 +200,12 @@
       "desc": "选择 PotatoVN 导出的 ZIP 文件",
       "hint": "支持包含 data.galgames.json 的 PotatoVN 备份文件",
       "btn": "选择 ZIP 文件"
+    },
+    "vnite": {
+      "title": "从 Vnite 导入",
+      "desc": "选择 Vnite 导出的数据库目录",
+      "hint": "需要包含 game 和 game-local 两个子目录",
+      "btn": "选择目录"
     },
     "loading": "加载中...",
     "willImport": "将导入",
