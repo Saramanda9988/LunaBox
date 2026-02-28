@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"os"
 
-	"lunabox/internal/cli"
-	"lunabox/internal/cli/ipc"
+	"lunabox/internal/cli/ipcclient"
 )
 
 // localOnlyCommands 必须在本地运行、不转发给 GUI 的命令
 var localOnlyCommands = map[string]bool{
-	"luna-sama": true,
+	"luna-sama":             true,
+	"protocol":              true,
+	"--register-protocol":   true,
+	"--unregister-protocol": true,
 }
 
 func main() {
@@ -23,7 +25,7 @@ func main() {
 
 	// 本地命令：不需要 GUI 进程，直接在当前进程执行
 	if localOnlyCommands[args[0]] {
-		if err := cli.RunCommand(os.Stdout, &cli.CoreApp{}, args); err != nil {
+		if err := runLocalCommand(args); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -31,8 +33,8 @@ func main() {
 	}
 
 	// 其余命令：必须有 GUI 进程（通过 IPC 执行）
-	if ipc.IsServerRunning() {
-		if err := ipc.RemoteRun(args); err != nil {
+	if ipcclient.IsServerRunning() {
+		if err := ipcclient.RemoteRun(args); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}

@@ -1,20 +1,19 @@
-package ipc
+package ipcserver
 
 import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
-	"time"
+
+	"lunabox/internal/cli/ipccore"
 )
 
 const (
-	ServerAddr  = "127.0.0.1"
-	Port        = 56789
-	PortMax     = 56820
-	PingTimeout = 500 * time.Millisecond
+	ServerAddr = "127.0.0.1"
+	Port       = 56789
+	PortMax    = 56820
 )
 
 func serverURLForPort(port int) string {
@@ -55,46 +54,6 @@ func savePort(port int) {
 	_ = os.WriteFile(endpointFilePath(), content, 0644)
 }
 
-func candidateServerURLs() []string {
-	urls := make([]string, 0, 3)
-	seen := make(map[string]struct{})
-	add := func(u string) {
-		if u == "" {
-			return
-		}
-		if _, ok := seen[u]; ok {
-			return
-		}
-		seen[u] = struct{}{}
-		urls = append(urls, u)
-	}
-
-	if savedPort, ok := readSavedPort(); ok {
-		add(serverURLForPort(savedPort))
-	}
-	add(serverURLForPort(Port))
-	return urls
-}
-
-func pingServer(url string) bool {
-	client := http.Client{Timeout: PingTimeout}
-	resp, err := client.Get(url + "/ping")
-	if err != nil {
-		return false
-	}
-	defer resp.Body.Close()
-	return resp.StatusCode == http.StatusOK
-}
-
-func findRunningServerURL() (string, bool) {
-	for _, url := range candidateServerURLs() {
-		if pingServer(url) {
-			return url, true
-		}
-	}
-	return "", false
-}
-
 func chooseIPCListener() (net.Listener, int, error) {
 	ports := make([]int, 0, (PortMax-Port)+2)
 	if savedPort, ok := readSavedPort(); ok {
@@ -123,14 +82,8 @@ func chooseIPCListener() (net.Listener, int, error) {
 	return nil, 0, fmt.Errorf("no available ipc port in range %d-%d", Port, PortMax)
 }
 
-type CommandRequest struct {
-	Args []string `json:"args"`
-}
-
-type CommandResponse struct {
-	Output string `json:"output"`
-	Error  string `json:"error,omitempty"`
-}
+type CommandRequest = ipccore.CommandRequest
+type CommandResponse = ipccore.CommandResponse
 
 // InstallResponse IPC /install 响应
 type InstallResponse struct {

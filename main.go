@@ -6,7 +6,8 @@ import (
 	"embed"
 	"fmt"
 	"lunabox/internal/cli"
-	"lunabox/internal/cli/ipc"
+	"lunabox/internal/cli/ipcclient"
+	"lunabox/internal/cli/ipcserver"
 	"lunabox/internal/protocol"
 	"lunabox/internal/utils"
 	"lunabox/internal/vo"
@@ -60,26 +61,6 @@ func main() {
 	// ================================================================
 	args := os.Args[1:]
 
-	// --register-protocol: 注册注册表并退出
-	if len(args) == 1 && args[0] == "--register-protocol" {
-		if err := protocol.RegisterURLScheme(""); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("lunabox:// protocol registered successfully")
-		return
-	}
-
-	// --unregister-protocol: 删除注册表并退出
-	if len(args) == 1 && args[0] == "--unregister-protocol" {
-		if err := protocol.UnregisterURLScheme(); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("lunabox:// protocol unregistered")
-		return
-	}
-
 	// lunabox:// URL：检查 GUI 是否已运行
 	var pendingURL string
 	var pendingInstallReq *vo.InstallRequest
@@ -93,8 +74,8 @@ func main() {
 		pendingInstallReq = req
 
 		// 如果 GUI 已运行，转发安装请求给它并退出
-		if ipc.IsServerRunning() {
-			if err := ipc.RemoteInstall(req); err != nil {
+		if ipcclient.IsServerRunning() {
+			if err := ipcclient.RemoteInstall(req); err != nil {
 				fmt.Fprintf(os.Stderr, "Error forwarding to LunaBox: %v\n", err)
 				os.Exit(1)
 			}
@@ -320,7 +301,7 @@ func main() {
 				BackupService:  backupService,
 				VersionService: versionService,
 			}
-			ipc.StartServer(cliApp)
+			ipcserver.StartServer(cliApp)
 
 			// 在 Wails 启动后初始化系统托盘
 			// TODO: 升级wails v3，使用原生的托盘功能

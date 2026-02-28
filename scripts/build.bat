@@ -72,7 +72,7 @@ echo.
 
 echo [2/3] Building CLI Version...
 echo ----------------------------------------
-go build -ldflags "%LDFLAGS_PORTABLE%" -o build\bin\lunabox-cli.exe ./cmd/lunacli
+go build -trimpath -ldflags "%LDFLAGS_PORTABLE%" -o build\bin\lunabox-cli.exe ./cmd/lunacli
 if errorlevel 1 (
     echo ERROR: CLI build failed!
     exit /b 1
@@ -107,6 +107,8 @@ if exist "build\bin\lunabox-portable.exe" (
     echo CLI Usage: >> "!TEMP_PKG_DIR!\README.txt"
     echo   lunacli list >> "!TEMP_PKG_DIR!\README.txt"
     echo   lunacli start ^<game-id^> >> "!TEMP_PKG_DIR!\README.txt"
+    echo   lunacli protocol register >> "!TEMP_PKG_DIR!\README.txt"
+    echo   lunacli protocol unregister >> "!TEMP_PKG_DIR!\README.txt"
     echo   lunacli help >> "!TEMP_PKG_DIR!\README.txt"
     
     if exist "build\bin\LunaBox-Portable-%VERSION%.zip" del "build\bin\LunaBox-Portable-%VERSION%.zip"
@@ -123,7 +125,7 @@ goto :eof
 :build_installer
 echo [1/2] Building CLI Version for Installer...
 echo ----------------------------------------
-go build -ldflags "%LDFLAGS_INSTALLER%" -o build\bin\lunacli.exe ./cmd/lunacli
+go build -trimpath -ldflags "%LDFLAGS_INSTALLER%" -o build\bin\lunacli.exe ./cmd/lunacli
 if errorlevel 1 (
     echo ERROR: CLI build for installer failed!
     exit /b 1
