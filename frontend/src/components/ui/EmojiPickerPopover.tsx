@@ -46,7 +46,11 @@ export function EmojiPickerPopover({
 
     const pickerElement = document.createElement("emoji-picker");
     const isDarkMode = document.documentElement.classList.contains("dark");
-    const pickerLocale = i18n.language.startsWith("zh") ? "zh" : "en";
+    const pickerLocale = i18n.language.startsWith("zh")
+      ? "zh"
+      : i18n.language.startsWith("ja")
+        ? "ja"
+        : "en";
 
     pickerElement.setAttribute("locale", pickerLocale);
     pickerElement.setAttribute("theme", isDarkMode ? "dark" : "light");

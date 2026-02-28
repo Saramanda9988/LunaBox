@@ -1,0 +1,927 @@
+{
+  "common": {
+    "confirm": "確認",
+    "cancel": "キャンセル",
+    "save": "保存",
+    "saving": "保存中...",
+    "search": "検索",
+    "searching": "検索中...",
+    "delete": "削除",
+    "edit": "編集",
+    "add": "追加",
+    "manualAdd": "手動追加",
+    "back": "戻る",
+    "previousStep": "前のステップに戻る",
+    "allStatus": "すべての状態",
+    "notStarted": "未開始",
+    "playing": "プレイ中",
+    "completed": "クリア済み",
+    "onHold": "保留中",
+    "name": "名前",
+    "createdAt": "追加日",
+    "selectAll": "すべて選択",
+    "clearStore": "クリア",
+    "selected": "選択済み",
+    "unknownDeveloper": "不明な開発元",
+    "select": "選択",
+    "find": "検索",
+    "finish": "完了",
+    "reselect": "← 再選択",
+    "action": "操作",
+    "loading": "読み込み中...",
+    "complete": "完了",
+    "stop": "照合を停止",
+    "duration": {
+      "hours": "時間",
+      "minutes": "分",
+      "hoursShort": "時",
+      "minutesShort": "分"
+    }
+  },
+  "modal": {
+    "titles": {
+      "warning": "警告",
+      "info": "お知らせ"
+    }
+  },
+  "library": {
+    "title": "ゲームライブラリ",
+    "searchPlaceholder": "ゲームを検索...",
+    "emptyState": "ゲームがありません",
+    "emptyStateAction": "ゲームを追加して始めましょう",
+    "notFound": "一致するゲームが見つかりません",
+    "batchUpdateStatus": "状態を一括更新",
+    "setStatus": "状態を設定",
+    "batchAddToFilter": "コレクションに一括追加",
+    "batchDelete": "一括削除",
+    "addGame": "ゲームを追加",
+    "addGameDesc1": "実行ファイルを選択してメタデータを検索",
+    "batchImport": "一括インポート",
+    "batchImportDesc": "ゲームライブラリディレクトリをスキャンして一括追加",
+    "importPotatoVN": "PotatoVN からインポート",
+    "importPotatoVNDesc": "PotatoVN が出力した ZIP ファイルをインポート",
+    "importPlaynite": "Playnite からインポート",
+    "importPlayniteDesc": "Playnite が出力した JSON ファイルをインポート",
+    "toast": {
+      "batchStatusUpdated": "{{count}} 件のゲーム状態を「{{status}}」に更新しました",
+      "batchStatusFailed": "状態の一括更新に失敗しました",
+      "loadFavFailed": "コレクションの読み込みに失敗しました",
+      "batchAddFavSuccess": "{{count}} 件のゲームをコレクションに追加しました",
+      "batchAddFavFailed": "一括追加に失敗しました",
+      "batchDeleteTitle": "ゲームを一括削除",
+      "batchDeleteConfirmMsg": "選択した {{count}} 件のゲームを削除しますか？この操作はライブラリから削除しますが、ローカルのゲームファイルは削除しません。",
+      "batchDeleteSuccess": "一括削除が完了しました",
+      "batchDeleteFailed": "一括削除に失敗しました"
+    }
+  },
+  "filterBar": {
+    "exitBatchSelection": "一括選択を終了",
+    "enterBatchSelection": "一括選択",
+    "sortAsc": "昇順",
+    "sortDesc": "降順"
+  },
+  "gameCard": {
+    "deselect": "選択解除",
+    "select": "選択",
+    "startGame": "ゲームを起動",
+    "viewDetails": "詳細を見る",
+    "startSuccess": "{{name}} の起動に成功しました",
+    "startFailedNotLaunched": "{{name}} の起動に失敗しました（起動できませんでした）",
+    "startFailedLog": "{{name}} の起動に失敗しました。ログを確認してください"
+  },
+  "addGameModal": {
+    "title": "ゲームを追加",
+    "selectExecutable": "実行ファイルを選択",
+    "selectExecutablePlaceholder": "実行ファイルを選択してください",
+    "gameNameLabel": "ゲーム名 *",
+    "fetchMetadata": "メタデータを検索",
+    "whichResultExpected": "どの結果が期待したものですか？",
+    "fromSource": "{{source}} から",
+    "notMatched": "どれでもない？",
+    "inputManual": "手動入力",
+    "searchById": "ID で検索",
+    "dataSourceLabel": "データソース",
+    "gameIdLabel": "ゲーム ID",
+    "gameIdPlaceholder": "ゲーム ID を入力してください",
+    "confirm": "確認",
+    "manualFillTitle": "ゲーム情報を手動入力",
+    "coverImageLabel": "カバー画像",
+    "coverImagePlaceholder": "画像 URL を入力またはローカル画像を選択",
+    "coverImageSupportTip": "リモート URL とローカル画像の選択に対応",
+    "developerLabel": "開発元",
+    "summaryLabel": "概要",
+    "toast": {
+      "openSelectorFailed": "システムセレクターを開けませんでした",
+      "fetchMetaFailed": "メタデータの取得に失敗しました。ネットワークまたはトークンの有効性を確認してください",
+      "saveFailed": "ゲームの保存に失敗しました",
+      "fetchByIdFailed": "ID でメタデータを取得できませんでした。ネットワークまたはトークンの有効性を確認してください",
+      "selectCoverFailed": "カバー画像の選択に失敗しました",
+      "nameRequired": "ゲーム名を入力してください",
+      "saveGameFailed": "ゲームの保存に失敗しました",
+      "fetchMetaByIdFailed": "ID でメタデータを取得できませんでした。ネットワークまたはトークンの有効性を確認してください",
+      "fillGameName": "ゲーム名を入力してください"
+    },
+    "executablePlaceholder": "実行ファイルを選択してください",
+    "gameName": "ゲーム名",
+    "searchMeta": "メタデータを検索",
+    "whichResult": "どの結果が期待したものですか？",
+    "goBack": "戻る",
+    "noneOfAbove": "どれでもない？",
+    "fillManually": "手動入力",
+    "dataSource": "データソース",
+    "gameId": "ゲーム ID",
+    "manualFillInfo": "ゲーム情報を手動入力",
+    "coverImage": "カバー画像",
+    "coverPlaceholder": "画像 URL を入力またはローカル画像を選択",
+    "coverHint": "リモート URL とローカル画像の選択に対応",
+    "developer": "開発元",
+    "summary": "概要"
+  },
+  "batchImportModal": {
+    "title": "ゲームライブラリを一括インポート",
+    "selectDir": "ゲームライブラリフォルダーを選択",
+    "scanHint": "プログラムは第一階層のサブフォルダをスキャンし、実行ファイルを含む各フォルダを1つのゲームとして認識します",
+    "btn": {
+      "selectDir": "ゲームライブラリフォルダーを選択"
+    },
+    "scanning": "ディレクトリをスキャン中...",
+    "detected": "検出済み",
+    "matched": "照合済み",
+    "notMatched": "未照合",
+    "pending": "照合待ち",
+    "noFolderDetected": "ゲームフォルダが検出されませんでした",
+    "searchName": "名前を検索",
+    "executable": "実行ファイル",
+    "matchStatus": "照合状態",
+    "status": {
+      "pending": "照合待ち",
+      "matched": "照合済み",
+      "notFound": "未検出",
+      "error": "エラー"
+    },
+    "manualSelect": "手動選択",
+    "startMatching": "メタデータの照合を開始",
+    "importCount": "{{count}} 件のゲームをインポート",
+    "matching": "メタデータを照合中...",
+    "matchHint": "レート制限を避けるため、照合に時間がかかる場合があります。しばらくお待ちください",
+    "importing": "ゲームをインポート中...",
+    "result": {
+      "success": "インポート成功",
+      "skipped": "スキップ済み",
+      "failed": "インポート失敗"
+    },
+    "skippedGames": "スキップしたゲーム:",
+    "failedGames": "インポートに失敗したゲーム:",
+    "reselect": "ディレクトリを再選択",
+    "noMatchResult": "一致結果が見つかりません",
+    "searchById": "ID で検索",
+    "importWithoutMeta": "メタデータを照合せず、パスのみをインポート",
+    "inputId": "ID を入力",
+    "toast": {
+      "scanFailed": "ディレクトリのスキャンに失敗しました",
+      "selectDirFailed": "フォルダーの選択に失敗しました",
+      "importSuccess": "{{count}} 件のゲームをインポートしました",
+      "importFailed": "インポートに失敗しました",
+      "gameNotFound": "ゲームが見つかりません",
+      "fetchFailed": "取得に失敗しました"
+    }
+  },
+  "gameImportModal": {
+    "playnite": {
+      "title": "Playnite からインポート",
+      "desc": "Playnite が出力した JSON ファイルを選択",
+      "hint": "Playnite のエクスポートスクリプトで生成したゲームデータファイルに対応",
+      "btn": "JSON ファイルを選択"
+    },
+    "potatovn": {
+      "title": "PotatoVN からインポート",
+      "desc": "PotatoVN が出力した ZIP ファイルを選択",
+      "hint": "data.galgames.json を含む PotatoVN バックアップファイルに対応",
+      "btn": "ZIP ファイルを選択"
+    },
+    "loading": "読み込み中...",
+    "willImport": "インポート予定",
+    "exists": "既存",
+    "noPath": "パスなし",
+    "skipNoPath": "パスなしゲームをスキップ",
+    "noPathHint": "{{count}} 件のゲームにはローカルパスがありません。オンラインゲームまたは削除済みのゲームの可能性があります。",
+    "noPathHintCheck": "この項目にチェックを入れると、これらのゲームをスキップします。",
+    "noPathHintUncheck": "チェックを外すとこれらのゲームをインポートします（起動パスなし）。",
+    "noGameDataFound": "ゲームデータが見つかりません",
+    "gameName": "ゲーム名",
+    "developer": "開発元",
+    "status": {
+      "skipped": "スキップ予定"
+    },
+    "willSkip": "スキップ予定",
+    "newAdd": "新規追加",
+    "importCount": "{{count}} 件のゲームをインポート",
+    "importing": "インポート中...",
+    "doNotCloseWarning": "時間がかかる場合があります。ウィンドウを閉じないでください",
+    "toast": {
+      "previewFailed": "インポート内容のプレビューに失敗しました",
+      "selectFileFailed": "ファイルの選択に失敗しました",
+      "importSuccess": "{{count}} 件のゲームをインポートしました",
+      "importFailed": "インポートに失敗しました"
+    },
+    "skipNoPathHint1": "{{count}} 件のゲームにはローカルパスがありません。オンラインゲームまたは削除済みのゲームの可能性があります。",
+    "skipNoPathHintUncheck": "チェックを外すとこれらのゲームをインポートします（起動パスなし）。",
+    "skipNoPathHintCheck": "この項目にチェックを入れると、これらのゲームをスキップします。",
+    "noGameData": "ゲームデータが見つかりません",
+    "noPathLabel": "パスなし",
+    "reselect": "再選択",
+    "importHint": "時間がかかる場合があります。ウィンドウを閉じないでください",
+    "result": {
+      "success": "インポート成功",
+      "skipped": "スキップ済み",
+      "failed": "インポート失敗"
+    },
+    "skippedGames": "スキップしたゲーム:",
+    "failedGames": "インポートに失敗したゲーム:"
+  },
+  "game": {
+    "notFound": "このゲームは見つかりません",
+    "backToLibrary": "ライブラリに戻る",
+    "dataSource": "データソース",
+    "developer": "開発",
+    "summary": "概要",
+    "noSummary": "概要はありません",
+    "noCover": "カバーなし",
+    "addToFav": "コレクションに追加",
+    "deleteGame": "ゲームを削除",
+    "deleteConfirmMsg": "ゲーム「{{name}}」を削除しますか？この操作はライブラリから削除しますが、ローカルのゲームファイルは削除しません。",
+    "confirmDelete": "削除を確認",
+    "tabs": {
+      "stats": "ゲーム統計",
+      "launch": "起動設定",
+      "backup": "バックアップ"
+    },
+    "toast": {
+      "loadDataFailed": "ゲームデータの読み込みに失敗しました",
+      "saveFailed": "保存に失敗しました: {{error}}",
+      "selectExecutableFailed": "実行ファイルの選択に失敗しました",
+      "deleteSuccess": "削除しました",
+      "deleteFailed": "削除に失敗しました",
+      "selectSaveDirFailed": "セーブパスの選択に失敗しました",
+      "selectSaveFileFailed": "セーブファイルの選択に失敗しました",
+      "selectCoverFailed": "カバー画像の選択に失敗しました",
+      "updateRemoteSuccess": "リモートからの更新に成功しました",
+      "updateRemoteFailed": "リモートからの更新に失敗しました: {{error}}",
+      "statusUpdated": "状態を更新しました",
+      "statusUpdateFailed": "状態の更新に失敗しました",
+      "loadFavFailed": "コレクションの読み込みに失敗しました",
+      "favUpdated": "コレクションを更新しました",
+      "updateFavFailed": "コレクションの更新に失敗しました",
+      "selectFileFailed": "ファイルの選択に失敗しました"
+    }
+  },
+  "gameBackup": {
+    "title": "セーブバックアップ",
+    "pathLabel": "セーブパス: {{path}}",
+    "pathPlaceholder": "先に編集ページでセーブパス（ファイルまたはフォルダ）を設定してください",
+    "openFolder": "バックアップフォルダを開く",
+    "backingUp": "バックアップ中...",
+    "backupNow": "今すぐバックアップ",
+    "localBackups": "ローカルバックアップ",
+    "autoBackupEnabled": "自動バックアップが有効です",
+    "noLocalBackups": "ローカルバックアップ記録がありません",
+    "size": "サイズ: ",
+    "uploadToCloud": "クラウドにアップロード",
+    "restore": "バックアップを復元",
+    "cloudBackups": "クラウドバックアップ",
+    "refreshCloudList": "クラウドバックアップ一覧を更新",
+    "noCloudBackups": "クラウドバックアップ記録がありません",
+    "restoreFromCloud": "クラウドから復元",
+    "cloudNotEnabled": "クラウドバックアップが有効ではありません",
+    "cloudConfigHint": "設定ページでクラウドバックアップを構成すると、セーブをクラウド同期できます",
+    "modal": {
+      "restoreTitle": "セーブを復元",
+      "restoreMsg": "{{time}} のバックアップに復元しますか？現在のセーブは上書きされます。",
+      "deleteTitle": "バックアップを削除",
+      "deleteMsg": "このローカルバックアップを削除しますか？この操作は取り消せません。",
+      "restoreCloudTitle": "クラウドから復元",
+      "restoreCloudMsg": "{{name}} をクラウドから復元しますか？現在のセーブは上書きされます。"
+    },
+    "toast": {
+      "savePathRequired": "先にセーブパスを設定してください",
+      "backupCreated": "バックアップを作成しました",
+      "backupFailed": "バックアップに失敗しました: {{error}}",
+      "restored": "セーブを復元しました",
+      "restoreFailed": "復元に失敗しました: {{error}}",
+      "deleted": "バックアップを削除しました",
+      "deleteFailed": "削除に失敗しました: {{error}}",
+      "openFolderFailed": "フォルダを開けませんでした: {{error}}",
+      "uploaded": "クラウドにアップロードしました",
+      "uploadFailed": "アップロードに失敗しました: {{error}}",
+      "restoredFromCloud": "セーブをクラウドから復元しました"
+    }
+  },
+  "gameLaunch": {
+    "processMonitor": "プロセス監視",
+    "executable": "実行ファイル",
+    "noPathSet": "ゲームパスが設定されていません",
+    "executableHint": "LunaBox はこの実行ファイルでゲームを起動します。ここには最初に選択した実行ファイルのパスが表示されます",
+    "actualProcess": "実際のゲームプロセス",
+    "selectProcessFile": "プロセスファイルを選択",
+    "processHint": "実際に動作しているゲームのプロセス名（.exe 拡張子を含む）を指定します。\n指定しない場合、LunaBox は実行パスの監視を試みます。前回の選択がランチャーだった場合は、ゲーム起動後に表示される選択ダイアログでこのプロセスを手動指定する必要があります。\nここで事前入力しておくと、毎回の起動時に手動選択する手間を省けます。",
+    "enhancementTools": "起動強化ツール",
+    "leLabel": "ロケールエミュレーター",
+    "leDesc": "日本語環境エミュレーションでゲームを起動し、文字化けや地域制限の問題を解決します。",
+    "leNotConfigured": "先に設定画面で LEProc.exe のパスを設定してください",
+    "magpieLabel": "超解像スケーリング",
+    "magpieDesc": "ゲーム起動後に Magpie を自動起動し、全画面の超解像スケーリングを行います。",
+    "magpieNotConfigured": "先に設定画面で Magpie.exe のパスを設定してください",
+    "toast": {
+      "lePathRequired": "先に設定画面で Locale Emulator のパスを設定してください",
+      "magpiePathRequired": "先に設定画面で Magpie のパスを設定してください"
+    }
+  },
+  "gameStats": {
+    "totalPlayCount": "累計プレイ回数",
+    "todayPlayTime": "今日のプレイ時間",
+    "totalPlayTime": "累計プレイ時間",
+    "zeroMinutes": "0分",
+    "chartLabel": "プレイ時間 (分)",
+    "noPlaySessions": "プレイ記録がありません",
+    "duration": "時間:",
+    "deleteRecord": "記録を削除",
+    "period": {
+      "week": "週",
+      "month": "月",
+      "all": "すべて"
+    },
+    "manualAdd": "手動追加",
+    "modal": {
+      "deleteSessionTitle": "プレイ記録を削除",
+      "deleteSessionMsg": "このプレイ記録を削除しますか？この操作は取り消せません。"
+    },
+    "toast": {
+      "loadStatsFailed": "統計データの読み込みに失敗しました",
+      "loadSessionsFailed": "プレイ記録の読み込みに失敗しました",
+      "deleteSuccess": "削除しました",
+      "deleteFailed": "削除に失敗しました"
+    }
+  },
+  "addToCategory": {
+    "title": "コレクションに追加",
+    "gameCount": "{{count}} 件のゲーム",
+    "empty": "コレクションがありません"
+  },
+  "gameEdit": {
+    "name": "ゲーム名",
+    "cover": "カバー画像",
+    "coverPlaceholder": "画像 URL を入力または画像を選択",
+    "selectImage": "画像を選択",
+    "coverHint": "リモート URL とローカル画像の選択に対応",
+    "developer": "開発元",
+    "path": "起動パス",
+    "selectFile": "ファイルを選択",
+    "openPathFailed": "パスを開けませんでした",
+    "openInExplorer": "エクスプローラーで開く",
+    "savePath": "セーブパス",
+    "savePathPlaceholder": "セーブパスを設定してください",
+    "selectFolder": "フォルダーを選択",
+    "savePathHint": "ゲームのセーブディレクトリまたはファイルを指定できます。クラウドバックアップと複数端末同期に使用します",
+    "summary": "概要",
+    "sourceType": "データソース種別",
+    "sourceNone": "なし",
+    "sourceLocal": "ローカル",
+    "sourceYmgal": "月幕gal",
+    "sourceId": "データソース ID",
+    "sourceIdPlaceholder": "プラットフォーム対応のゲームIDを入力",
+    "updateFromRemote": "リモートから情報を更新"
+  },
+  "dragDropImportModal": {
+    "toast": {
+      "noValidGames": "有効なゲームファイルが検出されませんでした",
+      "processFailed": "ドラッグしたファイルの処理に失敗しました"
+    },
+    "title": "ドラッグ&ドロップでゲームをインポート",
+    "processing": "ドラッグしたファイルを処理中",
+    "fileCount": "合計 {{count}} 件のファイル/フォルダ",
+    "noValidGamesFound": "有効なゲームが検出されませんでした",
+    "enterId": "ID を入力"
+  },
+  "home": {
+    "title": "ホーム",
+    "welcome": "お帰りなさい！",
+    "welcomeBack": "お帰りなさい",
+    "todayPlayTime": "今日のプレイ時間",
+    "noPlayRecord": "まだプレイ記録がありません",
+    "noPlayRecordHint": "ゲームライブラリでゲームを選んで始めましょう",
+    "browseLibrary": "ゲームライブラリを閲覧",
+    "noData": "データがありません",
+    "retry": "再試行",
+    "playingNow": "プレイ中...",
+    "lastPlayed": "前回プレイ: {{time}}",
+    "totalPlayTime": "総プレイ時間: ",
+    "gaming": "プレイ中",
+    "continueGame": "ゲームを続ける",
+    "toast": {
+      "launching": "{{name}} を起動中",
+      "launchFailed": "ゲームの起動に失敗しました"
+    }
+  },
+  "categories": {
+    "favorites": "お気に入りゲーム",
+    "title": "コレクション",
+    "searchPlaceholder": "コレクションを検索...",
+    "newCategory": "新しいコレクション",
+    "gameCount": "{{count}} 件のゲーム",
+    "editBtnTitle": "コレクションを編集",
+    "deleteBtnTitle": "コレクションを削除",
+    "systemLocked": "システムコレクションは一括削除できません",
+    "emojiPicker": {
+      "change": "クリックしてアイコンを変更",
+      "title": "アイコンを選択",
+      "clear": "削除",
+      "apply": "アイコンを適用"
+    },
+    "sortOptions": {
+      "name": "名前",
+      "gameCount": "ゲーム数",
+      "createdAt": "作成日時",
+      "updatedAt": "更新日時"
+    },
+    "modal": {
+      "addTitle": "新しいコレクション",
+      "editTitle": "コレクションを編集",
+      "namePlaceholder": "コレクション名",
+      "emojiLabel": "アイコン Emoji（任意）",
+      "emojiPlaceholder": "例: 📁、🎮、❤️",
+      "create": "作成"
+    },
+    "toast": {
+      "loadFailed": "コレクションの読み込みに失敗しました",
+      "createSuccess": "コレクションを作成しました",
+      "createFailed": "コレクションの作成に失敗しました",
+      "updateSuccess": "コレクションを更新しました",
+      "updateFailed": "コレクションの更新に失敗しました",
+      "deleteTitle": "コレクションを削除",
+      "deleteMsg": "コレクション「{{name}}」を削除しますか？この操作は取り消せません。",
+      "deleteSuccess": "コレクションを削除しました",
+      "deleteFailed": "コレクションの削除に失敗しました",
+      "batchDeleteTitle": "コレクションを一括削除",
+      "batchDeleteMsg": "選択した {{count}} 件のコレクションを削除しますか？この操作は取り消せません。",
+      "batchDeleteSuccess": "一括削除が完了しました",
+      "batchDeleteFailed": "一括削除に失敗しました",
+      "iconUpdated": "アイコンを更新しました",
+      "iconUpdateFailed": "アイコンの更新に失敗しました"
+    }
+  },
+  "settings": {
+    "title": "設定",
+    "preparingSettings": "設定を準備中...",
+    "sections": {
+      "basic": "基本設定",
+      "appearance": "外観設定",
+      "game": "ゲーム設定",
+      "download": "ダウンロード設定",
+      "cloudBackup": "クラウドバックアップ設定",
+      "autoBackup": "自動バックアップ",
+      "ai": "AI 設定",
+      "dbBackup": "データベースバックアップ",
+      "fullDataBackup": "全量データバックアップ",
+      "update": "アプリ更新"
+    },
+    "download": {
+      "selectGameLibraryTitle": "ゲームライブラリフォルダーを選択",
+      "gameLibraryPath": "ゲームライブラリディレクトリ",
+      "gameLibraryPathHint": "ダウンロードしたゲームはこのディレクトリに展開されます。空欄の場合は ~/Games を使用します",
+      "gameLibraryPathPlaceholder": "例: D:\\Games または /home/user/games",
+      "effectivePath": "ゲームライブラリパス: {{path}}",
+      "defaultPath": "ゲームライブラリパス: ~/Games（デフォルト）",
+      "toast": {
+        "selectFailed": "フォルダーの選択に失敗しました"
+      }
+    },
+    "basic": {
+      "bangumiTokenHint": "Bangumi データソースを利用する場合は入力してください",
+      "themeLabel": "テーマ",
+      "themeLight": "ライト",
+      "themeDark": "ダーク",
+      "themeSystem": "システムに従う",
+      "languageLabel": "言語",
+      "timezoneLabel": "タイムゾーン",
+      "timezoneHint": "ゲーム時間を正しく表示・記録するために使用します。変更後はアプリを再起動してください",
+      "timezonePlaceholder": "タイムゾーンを選択してください",
+      "closeToTray": "ウィンドウを閉じたときにシステムトレイへ最小化"
+    },
+    "appearance": {
+      "enableBg": "カスタム背景を有効化",
+      "enableBgHint": "有効にするとカスタム画像をアプリ背景に使用し、テーマ配色を自動調整します",
+      "hideGameCover": "ホームのゲームカバーを非表示",
+      "hideGameCoverHint": "カスタム背景を有効にしたとき、ホームで前回プレイしたゲームのカバー画像を非表示にします",
+      "bgImage": "背景画像",
+      "noImageSelected": "画像未選択",
+      "selectBtn": "選択",
+      "clearBtn": "クリア",
+      "bgImageHint": "PNG、JPG、JPEG、GIF、WebP、BMP に対応。選択後に必要な範囲を切り抜けます",
+      "preview": "プレビュー",
+      "bgPreviewAlt": "背景プレビュー",
+      "effectPreview": "効果プレビュー",
+      "blurLabel": "背景ぼかし度",
+      "blurSharp": "鮮明",
+      "blurBlurry": "ぼかし",
+      "opacityLabel": "オーバーレイ不透明度",
+      "opacityTransparent": "透明",
+      "opacityOpaque": "不透明",
+      "opacityHint": "コンテンツ領域のオーバーレイ不透明度を調整します。値が低いほど背景画像がはっきり見えます",
+      "toast": {
+        "selectFailed": "背景画像の選択に失敗しました: {{error}}",
+        "cropFailed": "切り抜き保存に失敗しました: {{error}}"
+      }
+    },
+    "game": {
+      "recordActiveOnly": "アクティブプレイ時間のみ記録",
+      "recordActiveOnlyHint": "有効にすると、ゲームウィンドウが前面でフォーカスされている場合のみプレイ時間を記録します。放置やバックグラウンド実行時間を除外でき、より正確に統計できます。",
+      "warningTitle": "注意:",
+      "warningItem1": "このオプションを有効にすると、ゲームプロセスの完全な稼働時間ではなく（バックグラウンド時間を除いた）時間を記録します",
+      "warningItem2": "既存のプレイ記録にはこの設定は影響しません",
+      "warningItem3": "一部のフルスクリーンゲームではフォーカス検出の精度に影響する場合があります",
+      "autoDetectProcess": "自動プロセス検出",
+      "autoDetectProcessHint": "有効にすると、ランチャープロセスがすぐ終了した際に、LunaBox が実際のゲームプロセスの選択を自動で促します。無効にすると、保存済みのプロセス名または実行ファイルハンドルを直接監視します。単一 exe ゲームや複雑な検出が不要な場面に適しています。",
+      "launchTools": "ゲーム起動ツール",
+      "lePath": "Locale Emulator パス",
+      "lePathPlaceholder": "LEProc.exe のパスを選択",
+      "lePathHint": "設定後、ゲーム編集画面で Locale Emulator のロケール切替起動を有効化できます",
+      "magpiePath": "Magpie パス",
+      "magpiePathPlaceholder": "Magpie.exe のパスを選択",
+      "magpiePathHint": "設定後、ゲーム編集画面で Magpie の超解像スケーリング起動を有効化できます",
+      "selectBtn": "選択",
+      "toast": {
+        "leSelectFailed": "Locale Emulator の選択に失敗しました",
+        "magpieSelectFailed": "Magpie の選択に失敗しました"
+      }
+    },
+    "cloudBackup": {
+      "enableLabel": "クラウドバックアップを有効化",
+      "enableHint": "データをクラウドストレージに同期します",
+      "providerLabel": "クラウドストレージプロバイダー",
+      "providerS3": "S3 互換ストレージ",
+      "s3Section": "S3 設定",
+      "backupPasswordLabel": "バックアップパスワード",
+      "passwordSet": "✓ パスワード設定済み、ユーザーID:",
+      "setPasswordBtn": "バックアップパスワードを設定",
+      "passwordForIdHint": "ユーザー識別子の生成に使用します",
+      "passwordWarning": "重要: パスワードは一度しか設定できず、設定後は変更できません。必ず記憶してください",
+      "clientIdUsingDefault": "(デフォルトを使用)",
+      "clientIdHint": "カスタマイズする場合は",
+      "clientIdHint2": "でアプリを登録してください",
+      "authStatusLabel": "認証状態",
+      "authorized": "認証済み",
+      "revokeAuth": "認証解除",
+      "waitingAuth": "認証待機中...",
+      "authOneDriveBtn": "OneDrive を認証",
+      "authWaitHint": "ブラウザで認証を完了してください。成功後は自動的に戻ります",
+      "retentionLabel": "保持バックアップ数",
+      "retentionHint": "クラウド上で各ゲームに保持するバックアップの最大数",
+      "oneDriveSection": "OneDrive 設定",
+      "oneDriveNote": "注意:",
+      "oneDriveNoteItem1": "デフォルトではプロジェクト提供の Client ID を使用し、すぐ使えるようにしています",
+      "oneDriveNoteItem2": "データはすべてご自身の OneDrive アカウント内のアプリフォルダに保存され、他者はアクセスできません",
+      "oneDriveNoteItem3": "すべての機密データ（Refresh Token など）はローカルに保存され、クラウドにはアップロードされません",
+      "oneDriveNoteItem4": "デフォルト Client ID の使用により発生した問題について、作者は責任を負いません",
+      "oneDriveNoteItem5": "より高い安全性が必要な場合は、以下で Client ID をカスタマイズしてください",
+      "testing": "テスト中...",
+      "testConnection": "接続テスト",
+      "toast": {
+        "passwordTooShort": "パスワードは6文字以上必要です",
+        "passwordMismatch": "2回入力したパスワードが一致しません",
+        "passwordSetSuccess": "パスワードの設定に成功しました！ユーザーID: {{id}}...",
+        "setupFailed": "設定に失敗しました: {{error}}",
+        "s3TestSuccess": "S3 接続テストに成功しました",
+        "s3TestFailed": "S3 接続テストに失敗しました: {{error}}",
+        "oneDriveTestSuccess": "OneDrive 接続テストに成功しました",
+        "oneDriveTestFailed": "OneDrive 接続テストに失敗しました: {{error}}",
+        "oneDriveAuthSuccess": "OneDrive 認証に成功しました",
+        "oneDriveAuthFailed": "認証に失敗しました: {{error}}"
+      }
+    },
+    "autoBackup": {
+      "backupDbOnExit": "アプリ終了時にデータベースを自動バックアップ",
+      "backupDbOnExitHint": "アプリ終了時にデータベースバックアップを自動作成し、ゲームライブラリデータを保護します",
+      "backupSaveOnExit": "ゲーム終了時にセーブを自動バックアップ",
+      "backupSaveOnExitHint": "ゲームプロセス終了時にセーブディレクトリを自動バックアップします（事前にセーブディレクトリの設定が必要）",
+      "autoUploadDb": "データベースバックアップを自動でクラウドにアップロード",
+      "autoUploadDbHint": "データベースバックアップ作成後に自動でクラウドストレージへアップロードします（先にクラウドバックアップを有効化する必要があります）",
+      "autoUploadSave": "ゲームセーブバックアップを自動でクラウドにアップロード",
+      "autoUploadSaveHint": "ゲーム終了後にセーブをバックアップした後、自動でクラウドストレージへアップロードします（先にクラウドバックアップを有効化する必要があります）",
+      "localGameRetention": "ローカルゲームバックアップ保持数",
+      "localGameRetentionHint": "各ゲームでローカルに保持するバックアップの最大数",
+      "localDbRetention": "ローカルデータベースバックアップ保持数",
+      "localDbRetentionHint": "データベースでローカルに保持するバックアップの最大数"
+    },
+    "ai": {
+      "providerLabel": "AI サービスプロバイダー",
+      "providerPlaceholder": "選択してください",
+      "providerCustom": "カスタム (OpenAI互換)",
+      "modelLabel": "モデル名",
+      "systemPromptLabel": "システムプロンプト (System Prompt)",
+      "systemPromptPlaceholder": "カスタム AI システムプロンプトを入力...",
+      "systemPromptHint": "AI はこのプロンプトに基づいて統計サマリーを生成します。上のプリセットをクリックして素早く入力できます。",
+      "promptLabels": {
+        "DEFAULT_SYSTEM": "ユーモア解説者",
+        "MEOW_ZAKO": "生意気猫娘",
+        "STRICT_TUTOR": "厳格なチューター"
+      }
+    },
+    "dbBackup": {
+      "sectionTitle": "データベースバックアップ",
+      "sectionHint": "ゲームライブラリのメタデータ、分類、プレイ記録などのアプリデータをバックアップ",
+      "backupBtn": "今すぐバックアップ",
+      "backingUp": "バックアップ中...",
+      "lastBackup": "前回バックアップ:",
+      "localBackups": "ローカルバックアップ",
+      "autoBackupEnabled": "自動バックアップが有効です",
+      "noLocalBackups": "ローカルバックアップ記録がありません",
+      "sizeLabel": "サイズ:",
+      "uploadToCloud": "クラウドにアップロード",
+      "restoreBackup": "このバックアップを復元",
+      "deleteBackup": "バックアップを削除",
+      "cloudBackups": "クラウドバックアップ",
+      "refreshCloudList": "クラウドバックアップ一覧を更新",
+      "noCloudBackups": "クラウドバックアップ記録がありません",
+      "restoreFromCloud": "クラウドから復元",
+      "cloudNotEnabled": "クラウドバックアップが有効ではありません",
+      "cloudNotEnabledHint": "上でクラウドバックアップを設定すると、データベースをクラウド同期できます",
+      "modal": {
+        "restoreTitle": "データベースを復元",
+        "restoreMsg": "このバックアップに復元しますか？アプリは終了し、次回起動時に復元が完了します。",
+        "deleteTitle": "バックアップを削除",
+        "deleteMsg": "このローカルバックアップを削除しますか？この操作は取り消せません。",
+        "restoreCloudTitle": "クラウドから復元",
+        "restoreCloudMsg": "このバックアップをクラウドから復元しますか？アプリは終了し、次回起動時に復元が完了します。"
+      },
+      "toast": {
+        "backupSuccessCloud": "データベースのバックアップとクラウドアップロードに成功しました",
+        "backupSuccess": "データベースのバックアップに成功しました",
+        "localBackupSuccess": "ローカルバックアップに成功しました",
+        "backupFailed": "バックアップに失敗しました: {{error}}",
+        "restoreScheduled": "復元を予約しました。アプリを終了します...",
+        "restoreScheduleFailed": "復元予約に失敗しました: {{error}}",
+        "deleteSuccess": "バックアップを削除しました",
+        "deleteFailed": "削除に失敗しました: {{error}}",
+        "uploadSuccess": "クラウドにアップロードしました",
+        "uploadFailed": "アップロードに失敗しました: {{error}}"
+      }
+    },
+    "fullDataBackup": {
+      "hint": "アプリ設定、データベース、カバーと背景、画像キャッシュ、ログ、およびローカルバックアップディレクトリをバックアップ",
+      "warningNote": "注意:",
+      "warningHint": "大きな変更前のバックアップや、異なる端末間でのデータ移行に適しています。復元後は既存データが上書きされるため、慎重に操作してください。",
+      "exportBtn": "バックアップをエクスポート",
+      "exporting": "パッケージ化中...",
+      "importBtn": "インポートして復元",
+      "importing": "準備中...",
+      "lastBackup": "前回バックアップ時刻:",
+      "modal": {
+        "restoreTitle": "全量データを復元",
+        "restoreMsg": "全量データを復元しますか？\n\nバックアップファイル: {{path}}\n\nアプリ設定、データベース、リソースディレクトリを上書きします。アプリは終了し、次回起動時に復元されます。"
+      },
+      "toast": {
+        "exportSuccess": "全量データバックアップに成功しました: {{path}}",
+        "exportFailed": "全量バックアップに失敗しました: {{error}}",
+        "restoreScheduled": "全量復元を予約しました。アプリを終了します...",
+        "restoreScheduleFailed": "全量復元の予約に失敗しました: {{error}}",
+        "selectFileFailed": "ファイルの選択に失敗しました: {{error}}"
+      }
+    },
+    "update": {
+      "autoCheckLabel": "起動時に更新を自動確認",
+      "autoCheckHint": "アプリ起動時に新バージョンを自動確認します（1日最大1回）",
+      "manualCheckBtn": "手動で更新確認",
+      "checking": "確認中...",
+      "checkFailedTitle": "更新確認に失敗",
+      "checkFailed": "更新確認に失敗しました",
+      "newVersion": "新しいバージョンが見つかりました",
+      "upToDate": "最新バージョンです",
+      "skipFailed": "変更に失敗しました: {{error}}"
+    },
+    "passwordModal": {
+      "title": "バックアップパスワードを設定",
+      "desc1": "バックアップパスワードは、固有ユーザーIDの生成とクラウドデータ暗号化に使用されます。",
+      "desc2": "パスワードは一度しか設定できず、設定後は変更できません！",
+      "desc3": "必ずパスワードを記憶してください。忘れるとクラウドバックアップを復元できません。",
+      "passwordLabel": "パスワードを入力",
+      "passwordPlaceholder": "6文字以上",
+      "passwordTooShort": "パスワードは6文字以上必要です",
+      "confirmLabel": "パスワードを確認",
+      "confirmPlaceholder": "パスワードを再入力",
+      "passwordMismatch": "2回入力したパスワードが一致しません"
+    }
+  },
+  "downloads": {
+    "title": "ダウンロード",
+    "activeCount": "実行中のタスク {{count}} 件",
+    "noActive": "進行中のタスクはありません",
+    "empty": "ダウンロードタスクがありません",
+    "unknownTitle": "不明なタイトル",
+    "unknownSource": "不明なソース",
+    "copyURL": "ダウンロードURLをコピー",
+    "openFolder": "フォルダーを開く",
+    "pause": "ダウンロードを一時停止",
+    "resume": "ダウンロードを再開",
+    "cancel": "ダウンロードをキャンセル",
+    "delete": "記録を削除",
+    "importAsGame": "ゲームとしてインポート",
+    "importing": "インポート中...",
+    "imported": "インポート済み",
+    "manualExtractHint": "自動解凍に失敗したため圧縮ファイルを保持しました。上記ディレクトリへ手動で解凍してからインポート/起動してください。",
+    "status": {
+      "pending": "待機中",
+      "downloading": "ダウンロード中",
+      "paused": "一時停止",
+      "done": "完了",
+      "error": "エラー",
+      "cancelled": "キャンセル済み"
+    },
+    "toast": {
+      "copyURLSuccess": "ダウンロードURLをコピーしました",
+      "copyURLFailed": "コピーに失敗しました",
+      "openFolderFailed": "フォルダーを開けませんでした",
+      "pauseFailed": "ダウンロードの一時停止に失敗しました",
+      "resumeFailed": "ダウンロードの再開に失敗しました",
+      "noFilePath": "ダウンロードファイルのパスが存在しません",
+      "alreadyImported": "このタスクはすでにゲームとしてインポートされています",
+      "importGameSuccess": "ゲームとしてのインポートに成功しました",
+      "selectExecutableCancelled": "実行ファイルの選択をキャンセルしました",
+      "importGameFailed": "ゲームとしてのインポートに失敗しました"
+    }
+  },
+  "installModal": {
+    "title": "ゲームをインストール",
+    "subtitle": "外部リンクからのインストール要求",
+    "name": "ゲーム名",
+    "unknown": "不明",
+    "source": "ソース",
+    "size": "サイズ",
+    "warning": "ソースが信頼できることを確認してから続行してください。ダウンロード完了後、起動パスは手動設定が必要です。",
+    "confirm": "ダウンロードを開始"
+  },
+  "stats": {
+    "title": "統計",
+    "period": {
+      "week": "週",
+      "month": "月"
+    },
+    "customRange": "カスタム",
+    "startDate": "開始日",
+    "endDate": "終了日",
+    "applyBtn": "適用",
+    "resetBtn": "リセット",
+    "exportTitle": "テンプレート書き出し",
+    "aiSummarizeTitle": "AI 要約",
+    "chartYAxis": "時間",
+    "totalDurationDataset": "総プレイ時間 (時間)",
+    "library": {
+      "sectionTitle": "ライブラリ概要",
+      "totalGames": "ライブラリ内の全ゲーム",
+      "totalSessions": "総プレイ回数",
+      "totalDuration": "総プレイ時間",
+      "completedGames": "クリア済みゲーム数"
+    },
+    "summary": {
+      "totalPlayCount": "総プレイ回数",
+      "totalPlayDuration": "総プレイ時間",
+      "gamesPlayed": "プレイしたゲーム数",
+      "completedGames": "クリアしたゲーム"
+    },
+    "leaderboard": {
+      "title": "ランキング",
+      "fullTitle": "プレイ時間ランキング",
+      "rankCol": "順位",
+      "gameCol": "ゲーム",
+      "durationCol": "時間",
+      "noData": "データがありません",
+      "noMoreData": "これ以上のランキングデータはありません"
+    },
+    "charts": {
+      "totalTrend": "プレイ時間トレンド",
+      "gameTrend": "よく遊ぶゲームのトレンド"
+    },
+    "ai": {
+      "title": "AI 分析",
+      "thinking": "生成中...",
+      "summarizeFailed": "AI要約に失敗しました。AI設定が正しいか確認してください"
+    },
+    "templateExport": {
+      "title": "テンプレート書き出し",
+      "selectTemplate": "テンプレートを選択",
+      "selectTemplateHint": "テンプレートを選んで統計データを美しく表示します",
+      "openTemplatesDir": "テンプレートディレクトリを開く",
+      "templatePreviewTitle": "テンプレートプレビュー",
+      "rendering": "プレビューをレンダリング中...",
+      "selectToPreview": "テンプレートを選択してプレビュー",
+      "authorPrefix": "作者:",
+      "versionPrefix": "バージョン",
+      "builtinTag": "· 内蔵テンプレート",
+      "tipText": "ヒント: テンプレートディレクトリにカスタム HTML テンプレートを作成できます",
+      "cancelBtn": "キャンセル",
+      "exportBtn": "画像をエクスポート",
+      "exporting": "エクスポート中...",
+      "toast": {
+        "loadTemplatesFailed": "テンプレート一覧の読み込みに失敗しました",
+        "renderFailed": "テンプレートのレンダリングに失敗しました",
+        "exportFailed": "画像のエクスポートに失敗しました: {{error}}",
+        "openDirFailed": "テンプレートディレクトリを開けませんでした"
+      }
+    },
+    "toast": {
+      "loadStatsFailed": "統計データの読み込みに失敗しました",
+      "selectDateRange": "開始日と終了日を選択してください",
+      "startBeforeEnd": "開始日は終了日より前である必要があります"
+    }
+  },
+  "root": {
+    "dragDrop": {
+      "dropToImport": "ドロップしてゲームをインポート",
+      "dropHint": "ゲームフォルダと実行ファイルに対応"
+    }
+  },
+  "sideBar": {
+    "home": "ホーム",
+    "library": "ゲームライブラリ",
+    "stats": "統計",
+    "categories": "コレクション",
+    "settings": "設定",
+    "github": "GitHub"
+  },
+  "processSelectModal": {
+    "title": "ゲームプロセスを選択",
+    "desc": "{{launcher}} の終了を検出しました。手動で終了していない場合、インポートした実行ファイルは実際のゲームプロセスではない可能性があります。現在実行中のゲームプロセスを選択してください",
+    "searchPlaceholder": "プロセスを検索...",
+    "loading": "読み込み中...",
+    "noMatch": "一致するプロセスが見つかりません",
+    "noProcesses": "利用可能なプロセスがありません",
+    "refreshBtn": "一覧を更新",
+    "cancelBtn": "キャンセル",
+    "confirmBtn": "選択を確認",
+    "toast": {
+      "loadFailed": "プロセス一覧の取得に失敗しました",
+      "selectProcess": "プロセスを選択してください",
+      "setSuccess": "監視プロセスを設定しました: {{name}}",
+      "saveFailed": "保存に失敗しました。再試行してください"
+    }
+  },
+  "timezoneModal": {
+    "title": "タイムゾーンを選択",
+    "desc": "タイムゾーンが未設定であることを検出しました。ゲーム時間を正しく表示・記録するため、現在地のタイムゾーンを選択してください。",
+    "detectedLabel": "現在検出されたタイムゾーン:",
+    "unknown": "不明",
+    "placeholder": "タイムゾーンを選択してください",
+    "confirmBtn": "保存して再起動"
+  },
+  "updateDialog": {
+    "newVersion": "新しいバージョンが見つかりました",
+    "available": "LunaBox に利用可能な更新があります",
+    "currentVersion": "現在のバージョン",
+    "latestVersion": "最新バージョン",
+    "releaseDate": "リリース日",
+    "changelog": "更新内容",
+    "githubDownload": "GitHub ダウンロード",
+    "giteeDownload": "Gitee ダウンロード",
+    "skipVersion": "このバージョンをスキップ"
+  },
+  "category": {
+    "notFound": "このカテゴリは見つかりません",
+    "backToList": "一覧に戻る",
+    "back": "戻る",
+    "systemTag": "システム",
+    "gameCount": "合計 {{count}} 件のゲーム",
+    "batchRemoveBtn": "一括削除",
+    "addGameBtn": "ゲームを追加",
+    "removeFromCategory": "コレクションから削除",
+    "noMatchingGames": "一致するゲームが見つかりません",
+    "emptyCategory": "このコレクションにはまだゲームがありません",
+    "addFirstGame": "ゲームを追加",
+    "toast": {
+      "loadCategoryFailed": "コレクションの読み込みに失敗しました",
+      "loadGamesFailed": "コレクション内ゲームの読み込みに失敗しました",
+      "removeGameFailed": "コレクションからのゲーム削除に失敗しました",
+      "loadAllGamesFailed": "ライブラリ内すべてのゲームの読み込みに失敗しました",
+      "addGameFailed": "ゲームをコレクションに追加できませんでした",
+      "batchRemoveSuccess": "{{count}} 件のゲームを削除しました",
+      "batchRemoveFailed": "一括削除に失敗しました"
+    },
+    "addGameModal": {
+      "title": "ゲームをコレクションに追加",
+      "noGamesAvailable": "追加できるゲームがありません"
+    }
+  },
+  "addPlaySession": {
+    "title": "プレイ記録を追加",
+    "desc": "過去のプレイ時間を補完記録することで、総プレイ時間をより正確に統計できます。",
+    "startTime": "開始時刻",
+    "endTime": "終了時刻",
+    "duration": "プレイ時間",
+    "submitting": "追加中...",
+    "toast": {
+      "endBeforeStart": "終了時刻は開始時刻より後である必要があります",
+      "zeroDuration": "プレイ時間は 0 より大きい必要があります",
+      "futureEnd": "終了時刻は現在時刻より後にできません",
+      "success": "プレイ記録の追加に成功しました",
+      "failed": "プレイ記録の追加に失敗しました"
+    }
+  }
+}
