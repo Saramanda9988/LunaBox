@@ -32,6 +32,7 @@ func initTestSchema(t *testing.T, db *sql.DB) {
 		`CREATE TABLE IF NOT EXISTS categories (
 			id TEXT PRIMARY KEY,
 			name TEXT,
+			emoji TEXT DEFAULT '',
 			created_at TIMESTAMP,
 			updated_at TIMESTAMP,
 			is_system BOOLEAN

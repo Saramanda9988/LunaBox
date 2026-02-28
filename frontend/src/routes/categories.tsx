@@ -72,7 +72,7 @@ function CategoriesPage() {
     if (!newCategoryName.trim())
       return;
     try {
-      await AddCategory(newCategoryName);
+      await AddCategory(newCategoryName, "");
       setNewCategoryName("");
       setIsAddCategoryModalOpen(false);
       await loadCategories();
@@ -95,7 +95,7 @@ function CategoriesPage() {
     if (!editCategoryName.trim() || !editingCategory)
       return;
     try {
-      await UpdateCategory(editingCategory.id, editCategoryName);
+      await UpdateCategory(editingCategory.id, editCategoryName, editingCategory.emoji || "");
       setEditCategoryName("");
       setEditingCategory(null);
       setIsEditCategoryModalOpen(false);
@@ -212,6 +212,18 @@ function CategoriesPage() {
     });
   };
 
+  const handleUpdateCategoryEmoji = async (category: vo.CategoryVO, emoji: string) => {
+    try {
+      await UpdateCategory(category.id, category.name, emoji);
+      await loadCategories();
+      toast.success(t("categories.toast.iconUpdated"));
+    }
+    catch (error) {
+      console.error("Failed to update category emoji:", error);
+      toast.error(t("categories.toast.iconUpdateFailed"));
+    }
+  };
+
   useEffect(() => {
     loadCategories();
   }, []);
@@ -297,6 +309,7 @@ function CategoriesPage() {
             selected={selectedCategoryIds.includes(category.id)}
             selectionDisabled={category.is_system}
             onSelectChange={selected => setCategorySelection(category, selected)}
+            onEmojiChange={emoji => handleUpdateCategoryEmoji(category, emoji)}
           />
         ))}
       </div>
@@ -305,7 +318,10 @@ function CategoriesPage() {
         isOpen={isAddCategoryModalOpen}
         value={newCategoryName}
         onChange={setNewCategoryName}
-        onClose={() => setIsAddCategoryModalOpen(false)}
+        onClose={() => {
+          setIsAddCategoryModalOpen(false);
+          setNewCategoryName("");
+        }}
         onSubmit={handleAddCategory}
       />
 

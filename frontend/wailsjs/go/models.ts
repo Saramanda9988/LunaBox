@@ -643,6 +643,7 @@ export namespace vo {
 	export class CategoryVO {
 	    id: string;
 	    name: string;
+	    emoji: string;
 	    is_system: boolean;
 	    created_at: time.Time;
 	    updated_at: time.Time;
@@ -656,6 +657,7 @@ export namespace vo {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.name = source["name"];
+	        this.emoji = source["emoji"];
 	        this.is_system = source["is_system"];
 	        this.created_at = this.convertValues(source["created_at"], time.Time);
 	        this.updated_at = this.convertValues(source["updated_at"], time.Time);

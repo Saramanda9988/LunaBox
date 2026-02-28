@@ -431,6 +431,12 @@
     "editBtnTitle": "编辑收藏夹",
     "deleteBtnTitle": "删除收藏夹",
     "systemLocked": "系统收藏夹不可批量删除",
+    "emojiPicker": {
+      "change": "点击更换图标",
+      "title": "选择图标",
+      "clear": "移除",
+      "apply": "应用图标"
+    },
     "sortOptions": {
       "name": "名称",
       "gameCount": "游戏数量",
@@ -441,6 +447,8 @@
       "addTitle": "新建收藏夹",
       "editTitle": "编辑收藏夹",
       "namePlaceholder": "收藏夹名称",
+      "emojiLabel": "图标 Emoji（可选）",
+      "emojiPlaceholder": "例如：📁、🎮、❤️",
       "create": "创建"
     },
     "toast": {
@@ -456,7 +464,9 @@
       "batchDeleteTitle": "批量删除收藏夹",
       "batchDeleteMsg": "确定要删除选中的 {{count}} 个收藏夹吗？此操作无法撤销。",
       "batchDeleteSuccess": "批量删除成功",
-      "batchDeleteFailed": "批量删除失败"
+      "batchDeleteFailed": "批量删除失败",
+      "iconUpdated": "图标更新成功",
+      "iconUpdateFailed": "图标更新失败"
     }
   },
   "settings": {

@@ -243,6 +243,7 @@ function CategoryDetailPage() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-4xl font-bold text-brand-900 dark:text-white flex items-center gap-3">
+              {(category.emoji || "").trim() && <span className="text-3xl leading-none">{category.emoji}</span>}
               {category.name}
               {category.is_system && <span className="text-sm bg-neutral-100 text-neutral-800 px-2 py-1 rounded-md dark:bg-neutral-900 dark:text-neutral-300 align-middle">{t("category.systemTag")}</span>}
             </h1>

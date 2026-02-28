@@ -12,6 +12,7 @@ func InitSchema(db *sql.DB) error {
 		`CREATE TABLE IF NOT EXISTS categories (
 			id TEXT PRIMARY KEY,
 			name TEXT,
+			emoji TEXT DEFAULT '',
 			created_at TIMESTAMPTZ,
 			updated_at TIMESTAMPTZ,
 			is_system BOOLEAN

@@ -158,6 +158,28 @@ func migration140(tx *sql.Tx) error {
 	return nil
 }
 
+// migration150 添加 categories.emoji 列，用于自定义分类图标
+func migration150(tx *sql.Tx) error {
+	_, err := tx.Exec(`
+		ALTER TABLE categories
+		ADD COLUMN IF NOT EXISTS emoji TEXT DEFAULT ''
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to add emoji column to categories: %w", err)
+	}
+
+	_, err = tx.Exec(`
+		UPDATE categories
+		SET emoji = ''
+		WHERE emoji IS NULL
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to normalize categories emoji values: %w", err)
+	}
+
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
@@ -174,6 +196,11 @@ var migrations = []Migration{
 		Version:     140,
 		Description: "Add process_name column to games table for tracking actual game process",
 		Up:          migration140,
+	},
+	{
+		Version:     150,
+		Description: "Add emoji column to categories table for custom category icons",
+		Up:          migration150,
 	},
 	// {
 	// 	Version:     114,

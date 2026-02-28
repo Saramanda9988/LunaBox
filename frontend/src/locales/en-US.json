@@ -431,6 +431,12 @@
     "editBtnTitle": "Edit Collection",
     "deleteBtnTitle": "Delete Collection",
     "systemLocked": "System collections cannot be batch deleted",
+    "emojiPicker": {
+      "change": "Click to change icon",
+      "title": "Pick an icon",
+      "clear": "Remove",
+      "apply": "Apply icon"
+    },
     "sortOptions": {
       "name": "Name",
       "gameCount": "Game Count",
@@ -441,6 +447,8 @@
       "addTitle": "New Collection",
       "editTitle": "Edit Collection",
       "namePlaceholder": "Collection name",
+      "emojiLabel": "Icon Emoji (optional)",
+      "emojiPlaceholder": "e.g. 📁, 🎮, ❤️",
       "create": "Create"
     },
     "toast": {
@@ -456,7 +464,9 @@
       "batchDeleteTitle": "Batch Delete Collections",
       "batchDeleteMsg": "Are you sure you want to delete the selected {{count}} collections? This action cannot be undone.",
       "batchDeleteSuccess": "Batch deletion successful",
-      "batchDeleteFailed": "Batch deletion failed"
+      "batchDeleteFailed": "Batch deletion failed",
+      "iconUpdated": "Icon updated",
+      "iconUpdateFailed": "Failed to update icon"
     }
   },
   "settings": {

@@ -6,7 +6,7 @@ import {context} from '../models';
 import {sql} from '../models';
 import {appconf} from '../models';
 
-export function AddCategory(arg1:string):Promise<void>;
+export function AddCategory(arg1:string,arg2:string):Promise<void>;
 
 export function AddGameToCategory(arg1:string,arg2:string):Promise<void>;
 
@@ -30,4 +30,4 @@ export function RemoveGameFromCategory(arg1:string,arg2:string):Promise<void>;
 
 export function RemoveGamesFromCategory(arg1:Array<string>,arg2:string):Promise<void>;
 
-export function UpdateCategory(arg1:string,arg2:string):Promise<void>;
+export function UpdateCategory(arg1:string,arg2:string,arg3:string):Promise<void>;

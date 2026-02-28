@@ -43,7 +43,7 @@ func TestCategoryService_AddCategory(t *testing.T) {
 	categoryService.Init(context.Background(), db, &appconf.AppConfig{})
 
 	t.Run("成功添加分类", func(t *testing.T) {
-		err := categoryService.AddCategory("测试分类")
+		err := categoryService.AddCategory("测试分类", "🎮")
 		if err != nil {
 			t.Fatalf("添加分类失败: %v", err)
 		}
@@ -78,7 +78,7 @@ func TestCategoryService_DeleteCategory(t *testing.T) {
 	categoryService.Init(context.Background(), db, &appconf.AppConfig{})
 
 	// 添加一个普通分类
-	err := categoryService.AddCategory("待删除分类")
+	err := categoryService.AddCategory("待删除分类", "")
 	if err != nil {
 		t.Fatalf("添加分类失败: %v", err)
 	}
@@ -142,7 +142,7 @@ func TestCategoryService_GameCategoryRelation(t *testing.T) {
 		t.Fatalf("添加游戏失败: %v", err)
 	}
 
-	if err := categoryService.AddCategory("游戏分类"); err != nil {
+	if err := categoryService.AddCategory("游戏分类", ""); err != nil {
 		t.Fatalf("添加分类失败: %v", err)
 	}
 
@@ -205,7 +205,7 @@ func TestCategoryService_DeleteCategoryWithGames(t *testing.T) {
 	game.ID = "game-del-cat-001"
 	gameService.AddGame(game)
 
-	categoryService.AddCategory("关联分类")
+	categoryService.AddCategory("关联分类", "")
 	categories, _ := categoryService.GetCategories()
 	var categoryID string
 	for _, c := range categories {
@@ -268,10 +268,10 @@ func TestCategoryService_BatchOperations(t *testing.T) {
 	}
 
 	// 准备分类
-	if err := categoryService.AddCategory("批量分类A"); err != nil {
+	if err := categoryService.AddCategory("批量分类A", ""); err != nil {
 		t.Fatalf("添加分类A失败: %v", err)
 	}
-	if err := categoryService.AddCategory("批量分类B"); err != nil {
+	if err := categoryService.AddCategory("批量分类B", ""); err != nil {
 		t.Fatalf("添加分类B失败: %v", err)
 	}
 

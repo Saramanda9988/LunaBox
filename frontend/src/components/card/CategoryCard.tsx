@@ -1,6 +1,7 @@
 import type { vo } from "../../../wailsjs/go/models";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { EmojiPickerPopover } from "../ui/EmojiPickerPopover";
 
 interface CategoryCardProps {
   category: vo.CategoryVO;
@@ -10,6 +11,7 @@ interface CategoryCardProps {
   selected?: boolean;
   selectionDisabled?: boolean;
   onSelectChange?: (selected: boolean) => void;
+  onEmojiChange?: (emoji: string) => void | Promise<void>;
 }
 
 export function CategoryCard({
@@ -20,6 +22,7 @@ export function CategoryCard({
   selected = false,
   selectionDisabled = false,
   onSelectChange,
+  onEmojiChange,
 }: CategoryCardProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -46,18 +49,20 @@ export function CategoryCard({
     handleViewDetails();
   };
 
+  const canEditEmoji = !category.is_system && !selectionMode;
+
   return (
     <div
       className={`glass-card flex items-center p-4 bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700 rounded-xl shadow-sm hover:shadow-md transition-all text-left group relative ${selectionMode ? "cursor-pointer" : ""} ${selectionMode && selected ? "ring-2 ring-neutral-500 dark:ring-neutral-400" : ""}`}
       onClick={handleCardClick}
     >
-      <div className={`p-3 rounded-lg mr-4 ${category.is_system
-        ? "bg-error-100 text-error-600 dark:bg-error-900/30 dark:text-error-400"
-        : "bg-neutral-100 text-neutral-600 dark:bg-neutral-900/30 dark:text-neutral-400"
-      }`}
-      >
-        <div className={`text-2xl ${category.is_system ? "i-mdi-heart" : "i-mdi-folder"}`} />
-      </div>
+      <EmojiPickerPopover
+        value={category.emoji || ""}
+        canEdit={canEditEmoji}
+        variant={category.is_system ? "system" : "normal"}
+        fallbackIconClass={category.is_system ? "i-mdi-heart" : "i-mdi-folder"}
+        onChange={onEmojiChange}
+      />
       <div className="flex-1">
         <h3 className="font-semibold text-brand-900 dark:text-white group-hover:text-neutral-600 dark:group-hover:text-neutral-400 transition-colors">
           {category.is_system ? t("categories.favorites") : category.name}

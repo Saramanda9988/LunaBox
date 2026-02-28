@@ -43,9 +43,9 @@ func (s *CategoryService) ensureSystemCategories() {
 		id := uuid.New().String()
 		now := time.Now()
 		_, err := s.db.Exec(`
-			INSERT INTO categories (id, name, is_system, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?)
-		`, id, "最喜欢的游戏", true, now, now)
+			INSERT INTO categories (id, name, emoji, is_system, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`, id, "最喜欢的游戏", "❤️", true, now, now)
 		if err != nil {
 			applog.LogErrorf(s.ctx, "Error creating system category: %v", err)
 		}
@@ -54,10 +54,10 @@ func (s *CategoryService) ensureSystemCategories() {
 
 func (s *CategoryService) GetCategories() ([]vo.CategoryVO, error) {
 	query := `
-		SELECT c.id, c.name, c.is_system, c.created_at, c.updated_at, COUNT(gc.game_id) as game_count
+		SELECT c.id, c.name, COALESCE(c.emoji, '') as emoji, c.is_system, c.created_at, c.updated_at, COUNT(gc.game_id) as game_count
 		FROM categories c
 		LEFT JOIN game_categories gc ON c.id = gc.category_id
-		GROUP BY c.id, c.name, c.is_system, c.created_at, c.updated_at
+		GROUP BY c.id, c.name, c.emoji, c.is_system, c.created_at, c.updated_at
 		ORDER BY c.created_at
 	`
 	rows, err := s.db.Query(query)
@@ -70,7 +70,7 @@ func (s *CategoryService) GetCategories() ([]vo.CategoryVO, error) {
 	var categories []vo.CategoryVO
 	for rows.Next() {
 		var c vo.CategoryVO
-		if err := rows.Scan(&c.ID, &c.Name, &c.IsSystem, &c.CreatedAt, &c.UpdatedAt, &c.GameCount); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Emoji, &c.IsSystem, &c.CreatedAt, &c.UpdatedAt, &c.GameCount); err != nil {
 			applog.LogErrorf(s.ctx, "GetCategories: failed to scan row: %v", err)
 			return nil, err
 		}
@@ -82,13 +82,13 @@ func (s *CategoryService) GetCategories() ([]vo.CategoryVO, error) {
 func (s *CategoryService) GetCategoryByID(id string) (vo.CategoryVO, error) {
 	var c vo.CategoryVO
 	query := `
-		SELECT c.id, c.name, c.is_system, c.created_at, c.updated_at, COUNT(gc.game_id) as game_count
+		SELECT c.id, c.name, COALESCE(c.emoji, '') as emoji, c.is_system, c.created_at, c.updated_at, COUNT(gc.game_id) as game_count
 		FROM categories c
 		LEFT JOIN game_categories gc ON c.id = gc.category_id
 		WHERE c.id = ?
-		GROUP BY c.id, c.name, c.is_system, c.created_at, c.updated_at
+		GROUP BY c.id, c.name, c.emoji, c.is_system, c.created_at, c.updated_at
 	`
-	err := s.db.QueryRow(query, id).Scan(&c.ID, &c.Name, &c.IsSystem, &c.CreatedAt, &c.UpdatedAt, &c.GameCount)
+	err := s.db.QueryRow(query, id).Scan(&c.ID, &c.Name, &c.Emoji, &c.IsSystem, &c.CreatedAt, &c.UpdatedAt, &c.GameCount)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			applog.LogWarningf(s.ctx, "GetCategoryByID: category not found with id: %s", id)
@@ -100,20 +100,20 @@ func (s *CategoryService) GetCategoryByID(id string) (vo.CategoryVO, error) {
 	return c, nil
 }
 
-func (s *CategoryService) AddCategory(name string) error {
+func (s *CategoryService) AddCategory(name string, emoji string) error {
 	id := uuid.New().String()
 	now := time.Now()
 	_, err := s.db.Exec(`
-		       INSERT INTO categories (id, name, is_system, created_at, updated_at)
-		       VALUES (?, ?, ?, ?, ?)
-	       `, id, name, false, now, now)
+		       INSERT INTO categories (id, name, emoji, is_system, created_at, updated_at)
+		       VALUES (?, ?, ?, ?, ?, ?)
+	       `, id, name, emoji, false, now, now)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "AddCategory: failed to insert category %s: %v", name, err)
 	}
 	return err
 }
 
-func (s *CategoryService) UpdateCategory(id, name string) error {
+func (s *CategoryService) UpdateCategory(id, name, emoji string) error {
 	var isSystem bool
 	err := s.db.QueryRow("SELECT is_system FROM categories WHERE id = ?", id).Scan(&isSystem)
 	if err != nil {
@@ -126,7 +126,7 @@ func (s *CategoryService) UpdateCategory(id, name string) error {
 	}
 
 	now := time.Now()
-	_, err = s.db.Exec("UPDATE categories SET name = ?, updated_at = ? WHERE id = ?", name, now, id)
+	_, err = s.db.Exec("UPDATE categories SET name = ?, emoji = ?, updated_at = ? WHERE id = ?", name, emoji, now, id)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "UpdateCategory: failed to update category %s to name %s: %v", id, name, err)
 	}
@@ -330,11 +330,11 @@ func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, 
 
 func (s *CategoryService) GetCategoriesByGame(gameID string) ([]vo.CategoryVO, error) {
 	query := `
-		SELECT c.id, c.name, c.is_system, c.created_at, c.updated_at, COUNT(gc.game_id) as game_count
+		SELECT c.id, c.name, COALESCE(c.emoji, '') as emoji, c.is_system, c.created_at, c.updated_at, COUNT(gc.game_id) as game_count
 		FROM categories c
 		INNER JOIN game_categories gc ON c.id = gc.category_id
 		WHERE gc.game_id = ?
-		GROUP BY c.id, c.name, c.is_system, c.created_at, c.updated_at
+		GROUP BY c.id, c.name, c.emoji, c.is_system, c.created_at, c.updated_at
 		ORDER BY c.created_at
 	`
 	rows, err := s.db.Query(query, gameID)
@@ -347,7 +347,7 @@ func (s *CategoryService) GetCategoriesByGame(gameID string) ([]vo.CategoryVO, e
 	var categories []vo.CategoryVO
 	for rows.Next() {
 		var c vo.CategoryVO
-		if err := rows.Scan(&c.ID, &c.Name, &c.IsSystem, &c.CreatedAt, &c.UpdatedAt, &c.GameCount); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Emoji, &c.IsSystem, &c.CreatedAt, &c.UpdatedAt, &c.GameCount); err != nil {
 			applog.LogErrorf(s.ctx, "GetCategoriesByGame: failed to scan row for game %s: %v", gameID, err)
 			return nil, err
 		}
