@@ -112,45 +112,47 @@ function SettingsPage() {
         <h1 className="text-4xl font-bold text-brand-900 dark:text-white">{t("settings.title")}</h1>
       </div>
 
-      <CollapsibleSection title={t("settings.sections.basic")} icon="i-mdi-database-settings" defaultOpen={true}>
-        <BasicSettingsPanel formData={formData} onChange={handleFormChange} />
-      </CollapsibleSection>
+      <div className="mx-auto w-full max-w-5xl space-y-6">
+        <CollapsibleSection title={t("settings.sections.basic")} icon="i-mdi-database-settings" defaultOpen={true}>
+          <BasicSettingsPanel formData={formData} onChange={handleFormChange} />
+        </CollapsibleSection>
 
-      <CollapsibleSection title={t("settings.sections.appearance")} icon="i-mdi-palette" defaultOpen={false}>
-        <BackgroundSettingsPanel formData={formData} onChange={handleFormChange} />
-      </CollapsibleSection>
+        <CollapsibleSection title={t("settings.sections.appearance")} icon="i-mdi-palette" defaultOpen={false}>
+          <BackgroundSettingsPanel formData={formData} onChange={handleFormChange} />
+        </CollapsibleSection>
 
-      <CollapsibleSection title={t("settings.sections.game")} icon="i-mdi-timer-play-outline" defaultOpen={false}>
-        <GameSettingsPanel formData={formData} onChange={handleFormChange} />
-      </CollapsibleSection>
+        <CollapsibleSection title={t("settings.sections.game")} icon="i-mdi-timer-play-outline" defaultOpen={false}>
+          <GameSettingsPanel formData={formData} onChange={handleFormChange} />
+        </CollapsibleSection>
 
-      <CollapsibleSection title={t("settings.sections.download")} icon="i-mdi-download" defaultOpen={false}>
-        <DownloadSettingsPanel formData={formData} onChange={handleFormChange} />
-      </CollapsibleSection>
+        <CollapsibleSection title={t("settings.sections.download")} icon="i-mdi-download" defaultOpen={false}>
+          <DownloadSettingsPanel formData={formData} onChange={handleFormChange} />
+        </CollapsibleSection>
 
-      <CollapsibleSection title={t("settings.sections.cloudBackup")} icon="i-mdi-cloud-upload" defaultOpen={false}>
-        <CloudBackupSettingsPanel formData={formData} onChange={handleFormChange} />
-      </CollapsibleSection>
+        <CollapsibleSection title={t("settings.sections.cloudBackup")} icon="i-mdi-cloud-upload" defaultOpen={false}>
+          <CloudBackupSettingsPanel formData={formData} onChange={handleFormChange} />
+        </CollapsibleSection>
 
-      <CollapsibleSection title={t("settings.sections.autoBackup")} icon="i-mdi-backup-restore" defaultOpen={false}>
-        <AutoBackupSettingsPanel formData={formData} onChange={handleFormChange} />
-      </CollapsibleSection>
+        <CollapsibleSection title={t("settings.sections.autoBackup")} icon="i-mdi-backup-restore" defaultOpen={false}>
+          <AutoBackupSettingsPanel formData={formData} onChange={handleFormChange} />
+        </CollapsibleSection>
 
-      <CollapsibleSection title={t("settings.sections.ai")} icon="i-mdi-robot-happy" defaultOpen={false}>
-        <AISettingsPanel formData={formData} onChange={handleFormChange} />
-      </CollapsibleSection>
+        <CollapsibleSection title={t("settings.sections.ai")} icon="i-mdi-robot-happy" defaultOpen={false}>
+          <AISettingsPanel formData={formData} onChange={handleFormChange} />
+        </CollapsibleSection>
 
-      <CollapsibleSection title={t("settings.sections.dbBackup")} icon="i-mdi-database-refresh" defaultOpen={false}>
-        <DBBackupPanel />
-      </CollapsibleSection>
+        <CollapsibleSection title={t("settings.sections.dbBackup")} icon="i-mdi-database-refresh" defaultOpen={false}>
+          <DBBackupPanel />
+        </CollapsibleSection>
 
-      <CollapsibleSection title={t("settings.sections.fullDataBackup")} icon="i-mdi-package-variant" defaultOpen={false}>
-        <FullDataBackupPanel />
-      </CollapsibleSection>
+        <CollapsibleSection title={t("settings.sections.fullDataBackup")} icon="i-mdi-package-variant" defaultOpen={false}>
+          <FullDataBackupPanel />
+        </CollapsibleSection>
 
-      <CollapsibleSection title={t("settings.sections.update")} icon="i-mdi-update" defaultOpen={false}>
-        <UpdateSettingsPanel formData={formData} onChange={handleFormChange} />
-      </CollapsibleSection>
+        <CollapsibleSection title={t("settings.sections.update")} icon="i-mdi-update" defaultOpen={false}>
+          <UpdateSettingsPanel formData={formData} onChange={handleFormChange} />
+        </CollapsibleSection>
+      </div>
 
       <div className="pt-4">
         <p className="text-xs text-brand-500 dark:text-brand-400">

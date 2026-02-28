@@ -102,26 +102,26 @@ export function DownloadCard({
                     </button>
                   )
                 : isActive
-              ? (
-                  <button
-                    type="button"
-                    title={t("downloads.cancel", "取消下载")}
-                    onClick={() => onCancel(task.id)}
-                    className="border-l border-brand-300 flex h-10 w-10 items-center justify-center text-error-500 transition-colors hover:bg-error-100 dark:border-brand-600 dark:hover:bg-error-900/40"
-                  >
-                    <span className="i-mdi-close text-xl" />
-                  </button>
-                )
-              : (
-                  <button
-                    type="button"
-                    title={t("downloads.delete", "删除记录")}
-                    onClick={() => onDelete(task.id)}
-                    className="border-l border-brand-300 flex h-10 w-10 items-center justify-center text-error-500 transition-colors hover:bg-error-100 dark:border-brand-600 dark:hover:bg-error-900/40"
-                  >
-                    <span className="i-mdi-delete text-xl" />
-                  </button>
-                )}
+                  ? (
+                      <button
+                        type="button"
+                        title={t("downloads.cancel", "取消下载")}
+                        onClick={() => onCancel(task.id)}
+                        className="border-l border-brand-300 flex h-10 w-10 items-center justify-center text-error-500 transition-colors hover:bg-error-100 dark:border-brand-600 dark:hover:bg-error-900/40"
+                      >
+                        <span className="i-mdi-close text-xl" />
+                      </button>
+                    )
+                  : (
+                      <button
+                        type="button"
+                        title={t("downloads.delete", "删除记录")}
+                        onClick={() => onDelete(task.id)}
+                        className="border-l border-brand-300 flex h-10 w-10 items-center justify-center text-error-500 transition-colors hover:bg-error-100 dark:border-brand-600 dark:hover:bg-error-900/40"
+                      >
+                        <span className="i-mdi-delete text-xl" />
+                      </button>
+                    )}
           </div>
         </div>
       </div>
