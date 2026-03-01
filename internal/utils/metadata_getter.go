@@ -108,7 +108,7 @@ func (b BangumiInfoGetter) FetchMetadata(id string, token string) (models.Game, 
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	req.Header.Set("User-Agent", "Saramanda9988/LunaBox/1.4.0 (desktop) (https://github.com/Saramanda9988/LunaBox)")
+	req.Header.Set("User-Agent", "Saramanda9988/LunaBox/1.5.0 (desktop) (https://github.com/Saramanda9988/LunaBox)")
 
 	resp, err := b.client.Do(req)
 	if err != nil {
@@ -194,7 +194,7 @@ func (b BangumiInfoGetter) FetchMetadataByName(name string, token string) (model
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	req.Header.Set("User-Agent", "Saramanda9988/LunaBox/1.4.0 (desktop) (https://github.com/Saramanda9988/LunaBox)")
+	req.Header.Set("User-Agent", "Saramanda9988/LunaBox/1.5.0 (desktop) (https://github.com/Saramanda9988/LunaBox)")
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := b.client.Do(req)
@@ -486,7 +486,7 @@ func (y YmgalInfoGetter) getAccessToken() (string, error) {
 		return "", err
 	}
 
-	req.Header.Set("User-Agent", "Saramanda9988/LunaBox/1.4.0 (desktop) (https://github.com/Saramanda9988/LunaBox)")
+	req.Header.Set("User-Agent", "Saramanda9988/LunaBox/1.5.0 (desktop) (https://github.com/Saramanda9988/LunaBox)")
 
 	resp, err := y.client.Do(req)
 	if err != nil {
@@ -535,7 +535,7 @@ func (y YmgalInfoGetter) FetchMetadata(id string, token string) (models.Game, er
 		return models.Game{}, err
 	}
 
-	req.Header.Set("User-Agent", "Saramanda9988/LunaBox/1.4.0 (desktop) (https://github.com/Saramanda9988/LunaBox)")
+	req.Header.Set("User-Agent", "Saramanda9988/LunaBox/1.5.0 (desktop) (https://github.com/Saramanda9988/LunaBox)")
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("version", "1")
 	req.Header.Set("Accept", "application/json;charset=utf-8")
@@ -612,7 +612,7 @@ func (y YmgalInfoGetter) FetchMetadataByName(name string, token string) (models.
 		return models.Game{}, err
 	}
 
-	req.Header.Set("User-Agent", "Saramanda9988/LunaBox/1.4.0 (desktop) (https://github.com/Saramanda9988/LunaBox)")
+	req.Header.Set("User-Agent", "Saramanda9988/LunaBox/1.5.0 (desktop) (https://github.com/Saramanda9988/LunaBox)")
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("version", "1")
 	req.Header.Set("Accept", "application/json;charset=utf-8")
