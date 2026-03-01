@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
@@ -13,6 +14,7 @@ import (
 const (
 	docStorePrefix = "ÿdocument-storeÿ"
 	bySeqPrefix    = "ÿby-sequenceÿ"
+	attachBinary   = "ÿattach-binary-storeÿ"
 )
 
 type docMeta struct {
@@ -30,11 +32,19 @@ type ExportData struct {
 }
 
 type GameDoc struct {
-	ID       string          `json:"_id"`
-	Metadata GameMetadata    `json:"metadata"`
-	Record   GameRecord      `json:"record"`
-	Save     json.RawMessage `json:"save"`
-	Memory   json.RawMessage `json:"memory"`
+	ID          string                    `json:"_id"`
+	Metadata    GameMetadata              `json:"metadata"`
+	Record      GameRecord                `json:"record"`
+	Save        json.RawMessage           `json:"save"`
+	Memory      json.RawMessage           `json:"memory"`
+	Attachments map[string]AttachmentMeta `json:"_attachments"`
+}
+
+type AttachmentMeta struct {
+	ContentType string `json:"content_type"`
+	Digest      string `json:"digest"`
+	Length      int    `json:"length"`
+	Stub        bool   `json:"stub"`
 }
 
 type GameMetadata struct {
@@ -173,4 +183,82 @@ func loadRawDocs(dbPath string) (map[string]json.RawMessage, error) {
 	}
 
 	return docs, nil
+}
+
+func LoadGameCoverBytes(rootDir string, gameDoc GameDoc) ([]byte, string, error) {
+	attachmentName, attachmentMeta, ok := pickCoverAttachment(gameDoc)
+	if !ok || attachmentMeta.Digest == "" {
+		return nil, "", nil
+	}
+
+	dbPath := filepath.Join(rootDir, "game")
+	db, err := leveldb.OpenFile(dbPath, &opt.Options{ReadOnly: true, ErrorIfMissing: true})
+	if err != nil {
+		return nil, "", err
+	}
+	defer db.Close()
+
+	key := []byte(attachBinary + attachmentMeta.Digest)
+	value, err := db.Get(key, nil)
+	if err == leveldb.ErrNotFound {
+		return nil, "", nil
+	}
+	if err != nil {
+		return nil, "", err
+	}
+
+	ext := filepath.Ext(attachmentName)
+	if ext == "" {
+		ext = inferExtByContentType(attachmentMeta.ContentType)
+	}
+
+	raw := make([]byte, len(value))
+	copy(raw, value)
+	return raw, ext, nil
+}
+
+func pickCoverAttachment(gameDoc GameDoc) (string, AttachmentMeta, bool) {
+	if len(gameDoc.Attachments) == 0 {
+		return "", AttachmentMeta{}, false
+	}
+
+	priority := []string{"images_cover.webp", "cover.webp", "cover.jpg", "cover.jpeg", "cover.png"}
+	for _, name := range priority {
+		if meta, ok := gameDoc.Attachments[name]; ok {
+			return name, meta, true
+		}
+	}
+
+	for name, meta := range gameDoc.Attachments {
+		if strings.Contains(strings.ToLower(name), "cover") {
+			return name, meta, true
+		}
+	}
+
+	for name, meta := range gameDoc.Attachments {
+		if strings.HasPrefix(strings.ToLower(meta.ContentType), "image/") {
+			return name, meta, true
+		}
+	}
+
+	for name, meta := range gameDoc.Attachments {
+		return name, meta, true
+	}
+
+	return "", AttachmentMeta{}, false
+}
+
+func inferExtByContentType(contentType string) string {
+	switch strings.ToLower(contentType) {
+	case "image/webp":
+		return ".webp"
+	case "image/png":
+		return ".png"
+	case "image/jpeg", "image/jpg":
+		return ".jpg"
+	case "image/gif":
+		return ".gif"
+	default:
+		return ".jpg"
+	}
 }

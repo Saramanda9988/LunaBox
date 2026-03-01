@@ -770,6 +770,7 @@ func (s *ImportService) ImportFromVnite(vniteDir string, skipNoPath bool) (Impor
 		}
 
 		game, sessions := s.convertVniteToGame(gameDoc, localDoc)
+		s.applyVniteCover(&game, vniteDir, gameDoc)
 		if err := s.gameService.AddGame(game); err != nil {
 			applog.LogErrorf(s.ctx, "ImportFromVnite: failed to add game %s: %v", gameName, err)
 			result.Failed++
@@ -813,6 +814,48 @@ func (s *ImportService) convertVniteToGame(gameDoc vnite.GameDoc, localDoc vnite
 
 	sessions := s.parseVniteTimers(gameID, gameDoc.Record.Timers)
 	return game, sessions
+}
+
+func (s *ImportService) applyVniteCover(game *models.Game, vniteDir string, gameDoc vnite.GameDoc) {
+	coverBytes, ext, err := vnite.LoadGameCoverBytes(vniteDir, gameDoc)
+	if err != nil {
+		applog.LogWarningf(s.ctx, "ImportFromVnite: failed to load cover bytes for game %s: %v", game.Name, err)
+		return
+	}
+	if len(coverBytes) == 0 {
+		return
+	}
+
+	if ext == "" {
+		ext = ".jpg"
+	}
+
+	tempFile, err := os.CreateTemp("", "vnite_cover_*"+ext)
+	if err != nil {
+		applog.LogWarningf(s.ctx, "ImportFromVnite: failed to create temp cover file for game %s: %v", game.Name, err)
+		return
+	}
+	tempFilePath := tempFile.Name()
+	if _, err := tempFile.Write(coverBytes); err != nil {
+		tempFile.Close()
+		os.Remove(tempFilePath)
+		applog.LogWarningf(s.ctx, "ImportFromVnite: failed to write temp cover for game %s: %v", game.Name, err)
+		return
+	}
+	if err := tempFile.Close(); err != nil {
+		os.Remove(tempFilePath)
+		applog.LogWarningf(s.ctx, "ImportFromVnite: failed to close temp cover for game %s: %v", game.Name, err)
+		return
+	}
+	defer os.Remove(tempFilePath)
+
+	savedPath, err := utils.SaveCoverImage(tempFilePath, game.ID)
+	if err != nil {
+		applog.LogWarningf(s.ctx, "ImportFromVnite: failed to save cover image for game %s: %v", game.Name, err)
+		return
+	}
+
+	game.CoverURL = savedPath
 }
 
 func (s *ImportService) pickVniteName(gameDoc vnite.GameDoc) string {
