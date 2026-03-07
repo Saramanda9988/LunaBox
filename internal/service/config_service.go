@@ -180,6 +180,10 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.TimeZone = newConfig.TimeZone
 	// 游戏库路径配置
 	s.config.GameLibraryPath = newConfig.GameLibraryPath
+	s.config.AISpoilerLevel = newConfig.AISpoilerLevel
+	s.config.AIWebSearchEnabled = newConfig.AIWebSearchEnabled
+	s.config.AIContextWindowSize = newConfig.AIContextWindowSize
+	s.config.TavilyAPIKey = newConfig.TavilyAPIKey
 	return nil
 }
 

@@ -1,12 +1,14 @@
 package vo
 
 import (
+	"encoding/json"
 	"lunabox/internal/enums"
 	"lunabox/internal/models"
 )
 
 type AISummaryRequest struct {
-	Dimension string `json:"dimension"` // week, month, year
+	Dimension    string `json:"dimension"`               // week, month, year
+	SpoilerLevel string `json:"spoiler_level,omitempty"` // 覆盖全局防剧透等级：none | mild | full
 }
 
 type MetadataRequest struct {
@@ -36,11 +38,37 @@ type BatchImportRequest struct {
 type ChatCompletionRequest struct {
 	Model    string    `json:"model"`
 	Messages []Message `json:"messages"`
+	Tools    []Tool    `json:"tools,omitempty"`
 }
 
 type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role       string     `json:"role"`
+	Content    string     `json:"content,omitempty"`
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
+}
+
+// Tool / Function Calling 结构
+type Tool struct {
+	Type     string       `json:"type"`
+	Function ToolFunction `json:"function"`
+}
+
+type ToolFunction struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Parameters  json.RawMessage `json:"parameters"`
+}
+
+type ToolCall struct {
+	ID       string           `json:"id"`
+	Type     string           `json:"type"`
+	Function ToolCallFunction `json:"function"`
+}
+
+type ToolCallFunction struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
 }
 
 // PeriodStatsRequest 统计请求参数

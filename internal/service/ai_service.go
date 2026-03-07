@@ -12,6 +12,7 @@ import (
 	"lunabox/internal/enums"
 	"lunabox/internal/vo"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -39,6 +40,15 @@ func (s *AiService) AISummarize(req vo.AISummaryRequest) (vo.AISummaryResponse, 
 		return vo.AISummaryResponse{}, fmt.Errorf("please configure AI API Key first")
 	}
 
+	// 确定防剧透等级（请求覆盖 > 全局配置 > 默认 none）
+	spoilerLevel := req.SpoilerLevel
+	if spoilerLevel == "" {
+		spoilerLevel = s.appConfig.AISpoilerLevel
+	}
+	if spoilerLevel == "" {
+		spoilerLevel = "none"
+	}
+
 	// 获取统计数据
 	statsData, err := s.getStatsForAI(enums.Period(req.Dimension))
 	if err != nil {
@@ -46,25 +56,35 @@ func (s *AiService) AISummarize(req vo.AISummaryRequest) (vo.AISummaryResponse, 
 		return vo.AISummaryResponse{}, fmt.Errorf("获取统计数据失败: %w", err)
 	}
 
-	// 构建prompt
-	prompt := s.buildPrompt(statsData)
+	// 构建三层 Prompt
+	systemPrompt := s.buildSystemPrompt(statsData, spoilerLevel)
+	contextPrompt := s.buildContextPrompt(statsData)
+	taskPrompt := s.buildTaskPrompt(statsData)
 
-	// 调用AI API
-	systemPrompt := s.appConfig.AISystemPrompt
-	if systemPrompt == "" {
-		systemPrompt = string(enums.DefaultSystemPrompt)
+	// 构造消息列表
+	messages := []vo.Message{
+		{Role: "system", Content: systemPrompt},
+		{Role: "user", Content: contextPrompt + "\n\n" + taskPrompt},
 	}
-	summary, err := s.callAIAPI(systemPrompt, prompt)
+
+	// 调用AI API（含 WebSearch 工具调用）
+	webSearchEnabled := s.appConfig.AIWebSearchEnabled
+	summary, webSearchUsed, err := s.callAIAPIWithTools(messages, webSearchEnabled)
 	if err != nil {
-		applog.LogError(s.ctx, "[AIService] fail to get call AI: "+err.Error())
+		applog.LogError(s.ctx, "[AIService] fail to call AI: "+err.Error())
 		return vo.AISummaryResponse{}, fmt.Errorf("AI调用失败: %w", err)
 	}
 
 	return vo.AISummaryResponse{
-		Summary:   summary,
-		Dimension: req.Dimension,
+		Summary:       summary,
+		Dimension:     req.Dimension,
+		WebSearchUsed: webSearchUsed,
 	}, nil
 }
+
+// ─────────────────────────────────────────
+// DATA LAYER
+// ─────────────────────────────────────────
 
 // AIStatsData AI总结所需的统计数据
 type AIStatsData struct {
@@ -72,17 +92,29 @@ type AIStatsData struct {
 	TotalPlayCount    int
 	TotalPlayDuration int
 	TopGames          []GamePlayInfo
-	Timeline          []TimelineInfo
+	RecentSessions    []SessionInfo
 }
 
+// GamePlayInfo 单款游戏的汇总信息（已扩展 metadata）
 type GamePlayInfo struct {
-	Name     string
-	Duration int
+	Name            string
+	Company         string
+	Duration        int      // 秒
+	Summary         string   // 截断至 300 字
+	Categories      []string // 分类标签
+	Status          string   // not_started / playing / completed / on_hold
+	SpoilerBoundary string   // 来自 game_progress 或全局配置
+	ProgressNote    string   // 玩家备注
+	Route           string   // 当前路线
 }
 
-type TimelineInfo struct {
-	Label    string
-	Duration int
+// SessionInfo 近期 session 流水（用于作息分析）
+type SessionInfo struct {
+	GameName  string
+	StartTime time.Time
+	Duration  int
+	DayOfWeek int // 0=周日
+	Hour      int // 本地时间小时
 }
 
 func (s *AiService) getStatsForAI(dimension enums.Period) (*AIStatsData, error) {
@@ -102,25 +134,40 @@ func (s *AiService) getStatsForAI(dimension enums.Period) (*AIStatsData, error) 
 		startDateExpr = "current_date - INTERVAL 6 DAY"
 	}
 
-	// 获取总游玩次数和时长
+	// 总游玩次数和时长
 	queryTotal := fmt.Sprintf("SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions WHERE start_time >= %s", startDateExpr)
-	err := s.db.QueryRowContext(s.ctx, queryTotal).Scan(&data.TotalPlayCount, &data.TotalPlayDuration)
-	if err != nil {
+	if err := s.db.QueryRowContext(s.ctx, queryTotal).Scan(&data.TotalPlayCount, &data.TotalPlayDuration); err != nil {
 		return nil, err
 	}
 
-	// 获取Top游戏
+	// 全局防剧透默认值
+	globalSpoiler := s.appConfig.AISpoilerLevel
+	if globalSpoiler == "" {
+		globalSpoiler = "none"
+	}
+
+	// Top 5 游戏（含 metadata + 分类 + progress）
 	queryLeaderboard := fmt.Sprintf(`
-		SELECT COALESCE(g.name, '') as name, SUM(ps.duration) as total
+		SELECT
+			COALESCE(g.name, '') AS name,
+			COALESCE(g.company, '') AS company,
+			COALESCE(SUM(ps.duration), 0) AS total_duration,
+			COALESCE(LEFT(g.summary, 300), '') AS summary,
+			COALESCE(g.status, 'not_started') AS status,
+			COALESCE(gp.spoiler_boundary, ?) AS spoiler_boundary,
+			COALESCE(gp.progress_note, '') AS progress_note,
+			COALESCE(gp.route, '') AS route
 		FROM play_sessions ps
 		JOIN games g ON ps.game_id = g.id
+		LEFT JOIN game_progress gp ON g.id = gp.game_id
 		WHERE ps.start_time >= %s
-		GROUP BY g.name
-		ORDER BY total DESC
+		GROUP BY g.id, g.name, g.company, g.summary, g.status,
+		         gp.spoiler_boundary, gp.progress_note, gp.route
+		ORDER BY total_duration DESC
 		LIMIT 5
 	`, startDateExpr)
 
-	rows, err := s.db.QueryContext(s.ctx, queryLeaderboard)
+	rows, err := s.db.QueryContext(s.ctx, queryLeaderboard, globalSpoiler)
 	if err != nil {
 		return nil, err
 	}
@@ -128,19 +175,217 @@ func (s *AiService) getStatsForAI(dimension enums.Period) (*AIStatsData, error) 
 
 	for rows.Next() {
 		var info GamePlayInfo
-		if err := rows.Scan(&info.Name, &info.Duration); err != nil {
+		if err := rows.Scan(&info.Name, &info.Company, &info.Duration,
+			&info.Summary, &info.Status,
+			&info.SpoilerBoundary, &info.ProgressNote, &info.Route); err != nil {
 			return nil, err
 		}
 		data.TopGames = append(data.TopGames, info)
+	}
+	rows.Close()
+
+	// 为每款 Top 游戏查询分类标签
+	for i, game := range data.TopGames {
+		catRows, err := s.db.QueryContext(s.ctx, `
+			SELECT COALESCE(c.name, '')
+			FROM game_categories gc
+			JOIN games g ON gc.game_id = g.id
+			JOIN categories c ON gc.category_id = c.id
+			WHERE g.name = ?
+		`, game.Name)
+		if err == nil {
+			var cats []string
+			for catRows.Next() {
+				var cat string
+				if err := catRows.Scan(&cat); err == nil && cat != "" {
+					cats = append(cats, cat)
+				}
+			}
+			catRows.Close()
+			data.TopGames[i].Categories = cats
+		}
+	}
+
+	// 近期 session 流水（最多 20 条，用于作息分析）
+	contextLimit := s.appConfig.AIContextWindowSize
+	if contextLimit <= 0 {
+		contextLimit = 20
+	}
+	sessionQuery := fmt.Sprintf(`
+		SELECT
+			COALESCE(g.name, '') AS game_name,
+			ps.start_time,
+			COALESCE(ps.duration, 0) AS duration,
+			dayofweek(ps.start_time) AS dow,
+			hour(ps.start_time) AS hr
+		FROM play_sessions ps
+		JOIN games g ON ps.game_id = g.id
+		WHERE ps.start_time >= %s
+		ORDER BY ps.start_time DESC
+		LIMIT ?
+	`, startDateExpr)
+	sessRows, err := s.db.QueryContext(s.ctx, sessionQuery, contextLimit)
+	if err == nil {
+		defer sessRows.Close()
+		for sessRows.Next() {
+			var si SessionInfo
+			if err := sessRows.Scan(&si.GameName, &si.StartTime, &si.Duration, &si.DayOfWeek, &si.Hour); err == nil {
+				data.RecentSessions = append(data.RecentSessions, si)
+			}
+		}
 	}
 
 	return data, nil
 }
 
-// TODO: 现在这里做的太粗糙，下一个小版本需要优化
-func (s *AiService) buildPrompt(data *AIStatsData) string {
+// ─────────────────────────────────────────
+// PROMPT LAYER（三层分离）
+// ─────────────────────────────────────────
+
+// buildSystemPrompt Layer 1: 人设 + 防剧透指令 + 输出约束
+func (s *AiService) buildSystemPrompt(data *AIStatsData, spoilerLevel string) string {
 	var sb strings.Builder
 
+	// 人设
+	persona := s.appConfig.AISystemPrompt
+	if persona == "" {
+		persona = string(enums.DefaultSystemPrompt)
+	}
+	sb.WriteString(persona)
+	sb.WriteString("\n\n")
+
+	// 工具环境提醒
+	sb.WriteString("[环境说明]\n")
+	sb.WriteString("用户使用的程序是 LunaBox，一款本地游戏管理和启动器软件。请勿在回答中提及该软件名称。\n\n")
+
+	// 防剧透指令（仅在有游戏时注入，且非 full 等级）
+	if spoilerLevel != "full" && len(data.TopGames) > 0 {
+		sb.WriteString("[剧透控制 - MUST FOLLOW]\n")
+		for _, g := range data.TopGames {
+			if g.SpoilerBoundary == "none" || spoilerLevel == "none" {
+				// 最严格：禁止任何剧情细节
+				if g.Route != "" || g.ProgressNote != "" {
+					sb.WriteString(fmt.Sprintf("- 《%s》：严禁提及任何具体剧情、结局、角色关系或路线发展。仅允许讨论游戏类型、风格与操作体验。\n", g.Name))
+				} else {
+					sb.WriteString(fmt.Sprintf("- 《%s》：严禁提及任何剧情细节、结局和角色命运。\n", g.Name))
+				}
+			} else if g.SpoilerBoundary == "chapter_end" {
+				boundary := g.Route
+				if g.Route == "" {
+					boundary = g.ProgressNote
+				}
+				sb.WriteString(fmt.Sprintf("- 《%s》：用户当前进度「%s」。可讨论该章节已发生的内容，严禁剧透后续章节、分支或结局。\n", g.Name, boundary))
+			} else if g.SpoilerBoundary == "route_end" {
+				sb.WriteString(fmt.Sprintf("- 《%s》：用户正在进行「%s」路线。可讨论该路线完整内容，严禁剧透其他路线或真结局。\n", g.Name, g.Route))
+			}
+			// full/mild: 不添加限制
+		}
+
+		if spoilerLevel == "mild" {
+			sb.WriteString("提示：在上述具体约束之外，请尽量避免主动透露关键转折和结局，保持适度谨慎。\n")
+		}
+		sb.WriteString("\n")
+	}
+
+	// 输出约束
+	sb.WriteString("[输出约束]\n")
+	sb.WriteString("- 字数控制在 200-350 字。\n")
+	sb.WriteString("- 语气保持活泼有趣，可适当使用 emoji。\n")
+	sb.WriteString("- 如果数据量少，请聚焦质量而非字数。\n")
+
+	return sb.String()
+}
+
+// buildContextPrompt Layer 2: 结构化数据快照（统计 + 作息 + 游戏条目）
+func (s *AiService) buildContextPrompt(data *AIStatsData) string {
+	var sb strings.Builder
+
+	sb.WriteString("=== 游玩数据快照 ===\n\n")
+
+	// 统计摘要
+	sb.WriteString(fmt.Sprintf("📊 本期总览：游玩 %d 次，合计 %.1f 小时\n\n", data.TotalPlayCount, float64(data.TotalPlayDuration)/3600))
+
+	// 游戏条目
+	if len(data.TopGames) > 0 {
+		sb.WriteString("🎮 游玩排行（Top 5）：\n")
+		for i, g := range data.TopGames {
+			sb.WriteString(fmt.Sprintf("%d. 《%s》", i+1, g.Name))
+			if g.Company != "" {
+				sb.WriteString(fmt.Sprintf("（%s）", g.Company))
+			}
+			sb.WriteString(fmt.Sprintf(" — %.1f 小时", float64(g.Duration)/3600))
+			if len(g.Categories) > 0 {
+				sb.WriteString(fmt.Sprintf("  [%s]", strings.Join(g.Categories, " / ")))
+			}
+			if g.Status != "" && g.Status != "not_started" {
+				statusLabel := map[string]string{
+					"playing":   "游玩中",
+					"completed": "已通关",
+					"on_hold":   "搁置中",
+				}[g.Status]
+				if statusLabel != "" {
+					sb.WriteString(fmt.Sprintf("  <%s>", statusLabel))
+				}
+			}
+			sb.WriteString("\n")
+			if g.Summary != "" {
+				sb.WriteString(fmt.Sprintf("   简介：%s\n", g.Summary))
+			}
+			if g.ProgressNote != "" {
+				sb.WriteString(fmt.Sprintf("   当前进度备注：%s\n", g.ProgressNote))
+			}
+		}
+		sb.WriteString("\n")
+	}
+
+	// 作息分析（基于近期 session）
+	if len(data.RecentSessions) >= 3 {
+		nightCount, afternoonCount, morningCount := 0, 0, 0
+		weekdayCount, weekendCount := 0, 0
+		for _, sess := range data.RecentSessions {
+			switch {
+			case sess.Hour >= 22 || sess.Hour < 4:
+				nightCount++
+			case sess.Hour >= 13 && sess.Hour < 19:
+				afternoonCount++
+			case sess.Hour >= 8 && sess.Hour < 12:
+				morningCount++
+			}
+			if sess.DayOfWeek == 0 || sess.DayOfWeek == 6 {
+				weekendCount++
+			} else {
+				weekdayCount++
+			}
+		}
+		sb.WriteString("⏰ 作息特征：")
+		labels := []string{}
+		if nightCount > len(data.RecentSessions)/3 {
+			labels = append(labels, "深夜肝派")
+		}
+		if afternoonCount > len(data.RecentSessions)/3 {
+			labels = append(labels, "下午茶玩家")
+		}
+		if morningCount > len(data.RecentSessions)/3 {
+			labels = append(labels, "早鸟型")
+		}
+		if weekendCount > weekdayCount {
+			labels = append(labels, "周末集中型")
+		} else if weekdayCount > weekendCount*2 {
+			labels = append(labels, "工作日也不忘玩")
+		}
+		if len(labels) > 0 {
+			sb.WriteString(strings.Join(labels, " / "))
+		} else {
+			sb.WriteString("作息较为均匀")
+		}
+		sb.WriteString("\n\n")
+	}
+
+	return sb.String()
+}
+
+// buildTaskPrompt Layer 3: 任务指令
+func (s *AiService) buildTaskPrompt(data *AIStatsData) string {
 	periodName := "最近7天"
 	switch data.Dimension {
 	case "week":
@@ -148,56 +393,195 @@ func (s *AiService) buildPrompt(data *AIStatsData) string {
 	case "month":
 		periodName = "最近1个月"
 	}
-	sb.WriteString(fmt.Sprintf("这一部分是对环境的提醒：用户使用的程序是LunaBox，一款本地游戏管理和启动器软件。你不需要在回答中出现相关的字眼\n\n"))
-	sb.WriteString(fmt.Sprintf("以下是%s游戏统计数据，根据上面你的系统人设要求写一段总结(200 - 300字)：\n\n", periodName))
-	sb.WriteString(fmt.Sprintf("时间范围：%s\n", periodName))
-	sb.WriteString(fmt.Sprintf("总游玩次数：%d 次\n", data.TotalPlayCount))
-	sb.WriteString(fmt.Sprintf("总游玩时长：%.1f 小时\n\n", float64(data.TotalPlayDuration)/3600))
 
-	if len(data.TopGames) > 0 {
-		sb.WriteString("游玩排行榜：\n")
-		for i, game := range data.TopGames {
-			sb.WriteString(fmt.Sprintf("%d. %s - %.1f小时\n", i+1, game.Name, float64(game.Duration)/3600))
-		}
-	}
+	return fmt.Sprintf(`=== 任务指令 ===
 
-	return sb.String()
+请根据以上数据，针对「%s」写一段游玩总结锐评。
+
+输出结构建议（可灵活调整）：
+1. 玩家画像（本期游玩风格一句话）
+2. 重点作品点评（一到两款印象最深的游戏，200 字以内）
+3. 本期亮点或趣味发现
+
+请严格遵守[剧透控制]规则，如有 WebSearch 补充信息请在合适位置自然融入。`, periodName)
 }
 
-func (s *AiService) callAIAPI(systemPrompt string, userPrompt string) (string, error) {
+// ─────────────────────────────────────────
+// API CALL LAYER（含 WebSearch 工具调用）
+// ─────────────────────────────────────────
+
+var webSearchToolDef = vo.Tool{
+	Type: "function",
+	Function: vo.ToolFunction{
+		Name:        "web_search",
+		Description: "Search for game background, genre tags, developer info, or general reception. DO NOT search for plot spoilers.",
+		Parameters:  json.RawMessage(`{"type":"object","properties":{"query":{"type":"string","description":"Search query"}},"required":["query"]}`),
+	},
+}
+
+// callAIAPIWithTools 调用 AI API，支持多轮 WebSearch Tool Use
+func (s *AiService) callAIAPIWithTools(messages []vo.Message, enableWebSearch bool) (string, bool, error) {
 	baseURL := s.appConfig.AIBaseURL
 	if baseURL == "" {
 		baseURL = "https://api.openai.com/v1"
 	}
-
 	model := s.appConfig.AIModel
 	if model == "" {
 		model = "gpt-3.5-turbo"
 	}
-	//TODO:最好模型支持websearch，能够获取游戏的上下文消息，或者在systemPrompt中加入更多信息，我们根据本地搜索构建
+
+	apiURL := strings.TrimSuffix(baseURL, "/") + "/chat/completions"
+	webSearchUsed := false
+
+	// 首轮（可能含 tools）
+	var tools []vo.Tool
+	if enableWebSearch {
+		tools = []vo.Tool{webSearchToolDef}
+	}
+
+	rawResp, err := s.doAPICall(apiURL, model, messages, tools)
+	if err != nil {
+		return "", false, err
+	}
+
+	// 处理 tool_calls（最多 3 轮，防止无限循环）
+	for round := 0; round < 3; round++ {
+		if len(rawResp.Choices) == 0 {
+			break
+		}
+		choice := rawResp.Choices[0]
+		if choice.FinishReason != "tool_calls" || len(choice.Message.ToolCalls) == 0 {
+			break
+		}
+
+		// 追加 assistant 消息
+		messages = append(messages, choice.Message)
+
+		// 执行所有 tool calls
+		for _, tc := range choice.Message.ToolCalls {
+			if tc.Function.Name != "web_search" {
+				continue
+			}
+			var args struct {
+				Query string `json:"query"`
+			}
+			if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
+				continue
+			}
+			searchResult := s.executeWebSearch(args.Query)
+			webSearchUsed = true
+			messages = append(messages, vo.Message{
+				Role:       "tool",
+				Content:    searchResult,
+				ToolCallID: tc.ID,
+			})
+		}
+
+		// 第二轮不再传 tools（防止无限循环）
+		rawResp, err = s.doAPICall(apiURL, model, messages, nil)
+		if err != nil {
+			return "", webSearchUsed, err
+		}
+	}
+
+	if len(rawResp.Choices) == 0 {
+		return "", webSearchUsed, fmt.Errorf("AI未返回有效响应")
+	}
+	return rawResp.Choices[0].Message.Content, webSearchUsed, nil
+}
+
+// doAPICall 向 AI API 发送一次请求
+func (s *AiService) doAPICall(apiURL, model string, messages []vo.Message, tools []vo.Tool) (*vo.ChatCompletionResponse, error) {
 	reqBody := vo.ChatCompletionRequest{
-		Model: model,
-		Messages: []vo.Message{
-			{Role: "system", Content: systemPrompt},
-			{Role: "user", Content: userPrompt},
-		},
+		Model:    model,
+		Messages: messages,
+		Tools:    tools,
 	}
 
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	url := strings.TrimSuffix(baseURL, "/") + "/chat/completions"
-	req, err := http.NewRequestWithContext(s.ctx, "POST", url, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(s.ctx, "POST", apiURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+s.appConfig.AIAPIKey)
+
+	client := &http.Client{Timeout: 90 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API请求失败 (HTTP %d): %s", resp.StatusCode, string(body))
+	}
+
+	var result vo.ChatCompletionResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, err
+	}
+	if result.Error != nil {
+		return nil, fmt.Errorf("API错误: %s", result.Error.Message)
+	}
+
+	return &result, nil
+}
+
+// ─────────────────────────────────────────
+// WEBSEARCH LAYER
+// ─────────────────────────────────────────
+
+// executeWebSearch 执行搜索，优先 Tavily，降级 DuckDuckGo
+func (s *AiService) executeWebSearch(query string) string {
+	// 尝试 Tavily
+	if s.appConfig.TavilyAPIKey != "" {
+		result, err := s.searchViaTavily(query)
+		if err == nil && result != "" {
+			return result
+		}
+		applog.LogError(s.ctx, "[AIService] Tavily search failed: "+err.Error())
+	}
+
+	// 降级 DuckDuckGo
+	result, err := s.searchViaDuckDuckGo(query)
+	if err == nil && result != "" {
+		return result
+	}
+
+	return fmt.Sprintf("[WebSearch] 搜索「%s」失败，请AI依据本地数据进行分析。", query)
+}
+
+// searchViaTavily 使用 Tavily Search API
+func (s *AiService) searchViaTavily(query string) (string, error) {
+	payload := map[string]interface{}{
+		"api_key":        s.appConfig.TavilyAPIKey,
+		"query":          query,
+		"search_depth":   "basic",
+		"max_results":    3,
+		"include_answer": true,
+	}
+	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return "", err
 	}
 
+	req, err := http.NewRequestWithContext(s.ctx, "POST", "https://api.tavily.com/search", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", err
+	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+s.appConfig.AIAPIKey)
 
-	client := &http.Client{Timeout: 60 * time.Second}
+	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
@@ -209,22 +593,65 @@ func (s *AiService) callAIAPI(systemPrompt string, userPrompt string) (string, e
 		return "", err
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("API请求失败: %s", string(body))
+	var tavilyResp struct {
+		Answer  string `json:"answer"`
+		Results []struct {
+			Title   string `json:"title"`
+			Content string `json:"content"`
+			URL     string `json:"url"`
+		} `json:"results"`
 	}
-
-	var result vo.ChatCompletionResponse
-	if err := json.Unmarshal(body, &result); err != nil {
+	if err := json.Unmarshal(body, &tavilyResp); err != nil {
 		return "", err
 	}
 
-	if result.Error != nil {
-		return "", fmt.Errorf("API错误: %s", result.Error.Message)
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("[WebSearch 结果 - 来源: Tavily] 搜索：%s\n", query))
+	if tavilyResp.Answer != "" {
+		sb.WriteString(fmt.Sprintf("摘要：%s\n\n", tavilyResp.Answer))
+	}
+	for i, r := range tavilyResp.Results {
+		if i >= 3 {
+			break
+		}
+		sb.WriteString(fmt.Sprintf("- %s\n  %s\n", r.Title, r.Content))
+	}
+	return sb.String(), nil
+}
+
+// searchViaDuckDuckGo 使用 DuckDuckGo Instant Answer API（免费，无需 Key）
+func (s *AiService) searchViaDuckDuckGo(query string) (string, error) {
+	ddgURL := "https://api.duckduckgo.com/?q=" + url.QueryEscape(query) + "&format=json&no_html=1&skip_disambig=1"
+	req, err := http.NewRequestWithContext(s.ctx, "GET", ddgURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "LunaBox/1.0")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
 	}
 
-	if len(result.Choices) == 0 {
-		return "", fmt.Errorf("AI未返回有效响应")
+	var ddgResp struct {
+		AbstractText string `json:"AbstractText"`
+		AbstractURL  string `json:"AbstractURL"`
+		Heading      string `json:"Heading"`
+	}
+	if err := json.Unmarshal(body, &ddgResp); err != nil {
+		return "", err
+	}
+	if ddgResp.AbstractText == "" {
+		return "", fmt.Errorf("no result")
 	}
 
-	return result.Choices[0].Message.Content, nil
+	return fmt.Sprintf("[WebSearch 结果 - 来源: DuckDuckGo] %s\n%s\n参考：%s",
+		ddgResp.Heading, ddgResp.AbstractText, ddgResp.AbstractURL), nil
 }

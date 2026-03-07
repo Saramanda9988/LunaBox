@@ -94,8 +94,9 @@ type PeriodStats struct {
 
 // AISummaryResponse AI总结响应
 type AISummaryResponse struct {
-	Summary   string `json:"summary"`
-	Dimension string `json:"dimension"`
+	Summary       string `json:"summary"`
+	Dimension     string `json:"dimension"`
+	WebSearchUsed bool   `json:"web_search_used"` // 是否使用了 WebSearch 增强
 }
 
 type ChatCompletionResponse struct {
@@ -104,7 +105,8 @@ type ChatCompletionResponse struct {
 }
 
 type Choice struct {
-	Message Message `json:"message"`
+	Message      Message `json:"message"`
+	FinishReason string  `json:"finish_reason"`
 }
 
 type APIError struct {

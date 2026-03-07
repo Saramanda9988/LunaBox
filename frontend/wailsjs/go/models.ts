@@ -12,6 +12,10 @@ export namespace appconf {
 	    ai_api_key?: string;
 	    ai_model?: string;
 	    ai_system_prompt?: string;
+	    ai_spoiler_level?: string;
+	    ai_web_search: boolean;
+	    ai_context_window?: number;
+	    tavily_api_key?: string;
 	    cloud_backup_enabled: boolean;
 	    cloud_backup_provider?: string;
 	    backup_password?: string;
@@ -71,6 +75,10 @@ export namespace appconf {
 	        this.ai_api_key = source["ai_api_key"];
 	        this.ai_model = source["ai_model"];
 	        this.ai_system_prompt = source["ai_system_prompt"];
+	        this.ai_spoiler_level = source["ai_spoiler_level"];
+	        this.ai_web_search = source["ai_web_search"];
+	        this.ai_context_window = source["ai_context_window"];
+	        this.tavily_api_key = source["tavily_api_key"];
 	        this.cloud_backup_enabled = source["cloud_backup_enabled"];
 	        this.cloud_backup_provider = source["cloud_backup_provider"];
 	        this.backup_password = source["backup_password"];
@@ -119,6 +127,12 @@ export namespace appconf {
 
 export namespace enums {
 	
+	export enum GameStatus {
+	    NOT_STARTED = "not_started",
+	    PLAYING = "playing",
+	    COMPLETED = "completed",
+	    ON_HOLD = "on_hold",
+	}
 	export enum SourceType {
 	    LOCAL = "local",
 	    BANGUMI = "bangumi",
@@ -135,12 +149,6 @@ export namespace enums {
 	    DEFAULT_SYSTEM = "你是一个幽默风趣的游戏评论员，擅长用轻松的语气点评玩家的游戏习惯。\n请用轻松幽默的方式点评这位玩家的游戏习惯，可以适当调侃但不要太过分。",
 	    MEOW_ZAKO = "你是一个雌小鬼猫娘，根据用户的游戏统计数据对用户进行锐评，语气可爱活泼，不要给用户留脸面偶（=w=）适当加入猫咪的拟声词（如“喵”）和雌小鬼的口癖（如“杂鱼~杂鱼~”），要是能再用上颜文字主人就更高兴了喵。\n\n",
 	    STRICT_TUTOR = "你是用户的严厉导师，根据用户的游戏统计数据对用户进行锐评，语气严肃认真，不允许任何调侃和幽默。\n\n",
-	}
-	export enum GameStatus {
-	    NOT_STARTED = "not_started",
-	    PLAYING = "playing",
-	    COMPLETED = "completed",
-	    ON_HOLD = "on_hold",
 	}
 
 }
@@ -388,6 +396,48 @@ export namespace service {
 		    return a;
 		}
 	}
+	export class GameProgress {
+	    id: string;
+	    game_id: string;
+	    chapter: string;
+	    route: string;
+	    progress_note: string;
+	    spoiler_boundary: string;
+	    updated_at: time.Time;
+	
+	    static createFrom(source: any = {}) {
+	        return new GameProgress(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.game_id = source["game_id"];
+	        this.chapter = source["chapter"];
+	        this.route = source["route"];
+	        this.progress_note = source["progress_note"];
+	        this.spoiler_boundary = source["spoiler_boundary"];
+	        this.updated_at = this.convertValues(source["updated_at"], time.Time);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class GameService {
 	
 	
@@ -570,6 +620,7 @@ export namespace vo {
 	
 	export class AISummaryRequest {
 	    dimension: string;
+	    spoiler_level?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AISummaryRequest(source);
@@ -578,11 +629,13 @@ export namespace vo {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.dimension = source["dimension"];
+	        this.spoiler_level = source["spoiler_level"];
 	    }
 	}
 	export class AISummaryResponse {
 	    summary: string;
 	    dimension: string;
+	    web_search_used: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new AISummaryResponse(source);
@@ -592,6 +645,7 @@ export namespace vo {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.summary = source["summary"];
 	        this.dimension = source["dimension"];
+	        this.web_search_used = source["web_search_used"];
 	    }
 	}
 	export class BatchImportCandidate {

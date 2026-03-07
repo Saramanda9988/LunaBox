@@ -12,6 +12,7 @@ import { ConfirmModal } from "../components/modal/ConfirmModal";
 import { GameBackupPanel } from "../components/panel/GameBackupPanel";
 import { GameEditPanel } from "../components/panel/GameEditPanel";
 import { GameLaunchPanel } from "../components/panel/GameLaunchPanel";
+import { GameProgressPanel } from "../components/panel/GameProgressPanel";
 import { GameStatsPanel } from "../components/panel/GameStatsPanel";
 import { GameDetailSkeleton } from "../components/skeleton/GameDetailSkeleton";
 import { useAppStore } from "../store";
@@ -412,7 +413,7 @@ function GameDetailPage() {
       <div className="border-b border-brand-200 dark:border-brand-700">
         <div className="flex justify-between items-center">
           <nav className="-mb-px flex space-x-8">
-            {["stats", "edit", "launch", "backup"].map(tab => (
+            {["stats", "edit", "launch", "backup", "progress"].map(tab => (
               <button
                 type="button"
                 key={tab}
@@ -428,6 +429,7 @@ function GameDetailPage() {
                 {tab === "edit" && t("common.edit")}
                 {tab === "launch" && t("game.tabs.launch")}
                 {tab === "backup" && t("game.tabs.backup")}
+                {tab === "progress" && t("game.tabs.progress")}
               </button>
             ))}
           </nav>
@@ -471,6 +473,10 @@ function GameDetailPage() {
 
       {activeTab === "backup" && (
         <GameBackupPanel gameId={gameId} savePath={game?.save_path} />
+      )}
+
+      {activeTab === "progress" && (
+        <GameProgressPanel gameId={gameId} />
       )}
 
       <ConfirmModal

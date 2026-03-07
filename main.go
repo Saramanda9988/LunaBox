@@ -108,6 +108,7 @@ func main() {
 	updateService := service.NewUpdateService()
 	sessionService := service.NewSessionService()
 	downloadService := service.NewDownloadService()
+	gameProgressService := service.NewGameProgressService()
 
 	// 如果有待安装 URL，解析并暂存到 downloadService
 	if pendingURL != "" {
@@ -279,6 +280,7 @@ func main() {
 			versionService.Init(ctx)
 			templateService.Init(ctx, db, config)
 			updateService.Init(ctx, configService)
+			gameProgressService.Init(ctx, db, config)
 
 			// 设置 StartService 的 BackupService GameService SessionService依赖
 			startService.SetBackupService(backupService)
@@ -371,6 +373,7 @@ func main() {
 			updateService,
 			sessionService,
 			downloadService,
+			gameProgressService,
 		},
 		EnumBind: []interface{}{
 			enums.AllSourceTypes,

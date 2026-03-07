@@ -51,6 +51,7 @@ function StatsPage() {
   const [loading, setLoading] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [webSearchUsed, setWebSearchUsed] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
 
   // Custom date range
@@ -78,10 +79,12 @@ function StatsPage() {
 
   const handleAISummarize = useCallback(async () => {
     setAiLoading(true);
+    setWebSearchUsed(false);
     setAISummary(dimension, "");
     try {
-      const result = await AISummarize({ dimension });
+      const result = await AISummarize({ dimension, spoiler_level: "" });
       setAISummary(dimension, result.summary);
+      setWebSearchUsed(result.web_search_used ?? false);
     }
     catch (err) {
       console.error("AI summarize failed:", err);
@@ -321,6 +324,7 @@ function StatsPage() {
         <AiSummaryCard
           aiSummary={aiSummary}
           aiLoading={aiLoading}
+          webSearchUsed={webSearchUsed}
         />
       )}
 

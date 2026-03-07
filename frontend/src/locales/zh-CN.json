@@ -262,7 +262,8 @@
     "tabs": {
       "stats": "游戏统计",
       "launch": "启动配置",
-      "backup": "备份"
+      "backup": "备份",
+      "progress": "游玩进度"
     },
     "toast": {
       "loadDataFailed": "加载游戏数据失败",
@@ -281,6 +282,34 @@
       "favUpdated": "收藏已更新",
       "updateFavFailed": "更新收藏失败",
       "selectFileFailed": "选择文件失败"
+    }
+  },
+  "gameProgress": {
+    "title": "游玩进度",
+    "hint": "记录当前进度，AI 总结将严格遵守您设置的剧透边界",
+    "recorded": "已记录",
+    "chapter": "当前章节",
+    "chapterPlaceholder": "如：第二章 / Chapter 2",
+    "route": "当前角色线 / 路线",
+    "routePlaceholder": "如：水瀬ルート / 真エンド前",
+    "progressNote": "进度备注",
+    "progressNotePlaceholder": "自由描述当前进度，如：刚看到BE结局，尚未解锁真路线",
+    "spoilerBoundary": "AI 可讨论范围",
+    "spoilerBoundaryOpts": {
+      "none": "🔒 禁止剧情（最安全）",
+      "chapterEnd": "📖 当前章节结束前",
+      "routeEnd": "🗺️ 当前路线完整内容",
+      "full": "🔓 无限制"
+    },
+    "spoilerBoundaryHints": {
+      "none": "AI 不得提及任何具体剧情、角色关系、结局或路线发展。",
+      "chapterEnd": "AI 只能讨论至当前章节已发生的内容，严禁剧透后续章节和结局。",
+      "routeEnd": "AI 可讨论当前路线完整内容，但严禁透露其他路线或真结局。",
+      "full": "AI 不受剧透限制，可自由讨论全结局与所有剧情。"
+    },
+    "toast": {
+      "saved": "游玩进度已保存",
+      "saveFailed": "保存失败"
     }
   },
   "gameBackup": {
@@ -632,7 +661,18 @@
         "DEFAULT_SYSTEM": "幽默评论员",
         "MEOW_ZAKO": "雌小鬼猫娘",
         "STRICT_TUTOR": "严厉导师"
-      }
+      },
+      "spoilerLevelLabel": "全局防剧透等级",
+      "spoilerLevelHint": "控制 AI 总结时的剧情讨论深度，游戏的独立设置优先级更高。",
+      "spoilerLevelOpts": {
+        "none": "无剧透（严格）",
+        "mild": "轻度（泛化氛围）",
+        "full": "无限制"
+      },
+      "webSearchLabel": "WebSearch 增强",
+      "webSearchHint": "启用后 AI 可调用搜索引擎补充游戏背景、题材标签等信息（需要模型支持 Function Calling）。",
+      "tavilyKeyLabel": "Tavily API Key",
+      "tavilyKeyHint": "可选，用于更高质量的搜索结果。未填写则自动降级为 DuckDuckGo。"
     },
     "dbBackup": {
       "sectionTitle": "数据库备份",
@@ -811,7 +851,8 @@
     "ai": {
       "title": "AI 分析",
       "thinking": "思考中...",
-      "summarizeFailed": "AI总结失败，请检查AI配置是否正确"
+      "summarizeFailed": "AI总结失败，请检查AI配置是否正确",
+      "webEnhanced": "Web 增强"
     },
     "templateExport": {
       "title": "美化导出",

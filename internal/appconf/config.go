@@ -23,6 +23,11 @@ type AppConfig struct {
 	AIAPIKey       string `json:"ai_api_key,omitempty"`       // API key
 	AIModel        string `json:"ai_model,omitempty"`         // model name
 	AISystemPrompt string `json:"ai_system_prompt,omitempty"` // AI 系统提示语
+	// AI 高级配置（防剧透 / WebSearch / 上下文）
+	AISpoilerLevel      string `json:"ai_spoiler_level,omitempty"`  // none | mild | full，全局防剧透默认等级
+	AIWebSearchEnabled  bool   `json:"ai_web_search"`               // 是否启用 WebSearch 工具调用
+	AIContextWindowSize int    `json:"ai_context_window,omitempty"` // 送入的历史 session 数量上限（0=默认10）
+	TavilyAPIKey        string `json:"tavily_api_key,omitempty"`    // Tavily Search API Key（WebSearch）
 	// 云备份配置
 	CloudBackupEnabled   bool   `json:"cloud_backup_enabled"`             // 是否启用云备份
 	CloudBackupProvider  string `json:"cloud_backup_provider,omitempty"`  // 云备份提供商: s3, onedrive

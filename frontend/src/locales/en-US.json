@@ -262,7 +262,8 @@
     "tabs": {
       "stats": "Game Stats",
       "launch": "Launch Config",
-      "backup": "Backup"
+      "backup": "Backup",
+      "progress": "Play Progress"
     },
     "toast": {
       "loadDataFailed": "Failed to load game data",
@@ -281,6 +282,34 @@
       "favUpdated": "Collection updated",
       "updateFavFailed": "Failed to update collection",
       "selectFileFailed": "Failed to select file"
+    }
+  },
+  "gameProgress": {
+    "title": "Play Progress",
+    "hint": "Record your current progress so AI summaries respect your spoiler boundaries",
+    "recorded": "Recorded",
+    "chapter": "Current Chapter",
+    "chapterPlaceholder": "e.g.: Chapter 2",
+    "route": "Current Route / Path",
+    "routePlaceholder": "e.g.: Minase Route / True End",
+    "progressNote": "Progress Note",
+    "progressNotePlaceholder": "Describe your current progress freely, e.g.: Just saw the bad ending, true route locked",
+    "spoilerBoundary": "AI Discussion Scope",
+    "spoilerBoundaryOpts": {
+      "none": "\uD83D\uDD12 No Spoilers (Safest)",
+      "chapterEnd": "\uD83D\uDCD6 Up to Current Chapter",
+      "routeEnd": "\uD83D\uDDFA\uFE0F Full Current Route",
+      "full": "\uD83D\uDD13 Unrestricted"
+    },
+    "spoilerBoundaryHints": {
+      "none": "AI must not mention any specific plot, character relationships, endings, or route progression.",
+      "chapterEnd": "AI may only discuss content up to the current chapter. No spoilers for future chapters or endings.",
+      "routeEnd": "AI may discuss the full current route, but must not reveal other routes or the true ending.",
+      "full": "No spoiler restrictions. AI can freely discuss all endings and story content."
+    },
+    "toast": {
+      "saved": "Play progress saved",
+      "saveFailed": "Failed to save"
     }
   },
   "gameBackup": {
@@ -632,7 +661,18 @@
         "DEFAULT_SYSTEM": "Humorous Commentator",
         "MEOW_ZAKO": "Bratty Cat Girl",
         "STRICT_TUTOR": "Strict Tutor"
-      }
+      },
+      "spoilerLevelLabel": "Global Spoiler Protection Level",
+      "spoilerLevelHint": "Controls how deeply AI can discuss story details. Per-game settings take priority.",
+      "spoilerLevelOpts": {
+        "none": "No Spoilers (Strict)",
+        "mild": "Mild (General atmosphere only)",
+        "full": "Unrestricted"
+      },
+      "webSearchLabel": "WebSearch Enhancement",
+      "webSearchHint": "Allows AI to search for game background, genre tags, and other info (requires model support for Function Calling).",
+      "tavilyKeyLabel": "Tavily API Key",
+      "tavilyKeyHint": "Optional. Provides higher quality search results. Falls back to DuckDuckGo if not set."
     },
     "dbBackup": {
       "sectionTitle": "Database Backup",
@@ -811,7 +851,8 @@
     "ai": {
       "title": "AI Analysis",
       "thinking": "Thinking...",
-      "summarizeFailed": "AI summary failed. Please check your AI configuration."
+      "summarizeFailed": "AI summary failed. Please check your AI configuration.",
+      "webEnhanced": "Web Enhanced"
     },
     "templateExport": {
       "title": "Export",

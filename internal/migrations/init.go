@@ -45,6 +45,15 @@ func InitSchema(db *sql.DB) error {
 			end_time TIMESTAMPTZ,
 			duration INTEGER
 		)`,
+		`CREATE TABLE IF NOT EXISTS game_progress (
+			id TEXT PRIMARY KEY,
+			game_id TEXT NOT NULL,
+			chapter TEXT DEFAULT '',
+			route TEXT DEFAULT '',
+			progress_note TEXT DEFAULT '',
+			spoiler_boundary TEXT DEFAULT 'none',
+			updated_at TIMESTAMPTZ
+		)`,
 		`CREATE TABLE IF NOT EXISTS download_tasks (
 			id TEXT PRIMARY KEY,
 			request_json TEXT,

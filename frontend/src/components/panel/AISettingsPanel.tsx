@@ -74,6 +74,53 @@ export function AISettingsPanel({ formData, onChange }: AISettingsProps) {
         />
         <p className="text-xs text-brand-500 dark:text-brand-400">{t("settings.ai.systemPromptHint")}</p>
       </div>
+
+      {/* 防剧透等级 */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">{t("settings.ai.spoilerLevelLabel")}</label>
+        <BetterSelect
+          name="ai_spoiler_level"
+          value={formData.ai_spoiler_level || "none"}
+          onChange={value => onChange({ ...formData, ai_spoiler_level: value } as appconf.AppConfig)}
+          options={[
+            { value: "none", label: t("settings.ai.spoilerLevelOpts.none") },
+            { value: "mild", label: t("settings.ai.spoilerLevelOpts.mild") },
+            { value: "full", label: t("settings.ai.spoilerLevelOpts.full") },
+          ]}
+        />
+        <p className="text-xs text-brand-500 dark:text-brand-400">{t("settings.ai.spoilerLevelHint")}</p>
+      </div>
+
+      {/* WebSearch 开关 */}
+      <div className="flex items-center justify-between py-2">
+        <div>
+          <div className="text-sm font-medium text-brand-700 dark:text-brand-300">{t("settings.ai.webSearchLabel")}</div>
+          <p className="text-xs text-brand-500 dark:text-brand-400">{t("settings.ai.webSearchHint")}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onChange({ ...formData, ai_web_search: !formData.ai_web_search } as appconf.AppConfig)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${formData.ai_web_search ? "bg-neutral-600 dark:bg-neutral-400" : "bg-brand-300 dark:bg-brand-600"}`}
+        >
+          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.ai_web_search ? "translate-x-6" : "translate-x-1"}`} />
+        </button>
+      </div>
+
+      {/* Tavily API Key（WebSearch 启用时显示） */}
+      {formData.ai_web_search && (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">{t("settings.ai.tavilyKeyLabel")}</label>
+          <input
+            type="password"
+            name="tavily_api_key"
+            value={formData.tavily_api_key || ""}
+            onChange={handleChange}
+            placeholder="tvly-..."
+            className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm"
+          />
+          <p className="text-xs text-brand-500 dark:text-brand-400">{t("settings.ai.tavilyKeyHint")}</p>
+        </div>
+      )}
     </div>
   );
 }

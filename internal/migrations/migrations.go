@@ -180,6 +180,25 @@ func migration150(tx *sql.Tx) error {
 	return nil
 }
 
+// migration151 新增 game_progress 表，记录玩家手动游玩点，供防剧透 AI 总结使用
+func migration151(tx *sql.Tx) error {
+	_, err := tx.Exec(`
+		CREATE TABLE IF NOT EXISTS game_progress (
+			id          TEXT PRIMARY KEY,
+			game_id     TEXT NOT NULL,
+			chapter     TEXT DEFAULT '',
+			route       TEXT DEFAULT '',
+			progress_note TEXT DEFAULT '',
+			spoiler_boundary TEXT DEFAULT 'none',
+			updated_at  TIMESTAMPTZ
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create game_progress table: %w", err)
+	}
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
@@ -201,6 +220,11 @@ var migrations = []Migration{
 		Version:     150,
 		Description: "Add emoji column to categories table for custom category icons",
 		Up:          migration150,
+	},
+	{
+		Version:     151,
+		Description: "Add game_progress table for spoiler-aware AI summary",
+		Up:          migration151,
 	},
 	// {
 	// 	Version:     114,

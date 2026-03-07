@@ -3,9 +3,10 @@ import { useTranslation } from "react-i18next";
 interface AiSummaryCardProps {
   aiSummary?: string;
   aiLoading?: boolean;
+  webSearchUsed?: boolean;
 }
 
-export function AiSummaryCard({ aiSummary, aiLoading }: AiSummaryCardProps) {
+export function AiSummaryCard({ aiSummary, aiLoading, webSearchUsed }: AiSummaryCardProps) {
   const { t } = useTranslation();
 
   return (
@@ -23,6 +24,12 @@ export function AiSummaryCard({ aiSummary, aiLoading }: AiSummaryCardProps) {
           {aiLoading && (
             <span className="text-xs px-2.5 py-0.5 rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 font-medium animate-pulse border border-primary-100 dark:border-primary-800">
               {t("stats.ai.thinking")}
+            </span>
+          )}
+          {!aiLoading && webSearchUsed && (
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium border border-blue-100 dark:border-blue-800 flex items-center gap-1">
+              <span className="i-mdi-web text-xs" />
+              {t("stats.ai.webEnhanced")}
             </span>
           )}
         </div>
