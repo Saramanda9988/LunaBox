@@ -89,6 +89,7 @@ func (s *AiService) AISummarize(req vo.AISummaryRequest) (vo.AISummaryResponse, 
 // AIStatsData AI总结所需的统计数据
 type AIStatsData struct {
 	Dimension         string
+	DateRange         string // "YYYY-MM-DD 至 YYYY-MM-DD"
 	TotalPlayCount    int
 	TotalPlayDuration int
 	TopGames          []GamePlayInfo
@@ -122,17 +123,30 @@ func (s *AiService) getStatsForAI(dimension enums.Period) (*AIStatsData, error) 
 		Dimension: string(dimension),
 	}
 
+	// 解析用户时区
+	loc, _ := time.LoadLocation(s.appConfig.TimeZone)
+	if loc == nil {
+		loc = time.UTC
+	}
+	now := time.Now().In(loc)
+
 	var startDateExpr string
+	var startDate time.Time
 	switch dimension {
 	case enums.Day:
 		startDateExpr = "current_date - INTERVAL 6 DAY"
+		startDate = now.AddDate(0, 0, -6)
 	case enums.Week:
 		startDateExpr = "current_date - INTERVAL 27 DAY"
+		startDate = now.AddDate(0, 0, -27)
 	case enums.Month:
 		startDateExpr = "date_trunc('month', current_date) - INTERVAL 5 MONTH"
+		startDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, loc).AddDate(0, -5, 0)
 	default:
 		startDateExpr = "current_date - INTERVAL 6 DAY"
+		startDate = now.AddDate(0, 0, -6)
 	}
+	data.DateRange = fmt.Sprintf("%s 至 %s", startDate.Format("2006-01-02"), now.Format("2006-01-02"))
 
 	// 总游玩次数和时长
 	queryTotal := fmt.Sprintf("SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions WHERE start_time >= %s", startDateExpr)
@@ -211,20 +225,24 @@ func (s *AiService) getStatsForAI(dimension enums.Period) (*AIStatsData, error) 
 	if contextLimit <= 0 {
 		contextLimit = 20
 	}
+	tz := s.appConfig.TimeZone
+	if tz == "" {
+		tz = "UTC"
+	}
 	sessionQuery := fmt.Sprintf(`
 		SELECT
 			COALESCE(g.name, '') AS game_name,
 			ps.start_time,
 			COALESCE(ps.duration, 0) AS duration,
-			dayofweek(ps.start_time) AS dow,
-			hour(ps.start_time) AS hr
+			dayofweek(timezone(?, ps.start_time)) AS dow,
+			hour(timezone(?, ps.start_time)) AS hr
 		FROM play_sessions ps
 		JOIN games g ON ps.game_id = g.id
 		WHERE ps.start_time >= %s
 		ORDER BY ps.start_time DESC
 		LIMIT ?
 	`, startDateExpr)
-	sessRows, err := s.db.QueryContext(s.ctx, sessionQuery, contextLimit)
+	sessRows, err := s.db.QueryContext(s.ctx, sessionQuery, tz, tz, contextLimit)
 	if err == nil {
 		defer sessRows.Close()
 		for sessRows.Next() {
@@ -303,11 +321,11 @@ func (s *AiService) buildContextPrompt(data *AIStatsData) string {
 	sb.WriteString("=== 游玩数据快照 ===\n\n")
 
 	// 统计摘要
-	sb.WriteString(fmt.Sprintf("📊 本期总览：游玩 %d 次，合计 %.1f 小时\n\n", data.TotalPlayCount, float64(data.TotalPlayDuration)/3600))
+	sb.WriteString(fmt.Sprintf("本期总览：游玩 %d 次，合计 %.1f 小时（数据范围：%s）\n\n", data.TotalPlayCount, float64(data.TotalPlayDuration)/3600, data.DateRange))
 
 	// 游戏条目
 	if len(data.TopGames) > 0 {
-		sb.WriteString("🎮 游玩排行（Top 5）：\n")
+		sb.WriteString("游玩排行（Top 5）：\n")
 		for i, g := range data.TopGames {
 			sb.WriteString(fmt.Sprintf("%d. 《%s》", i+1, g.Name))
 			if g.Company != "" {
@@ -338,9 +356,9 @@ func (s *AiService) buildContextPrompt(data *AIStatsData) string {
 		sb.WriteString("\n")
 	}
 
-	// 作息分析（基于近期 session）
+	// 作息分析（基于近期 session，时间已按配置时区转换）
 	if len(data.RecentSessions) >= 3 {
-		nightCount, afternoonCount, morningCount := 0, 0, 0
+		nightCount, afternoonCount, morningCount, otherCount := 0, 0, 0, 0
 		weekdayCount, weekendCount := 0, 0
 		for _, sess := range data.RecentSessions {
 			switch {
@@ -350,6 +368,8 @@ func (s *AiService) buildContextPrompt(data *AIStatsData) string {
 				afternoonCount++
 			case sess.Hour >= 8 && sess.Hour < 12:
 				morningCount++
+			default:
+				otherCount++
 			}
 			if sess.DayOfWeek == 0 || sess.DayOfWeek == 6 {
 				weekendCount++
@@ -357,28 +377,27 @@ func (s *AiService) buildContextPrompt(data *AIStatsData) string {
 				weekdayCount++
 			}
 		}
-		sb.WriteString("⏰ 作息特征：")
-		labels := []string{}
-		if nightCount > len(data.RecentSessions)/3 {
-			labels = append(labels, "深夜肝派")
+		// 时段分布：给出原始数字，让 AI 自行解读
+		sb.WriteString(fmt.Sprintf("游玩时段分布（近 %d 条，%s，请自行解读用户作息和游玩时间特点）：\n", len(data.RecentSessions), data.DateRange))
+		timeParts := []string{}
+		if nightCount > 0 {
+			timeParts = append(timeParts, fmt.Sprintf("深夜22-4时 %d 次", nightCount))
 		}
-		if afternoonCount > len(data.RecentSessions)/3 {
-			labels = append(labels, "下午茶玩家")
+		if afternoonCount > 0 {
+			timeParts = append(timeParts, fmt.Sprintf("下午13-19时 %d 次", afternoonCount))
 		}
-		if morningCount > len(data.RecentSessions)/3 {
-			labels = append(labels, "早鸟型")
+		if morningCount > 0 {
+			timeParts = append(timeParts, fmt.Sprintf("上午8-12时 %d 次", morningCount))
 		}
-		if weekendCount > weekdayCount {
-			labels = append(labels, "周末集中型")
-		} else if weekdayCount > weekendCount*2 {
-			labels = append(labels, "工作日也不忘玩")
+		if otherCount > 0 {
+			timeParts = append(timeParts, fmt.Sprintf("其他时段 %d 次", otherCount))
 		}
-		if len(labels) > 0 {
-			sb.WriteString(strings.Join(labels, " / "))
-		} else {
-			sb.WriteString("作息较为均匀")
+		if len(timeParts) > 0 {
+			sb.WriteString("  " + strings.Join(timeParts, " / ") + "\n")
 		}
-		sb.WriteString("\n\n")
+		// 星期分布：明确标注节假日无法区分
+		sb.WriteString(fmt.Sprintf("  工作日(周一至五) %d 次 / 周末(周六日) %d 次（按自然星期统计，节假日无法区分）\n\n",
+			weekdayCount, weekendCount))
 	}
 
 	return sb.String()
@@ -402,6 +421,7 @@ func (s *AiService) buildTaskPrompt(data *AIStatsData) string {
 1. 玩家画像（本期游玩风格一句话）
 2. 重点作品点评（一到两款印象最深的游戏，200 字以内）
 3. 本期亮点或趣味发现
+可以参考，实际输出的时候分段即可，不要出现“1. 玩家画像”，“”2. 重点作品点评”等格式化标签。
 
 请严格遵守[剧透控制]规则，如有 WebSearch 补充信息请在合适位置自然融入。`, periodName)
 }

@@ -21,7 +21,6 @@ export function GameProgressPanel({ gameId }: GameProgressPanelProps) {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [hasRecord, setHasRecord] = useState(false);
 
   const [chapter, setChapter] = useState("");
   const [route, setRoute] = useState("");
@@ -33,7 +32,6 @@ export function GameProgressPanel({ gameId }: GameProgressPanelProps) {
       try {
         const data: service.GameProgress = await GetGameProgress(gameId);
         if (data && data.game_id) {
-          setHasRecord(true);
           setChapter(data.chapter || "");
           setRoute(data.route || "");
           setProgressNote(data.progress_note || "");
@@ -61,7 +59,6 @@ export function GameProgressPanel({ gameId }: GameProgressPanelProps) {
         progress_note: progressNote,
         spoiler_boundary: spoilerBoundary,
       }));
-      setHasRecord(true);
       toast.success(t("gameProgress.toast.saved"));
     }
     catch (e) {
@@ -72,16 +69,6 @@ export function GameProgressPanel({ gameId }: GameProgressPanelProps) {
       setIsSaving(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-3 py-4">
-        <div className="h-4 bg-brand-100 dark:bg-brand-700 rounded w-1/3 animate-pulse" />
-        <div className="h-10 bg-brand-100 dark:bg-brand-700 rounded animate-pulse" />
-        <div className="h-10 bg-brand-100 dark:bg-brand-700 rounded animate-pulse" />
-      </div>
-    );
-  }
 
   const spoilerOptions = SPOILER_OPTIONS.map(o => ({ value: o.value, label: t(o.labelKey) }));
 
@@ -94,91 +81,96 @@ export function GameProgressPanel({ gameId }: GameProgressPanelProps) {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-primary-50 dark:bg-primary-900/30 rounded-lg text-primary-600 dark:text-primary-400">
-          <span className="i-mdi-shield-account text-xl block" />
+    <div className="glass-panel mx-auto bg-white dark:bg-brand-800 p-8 rounded-lg shadow-sm">
+      <div className="space-y-6 w-full">
+
+        {/* Chapter */}
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+            {t("gameProgress.chapter")}
+          </label>
+          {isLoading
+            ? <div className="h-9 bg-brand-100 dark:bg-brand-700 rounded-md animate-pulse" />
+            : (
+                <input
+                  type="text"
+                  value={chapter}
+                  onChange={e => setChapter(e.target.value)}
+                  placeholder={t("gameProgress.chapterPlaceholder")}
+                  className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm"
+                />
+              )}
         </div>
-        <div>
-          <h3 className="text-base font-semibold text-brand-900 dark:text-white">{t("gameProgress.title")}</h3>
-          <p className="text-xs text-brand-500 dark:text-brand-400">{t("gameProgress.hint")}</p>
+
+        {/* Route */}
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+            {t("gameProgress.route")}
+          </label>
+          {isLoading
+            ? <div className="h-9 bg-brand-100 dark:bg-brand-700 rounded-md animate-pulse" />
+            : (
+                <input
+                  type="text"
+                  value={route}
+                  onChange={e => setRoute(e.target.value)}
+                  placeholder={t("gameProgress.routePlaceholder")}
+                  className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm"
+                />
+              )}
         </div>
-        {hasRecord && (
-          <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-            {t("gameProgress.recorded")}
-          </span>
-        )}
-      </div>
 
-      {/* Chapter */}
-      <div className="space-y-1.5">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-          {t("gameProgress.chapter")}
-        </label>
-        <input
-          type="text"
-          value={chapter}
-          onChange={e => setChapter(e.target.value)}
-          placeholder={t("gameProgress.chapterPlaceholder")}
-          className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm"
-        />
-      </div>
+        {/* Progress note */}
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+            {t("gameProgress.progressNote")}
+          </label>
+          {isLoading
+            ? <div className="h-20 bg-brand-100 dark:bg-brand-700 rounded-md animate-pulse" />
+            : (
+                <textarea
+                  value={progressNote}
+                  onChange={e => setProgressNote(e.target.value)}
+                  rows={3}
+                  placeholder={t("gameProgress.progressNotePlaceholder")}
+                  className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm resize-none"
+                />
+              )}
+        </div>
 
-      {/* Route */}
-      <div className="space-y-1.5">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-          {t("gameProgress.route")}
-        </label>
-        <input
-          type="text"
-          value={route}
-          onChange={e => setRoute(e.target.value)}
-          placeholder={t("gameProgress.routePlaceholder")}
-          className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm"
-        />
-      </div>
+        {/* Spoiler boundary */}
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+            {t("gameProgress.spoilerBoundary")}
+          </label>
+          {isLoading
+            ? <div className="h-9 bg-brand-100 dark:bg-brand-700 rounded-md animate-pulse" />
+            : (
+                <>
+                  <BetterSelect
+                    value={spoilerBoundary}
+                    onChange={setSpoilerBoundary}
+                    options={spoilerOptions}
+                  />
+                  <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
+                    {boundaryHints[spoilerBoundary]}
+                  </p>
+                </>
+              )}
+        </div>
 
-      {/* Progress note */}
-      <div className="space-y-1.5">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-          {t("gameProgress.progressNote")}
-        </label>
-        <textarea
-          value={progressNote}
-          onChange={e => setProgressNote(e.target.value)}
-          rows={3}
-          placeholder={t("gameProgress.progressNotePlaceholder")}
-          className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm resize-none"
-        />
-      </div>
-
-      {/* Spoiler boundary */}
-      <div className="space-y-1.5">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-          {t("gameProgress.spoilerBoundary")}
-        </label>
-        <BetterSelect
-          value={spoilerBoundary}
-          onChange={setSpoilerBoundary}
-          options={spoilerOptions}
-        />
-        <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
-          {boundaryHints[spoilerBoundary]}
-        </p>
-      </div>
-
-      {/* Save button */}
-      <div className="flex justify-end pt-2">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-600 text-white text-sm font-medium hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <span className={isSaving ? "i-mdi-loading animate-spin" : "i-mdi-content-save"} />
-          {isSaving ? t("common.saving") : t("common.save")}
-        </button>
+        {/* Save button */}
+        <div className="flex justify-end pt-2">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-600 text-white text-sm font-medium hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span className={isSaving ? "i-mdi-loading animate-spin" : "i-mdi-content-save"} />
+            {isSaving ? t("common.saving") : t("common.save")}
+          </button>
+        </div>
       </div>
     </div>
   );
