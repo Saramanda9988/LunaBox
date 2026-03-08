@@ -52,17 +52,38 @@ func RegisterURLScheme(exePath string) error {
 
 // UnregisterURLScheme removes the lunabox:// protocol handler from HKCU.
 func UnregisterURLScheme() error {
-	paths := []string{
-		`Software\Classes\` + Scheme + `\shell\open\command`,
-		`Software\Classes\` + Scheme + `\shell\open`,
-		`Software\Classes\` + Scheme + `\shell`,
-		`Software\Classes\` + Scheme,
+	basePath := `Software\Classes\` + Scheme
+	if err := deleteRegistryTree(registry.CURRENT_USER, basePath); err != nil {
+		return fmt.Errorf("delete key %s: %w", basePath, err)
 	}
-	for _, p := range paths {
-		err := registry.DeleteKey(registry.CURRENT_USER, p)
-		if err != nil && err != registry.ErrNotExist {
-			return fmt.Errorf("delete key %s: %w", p, err)
+	return nil
+}
+
+func deleteRegistryTree(root registry.Key, path string) error {
+	key, err := registry.OpenKey(root, path, registry.ENUMERATE_SUB_KEYS|registry.QUERY_VALUE)
+	if err != nil {
+		if err == registry.ErrNotExist {
+			return nil
+		}
+		return err
+	}
+
+	subKeys, readErr := key.ReadSubKeyNames(-1)
+	_ = key.Close()
+	if readErr != nil {
+		return fmt.Errorf("read sub keys: %w", readErr)
+	}
+
+	for _, subKey := range subKeys {
+		if err := deleteRegistryTree(root, path+`\`+subKey); err != nil {
+			return err
 		}
 	}
+
+	err = registry.DeleteKey(root, path)
+	if err != nil && err != registry.ErrNotExist {
+		return err
+	}
+
 	return nil
 }
