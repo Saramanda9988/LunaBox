@@ -102,8 +102,8 @@ type InstallRequest struct {
 	DownloadSource string `json:"download_source"` // 下载来源：Shionlib / Umbra 等（可选，用于用户识别）
 	MetaSource     string `json:"meta_source"`     // 元数据来源：bangumi / vndb / ymgal（可选）
 	MetaID         string `json:"meta_id"`         // 元数据 ID，对应刮削源的 ID（可选）
-	Size           int64  `json:"size"`            // 文件大小（bytes，可选；提供后会做强校验）
-	ChecksumAlgo   string `json:"checksum_algo"`   // 校验算法：sha256/blake3（可选）
-	Checksum       string `json:"checksum"`        // 校验值（hex，小写；与 checksum_algo 配合）
-	ExpiresAt      int64  `json:"expires_at"`      // 请求过期时间（Unix 秒，可选）
+	Size           int64  `json:"size"`            // 文件大小（bytes，必填；会做强校验并限制下载上限）
+	ChecksumAlgo   string `json:"checksum_algo"`   // 校验算法：sha256/blake3（必填）
+	Checksum       string `json:"checksum"`        // 校验值（64 位 hex，小写，必填）
+	ExpiresAt      int64  `json:"expires_at"`      // 请求过期时间（Unix 秒，必填）
 }

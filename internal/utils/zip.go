@@ -130,19 +130,30 @@ func UnzipFile(source, target string) error {
 	}
 	defer reader.Close()
 
+	cleanTarget, err := filepath.Abs(filepath.Clean(target))
+	if err != nil {
+		return err
+	}
+
 	for _, file := range reader.File {
-		path := filepath.Join(target, file.Name)
+		path := filepath.Join(cleanTarget, file.Name)
+		cleanPath := filepath.Clean(path)
+		if cleanPath != cleanTarget && !strings.HasPrefix(cleanPath, cleanTarget+string(os.PathSeparator)) {
+			return fmt.Errorf("非法的文件路径: %s", file.Name)
+		}
 
 		if file.FileInfo().IsDir() {
-			os.MkdirAll(path, file.Mode())
+			if err := os.MkdirAll(cleanPath, file.Mode()); err != nil {
+				return err
+			}
 			continue
 		}
 
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(cleanPath), 0755); err != nil {
 			return err
 		}
 
-		dstFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+		dstFile, err := os.OpenFile(cleanPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
 		if err != nil {
 			return err
 		}

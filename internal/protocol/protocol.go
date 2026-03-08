@@ -2,6 +2,7 @@
 package protocol
 
 import (
+	"encoding/hex"
 	"fmt"
 	"lunabox/internal/vo"
 	"net/url"
@@ -49,6 +50,16 @@ func ParseURL(rawURL string) (*vo.InstallRequest, error) {
 	if req.URL == "" {
 		return nil, fmt.Errorf("missing required parameter: url")
 	}
+	parsedDownloadURL, err := url.Parse(req.URL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid url: %w", err)
+	}
+	if parsedDownloadURL.Scheme != "http" && parsedDownloadURL.Scheme != "https" {
+		return nil, fmt.Errorf("url must use http or https")
+	}
+	if strings.TrimSpace(parsedDownloadURL.Hostname()) == "" {
+		return nil, fmt.Errorf("url host is required")
+	}
 	if strings.TrimSpace(req.FileName) == "" {
 		return nil, fmt.Errorf("missing required parameter: file_name")
 	}
@@ -59,40 +70,51 @@ func ParseURL(rawURL string) (*vo.InstallRequest, error) {
 		return nil, fmt.Errorf("unsupported archive_format: %s", req.ArchiveFormat)
 	}
 
-	if s := q.Get("size"); s != "" {
-		if n, err := strconv.ParseInt(s, 10, 64); err == nil {
-			req.Size = n
-		} else {
-			return nil, fmt.Errorf("invalid size: %w", err)
-		}
-		if req.Size < 0 {
-			return nil, fmt.Errorf("size must be >= 0")
-		}
+	sizeValue := strings.TrimSpace(q.Get("size"))
+	if sizeValue == "" {
+		return nil, fmt.Errorf("missing required parameter: size")
+	}
+	if n, err := strconv.ParseInt(sizeValue, 10, 64); err == nil {
+		req.Size = n
+	} else {
+		return nil, fmt.Errorf("invalid size: %w", err)
+	}
+	if req.Size <= 0 {
+		return nil, fmt.Errorf("size must be > 0")
 	}
 
-	if s := q.Get("expires_at"); s != "" {
-		n, err := strconv.ParseInt(s, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("invalid expires_at: %w", err)
-		}
-		req.ExpiresAt = n
-		if req.ExpiresAt <= 0 {
-			return nil, fmt.Errorf("expires_at must be > 0")
-		}
-		if req.ExpiresAt <= time.Now().Unix() {
-			return nil, fmt.Errorf("install request expired")
-		}
+	expiresAtValue := strings.TrimSpace(q.Get("expires_at"))
+	if expiresAtValue == "" {
+		return nil, fmt.Errorf("missing required parameter: expires_at")
+	}
+	n, err := strconv.ParseInt(expiresAtValue, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid expires_at: %w", err)
+	}
+	req.ExpiresAt = n
+	if req.ExpiresAt <= 0 {
+		return nil, fmt.Errorf("expires_at must be > 0")
+	}
+	if req.ExpiresAt <= time.Now().Unix() {
+		return nil, fmt.Errorf("install request expired")
 	}
 
-	if req.ChecksumAlgo != "" || req.Checksum != "" {
-		if req.ChecksumAlgo == "" || req.Checksum == "" {
-			return nil, fmt.Errorf("checksum_algo and checksum must be provided together")
-		}
-		switch req.ChecksumAlgo {
-		case "sha256", "blake3":
-		default:
-			return nil, fmt.Errorf("unsupported checksum_algo: %s", req.ChecksumAlgo)
-		}
+	if req.ChecksumAlgo == "" {
+		return nil, fmt.Errorf("missing required parameter: checksum_algo")
+	}
+	if req.Checksum == "" {
+		return nil, fmt.Errorf("missing required parameter: checksum")
+	}
+	switch req.ChecksumAlgo {
+	case "sha256", "blake3":
+	default:
+		return nil, fmt.Errorf("unsupported checksum_algo: %s", req.ChecksumAlgo)
+	}
+	if _, err := hex.DecodeString(req.Checksum); err != nil {
+		return nil, fmt.Errorf("checksum must be lowercase hex")
+	}
+	if len(req.Checksum) != 64 {
+		return nil, fmt.Errorf("checksum must be 64 hex characters")
 	}
 
 	return req, nil

@@ -16,7 +16,9 @@ import (
 	"lunabox/internal/models"
 	"lunabox/internal/utils"
 	"lunabox/internal/vo"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -415,16 +417,22 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 	if fileInfo, statErr := os.Stat(destPath); statErr == nil && !fileInfo.IsDir() {
 		resumeOffset = fileInfo.Size()
 	}
+	if resumeOffset > task.Request.Size {
+		applog.LogWarningf(s.ctx, "partial file exceeds declared size for task %s, reset partial file", task.ID)
+		_ = os.Remove(destPath)
+		resumeOffset = 0
+	}
 
 	s.mu.Lock()
 	if resumeOffset > 0 {
 		task.Downloaded = resumeOffset
 	}
+	task.Total = task.Request.Size
 	task.pauseReq = false
 	s.mu.Unlock()
 
 	// 创建 HTTP 请求（支持取消）
-	client := &http.Client{Timeout: 0} // 大文件不设超时，靠 context cancel
+	client := newSecureDownloadClient() // 大文件不设超时，靠 context cancel
 	buildRequest := func(offset int64) (*http.Response, error) {
 		req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, task.Request.URL, nil)
 		if reqErr != nil {
@@ -482,11 +490,6 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 
 	// 如果请求中没有 size，用 Content-Length 补充
 	s.mu.Lock()
-	if task.Total == 0 && resp.ContentLength > 0 {
-		task.Total = resp.ContentLength + resumeOffset
-	} else if resp.ContentLength > 0 && resumeOffset > 0 {
-		task.Total = resp.ContentLength + resumeOffset
-	}
 	task.Status = DownloadStatusDownloading
 	s.mu.Unlock()
 	s.emitProgress(task)
@@ -562,6 +565,15 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 
 		n, readErr := resp.Body.Read(buf)
 		if n > 0 {
+			s.mu.Lock()
+			remaining := task.Total - task.Downloaded
+			s.mu.Unlock()
+			if remaining < int64(n) {
+				_ = closeFile()
+				_ = os.Remove(destPath)
+				s.failTask(task, fmt.Sprintf("response exceeded declared size: expected=%d remaining=%d chunk=%d", task.Total, remaining, n))
+				return
+			}
 			if _, writeErr := f.Write(buf[:n]); writeErr != nil {
 				_ = closeFile()
 				s.failTask(task, fmt.Sprintf("write file: %v", writeErr))
@@ -576,17 +588,16 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 			}
 			s.mu.Lock()
 			task.Downloaded += int64(n)
-			if task.Total > 0 {
-				task.Progress = float64(task.Downloaded) / float64(task.Total) * 100
-			}
+			task.Progress = float64(task.Downloaded) / float64(task.Total) * 100
+			currentDownloaded := task.Downloaded
 			s.mu.Unlock()
 
 			now := time.Now()
-			bytesSinceLastEmit := task.Downloaded - lastEmitBytes
+			bytesSinceLastEmit := currentDownloaded - lastEmitBytes
 			if now.Sub(lastEmit) >= 500*time.Millisecond || bytesSinceLastEmit >= 5*1024*1024 {
 				s.emitProgress(task)
 				lastEmit = now
-				lastEmitBytes = task.Downloaded
+				lastEmitBytes = currentDownloaded
 			}
 		}
 		if readErr == io.EOF {
@@ -1111,6 +1122,114 @@ func normalizeArchiveFormat(format string) string {
 	return strings.ToLower(strings.TrimSpace(format))
 }
 
+func validateDownloadURL(rawURL string) error {
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return fmt.Errorf("invalid url: %w", err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return fmt.Errorf("url must use http or https")
+	}
+	host := parsed.Hostname()
+	if host == "" {
+		return fmt.Errorf("url host is required")
+	}
+	if isBlockedHostname(host) {
+		return fmt.Errorf("url host is not allowed")
+	}
+	if ip := net.ParseIP(host); ip != nil && isBlockedIP(ip) {
+		return fmt.Errorf("url host resolves to a blocked address")
+	}
+	return nil
+}
+
+func validateChecksumFields(algo string, checksum string) error {
+	trimmedAlgo := strings.ToLower(strings.TrimSpace(algo))
+	trimmedChecksum := strings.ToLower(strings.TrimSpace(checksum))
+	if trimmedAlgo == "" || trimmedChecksum == "" {
+		return fmt.Errorf("checksum_algo and checksum are required")
+	}
+
+	if _, err := hex.DecodeString(trimmedChecksum); err != nil {
+		return fmt.Errorf("checksum must be lowercase hex")
+	}
+
+	switch trimmedAlgo {
+	case "sha256", "blake3":
+		if len(trimmedChecksum) != 64 {
+			return fmt.Errorf("%s checksum must be 64 hex characters", trimmedAlgo)
+		}
+	default:
+		return fmt.Errorf("unsupported checksum_algo: %s", algo)
+	}
+
+	return nil
+}
+
+func isBlockedHostname(host string) bool {
+	trimmed := strings.ToLower(strings.TrimSpace(host))
+	return trimmed == "localhost" || strings.HasSuffix(trimmed, ".localhost")
+}
+
+func isBlockedIP(ip net.IP) bool {
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalMulticast() || ip.IsLinkLocalUnicast() || ip.IsMulticast() || ip.IsUnspecified()
+}
+
+func resolveAllowedAddress(ctx context.Context, address string) (string, error) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return "", err
+	}
+	if isBlockedHostname(host) {
+		return "", fmt.Errorf("blocked host: %s", host)
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		if isBlockedIP(ip) {
+			return "", fmt.Errorf("blocked ip: %s", host)
+		}
+		return net.JoinHostPort(ip.String(), port), nil
+	}
+
+	resolver := net.Resolver{}
+	ips, err := resolver.LookupIPAddr(ctx, host)
+	if err != nil {
+		return "", err
+	}
+	for _, ip := range ips {
+		if isBlockedIP(ip.IP) {
+			continue
+		}
+		return net.JoinHostPort(ip.IP.String(), port), nil
+	}
+
+	return "", fmt.Errorf("host %s resolved only to blocked addresses", host)
+}
+
+func newSecureDownloadClient() *http.Client {
+	dialer := &net.Dialer{}
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: func(ctx context.Context, network string, address string) (net.Conn, error) {
+			resolvedAddress, err := resolveAllowedAddress(ctx, address)
+			if err != nil {
+				return nil, err
+			}
+			return dialer.DialContext(ctx, network, resolvedAddress)
+		},
+	}
+
+	return &http.Client{
+		Timeout:   0,
+		Transport: transport,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 5 {
+				return fmt.Errorf("too many redirects")
+			}
+			return validateDownloadURL(req.URL.String())
+		},
+	}
+}
+
 func isSupportedArchiveFormat(format string) bool {
 	switch normalizeArchiveFormat(format) {
 	case "none", "zip", "rar", "7z", "tar", "tar.gz", "tar.bz2", "tar.xz", "tar.zst", "tgz", "tbz2", "txz", "tzst":
@@ -1162,6 +1281,9 @@ func validateInstallRequest(req vo.InstallRequest) error {
 	if strings.TrimSpace(req.URL) == "" {
 		return fmt.Errorf("missing url")
 	}
+	if err := validateDownloadURL(req.URL); err != nil {
+		return err
+	}
 	if sanitizeDownloadedFileName(req.FileName) == "" {
 		return fmt.Errorf("missing or invalid file_name")
 	}
@@ -1178,24 +1300,20 @@ func validateInstallRequest(req vo.InstallRequest) error {
 		return fmt.Errorf("invalid startup_path: %w", err)
 	}
 
-	if req.Size < 0 {
-		return fmt.Errorf("size must be >= 0")
+	if req.Size <= 0 {
+		return fmt.Errorf("size is required and must be > 0")
 	}
-	if req.ExpiresAt > 0 && req.ExpiresAt <= time.Now().Unix() {
+	if req.ExpiresAt <= 0 {
+		return fmt.Errorf("expires_at is required")
+	}
+	if req.ExpiresAt <= time.Now().Unix() {
 		return fmt.Errorf("install request expired")
 	}
 
 	algo := strings.ToLower(strings.TrimSpace(req.ChecksumAlgo))
 	checksum := strings.ToLower(strings.TrimSpace(req.Checksum))
-	if algo != "" || checksum != "" {
-		if algo == "" || checksum == "" {
-			return fmt.Errorf("checksum_algo and checksum must be provided together")
-		}
-		switch algo {
-		case "sha256", "blake3":
-		default:
-			return fmt.Errorf("unsupported checksum_algo: %s", req.ChecksumAlgo)
-		}
+	if err := validateChecksumFields(algo, checksum); err != nil {
+		return err
 	}
 
 	return nil
