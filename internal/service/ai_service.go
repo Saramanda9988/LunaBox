@@ -310,6 +310,7 @@ func (s *AiService) buildSystemPrompt(data *AIStatsData, spoilerLevel string) st
 	sb.WriteString("- 字数控制在 200-350 字。\n")
 	sb.WriteString("- 语气保持活泼有趣，可适当使用 emoji。\n")
 	sb.WriteString("- 如果数据量少，请聚焦质量而非字数。\n")
+	sb.WriteString(fmt.Sprintf("用户的语言是 %s，请严格返回相同语言的回答\n", s.appConfig.Language))
 
 	return sb.String()
 }
@@ -421,6 +422,7 @@ func (s *AiService) buildTaskPrompt(data *AIStatsData) string {
 1. 玩家画像（本期游玩风格一句话）
 2. 重点作品点评（一到两款印象最深的游戏，200 字以内）
 3. 本期亮点或趣味发现
+可以参考，实际输出的时候分段即可，不要出现“1. 玩家画像”，“”2. 重点作品点评”等格式化标签。
 可以参考，实际输出的时候分段即可，不要出现“1. 玩家画像”，“”2. 重点作品点评”等格式化标签。
 
 请严格遵守[剧透控制]规则，如有 WebSearch 补充信息请在合适位置自然融入。`, periodName)
