@@ -2,8 +2,6 @@
   --scrollbar-thumb: #ccc;
   --scrollbar-track: transparent;
   --scrollbar-thumb-hover: #aaa;
-  --toast-bg: #fff;
-  --toast-color: #374151;
   /* 背景图相关变量 - RGB 格式用于 rgba() */
   --main-bg-rgb: 243, 244, 246;
   --sidebar-bg-rgb: 255, 255, 255;
@@ -39,8 +37,6 @@ textarea,
   --scrollbar-thumb: #4b5563;
   --scrollbar-track: transparent;
   --scrollbar-thumb-hover: #6b7280;
-  --toast-bg: #1f2937;
-  --toast-color: #f3f4f6;
   /* 深色模式下的背景 RGB */
   --main-bg-rgb: 18, 20, 22;
   --sidebar-bg-rgb: 28, 30, 31;
@@ -67,3 +63,42 @@ textarea,
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--scrollbar-thumb-hover);
 }
+
+@keyframes toast-progress-shrink {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.toast-progress {
+  animation-name: toast-progress-shrink;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(18px, -6px, 0) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes toast-leave {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(18px, -6px, 0) scale(0.96);
+  }
+}
+

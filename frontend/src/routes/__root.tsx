@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { OnFileDrop, OnFileDropOff } from "../../wailsjs/runtime/runtime";
 import { SideBar } from "../components/bar/SideBar";
-import { TopBar } from "../components/bar/TopBar";
+import { TopBar, TOPBAR_HEIGHT } from "../components/bar/TopBar";
 import { DragDropImportModal } from "../components/modal/DragDropImportModal";
+import { AppToaster } from "../components/ui/AppToaster";
 import { useAppStore } from "../store";
 
 function RootLayout() {
@@ -102,6 +103,7 @@ function RootLayout() {
       {/* Main content container */}
       <div className="relative flex h-full w-full flex-col text-brand-900 dark:text-brand-100">
         <TopBar />
+        <AppToaster topOffset={TOPBAR_HEIGHT + 12} />
 
         <div className="flex flex-1 overflow-hidden">
           <SideBar bgEnabled={!!bgEnabled} bgOpacity={bgOpacity} />

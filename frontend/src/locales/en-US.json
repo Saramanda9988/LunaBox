@@ -31,6 +31,15 @@
     "loading": "Loading...",
     "complete": "Complete",
     "stop": "Stop Matching",
+    "toast": {
+      "success": "Success",
+      "error": "Error",
+      "loadingLabel": "Loading",
+      "notice": "Notice",
+      "showDetails": "Show details",
+      "hideDetails": "Hide details",
+      "dismiss": "Dismiss notification"
+    },
     "duration": {
       "hours": "H",
       "minutes": "M",

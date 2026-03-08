@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Quit, WindowIsMaximised, WindowMaximise, WindowMinimise, WindowUnmaximise } from "../../../wailsjs/runtime/runtime";
 
+export const TOPBAR_HEIGHT = 28;
+
 export function TopBar() {
   const [isMaximised, setIsMaximised] = useState(false);
 

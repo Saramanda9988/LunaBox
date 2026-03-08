@@ -1,7 +1,6 @@
 import type { vo } from "../wailsjs/go/models";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Toaster } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { SafeQuit } from "../wailsjs/go/service/ConfigService";
 import { GetPendingInstall } from "../wailsjs/go/service/DownloadService";
@@ -167,28 +166,6 @@ function App() {
   return (
     <>
       <RouterProvider router={router} />
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: "var(--toast-bg, #fff)",
-            color: "var(--toast-color, #374151)",
-          },
-          success: {
-            iconTheme: {
-              primary: "#10b981",
-              secondary: "#fff",
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: "#ef4444",
-              secondary: "#fff",
-            },
-          },
-        }}
-      />
       {showUpdateDialog && updateInfo && (
         <UpdateDialog
           updateInfo={updateInfo}

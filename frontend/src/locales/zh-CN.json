@@ -31,6 +31,15 @@
     "loading": "加载中...",
     "complete": "完成",
     "stop": "停止匹配",
+    "toast": {
+      "success": "成功",
+      "error": "错误",
+      "loadingLabel": "处理中",
+      "notice": "通知",
+      "showDetails": "展开详情",
+      "hideDetails": "收起详情",
+      "dismiss": "关闭通知"
+    },
     "duration": {
       "hours": "小时",
       "minutes": "分钟",

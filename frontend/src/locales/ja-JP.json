@@ -31,6 +31,15 @@
     "loading": "読み込み中...",
     "complete": "完了",
     "stop": "照合を停止",
+    "toast": {
+      "success": "成功",
+      "error": "エラー",
+      "loadingLabel": "処理中",
+      "notice": "通知",
+      "showDetails": "詳細を表示",
+      "hideDetails": "詳細を隠す",
+      "dismiss": "通知を閉じる"
+    },
     "duration": {
       "hours": "時間",
       "minutes": "分",
