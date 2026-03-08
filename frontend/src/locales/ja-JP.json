@@ -262,7 +262,8 @@
     "tabs": {
       "stats": "ゲーム統計",
       "launch": "起動設定",
-      "backup": "バックアップ"
+      "backup": "バックアップ",
+      "progress": "プレイ進捗"
     },
     "toast": {
       "loadDataFailed": "ゲームデータの読み込みに失敗しました",
@@ -281,6 +282,34 @@
       "favUpdated": "コレクションを更新しました",
       "updateFavFailed": "コレクションの更新に失敗しました",
       "selectFileFailed": "ファイルの選択に失敗しました"
+    }
+  },
+  "gameProgress": {
+    "title": "プレイ進捗",
+    "hint": "現在の進捗を記録します。AI 要約はここで設定したネタバレ境界を厳守します",
+    "recorded": "記録済み",
+    "chapter": "現在のチャプター",
+    "chapterPlaceholder": "例：第二章 / Chapter 2",
+    "route": "現在のルート / キャラクター",
+    "routePlaceholder": "例：水瀬ルート / 真エンド前",
+    "progressNote": "進捗メモ",
+    "progressNotePlaceholder": "現在の進捗を自由に記述してください。例：バッドエンドを見たばかりで、真ルートはまだ解放されていない",
+    "spoilerBoundary": "AI が話せる範囲",
+    "spoilerBoundaryOpts": {
+      "none": "ネタバレなし",
+      "chapterEnd": "現チャプターまで",
+      "routeEnd": "現ルートまで",
+      "full": "制限なし"
+    },
+    "spoilerBoundaryHints": {
+      "none": "AI はネタバレに関して一切話しません。",
+      "chapterEnd": "AI は現在のチャプターまでの内容を話せます。",
+      "routeEnd": "AI は現在のルートの結末まで話せます。",
+      "full": "AI はすべてのエンディングとストーリーについて自由に話せます。"
+    },
+    "toast": {
+      "saved": "プレイ進捗を保存しました",
+      "saveFailed": "プレイ進捗の保存に失敗しました"
     }
   },
   "gameBackup": {
@@ -632,7 +661,18 @@
         "DEFAULT_SYSTEM": "ユーモア解説者",
         "MEOW_ZAKO": "生意気猫娘",
         "STRICT_TUTOR": "厳格なチューター"
-      }
+      },
+      "spoilerLevelLabel": "グローバル ネタバレ制御レベル",
+      "spoilerLevelHint": "AI 要約時のストーリー言及深度を制御します。ゲーム個別設定が優先されます。",
+      "spoilerLevelOpts": {
+        "none": "ネタバレなし（厳格）",
+        "mild": "軽度（雰囲気のみ）",
+        "full": "制限なし"
+      },
+      "webSearchLabel": "WebSearch 強化",
+      "webSearchHint": "有効にすると AI が検索エンジンを呼び出してゲームの背景・タグ情報などを補完できます（モデルが Function Calling に対応している必要があります）。",
+      "tavilyKeyLabel": "Tavily API Key",
+      "tavilyKeyHint": "任意。より高品質な検索結果に使用します。未入力の場合は DuckDuckGo にフォールバックします。"
     },
     "dbBackup": {
       "sectionTitle": "データベースバックアップ",
@@ -811,7 +851,8 @@
     "ai": {
       "title": "AI 分析",
       "thinking": "生成中...",
-      "summarizeFailed": "AI要約に失敗しました。AI設定が正しいか確認してください"
+      "summarizeFailed": "AI要約に失敗しました。AI設定が正しいか確認してください",
+      "webEnhanced": "Web 強化"
     },
     "templateExport": {
       "title": "テンプレート書き出し",

@@ -296,10 +296,10 @@
     "progressNotePlaceholder": "Describe your current progress freely, e.g.: Just saw the bad ending, true route locked",
     "spoilerBoundary": "AI Discussion Scope",
     "spoilerBoundaryOpts": {
-      "none": "\uD83D\uDD12 No Spoilers (Safest)",
-      "chapterEnd": "\uD83D\uDCD6 Up to Current Chapter",
-      "routeEnd": "\uD83D\uDDFA\uFE0F Full Current Route",
-      "full": "\uD83D\uDD13 Unrestricted"
+      "none": "No Spoilers (Safest)",
+      "chapterEnd": "Up to Current Chapter",
+      "routeEnd": "Full Current Route",
+      "full": "Unrestricted"
     },
     "spoilerBoundaryHints": {
       "none": "AI must not mention any specific plot, character relationships, endings, or route progression.",

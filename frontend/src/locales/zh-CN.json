@@ -296,10 +296,10 @@
     "progressNotePlaceholder": "自由描述当前进度，如：刚看到BE结局，尚未解锁真路线",
     "spoilerBoundary": "AI 可讨论范围",
     "spoilerBoundaryOpts": {
-      "none": "🔒 禁止剧情（最安全）",
-      "chapterEnd": "📖 当前章节结束前",
-      "routeEnd": "🗺️ 当前路线完整内容",
-      "full": "🔓 无限制"
+      "none": "禁止剧情（最安全）",
+      "chapterEnd": "当前章节结束前",
+      "routeEnd": "当前路线完整内容",
+      "full": "无限制"
     },
     "spoilerBoundaryHints": {
       "none": "AI 不得提及任何具体剧情、角色关系、结局或路线发展。",
