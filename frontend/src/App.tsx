@@ -1,15 +1,16 @@
 import type { vo } from "../wailsjs/go/models";
+import type { ProcessSelectData } from "./hooks/useAppRuntimeEffects";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
-import { toast } from "react-hot-toast";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SafeQuit } from "../wailsjs/go/service/ConfigService";
-import { GetPendingInstall } from "../wailsjs/go/service/DownloadService";
-import { EventsOff, EventsOn, WindowShow } from "../wailsjs/runtime/runtime";
 import { InstallConfirmModal } from "./components/modal/InstallConfirmModal";
 import { ProcessSelectModal } from "./components/modal/ProcessSelectModal";
 import { TimezoneSelectModal } from "./components/modal/TimezoneSelectModal";
 import { UpdateDialog } from "./components/ui/UpdateDialog";
+import { useAppRuntimeEffects } from "./hooks/useAppRuntimeEffects";
+import { useAppTheme } from "./hooks/useAppTheme";
+import { useDownloadNotifications } from "./hooks/useDownloadNotifications";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
 import { Route as rootRoute } from "./routes/__root";
 import { Route as categoriesRoute } from "./routes/categories";
@@ -32,27 +33,13 @@ declare module "@tanstack/react-router" {
   }
 }
 
-interface DownloadProgressEvent {
-  id: string;
-  request?: {
-    title?: string;
-  };
-  status: string;
-  error?: string;
-}
-
 function App() {
   const { config, fetchConfig, updateConfig } = useAppStore();
   const { updateInfo, showUpdateDialog, setShowUpdateDialog, handleSkipVersion } = useUpdateCheck();
-  const [showTimezoneModal, setShowTimezoneModal] = useState(false);
-  const [processSelectData, setProcessSelectData] = useState<{
-    isOpen: boolean;
-    gameID: string;
-    launcherExeName: string;
-  }>({ isOpen: false, gameID: "", launcherExeName: "" });
+  const [processSelectData, setProcessSelectData] = useState<ProcessSelectData>({ isOpen: false, gameID: "", launcherExeName: "" });
   const [installRequest, setInstallRequest] = useState<vo.InstallRequest | null>(null);
   const { i18n } = useTranslation();
-  const downloadStatusRef = useRef<Record<string, string>>({});
+  const showTimezoneModal = Boolean(config && (!config.time_zone || config.time_zone === ""));
 
   useEffect(() => {
     fetchConfig();
@@ -64,35 +51,6 @@ function App() {
     }
   }, [config, i18n]);
 
-  // 监听后端发送的进程选择事件
-  useEffect(() => {
-    const handleProcessSelectRequired = (data: { gameID: string; sessionID: string; launcherExeName: string }) => {
-      console.warn("Process select required:", data);
-
-      // 将窗口显示到前台
-      WindowShow();
-
-      setProcessSelectData({
-        isOpen: true,
-        gameID: data.gameID,
-        launcherExeName: data.launcherExeName,
-      });
-    };
-
-    EventsOn("process-select-required", handleProcessSelectRequired);
-
-    return () => {
-      EventsOff("process-select-required");
-    };
-  }, []);
-
-  // 检查时区配置，如果未设置则显示选择弹窗
-  useEffect(() => {
-    if (config && (!config.time_zone || config.time_zone === "")) {
-      setShowTimezoneModal(true);
-    }
-  }, [config]);
-
   const handleTimezoneConfirm = async (timezone: string) => {
     if (!config)
       return;
@@ -101,106 +59,15 @@ function App() {
     const newConfig = { ...config, time_zone: timezone };
     await updateConfig(newConfig);
 
-    // 关闭弹窗
-    setShowTimezoneModal(false);
-
     // 延迟 500ms 后重启应用
     setTimeout(() => {
       SafeQuit();
     }, 500);
   };
 
-  useEffect(() => {
-    if (!config)
-      return;
-
-    const root = window.document.documentElement;
-    const applyTheme = (theme: string) => {
-      // 切换主题时临时禁用所有 transition，避免闪烁
-      root.classList.add("theme-transitioning");
-      root.classList.remove("light", "dark");
-      root.classList.add(theme);
-
-      // 在下一帧移除禁用类，让 hover 等交互恢复 transition
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          root.classList.remove("theme-transitioning");
-        }, 0);
-      });
-    };
-
-    // 缓存主题设置到 localStorage，供下次启动时预加载
-    localStorage.setItem("lunabox-theme", config.theme);
-
-    if (config.theme === "system") {
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      applyTheme(mediaQuery.matches ? "dark" : "light");
-
-      const handler = (e: MediaQueryListEvent) => {
-        applyTheme(e.matches ? "dark" : "light");
-      };
-
-      mediaQuery.addEventListener("change", handler);
-      return () => mediaQuery.removeEventListener("change", handler);
-    }
-    else {
-      applyTheme(config.theme);
-    }
-  }, [config?.theme]);
-
-  // 配置加载完成后显示窗口，并检查是否有待安装任务
-  useEffect(() => {
-    if (config) {
-      // 标记内容已准备好，触发淡入动画
-      document.getElementById("root")?.classList.add("ready");
-      // 显示窗口
-      WindowShow();
-      // 检查是否有从 lunabox:// 触发的待安装请求
-      GetPendingInstall().then((req) => {
-        if (req) {
-          setInstallRequest(req);
-          WindowShow();
-        }
-      });
-    }
-  }, [config]);
-
-  // 监听运行时通过 IPC 转发过来的安装请求（GUI 已在运行时）
-  useEffect(() => {
-    EventsOn("install:pending", (req: vo.InstallRequest) => {
-      setInstallRequest(req);
-      WindowShow();
-    });
-    return () => EventsOff("install:pending");
-  }, []);
-
-  useEffect(() => {
-    const unsubscribe = EventsOn("download:progress", (evt: DownloadProgressEvent) => {
-      const previousStatus = downloadStatusRef.current[evt.id];
-      downloadStatusRef.current[evt.id] = evt.status;
-
-      const title = evt.request?.title?.trim() || i18n.t("downloads.unknownTitle", "未知标题");
-
-      if (evt.status === "done" && previousStatus !== "done") {
-        const message = evt.error === "manual_extract_required"
-          ? `${i18n.t("downloads.toast.downloadCompleted", { title, defaultValue: "{{title}} 下载完成" })}\n${i18n.t("downloads.toast.manualExtractRequired", "自动解压失败，请手动解压后再导入或启动")}`
-          : i18n.t("downloads.toast.downloadCompleted", { title, defaultValue: "{{title}} 下载完成" });
-
-        toast.success(message, { id: `download-done-${evt.id}` });
-        return;
-      }
-
-      if (evt.status === "error" && previousStatus !== "error") {
-        const message = evt.error?.trim()
-          ? `${i18n.t("downloads.toast.downloadFailed", { title, defaultValue: "{{title}} 下载失败" })}\n${evt.error.trim()}`
-          : i18n.t("downloads.toast.downloadFailed", { title, defaultValue: "{{title}} 下载失败" });
-
-        toast.error(message, { id: `download-error-${evt.id}` });
-      }
-    });
-
-    return unsubscribe;
-  }, [i18n]);
+  useAppTheme(config);
+  useAppRuntimeEffects({ config, setProcessSelectData, setInstallRequest });
+  useDownloadNotifications(i18n);
 
   return (
     <>
