@@ -794,6 +794,9 @@
       "cancelled": "Cancelled"
     },
     "toast": {
+      "downloadCompleted": "{{title}} download completed",
+      "downloadFailed": "{{title}} download failed",
+      "manualExtractRequired": "Automatic extraction failed. Please extract it manually before importing or launching.",
       "copyURLSuccess": "Download URL copied",
       "copyURLFailed": "Copy failed",
       "openFolderFailed": "Failed to open folder",

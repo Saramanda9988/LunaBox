@@ -794,6 +794,9 @@
       "cancelled": "キャンセル済み"
     },
     "toast": {
+      "downloadCompleted": "{{title}} のダウンロードが完了しました",
+      "downloadFailed": "{{title}} のダウンロードに失敗しました",
+      "manualExtractRequired": "自動解凍に失敗しました。インポートまたは起動前に手動で解凍してください。",
       "copyURLSuccess": "ダウンロードURLをコピーしました",
       "copyURLFailed": "コピーに失敗しました",
       "openFolderFailed": "フォルダーを開けませんでした",

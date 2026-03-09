@@ -794,6 +794,9 @@
       "cancelled": "已取消"
     },
     "toast": {
+      "downloadCompleted": "{{title}} 下载完成",
+      "downloadFailed": "{{title}} 下载失败",
+      "manualExtractRequired": "自动解压失败，请手动解压后再导入或启动",
       "copyURLSuccess": "下载地址已复制",
       "copyURLFailed": "复制失败",
       "openFolderFailed": "打开文件夹失败",

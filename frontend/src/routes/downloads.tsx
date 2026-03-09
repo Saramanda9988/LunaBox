@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import { CancelDownload, DeleteDownloadTask, GetDownloadTasks, ImportDownloadTaskAsGame, OpenDownloadTaskLocation, PauseDownload, ResumeDownload } from "../../wailsjs/go/service/DownloadService";
 import { GetGames } from "../../wailsjs/go/service/GameService";
-import { ClipboardSetText, EventsOff, EventsOn } from "../../wailsjs/runtime/runtime";
+import { ClipboardSetText, EventsOn } from "../../wailsjs/runtime/runtime";
 import { DownloadCard } from "../components/card/DownloadCard";
 import { Route as rootRoute } from "./__root";
 
@@ -81,7 +81,7 @@ function DownloadsPage() {
   }, [loadTasks]);
 
   useEffect(() => {
-    EventsOn("download:progress", async (evt: DownloadTaskVM) => {
+    const unsubscribe = EventsOn("download:progress", async (evt: DownloadTaskVM) => {
       setTasks((prev) => {
         const idx = prev.findIndex(t => t.id === evt.id);
         if (idx === -1) {
@@ -99,9 +99,7 @@ function DownloadsPage() {
       }
     });
 
-    return () => {
-      EventsOff("download:progress");
-    };
+    return unsubscribe;
   }, [markImportedTasks]);
 
   const handleCancel = async (id: string) => {

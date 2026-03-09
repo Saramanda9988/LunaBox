@@ -1,6 +1,7 @@
 import type { vo } from "../wailsjs/go/models";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { SafeQuit } from "../wailsjs/go/service/ConfigService";
 import { GetPendingInstall } from "../wailsjs/go/service/DownloadService";
@@ -31,6 +32,15 @@ declare module "@tanstack/react-router" {
   }
 }
 
+interface DownloadProgressEvent {
+  id: string;
+  request?: {
+    title?: string;
+  };
+  status: string;
+  error?: string;
+}
+
 function App() {
   const { config, fetchConfig, updateConfig } = useAppStore();
   const { updateInfo, showUpdateDialog, setShowUpdateDialog, handleSkipVersion } = useUpdateCheck();
@@ -42,6 +52,7 @@ function App() {
   }>({ isOpen: false, gameID: "", launcherExeName: "" });
   const [installRequest, setInstallRequest] = useState<vo.InstallRequest | null>(null);
   const { i18n } = useTranslation();
+  const downloadStatusRef = useRef<Record<string, string>>({});
 
   useEffect(() => {
     fetchConfig();
@@ -162,6 +173,34 @@ function App() {
     });
     return () => EventsOff("install:pending");
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = EventsOn("download:progress", (evt: DownloadProgressEvent) => {
+      const previousStatus = downloadStatusRef.current[evt.id];
+      downloadStatusRef.current[evt.id] = evt.status;
+
+      const title = evt.request?.title?.trim() || i18n.t("downloads.unknownTitle", "未知标题");
+
+      if (evt.status === "done" && previousStatus !== "done") {
+        const message = evt.error === "manual_extract_required"
+          ? `${i18n.t("downloads.toast.downloadCompleted", { title, defaultValue: "{{title}} 下载完成" })}\n${i18n.t("downloads.toast.manualExtractRequired", "自动解压失败，请手动解压后再导入或启动")}`
+          : i18n.t("downloads.toast.downloadCompleted", { title, defaultValue: "{{title}} 下载完成" });
+
+        toast.success(message, { id: `download-done-${evt.id}` });
+        return;
+      }
+
+      if (evt.status === "error" && previousStatus !== "error") {
+        const message = evt.error?.trim()
+          ? `${i18n.t("downloads.toast.downloadFailed", { title, defaultValue: "{{title}} 下载失败" })}\n${evt.error.trim()}`
+          : i18n.t("downloads.toast.downloadFailed", { title, defaultValue: "{{title}} 下载失败" });
+
+        toast.error(message, { id: `download-error-${evt.id}` });
+      }
+    });
+
+    return unsubscribe;
+  }, [i18n]);
 
   return (
     <>

@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BrowserOpenURL, EventsOff, EventsOn } from "../../../wailsjs/runtime/runtime";
+import { BrowserOpenURL, EventsOn } from "../../../wailsjs/runtime/runtime";
 import { useAppStore } from "../../store";
 
 interface SideBarProps {
@@ -17,12 +17,12 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
   // 监听下载进度事件，统计进行中的任务数
   useEffect(() => {
     const counts: Record<string, string> = {};
-    EventsOn("download:progress", (evt: { id: string; status: string }) => {
+    const unsubscribe = EventsOn("download:progress", (evt: { id: string; status: string }) => {
       counts[evt.id] = evt.status;
       const active = Object.values(counts).filter(s => s === "downloading" || s === "pending").length;
       setActiveDownloads(active);
     });
-    return () => EventsOff("download:progress");
+    return unsubscribe;
   }, []);
 
   const navItems = [
