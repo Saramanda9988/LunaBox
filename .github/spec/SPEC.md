@@ -70,6 +70,18 @@ AI agent 在做决定时，优先参考这些“真实入口”。
 - MUST 使用 zustand 做全局状态管理（store 位于 `frontend/src/store.ts`）。
 - SHOULD 优先把跨页面共享、或与后端配置/数据缓存相关的状态放入 store；页面内临时 UI 状态使用组件本地 state。
 - SHOULD 与后端交互的“请求 + toast/错误提示 + 缓存更新”集中在 store action 或 hooks 内，避免在多个页面重复写。
+- MUST 区分 store 中两层配置状态：
+  - `config`：当前**已生效**的运行态配置，供 `App.tsx`、根布局、各页面和 hooks 读取。
+  - `draftConfig`：设置页编辑中的**草稿配置**，仅供设置相关路由/面板使用。
+- MUST 使用以下两条配置写入 API，不要自行绕过：
+  - `patchLiveConfig(patch)`：用于**需要立即生效**的配置项，例如界面缩放、主题、语言、时区、侧边栏开关等。该 API 会同步更新 `config` 与 `draftConfig`，并立即持久化。
+  - `saveDraftConfig()`：用于**设置页草稿**的统一提交。设置页中的普通表单改动应先写入 `draftConfig`，再通过 `saveDraftConfig()` 统一保存。
+- MUST NOT 在设置页再额外维护一份与 `config`/`draftConfig` 平级的本地 `formData` 作为配置真源；局部 UI 临时状态（如骨架屏、弹窗开关、loading）仍可使用组件 state。
+- SHOULD 遵循以下模式：
+  - 运行态页面/Hook：读取 `config`
+  - 设置页表单：读取/修改 `draftConfig`
+  - 即时生效型设置控件：直接调用 `patchLiveConfig(...)`
+  - 普通设置输入框/开关：写入 `draftConfig`，由设置页 debounce 调用 `saveDraftConfig()`
 
 ### 3.3 样式（UnoCSS）
 

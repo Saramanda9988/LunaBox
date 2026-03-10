@@ -1,7 +1,9 @@
 import type { appconf } from "../../wailsjs/go/models";
 import { createRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+
 import { useTranslation } from "react-i18next";
+
 import { GetVersionInfo } from "../../wailsjs/go/service/VersionService";
 import { AISettingsPanel } from "../components/panel/AISettingsPanel";
 import { AutoBackupSettingsPanel } from "../components/panel/AutoBackupSettingsPanel";
@@ -18,15 +20,6 @@ import { CollapsibleSection } from "../components/ui/CollapsibleSection";
 import { useAppStore } from "../store";
 import { Route as rootRoute } from "./__root";
 
-function stripZoomFactor(config: appconf.AppConfig | null) {
-  if (!config) {
-    return null;
-  }
-
-  const { window_zoom_factor, ...rest } = config;
-  return rest;
-}
-
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
@@ -35,8 +28,15 @@ export const Route = createRoute({
 
 function SettingsPage() {
   const { t } = useTranslation();
-  const { config, fetchConfig, updateConfig, setWindowZoomFactor } = useAppStore();
-  const [formData, setFormData] = useState<appconf.AppConfig | null>(null);
+  const {
+    config,
+    draftConfig,
+    fetchConfig,
+    patchLiveConfig,
+    resetDraftConfig,
+    saveDraftConfig,
+    setDraftConfig,
+  } = useAppStore();
   const [isLoading, setIsLoading] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [versionInfo, setVersionInfo] = useState<Record<string, string> | null>(null);
@@ -54,11 +54,11 @@ function SettingsPage() {
         console.error("Failed to fetch version info:", err);
       }
       setIsLoading(false);
+      isInitialMount.current = false;
     };
     init();
   }, [fetchConfig]);
 
-  // 延迟显示骨架屏
   useEffect(() => {
     let timer: number;
     if (isLoading) {
@@ -73,101 +73,87 @@ function SettingsPage() {
   }, [isLoading]);
 
   useEffect(() => {
-    if (config && isInitialMount.current) {
-      setFormData({ ...config } as appconf.AppConfig);
-      isInitialMount.current = false;
+    if (!config || isInitialMount.current) {
+      return;
     }
-  }, [config]);
+
+    resetDraftConfig();
+  }, [config, resetDraftConfig]);
 
   useEffect(() => {
-    if (!config || !formData || isInitialMount.current) {
+    if (!draftConfig || !config || isInitialMount.current) {
       return;
     }
 
-    if (formData.window_zoom_factor === config.window_zoom_factor) {
+    const hasChanges = JSON.stringify(draftConfig) !== JSON.stringify(config);
+    if (!hasChanges) {
       return;
     }
-
-    setFormData(prev => prev
-      ? ({ ...prev, window_zoom_factor: config.window_zoom_factor } as appconf.AppConfig)
-      : prev);
-  }, [config, formData]);
-
-  // 自动保存逻辑
-  useEffect(() => {
-    if (!formData || isInitialMount.current)
-      return;
-
-    const hasChanges = JSON.stringify(stripZoomFactor(formData)) !== JSON.stringify(stripZoomFactor(config));
-    if (!hasChanges)
-      return;
 
     const timer = setTimeout(() => {
-      updateConfig(formData);
+      void saveDraftConfig();
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [formData, updateConfig, config]);
+  }, [config, draftConfig, saveDraftConfig]);
 
-  const handleFormChange = (newData: appconf.AppConfig) => {
-    const previousZoom = formData?.window_zoom_factor ?? config?.window_zoom_factor;
-    setFormData(newData);
-
-    if (previousZoom !== newData.window_zoom_factor) {
-      setWindowZoomFactor(newData.window_zoom_factor || 1);
-      void updateConfig(newData);
-    }
+  const handleDraftChange = (newData: appconf.AppConfig) => {
+    setDraftConfig(newData);
   };
 
-  if (isLoading && (!config || !formData)) {
+  const handleZoomChange = (zoomFactor: number) => {
+    void patchLiveConfig({ window_zoom_factor: zoomFactor });
+  };
+
+  if (isLoading && (!config || !draftConfig)) {
     if (!showSkeleton) {
       return null;
     }
     return <SettingsSkeleton />;
   }
 
-  if (!config || !formData) {
+  if (!config || !draftConfig) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[80vh] space-y-4 text-brand-500">
-        <div className="i-mdi-cog-outline text-6xl animate-spin-slow" />
+      <div className="flex min-h-[80vh] flex-col items-center justify-center space-y-4 text-brand-500">
+        <div className="i-mdi-cog-outline animate-spin-slow text-6xl" />
         <p className="text-xl">{t("settings.preparingSettings")}</p>
       </div>
     );
   }
 
   return (
-    <div className={`space-y-6 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${isLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
+    <div className={`mx-auto max-w-8xl space-y-6 p-8 transition-opacity duration-300 ${isLoading ? "pointer-events-none opacity-50" : "opacity-100"}`}>
       <div className="flex items-center justify-between">
         <h1 className="text-4xl font-bold text-brand-900 dark:text-white">{t("settings.title")}</h1>
       </div>
 
       <div className="mx-auto w-full max-w-5xl space-y-6">
         <CollapsibleSection title={t("settings.sections.basic")} icon="i-mdi-database-settings" defaultOpen={true}>
-          <BasicSettingsPanel formData={formData} onChange={handleFormChange} />
+          <BasicSettingsPanel formData={draftConfig} onChange={handleDraftChange} onZoomChange={handleZoomChange} />
         </CollapsibleSection>
 
         <CollapsibleSection title={t("settings.sections.appearance")} icon="i-mdi-palette" defaultOpen={false}>
-          <BackgroundSettingsPanel formData={formData} onChange={handleFormChange} />
+          <BackgroundSettingsPanel formData={draftConfig} onChange={handleDraftChange} />
         </CollapsibleSection>
 
         <CollapsibleSection title={t("settings.sections.game")} icon="i-mdi-timer-play-outline" defaultOpen={false}>
-          <GameSettingsPanel formData={formData} onChange={handleFormChange} />
+          <GameSettingsPanel formData={draftConfig} onChange={handleDraftChange} />
         </CollapsibleSection>
 
         <CollapsibleSection title={t("settings.sections.download")} icon="i-mdi-download" defaultOpen={false}>
-          <DownloadSettingsPanel formData={formData} onChange={handleFormChange} />
+          <DownloadSettingsPanel formData={draftConfig} onChange={handleDraftChange} />
         </CollapsibleSection>
 
         <CollapsibleSection title={t("settings.sections.cloudBackup")} icon="i-mdi-cloud-upload" defaultOpen={false}>
-          <CloudBackupSettingsPanel formData={formData} onChange={handleFormChange} />
+          <CloudBackupSettingsPanel formData={draftConfig} onChange={handleDraftChange} />
         </CollapsibleSection>
 
         <CollapsibleSection title={t("settings.sections.autoBackup")} icon="i-mdi-backup-restore" defaultOpen={false}>
-          <AutoBackupSettingsPanel formData={formData} onChange={handleFormChange} />
+          <AutoBackupSettingsPanel formData={draftConfig} onChange={handleDraftChange} />
         </CollapsibleSection>
 
         <CollapsibleSection title={t("settings.sections.ai")} icon="i-mdi-robot-happy" defaultOpen={false}>
-          <AISettingsPanel formData={formData} onChange={handleFormChange} />
+          <AISettingsPanel formData={draftConfig} onChange={handleDraftChange} />
         </CollapsibleSection>
 
         <CollapsibleSection title={t("settings.sections.dbBackup")} icon="i-mdi-database-refresh" defaultOpen={false}>
@@ -179,7 +165,7 @@ function SettingsPage() {
         </CollapsibleSection>
 
         <CollapsibleSection title={t("settings.sections.update")} icon="i-mdi-update" defaultOpen={false}>
-          <UpdateSettingsPanel formData={formData} onChange={handleFormChange} />
+          <UpdateSettingsPanel formData={draftConfig} onChange={handleDraftChange} />
         </CollapsibleSection>
       </div>
 
@@ -188,14 +174,15 @@ function SettingsPage() {
           Lunabox made with LunaRain_079 &amp; Contributors.
         </p>
         {versionInfo && (
-          <p className="text-xs text-brand-400 dark:text-brand-500 mt-1">
+          <p className="mt-1 text-xs text-brand-400 dark:text-brand-500">
             Version
             {" "}
             {versionInfo.version}
             {" "}
             (
             {versionInfo.commit}
-            ) |
+            )
+            |
             {" "}
             {versionInfo.buildMode}
             {" "}

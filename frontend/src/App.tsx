@@ -35,7 +35,7 @@ declare module "@tanstack/react-router" {
 }
 
 function App() {
-  const { config, fetchConfig, updateConfig, setWindowZoomFactor } = useAppStore();
+  const { config, fetchConfig, patchLiveConfig } = useAppStore();
   const { updateInfo, showUpdateDialog, setShowUpdateDialog, handleSkipVersion } = useUpdateCheck();
   const [processSelectData, setProcessSelectData] = useState<ProcessSelectData>({ isOpen: false, gameID: "", launcherExeName: "" });
   const [installRequest, setInstallRequest] = useState<vo.InstallRequest | null>(null);
@@ -56,9 +56,7 @@ function App() {
     if (!config)
       return;
 
-    // 更新配置
-    const newConfig = { ...config, time_zone: timezone };
-    await updateConfig(newConfig);
+    await patchLiveConfig({ time_zone: timezone });
 
     // 延迟 500ms 后重启应用
     setTimeout(() => {
@@ -67,7 +65,7 @@ function App() {
   };
 
   useAppTheme(config);
-  useAppZoom({ config, updateConfig, setWindowZoomFactor });
+  useAppZoom({ config, patchLiveConfig });
   useAppRuntimeEffects({ config, setProcessSelectData, setInstallRequest });
   useDownloadNotifications(i18n);
 

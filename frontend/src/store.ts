@@ -16,11 +16,14 @@ type AppState = {
   setSidebarOpen: (open: boolean) => void;
   homeData: vo.HomePageData | null;
   config: appconf.AppConfig | null;
+  draftConfig: appconf.AppConfig | null;
   isLoading: boolean;
   fetchHomeData: () => Promise<void>;
   fetchConfig: () => Promise<void>;
-  updateConfig: (config: appconf.AppConfig) => Promise<void>;
-  setWindowZoomFactor: (zoomFactor: number) => void;
+  patchLiveConfig: (patch: Partial<appconf.AppConfig>) => Promise<void>;
+  setDraftConfig: (config: appconf.AppConfig) => void;
+  resetDraftConfig: () => void;
+  saveDraftConfig: () => Promise<void>;
   // 游戏列表全局状态
   games: models.Game[];
   gamesLoading: boolean;
@@ -36,16 +39,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleSidebar: () => {
     const newState = !get().isSidebarOpen;
     set({ isSidebarOpen: newState });
-    // 保存到配置
-    const config = get().config;
-    if (config) {
-      const newConfig = { ...config, sidebar_open: newState };
-      UpdateAppConfig(newConfig).catch(console.error);
-    }
+    void get().patchLiveConfig({ sidebar_open: newState });
   },
   setSidebarOpen: (open: boolean) => set({ isSidebarOpen: open }),
   homeData: null,
   config: null,
+  draftConfig: null,
   isLoading: false,
   games: [],
   gamesLoading: false,
@@ -65,25 +64,62 @@ export const useAppStore = create<AppState>((set, get) => ({
   fetchConfig: async () => {
     try {
       const config = await GetAppConfig();
-      set({ config, isSidebarOpen: config.sidebar_open });
+      set({ config, draftConfig: { ...config }, isSidebarOpen: config.sidebar_open });
     }
     catch (error) {
       console.error("Failed to fetch config:", error);
     }
   },
-  updateConfig: async (config: appconf.AppConfig) => {
+  patchLiveConfig: async (patch: Partial<appconf.AppConfig>) => {
+    const previousConfig = get().config;
+    const previousDraftConfig = get().draftConfig;
+    if (!previousConfig) {
+      return;
+    }
+
+    const nextConfig = { ...previousConfig, ...patch } as appconf.AppConfig;
+    const nextDraftConfig = previousDraftConfig
+      ? ({ ...previousDraftConfig, ...patch } as appconf.AppConfig)
+      : ({ ...nextConfig } as appconf.AppConfig);
+
+    set({
+      config: nextConfig,
+      draftConfig: nextDraftConfig,
+      isSidebarOpen: nextConfig.sidebar_open,
+    });
+
     try {
-      await UpdateAppConfig(config);
-      set({ config });
+      await UpdateAppConfig(nextConfig);
     }
     catch (error) {
-      console.error("Failed to update config:", error);
+      set({
+        config: previousConfig,
+        draftConfig: previousDraftConfig,
+        isSidebarOpen: previousConfig.sidebar_open,
+      });
+      console.error("Failed to patch live config:", error);
     }
   },
-  setWindowZoomFactor: (zoomFactor: number) => {
-    set(state => ({
-      config: state.config ? { ...state.config, window_zoom_factor: zoomFactor } : state.config,
-    }));
+  setDraftConfig: (config: appconf.AppConfig) => {
+    set({ draftConfig: config });
+  },
+  resetDraftConfig: () => {
+    const config = get().config;
+    set({ draftConfig: config ? { ...config } as appconf.AppConfig : null });
+  },
+  saveDraftConfig: async () => {
+    const draftConfig = get().draftConfig;
+    if (!draftConfig) {
+      return;
+    }
+
+    try {
+      await UpdateAppConfig(draftConfig);
+      set({ config: { ...draftConfig }, draftConfig: { ...draftConfig }, isSidebarOpen: draftConfig.sidebar_open });
+    }
+    catch (error) {
+      console.error("Failed to save draft config:", error);
+    }
   },
   // 游戏列表管理
   fetchGames: async () => {

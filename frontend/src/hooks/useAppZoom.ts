@@ -19,11 +19,10 @@ function isEditableTarget(target: EventTarget | null) {
 
 type UseAppZoomOptions = {
   config: appconf.AppConfig | null;
-  updateConfig: (config: appconf.AppConfig) => Promise<void>;
-  setWindowZoomFactor: (zoomFactor: number) => void;
+  patchLiveConfig: (patch: Partial<appconf.AppConfig>) => Promise<void>;
 };
 
-export function useAppZoom({ config, updateConfig, setWindowZoomFactor }: UseAppZoomOptions) {
+export function useAppZoom({ config, patchLiveConfig }: UseAppZoomOptions) {
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -57,8 +56,7 @@ export function useAppZoom({ config, updateConfig, setWindowZoomFactor }: UseApp
       }
 
       event.preventDefault();
-      setWindowZoomFactor(nextZoom);
-      void updateConfig({ ...config, window_zoom_factor: nextZoom });
+      void patchLiveConfig({ window_zoom_factor: nextZoom });
       toast.success(t("settings.basic.zoomToast", { value: `${Math.round(nextZoom * 100)}%` }), {
         id: "app-zoom-changed",
       });
@@ -69,5 +67,5 @@ export function useAppZoom({ config, updateConfig, setWindowZoomFactor }: UseApp
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [config, setWindowZoomFactor, t, updateConfig]);
+  }, [config, patchLiveConfig, t]);
 }

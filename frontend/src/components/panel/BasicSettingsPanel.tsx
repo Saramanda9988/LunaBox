@@ -12,9 +12,10 @@ interface BetterSelectOption {
 interface BasicSettingsProps {
   formData: appconf.AppConfig;
   onChange: (data: appconf.AppConfig) => void;
+  onZoomChange: (zoomFactor: number) => void;
 }
 
-export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
+export function BasicSettingsPanel({ formData, onChange, onZoomChange }: BasicSettingsProps) {
   const { t } = useTranslation();
 
   const COMMON_TIMEZONES: BetterSelectOption[] = [
@@ -105,7 +106,7 @@ export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
         <BetterSelect
           name="window_zoom_factor"
           value={String(formData.window_zoom_factor || 1)}
-          onChange={value => onChange({ ...formData, window_zoom_factor: Number(value) } as appconf.AppConfig)}
+          onChange={value => onZoomChange(Number(value))}
           options={appZoomOptions}
         />
       </div>
