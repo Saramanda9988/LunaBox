@@ -74,7 +74,8 @@ function StatsPage() {
   }, [loading]);
 
   // Get cached AI summary from store
-  const { aiSummaryCache, setAISummary } = useAppStore();
+  const aiSummaryCache = useAppStore(state => state.aiSummaryCache);
+  const setAISummary = useAppStore(state => state.setAISummary);
   const aiSummary = aiSummaryCache[dimension] || "";
 
   const handleAISummarize = useCallback(async () => {

@@ -25,7 +25,7 @@ interface GameBackupPanelProps {
 
 export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
   const { t } = useTranslation();
-  const { config } = useAppStore();
+  const config = useAppStore(state => state.config);
   const [backups, setBackups] = useState<models.GameBackup[]>([]);
   const [cloudBackups, setCloudBackups] = useState<vo.CloudBackupItem[]>([]);
   const [cloudStatus, setCloudStatus] = useState<vo.CloudBackupStatus | null>(null);

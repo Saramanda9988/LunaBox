@@ -10,6 +10,10 @@ type AISummaryCache = {
   [dimension: string]: string;
 };
 
+function withSidebarState(config: appconf.AppConfig, sidebarOpen: boolean): appconf.AppConfig {
+  return { ...config, sidebar_open: sidebarOpen };
+}
+
 type AppState = {
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
@@ -39,7 +43,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleSidebar: () => {
     const newState = !get().isSidebarOpen;
     set({ isSidebarOpen: newState });
-    void get().patchLiveConfig({ sidebar_open: newState });
+    const config = get().config;
+    if (!config) {
+      return;
+    }
+
+    void UpdateAppConfig(withSidebarState(config, newState)).catch((error) => {
+      console.error("Failed to persist sidebar state:", error);
+    });
   },
   setSidebarOpen: (open: boolean) => set({ isSidebarOpen: open }),
   homeData: null,
@@ -77,15 +88,16 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
 
-    const nextConfig = { ...previousConfig, ...patch } as appconf.AppConfig;
+    const nextSidebarOpen = typeof patch.sidebar_open === "boolean" ? patch.sidebar_open : get().isSidebarOpen;
+    const nextConfig = withSidebarState({ ...previousConfig, ...patch } as appconf.AppConfig, nextSidebarOpen);
     const nextDraftConfig = previousDraftConfig
-      ? ({ ...previousDraftConfig, ...patch } as appconf.AppConfig)
+      ? withSidebarState({ ...previousDraftConfig, ...patch } as appconf.AppConfig, nextSidebarOpen)
       : ({ ...nextConfig } as appconf.AppConfig);
 
     set({
       config: nextConfig,
       draftConfig: nextDraftConfig,
-      isSidebarOpen: nextConfig.sidebar_open,
+      isSidebarOpen: nextSidebarOpen,
     });
 
     try {
@@ -95,7 +107,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({
         config: previousConfig,
         draftConfig: previousDraftConfig,
-        isSidebarOpen: previousConfig.sidebar_open,
+        isSidebarOpen: get().isSidebarOpen,
       });
       console.error("Failed to patch live config:", error);
     }
@@ -105,7 +117,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   resetDraftConfig: () => {
     const config = get().config;
-    set({ draftConfig: config ? { ...config } as appconf.AppConfig : null });
+    const sidebarOpen = get().isSidebarOpen;
+    set({ draftConfig: config ? withSidebarState({ ...config } as appconf.AppConfig, sidebarOpen) : null });
   },
   saveDraftConfig: async () => {
     const draftConfig = get().draftConfig;
@@ -113,9 +126,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
 
+    const sidebarOpen = get().isSidebarOpen;
+    const nextConfig = withSidebarState({ ...draftConfig } as appconf.AppConfig, sidebarOpen);
+
     try {
-      await UpdateAppConfig(draftConfig);
-      set({ config: { ...draftConfig }, draftConfig: { ...draftConfig }, isSidebarOpen: draftConfig.sidebar_open });
+      await UpdateAppConfig(nextConfig);
+      set({ config: nextConfig, draftConfig: { ...nextConfig }, isSidebarOpen: sidebarOpen });
     }
     catch (error) {
       console.error("Failed to save draft config:", error);

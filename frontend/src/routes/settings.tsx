@@ -28,15 +28,13 @@ export const Route = createRoute({
 
 function SettingsPage() {
   const { t } = useTranslation();
-  const {
-    config,
-    draftConfig,
-    fetchConfig,
-    patchLiveConfig,
-    resetDraftConfig,
-    saveDraftConfig,
-    setDraftConfig,
-  } = useAppStore();
+  const config = useAppStore(state => state.config);
+  const draftConfig = useAppStore(state => state.draftConfig);
+  const fetchConfig = useAppStore(state => state.fetchConfig);
+  const patchLiveConfig = useAppStore(state => state.patchLiveConfig);
+  const resetDraftConfig = useAppStore(state => state.resetDraftConfig);
+  const saveDraftConfig = useAppStore(state => state.saveDraftConfig);
+  const setDraftConfig = useAppStore(state => state.setDraftConfig);
   const [isLoading, setIsLoading] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [versionInfo, setVersionInfo] = useState<Record<string, string> | null>(null);

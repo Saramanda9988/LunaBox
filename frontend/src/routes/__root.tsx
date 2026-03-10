@@ -11,7 +11,8 @@ import { useAppStore } from "../store";
 
 function RootLayout() {
   const { t } = useTranslation();
-  const { config, fetchGames } = useAppStore();
+  const config = useAppStore(state => state.config);
+  const fetchGames = useAppStore(state => state.fetchGames);
   const [isDragOver, setIsDragOver] = useState(false);
   const [showDragDropModal, setShowDragDropModal] = useState(false);
   const [droppedPaths, setDroppedPaths] = useState<string[]>([]);

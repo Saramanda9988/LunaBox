@@ -11,7 +11,8 @@ interface SideBarProps {
 
 export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
   const { t } = useTranslation();
-  const { isSidebarOpen, toggleSidebar } = useAppStore();
+  const isSidebarOpen = useAppStore(state => state.isSidebarOpen);
+  const toggleSidebar = useAppStore(state => state.toggleSidebar);
   const [activeDownloads, setActiveDownloads] = useState(0);
 
   // 监听下载进度事件，统计进行中的任务数
@@ -37,13 +38,19 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
     : "bg-white dark:bg-brand-800 border-r border-brand-200 dark:border-brand-700";
 
   const sidebarStyle = bgEnabled
-    ? { backgroundColor: `rgba(var(--sidebar-bg-rgb), ${bgOpacity})` }
-    : undefined;
+    ? {
+        backgroundColor: `rgba(var(--sidebar-bg-rgb), ${bgOpacity})`,
+        transition: "width 300ms ease",
+        width: isSidebarOpen ? "16rem" : "4rem",
+      }
+    : {
+        transition: "width 300ms ease",
+        width: isSidebarOpen ? "16rem" : "4rem",
+      };
 
   return (
     <aside
-      className={`flex flex-col transition-all duration-300 ${sidebarBgClass} ${isSidebarOpen ? "w-64" : "w-16"
-      }`}
+      className={`flex shrink-0 flex-col overflow-hidden ${sidebarBgClass}`}
       style={sidebarStyle}
     >
       <div className={`flex items-center h-16 ${bgEnabled ? "border-white/20 dark:border-white/10" : "border-brand-200 dark:border-brand-700"} ${isSidebarOpen ? "justify-between px-4" : "justify-center"}`}>

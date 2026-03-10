@@ -35,7 +35,9 @@ declare module "@tanstack/react-router" {
 }
 
 function App() {
-  const { config, fetchConfig, patchLiveConfig } = useAppStore();
+  const config = useAppStore(state => state.config);
+  const fetchConfig = useAppStore(state => state.fetchConfig);
+  const patchLiveConfig = useAppStore(state => state.patchLiveConfig);
   const { updateInfo, showUpdateDialog, setShowUpdateDialog, handleSkipVersion } = useUpdateCheck();
   const [processSelectData, setProcessSelectData] = useState<ProcessSelectData>({ isOpen: false, gameID: "", launcherExeName: "" });
   const [installRequest, setInstallRequest] = useState<vo.InstallRequest | null>(null);

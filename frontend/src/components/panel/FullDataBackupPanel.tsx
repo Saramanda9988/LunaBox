@@ -14,7 +14,7 @@ import { ConfirmModal } from "../modal/ConfirmModal";
 
 export function FullDataBackupPanel() {
   const { t } = useTranslation();
-  const { config } = useAppStore();
+  const config = useAppStore(state => state.config);
   const [isFullBackingUp, setIsFullBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
 

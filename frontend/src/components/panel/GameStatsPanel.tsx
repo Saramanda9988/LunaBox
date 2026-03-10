@@ -40,7 +40,7 @@ interface GameStatsPanelProps {
 type ViewMode = "chart" | "sessions";
 
 export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
-  const { config } = useAppStore();
+  const config = useAppStore(state => state.config);
   const { textColor, gridColor } = useChartTheme();
   const [stats, setStats] = useState<vo.GameDetailStats | null>(null);
   const [sessions, setSessions] = useState<models.PlaySession[]>([]);

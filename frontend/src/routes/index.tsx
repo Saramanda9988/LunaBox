@@ -16,7 +16,10 @@ export const Route = createRoute({
 function HomePage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { homeData, fetchHomeData, isLoading, config } = useAppStore();
+  const homeData = useAppStore(state => state.homeData);
+  const fetchHomeData = useAppStore(state => state.fetchHomeData);
+  const isLoading = useAppStore(state => state.isLoading);
+  const config = useAppStore(state => state.config);
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {

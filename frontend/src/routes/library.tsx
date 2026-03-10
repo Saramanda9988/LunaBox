@@ -27,7 +27,9 @@ export const Route = createRoute({
 });
 
 function LibraryPage() {
-  const { games, gamesLoading, fetchGames } = useAppStore();
+  const games = useAppStore(state => state.games);
+  const gamesLoading = useAppStore(state => state.gamesLoading);
+  const fetchGames = useAppStore(state => state.fetchGames);
   const { t } = useTranslation();
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);

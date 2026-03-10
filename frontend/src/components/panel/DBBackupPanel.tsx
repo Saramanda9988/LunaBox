@@ -19,7 +19,7 @@ import { ConfirmModal } from "../modal/ConfirmModal";
 
 export function DBBackupPanel() {
   const { t } = useTranslation();
-  const { config } = useAppStore();
+  const config = useAppStore(state => state.config);
   const [dbBackups, setDbBackups] = useState<vo.DBBackupStatus | null>(null);
   const [cloudDBBackups, setCloudDBBackups] = useState<vo.CloudBackupItem[]>([]);
   const [isBackingUp, setIsBackingUp] = useState(false);
