@@ -18,6 +18,15 @@ import { CollapsibleSection } from "../components/ui/CollapsibleSection";
 import { useAppStore } from "../store";
 import { Route as rootRoute } from "./__root";
 
+function stripZoomFactor(config: appconf.AppConfig | null) {
+  if (!config) {
+    return null;
+  }
+
+  const { window_zoom_factor, ...rest } = config;
+  return rest;
+}
+
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
@@ -26,7 +35,7 @@ export const Route = createRoute({
 
 function SettingsPage() {
   const { t } = useTranslation();
-  const { config, fetchConfig, updateConfig } = useAppStore();
+  const { config, fetchConfig, updateConfig, setWindowZoomFactor } = useAppStore();
   const [formData, setFormData] = useState<appconf.AppConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
@@ -70,12 +79,26 @@ function SettingsPage() {
     }
   }, [config]);
 
+  useEffect(() => {
+    if (!config || !formData || isInitialMount.current) {
+      return;
+    }
+
+    if (formData.window_zoom_factor === config.window_zoom_factor) {
+      return;
+    }
+
+    setFormData(prev => prev
+      ? ({ ...prev, window_zoom_factor: config.window_zoom_factor } as appconf.AppConfig)
+      : prev);
+  }, [config, formData]);
+
   // 自动保存逻辑
   useEffect(() => {
     if (!formData || isInitialMount.current)
       return;
 
-    const hasChanges = JSON.stringify(formData) !== JSON.stringify(config);
+    const hasChanges = JSON.stringify(stripZoomFactor(formData)) !== JSON.stringify(stripZoomFactor(config));
     if (!hasChanges)
       return;
 
@@ -87,7 +110,13 @@ function SettingsPage() {
   }, [formData, updateConfig, config]);
 
   const handleFormChange = (newData: appconf.AppConfig) => {
+    const previousZoom = formData?.window_zoom_factor ?? config?.window_zoom_factor;
     setFormData(newData);
+
+    if (previousZoom !== newData.window_zoom_factor) {
+      setWindowZoomFactor(newData.window_zoom_factor || 1);
+      void updateConfig(newData);
+    }
   };
 
   if (isLoading && (!config || !formData)) {

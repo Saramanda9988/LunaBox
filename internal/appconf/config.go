@@ -57,8 +57,9 @@ type AppConfig struct {
 	LocalBackupRetention   int `json:"local_backup_retention"`    // 本地游戏备份保留数量
 	LocalDBBackupRetention int `json:"local_db_backup_retention"` // 本地数据库备份保留数量
 	// 窗口尺寸记忆
-	WindowWidth  int `json:"window_width"`  // 窗口宽度
-	WindowHeight int `json:"window_height"` // 窗口高度
+	WindowWidth      int     `json:"window_width"`       // 窗口宽度
+	WindowHeight     int     `json:"window_height"`      // 窗口高度
+	WindowZoomFactor float64 `json:"window_zoom_factor"` // 应用界面缩放倍率
 	// 活跃时间追踪配置
 	RecordActiveTimeOnly bool `json:"record_active_time_only"` // 仅记录活跃游玩时长（窗口在前台时）
 	// 自动更新配置
@@ -130,6 +131,7 @@ func LoadConfig() (*AppConfig, error) {
 		LocalDBBackupRetention: 5,
 		WindowWidth:            1230,
 		WindowHeight:           800,
+		WindowZoomFactor:       1.0,
 		RecordActiveTimeOnly:   false, // 默认关闭，向后兼容
 		CheckUpdateOnStartup:   true,  // 默认开启启动时检查更新
 		UpdateCheckURL:         "",
@@ -170,6 +172,10 @@ func LoadConfig() (*AppConfig, error) {
 	if err := json.Unmarshal(data, config); err != nil {
 		log.Printf("Failed to parse appconf file: %v", err)
 		return config, err
+	}
+
+	if config.WindowZoomFactor <= 0 {
+		config.WindowZoomFactor = 1.0
 	}
 
 	// corner case: 如果有密码但没有 user_id（可能是旧版本的配置文件）

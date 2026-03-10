@@ -41,6 +41,7 @@ export namespace appconf {
 	    local_db_backup_retention: number;
 	    window_width: number;
 	    window_height: number;
+	    window_zoom_factor: number;
 	    record_active_time_only: boolean;
 	    check_update_on_startup: boolean;
 	    update_check_url?: string;
@@ -104,6 +105,7 @@ export namespace appconf {
 	        this.local_db_backup_retention = source["local_db_backup_retention"];
 	        this.window_width = source["window_width"];
 	        this.window_height = source["window_height"];
+	        this.window_zoom_factor = source["window_zoom_factor"];
 	        this.record_active_time_only = source["record_active_time_only"];
 	        this.check_update_on_startup = source["check_update_on_startup"];
 	        this.update_check_url = source["update_check_url"];

@@ -1,5 +1,6 @@
 import type { appconf } from "../../../wailsjs/go/models";
 import { useTranslation } from "react-i18next";
+import { appZoomOptions } from "../../consts/options";
 import { BetterSelect } from "../ui/BetterSelect";
 import { BetterSwitch } from "../ui/BetterSwitch";
 
@@ -95,6 +96,17 @@ export function BasicSettingsPanel({ formData, onChange }: BasicSettingsProps) {
             { value: "en-US", label: "English" },
             { value: "ja-JP", label: "日本語" },
           ]}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">{t("settings.basic.zoomLabel")}</label>
+        <span className="text-xs text-brand-500 dark:text-brand-400">{t("settings.basic.zoomHint")}</span>
+        <BetterSelect
+          name="window_zoom_factor"
+          value={String(formData.window_zoom_factor || 1)}
+          onChange={value => onChange({ ...formData, window_zoom_factor: Number(value) } as appconf.AppConfig)}
+          options={appZoomOptions}
         />
       </div>
 

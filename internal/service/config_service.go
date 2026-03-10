@@ -157,6 +157,7 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.AutoUploadToCloud = newConfig.AutoUploadToCloud
 	s.config.LocalBackupRetention = newConfig.LocalBackupRetention
 	s.config.LocalDBBackupRetention = newConfig.LocalDBBackupRetention
+	s.config.WindowZoomFactor = newConfig.WindowZoomFactor
 	s.config.LastFullBackupTime = newConfig.LastFullBackupTime
 	s.config.PendingFullRestore = newConfig.PendingFullRestore
 	s.config.RecordActiveTimeOnly = newConfig.RecordActiveTimeOnly

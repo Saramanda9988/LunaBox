@@ -20,6 +20,7 @@ type AppState = {
   fetchHomeData: () => Promise<void>;
   fetchConfig: () => Promise<void>;
   updateConfig: (config: appconf.AppConfig) => Promise<void>;
+  setWindowZoomFactor: (zoomFactor: number) => void;
   // 游戏列表全局状态
   games: models.Game[];
   gamesLoading: boolean;
@@ -78,6 +79,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     catch (error) {
       console.error("Failed to update config:", error);
     }
+  },
+  setWindowZoomFactor: (zoomFactor: number) => {
+    set(state => ({
+      config: state.config ? { ...state.config, window_zoom_factor: zoomFactor } : state.config,
+    }));
   },
   // 游戏列表管理
   fetchGames: async () => {

@@ -10,6 +10,7 @@ import { TimezoneSelectModal } from "./components/modal/TimezoneSelectModal";
 import { UpdateDialog } from "./components/ui/UpdateDialog";
 import { useAppRuntimeEffects } from "./hooks/useAppRuntimeEffects";
 import { useAppTheme } from "./hooks/useAppTheme";
+import { useAppZoom } from "./hooks/useAppZoom";
 import { useDownloadNotifications } from "./hooks/useDownloadNotifications";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
 import { Route as rootRoute } from "./routes/__root";
@@ -34,7 +35,7 @@ declare module "@tanstack/react-router" {
 }
 
 function App() {
-  const { config, fetchConfig, updateConfig } = useAppStore();
+  const { config, fetchConfig, updateConfig, setWindowZoomFactor } = useAppStore();
   const { updateInfo, showUpdateDialog, setShowUpdateDialog, handleSkipVersion } = useUpdateCheck();
   const [processSelectData, setProcessSelectData] = useState<ProcessSelectData>({ isOpen: false, gameID: "", launcherExeName: "" });
   const [installRequest, setInstallRequest] = useState<vo.InstallRequest | null>(null);
@@ -66,6 +67,7 @@ function App() {
   };
 
   useAppTheme(config);
+  useAppZoom({ config, updateConfig, setWindowZoomFactor });
   useAppRuntimeEffects({ config, setProcessSelectData, setInstallRequest });
   useDownloadNotifications(i18n);
 
