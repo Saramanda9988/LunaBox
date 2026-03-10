@@ -98,63 +98,64 @@ function RootLayout() {
       data-glass={bgEnabled ? "true" : "false"}
       style={{ "--wails-drop-target": "drop" } as React.CSSProperties}
     >
-      <div className="relative h-full w-full" style={zoomStyle}>
-        {/* Background layer */}
-        {bgEnabled && (
-          <div
-            key={`bg-${bgBlur}-${config.background_image}`}
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-300"
-            style={{
-              backgroundImage: `url("${config.background_image}")`,
-              filter: `blur(${bgBlur}px)`,
-              transform: "scale(1.1)",
-            }}
-          />
-        )}
+      {/* Background layer */}
+      {bgEnabled && (
+        <div
+          key={`bg-${bgBlur}-${config.background_image}`}
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-300"
+          style={{
+            backgroundImage: `url("${config.background_image}")`,
+            filter: `blur(${bgBlur}px)`,
+            transform: "scale(1.1)",
+          }}
+        />
+      )}
 
-        {/* Main content container */}
-        <div className="relative flex h-full w-full flex-col text-brand-900 dark:text-brand-100">
-          <TopBar />
-          <AppToaster topOffset={TOPBAR_HEIGHT + 12} />
+      <div className="relative flex h-full w-full flex-col text-brand-900 dark:text-brand-100">
+        <TopBar />
+        <AppToaster topOffset={TOPBAR_HEIGHT + 12} />
 
-          <div className="flex flex-1 overflow-hidden">
-            <SideBar bgEnabled={!!bgEnabled} bgOpacity={bgOpacity} />
-            <main
-              className={`flex-1 overflow-auto ${bgEnabled ? "" : "bg-brand-100 dark:bg-brand-900"
-              }`}
-              style={bgEnabled ? {
-                backgroundColor: `rgba(var(--main-bg-rgb), ${bgOpacity})`,
-              } : undefined}
-            >
-              <Outlet />
-            </main>
+        <div className="relative flex-1 overflow-hidden">
+          <div className="absolute left-0 top-0 h-full w-full shrink-0" style={zoomStyle}>
+            <div className="flex h-full w-full overflow-hidden">
+              <SideBar bgEnabled={!!bgEnabled} bgOpacity={bgOpacity} />
+              <main
+                className={`flex-1 overflow-auto ${bgEnabled ? "" : "bg-brand-100 dark:bg-brand-900"
+                }`}
+                style={bgEnabled ? {
+                  backgroundColor: `rgba(var(--main-bg-rgb), ${bgOpacity})`,
+                } : undefined}
+              >
+                <Outlet />
+              </main>
+            </div>
+
+            {/* Drag overlay */}
+            {isDragOver && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-primary-500/20 backdrop-blur-sm pointer-events-none">
+                <div className="flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed border-primary-500 bg-white/90 p-8 shadow-2xl dark:bg-brand-800/90">
+                  <div className="i-mdi-folder-upload animate-bounce text-6xl text-primary-500" />
+                  <div className="text-center">
+                    <p className="text-xl font-bold text-brand-900 dark:text-white">
+                      {t("root.dragDrop.dropToImport")}
+                    </p>
+                    <p className="mt-1 text-sm text-brand-500 dark:text-brand-400">
+                      {t("root.dragDrop.dropHint")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Drag-drop import modal */}
+            <DragDropImportModal
+              isOpen={showDragDropModal}
+              droppedPaths={droppedPaths}
+              onClose={handleCloseDragDropModal}
+              onImportComplete={handleImportComplete}
+            />
           </div>
         </div>
-
-        {/* Drag overlay */}
-        {isDragOver && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-primary-500/20 backdrop-blur-sm pointer-events-none">
-            <div className="flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed border-primary-500 bg-white/90 p-8 shadow-2xl dark:bg-brand-800/90">
-              <div className="i-mdi-folder-upload animate-bounce text-6xl text-primary-500" />
-              <div className="text-center">
-                <p className="text-xl font-bold text-brand-900 dark:text-white">
-                  {t("root.dragDrop.dropToImport")}
-                </p>
-                <p className="mt-1 text-sm text-brand-500 dark:text-brand-400">
-                  {t("root.dragDrop.dropHint")}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Drag-drop import modal */}
-        <DragDropImportModal
-          isOpen={showDragDropModal}
-          droppedPaths={droppedPaths}
-          onClose={handleCloseDragDropModal}
-          onImportComplete={handleImportComplete}
-        />
       </div>
     </div>
   );

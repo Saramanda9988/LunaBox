@@ -549,7 +549,7 @@
       "themeSystem": "システムに従う",
       "languageLabel": "言語",
       "zoomLabel": "UI 拡大率",
-      "zoomHint": "即時反映されます。Ctrl + / Ctrl - / Ctrl 0 のショートカットでも調整できます。",
+      "zoomHint": "Ctrl + / Ctrl - / Ctrl 0 のショートカットでも調整できます。",
       "zoomToast": "UI 拡大率を {{value}} に変更しました",
       "timezoneLabel": "タイムゾーン",
       "timezoneHint": "ゲーム時間を正しく表示・記録するために使用します。変更後はアプリを再起動してください",

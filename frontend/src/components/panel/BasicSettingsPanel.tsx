@@ -102,18 +102,17 @@ export function BasicSettingsPanel({ formData, onChange, onZoomChange }: BasicSe
 
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">{t("settings.basic.zoomLabel")}</label>
-        <span className="text-xs text-brand-500 dark:text-brand-400">{t("settings.basic.zoomHint")}</span>
         <BetterSelect
           name="window_zoom_factor"
           value={String(formData.window_zoom_factor || 1)}
           onChange={value => onZoomChange(Number(value))}
           options={appZoomOptions}
         />
+        <span className="text-xs text-brand-500 dark:text-brand-400">{t("settings.basic.zoomHint")}</span>
       </div>
 
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">{t("settings.basic.timezoneLabel")}</label>
-        <span className="text-xs text-brand-500 dark:text-brand-400">{t("settings.basic.timezoneHint")}</span>
         <BetterSelect
           name="timezone"
           value={formData.time_zone || "Asia/Shanghai"}
@@ -121,6 +120,7 @@ export function BasicSettingsPanel({ formData, onChange, onZoomChange }: BasicSe
           options={COMMON_TIMEZONES}
           placeholder={t("settings.basic.timezonePlaceholder")}
         />
+        <span className="text-xs text-brand-500 dark:text-brand-400">{t("settings.basic.timezoneHint")}</span>
       </div>
 
       <div className="flex items-center justify-between p-2">
