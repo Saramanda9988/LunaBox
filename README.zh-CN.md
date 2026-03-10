@@ -24,6 +24,7 @@
 - **AI 分析** - AI 分析游玩数据，生成个性化趣味报告
 - **便捷的数据导入** - 支持从 PotatoVN, Playnite，Vnite中导入数据，支持选择文件夹批量导入/拖动导入游戏
 - **多渠道备份** - 支持本地备份, AWS S3、七牛云、阿里云 OSS 等兼容 S3 协议的存储服务与 OneDrive 云端备份
+- **Cli模式** - 支持使用命令行管理，启动，备份游戏，修改程序数据
 - **隐私与安全** - 所有敏感数据均保存在本地中
 
 ## 截图
@@ -136,7 +137,7 @@ wails build
 
 - [ ] im 平台机器人插件
 
-- [ ] 更好的ai系统，长期记忆 + 人格面具 + 外部搜素
+- [x] 更好的ai系统，长期记忆 + 人格面具 + 外部搜素
 
 - [x] 更多的统计导出模板
 
@@ -158,6 +159,7 @@ wails build
 - [Bangumi](https://github.com/bangumi) - Bangumi番组计划
 - [VNDB](https://vndb.org/) - The Visual Novel Database
 - [月幕gal](https://www.ymgal.games/) - 请感受这绝妙的文艺体裁
+- [萌娘百科](https://zh.moegirl.org.cn/) - 万物皆可萌的百科全书
 
 解压功能提供:
 
@@ -166,3 +168,9 @@ wails build
 ## 📄 开源协议
 
 本项目采用 [AGPL v3](LICENSE) 协议开源。
+
+<div align="center">
+
+<img src="screenshot/logo-luna.png" width="150"/>
+
+</div>

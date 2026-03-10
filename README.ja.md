@@ -23,6 +23,7 @@
 - **AI 分析** - プレイデータに基づくパーソナライズされたレポートを生成
 - **便利なデータインポート** - PotatoVN、Playnite、Vnite からの取り込み、フォルダ一括/ドラッグ＆ドロップに対応
 - **複数チャネルのバックアップ** - ローカル、AWS S3、七牛云、阿里云 OSS（S3 互換）、OneDrive に対応
+- **CLI モード** - コマンドラインによるゲームの管理、起動、バックアップ、およびプログラムデータの修正に対応
 - **プライバシーとセキュリティ** - 機密データはすべてローカルに保存
 
 ## スクリーンショット
@@ -126,31 +127,37 @@ Issue と Pull Request を歓迎します。
 - [x] i18n 対応
 - [ ] セルフホスト Docker サーバー
 - [ ] IM プラットフォーム向け Bot プラグイン
-- [ ] より良い AI システム：長期記憶 + ペルソナ + 外部検索
+- [x] より良い AI システム：長期記憶 + ペルソナ + 外部検索
 - [x] 統計エクスポートテンプレートの追加
 - [x] Locale Emulator など起動オプション対応のゲーム起動
 
-## 😀 オープンソースから学び、オープンソースへ
+## 😀 オープンソースから、オープンソースへ
 
 インスピレーション元：
 
-- [PotatoVN](https://github.com/GoldenPotato137/PotatoVN) - Galgame 管理ツール
-- [ReinaManager](https://github.com/huoshen80/ReinaManager) - 軽量な Galgame / ビジュアルノベル管理ツール
-- [Playnite](https://github.com/JosefNemec/Playnite) - すべてのゲームを一元管理することを目的としたオープンソースのゲームライブラリマネージャー
-- [Vnite](https://github.com/ximu3/vnite) - ゲームコレクション整理、プレイ追跡、デバイス間リアルタイム同期、詳細レポートを提供する統合プラットフォーム
+- [PotatoVN](https://github.com/GoldenPotato137/PotatoVN) - Galgame 管理工具
+- [ReinaManager](https://github.com/huoshen80/ReinaManager) - 一款轻量化的galgame和视觉小说管理工具
+- [Playnite](https://github.com/JosefNemec/Playnite) - an open source video game library manager with one simple goal: To provide a unified interface for all of your games.
+- [Vnite](https://github.com/ximu3/vnite) - A unified platform to organize your game collection, track gameplay, with real-time cloud sync across devices and detailed gameplay reports.
 
 ## 🙏 謝辞
 
 ゲームメタデータ API 提供：
 
-- [Bangumi](https://github.com/bangumi) - Bangumi 番組計画
+- [Bangumi](https://github.com/bangumi) - Bangumi番组计划
 - [VNDB](https://vndb.org/) - The Visual Novel Database
-- [月幕gal](https://www.ymgal.games/) - ビジュアルノベル向けメタデータプラットフォーム
+- [月幕gal](https://www.ymgal.games/) - 请感受这绝妙的文艺体裁
 
 解凍機能提供：
 
-- [7-Zip](https://www.7-zip.org/) - 無料・オープンソースのアーカイブユーティリティ
+- [7-Zip](https://www.7-zip.org/) - A free and open-source file archiver, a utility used to place groups of files within compressed containers known as "archives".
 
 ## 📄 ライセンス
 
 本プロジェクトは [AGPL v3](LICENSE) ライセンスで公開されています。
+
+<div align="center">
+
+<img src="screenshot/logo-luna.png" width="150"/>
+
+</div>

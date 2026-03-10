@@ -23,6 +23,7 @@
 - **AI insights** - Generate personalized and fun reports based on your gameplay data
 - **Convenient data import** - Import from PotatoVN, Playnite, and Vnite; supports folder batch import and drag-and-drop
 - **Multi-channel backup** - Local backup, AWS S3, Qiniu, Alibaba Cloud OSS (S3-compatible), and OneDrive backup
+- **CLI Mode** - Support for managing, launching, and backing up games, and modifying program data via command line
 - **Privacy and security** - All sensitive data is stored locally
 
 ## Screenshots
@@ -126,7 +127,7 @@ Issues and Pull Requests are welcome.
 - [x] i18n support
 - [ ] Self-hosted Docker server
 - [ ] IM platform bot plugin
-- [ ] Better AI system: long-term memory + persona + external search
+- [x] Better AI system: long-term memory + persona + external search
 - [x] More stat export templates
 - [x] Game launch support with Locale Emulator and other launch options
 
@@ -134,8 +135,8 @@ Issues and Pull Requests are welcome.
 
 Inspiration:
 
-- [PotatoVN](https://github.com/GoldenPotato137/PotatoVN) - Galgame management tool
-- [ReinaManager](https://github.com/huoshen80/ReinaManager) - Lightweight galgame and visual novel manager
+- [PotatoVN](https://github.com/GoldenPotato137/PotatoVN) - Galgame 管理工具
+- [ReinaManager](https://github.com/huoshen80/ReinaManager) - 一款轻量化的galgame和视觉小说管理工具
 - [Playnite](https://github.com/JosefNemec/Playnite) - An open source video game library manager with one simple goal: to provide a unified interface for all of your games
 - [Vnite](https://github.com/ximu3/vnite) - A unified platform to organize your game collection, track gameplay, with real-time cloud sync across devices and detailed gameplay reports
 
@@ -143,14 +144,21 @@ Inspiration:
 
 Game metadata APIs:
 
-- [Bangumi](https://github.com/bangumi) - Bangumi Project
+- [Bangumi](https://github.com/bangumi) - Bangumi番组计划
 - [VNDB](https://vndb.org/) - The Visual Novel Database
-- [月幕gal](https://www.ymgal.games/) - A platform for visual novel metadata
+- [月幕gal](https://www.ymgal.games/) - 请感受这绝妙的文艺体裁
+- [萌娘百科](https://zh.moegirl.org.cn/) - 万物皆可萌的百科全书
 
 Archive extraction support:
 
-- [7-Zip](https://www.7-zip.org/) - A free and open-source file archiver utility
+- [7-Zip](https://www.7-zip.org/) - A free and open-source file archiver, a utility used to place groups of files within compressed containers known as "archives".
 
 ## 📄 License
 
 This project is licensed under [AGPL v3](LICENSE).
+
+<div align="center">
+
+<img src="screenshot/logo-luna.png" width="150"/>
+
+</div>
