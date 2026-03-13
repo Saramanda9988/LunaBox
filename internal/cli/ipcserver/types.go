@@ -54,6 +54,10 @@ func savePort(port int) {
 	_ = os.WriteFile(endpointFilePath(), content, 0644)
 }
 
+func clearSavedPort() {
+	_ = os.Remove(endpointFilePath())
+}
+
 func chooseIPCListener() (net.Listener, int, error) {
 	ports := make([]int, 0, (PortMax-Port)+2)
 	if savedPort, ok := readSavedPort(); ok {
