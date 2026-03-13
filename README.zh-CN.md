@@ -89,6 +89,7 @@
 - [pnpm](https://pnpm.io/)
 - [Wails CLI](https://wails.io/docs/gettingstarted/installation)
 - [msys2](https://www.msys2.org/)
+- [NSIS](https://nsis.sourceforge.io/Main_Page)
 
 ```bash
 # 安装 Wails CLI

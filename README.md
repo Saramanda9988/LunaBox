@@ -87,6 +87,7 @@ Go to the [Releases](https://github.com/Saramanda9988/LunaBox/releases) page and
 - [pnpm](https://pnpm.io/)
 - [Wails CLI](https://wails.io/docs/gettingstarted/installation)
 - [msys2](https://www.msys2.org/)
+- [NSIS](https://nsis.sourceforge.io/Main_Page)
 
 ```bash
 # Install Wails CLI
