@@ -14,7 +14,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	"lunabox/internal/appconf"
 	"lunabox/internal/enums"
@@ -44,16 +48,113 @@ var db *sql.DB
 
 var config *appconf.AppConfig
 
-var appCtx context.Context
+var appState = newLifecycleState()
+var ipcHTTPServer *http.Server
 
-// 用于通知 systray 退出
-var systrayQuit chan struct{}
+type lifecycleState struct {
+	ctxMu sync.RWMutex
+	ctx   context.Context
 
-// 用于同步托盘就绪状态
-var systrayReady chan struct{}
+	forceQuit    atomic.Bool
+	shuttingDown atomic.Bool
 
-// 标记是否是从托盘强制退出（绕过 OnBeforeClose 的最小化逻辑）
-var forceQuit bool
+	trayReady     chan struct{}
+	trayReadyOnce sync.Once
+	trayExit      chan struct{}
+	trayExitOnce  sync.Once
+	trayQuitOnce  sync.Once
+}
+
+func newLifecycleState() *lifecycleState {
+	return &lifecycleState{
+		trayReady: make(chan struct{}),
+		trayExit:  make(chan struct{}),
+	}
+}
+
+func (s *lifecycleState) SetContext(ctx context.Context) {
+	s.ctxMu.Lock()
+	defer s.ctxMu.Unlock()
+	s.ctx = ctx
+}
+
+func (s *lifecycleState) Context() context.Context {
+	s.ctxMu.RLock()
+	defer s.ctxMu.RUnlock()
+	return s.ctx
+}
+
+func (s *lifecycleState) MarkTrayReady() {
+	s.trayReadyOnce.Do(func() {
+		close(s.trayReady)
+	})
+}
+
+func (s *lifecycleState) MarkTrayExit() {
+	s.trayExitOnce.Do(func() {
+		close(s.trayExit)
+	})
+}
+
+func (s *lifecycleState) ShouldForceQuit() bool {
+	return s.forceQuit.Load() || s.shuttingDown.Load()
+}
+
+func (s *lifecycleState) BeginShutdown() {
+	s.shuttingDown.Store(true)
+}
+
+func (s *lifecycleState) ShowMainWindow() {
+	if s.shuttingDown.Load() {
+		return
+	}
+
+	ctx := s.Context()
+	if ctx == nil {
+		return
+	}
+
+	runtime.WindowShow(ctx)
+}
+
+func (s *lifecycleState) QuitApplication() {
+	if s.shuttingDown.Load() {
+		return
+	}
+
+	ctx := s.Context()
+	if ctx == nil {
+		return
+	}
+
+	s.forceQuit.Store(true)
+	s.shuttingDown.Store(true)
+	s.RequestTrayQuit()
+	runtime.Quit(ctx)
+}
+
+func (s *lifecycleState) StartTray() {
+	go func() {
+		goruntime.LockOSThread()
+		defer goruntime.UnlockOSThread()
+		systray.Run(onSystrayReady, onSystrayExit)
+	}()
+}
+
+func (s *lifecycleState) RequestTrayQuit() {
+	s.trayQuitOnce.Do(func() {
+		systray.Quit()
+	})
+}
+
+func (s *lifecycleState) WaitForTrayExit(timeout time.Duration) bool {
+	select {
+	case <-s.trayExit:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
+}
 
 func main() {
 	// ================================================================
@@ -190,7 +291,7 @@ func main() {
 			}
 
 			// 如果是从托盘强制退出，直接允许关闭
-			if forceQuit {
+			if appState.ShouldForceQuit() {
 				return false
 			}
 			if config.CloseToTray {
@@ -200,7 +301,7 @@ func main() {
 			return false
 		},
 		OnStartup: func(ctx context.Context) {
-			appCtx = ctx
+			appState.SetContext(ctx)
 			var err error
 
 			// 检查是否有待恢复的全量数据备份（在打开数据库前执行）
@@ -264,8 +365,7 @@ func main() {
 			configService.Init(ctx, db, config)
 			// 设置安全退出回调
 			configService.SetQuitHandler(func() {
-				forceQuit = true
-				runtime.Quit(ctx)
+				appState.QuitApplication()
 			})
 			downloadService.Init(ctx, db, config)
 			gameService.Init(ctx, db, config)
@@ -303,23 +403,34 @@ func main() {
 				BackupService:  backupService,
 				VersionService: versionService,
 			}
-			ipcserver.StartServer(cliApp)
+			ipcHTTPServer = ipcserver.StartServer(cliApp)
 
 			// 在 Wails 启动后初始化系统托盘
 			// TODO: 升级wails v3，使用原生的托盘功能
-			systrayQuit = make(chan struct{})
-			systrayReady = make(chan struct{})
-			go systray.Run(onSystrayReady, onSystrayExit)
+			appState.StartTray()
 
 			// 等待托盘初始化完成，避免竞态条件
-			<-systrayReady
-			appLogger.Info("system tray initialized successfully")
+			select {
+			case <-appState.trayReady:
+				appLogger.Info("system tray initialized successfully")
+			case <-time.After(5 * time.Second):
+				appLogger.Error("system tray initialization timed out")
+			}
 		},
 		OnShutdown: func(ctx context.Context) {
+			appState.BeginShutdown()
+
+			// 先关闭 IPC Server，避免退出过程中还有外部请求进入。
+			if err := ipcserver.ShutdownServer(ipcHTTPServer); err != nil {
+				appLogger.Error("failed to shutdown IPC server: " + err.Error())
+			}
+
 			// 关闭系统托盘
-			if systrayQuit != nil {
-				systray.Quit()
-				<-systrayQuit // 等待 systray 完全退出
+			appState.RequestTrayQuit()
+			if appState.WaitForTrayExit(1200 * time.Millisecond) {
+				appLogger.Info("system tray exited successfully")
+			} else {
+				appLogger.Warning("system tray exit timed out, continuing shutdown")
 			}
 
 			// 从 configService 获取最新配置（避免使用启动时的旧配置覆盖文件）
@@ -397,18 +508,12 @@ func onSystrayReady() {
 
 	// 点击托盘图标时显示窗口
 	systray.SetOnClick(func(menu systray.IMenu) {
-		// 确保 appCtx 已经初始化且有效
-		if appCtx != nil {
-			runtime.WindowShow(appCtx)
-		}
+		appState.ShowMainWindow()
 	})
 
 	// 双击托盘图标时也显示窗口
 	systray.SetOnDClick(func(menu systray.IMenu) {
-		// 确保 appCtx 已经初始化且有效
-		if appCtx != nil {
-			runtime.WindowShow(appCtx)
-		}
+		appState.ShowMainWindow()
 	})
 
 	mShow := systray.AddMenuItem("显示主窗口", "显示 LunaBox 主窗口")
@@ -417,28 +522,17 @@ func onSystrayReady() {
 
 	// energye/systray 使用 Click 方法设置回调，而不是 ClickedCh
 	mShow.Click(func() {
-		// 确保 appCtx 已经初始化且有效
-		if appCtx != nil {
-			runtime.WindowShow(appCtx)
-		}
+		appState.ShowMainWindow()
 	})
 
 	mQuit.Click(func() {
-		// 通过托盘退出时，设置强制退出标志，绕过 OnBeforeClose 的最小化逻辑
-		forceQuit = true
-		if appCtx != nil {
-			runtime.Quit(appCtx)
-		}
+		appState.QuitApplication()
 	})
 
 	// 通知主线程托盘已经准备就绪
-	if systrayReady != nil {
-		close(systrayReady)
-	}
+	appState.MarkTrayReady()
 }
 
 func onSystrayExit() {
-	if systrayQuit != nil {
-		close(systrayQuit)
-	}
+	appState.MarkTrayExit()
 }

@@ -2,9 +2,11 @@ package ipcserver
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"lunabox/internal/applog"
 	"lunabox/internal/cli"
@@ -14,7 +16,7 @@ import (
 )
 
 // StartServer 启动 IPC 服务器 (在 GUI 进程中运行)
-func StartServer(app *cli.CoreApp) {
+func StartServer(app *cli.CoreApp) *http.Server {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +80,7 @@ func StartServer(app *cli.CoreApp) {
 	listener, port, err := chooseIPCListener()
 	if err != nil {
 		applog.LogErrorf(app.Ctx, "IPC Server failed to acquire port: %v", err)
-		return
+		return nil
 	}
 	savePort(port)
 	server := &http.Server{Handler: mux}
@@ -89,4 +91,24 @@ func StartServer(app *cli.CoreApp) {
 			applog.LogErrorf(app.Ctx, "IPC Server failed: %v", err)
 		}
 	}()
+
+	return server
+}
+
+// ShutdownServer 关闭 IPC 服务器并清理 endpoint 文件
+func ShutdownServer(server *http.Server) error {
+	if server == nil {
+		clearSavedPort()
+		return nil
+	}
+
+	defer clearSavedPort()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil && err != http.ErrServerClosed {
+		return err
+	}
+	return nil
 }
