@@ -531,6 +531,15 @@
       "update": "アプリ更新"
     },
     "download": {
+      "proxyMode": "ダウンロードプロキシ",
+      "proxyModeHint": "既定ではシステムプロキシを自動的に使用します。ダウンロードがまだプロキシを通らない場合は、手動モードに切り替えてプロキシ URL を入力してください。",
+      "proxyModeSystem": "システムプロキシに従う",
+      "proxyModeManual": "手動プロキシ",
+      "proxyModeDirect": "直接接続",
+      "proxyModeNote": "Windows ではまずシステムプロキシを読み取ります。PAC または TUN のみの構成を判別できない場合は、手動プロキシに切り替えてください。",
+      "manualProxyURL": "手動プロキシ URL",
+      "manualProxyURLHint": "http://、https://、socks5:// と、127.0.0.1:7890 のようなアドレスをサポートします。",
+      "manualProxyURLPlaceholder": "例: http://127.0.0.1:7890",
       "selectGameLibraryTitle": "ゲームライブラリフォルダーを選択",
       "gameLibraryPath": "ゲームライブラリディレクトリ",
       "gameLibraryPathHint": "ダウンロードしたゲームはこのディレクトリに展開されます。空欄の場合は ~/Games を使用します",

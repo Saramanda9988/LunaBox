@@ -83,6 +83,9 @@ type AppConfig struct {
 	TimeZone string `json:"time_zone,omitempty"` // 数据库使用的 IANA 时区名称（如 "Asia/Shanghai"）
 	// 游戏库路径配置
 	GameLibraryPath string `json:"game_library_path,omitempty"` // 游戏库主目录（下载的游戏将解压到此）
+	// 下载代理配置
+	DownloadProxyMode string `json:"download_proxy_mode,omitempty"` // 下载代理模式：system / manual / direct
+	DownloadProxyURL  string `json:"download_proxy_url,omitempty"`  // 手动代理 URL，支持 http/https/socks5
 }
 
 // getConfigPath 获取配置文件路径
@@ -148,6 +151,8 @@ func LoadConfig() (*AppConfig, error) {
 		MagpiePath:              "",
 		AutoDetectGameProcess:   true, // 默认启用自动检测，保持向后兼容
 		GameLibraryPath:         "",
+		DownloadProxyMode:       "system",
+		DownloadProxyURL:        "",
 	}
 
 	// 获取配置文件路径

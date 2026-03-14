@@ -432,7 +432,12 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 	s.mu.Unlock()
 
 	// 创建 HTTP 请求（支持取消）
-	client := newSecureDownloadClient() // 大文件不设超时，靠 context cancel
+	client, proxyDesc, err := newSecureDownloadClient(s.config) // 大文件不设超时，靠 context cancel
+	if err != nil {
+		s.failTask(task, fmt.Sprintf("create download client: %v", err))
+		return
+	}
+	applog.LogInfof(s.ctx, "Download proxy for task %s: %s", task.ID, proxyDesc)
 	buildRequest := func(offset int64) (*http.Response, error) {
 		req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, task.Request.URL, nil)
 		if reqErr != nil {
@@ -1205,11 +1210,37 @@ func resolveAllowedAddress(ctx context.Context, address string) (string, error) 
 	return "", fmt.Errorf("host %s resolved only to blocked addresses", host)
 }
 
-func newSecureDownloadClient() *http.Client {
+func newSecureDownloadClient(config *appconf.AppConfig) (*http.Client, string, error) {
+	var mode string
+	var proxyURL string
+	if config != nil {
+		mode = config.DownloadProxyMode
+		proxyURL = config.DownloadProxyURL
+	}
+
+	selection, proxyDesc, err := utils.ResolveDownloadProxy(mode, proxyURL)
+	if err != nil {
+		return nil, "", fmt.Errorf("resolve download proxy: %w", err)
+	}
+
+	allowedProxyTargets := map[string]struct{}{}
+	if selection != nil {
+		allowedProxyTargets = selection.AllowedDialTargets()
+	}
+
 	dialer := &net.Dialer{}
 	transport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
+		Proxy: func(req *http.Request) (*url.URL, error) {
+			if selection == nil {
+				return nil, nil
+			}
+			return selection.Proxy(req)
+		},
 		DialContext: func(ctx context.Context, network string, address string) (net.Conn, error) {
+			if _, ok := allowedProxyTargets[address]; ok {
+				return dialer.DialContext(ctx, network, address)
+			}
+
 			resolvedAddress, err := resolveAllowedAddress(ctx, address)
 			if err != nil {
 				return nil, err
@@ -1227,7 +1258,7 @@ func newSecureDownloadClient() *http.Client {
 			}
 			return validateDownloadURL(req.URL.String())
 		},
-	}
+	}, proxyDesc, nil
 }
 
 func isSupportedArchiveFormat(format string) bool {

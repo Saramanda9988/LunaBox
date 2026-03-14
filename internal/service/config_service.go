@@ -181,6 +181,9 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.TimeZone = newConfig.TimeZone
 	// 游戏库路径配置
 	s.config.GameLibraryPath = newConfig.GameLibraryPath
+	// 下载代理配置
+	s.config.DownloadProxyMode = newConfig.DownloadProxyMode
+	s.config.DownloadProxyURL = newConfig.DownloadProxyURL
 	s.config.AISpoilerLevel = newConfig.AISpoilerLevel
 	s.config.AIWebSearchEnabled = newConfig.AIWebSearchEnabled
 	s.config.AIContextWindowSize = newConfig.AIContextWindowSize

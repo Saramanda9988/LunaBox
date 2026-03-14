@@ -58,6 +58,8 @@ export namespace appconf {
 	    auto_detect_game_process: boolean;
 	    time_zone?: string;
 	    game_library_path?: string;
+	    download_proxy_mode?: string;
+	    download_proxy_url?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -122,6 +124,8 @@ export namespace appconf {
 	        this.auto_detect_game_process = source["auto_detect_game_process"];
 	        this.time_zone = source["time_zone"];
 	        this.game_library_path = source["game_library_path"];
+	        this.download_proxy_mode = source["download_proxy_mode"];
+	        this.download_proxy_url = source["download_proxy_url"];
 	    }
 	}
 

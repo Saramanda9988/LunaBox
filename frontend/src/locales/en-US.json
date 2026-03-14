@@ -531,6 +531,15 @@
       "update": "App Updates"
     },
     "download": {
+      "proxyMode": "Download Proxy",
+      "proxyModeHint": "By default downloads follow the system proxy automatically. If traffic still does not go through the proxy, switch to manual mode and fill in the proxy URL.",
+      "proxyModeSystem": "Follow system proxy",
+      "proxyModeManual": "Manual proxy",
+      "proxyModeDirect": "Direct connection",
+      "proxyModeNote": "On Windows, the app reads the system proxy first. If PAC or TUN-only routing cannot be detected, switch to manual proxy.",
+      "manualProxyURL": "Manual Proxy URL",
+      "manualProxyURLHint": "Supports http://, https://, socks5://, and raw addresses like 127.0.0.1:7890.",
+      "manualProxyURLPlaceholder": "e.g. http://127.0.0.1:7890",
       "selectGameLibraryTitle": "Select Game Library Directory",
       "gameLibraryPath": "Game Library Directory",
       "gameLibraryPathHint": "Downloaded games will be extracted into this directory. Leave empty to use ~/Games.",

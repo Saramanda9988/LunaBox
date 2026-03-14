@@ -531,6 +531,15 @@
       "update": "应用更新"
     },
     "download": {
+      "proxyMode": "下载代理",
+      "proxyModeHint": "默认自动跟随系统代理；如果下载仍未走代理，可切换为手动并填写代理 URL。",
+      "proxyModeSystem": "自动跟随系统代理",
+      "proxyModeManual": "手动代理",
+      "proxyModeDirect": "直连，不使用代理",
+      "proxyModeNote": "Windows 下会优先读取系统代理。PAC 或仅 TUN 的场景如果无法识别，可改为手动代理。",
+      "manualProxyURL": "手动代理 URL",
+      "manualProxyURLHint": "支持 http://、https://、socks5://，也可直接填写 127.0.0.1:7890 这类地址。",
+      "manualProxyURLPlaceholder": "例如 http://127.0.0.1:7890",
       "selectGameLibraryTitle": "选择游戏库目录",
       "gameLibraryPath": "游戏库目录",
       "gameLibraryPathHint": "下载的游戏将解压到此目录。留空则使用 ~/Games",
