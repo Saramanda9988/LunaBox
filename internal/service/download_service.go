@@ -36,6 +36,7 @@ type DownloadStatus string
 const (
 	DownloadStatusPending     DownloadStatus = "pending"
 	DownloadStatusDownloading DownloadStatus = "downloading"
+	DownloadStatusExtracting  DownloadStatus = "extracting"
 	DownloadStatusPaused      DownloadStatus = "paused"
 	DownloadStatusDone        DownloadStatus = "done"
 	DownloadStatusError       DownloadStatus = "error"
@@ -55,6 +56,7 @@ type DownloadTask struct {
 	FilePath   string            `json:"file_path,omitempty"` // 下载完成后的本地路径
 	cancel     context.CancelFunc
 	pauseReq   bool
+	cancelReq  bool
 }
 
 // DownloadProgressEvent 通过 Wails event 推送的进度事件
@@ -126,11 +128,12 @@ func (s *DownloadService) StartDownload(req vo.InstallRequest) (string, error) {
 
 	ctx, cancel := context.WithCancel(s.ctx)
 	task := &DownloadTask{
-		ID:      taskID,
-		Request: req,
-		Status:  DownloadStatusPending,
-		Total:   req.Size,
-		cancel:  cancel,
+		ID:        taskID,
+		Request:   req,
+		Status:    DownloadStatusPending,
+		Total:     req.Size,
+		cancel:    cancel,
+		cancelReq: false,
 	}
 
 	s.mu.Lock()
@@ -153,24 +156,29 @@ func (s *DownloadService) CancelDownload(taskID string) error {
 		s.mu.Unlock()
 		return fmt.Errorf("task %s not found", taskID)
 	}
+
+	if task.Status == DownloadStatusDone || task.Status == DownloadStatusError || task.Status == DownloadStatusCancelled {
+		s.mu.Unlock()
+		return nil
+	}
+
 	task.pauseReq = false
+	task.cancelReq = true
 	status := task.Status
 	cancel := task.cancel
 	s.mu.Unlock()
 
 	if status == DownloadStatusPaused {
-		destPath, err := s.getTaskDestPath(task.Request)
-		if err == nil {
-			_ = os.Remove(destPath)
+		destPath := ""
+		if path, err := s.getTaskDestPath(task.Request); err == nil {
+			destPath = path
 		}
-		s.mu.Lock()
-		task.Status = DownloadStatusCancelled
-		task.Error = ""
-		task.Progress = 0
-		task.Downloaded = 0
-		task.Total = task.Request.Size
-		s.mu.Unlock()
-		s.emitProgress(task)
+		extractPath := buildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
+		s.cancelTaskAndCleanup(task, destPath, extractPath)
+		return nil
+	}
+
+	if status == DownloadStatusExtracting {
 		return nil
 	}
 
@@ -218,6 +226,7 @@ func (s *DownloadService) ResumeDownload(taskID string) error {
 		return fmt.Errorf("task %s is not paused", taskID)
 	}
 	task.pauseReq = false
+	task.cancelReq = false
 	ctx, cancel := context.WithCancel(s.ctx)
 	task.cancel = cancel
 	task.Status = DownloadStatusPending
@@ -248,6 +257,9 @@ func (s *DownloadService) DeleteDownloadTask(taskID string) error {
 
 	task, ok := s.tasks[taskID]
 	if ok && (task.Status == DownloadStatusPending || task.Status == DownloadStatusDownloading) {
+		return fmt.Errorf("cannot delete active task %s", taskID)
+	}
+	if ok && task.Status == DownloadStatusExtracting {
 		return fmt.Errorf("cannot delete active task %s", taskID)
 	}
 
@@ -429,6 +441,7 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 	}
 	task.Total = task.Request.Size
 	task.pauseReq = false
+	task.cancelReq = false
 	s.mu.Unlock()
 
 	// 创建 HTTP 请求（支持取消）
@@ -452,6 +465,15 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 
 	resp, err := buildRequest(resumeOffset)
 	if err != nil {
+		if errors.Is(err, context.Canceled) && s.isTaskPauseRequested(task) {
+			s.markTaskPaused(task)
+			return
+		}
+		if errors.Is(err, context.Canceled) && s.isTaskCancelled(task) {
+			extractPath := buildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
+			s.cancelTaskAndCleanup(task, destPath, extractPath)
+			return
+		}
 		s.failTask(task, fmt.Sprintf("http request: %v", err))
 		return
 	}
@@ -466,6 +488,15 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 		s.mu.Unlock()
 		resp, err = buildRequest(0)
 		if err != nil {
+			if errors.Is(err, context.Canceled) && s.isTaskPauseRequested(task) {
+				s.markTaskPaused(task)
+				return
+			}
+			if errors.Is(err, context.Canceled) && s.isTaskCancelled(task) {
+				extractPath := buildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
+				s.cancelTaskAndCleanup(task, destPath, extractPath)
+				return
+			}
 			s.failTask(task, fmt.Sprintf("http request after range reset: %v", err))
 			return
 		}
@@ -545,23 +576,12 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 			task.pauseReq = false
 			s.mu.Unlock()
 			_ = closeFile()
-			s.mu.Lock()
 			if pauseRequested {
-				task.Status = DownloadStatusPaused
-				task.Error = ""
-			} else {
-				_ = os.Remove(destPath)
-				task.Status = DownloadStatusCancelled
-				task.Error = ""
-				task.Progress = 0
-				task.Downloaded = 0
-				task.Total = task.Request.Size
-			}
-			s.mu.Unlock()
-			s.emitProgress(task)
-			if pauseRequested {
+				s.markTaskPaused(task)
 				applog.LogInfof(s.ctx, "Download paused: %s", task.ID)
 			} else {
+				extractPath := buildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
+				s.cancelTaskAndCleanup(task, destPath, extractPath)
 				applog.LogInfof(s.ctx, "Download cancelled: %s", task.ID)
 			}
 			return
@@ -615,21 +635,13 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 				pauseRequested := task.pauseReq
 				task.pauseReq = false
 				if pauseRequested {
-					task.Status = DownloadStatusPaused
-					task.Error = ""
-				} else {
-					_ = os.Remove(destPath)
-					task.Status = DownloadStatusCancelled
-					task.Error = ""
-					task.Progress = 0
-					task.Downloaded = 0
-					task.Total = task.Request.Size
-				}
-				s.mu.Unlock()
-				s.emitProgress(task)
-				if pauseRequested {
+					s.mu.Unlock()
+					s.markTaskPaused(task)
 					applog.LogInfof(s.ctx, "Download paused (read canceled): %s", task.ID)
 				} else {
+					s.mu.Unlock()
+					extractPath := buildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
+					s.cancelTaskAndCleanup(task, destPath, extractPath)
 					applog.LogInfof(s.ctx, "Download cancelled (read canceled): %s", task.ID)
 				}
 				return
@@ -661,15 +673,38 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 		return
 	}
 
+	extractPath := buildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
+	s.mu.Lock()
+	task.Status = DownloadStatusExtracting
+	s.mu.Unlock()
+	s.emitProgress(task)
+
+	if s.isTaskCancelled(task) {
+		s.cancelTaskAndCleanup(task, destPath, extractPath)
+		return
+	}
+
 	// 下载完成后处理（压缩包解压/路径归一）
 	finalPath, manualExtractRequired, err := s.handleDownloadedFile(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
 	if err != nil {
+		if s.isTaskCancelled(task) {
+			s.cancelTaskAndCleanup(task, destPath, extractPath)
+			return
+		}
 		s.failTask(task, fmt.Sprintf("post process download file: %v", err))
 		return
 	}
 	finalPath, err = normalizeGamePath(finalPath)
 	if err != nil {
+		if s.isTaskCancelled(task) {
+			s.cancelTaskAndCleanup(task, destPath, extractPath, finalPath)
+			return
+		}
 		s.failTask(task, fmt.Sprintf("normalize game path: %v", err))
+		return
+	}
+	if s.isTaskCancelled(task) {
+		s.cancelTaskAndCleanup(task, destPath, extractPath, finalPath)
 		return
 	}
 
@@ -741,7 +776,7 @@ func (s *DownloadService) loadTasksFromDB() error {
 
 		taskStatus := DownloadStatus(status)
 		taskError := errorMsg.String
-		if taskStatus == DownloadStatusPending || taskStatus == DownloadStatusDownloading {
+		if taskStatus == DownloadStatusPending || taskStatus == DownloadStatusDownloading || taskStatus == DownloadStatusExtracting {
 			taskStatus = DownloadStatusError
 			if taskError == "" {
 				taskError = "download interrupted by app restart"
@@ -1057,6 +1092,78 @@ func normalizeGamePath(path string) (string, error) {
 	return absPath, nil
 }
 
+func (s *DownloadService) isTaskCancelled(task *DownloadTask) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return task.cancelReq
+}
+
+func (s *DownloadService) isTaskPauseRequested(task *DownloadTask) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return task.pauseReq
+}
+
+func (s *DownloadService) markTaskPaused(task *DownloadTask) {
+	s.mu.Lock()
+	task.Status = DownloadStatusPaused
+	task.Error = ""
+	task.pauseReq = false
+	task.cancelReq = false
+	s.mu.Unlock()
+	s.emitProgress(task)
+}
+
+func (s *DownloadService) cancelTaskAndCleanup(task *DownloadTask, paths ...string) {
+	s.cleanupDownloadArtifacts(paths...)
+
+	s.mu.Lock()
+	task.Status = DownloadStatusCancelled
+	task.Error = ""
+	task.Progress = 0
+	task.Downloaded = 0
+	task.Total = task.Request.Size
+	task.FilePath = ""
+	task.pauseReq = false
+	task.cancelReq = false
+	s.mu.Unlock()
+
+	s.emitProgress(task)
+}
+
+func (s *DownloadService) cleanupDownloadArtifacts(paths ...string) {
+	seen := make(map[string]struct{})
+	for _, rawPath := range paths {
+		path := strings.TrimSpace(rawPath)
+		if path == "" {
+			continue
+		}
+		if _, exists := seen[path]; exists {
+			continue
+		}
+		seen[path] = struct{}{}
+
+		info, err := os.Stat(path)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				applog.LogWarningf(s.ctx, "failed to stat path while cleanup: %s err=%v", path, err)
+			}
+			continue
+		}
+
+		if info.IsDir() {
+			if err := os.RemoveAll(path); err != nil {
+				applog.LogWarningf(s.ctx, "failed to remove dir while cleanup: %s err=%v", path, err)
+			}
+			continue
+		}
+
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			applog.LogWarningf(s.ctx, "failed to remove file while cleanup: %s err=%v", path, err)
+		}
+	}
+}
+
 func collapseSingleRootDirectory(dir string) (string, bool) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -1073,6 +1180,28 @@ func collapseSingleRootDirectory(dir string) (string, bool) {
 	}
 
 	return filepath.Join(dir, only.Name()), true
+}
+
+func buildExpectedExtractDir(downloadedPath string, fileName string, archiveFormat string, title string) string {
+	if strings.TrimSpace(downloadedPath) == "" {
+		return ""
+	}
+
+	format := normalizeArchiveFormat(archiveFormat)
+	if format == "none" || !isSupportedArchiveFormat(format) {
+		return ""
+	}
+
+	baseName := trimArchiveSuffixByFormat(strings.TrimSpace(fileName), format)
+	baseName = sanitizeFileName(baseName)
+	if baseName == "" {
+		baseName = sanitizeFileName(title)
+	}
+	if baseName == "" {
+		baseName = "game"
+	}
+
+	return filepath.Join(filepath.Dir(downloadedPath), baseName)
 }
 
 // =================== 辅助函数 ===================

@@ -7,6 +7,7 @@ function StatusBadge({ status }: { status: service.DownloadTask["status"] }) {
   const map: Record<service.DownloadTask["status"], { cls: string; label: string }> = {
     pending: { cls: "bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300", label: t("downloads.status.pending", "等待中") },
     downloading: { cls: "bg-info-100 text-info-700 dark:bg-info-900/40 dark:text-info-300", label: t("downloads.status.downloading", "下载中") },
+    extracting: { cls: "bg-info-100 text-info-700 dark:bg-info-900/40 dark:text-info-300", label: t("downloads.status.extracting", "解压中") },
     paused: { cls: "bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300", label: t("downloads.status.paused", "已暂停") },
     done: { cls: "bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300", label: t("downloads.status.done", "已完成") },
     error: { cls: "bg-error-100 text-error-700 dark:bg-error-900/40 dark:text-error-300", label: t("downloads.status.error", "错误") },
@@ -43,7 +44,9 @@ export function DownloadCard({
 }) {
   const { t } = useTranslation();
   const isActive = task.status === "pending" || task.status === "downloading";
+  const isExtracting = task.status === "extracting";
   const isPaused = task.status === "paused";
+  const canCancel = isActive || isExtracting || isPaused;
   const progress = Math.max(0, Math.min(100, task.progress ?? 0));
   const canOpenFolder = !!task.file_path;
   const manualExtractRequired = task.status === "done" && task.error === "manual_extract_required";
@@ -79,58 +82,56 @@ export function DownloadCard({
             >
               <span className="i-mdi-folder-open-outline text-xl" />
             </button>
-            {task.status === "downloading"
+            {task.status === "downloading" && (
+              <button
+                type="button"
+                title={t("downloads.pause", "暂停下载")}
+                onClick={() => onPause(task.id)}
+                className="border-l border-brand-300 flex h-10 w-10 items-center justify-center text-warning-600 transition-colors hover:bg-warning-100 dark:border-brand-600 dark:text-warning-300 dark:hover:bg-warning-900/40"
+              >
+                <span className="i-mdi-pause text-xl" />
+              </button>
+            )}
+            {isPaused && (
+              <button
+                type="button"
+                title={t("downloads.resume", "继续下载")}
+                onClick={() => onResume(task.id)}
+                className="border-l border-brand-300 flex h-10 w-10 items-center justify-center text-success-600 transition-colors hover:bg-success-100 dark:border-brand-600 dark:text-success-300 dark:hover:bg-success-900/40"
+              >
+                <span className="i-mdi-play text-xl" />
+              </button>
+            )}
+            {canCancel
               ? (
                   <button
                     type="button"
-                    title={t("downloads.pause", "暂停下载")}
-                    onClick={() => onPause(task.id)}
-                    className="border-l border-brand-300 flex h-10 w-10 items-center justify-center text-warning-600 transition-colors hover:bg-warning-100 dark:border-brand-600 dark:text-warning-300 dark:hover:bg-warning-900/40"
+                    title={t("downloads.cancel", "取消下载")}
+                    onClick={() => onCancel(task.id)}
+                    className="border-l border-brand-300 flex h-10 w-10 items-center justify-center text-error-500 transition-colors hover:bg-error-100 dark:border-brand-600 dark:hover:bg-error-900/40"
                   >
-                    <span className="i-mdi-pause text-xl" />
+                    <span className="i-mdi-close text-xl" />
                   </button>
                 )
-              : isPaused
-                ? (
-                    <button
-                      type="button"
-                      title={t("downloads.resume", "继续下载")}
-                      onClick={() => onResume(task.id)}
-                      className="border-l border-brand-300 flex h-10 w-10 items-center justify-center text-success-600 transition-colors hover:bg-success-100 dark:border-brand-600 dark:text-success-300 dark:hover:bg-success-900/40"
-                    >
-                      <span className="i-mdi-play text-xl" />
-                    </button>
-                  )
-                : isActive
-                  ? (
-                      <button
-                        type="button"
-                        title={t("downloads.cancel", "取消下载")}
-                        onClick={() => onCancel(task.id)}
-                        className="border-l border-brand-300 flex h-10 w-10 items-center justify-center text-error-500 transition-colors hover:bg-error-100 dark:border-brand-600 dark:hover:bg-error-900/40"
-                      >
-                        <span className="i-mdi-close text-xl" />
-                      </button>
-                    )
-                  : (
-                      <button
-                        type="button"
-                        title={t("downloads.delete", "删除记录")}
-                        onClick={() => onDelete(task.id)}
-                        className="border-l border-brand-300 flex h-10 w-10 items-center justify-center text-error-500 transition-colors hover:bg-error-100 dark:border-brand-600 dark:hover:bg-error-900/40"
-                      >
-                        <span className="i-mdi-delete text-xl" />
-                      </button>
-                    )}
+              : (
+                  <button
+                    type="button"
+                    title={t("downloads.delete", "删除记录")}
+                    onClick={() => onDelete(task.id)}
+                    className="border-l border-brand-300 flex h-10 w-10 items-center justify-center text-error-500 transition-colors hover:bg-error-100 dark:border-brand-600 dark:hover:bg-error-900/40"
+                  >
+                    <span className="i-mdi-delete text-xl" />
+                  </button>
+                )}
           </div>
         </div>
       </div>
 
-      {(task.status === "downloading" || task.status === "pending" || task.status === "paused") && (
+      {(task.status === "downloading" || task.status === "pending" || task.status === "paused" || task.status === "extracting") && (
         <div className="space-y-1">
           <div className="h-2 overflow-hidden rounded-full bg-brand-200 dark:bg-brand-700">
             <div
-              className="h-full rounded-full bg-info-500 transition-all duration-300"
+              className={`h-full rounded-full transition-all duration-300 ${task.status === "extracting" ? "bg-info-500 animate-pulse" : "bg-info-500"}`}
               style={{ width: `${progress}%` }}
             />
           </div>

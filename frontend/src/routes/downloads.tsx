@@ -186,11 +186,11 @@ function DownloadsPage() {
 
   // 排序：活跃任务在前
   const sorted = [...tasks].sort((a, b) => {
-    const order: Record<string, number> = { downloading: 0, paused: 1, pending: 2, error: 3, done: 4, cancelled: 5 };
+    const order: Record<string, number> = { downloading: 0, extracting: 1, paused: 2, pending: 3, error: 4, done: 5, cancelled: 6 };
     return (order[a.status] ?? 5) - (order[b.status] ?? 5);
   });
 
-  const activeCount = tasks.filter(t => t.status === "downloading" || t.status === "pending").length;
+  const activeCount = tasks.filter(t => t.status === "downloading" || t.status === "pending" || t.status === "extracting").length;
 
   return (
     <div className="mx-auto flex h-full max-w-8xl flex-col space-y-6 p-8">

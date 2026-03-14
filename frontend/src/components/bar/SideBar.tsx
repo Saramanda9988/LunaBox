@@ -20,7 +20,7 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
     const counts: Record<string, string> = {};
     const unsubscribe = EventsOn("download:progress", (evt: { id: string; status: string }) => {
       counts[evt.id] = evt.status;
-      const active = Object.values(counts).filter(s => s === "downloading" || s === "pending").length;
+      const active = Object.values(counts).filter(s => s === "downloading" || s === "pending" || s === "extracting").length;
       setActiveDownloads(active);
     });
     return unsubscribe;

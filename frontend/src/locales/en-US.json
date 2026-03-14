@@ -800,6 +800,7 @@
     "status": {
       "pending": "Pending",
       "downloading": "Downloading",
+      "extracting": "Extracting",
       "paused": "Paused",
       "done": "Done",
       "error": "Error",

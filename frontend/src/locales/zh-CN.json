@@ -800,6 +800,7 @@
     "status": {
       "pending": "等待中",
       "downloading": "下载中",
+      "extracting": "解压中",
       "paused": "已暂停",
       "done": "已完成",
       "error": "错误",
