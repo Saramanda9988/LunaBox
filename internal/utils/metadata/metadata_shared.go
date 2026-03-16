@@ -15,7 +15,7 @@ type Getter interface {
 	FetchMetadataByName(name string, token string) (models.Game, error)
 }
 
-const metadataUserAgent = "Saramanda9988/LunaBox/1.5.2 (desktop) (https://github.com/Saramanda9988/LunaBox)"
+const metadataUserAgent = "Saramanda9988/LunaBox/1.5.3 (desktop) (https://github.com/Saramanda9988/LunaBox)"
 
 func newMetadataClient() *http.Client {
 	return &http.Client{Timeout: 10 * time.Second}
