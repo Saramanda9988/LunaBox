@@ -1,6 +1,6 @@
 //go:build !windows
 
-package utils
+package proxyutils
 
 func loadSystemProxySelection() (*ProxySelection, string, error) {
 	return nil, "", nil

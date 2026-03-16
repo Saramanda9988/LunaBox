@@ -8,7 +8,7 @@ import (
 	"lunabox/internal/applog"
 	"lunabox/internal/models"
 	"lunabox/internal/service/timer"
-	"lunabox/internal/utils"
+	"lunabox/internal/utils/processutils"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -193,7 +193,7 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 		time.Sleep(5 * time.Second)
 
 		// 在系统进程中搜索保存的进程名
-		pid, err := utils.GetProcessPIDByName(savedProcessName)
+		pid, err := processutils.GetProcessPIDByName(savedProcessName)
 		if err != nil {
 			applog.LogWarningf(s.ctx, "Failed to find saved process %s: %v, falling back to launcher monitoring", savedProcessName, err)
 			// 如果找不到保存的进程，使用启动器进程监控
@@ -229,7 +229,7 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 			time.Sleep(5 * time.Second)
 
 			// 阶段2: 第一次检测
-			launcherStillRunning := utils.IsProcessRunningByPID(launcherPID, s.ctx)
+			launcherStillRunning := processutils.IsProcessRunningByPID(launcherPID, s.ctx)
 
 			if !launcherStillRunning {
 				// 启动器在5秒内就退出了，说明是快速启动器（如Steam）
@@ -249,7 +249,7 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 			for time.Since(observationStart) < observationPeriod {
 				time.Sleep(checkInterval)
 
-				if !utils.IsProcessRunningByPID(launcherPID, s.ctx) {
+				if !processutils.IsProcessRunningByPID(launcherPID, s.ctx) {
 					// 启动器在观察期内退出了，说明它只是个启动器
 					applog.LogInfof(s.ctx, "Launcher %s exited during observation period, will prompt for actual game process", launcherExeName)
 					s.promptUserToSelectProcess(sessionID, gameID, startTime, launcherExeName)
@@ -333,7 +333,7 @@ func (s *StartService) promptUserToSelectProcess(sessionID string, gameID string
 	s.pendingProcessSelectMu.Unlock()
 
 	// 获取选中进程的PID
-	pid, err := utils.GetProcessPIDByName(selectedProcess)
+	pid, err := processutils.GetProcessPIDByName(selectedProcess)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "Failed to find selected process %s: %v", selectedProcess, err)
 		s.sessionService.DeletePlaySession(sessionID)
@@ -386,7 +386,7 @@ func (s *StartService) monitorProcessByPID(sessionID string, gameID string, star
 	applog.LogInfof(s.ctx, "Starting to monitor external process %s (PID %d) using WaitForSingleObject", processName, processID)
 
 	// 创建进程监控器
-	pm, exitChan, err := utils.WaitForProcessExitAsync(processID)
+	pm, exitChan, err := processutils.WaitForProcessExitAsync(processID)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "Failed to start process monitor for %s (PID %d): %v", processName, processID, err)
 		// 监控失败，直接清理
@@ -662,7 +662,7 @@ func (s *StartService) startMagpie() {
 	time.Sleep(1 * time.Second)
 
 	// 检查 Magpie 是否已经在运行
-	isRunning, err := utils.CheckIfProcessRunning("Magpie.exe")
+	isRunning, err := processutils.CheckIfProcessRunning("Magpie.exe")
 	if err != nil {
 		applog.LogErrorf(s.ctx, "Failed to check Magpie process: %v", err)
 		return

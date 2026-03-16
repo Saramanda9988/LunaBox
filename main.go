@@ -9,7 +9,7 @@ import (
 	"lunabox/internal/cli/ipcclient"
 	"lunabox/internal/cli/ipcserver"
 	"lunabox/internal/protocol"
-	"lunabox/internal/utils"
+	"lunabox/internal/utils/apputils"
 	"lunabox/internal/vo"
 	"net/http"
 	"os"
@@ -186,7 +186,7 @@ func main() {
 	}
 
 	// ================================================================
-	logDir, _ := utils.GetSubDir("logs")
+	logDir, _ := apputils.GetSubDir("logs")
 	appLogger := logger.NewFileLogger(filepath.Join(logDir, "app.log"))
 
 	var loadErr error
@@ -219,7 +219,7 @@ func main() {
 	}
 
 	// 创建本地文件处理器
-	localFileHandler, err := utils.NewLocalFileHandler()
+	localFileHandler, err := apputils.NewLocalFileHandler()
 	if err != nil {
 		appLogger.Error("Warning: Failed to create local file handler: " + err.Error())
 	}
@@ -324,7 +324,7 @@ func main() {
 				}
 			}
 
-			execPath, err := utils.GetDataDir()
+			execPath, err := apputils.GetDataDir()
 			if err != nil {
 				appLogger.Fatal(err.Error())
 			}

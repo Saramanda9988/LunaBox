@@ -1,4 +1,6 @@
-package utils
+//go:build windows
+
+package processutils
 
 import (
 	"context"
@@ -19,7 +21,6 @@ const (
 	STILL_ACTIVE              = 259
 	WAIT_TIMEOUT              = 258
 	WAIT_FAILED               = 0xFFFFFFFF
-	INFINITE                  = 0xFFFFFFFF
 	PROCESS_QUERY_INFORMATION = 0x0400
 	TH32CS_SNAPPROCESS        = 0x00000002
 	MAX_PATH                  = 260
@@ -34,12 +35,6 @@ var (
 	procProcess32First           = kernel32.NewProc("Process32FirstW")
 	procProcess32Next            = kernel32.NewProc("Process32NextW")
 )
-
-// ProcessInfo 进程信息
-type ProcessInfo struct {
-	Name string `json:"name"` // 进程名
-	PID  uint32 `json:"pid"`  // 进程ID
-}
 
 // PROCESSENTRY32W Windows API 进程快照结构体
 type PROCESSENTRY32W struct {

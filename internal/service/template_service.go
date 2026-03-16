@@ -11,7 +11,7 @@ import (
 	"io"
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
-	"lunabox/internal/utils"
+	"lunabox/internal/utils/apputils"
 	"lunabox/internal/version"
 	"lunabox/internal/vo"
 	"net/http"
@@ -64,7 +64,7 @@ func (s *TemplateService) ListTemplates() ([]vo.TemplateInfo, error) {
 	}
 
 	// 2. 读取用户自定义模板
-	userDir, err := utils.GetTemplatesDir()
+	userDir, err := apputils.GetTemplatesDir()
 	if err != nil {
 		applog.LogWarningf(s.ctx, "Failed to get user templates dir: %v", err)
 	} else {
@@ -139,7 +139,7 @@ func (s *TemplateService) GetTemplate(templateID string) (string, error) {
 	}
 
 	// 2. 尝试从用户目录读取
-	userDir, err := utils.GetTemplatesDir()
+	userDir, err := apputils.GetTemplatesDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get templates dir: %w", err)
 	}
@@ -330,12 +330,12 @@ func (s *TemplateService) fetchImageAsBase64(url string) (string, error) {
 
 // OpenTemplatesDir 打开模板目录
 func (s *TemplateService) OpenTemplatesDir() error {
-	dir, err := utils.GetTemplatesDir()
+	dir, err := apputils.GetTemplatesDir()
 	if err != nil {
 		return err
 	}
 
-	return utils.OpenDirectory(dir)
+	return apputils.OpenDirectory(dir)
 }
 
 // ExportRenderedHTML 导出渲染后的HTML为图片

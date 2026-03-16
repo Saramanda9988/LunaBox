@@ -15,7 +15,10 @@ import (
 	"lunabox/internal/models/playnite"
 	"lunabox/internal/models/potatovn"
 	"lunabox/internal/models/vnite"
-	"lunabox/internal/utils"
+	"lunabox/internal/utils/apputils"
+	"lunabox/internal/utils/archiveutils"
+	"lunabox/internal/utils/imageutils"
+	"lunabox/internal/utils/metadata"
 	"lunabox/internal/vo"
 	"os"
 	"path/filepath"
@@ -100,7 +103,7 @@ func (s *ImportService) ImportFromPotatoVN(zipPath string, skipNoPath bool) (Imp
 	defer os.RemoveAll(tempDir)
 
 	// 解压文件
-	if err := utils.ExtractZip(zipReader, tempDir); err != nil {
+	if err := archiveutils.ExtractZip(zipReader, tempDir); err != nil {
 		applog.LogErrorf(s.ctx, "failed to extract ZIP: %v", err)
 		return result, fmt.Errorf("解压失败: %w", err)
 	}
@@ -225,10 +228,10 @@ func (s *ImportService) convertToGame(galgame potatovn.Galgame, tempDir string) 
 	// 处理封面图片
 	if galgame.ImagePath.Value != "" && galgame.ImagePath.Value != potatovn.DefaultImagePath {
 		// 尝试从解压目录中获取封面图片
-		coverPath := utils.ResolveCoverPath(galgame.ImagePath.Value, tempDir)
+		coverPath := imageutils.ResolveCoverPath(galgame.ImagePath.Value, tempDir)
 		if coverPath != "" {
 			// 将封面图片复制到应用的封面目录
-			savedPath, err := utils.SaveCoverImage(coverPath, game.ID)
+			savedPath, err := imageutils.SaveCoverImage(coverPath, game.ID)
 			if err == nil {
 				game.CoverURL = savedPath
 			} else {
@@ -590,7 +593,7 @@ func (s *ImportService) convertPlayniteToGame(pg playnite.PlayniteGame) models.G
 
 	// 处理封面图片 - 从 Playnite 缓存目录复制到本地
 	if pg.CoverURL != "" {
-		savedPath, err := utils.SaveCoverImage(pg.CoverURL, game.ID)
+		savedPath, err := imageutils.SaveCoverImage(pg.CoverURL, game.ID)
 		if err == nil {
 			game.CoverURL = savedPath
 		} else {
@@ -849,7 +852,7 @@ func (s *ImportService) applyVniteCover(game *models.Game, vniteDir string, game
 	}
 	defer os.Remove(tempFilePath)
 
-	savedPath, err := utils.SaveCoverImage(tempFilePath, game.ID)
+	savedPath, err := imageutils.SaveCoverImage(tempFilePath, game.ID)
 	if err != nil {
 		applog.LogWarningf(s.ctx, "ImportFromVnite: failed to save cover image for game %s: %v", game.Name, err)
 		return
@@ -1029,7 +1032,7 @@ func (s *ImportService) scanDirectoryRecursive(
 	}
 
 	// 扫描当前目录下的可执行文件
-	executables := utils.FindExecutables(currentPath, excludeKeywords)
+	executables := apputils.FindExecutables(currentPath, excludeKeywords)
 
 	// 如果当前目录包含可执行文件，将其作为候选游戏
 	if len(executables) > 0 {
@@ -1043,7 +1046,7 @@ func (s *ImportService) scanDirectoryRecursive(
 		}
 
 		// 选择推荐的可执行文件
-		selectedExe := utils.SelectBestExecutable(executables, folderName)
+		selectedExe := apputils.SelectBestExecutable(executables, folderName)
 
 		candidate := vo.BatchImportCandidate{
 			FolderPath:  currentPath,
@@ -1100,13 +1103,13 @@ func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchIm
 
 	// 优先级顺序：Bangumi > VNDB > Ymgal
 	sources := []struct {
-		getter utils.Getter
+		getter metadata.Getter
 		source enums.SourceType
 		token  string
 	}{
-		{utils.NewBangumiInfoGetter(), enums.Bangumi, s.config.BangumiAccessToken},
-		{utils.NewVNDBInfoGetter(), enums.VNDB, s.config.VNDBAccessToken},
-		{utils.NewYmgalInfoGetter(), enums.Ymgal, ""},
+		{metadata.NewBangumiInfoGetter(), enums.Bangumi, s.config.BangumiAccessToken},
+		{metadata.NewVNDBInfoGetter(), enums.VNDB, s.config.VNDBAccessToken},
+		{metadata.NewYmgalInfoGetter(), enums.Ymgal, ""},
 	}
 
 	for _, src := range sources {

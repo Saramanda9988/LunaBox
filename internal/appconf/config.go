@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"lunabox/internal/enums"
-	"lunabox/internal/utils"
+	"lunabox/internal/utils/apputils"
 	"os"
 	"path/filepath"
 )
@@ -90,7 +90,7 @@ type AppConfig struct {
 
 // getConfigPath 获取配置文件路径
 func getConfigPath() (string, error) {
-	configDir, err := utils.GetConfigDir()
+	configDir, err := apputils.GetConfigDir()
 	if err != nil {
 		return "", err
 	}

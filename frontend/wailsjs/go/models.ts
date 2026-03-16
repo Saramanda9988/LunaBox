@@ -332,6 +332,25 @@ export namespace models {
 
 }
 
+export namespace processutils {
+	
+	export class ProcessInfo {
+	    name: string;
+	    pid: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProcessInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.pid = source["pid"];
+	    }
+	}
+
+}
+
 export namespace service {
 	
 	export class BackupService {
@@ -598,25 +617,6 @@ export namespace time {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	
-	    }
-	}
-
-}
-
-export namespace utils {
-	
-	export class ProcessInfo {
-	    name: string;
-	    pid: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new ProcessInfo(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.name = source["name"];
-	        this.pid = source["pid"];
 	    }
 	}
 

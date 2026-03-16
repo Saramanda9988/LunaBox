@@ -10,6 +10,8 @@ import (
 	"lunabox/internal/service/cloudprovider"
 	"lunabox/internal/service/cloudprovider/onedrive"
 	"lunabox/internal/utils"
+	"lunabox/internal/utils/apputils"
+	"lunabox/internal/utils/archiveutils"
 	"lunabox/internal/vo"
 	"os"
 	"path/filepath"
@@ -169,17 +171,17 @@ func (s *BackupService) GetCloudBackupStatus() vo.CloudBackupStatus {
 
 // GetBackupDir 获取备份根目录
 func (s *BackupService) GetBackupDir() (string, error) {
-	return utils.GetSubDir("backups")
+	return apputils.GetSubDir("backups")
 }
 
 // GetDBBackupDir 获取数据库备份目录
 func (s *BackupService) GetDBBackupDir() (string, error) {
-	return utils.GetSubDir(filepath.Join("backups", "database"))
+	return apputils.GetSubDir(filepath.Join("backups", "database"))
 }
 
 // GetFullBackupDir 获取全量数据备份目录
 func (s *BackupService) GetFullBackupDir() (string, error) {
-	return utils.GetSubDir(filepath.Join("backups", "full"))
+	return apputils.GetSubDir(filepath.Join("backups", "full"))
 }
 
 // OpenBackupFolder 打开备份文件夹
@@ -189,7 +191,7 @@ func (s *BackupService) OpenBackupFolder(gameID string) error {
 		return err
 	}
 	gameBackupDir := filepath.Join(backupDir, gameID)
-	return utils.OpenDirectory(gameBackupDir)
+	return apputils.OpenDirectory(gameBackupDir)
 }
 
 // ========== 游戏存档本地备份方法 ==========
@@ -264,7 +266,7 @@ func (s *BackupService) CreateBackup(gameID string) (*models.GameBackup, error) 
 	backupFileName := fmt.Sprintf("%s.zip", timestamp)
 	backupPath := filepath.Join(gameBackupDir, backupFileName)
 
-	size, err := utils.ZipFileOrDirectory(savePath, backupPath)
+	size, err := archiveutils.ZipFileOrDirectory(savePath, backupPath)
 	if err != nil {
 		return nil, fmt.Errorf("fail to backup: %w", err)
 	}
@@ -342,7 +344,7 @@ func (s *BackupService) RestoreBackup(backupPath string) error {
 		preRestoreDir := filepath.Join(backupDir, gameID, "pre_restore")
 		os.MkdirAll(preRestoreDir, 0755)
 		preRestorePath := filepath.Join(preRestoreDir, fmt.Sprintf("%s_before_restore.zip", time.Now().Format("2006-01-02T15-04-05")))
-		_, err := utils.ZipFileOrDirectory(savePath, preRestorePath)
+		_, err := archiveutils.ZipFileOrDirectory(savePath, preRestorePath)
 		if err != nil {
 			return err
 		}
@@ -364,7 +366,7 @@ func (s *BackupService) RestoreBackup(backupPath string) error {
 	defer os.RemoveAll(tempDir)
 
 	// 解压到临时目录
-	if err := utils.UnzipFile(backupPath, tempDir); err != nil {
+	if err := archiveutils.UnzipFile(backupPath, tempDir); err != nil {
 		return fmt.Errorf("解压备份失败: %w", err)
 	}
 
@@ -381,7 +383,7 @@ func (s *BackupService) RestoreBackup(backupPath string) error {
 			return fmt.Errorf("创建父目录失败: %w", err)
 		}
 		srcFile := filepath.Join(tempDir, entries[0].Name())
-		if err := utils.CopyFile(srcFile, savePath); err != nil {
+		if err := apputils.CopyFile(srcFile, savePath); err != nil {
 			return fmt.Errorf("恢复文件失败: %w", err)
 		}
 	} else {
@@ -389,7 +391,7 @@ func (s *BackupService) RestoreBackup(backupPath string) error {
 		if err := os.MkdirAll(savePath, 0755); err != nil {
 			return fmt.Errorf("创建存档目录失败: %w", err)
 		}
-		if err := utils.CopyDir(tempDir, savePath); err != nil {
+		if err := apputils.CopyDir(tempDir, savePath); err != nil {
 			return fmt.Errorf("恢复目录失败: %w", err)
 		}
 	}
@@ -509,7 +511,7 @@ func (s *BackupService) RestoreFromCloud(cloudKey string, gameID string) error {
 		preRestoreDir := filepath.Join(backupDir, gameID, "pre_restore")
 		os.MkdirAll(preRestoreDir, 0755)
 		preRestorePath := filepath.Join(preRestoreDir, fmt.Sprintf("%s_before_cloud_restore.zip", time.Now().Format("2006-01-02T15-04-05")))
-		_, err := utils.ZipFileOrDirectory(savePath, preRestorePath)
+		_, err := archiveutils.ZipFileOrDirectory(savePath, preRestorePath)
 		if err != nil {
 			return err
 		}
@@ -531,7 +533,7 @@ func (s *BackupService) RestoreFromCloud(cloudKey string, gameID string) error {
 	defer os.RemoveAll(tempDir)
 
 	// 解压到临时目录
-	if err := utils.UnzipFile(localPath, tempDir); err != nil {
+	if err := archiveutils.UnzipFile(localPath, tempDir); err != nil {
 		return fmt.Errorf("解压备份失败: %w", err)
 	}
 
@@ -548,7 +550,7 @@ func (s *BackupService) RestoreFromCloud(cloudKey string, gameID string) error {
 			return fmt.Errorf("创建父目录失败: %w", err)
 		}
 		srcFile := filepath.Join(tempDir, entries[0].Name())
-		if err := utils.CopyFile(srcFile, savePath); err != nil {
+		if err := apputils.CopyFile(srcFile, savePath); err != nil {
 			return fmt.Errorf("恢复文件失败: %w", err)
 		}
 	} else {
@@ -556,7 +558,7 @@ func (s *BackupService) RestoreFromCloud(cloudKey string, gameID string) error {
 		if err := os.MkdirAll(savePath, 0755); err != nil {
 			return fmt.Errorf("创建存档目录失败: %w", err)
 		}
-		if err := utils.CopyDir(tempDir, savePath); err != nil {
+		if err := apputils.CopyDir(tempDir, savePath); err != nil {
 			return fmt.Errorf("恢复目录失败: %w", err)
 		}
 	}
@@ -595,7 +597,7 @@ func (s *BackupService) CreateDBBackup() (*vo.DBBackupInfo, error) {
 		return nil, err
 	}
 
-	dataDir, err := utils.GetDataDir()
+	dataDir, err := apputils.GetDataDir()
 	if err != nil {
 		return nil, err
 	}
@@ -621,7 +623,7 @@ func (s *BackupService) CreateDBBackup() (*vo.DBBackupInfo, error) {
 	// 复制 covers 文件夹（如果存在）
 	coversSourceDir := filepath.Join(dataDir, "covers")
 	if _, err := os.Stat(coversSourceDir); err == nil {
-		if err := utils.CopyDir(coversSourceDir, coversDestDir); err != nil {
+		if err := apputils.CopyDir(coversSourceDir, coversDestDir); err != nil {
 			applog.LogWarningf(s.ctx, "CreateDBBackup: failed to copy covers: %v", err)
 			// 封面复制失败不影响整体备份，继续执行
 		}
@@ -631,7 +633,7 @@ func (s *BackupService) CreateDBBackup() (*vo.DBBackupInfo, error) {
 	backupFileName := fmt.Sprintf("lunabox_%s.zip", timestamp)
 	backupPath := filepath.Join(backupDir, backupFileName)
 
-	_, err = utils.ZipDirectory(packDir, backupPath)
+	_, err = archiveutils.ZipDirectory(packDir, backupPath)
 	os.RemoveAll(packDir)
 	if err != nil {
 		return nil, fmt.Errorf("压缩备份失败: %w", err)
@@ -740,11 +742,11 @@ func (s *BackupService) CreateFullDataBackup(savePath string) error {
 		return fmt.Errorf("备份文件必须是 .zip 格式")
 	}
 
-	dataDir, err := utils.GetDataDir()
+	dataDir, err := apputils.GetDataDir()
 	if err != nil {
 		return err
 	}
-	configDir, err := utils.GetConfigDir()
+	configDir, err := apputils.GetConfigDir()
 	if err != nil {
 		return err
 	}
@@ -773,7 +775,7 @@ func (s *BackupService) CreateFullDataBackup(savePath string) error {
 	// 复制配置文件
 	configPath := filepath.Join(configDir, "appconf.json")
 	if _, err := os.Stat(configPath); err == nil {
-		if err := utils.CopyFile(configPath, filepath.Join(packDir, "appconf.json")); err != nil {
+		if err := apputils.CopyFile(configPath, filepath.Join(packDir, "appconf.json")); err != nil {
 			return fmt.Errorf("复制配置文件失败: %w", err)
 		}
 	}
@@ -784,7 +786,7 @@ func (s *BackupService) CreateFullDataBackup(savePath string) error {
 		if _, err := os.Stat(srcDir); err != nil {
 			continue
 		}
-		if err := utils.CopyDir(srcDir, filepath.Join(packDir, dirName)); err != nil {
+		if err := apputils.CopyDir(srcDir, filepath.Join(packDir, dirName)); err != nil {
 			return fmt.Errorf("复制目录 %s 失败: %w", dirName, err)
 		}
 	}
@@ -796,13 +798,13 @@ func (s *BackupService) CreateFullDataBackup(savePath string) error {
 		if err := os.MkdirAll(backupsDestDir, 0755); err != nil {
 			return fmt.Errorf("创建备份目录失败: %w", err)
 		}
-		if err := utils.CopyDir(backupsSourceDir, backupsDestDir); err != nil {
+		if err := apputils.CopyDir(backupsSourceDir, backupsDestDir); err != nil {
 			return fmt.Errorf("复制备份目录失败: %w", err)
 		}
 	}
 
 	// 打包到用户指定的路径
-	_, err = utils.ZipDirectory(packDir, savePath)
+	_, err = archiveutils.ZipDirectory(packDir, savePath)
 	if err != nil {
 		return fmt.Errorf("压缩全量备份失败: %w", err)
 	}
@@ -996,11 +998,11 @@ func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
 		return false, fmt.Errorf("备份文件不存在: %s", backupPath)
 	}
 
-	dataDir, err := utils.GetDataDir()
+	dataDir, err := apputils.GetDataDir()
 	if err != nil {
 		return false, err
 	}
-	configDir, err := utils.GetConfigDir()
+	configDir, err := apputils.GetConfigDir()
 	if err != nil {
 		return false, err
 	}
@@ -1011,7 +1013,7 @@ func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	if err := utils.UnzipForRestore(backupPath, tempDir); err != nil {
+	if err := archiveutils.UnzipForRestore(backupPath, tempDir); err != nil {
 		return false, fmt.Errorf("解压全量备份失败: %w", err)
 	}
 
@@ -1036,7 +1038,7 @@ func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
 			return false, fmt.Errorf("导入数据库失败: %w", err)
 		}
 	} else if _, err := os.Stat(rawDBPath); err == nil {
-		if err := utils.CopyFile(rawDBPath, dbPath); err != nil {
+		if err := apputils.CopyFile(rawDBPath, dbPath); err != nil {
 			return false, fmt.Errorf("恢复数据库文件失败: %w", err)
 		}
 	} else {
@@ -1054,7 +1056,7 @@ func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
 		if err := os.RemoveAll(dstDir); err != nil {
 			return false, fmt.Errorf("清理目录 %s 失败: %w", dirName, err)
 		}
-		if err := utils.CopyDir(srcDir, dstDir); err != nil {
+		if err := apputils.CopyDir(srcDir, dstDir); err != nil {
 			return false, fmt.Errorf("恢复目录 %s 失败: %w", dirName, err)
 		}
 	}
@@ -1063,7 +1065,7 @@ func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
 	backupConfigPath := filepath.Join(tempDir, "appconf.json")
 	if _, err := os.Stat(backupConfigPath); err == nil {
 		configPath := filepath.Join(configDir, "appconf.json")
-		if err := utils.CopyFile(backupConfigPath, configPath); err != nil {
+		if err := apputils.CopyFile(backupConfigPath, configPath); err != nil {
 			return false, fmt.Errorf("恢复配置文件失败: %w", err)
 		}
 	}
@@ -1100,7 +1102,7 @@ func ExecuteDBRestore(config *appconf.AppConfig) (bool, error) {
 		return false, fmt.Errorf("备份文件不存在: %s", backupPath)
 	}
 
-	dataDir, err := utils.GetDataDir()
+	dataDir, err := apputils.GetDataDir()
 	if err != nil {
 		return false, err
 	}
@@ -1112,7 +1114,7 @@ func ExecuteDBRestore(config *appconf.AppConfig) (bool, error) {
 		return false, fmt.Errorf("创建临时目录失败: %w", err)
 	}
 
-	if err := utils.UnzipForRestore(backupPath, tempDir); err != nil {
+	if err := archiveutils.UnzipForRestore(backupPath, tempDir); err != nil {
 		os.RemoveAll(tempDir)
 		return false, fmt.Errorf("解压备份失败: %w", err)
 	}
@@ -1150,7 +1152,7 @@ func ExecuteDBRestore(config *appconf.AppConfig) (bool, error) {
 			coversDestDir := filepath.Join(dataDir, "covers")
 			// 先清空现有 covers 目录
 			os.RemoveAll(coversDestDir)
-			if err := utils.CopyDir(coversBackupDir, coversDestDir); err != nil {
+			if err := apputils.CopyDir(coversBackupDir, coversDestDir); err != nil {
 				// 封面恢复失败不影响整体恢复，只记录警告
 				fmt.Printf("警告: 恢复封面图片失败: %v\n", err)
 			}

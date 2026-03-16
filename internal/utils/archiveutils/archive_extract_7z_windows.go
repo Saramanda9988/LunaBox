@@ -1,6 +1,6 @@
 //go:build windows
 
-package utils
+package archiveutils
 
 import (
 	_ "embed"

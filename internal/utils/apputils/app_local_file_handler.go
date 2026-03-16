@@ -1,4 +1,4 @@
-package utils
+package apputils
 
 import (
 	"net/http"
@@ -25,30 +25,34 @@ func NewLocalFileHandler() (*LocalFileHandler, error) {
 
 // ServeHTTP 实现 http.Handler 接口
 func (h *LocalFileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// 只处理 /local/ 开头的请求
 	if !strings.HasPrefix(r.URL.Path, "/local/") {
 		http.NotFound(w, r)
 		return
 	}
 
-	// 移除 /local/ 前缀
 	relativePath := strings.TrimPrefix(r.URL.Path, "/local/")
+	baseDir, err := filepath.Abs(h.appDir)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
 
-	// 构建完整路径
-	fullPath := filepath.Join(h.appDir, relativePath)
+	fullPath := filepath.Join(baseDir, filepath.FromSlash(relativePath))
+	cleanPath, err := filepath.Abs(filepath.Clean(fullPath))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if cleanPath != baseDir && !strings.HasPrefix(cleanPath, baseDir+string(os.PathSeparator)) {
+		http.NotFound(w, r)
+		return
+	}
 
-	// 清理路径
-	cleanPath := filepath.Clean(fullPath)
-
-	// 检查文件是否存在
 	if _, err := os.Stat(cleanPath); os.IsNotExist(err) {
 		http.NotFound(w, r)
 		return
 	}
 
-	// 设置缓存头
 	w.Header().Set("Cache-Control", "public, max-age=31536000")
-
-	// 提供文件服务
 	http.ServeFile(w, r, cleanPath)
 }

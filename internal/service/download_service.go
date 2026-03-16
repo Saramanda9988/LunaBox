@@ -14,7 +14,9 @@ import (
 	"lunabox/internal/applog"
 	"lunabox/internal/enums"
 	"lunabox/internal/models"
-	"lunabox/internal/utils"
+	"lunabox/internal/utils/apputils"
+	"lunabox/internal/utils/archiveutils"
+	"lunabox/internal/utils/proxyutils"
 	"lunabox/internal/vo"
 	"net"
 	"net/http"
@@ -286,7 +288,7 @@ func (s *DownloadService) OpenDownloadTaskLocation(taskID string) error {
 	if task.FilePath == "" {
 		return fmt.Errorf("task %s has no file path", taskID)
 	}
-	if err := utils.OpenFileOrFolder(task.FilePath); err != nil {
+	if err := apputils.OpenFileOrFolder(task.FilePath); err != nil {
 		return fmt.Errorf("open download task location failed: %w", err)
 	}
 	return nil
@@ -909,7 +911,7 @@ func (s *DownloadService) handleDownloadedFile(downloadedPath string, fileName s
 		return "", false, fmt.Errorf("create extract dir: %w", err)
 	}
 
-	extracted, extractErr := utils.ExtractArchive(downloadedPath, extractDir)
+	extracted, extractErr := archiveutils.ExtractArchive(downloadedPath, extractDir)
 	if extractErr != nil {
 		if !extracted {
 			applog.LogErrorf(s.ctx, "extract archive failed, fallback to manual extract mode: %v", extractErr)
@@ -1347,7 +1349,7 @@ func newSecureDownloadClient(config *appconf.AppConfig) (*http.Client, string, e
 		proxyURL = config.DownloadProxyURL
 	}
 
-	selection, proxyDesc, err := utils.ResolveDownloadProxy(mode, proxyURL)
+	selection, proxyDesc, err := proxyutils.ResolveDownloadProxy(mode, proxyURL)
 	if err != nil {
 		return nil, "", fmt.Errorf("resolve download proxy: %w", err)
 	}

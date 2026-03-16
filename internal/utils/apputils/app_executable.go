@@ -1,4 +1,4 @@
-package utils
+package apputils
 
 import (
 	"os"

@@ -10,6 +10,10 @@ import (
 	"lunabox/internal/enums"
 	"lunabox/internal/models"
 	"lunabox/internal/utils"
+	"lunabox/internal/utils/apputils"
+	"lunabox/internal/utils/imageutils"
+	"lunabox/internal/utils/metadata"
+	"lunabox/internal/utils/processutils"
 	"lunabox/internal/vo"
 	"os"
 	"strings"
@@ -114,7 +118,7 @@ func (s *GameService) AddGame(game models.Game) error {
 
 	// 处理临时封面图片
 	if strings.Contains(game.CoverURL, "/local/covers/temp_") {
-		newCoverURL, err := utils.RenameTempCover(game.CoverURL, game.ID)
+		newCoverURL, err := imageutils.RenameTempCover(game.CoverURL, game.ID)
 		if err != nil {
 			applog.LogWarningf(s.ctx, "AddGame: failed to rename temp cover: %v", err)
 		} else {
@@ -166,7 +170,7 @@ func (s *GameService) asyncDownloadCoverImage(gameID, gameName, coverURL string)
 	applog.LogInfof(s.ctx, "asyncDownloadCoverImage: downloading cover for %s", gameName)
 
 	// 下载并保存图片
-	localPath, err := utils.DownloadAndSaveCoverImage(coverURL, gameID)
+	localPath, err := imageutils.DownloadAndSaveCoverImage(coverURL, gameID)
 	if err != nil {
 		applog.LogWarningf(s.ctx, "asyncDownloadCoverImage: failed to download cover for %s: %v", gameName, err)
 		return
@@ -484,7 +488,7 @@ func (s *GameService) SelectCoverImage(gameID string) (string, error) {
 		return "", nil
 	}
 
-	coverPath, err := utils.SaveCoverImage(selection, gameID)
+	coverPath, err := imageutils.SaveCoverImage(selection, gameID)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "failed to save cover image: %v", err)
 		return "", fmt.Errorf("failed to save cover image: %w", err)
@@ -514,7 +518,7 @@ func (s *GameService) SelectCoverImageWithTempID() (string, error) {
 
 	// 使用时间戳作为临时ID
 	tempID := fmt.Sprintf("temp_%d", time.Now().UnixNano())
-	coverPath, err := utils.SaveCoverImage(selection, tempID)
+	coverPath, err := imageutils.SaveCoverImage(selection, tempID)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "failed to save cover image: %v", err)
 		return "", fmt.Errorf("failed to save cover image: %w", err)
@@ -533,7 +537,7 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 
 	go func() {
 		defer wg.Done()
-		bgmGetter := utils.NewBangumiInfoGetter()
+		bgmGetter := metadata.NewBangumiInfoGetter()
 		bgm, _ := bgmGetter.FetchMetadataByName(name, s.config.BangumiAccessToken)
 		if bgm != (models.Game{}) {
 			mu.Lock()
@@ -544,7 +548,7 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 
 	go func() {
 		defer wg.Done()
-		vndbGetter := utils.NewVNDBInfoGetter()
+		vndbGetter := metadata.NewVNDBInfoGetter()
 		vndb, _ := vndbGetter.FetchMetadataByName(name, s.config.VNDBAccessToken)
 		if vndb != (models.Game{}) {
 			mu.Lock()
@@ -555,7 +559,7 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 
 	go func() {
 		defer wg.Done()
-		ymgalGetter := utils.NewYmgalInfoGetter()
+		ymgalGetter := metadata.NewYmgalInfoGetter()
 		ymgal, _ := ymgalGetter.FetchMetadataByName(name, "")
 		if ymgal != (models.Game{}) {
 			mu.Lock()
@@ -580,19 +584,19 @@ func (s *GameService) FetchMetadata(req vo.MetadataRequest) (models.Game, error)
 	sourceId := strings.ToLower(req.ID)
 	switch req.Source {
 	case enums.Bangumi:
-		bgmGetter := utils.NewBangumiInfoGetter()
+		bgmGetter := metadata.NewBangumiInfoGetter()
 		game, e = bgmGetter.FetchMetadata(sourceId, s.config.BangumiAccessToken)
 	case enums.VNDB:
 		if !isVndbId(sourceId) {
 			return game, fmt.Errorf("invalid VNDB ID format: %s", req.ID)
 		}
-		vndbGetter := utils.NewVNDBInfoGetter()
+		vndbGetter := metadata.NewVNDBInfoGetter()
 		game, e = vndbGetter.FetchMetadata(sourceId, s.config.VNDBAccessToken)
 	case enums.Ymgal:
 		if !isYmgalId(sourceId) {
 			return game, fmt.Errorf("invalid Ymgal ID format: %s", req.ID)
 		}
-		ymgalGetter := utils.NewYmgalInfoGetter()
+		ymgalGetter := metadata.NewYmgalInfoGetter()
 		game, e = ymgalGetter.FetchMetadata(sourceId, "")
 	}
 	return game, e
@@ -657,13 +661,13 @@ func (s *GameService) UpdateGameFromRemote(gameID string) error {
 }
 
 // GetRunningProcesses 获取系统中正在运行的进程列表（过滤掉系统进程）
-func (s *GameService) GetRunningProcesses() ([]utils.ProcessInfo, error) {
-	return utils.GetRunningProcesses()
+func (s *GameService) GetRunningProcesses() ([]processutils.ProcessInfo, error) {
+	return processutils.GetRunningProcesses()
 }
 
 // OpenLocalPath 打开指定的本地文件或目录（通过资源管理器）
 func (s *GameService) OpenLocalPath(path string) error {
-	err := utils.OpenFileOrFolder(path)
+	err := apputils.OpenFileOrFolder(path)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "OpenLocalPath failed for path %s: %v", path, err)
 		return fmt.Errorf("打开路径失败: %w", err)
