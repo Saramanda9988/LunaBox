@@ -113,21 +113,18 @@ function HomePage() {
               draggable="false"
               onDragStart={e => e.preventDefault()}
             />
-            {/* 整体柔和遮罩 - 浅色模式用浅色，深色模式用深色 */}
-            <div className="absolute inset-0 bg-brand-100/30 dark:bg-black/30" />
-            {/* 从左到右的渐变遮罩 */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-100/40 to-brand-100/80 dark:via-black/20 dark:to-brand-900/70" />
-            {/* 底部渐变遮罩 */}
-            <div className="absolute inset-0 bg-gradient-to-t from-brand-100/90 via-transparent to-transparent dark:from-brand-900/60" />
-            {/* 顶部轻微渐变 */}
-            <div className="absolute inset-0 bg-gradient-to-b from-brand-100/40 via-transparent to-transparent dark:from-black/20" />
+            {/* 整体柔和毛玻璃遮罩，使用统一不透明度替代复杂的渐变叠加以保持暗黑模式下的干净通透 */}
+            <div className="absolute inset-0 backdrop-blur-lg bg-white/50 dark:bg-black/60" />
+
+            {/* 仅保留底部极其轻柔的渐变，确保文字高对比度可读性 */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent dark:from-black/40 pointer-events-none" />
           </div>
         )}
-        <div className="absolute top-6 left-8">
+        <div className="absolute top-6 left-8 z-10">
           <h1 className="text-4xl font-bold text-brand-900 dark:text-white drop-shadow-lg">{t("home.title")}</h1>
           <p className="mt-2 text-brand-600 dark:text-white/80 drop-shadow">{t("home.welcomeBack")}</p>
         </div>
-        <div className="glass-card absolute top-6 right-6 flex items-center gap-2 bg-white/80 dark:bg-brand-800/80 backdrop-blur-sm px-4 py-3 rounded-xl shadow-lg">
+        <div className="glass-card absolute top-6 right-6 flex items-center gap-2 bg-white/80 dark:bg-brand-800/80 backdrop-blur-sm px-4 py-3 rounded-xl shadow-lg z-10">
           <span className="i-mdi-clock-outline text-xl text-neutral-500" />
           <div>
             <div className="text-xs text-brand-500 dark:text-brand-400">{t("home.todayPlayTime")}</div>
@@ -136,7 +133,17 @@ function HomePage() {
             </div>
           </div>
         </div>
-        <div className="absolute bottom-8 left-8 max-w-lg">
+        <div className="absolute bottom-8 left-8 max-w-lg z-10">
+          <div className="mb-4">
+            <img
+              src={lastPlayed.game.cover_url}
+              alt={lastPlayed.game.name}
+              referrerPolicy="no-referrer"
+              className="max-h-72 max-w-full sm:max-w-sm md:max-w-md lg:max-w-lg rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.3)] object-contain hover:scale-105 origin-left transition-transform duration-300 cursor-pointer ring-2 ring-white/20 dark:ring-white/10"
+              onClick={() => navigate({ to: "/game/$gameId", params: { gameId: lastPlayed.game.id } })}
+              draggable="false"
+            />
+          </div>
           <h1
             className="text-4xl font-bold text-brand-900 dark:text-white mb-2 cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors drop-shadow-lg"
             onClick={() => navigate({ to: "/game/$gameId", params: { gameId: lastPlayed.game.id } })}
@@ -155,7 +162,7 @@ function HomePage() {
         </div>
         {isPlaying
           ? (
-              <div className="absolute bottom-8 right-8 flex items-center gap-2 px-6 py-3 bg-success-600 text-white rounded-xl shadow-lg font-medium">
+              <div className="absolute bottom-8 right-8 flex items-center gap-2 px-6 py-3 bg-success-600 text-white rounded-xl shadow-lg font-medium z-10">
                 <span className="i-mdi-gamepad-variant text-xl animate-pulse" />
                 {t("home.gaming")}
               </div>
@@ -163,7 +170,7 @@ function HomePage() {
           : (
               <button
                 onClick={handleContinuePlay}
-                className="absolute bottom-8 right-8 flex items-center gap-2 px-6 py-3 bg-neutral-600 hover:bg-neutral-700 text-white rounded-xl shadow-lg transition-all hover:scale-105 font-medium"
+                className="absolute bottom-8 right-8 flex items-center gap-2 px-6 py-3 bg-neutral-600 hover:bg-neutral-700 text-white rounded-xl shadow-lg transition-all hover:scale-105 font-medium z-10"
               >
                 <span className="i-mdi-play text-xl" />
                 {t("home.continueGame")}
