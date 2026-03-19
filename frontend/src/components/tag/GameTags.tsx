@@ -57,7 +57,7 @@ export function GameTags({ gameId, showNSFW = false }: GameTagsProps) {
   };
 
   const handleTagClick = (tagName: string) => {
-    navigate({ to: "/library", search: { tagFilter: tagName } as any });
+    navigate({ to: "/library", search: { tagFilter: tagName } });
   };
 
   const visibleTags = showNSFW ? tags : tags;

@@ -88,8 +88,15 @@
   "filterBar": {
     "exitBatchSelection": "Exit Batch Selection",
     "enterBatchSelection": "Batch Selection",
+    "filters": "Filters",
+    "status": "Status",
+    "sortBy": "Sort By",
+    "sortDirection": "Sort Direction",
     "sortAsc": "Ascending",
-    "sortDesc": "Descending"
+    "sortDesc": "Descending",
+    "tagFilter": "Tag Filter",
+    "clearTag": "Clear Tag",
+    "tagsPlaceholder": "Enter tags..."
   },
   "gameCard": {
     "deselect": "Deselect",

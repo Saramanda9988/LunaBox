@@ -88,8 +88,15 @@
   "filterBar": {
     "exitBatchSelection": "退出批量选择",
     "enterBatchSelection": "批量选择",
+    "filters": "筛选",
+    "status": "状态",
+    "sortBy": "排序字段",
+    "sortDirection": "排序方向",
     "sortAsc": "升序",
-    "sortDesc": "降序"
+    "sortDesc": "降序",
+    "tagFilter": "标签筛选",
+    "clearTag": "清空标签",
+    "tagsPlaceholder": "输入标签..."
   },
   "gameCard": {
     "deselect": "取消选择",

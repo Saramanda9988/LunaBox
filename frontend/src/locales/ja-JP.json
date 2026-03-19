@@ -88,8 +88,15 @@
   "filterBar": {
     "exitBatchSelection": "一括選択を終了",
     "enterBatchSelection": "一括選択",
+    "filters": "フィルター",
+    "status": "ステータス",
+    "sortBy": "並び替え項目",
+    "sortDirection": "並び順",
     "sortAsc": "昇順",
-    "sortDesc": "降順"
+    "sortDesc": "降順",
+    "tagFilter": "タグフィルター",
+    "clearTag": "タグをクリア",
+    "tagsPlaceholder": "tagに記入してください..."
   },
   "gameCard": {
     "deselect": "選択解除",

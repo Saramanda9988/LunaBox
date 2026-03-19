@@ -1,6 +1,6 @@
+import { Menu, MenuButton, MenuItems } from "@headlessui/react";
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BetterSelect } from "../ui/BetterSelect";
 
 interface SortOption {
   label: string;
@@ -25,6 +25,9 @@ interface FilterBarProps {
   statusFilter?: string;
   onStatusFilterChange?: (value: string) => void;
   statusOptions?: FilterOption[];
+  // 额外筛选内容（例如 tag 筛选）
+  filterMenuExtra?: React.ReactNode;
+  filterMenuExtraActive?: boolean;
   actionButton?: React.ReactNode;
   extraButtons?: React.ReactNode;
   // 持久化存储键，传入后会自动保存和恢复排序设置
@@ -50,6 +53,8 @@ export function FilterBar({
   statusFilter,
   onStatusFilterChange,
   statusOptions,
+  filterMenuExtra,
+  filterMenuExtraActive = false,
   actionButton,
   extraButtons,
   storageKey,
@@ -64,9 +69,9 @@ export function FilterBar({
   const { t } = useTranslation();
 
   const finalSearchPlaceholder = searchPlaceholder || `${t("common.search")}...`;
+  const activeFilterCount = (statusFilter ? 1 : 0) + (filterMenuExtraActive ? 1 : 0);
 
   // 初始化时从 localStorage 恢复所有设置
-
   useEffect(() => {
     if (storageKey && !initialized) {
       const savedSortBy = localStorage.getItem(`${storageKey}_sortBy`);
@@ -152,7 +157,7 @@ export function FilterBar({
         </div>
         <input
           type="text"
-          className="glass-input block w-auto p-2 pl-10 text-sm text-brand-900 dark:text-white
+          className="glass-input block w-full p-2 pl-10 text-sm text-brand-900 dark:text-white
                      bg-white dark:bg-brand-900
                      border border-brand-300 dark:border-brand-700
                      rounded-lg
@@ -181,37 +186,119 @@ export function FilterBar({
           </button>
         )}
 
-        {/* 状态筛选 */}
-        {statusOptions && onStatusFilterChange && (
-          <BetterSelect
-            value={statusFilter || ""}
-            onChange={handleStatusFilterChange}
-            options={statusOptions}
-            className="min-w-[120px]"
-          />
-        )}
+        <Menu as="div" className="relative inline-block">
+          <MenuButton
+            type="button"
+            className="glass-panel flex items-center gap-2 px-3 py-2 text-sm
+                       text-brand-600 dark:text-brand-300
+                       bg-white dark:bg-brand-800
+                       border border-brand-200 dark:border-brand-700
+                       rounded-lg
+                       hover:bg-brand-100 dark:hover:bg-brand-700"
+          >
+            <div className="i-mdi-filter-variant text-lg" />
+            <span>{t("filterBar.filters")}</span>
+            {activeFilterCount > 0 && (
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-neutral-600 px-1 text-[11px] font-semibold text-white">
+                {activeFilterCount}
+              </span>
+            )}
+            <div className="i-mdi-chevron-down text-base opacity-80" />
+          </MenuButton>
 
-        <BetterSelect
-          value={sortBy}
-          onChange={handleSortByChange}
-          options={sortOptions}
-          className="min-w-[120px]"
-        />
+          <MenuItems
+            anchor="bottom end"
+            className="z-50 mt-1.5 min-w-[280px] max-w-[340px] origin-top-right rounded-xl bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700 shadow-xl focus:outline-none p-2 [--anchor-gap:6px]"
+          >
+            {filterMenuExtra && (
+              <div className="px-2 py-1.5">
+                {filterMenuExtra}
+              </div>
+            )}
 
-        <button
-          type="button"
-          onClick={() => handleSortOrderChange(sortOrder === "asc" ? "desc" : "asc")}
-          className="glass-panel p-2
-                     text-brand-500 dark:text-brand-400
-                     hover:text-brand-900 dark:hover:text-white
-                     bg-white dark:bg-brand-800
-                     border border-brand-200 dark:border-brand-700
-                     rounded-lg
-                     hover:bg-brand-100 dark:hover:bg-brand-700"
-          title={sortOrder === "asc" ? t("filterBar.sortAsc") : t("filterBar.sortDesc")}
-        >
-          <div className={sortOrder === "asc" ? "i-mdi-sort-ascending text-xl" : "i-mdi-sort-descending text-xl"} />
-        </button>
+            {statusOptions && onStatusFilterChange && (
+              <>
+                {filterMenuExtra && <div className="my-1 border-t border-brand-200 dark:border-brand-700" />}
+                <div className="px-2 py-1.5">
+                  <div className="mb-1.5 text-xs font-medium text-brand-400 dark:text-brand-500">
+                    {t("filterBar.status")}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {statusOptions.map(option => (
+                      <button
+                        key={`status-${option.value || "all"}`}
+                        type="button"
+                        onClick={() => handleStatusFilterChange(option.value)}
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors
+                          ${(statusFilter || "") === option.value
+                        ? "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-200 ring-1 ring-brand-300 dark:ring-brand-500"
+                        : "bg-brand-50 text-brand-500 hover:bg-brand-100 dark:bg-brand-900/50 dark:text-brand-400 dark:hover:bg-brand-700/70"}`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {(filterMenuExtra || (statusOptions && onStatusFilterChange)) && (
+              <div className="my-1 border-t border-brand-200 dark:border-brand-700" />
+            )}
+
+            <div className="px-2 py-1.5">
+              <div className="mb-1.5 text-xs font-medium text-brand-400 dark:text-brand-500">
+                {t("filterBar.sortBy")}
+              </div>
+              <div className="space-y-1">
+                {sortOptions.map(option => (
+                  <button
+                    key={`sort-${option.value}`}
+                    type="button"
+                    onClick={() => handleSortByChange(option.value)}
+                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm transition-colors
+                      ${sortBy === option.value
+                    ? "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-200"
+                    : "text-brand-600 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-700/70"}`}
+                  >
+                    <span>{option.label}</span>
+                    {sortBy === option.value && <div className="i-mdi-check text-base" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="px-2 pb-1.5 pt-0.5">
+              <div className="mb-1.5 text-xs font-medium text-brand-400 dark:text-brand-500">
+                {t("filterBar.sortDirection")}
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleSortOrderChange("asc")}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-colors
+                    ${sortOrder === "asc"
+      ? "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-200"
+      : "bg-brand-50 text-brand-500 hover:bg-brand-100 dark:bg-brand-900/50 dark:text-brand-400 dark:hover:bg-brand-700/70"}`}
+                >
+                  <div className="i-mdi-sort-ascending text-base" />
+                  {t("filterBar.sortAsc")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSortOrderChange("desc")}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-colors
+                    ${sortOrder === "desc"
+      ? "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-200"
+      : "bg-brand-50 text-brand-500 hover:bg-brand-100 dark:bg-brand-900/50 dark:text-brand-400 dark:hover:bg-brand-700/70"}`}
+                >
+                  <div className="i-mdi-sort-descending text-base" />
+                  {t("filterBar.sortDesc")}
+                </button>
+              </div>
+            </div>
+          </MenuItems>
+        </Menu>
 
         {extraButtons}
         {actionButton}

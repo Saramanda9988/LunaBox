@@ -21,13 +21,21 @@ import { sortOptions, statusOptions } from "../consts/options";
 import { useAppStore } from "../store";
 import { Route as rootRoute } from "./__root";
 
+interface LibrarySearch {
+  tagFilter?: string;
+}
+
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: "/library",
+  validateSearch: (search: Record<string, unknown>): LibrarySearch => ({
+    tagFilter: typeof search.tagFilter === "string" ? search.tagFilter : undefined,
+  }),
   component: LibraryPage,
 });
 
 function LibraryPage() {
+  const { tagFilter: routeTagFilter } = Route.useSearch();
   const games = useAppStore(state => state.games);
   const gamesLoading = useAppStore(state => state.gamesLoading);
   const fetchGames = useAppStore(state => state.fetchGames);
@@ -43,7 +51,6 @@ function LibraryPage() {
   const [tagFilter, setTagFilter] = useState<string>("");
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const [tagGameIds, setTagGameIds] = useState<Set<string> | null>(null);
-  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const [batchMode, setBatchMode] = useState(false);
   const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
   const [allCategories, setAllCategories] = useState<vo.CategoryVO[]>([]);
@@ -95,7 +102,6 @@ function LibraryPage() {
   // 选中某个 tag 后获取对应游戏 ID 集合
   const handleSelectTag = async (name: string) => {
     setTagFilter(name);
-    setShowTagSuggestions(false);
     try {
       const ids = await GetGameIDsByTag(name);
       setTagGameIds(new Set(Array.isArray(ids) ? ids : []));
@@ -109,8 +115,16 @@ function LibraryPage() {
     setTagFilter("");
     setTagGameIds(null);
     setTagSuggestions([]);
-    setShowTagSuggestions(false);
   };
+
+  // 通过路由参数进入库页面时，自动应用 tag 筛选
+  useEffect(() => {
+    const incomingTag = routeTagFilter?.trim();
+    if (!incomingTag) {
+      return;
+    }
+    void handleSelectTag(incomingTag);
+  }, [routeTagFilter]);
 
   const filteredGames = games
     .filter((game) => {
@@ -285,36 +299,43 @@ function LibraryPage() {
         selectedCount={selectedGameIds.length}
         onSelectAll={handleSelectAll}
         onClearSelection={handleClearSelection}
-        extraButtons={(
-          <div className="relative">
-            <div className="flex items-center gap-1 glass-panel px-2 py-1.5 border border-brand-200 dark:border-brand-700 rounded-lg bg-white dark:bg-brand-800">
-              <div className="i-mdi-tag-outline text-brand-500 dark:text-brand-400 text-base" />
+        filterMenuExtraActive={Boolean(tagFilter)}
+        filterMenuExtra={(
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-brand-400 dark:text-brand-500">
+              {t("filterBar.tagFilter")}
+            </div>
+            <div className="flex items-center gap-1.5 rounded-lg border border-brand-200 bg-white px-2 py-1.5 dark:border-brand-700 dark:bg-brand-900/50">
+              <div className="i-mdi-tag-outline text-base text-brand-500 dark:text-brand-400" />
               <input
                 type="text"
                 value={tagFilter}
                 onChange={(e) => {
                   setTagFilter(e.target.value);
-                  setShowTagSuggestions(true);
+                  setTagGameIds(null);
                 }}
-                onFocus={() => setShowTagSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowTagSuggestions(false), 150)}
-                placeholder={t("tags.filterPlaceholder")}
-                className="text-xs bg-transparent outline-none text-brand-900 dark:text-white placeholder:text-brand-400 w-24"
+                placeholder={t("filterBar.tagsPlaceholder")}
+                className="w-full bg-transparent text-xs text-brand-900 outline-none placeholder:text-brand-400 dark:text-white"
               />
               {tagFilter && (
-                <button type="button" onClick={handleClearTagFilter} className="text-brand-400 hover:text-brand-600 dark:hover:text-brand-200">
+                <button
+                  type="button"
+                  onClick={handleClearTagFilter}
+                  className="text-brand-400 hover:text-brand-600 dark:hover:text-brand-200"
+                  title={t("filterBar.clearTag")}
+                >
                   <div className="i-mdi-close text-sm" />
                 </button>
               )}
             </div>
-            {showTagSuggestions && tagSuggestions.length > 0 && (
-              <div className="absolute top-full mt-1 left-0 z-50 bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700 rounded-lg shadow-lg min-w-[160px] max-h-48 overflow-y-auto">
+            {tagFilter && tagSuggestions.length > 0 && (
+              <div className="max-h-36 overflow-y-auto rounded-lg border border-brand-200 bg-brand-50/40 p-1 dark:border-brand-700 dark:bg-brand-900/30">
                 {tagSuggestions.map(name => (
                   <button
                     key={name}
                     type="button"
-                    onMouseDown={() => handleSelectTag(name)}
-                    className="w-full text-left px-3 py-1.5 text-xs text-brand-800 dark:text-brand-200 hover:bg-brand-50 dark:hover:bg-brand-700"
+                    onClick={() => handleSelectTag(name)}
+                    className="w-full rounded-md px-2.5 py-1.5 text-left text-xs text-brand-700 transition-colors hover:bg-brand-100 dark:text-brand-200 dark:hover:bg-brand-700"
                   >
                     {name}
                   </button>
