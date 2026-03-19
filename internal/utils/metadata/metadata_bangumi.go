@@ -82,15 +82,15 @@ type bangumiResponse struct {
 	Tags          []bangumiTag         `json:"tags"`
 }
 
-func (b BangumiInfoGetter) FetchMetadata(id string, token string) (models.Game, error) {
+func (b BangumiInfoGetter) FetchMetadata(id string, token string) (MetadataResult, error) {
 	if token == "" {
-		return models.Game{}, errors.New("bangumi API requires Bearer token")
+		return MetadataResult{}, errors.New("bangumi API requires Bearer token")
 	}
 
 	reqURL := fmt.Sprintf("%s/%s", bangumiIDQueryAPIURL, id)
 	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
-		return models.Game{}, err
+		return MetadataResult{}, err
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
@@ -98,22 +98,22 @@ func (b BangumiInfoGetter) FetchMetadata(id string, token string) (models.Game, 
 
 	resp, err := b.client.Do(req)
 	if err != nil {
-		return models.Game{}, err
+		return MetadataResult{}, err
 	}
 	defer closeResponseBody(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return models.Game{}, fmt.Errorf("bangumi API returned status: %d, body: %s", resp.StatusCode, string(bodyBytes))
+		return MetadataResult{}, fmt.Errorf("bangumi API returned status: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var bangumiResp bangumiResponse
 	if err := json.NewDecoder(resp.Body).Decode(&bangumiResp); err != nil {
-		return models.Game{}, err
+		return MetadataResult{}, err
 	}
 
 	if bangumiResp.Type != 4 { // 4 代表游戏
-		return models.Game{}, errors.New("the provided ID does not correspond to a game")
+		return MetadataResult{}, errors.New("the provided ID does not correspond to a game")
 	}
 
 	// 从 infobox 中提取开发商信息
@@ -141,12 +141,12 @@ func (b BangumiInfoGetter) FetchMetadata(id string, token string) (models.Game, 
 		CachedAt:   time.Now(),
 	}
 
-	return game, nil
+	return MetadataResult{Game: game, Tags: extractBangumiTags(bangumiResp.Tags)}, nil
 }
 
-func (b BangumiInfoGetter) FetchMetadataByName(name string, token string) (models.Game, error) {
+func (b BangumiInfoGetter) FetchMetadataByName(name string, token string) (MetadataResult, error) {
 	if token == "" {
-		return models.Game{}, errors.New("bangumi API requires Bearer token")
+		return MetadataResult{}, errors.New("bangumi API requires Bearer token")
 	}
 
 	searchURL := "https://api.bgm.tv/v0/search/subjects"
@@ -166,12 +166,12 @@ func (b BangumiInfoGetter) FetchMetadataByName(name string, token string) (model
 	}
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
-		return models.Game{}, err
+		return MetadataResult{}, err
 	}
 
 	req, err := http.NewRequest("POST", fullURL, bytes.NewBuffer(jsonBody))
 	if err != nil {
-		return models.Game{}, err
+		return MetadataResult{}, err
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
@@ -180,30 +180,30 @@ func (b BangumiInfoGetter) FetchMetadataByName(name string, token string) (model
 
 	resp, err := b.client.Do(req)
 	if err != nil {
-		return models.Game{}, err
+		return MetadataResult{}, err
 	}
 	defer closeResponseBody(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return models.Game{}, fmt.Errorf("bangumi search API returned status: %d, body: %s", resp.StatusCode, string(bodyBytes))
+		return MetadataResult{}, fmt.Errorf("bangumi search API returned status: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var searchResp struct {
 		Data []bangumiResponse `json:"data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&searchResp); err != nil {
-		return models.Game{}, err
+		return MetadataResult{}, err
 	}
 
 	if len(searchResp.Data) == 0 {
-		return models.Game{}, errors.New("no results found")
+		return MetadataResult{}, errors.New("no results found")
 	}
 
 	bangumiResp := searchResp.Data[0]
 
 	if bangumiResp.Type != 4 { // 4 代表游戏
-		return models.Game{}, errors.New("the provided ID does not correspond to a game")
+		return MetadataResult{}, errors.New("the provided ID does not correspond to a game")
 	}
 
 	// 从 infobox 中提取开发商信息
@@ -231,7 +231,52 @@ func (b BangumiInfoGetter) FetchMetadataByName(name string, token string) (model
 		CachedAt:   time.Now(),
 	}
 
-	return game, nil
+	return MetadataResult{Game: game, Tags: extractBangumiTags(bangumiResp.Tags)}, nil
+}
+
+// extractBangumiTags 从 Bangumi tag 列表中提取符合条件的 TagItem
+// 规则：count >= 5，按 count 降序取前 15 条，weight = count/max(count)
+func extractBangumiTags(tags []bangumiTag) []TagItem {
+	// 过滤 count < 5 的 tag
+	var filtered []bangumiTag
+	for _, t := range tags {
+		if t.Count >= 5 {
+			filtered = append(filtered, t)
+		}
+	}
+	if len(filtered) == 0 {
+		return nil
+	}
+
+	// 按 count 降序排序
+	for i := 0; i < len(filtered)-1; i++ {
+		for j := i + 1; j < len(filtered); j++ {
+			if filtered[j].Count > filtered[i].Count {
+				filtered[i], filtered[j] = filtered[j], filtered[i]
+			}
+		}
+	}
+
+	// 取前 15 条
+	if len(filtered) > 15 {
+		filtered = filtered[:15]
+	}
+
+	maxCount := filtered[0].Count
+	result := make([]TagItem, 0, len(filtered))
+	for _, t := range filtered {
+		weight := 1.0
+		if maxCount > 0 {
+			weight = float64(t.Count) / float64(maxCount)
+		}
+		result = append(result, TagItem{
+			Name:      t.Name,
+			Source:    "bangumi",
+			Weight:    weight,
+			IsSpoiler: false,
+		})
+	}
+	return result
 }
 
 // extractCompanyFromInfobox 从 infobox 中提取开发商信息

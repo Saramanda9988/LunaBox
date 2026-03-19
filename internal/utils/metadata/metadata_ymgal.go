@@ -114,16 +114,16 @@ func (y YmgalInfoGetter) invalidateToken() {
 	ymgalTokenCache.expiresAt = time.Time{}
 }
 
-func (y YmgalInfoGetter) FetchMetadata(id string, token string) (models.Game, error) {
+func (y YmgalInfoGetter) FetchMetadata(id string, token string) (MetadataResult, error) {
 	accessToken, err := y.getAccessToken()
 	if err != nil {
-		return models.Game{}, fmt.Errorf("failed to get access token: %w", err)
+		return MetadataResult{}, fmt.Errorf("failed to get access token: %w", err)
 	}
 
 	reqURL := fmt.Sprintf("%s?gid=%s", ymgalAPIURL, id)
 	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
-		return models.Game{}, err
+		return MetadataResult{}, err
 	}
 
 	req.Header.Set("User-Agent", metadataUserAgent)
@@ -133,27 +133,31 @@ func (y YmgalInfoGetter) FetchMetadata(id string, token string) (models.Game, er
 
 	bodyBytes, err := y.doAuthorizedRequest(req)
 	if err != nil {
-		return models.Game{}, err
+		return MetadataResult{}, err
 	}
 
 	var ymgalResp ymgalResponse
 	if err := json.Unmarshal(bodyBytes, &ymgalResp); err != nil {
-		return models.Game{}, err
+		return MetadataResult{}, err
 	}
 	if ymgalResp.Success != nil && !*ymgalResp.Success {
-		return models.Game{}, fmt.Errorf("ymgal API error: %s (code: %d)", ymgalResp.Msg, ymgalResp.Code)
+		return MetadataResult{}, fmt.Errorf("ymgal API error: %s (code: %d)", ymgalResp.Msg, ymgalResp.Code)
 	}
 	if ymgalResp.Data == nil || ymgalResp.Data.Game == nil {
-		return models.Game{}, fmt.Errorf("ymgal API returned no game data, body: %s", string(bodyBytes))
+		return MetadataResult{}, fmt.Errorf("ymgal API returned no game data, body: %s", string(bodyBytes))
 	}
 
-	return y.convertToModel(ymgalResp.Data.Game)
+	game, err := y.convertToModel(ymgalResp.Data.Game)
+	if err != nil {
+		return MetadataResult{}, err
+	}
+	return MetadataResult{Game: game}, nil
 }
 
-func (y YmgalInfoGetter) FetchMetadataByName(name string, token string) (models.Game, error) {
+func (y YmgalInfoGetter) FetchMetadataByName(name string, token string) (MetadataResult, error) {
 	accessToken, err := y.getAccessToken()
 	if err != nil {
-		return models.Game{}, fmt.Errorf("failed to get access token: %w", err)
+		return MetadataResult{}, fmt.Errorf("failed to get access token: %w", err)
 	}
 
 	searchURL := fmt.Sprintf("%s/search-game", ymgalAPIURL)
@@ -164,7 +168,7 @@ func (y YmgalInfoGetter) FetchMetadataByName(name string, token string) (models.
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s?%s", searchURL, params.Encode()), nil)
 	if err != nil {
-		return models.Game{}, err
+		return MetadataResult{}, err
 	}
 	req.Header.Set("User-Agent", metadataUserAgent)
 	req.Header.Set("Authorization", "Bearer "+accessToken)
@@ -173,21 +177,25 @@ func (y YmgalInfoGetter) FetchMetadataByName(name string, token string) (models.
 
 	bodyBytes, err := y.doAuthorizedRequest(req)
 	if err != nil {
-		return models.Game{}, err
+		return MetadataResult{}, err
 	}
 
 	var ymgalResp ymgalResponse
 	if err := json.Unmarshal(bodyBytes, &ymgalResp); err != nil {
-		return models.Game{}, err
+		return MetadataResult{}, err
 	}
 	if ymgalResp.Success != nil && !*ymgalResp.Success {
-		return models.Game{}, fmt.Errorf("ymgal API error: %s (code: %d)", ymgalResp.Msg, ymgalResp.Code)
+		return MetadataResult{}, fmt.Errorf("ymgal API error: %s (code: %d)", ymgalResp.Msg, ymgalResp.Code)
 	}
 	if ymgalResp.Data == nil || ymgalResp.Data.Game == nil {
-		return models.Game{}, fmt.Errorf("ymgal API returned no game data, body: %s", string(bodyBytes))
+		return MetadataResult{}, fmt.Errorf("ymgal API returned no game data, body: %s", string(bodyBytes))
 	}
 
-	return y.convertToModel(ymgalResp.Data.Game)
+	game, err := y.convertToModel(ymgalResp.Data.Game)
+	if err != nil {
+		return MetadataResult{}, err
+	}
+	return MetadataResult{Game: game}, nil
 }
 
 func (y YmgalInfoGetter) doAuthorizedRequest(req *http.Request) ([]byte, error) {

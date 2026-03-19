@@ -25,9 +25,10 @@ import (
 )
 
 type GameService struct {
-	ctx    context.Context
-	db     *sql.DB
-	config *appconf.AppConfig
+	ctx        context.Context
+	db         *sql.DB
+	config     *appconf.AppConfig
+	tagService *TagService
 }
 
 func NewGameService() *GameService {
@@ -38,6 +39,10 @@ func (s *GameService) Init(ctx context.Context, db *sql.DB, config *appconf.AppC
 	s.ctx = ctx
 	s.db = db
 	s.config = config
+}
+
+func (s *GameService) SetTagService(ts *TagService) {
+	s.tagService = ts
 }
 
 func (s *GameService) SelectGameExecutable() (string, error) {
@@ -538,10 +543,10 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 	go func() {
 		defer wg.Done()
 		bgmGetter := metadata.NewBangumiInfoGetter()
-		bgm, _ := bgmGetter.FetchMetadataByName(name, s.config.BangumiAccessToken)
-		if bgm != (models.Game{}) {
+		result, _ := bgmGetter.FetchMetadataByName(name, s.config.BangumiAccessToken)
+		if result.Game != (models.Game{}) {
 			mu.Lock()
-			games = append(games, vo.GameMetadataFromWebVO{Source: enums.Bangumi, Game: bgm})
+			games = append(games, vo.GameMetadataFromWebVO{Source: enums.Bangumi, Game: result.Game})
 			mu.Unlock()
 		}
 	}()
@@ -549,10 +554,10 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 	go func() {
 		defer wg.Done()
 		vndbGetter := metadata.NewVNDBInfoGetter()
-		vndb, _ := vndbGetter.FetchMetadataByName(name, s.config.VNDBAccessToken)
-		if vndb != (models.Game{}) {
+		result, _ := vndbGetter.FetchMetadataByName(name, s.config.VNDBAccessToken)
+		if result.Game != (models.Game{}) {
 			mu.Lock()
-			games = append(games, vo.GameMetadataFromWebVO{Source: enums.VNDB, Game: vndb})
+			games = append(games, vo.GameMetadataFromWebVO{Source: enums.VNDB, Game: result.Game})
 			mu.Unlock()
 		}
 	}()
@@ -560,10 +565,10 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 	go func() {
 		defer wg.Done()
 		ymgalGetter := metadata.NewYmgalInfoGetter()
-		ymgal, _ := ymgalGetter.FetchMetadataByName(name, "")
-		if ymgal != (models.Game{}) {
+		result, _ := ymgalGetter.FetchMetadataByName(name, "")
+		if result.Game != (models.Game{}) {
 			mu.Lock()
-			games = append(games, vo.GameMetadataFromWebVO{Source: enums.Ymgal, Game: ymgal})
+			games = append(games, vo.GameMetadataFromWebVO{Source: enums.Ymgal, Game: result.Game})
 			mu.Unlock()
 		}
 	}()
@@ -574,10 +579,10 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 }
 
 func (s *GameService) FetchMetadata(req vo.MetadataRequest) (models.Game, error) {
-	var game = models.Game{}
+	var result metadata.MetadataResult
 	var e error
 
-	if game, e = fetchFromLocal(req.ID); e == nil {
+	if game, err := fetchFromLocal(req.ID); err == nil {
 		return game, nil
 	}
 
@@ -585,21 +590,21 @@ func (s *GameService) FetchMetadata(req vo.MetadataRequest) (models.Game, error)
 	switch req.Source {
 	case enums.Bangumi:
 		bgmGetter := metadata.NewBangumiInfoGetter()
-		game, e = bgmGetter.FetchMetadata(sourceId, s.config.BangumiAccessToken)
+		result, e = bgmGetter.FetchMetadata(sourceId, s.config.BangumiAccessToken)
 	case enums.VNDB:
 		if !isVndbId(sourceId) {
-			return game, fmt.Errorf("invalid VNDB ID format: %s", req.ID)
+			return models.Game{}, fmt.Errorf("invalid VNDB ID format: %s", req.ID)
 		}
 		vndbGetter := metadata.NewVNDBInfoGetter()
-		game, e = vndbGetter.FetchMetadata(sourceId, s.config.VNDBAccessToken)
+		result, e = vndbGetter.FetchMetadata(sourceId, s.config.VNDBAccessToken)
 	case enums.Ymgal:
 		if !isYmgalId(sourceId) {
-			return game, fmt.Errorf("invalid Ymgal ID format: %s", req.ID)
+			return models.Game{}, fmt.Errorf("invalid Ymgal ID format: %s", req.ID)
 		}
 		ymgalGetter := metadata.NewYmgalInfoGetter()
-		game, e = ymgalGetter.FetchMetadata(sourceId, "")
+		result, e = ymgalGetter.FetchMetadata(sourceId, "")
 	}
-	return game, e
+	return result.Game, e
 }
 
 func fetchFromLocal(id string) (models.Game, error) {
@@ -630,16 +635,27 @@ func (s *GameService) UpdateGameFromRemote(gameID string) error {
 		return fmt.Errorf("游戏缺少数据源信息，无法从远程更新")
 	}
 
-	// 从远程获取最新数据
-	req := vo.MetadataRequest{
-		Source: existingGame.SourceType,
-		ID:     existingGame.SourceID,
-	}
+	sourceId := strings.ToLower(existingGame.SourceID)
+	var metaResult metadata.MetadataResult
 
-	remoteGame, err := s.FetchMetadata(req)
+	switch existingGame.SourceType {
+	case enums.Bangumi:
+		getter := metadata.NewBangumiInfoGetter()
+		metaResult, err = getter.FetchMetadata(sourceId, s.config.BangumiAccessToken)
+	case enums.VNDB:
+		getter := metadata.NewVNDBInfoGetter()
+		metaResult, err = getter.FetchMetadata(sourceId, s.config.VNDBAccessToken)
+	case enums.Ymgal:
+		getter := metadata.NewYmgalInfoGetter()
+		metaResult, err = getter.FetchMetadata(sourceId, "")
+	default:
+		return fmt.Errorf("unsupported source type: %s", existingGame.SourceType)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to fetch metadata from remote: %w", err)
 	}
+
+	remoteGame := metaResult.Game
 
 	// 保留本地重要字段，更新远程可获取的字段
 	existingGame.Name = remoteGame.Name
@@ -654,6 +670,13 @@ func (s *GameService) UpdateGameFromRemote(gameID string) error {
 
 	if err := s.UpdateGame(existingGame); err != nil {
 		return fmt.Errorf("failed to update game: %w", err)
+	}
+
+	// 写入 tags（先删除刮削来源的旧 tag，再批量插入新 tag，保留用户 tag）
+	if s.tagService != nil && len(metaResult.Tags) > 0 {
+		if err := s.tagService.upsertScrapedTags(gameID, metaResult.Tags); err != nil {
+			applog.LogWarningf(s.ctx, "UpdateGameFromRemote: failed to upsert tags for game %s: %v", gameID, err)
+		}
 	}
 
 	applog.LogInfof(s.ctx, "UpdateGameFromRemote: successfully updated game %s from %s", existingGame.Name, existingGame.SourceType)

@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { enums } from "../../wailsjs/go/models";
 import { AddGamesToCategories, GetCategories } from "../../wailsjs/go/service/CategoryService";
 import { BatchUpdateStatus, DeleteGames } from "../../wailsjs/go/service/GameService";
+import { GetGameIDsByTag, SearchTagsInLibrary } from "../../wailsjs/go/service/TagService";
 import { FilterBar } from "../components/bar/FilterBar";
 import { GameCard } from "../components/card/GameCard";
 import { AddGameModal } from "../components/modal/AddGameModal";
@@ -39,6 +40,10 @@ function LibraryPage() {
   const [sortBy, setSortBy] = useState<"name" | "created_at">("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [tagFilter, setTagFilter] = useState<string>("");
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
+  const [tagGameIds, setTagGameIds] = useState<Set<string> | null>(null);
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const [batchMode, setBatchMode] = useState(false);
   const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
   const [allCategories, setAllCategories] = useState<vo.CategoryVO[]>([]);
@@ -71,6 +76,42 @@ function LibraryPage() {
     return () => clearTimeout(timer);
   }, [gamesLoading]);
 
+  // tag 输入变化时搜索建议
+  useEffect(() => {
+    if (!tagFilter) {
+      setTagSuggestions([]);
+      setTagGameIds(null);
+      return;
+    }
+    SearchTagsInLibrary(tagFilter)
+      .then((names) => {
+        setTagSuggestions(Array.isArray(names) ? names : []);
+      })
+      .catch(() => {
+        setTagSuggestions([]);
+      });
+  }, [tagFilter]);
+
+  // 选中某个 tag 后获取对应游戏 ID 集合
+  const handleSelectTag = async (name: string) => {
+    setTagFilter(name);
+    setShowTagSuggestions(false);
+    try {
+      const ids = await GetGameIDsByTag(name);
+      setTagGameIds(new Set(Array.isArray(ids) ? ids : []));
+    }
+    catch {
+      setTagGameIds(null);
+    }
+  };
+
+  const handleClearTagFilter = () => {
+    setTagFilter("");
+    setTagGameIds(null);
+    setTagSuggestions([]);
+    setShowTagSuggestions(false);
+  };
+
   const filteredGames = games
     .filter((game) => {
       // 搜索过滤：同时匹配游戏名和开发商/公司
@@ -82,7 +123,12 @@ function LibraryPage() {
           return false;
       }
       // 状态过滤
-      return !(statusFilter && game.status !== statusFilter);
+      if (statusFilter && game.status !== statusFilter)
+        return false;
+      // tag 过滤
+      if (tagGameIds !== null && !tagGameIds.has(game.id))
+        return false;
+      return true;
     })
     .sort((a, b) => {
       let comparison = 0;
@@ -239,6 +285,44 @@ function LibraryPage() {
         selectedCount={selectedGameIds.length}
         onSelectAll={handleSelectAll}
         onClearSelection={handleClearSelection}
+        extraButtons={(
+          <div className="relative">
+            <div className="flex items-center gap-1 glass-panel px-2 py-1.5 border border-brand-200 dark:border-brand-700 rounded-lg bg-white dark:bg-brand-800">
+              <div className="i-mdi-tag-outline text-brand-500 dark:text-brand-400 text-base" />
+              <input
+                type="text"
+                value={tagFilter}
+                onChange={(e) => {
+                  setTagFilter(e.target.value);
+                  setShowTagSuggestions(true);
+                }}
+                onFocus={() => setShowTagSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowTagSuggestions(false), 150)}
+                placeholder={t("tags.filterPlaceholder")}
+                className="text-xs bg-transparent outline-none text-brand-900 dark:text-white placeholder:text-brand-400 w-24"
+              />
+              {tagFilter && (
+                <button type="button" onClick={handleClearTagFilter} className="text-brand-400 hover:text-brand-600 dark:hover:text-brand-200">
+                  <div className="i-mdi-close text-sm" />
+                </button>
+              )}
+            </div>
+            {showTagSuggestions && tagSuggestions.length > 0 && (
+              <div className="absolute top-full mt-1 left-0 z-50 bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700 rounded-lg shadow-lg min-w-[160px] max-h-48 overflow-y-auto">
+                {tagSuggestions.map(name => (
+                  <button
+                    key={name}
+                    type="button"
+                    onMouseDown={() => handleSelectTag(name)}
+                    className="w-full text-left px-3 py-1.5 text-xs text-brand-800 dark:text-brand-200 hover:bg-brand-50 dark:hover:bg-brand-700"
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         batchActions={(
           <>
             {/* 批量更新状态 */}

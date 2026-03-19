@@ -188,6 +188,7 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.AIWebSearchEnabled = newConfig.AIWebSearchEnabled
 	s.config.AIContextWindowSize = newConfig.AIContextWindowSize
 	s.config.TavilyAPIKey = newConfig.TavilyAPIKey
+	s.config.ShowNSFWTags = newConfig.ShowNSFWTags
 	return nil
 }
 

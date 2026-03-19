@@ -86,6 +86,8 @@ type AppConfig struct {
 	// 下载代理配置
 	DownloadProxyMode string `json:"download_proxy_mode,omitempty"` // 下载代理模式：system / manual / direct
 	DownloadProxyURL  string `json:"download_proxy_url,omitempty"`  // 手动代理 URL，支持 http/https/socks5
+	// Tag 配置
+	ShowNSFWTags bool `json:"show_nsfw_tags"` // 是否在详情页展示 NSFW tag，默认 false
 }
 
 // getConfigPath 获取配置文件路径

@@ -199,6 +199,37 @@ func migration151(tx *sql.Tx) error {
 	return nil
 }
 
+// migration154 新增 game_tags 表，存储来自 Bangumi/VNDB/用户的 tag 元数据
+func migration154(tx *sql.Tx) error {
+	_, err := tx.Exec(`
+		CREATE TABLE IF NOT EXISTS game_tags (
+			id          TEXT PRIMARY KEY,
+			game_id     TEXT NOT NULL,
+			name        TEXT NOT NULL,
+			source      TEXT NOT NULL,
+			weight      DOUBLE DEFAULT 1.0,
+			is_spoiler  BOOLEAN DEFAULT FALSE,
+			created_at  TIMESTAMPTZ,
+			UNIQUE (game_id, name, source)
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create game_tags table: %w", err)
+	}
+
+	_, err = tx.Exec(`CREATE INDEX IF NOT EXISTS idx_game_tags_game_id ON game_tags(game_id)`)
+	if err != nil {
+		return fmt.Errorf("failed to create idx_game_tags_game_id: %w", err)
+	}
+
+	_, err = tx.Exec(`CREATE INDEX IF NOT EXISTS idx_game_tags_name ON game_tags(name)`)
+	if err != nil {
+		return fmt.Errorf("failed to create idx_game_tags_name: %w", err)
+	}
+
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
@@ -225,6 +256,11 @@ var migrations = []Migration{
 		Version:     151,
 		Description: "Add game_progress table for spoiler-aware AI summary",
 		Up:          migration151,
+	},
+	{
+		Version:     154,
+		Description: "Add game_tags table for Bangumi/VNDB/user tag metadata",
+		Up:          migration154,
 	},
 	// {
 	// 	Version:     114,

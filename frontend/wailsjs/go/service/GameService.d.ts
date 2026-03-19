@@ -6,6 +6,7 @@ import {processutils} from '../models';
 import {context} from '../models';
 import {sql} from '../models';
 import {appconf} from '../models';
+import {service} from '../models';
 
 export function AddGame(arg1:models.Game):Promise<void>;
 
@@ -40,6 +41,8 @@ export function SelectGameExecutable():Promise<string>;
 export function SelectSaveDirectory():Promise<string>;
 
 export function SelectSaveFile():Promise<string>;
+
+export function SetTagService(arg1:service.TagService):Promise<void>;
 
 export function UpdateGame(arg1:models.Game):Promise<void>;
 

@@ -210,6 +210,7 @@ func main() {
 	sessionService := service.NewSessionService()
 	downloadService := service.NewDownloadService()
 	gameProgressService := service.NewGameProgressService()
+	tagService := service.NewTagService()
 
 	// 如果有待安装 URL，解析并暂存到 downloadService
 	if pendingURL != "" {
@@ -369,6 +370,7 @@ func main() {
 			})
 			downloadService.Init(ctx, db, config)
 			gameService.Init(ctx, db, config)
+			tagService.Init(ctx, db, config)
 			aiService.Init(ctx, db, config)
 			backupService.Init(ctx, db, config)
 			homeService.Init(ctx, db, config)
@@ -387,6 +389,7 @@ func main() {
 			startService.SetGameService(gameService)
 			startService.SetSessionService(sessionService)
 			downloadService.SetGameService(gameService)
+			gameService.SetTagService(tagService)
 
 			// 设置 ImportService 的 SessionService 依赖（用于导入游玩记录）
 			importService.SetSessionService(sessionService)
@@ -485,6 +488,7 @@ func main() {
 			sessionService,
 			downloadService,
 			gameProgressService,
+			tagService,
 		},
 		EnumBind: []interface{}{
 			enums.AllSourceTypes,

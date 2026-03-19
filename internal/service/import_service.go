@@ -1113,8 +1113,9 @@ func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchIm
 	}
 
 	for _, src := range sources {
-		game, err := src.getter.FetchMetadataByName(searchName, src.token)
-		if err == nil && game.Name != "" {
+		metaResult, err := src.getter.FetchMetadataByName(searchName, src.token)
+		if err == nil && metaResult.Game.Name != "" {
+			game := metaResult.Game
 			result.MatchedGame = &game
 			result.MatchSource = src.source
 			result.MatchStatus = "matched"
