@@ -98,6 +98,13 @@
     "clearTag": "Clear Tag",
     "tagsPlaceholder": "Enter tags..."
   },
+  "tags": {
+    "add": "Add tag",
+    "inputPlaceholder": "Enter a tag",
+    "addFailed": "Failed to add tag",
+    "deleteFailed": "Failed to delete tag",
+    "revealSpoiler": "Click to reveal spoiler tag"
+  },
   "gameCard": {
     "deselect": "Deselect",
     "select": "Select",

@@ -98,6 +98,13 @@
     "clearTag": "清空标签",
     "tagsPlaceholder": "输入标签..."
   },
+  "tags": {
+    "add": "添加标签",
+    "inputPlaceholder": "输入标签",
+    "addFailed": "添加标签失败",
+    "deleteFailed": "删除标签失败",
+    "revealSpoiler": "点击显示剧透标签"
+  },
   "gameCard": {
     "deselect": "取消选择",
     "select": "选择",

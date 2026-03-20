@@ -129,6 +129,7 @@ interface TagPillProps {
 }
 
 function TagPill({ tag, onClick, onDelete }: TagPillProps) {
+  const { t } = useTranslation();
   const [revealed, setRevealed] = useState(false);
   const isSpoiler = tag.is_spoiler && !revealed;
   const isUser = tag.source === "user";
@@ -147,7 +148,7 @@ function TagPill({ tag, onClick, onDelete }: TagPillProps) {
               type="button"
               onClick={() => setRevealed(true)}
               className="blur-sm hover:blur-none transition-all cursor-pointer select-none"
-              title="点击显示剧透 tag"
+              title={t("tags.revealSpoiler")}
             >
               {tag.name}
             </button>

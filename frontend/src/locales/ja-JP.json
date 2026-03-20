@@ -98,6 +98,13 @@
     "clearTag": "タグをクリア",
     "tagsPlaceholder": "tagに記入してください..."
   },
+  "tags": {
+    "add": "タグを追加",
+    "inputPlaceholder": "タグを入力",
+    "addFailed": "タグの追加に失敗しました",
+    "deleteFailed": "タグの削除に失敗しました",
+    "revealSpoiler": "クリックしてネタバレタグを表示"
+  },
   "gameCard": {
     "deselect": "選択解除",
     "select": "選択",
