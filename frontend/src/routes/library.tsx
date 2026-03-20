@@ -1,7 +1,7 @@
 import type { vo } from "../../wailsjs/go/models";
 import type { ImportSource } from "../components/modal/GameImportModal";
 import { createRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { enums } from "../../wailsjs/go/models";
@@ -48,9 +48,12 @@ function LibraryPage() {
   const [sortBy, setSortBy] = useState<"name" | "created_at">("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<string>("");
-  const [tagFilter, setTagFilter] = useState<string>("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState<string>("");
+  const [isTagInputFocused, setIsTagInputFocused] = useState(false);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const [tagGameIds, setTagGameIds] = useState<Set<string> | null>(null);
+  const tagInputRef = useRef<HTMLInputElement>(null);
   const [batchMode, setBatchMode] = useState(false);
   const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
   const [allCategories, setAllCategories] = useState<vo.CategoryVO[]>([]);
@@ -85,34 +88,61 @@ function LibraryPage() {
 
   // tag 输入变化时搜索建议
   useEffect(() => {
-    if (!tagFilter) {
+    if (!tagInput) {
       setTagSuggestions([]);
-      setTagGameIds(null);
       return;
     }
-    SearchTagsInLibrary(tagFilter)
+    SearchTagsInLibrary(tagInput)
       .then((names) => {
-        setTagSuggestions(Array.isArray(names) ? names : []);
+        setTagSuggestions(Array.isArray(names) ? names.filter(n => !selectedTags.includes(n)) : []);
       })
       .catch(() => {
         setTagSuggestions([]);
       });
-  }, [tagFilter]);
+  }, [tagInput, selectedTags]);
 
-  // 选中某个 tag 后获取对应游戏 ID 集合
-  const handleSelectTag = async (name: string) => {
-    setTagFilter(name);
+  const updateTagGameIds = async (tags: string[]) => {
+    if (tags.length === 0) {
+      setTagGameIds(null);
+      return;
+    }
     try {
-      const ids = await GetGameIDsByTag(name);
-      setTagGameIds(new Set(Array.isArray(ids) ? ids : []));
+      const allIdsLists = await Promise.all(tags.map(tag => GetGameIDsByTag(tag)));
+      if (allIdsLists.length === 0) {
+        setTagGameIds(new Set());
+        return;
+      }
+      let intersection = new Set(Array.isArray(allIdsLists[0]) ? allIdsLists[0] : []);
+      for (let i = 1; i < allIdsLists.length; i++) {
+        const currentSet = new Set(Array.isArray(allIdsLists[i]) ? allIdsLists[i] : []);
+        intersection = new Set([...intersection].filter(x => currentSet.has(x)));
+      }
+      setTagGameIds(intersection);
     }
     catch {
-      setTagGameIds(null);
+      setTagGameIds(new Set());
     }
   };
 
+  // 选中某个 tag
+  const handleSelectTag = (name: string) => {
+    if (selectedTags.includes(name))
+      return;
+    const newTags = [...selectedTags, name];
+    setSelectedTags(newTags);
+    setTagInput("");
+    void updateTagGameIds(newTags);
+  };
+
+  const handleRemoveTag = (name: string) => {
+    const newTags = selectedTags.filter(t => t !== name);
+    setSelectedTags(newTags);
+    void updateTagGameIds(newTags);
+  };
+
   const handleClearTagFilter = () => {
-    setTagFilter("");
+    setSelectedTags([]);
+    setTagInput("");
     setTagGameIds(null);
     setTagSuggestions([]);
   };
@@ -123,7 +153,9 @@ function LibraryPage() {
     if (!incomingTag) {
       return;
     }
-    void handleSelectTag(incomingTag);
+    if (!selectedTags.includes(incomingTag)) {
+      handleSelectTag(incomingTag);
+    }
   }, [routeTagFilter]);
 
   const filteredGames = games
@@ -299,36 +331,71 @@ function LibraryPage() {
         selectedCount={selectedGameIds.length}
         onSelectAll={handleSelectAll}
         onClearSelection={handleClearSelection}
-        filterMenuExtraActive={Boolean(tagFilter)}
+        filterMenuExtraActive={selectedTags.length > 0 || Boolean(tagInput)}
         filterMenuExtra={(
           <div className="space-y-2">
             <div className="text-xs font-medium text-brand-400 dark:text-brand-500">
               {t("filterBar.tagFilter")}
             </div>
-            <div className="flex items-center gap-1.5 rounded-lg border border-brand-200 bg-white px-2 py-1.5 dark:border-brand-700 dark:bg-brand-900/50">
-              <div className="i-mdi-tag-outline text-base text-brand-500 dark:text-brand-400" />
-              <input
-                type="text"
-                value={tagFilter}
-                onChange={(e) => {
-                  setTagFilter(e.target.value);
-                  setTagGameIds(null);
-                }}
-                placeholder={t("filterBar.tagsPlaceholder")}
-                className="w-full bg-transparent text-xs text-brand-900 outline-none placeholder:text-brand-400 dark:text-white"
-              />
-              {tagFilter && (
+            <div
+              className={`relative flex w-full min-w-0 flex-wrap items-center gap-1.5 rounded-lg border border-brand-200 bg-white px-2 py-1.5 dark:border-brand-700 dark:bg-brand-900/50 cursor-text min-h-[34px] ${selectedTags.length > 0 || tagInput ? "pr-8 pb-5" : ""}`}
+              onClick={() => {
+                setIsTagInputFocused(true);
+                setTimeout(() => tagInputRef.current?.focus(), 0);
+              }}
+            >
+              <div className="i-mdi-tag-outline text-base text-brand-500 dark:text-brand-400 shrink-0" />
+              {selectedTags.map(tag => (
+                <span key={tag} className="inline-flex max-w-full items-center gap-1 break-all rounded bg-brand-100 px-1.5 py-0.5 text-xs text-brand-700 dark:bg-brand-800 dark:text-brand-200">
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveTag(tag);
+                    }}
+                    className="hover:text-brand-900 dark:hover:text-white"
+                  >
+                    <div className="i-mdi-close text-[10px]" />
+                  </button>
+                </span>
+              ))}
+              {(!selectedTags.length || isTagInputFocused || tagInput) && (
+                <div className="flex min-w-[96px] flex-[1_1_96px] max-w-full">
+                  <input
+                    ref={tagInputRef}
+                    type="text"
+                    value={tagInput}
+                    onChange={e => setTagInput(e.target.value)}
+                    onFocus={() => setIsTagInputFocused(true)}
+                    onBlur={() => {
+                      setTimeout(() => setIsTagInputFocused(false), 200);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Backspace" && !tagInput && selectedTags.length > 0) {
+                        handleRemoveTag(selectedTags[selectedTags.length - 1]);
+                      }
+                    }}
+                    placeholder={selectedTags.length ? "" : t("filterBar.tagsPlaceholder")}
+                    className="min-w-0 w-full bg-transparent text-xs text-brand-900 outline-none placeholder:text-brand-400 dark:text-white"
+                  />
+                </div>
+              )}
+              {(selectedTags.length > 0 || tagInput) && (
                 <button
                   type="button"
-                  onClick={handleClearTagFilter}
-                  className="text-brand-400 hover:text-brand-600 dark:hover:text-brand-200"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClearTagFilter();
+                  }}
+                  className="absolute bottom-1 right-1 rounded-full bg-white/80 p-0.5 text-brand-400 transition-colors hover:text-brand-600 dark:bg-brand-900/70 dark:hover:text-brand-200"
                   title={t("filterBar.clearTag")}
                 >
-                  <div className="i-mdi-close text-sm" />
+                  <div className="i-mdi-close-circle text-sm" />
                 </button>
               )}
             </div>
-            {tagFilter && tagSuggestions.length > 0 && (
+            {tagInput && tagSuggestions.length > 0 && (
               <div className="max-h-36 overflow-y-auto rounded-lg border border-brand-200 bg-brand-50/40 p-1 dark:border-brand-700 dark:bg-brand-900/30">
                 {tagSuggestions.map(name => (
                   <button

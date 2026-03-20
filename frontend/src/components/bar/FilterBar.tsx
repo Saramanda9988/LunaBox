@@ -208,10 +208,10 @@ export function FilterBar({
 
           <MenuItems
             anchor="bottom end"
-            className="z-50 mt-1.5 min-w-[280px] max-w-[340px] origin-top-right rounded-xl bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700 shadow-xl focus:outline-none p-2 [--anchor-gap:6px]"
+            className="z-50 mt-1.5 w-[clamp(280px,90vw,340px)] origin-top-right rounded-xl bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700 shadow-xl focus:outline-none p-2 overflow-hidden [--anchor-gap:6px]"
           >
             {filterMenuExtra && (
-              <div className="px-2 py-1.5">
+              <div className="w-full min-w-0 px-2 py-1.5">
                 {filterMenuExtra}
               </div>
             )}
