@@ -1,6 +1,6 @@
 import type { vo } from "../../wailsjs/go/models";
 import type { ImportSource } from "../components/modal/GameImportModal";
-import { createRoute } from "@tanstack/react-router";
+import { createRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
@@ -35,6 +35,7 @@ export const Route = createRoute({
 });
 
 function LibraryPage() {
+  const navigate = useNavigate();
   const { tagFilter: routeTagFilter } = Route.useSearch();
   const games = useAppStore(state => state.games);
   const gamesLoading = useAppStore(state => state.gamesLoading);
@@ -124,20 +125,35 @@ function LibraryPage() {
     }
   };
 
+  const clearRouteTagFilter = () => {
+    if (!routeTagFilter) {
+      return;
+    }
+    void navigate({
+      to: "/library",
+      search: prev => ({ ...prev, tagFilter: undefined }),
+      replace: true,
+    });
+  };
+
   // 选中某个 tag
-  const handleSelectTag = (name: string) => {
+  const handleSelectTag = (name: string, options?: { fromRoute?: boolean }) => {
     if (selectedTags.includes(name))
       return;
     const newTags = [...selectedTags, name];
     setSelectedTags(newTags);
     setTagInput("");
     void updateTagGameIds(newTags);
+    if (!options?.fromRoute) {
+      clearRouteTagFilter();
+    }
   };
 
   const handleRemoveTag = (name: string) => {
     const newTags = selectedTags.filter(t => t !== name);
     setSelectedTags(newTags);
     void updateTagGameIds(newTags);
+    clearRouteTagFilter();
   };
 
   const handleClearTagFilter = () => {
@@ -145,6 +161,7 @@ function LibraryPage() {
     setTagInput("");
     setTagGameIds(null);
     setTagSuggestions([]);
+    clearRouteTagFilter();
   };
 
   // 通过路由参数进入库页面时，自动应用 tag 筛选
@@ -154,7 +171,7 @@ function LibraryPage() {
       return;
     }
     if (!selectedTags.includes(incomingTag)) {
-      handleSelectTag(incomingTag);
+      handleSelectTag(incomingTag, { fromRoute: true });
     }
   }, [routeTagFilter]);
 

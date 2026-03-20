@@ -8,9 +8,10 @@ import { AddUserTag, DeleteTag, GetTagsByGame } from "../../../wailsjs/go/servic
 interface GameTagsProps {
   gameId: string;
   showNSFW?: boolean;
+  refreshToken?: number;
 }
 
-export function GameTags({ gameId, showNSFW = false }: GameTagsProps) {
+export function GameTags({ gameId, showNSFW = false, refreshToken = 0 }: GameTagsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [tags, setTags] = useState<models.GameTag[]>([]);
@@ -20,7 +21,7 @@ export function GameTags({ gameId, showNSFW = false }: GameTagsProps) {
 
   useEffect(() => {
     GetTagsByGame(gameId).then(result => setTags(result ?? [])).catch(() => {});
-  }, [gameId]);
+  }, [gameId, refreshToken]);
 
   useEffect(() => {
     if (isAdding) {

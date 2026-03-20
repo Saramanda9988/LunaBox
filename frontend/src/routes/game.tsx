@@ -39,6 +39,7 @@ function GameDetailPage() {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [allCategories, setAllCategories] = useState<vo.CategoryVO[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [tagRefreshToken, setTagRefreshToken] = useState(0);
   const isInitialMount = useRef(true);
   const originalGameData = useRef<models.Game | null>(null);
 
@@ -197,6 +198,7 @@ function GameDetailPage() {
       const updatedGame = await GetGameByID(game.id);
       setGame(updatedGame);
       originalGameData.current = updatedGame;
+      setTagRefreshToken(prev => prev + 1);
       toast.success(t("game.toast.updateRemoteSuccess"));
     }
     catch (error) {
@@ -401,15 +403,15 @@ function GameDetailPage() {
             {/* Placeholders for missing data */}
           </div>
 
-          <div className="mt-3">
-            <GameTags gameId={gameId} showNSFW={config?.show_nsfw_tags} />
-          </div>
-
           <div className="mt-4">
             <div className="font-semibold mb-2 text-brand-900 dark:text-white">{t("game.summary")}</div>
             <p className="text-brand-750 dark:text-brand-400 text-sm leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto scrollbar-hide pr-2">
               {game.summary || t("game.noSummary")}
             </p>
+          </div>
+
+          <div className="mt-3">
+            <GameTags gameId={gameId} showNSFW={config?.show_nsfw_tags} refreshToken={tagRefreshToken} />
           </div>
         </div>
       </div>

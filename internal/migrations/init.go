@@ -66,6 +66,18 @@ func InitSchema(db *sql.DB) error {
 			created_at TIMESTAMPTZ,
 			updated_at TIMESTAMPTZ
 		)`,
+		`
+		CREATE TABLE IF NOT EXISTS game_tags (
+			id          TEXT PRIMARY KEY,
+			game_id     TEXT NOT NULL,
+			name        TEXT NOT NULL,
+			source      TEXT NOT NULL,
+			weight      DOUBLE DEFAULT 1.0,
+			is_spoiler  BOOLEAN DEFAULT FALSE,
+			created_at  TIMESTAMPTZ,
+			UNIQUE (game_id, name, source)
+		)
+		`,
 	}
 
 	for _, query := range queries {
