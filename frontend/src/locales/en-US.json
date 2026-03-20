@@ -584,6 +584,8 @@
       "enableBgHint": "When enabled, uses a custom image as the app background and auto-adjusts the theme colors",
       "hideGameCover": "Hide Home Page Game Cover",
       "hideGameCoverHint": "When a custom background is enabled, hide the last-played game's cover on the home page",
+      "hideGameHeroCover": "Hide Home Page Large Game Cover",
+      "hideGameHeroCoverHint": "When a custom background is enabled, hide the large cover image of the most recently played game shown at the bottom-left of the home page",
       "bgImage": "Background Image",
       "noImageSelected": "No image selected",
       "selectBtn": "Select",

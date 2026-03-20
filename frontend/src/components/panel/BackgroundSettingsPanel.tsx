@@ -144,6 +144,24 @@ export function BackgroundSettingsPanel({ formData, onChange }: BackgroundSettin
         />
       </div>
 
+      {/* Hide Game Hero Cover Toggle */}
+      <div className="flex items-center justify-between p-2">
+        <div>
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+            {t("settings.appearance.hideGameHeroCover")}
+          </label>
+          <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
+            {t("settings.appearance.hideGameHeroCoverHint")}
+          </p>
+        </div>
+        <BetterSwitch
+          id="background_hide_game_hero_cover"
+          checked={formData.background_hide_game_hero_cover || false}
+          onCheckedChange={checked => onChange({ ...formData, background_hide_game_hero_cover: checked } as appconf.AppConfig)}
+          disabled={!formData.background_enabled}
+        />
+      </div>
+
       {/* Background Image Selection */}
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">

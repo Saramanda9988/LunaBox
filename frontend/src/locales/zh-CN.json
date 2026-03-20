@@ -584,6 +584,8 @@
       "enableBgHint": "开启后将使用自定义图片作为应用背景，并自动调整主题配色",
       "hideGameCover": "隐藏首页游戏封面",
       "hideGameCoverHint": "启用自定义背景时，隐藏首页上一次游玩游戏的封面图片",
+      "hideGameHeroCover": "隐藏首页游戏封面大图",
+      "hideGameHeroCoverHint": "启用自定义背景时，隐藏首页左下角显示最近游玩游戏的封面大图",
       "bgImage": "背景图片",
       "noImageSelected": "未选择图片",
       "selectBtn": "选择",

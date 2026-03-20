@@ -134,16 +134,18 @@ function HomePage() {
           </div>
         </div>
         <div className="absolute bottom-8 left-8 max-w-lg z-10">
-          <div className="mb-4">
-            <img
-              src={lastPlayed.game.cover_url}
-              alt={lastPlayed.game.name}
-              referrerPolicy="no-referrer"
-              className="max-h-72 max-w-full sm:max-w-sm md:max-w-md lg:max-w-lg rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.3)] object-contain hover:scale-105 origin-left transition-transform duration-300 cursor-pointer ring-2 ring-white/20 dark:ring-white/10"
-              onClick={() => navigate({ to: "/game/$gameId", params: { gameId: lastPlayed.game.id } })}
-              draggable="false"
-            />
-          </div>
+          {(!config?.background_enabled || !config?.background_hide_game_hero_cover) && (
+            <div className="mb-4">
+              <img
+                src={lastPlayed.game.cover_url}
+                alt={lastPlayed.game.name}
+                referrerPolicy="no-referrer"
+                className="max-h-72 max-w-full sm:max-w-sm md:max-w-md lg:max-w-lg rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.3)] object-contain hover:scale-105 origin-left transition-transform duration-300 cursor-pointer ring-2 ring-white/20 dark:ring-white/10"
+                onClick={() => navigate({ to: "/game/$gameId", params: { gameId: lastPlayed.game.id } })}
+                draggable="false"
+              />
+            </div>
+          )}
           <h1
             className="text-4xl font-bold text-brand-900 dark:text-white mb-2 cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors drop-shadow-lg"
             onClick={() => navigate({ to: "/game/$gameId", params: { gameId: lastPlayed.game.id } })}

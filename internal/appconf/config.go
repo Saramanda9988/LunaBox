@@ -68,12 +68,13 @@ type AppConfig struct {
 	LastUpdateCheck      string `json:"last_update_check,omitempty"` // 上次更新检查时间
 	SkipVersion          string `json:"skip_version,omitempty"`      // 跳过的版本号（用户选择忽略的更新）
 	// 背景图配置
-	BackgroundImage         string  `json:"background_image,omitempty"` // 自定义背景图路径
-	BackgroundBlur          int     `json:"background_blur"`            // 背景模糊度 (0-20)
-	BackgroundOpacity       float64 `json:"background_opacity"`         // 背景不透明度 (0-1)
-	BackgroundEnabled       bool    `json:"background_enabled"`         // 是否启用自定义背景
-	BackgroundHideGameCover bool    `json:"background_hide_game_cover"` // 启用自定义背景时隐藏首页游戏封面
-	BackgroundIsLight       bool    `json:"background_is_light"`        // 记录自定义背景是不是浅色调
+	BackgroundImage             string  `json:"background_image,omitempty"`      // 自定义背景图路径
+	BackgroundBlur              int     `json:"background_blur"`                 // 背景模糊度 (0-20)
+	BackgroundOpacity           float64 `json:"background_opacity"`              // 背景不透明度 (0-1)
+	BackgroundEnabled           bool    `json:"background_enabled"`              // 是否启用自定义背景
+	BackgroundHideGameCover     bool    `json:"background_hide_game_cover"`      // 启用自定义背景时隐藏首页游戏封面
+	BackgroundHideGameHeroCover bool    `json:"background_hide_game_hero_cover"` // 启用自定义背景时隐藏首页游戏封面大图
+	BackgroundIsLight           bool    `json:"background_is_light"`             // 记录自定义背景是不是浅色调
 	// Locale Emulator 和 Magpie 配置
 	LocaleEmulatorPath string `json:"locale_emulator_path,omitempty"` // Locale Emulator 可执行文件路径
 	MagpiePath         string `json:"magpie_path,omitempty"`          // Magpie 可执行文件路径
@@ -143,18 +144,19 @@ func LoadConfig() (*AppConfig, error) {
 		LastUpdateCheck:        "",
 		SkipVersion:            "",
 		// 背景图配置默认值
-		BackgroundImage:         "",
-		BackgroundBlur:          10,   // 默认模糊度
-		BackgroundOpacity:       0.85, // 默认不透明度
-		BackgroundEnabled:       false,
-		BackgroundHideGameCover: false, // 默认显示游戏封面
-		BackgroundIsLight:       true,  // 默认是浅色调
-		LocaleEmulatorPath:      "",
-		MagpiePath:              "",
-		AutoDetectGameProcess:   true, // 默认启用自动检测，保持向后兼容
-		GameLibraryPath:         "",
-		DownloadProxyMode:       "system",
-		DownloadProxyURL:        "",
+		BackgroundImage:             "",
+		BackgroundBlur:              10,   // 默认模糊度
+		BackgroundOpacity:           0.85, // 默认不透明度
+		BackgroundEnabled:           false,
+		BackgroundHideGameCover:     false, // 默认显示游戏封面
+		BackgroundHideGameHeroCover: false, // 默认显示首页游戏封面大图
+		BackgroundIsLight:           true,  // 默认是浅色调
+		LocaleEmulatorPath:          "",
+		MagpiePath:                  "",
+		AutoDetectGameProcess:       true, // 默认启用自动检测，保持向后兼容
+		GameLibraryPath:             "",
+		DownloadProxyMode:           "system",
+		DownloadProxyURL:            "",
 	}
 
 	// 获取配置文件路径

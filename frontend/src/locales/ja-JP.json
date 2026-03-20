@@ -584,6 +584,8 @@
       "enableBgHint": "有効にするとカスタム画像をアプリ背景に使用し、テーマ配色を自動調整します",
       "hideGameCover": "ホームのゲームカバーを非表示",
       "hideGameCoverHint": "カスタム背景を有効にしたとき、ホームで前回プレイしたゲームのカバー画像を非表示にします",
+      "hideGameHeroCover": "ホームのゲームカバー（大）を非表示",
+      "hideGameHeroCoverHint": "カスタム背景を有効にしたとき、ホーム左下に表示される最近プレイしたゲームの大きなカバー画像を非表示にします",
       "bgImage": "背景画像",
       "noImageSelected": "画像未選択",
       "selectBtn": "選択",
