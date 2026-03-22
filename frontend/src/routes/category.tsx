@@ -12,10 +12,12 @@ import {
 } from "../../wailsjs/go/service/CategoryService";
 import { GetGames } from "../../wailsjs/go/service/GameService";
 import { FilterBar } from "../components/bar/FilterBar";
+import { TagFilterMenu } from "../components/bar/TagFilterMenu";
 import { GameCard } from "../components/card/GameCard";
 import { AddGameToCategoryModal } from "../components/modal/AddGameToCategoryModal";
 import { CategorySkeleton } from "../components/skeleton/CategorySkeleton";
 import { sortOptions, statusOptions } from "../consts/options";
+import { useTagGameFilter } from "../hooks/useTagGameFilter";
 import { Route as rootRoute } from "./__root";
 
 export const Route = createRoute({
@@ -40,6 +42,16 @@ function CategoryDetailPage() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [batchMode, setBatchMode] = useState(false);
   const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
+  const {
+    selectedTags,
+    tagInput,
+    setTagInput,
+    tagSuggestions,
+    tagGameIds,
+    selectTag,
+    removeTag,
+    clearTagFilter,
+  } = useTagGameFilter();
 
   useEffect(() => {
     let timer: number;
@@ -132,6 +144,9 @@ function CategoryDetailPage() {
           return false;
       }
       if (statusFilter && game.status !== statusFilter) {
+        return false;
+      }
+      if (tagGameIds !== null && !tagGameIds.has(game.id)) {
         return false;
       }
       return true;
@@ -271,6 +286,18 @@ function CategoryDetailPage() {
           selectedCount={selectedGameIds.length}
           onSelectAll={handleSelectAll}
           onClearSelection={handleClearSelection}
+          filterMenuExtraActive={selectedTags.length > 0 || Boolean(tagInput)}
+          filterMenuExtra={(
+            <TagFilterMenu
+              selectedTags={selectedTags}
+              tagInput={tagInput}
+              tagSuggestions={tagSuggestions}
+              onTagInputChange={setTagInput}
+              onSelectTag={selectTag}
+              onRemoveTag={removeTag}
+              onClearTagFilter={clearTagFilter}
+            />
+          )}
           batchActions={(
             <button
               type="button"
