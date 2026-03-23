@@ -553,7 +553,7 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 
 	go func() {
 		defer wg.Done()
-		vndbGetter := metadata.NewVNDBInfoGetter()
+		vndbGetter := metadata.NewVNDBInfoGetterWithLanguage(s.config.Language)
 		result, _ := vndbGetter.FetchMetadataByName(name, s.config.VNDBAccessToken)
 		if result.Game != (models.Game{}) {
 			mu.Lock()
@@ -595,7 +595,7 @@ func (s *GameService) FetchMetadata(req vo.MetadataRequest) (models.Game, error)
 		if !isVndbId(sourceId) {
 			return models.Game{}, fmt.Errorf("invalid VNDB ID format: %s", req.ID)
 		}
-		vndbGetter := metadata.NewVNDBInfoGetter()
+		vndbGetter := metadata.NewVNDBInfoGetterWithLanguage(s.config.Language)
 		result, e = vndbGetter.FetchMetadata(sourceId, s.config.VNDBAccessToken)
 	case enums.Ymgal:
 		if !isYmgalId(sourceId) {
@@ -643,7 +643,7 @@ func (s *GameService) UpdateGameFromRemote(gameID string) error {
 		getter := metadata.NewBangumiInfoGetter()
 		metaResult, err = getter.FetchMetadata(sourceId, s.config.BangumiAccessToken)
 	case enums.VNDB:
-		getter := metadata.NewVNDBInfoGetter()
+		getter := metadata.NewVNDBInfoGetterWithLanguage(s.config.Language)
 		metaResult, err = getter.FetchMetadata(sourceId, s.config.VNDBAccessToken)
 	case enums.Ymgal:
 		getter := metadata.NewYmgalInfoGetter()

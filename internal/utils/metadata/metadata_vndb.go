@@ -15,11 +15,19 @@ import (
 
 // VNDBInfoGetter 获取 VNDB 信息。
 type VNDBInfoGetter struct {
-	client *http.Client
+	client         *http.Client
+	preferredLangs []string
 }
 
 func NewVNDBInfoGetter() *VNDBInfoGetter {
 	return &VNDBInfoGetter{client: newMetadataClient()}
+}
+
+func NewVNDBInfoGetterWithLanguage(language string) *VNDBInfoGetter {
+	return &VNDBInfoGetter{
+		client:         newMetadataClient(),
+		preferredLangs: buildVNDBLanguagePreference(language),
+	}
 }
 
 var _ Getter = (*VNDBInfoGetter)(nil)
@@ -45,9 +53,18 @@ type vndbTag struct {
 	Spoiler int     `json:"spoiler"` // 0=无剧透, 1=轻微, 2=重度
 }
 
+type vndbTitle struct {
+	Lang     string `json:"lang"`
+	Title    string `json:"title"`
+	Latin    string `json:"latin"`
+	Official bool   `json:"official"`
+	Main     bool   `json:"main"`
+}
+
 type vndbQueryResult struct {
 	ID          string          `json:"id"`
 	Title       string          `json:"title"`
+	Titles      []vndbTitle     `json:"titles"`
 	Image       vndbImage       `json:"image"`
 	Description string          `json:"description"`
 	Developers  []vndbDeveloper `json:"developers"`
@@ -69,7 +86,7 @@ func (v VNDBInfoGetter) FetchMetadataByName(name string, token string) (Metadata
 func (v VNDBInfoGetter) queryVNDB(filters []interface{}) (MetadataResult, error) {
 	reqBody := vndbRequest{
 		Filters: filters,
-		Fields:  "id, title, image.url, description, developers.name, tags.name, tags.rating, tags.spoiler",
+		Fields:  "id, title, titles.lang, titles.title, titles.latin, titles.official, titles.main, image.url, description, developers.name, tags.name, tags.rating, tags.spoiler",
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -103,6 +120,7 @@ func (v VNDBInfoGetter) queryVNDB(filters []interface{}) (MetadataResult, error)
 	}
 
 	result := vndbResp.Results[0]
+	displayName := pickVNDBDisplayTitle(result, v.preferredLangs)
 	company := ""
 	if len(result.Developers) > 0 {
 		devs := make([]string, 0, len(result.Developers))
@@ -113,7 +131,7 @@ func (v VNDBInfoGetter) queryVNDB(filters []interface{}) (MetadataResult, error)
 	}
 
 	game := models.Game{
-		Name:       result.Title,
+		Name:       displayName,
 		CoverURL:   result.Image.URL,
 		Company:    company,
 		Summary:    result.Description,
@@ -123,6 +141,136 @@ func (v VNDBInfoGetter) queryVNDB(filters []interface{}) (MetadataResult, error)
 	}
 
 	return MetadataResult{Game: game, Tags: extractVNDBTags(result.Tags)}, nil
+}
+
+func pickVNDBDisplayTitle(result vndbQueryResult, preferredLangs []string) string {
+	if len(preferredLangs) == 0 {
+		return strings.TrimSpace(result.Title)
+	}
+
+	for _, lang := range preferredLangs {
+		if title := pickVNDBTitleByLang(result.Titles, lang); title != "" {
+			return title
+		}
+	}
+	if title := pickVNDBBestTitle(result.Titles); title != "" {
+		return title
+	}
+	return strings.TrimSpace(result.Title)
+}
+
+func pickVNDBTitleByLang(titles []vndbTitle, lang string) string {
+	target := normalizeVNDBLang(lang)
+	if target == "" {
+		return ""
+	}
+
+	bestScore := -1
+	bestTitle := ""
+	for _, t := range titles {
+		if normalizeVNDBLang(t.Lang) != target {
+			continue
+		}
+		title := firstNonEmpty(strings.TrimSpace(t.Title), strings.TrimSpace(t.Latin))
+		if title == "" {
+			continue
+		}
+		score := 0
+		if t.Main {
+			score += 2
+		}
+		if t.Official {
+			score++
+		}
+		if score > bestScore {
+			bestScore = score
+			bestTitle = title
+		}
+	}
+	return bestTitle
+}
+
+func pickVNDBBestTitle(titles []vndbTitle) string {
+	bestScore := -1
+	bestTitle := ""
+	for _, t := range titles {
+		title := firstNonEmpty(strings.TrimSpace(t.Title), strings.TrimSpace(t.Latin))
+		if title == "" {
+			continue
+		}
+		score := 0
+		if t.Main {
+			score += 2
+		}
+		if t.Official {
+			score++
+		}
+		if score > bestScore {
+			bestScore = score
+			bestTitle = title
+		}
+	}
+	return bestTitle
+}
+
+func buildVNDBLanguagePreference(language string) []string {
+	normalized := normalizeVNDBLang(language)
+	if normalized == "" {
+		return nil
+	}
+
+	prefs := make([]string, 0, 6)
+	add := func(lang string) {
+		n := normalizeVNDBLang(lang)
+		if n == "" {
+			return
+		}
+		for _, existing := range prefs {
+			if existing == n {
+				return
+			}
+		}
+		prefs = append(prefs, n)
+	}
+
+	base := normalized
+	if idx := strings.Index(base, "-"); idx > 0 {
+		base = base[:idx]
+	}
+
+	switch base {
+	case "zh":
+		if strings.Contains(normalized, "hant") || strings.HasSuffix(normalized, "-tw") || strings.HasSuffix(normalized, "-hk") || strings.HasSuffix(normalized, "-mo") {
+			add("zh-hant")
+			add("zh-hans")
+		} else {
+			add("zh-hans")
+			add("zh-hant")
+		}
+		add("zh")
+	default:
+		add(normalized)
+		add(base)
+	}
+
+	add("ja")
+	add("en")
+	return prefs
+}
+
+func normalizeVNDBLang(lang string) string {
+	normalized := strings.ToLower(strings.TrimSpace(lang))
+	normalized = strings.ReplaceAll(normalized, "_", "-")
+	return normalized
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 // extractVNDBTags 从 VNDB tag 列表中提取符合条件的 TagItem

@@ -1108,7 +1108,7 @@ func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchIm
 		token  string
 	}{
 		{metadata.NewBangumiInfoGetter(), enums.Bangumi, s.config.BangumiAccessToken},
-		{metadata.NewVNDBInfoGetter(), enums.VNDB, s.config.VNDBAccessToken},
+		{metadata.NewVNDBInfoGetterWithLanguage(s.config.Language), enums.VNDB, s.config.VNDBAccessToken},
 		{metadata.NewYmgalInfoGetter(), enums.Ymgal, ""},
 	}
 
