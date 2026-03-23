@@ -15,3 +15,8 @@ app.log
 .claude
 lunabox-docs
 .github/skills
+.github/prompts
+.codex
+.agent
+.agents
+openspec
