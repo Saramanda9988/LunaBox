@@ -12,7 +12,7 @@ import (
 // TagItem 表示从数据源拉取的单个 tag
 type TagItem struct {
 	Name      string
-	Source    string  // 'bangumi' | 'vndb'
+	Source    string  // 'bangumi' | 'vndb' | 'ymgal' | 'steam'
 	Weight    float64 // 归一化权重
 	IsSpoiler bool
 }

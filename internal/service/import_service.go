@@ -179,7 +179,10 @@ func (s *ImportService) ImportFromPotatoVN(zipPath string, skipNoPath bool) (Imp
 		// 转换并导入游戏
 		game, sessions := s.convertToGame(galgame, tempDir)
 
-		if err := s.gameService.AddGame(game); err != nil {
+		if err := s.gameService.AddGameFromWebMetadata(vo.GameMetadataFromWebVO{
+			Source: game.SourceType,
+			Game:   game,
+		}); err != nil {
 			applog.LogErrorf(s.ctx, "failed to add game %s: %v", gameName, err)
 			result.Failed++
 			result.FailedNames = append(result.FailedNames, gameName)
@@ -265,6 +268,8 @@ func (s *ImportService) mapRssTypeToSourceType(rssType potatovn.RssType) enums.S
 		return enums.VNDB
 	case potatovn.RssTypeYmgal:
 		return enums.Ymgal
+	case potatovn.RssTypeSteam:
+		return enums.Steam
 	default:
 		return enums.Local
 	}
@@ -554,7 +559,10 @@ func (s *ImportService) ImportFromPlaynite(jsonPath string, skipNoPath bool) (Im
 		// 转换并导入游戏
 		game := s.convertPlayniteToGame(pg)
 
-		if err := s.gameService.AddGame(game); err != nil {
+		if err := s.gameService.AddGameFromWebMetadata(vo.GameMetadataFromWebVO{
+			Source: game.SourceType,
+			Game:   game,
+		}); err != nil {
 			applog.LogErrorf(s.ctx, "ImportFromPlaynite: failed to add game %s: %v", pg.Name, err)
 			result.Failed++
 			result.FailedNames = append(result.FailedNames, pg.Name)
@@ -620,6 +628,8 @@ func (s *ImportService) stringToSourceType(sourceType string) enums.SourceType {
 		return enums.VNDB
 	case "ymgal":
 		return enums.Ymgal
+	case "steam":
+		return enums.Steam
 	default:
 		return enums.Local
 	}
@@ -774,7 +784,10 @@ func (s *ImportService) ImportFromVnite(vniteDir string, skipNoPath bool) (Impor
 
 		game, sessions := s.convertVniteToGame(gameDoc, localDoc)
 		s.applyVniteCover(&game, vniteDir, gameDoc)
-		if err := s.gameService.AddGame(game); err != nil {
+		if err := s.gameService.AddGameFromWebMetadata(vo.GameMetadataFromWebVO{
+			Source: game.SourceType,
+			Game:   game,
+		}); err != nil {
 			applog.LogErrorf(s.ctx, "ImportFromVnite: failed to add game %s: %v", gameName, err)
 			result.Failed++
 			result.FailedNames = append(result.FailedNames, gameName)
@@ -917,6 +930,9 @@ func (s *ImportService) mapVniteSourceType(gameDoc vnite.GameDoc) enums.SourceTy
 	}
 	if gameDoc.Metadata.BangumiID != "" {
 		return enums.Bangumi
+	}
+	if gameDoc.Metadata.SteamID != "" {
+		return enums.Steam
 	}
 	return enums.Local
 }
@@ -1101,7 +1117,7 @@ func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchIm
 		MatchStatus: "not_found",
 	}
 
-	// 优先级顺序：Bangumi > VNDB > Ymgal
+	// 优先级顺序：Bangumi > VNDB > Steam > Ymgal
 	sources := []struct {
 		getter metadata.Getter
 		source enums.SourceType
@@ -1109,6 +1125,7 @@ func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchIm
 	}{
 		{metadata.NewBangumiInfoGetter(), enums.Bangumi, s.config.BangumiAccessToken},
 		{metadata.NewVNDBInfoGetterWithLanguage(s.config.Language), enums.VNDB, s.config.VNDBAccessToken},
+		{metadata.NewSteamInfoGetterWithLanguage(s.config.Language), enums.Steam, ""},
 		{metadata.NewYmgalInfoGetter(), enums.Ymgal, ""},
 	}
 
@@ -1117,6 +1134,7 @@ func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchIm
 		if err == nil && metaResult.Game.Name != "" {
 			game := metaResult.Game
 			result.MatchedGame = &game
+			result.MatchedTags = metaResult.Tags
 			result.MatchSource = src.source
 			result.MatchStatus = "matched"
 			return result, nil
@@ -1212,8 +1230,17 @@ func (s *ImportService) BatchImportGames(candidates []vo.BatchImportCandidate) (
 		game.CachedAt = time.Now()
 
 		// 保存游戏（图片会在后台异步下载）
-		if err := s.gameService.AddGame(game); err != nil {
-			applog.LogErrorf(s.ctx, "BatchImportGames: failed to add game %s: %v", gameName, err)
+		source := candidate.MatchSource
+		if source == "" {
+			source = game.SourceType
+		}
+		addErr := s.gameService.AddGameFromWebMetadata(vo.GameMetadataFromWebVO{
+			Source: source,
+			Game:   game,
+			Tags:   candidate.MatchedTags,
+		})
+		if addErr != nil {
+			applog.LogErrorf(s.ctx, "BatchImportGames: failed to add game %s: %v", gameName, addErr)
 			result.Failed++
 			result.FailedNames = append(result.FailedNames, gameName)
 			continue

@@ -1,10 +1,10 @@
-import type { models, service } from "../../../wailsjs/go/models";
+import type { metadata, models, service } from "../../../wailsjs/go/models";
 import { useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { enums, vo } from "../../../wailsjs/go/models";
 
-import { FetchMetadata, FetchMetadataByName } from "../../../wailsjs/go/service/GameService";
+import { FetchMetadataByName, FetchMetadataFromWeb } from "../../../wailsjs/go/service/GameService";
 import {
   BatchImportGames,
   ScanLibraryDirectory,
@@ -28,6 +28,7 @@ interface LocalCandidate {
   searchName: string;
   isSelected: boolean;
   matchedGame: models.Game | null;
+  matchedTags: metadata.TagItem[];
   matchSource: enums.SourceType | null;
   matchStatus: "pending" | "matched" | "not_found" | "error" | "manual";
   allMatches?: vo.GameMetadataFromWebVO[];
@@ -75,6 +76,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
             searchName: c.search_name,
             isSelected: true,
             matchedGame: null,
+            matchedTags: [],
             matchSource: null,
             matchStatus: "pending",
           }));
@@ -147,6 +149,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
             updatedCandidates[i] = {
               ...updatedCandidates[i],
               matchedGame: bestMatch.Game,
+              matchedTags: bestMatch.Tags || [],
               matchSource: bestMatch.Source,
               matchStatus: "matched",
               allMatches: results,
@@ -155,6 +158,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
           else {
             updatedCandidates[i] = {
               ...updatedCandidates[i],
+              matchedTags: [],
               matchStatus: "not_found",
               allMatches: results,
             };
@@ -163,6 +167,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
         else {
           updatedCandidates[i] = {
             ...updatedCandidates[i],
+            matchedTags: [],
             matchStatus: "not_found",
           };
         }
@@ -171,6 +176,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
         console.error(`Failed to match ${candidates[i].searchName}:`, error);
         updatedCandidates[i] = {
           ...updatedCandidates[i],
+          matchedTags: [],
           matchStatus: "error",
         };
       }
@@ -210,6 +216,9 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
           if (c.matchedGame) {
             candidate.matched_game = c.matchedGame;
           }
+          if (c.matchedTags.length > 0) {
+            candidate.matched_tags = c.matchedTags;
+          }
           if (c.matchSource) {
             candidate.match_source = c.matchSource;
           }
@@ -246,6 +255,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
     updated[index].searchName = name;
     updated[index].matchStatus = "pending";
     updated[index].matchedGame = null;
+    updated[index].matchedTags = [];
     updated[index].matchSource = null;
     setCandidates(updated);
   };
@@ -278,13 +288,17 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
     }
   };
 
-  const selectManualMatch = (game: models.Game, source: enums.SourceType) => {
+  const selectManualMatch = (match: vo.GameMetadataFromWebVO) => {
+    if (!match.Game) {
+      return;
+    }
     if (manualSelectIndex !== null) {
       const updated = [...candidates];
       updated[manualSelectIndex] = {
         ...updated[manualSelectIndex],
-        matchedGame: game,
-        matchSource: source,
+        matchedGame: match.Game,
+        matchedTags: match.Tags || [],
+        matchSource: match.Source,
         matchStatus: "manual",
       };
       setCandidates(updated);
@@ -302,9 +316,9 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
         source: manualSource,
         id: manualId,
       });
-      const game = await FetchMetadata(request);
-      if (game && game.name) {
-        selectManualMatch(game, manualSource);
+      const metadata = await FetchMetadataFromWeb(request);
+      if (metadata && metadata.Game && metadata.Game.name) {
+        selectManualMatch(metadata);
       }
       else {
         toast.error(t("batchImportModal.toast.gameNotFound"));
@@ -755,7 +769,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                     {manualMatches.filter(m => m.Game).map((match, idx) => (
                       <div
                         key={idx}
-                        onClick={() => selectManualMatch(match.Game!, match.Source)}
+                        onClick={() => selectManualMatch(match)}
                         className="w-36 cursor-pointer rounded-lg border border-brand-200 p-2 transition hover:border-neutral-500 hover:shadow-md dark:border-brand-700"
                       >
                         <div className="aspect-[3/4] w-full overflow-hidden rounded-md bg-brand-200 dark:bg-brand-700">
@@ -822,6 +836,7 @@ export function BatchImportModal({ isOpen, onClose, onImportComplete }: BatchImp
                       updated[manualSelectIndex] = {
                         ...updated[manualSelectIndex],
                         matchedGame: null,
+                        matchedTags: [],
                         matchSource: null,
                         matchStatus: "not_found",
                       };

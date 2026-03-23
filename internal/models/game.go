@@ -15,7 +15,7 @@ type Game struct {
 	SavePath          string           `json:"save_path"`    // 存档目录路径
 	ProcessName       string           `json:"process_name"` // 实际监控的进程名（当启动器和游戏进程不同时使用）
 	Status            enums.GameStatus `json:"status"`       // 游戏状态: not_started, playing, completed, on_hold
-	SourceType        enums.SourceType `json:"source_type"`  // "local", "bangumi", "vndb"
+	SourceType        enums.SourceType `json:"source_type"`  // "local", "bangumi", "vndb", "ymgal", "steam"
 	CachedAt          time.Time        `json:"cached_at"`
 	SourceID          string           `json:"source_id"`
 	CreatedAt         time.Time        `json:"created_at"`

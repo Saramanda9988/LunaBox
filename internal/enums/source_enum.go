@@ -7,6 +7,7 @@ const (
 	Bangumi SourceType = "bangumi"
 	VNDB    SourceType = "vndb"
 	Ymgal   SourceType = "ymgal"
+	Steam   SourceType = "steam"
 )
 
 var AllSourceTypes = []struct {
@@ -17,4 +18,5 @@ var AllSourceTypes = []struct {
 	{Bangumi, "BANGUMI"},
 	{VNDB, "VNDB"},
 	{Ymgal, "YMGAL"},
+	{Steam, "STEAM"},
 }

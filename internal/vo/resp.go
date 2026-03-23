@@ -3,6 +3,7 @@ package vo
 import (
 	"lunabox/internal/enums"
 	"lunabox/internal/models"
+	"lunabox/internal/utils/metadata"
 	"time"
 )
 
@@ -19,6 +20,7 @@ type CategoryVO struct {
 type GameMetadataFromWebVO struct {
 	Source enums.SourceType
 	Game   models.Game
+	Tags   []metadata.TagItem
 }
 
 // LastPlayedGame 上次游玩的游戏信息

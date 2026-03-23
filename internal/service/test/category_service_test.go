@@ -138,7 +138,7 @@ func TestCategoryService_GameCategoryRelation(t *testing.T) {
 	// 准备数据
 	game := createTestGame()
 	game.ID = "game-rel-001"
-	if err := gameService.AddGame(game); err != nil {
+	if err := addGameViaMetadata(gameService, game); err != nil {
 		t.Fatalf("添加游戏失败: %v", err)
 	}
 
@@ -203,7 +203,7 @@ func TestCategoryService_DeleteCategoryWithGames(t *testing.T) {
 	// 准备数据
 	game := createTestGame()
 	game.ID = "game-del-cat-001"
-	gameService.AddGame(game)
+	addGameViaMetadata(gameService, game)
 
 	categoryService.AddCategory("关联分类", "")
 	categories, _ := categoryService.GetCategories()
@@ -260,10 +260,10 @@ func TestCategoryService_BatchOperations(t *testing.T) {
 	game1.ID = "batch-game-001"
 	game2 := createTestGame()
 	game2.ID = "batch-game-002"
-	if err := gameService.AddGame(game1); err != nil {
+	if err := addGameViaMetadata(gameService, game1); err != nil {
 		t.Fatalf("添加游戏1失败: %v", err)
 	}
-	if err := gameService.AddGame(game2); err != nil {
+	if err := addGameViaMetadata(gameService, game2); err != nil {
 		t.Fatalf("添加游戏2失败: %v", err)
 	}
 

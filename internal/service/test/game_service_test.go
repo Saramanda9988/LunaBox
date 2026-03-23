@@ -39,7 +39,7 @@ func TestGameService_AddGame(t *testing.T) {
 		game := createTestGame()
 		game.ID = "add-test-001"
 
-		err := gameService.AddGame(game)
+		err := addGameViaMetadata(gameService, game)
 		if err != nil {
 			t.Fatalf("添加游戏失败: %v", err)
 		}
@@ -62,7 +62,7 @@ func TestGameService_AddGame(t *testing.T) {
 		game := createTestGame()
 		game.ID = "" // 不提供ID
 
-		err := gameService.AddGame(game)
+		err := addGameViaMetadata(gameService, game)
 		if err != nil {
 			t.Fatalf("添加游戏失败: %v", err)
 		}
@@ -91,7 +91,7 @@ func TestGameService_GetGameByID(t *testing.T) {
 		game.ID = "get-test-001"
 
 		// 先添加游戏
-		err := gameService.AddGame(game)
+		err := addGameViaMetadata(gameService, game)
 		if err != nil {
 			t.Fatalf("添加游戏失败: %v", err)
 		}
@@ -131,7 +131,7 @@ func TestGameService_GetGames(t *testing.T) {
 			game := createTestGame()
 			game.ID = string(rune('0' + i))
 			game.Name = game.Name + string(rune('0'+i))
-			err := gameService.AddGame(game)
+			err := addGameViaMetadata(gameService, game)
 			if err != nil {
 				t.Fatalf("添加游戏 %d 失败: %v", i, err)
 			}
@@ -178,7 +178,7 @@ func TestGameService_UpdateGame(t *testing.T) {
 		game.ID = "update-test-001"
 
 		// 先添加游戏
-		err := gameService.AddGame(game)
+		err := addGameViaMetadata(gameService, game)
 		if err != nil {
 			t.Fatalf("添加游戏失败: %v", err)
 		}
@@ -233,7 +233,7 @@ func TestGameService_DeleteGame(t *testing.T) {
 		game.ID = "delete-test-001"
 
 		// 先添加游戏
-		err := gameService.AddGame(game)
+		err := addGameViaMetadata(gameService, game)
 		if err != nil {
 			t.Fatalf("添加游戏失败: %v", err)
 		}
@@ -263,7 +263,7 @@ func TestGameService_DeleteGame(t *testing.T) {
 		game.ID = "delete-test-002"
 
 		// 添加游戏
-		err := gameService.AddGame(game)
+		err := addGameViaMetadata(gameService, game)
 		if err != nil {
 			t.Fatalf("添加游戏失败: %v", err)
 		}
@@ -307,10 +307,10 @@ func TestGameService_DeleteGames(t *testing.T) {
 		game2 := createTestGame()
 		game2.ID = "batch-del-002"
 
-		if err := gameService.AddGame(game1); err != nil {
+		if err := addGameViaMetadata(gameService, game1); err != nil {
 			t.Fatalf("添加游戏1失败: %v", err)
 		}
-		if err := gameService.AddGame(game2); err != nil {
+		if err := addGameViaMetadata(gameService, game2); err != nil {
 			t.Fatalf("添加游戏2失败: %v", err)
 		}
 
@@ -368,7 +368,7 @@ func TestGameService_CompleteWorkflow(t *testing.T) {
 		game := createTestGame()
 		game.ID = "workflow-test-001"
 
-		err := gameService.AddGame(game)
+		err := addGameViaMetadata(gameService, game)
 		if err != nil {
 			t.Fatalf("添加游戏失败: %v", err)
 		}

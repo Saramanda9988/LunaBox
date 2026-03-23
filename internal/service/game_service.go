@@ -105,7 +105,17 @@ func (s *GameService) ResolveExecutablePathForImport(path string) (string, error
 	return selection, nil
 }
 
-func (s *GameService) AddGame(game models.Game) error {
+// AddGameFromWebMetadata 用于接收前端/导入流程中的完整刮削结果（含 tags）并一次性入库。
+func (s *GameService) AddGameFromWebMetadata(meta vo.GameMetadataFromWebVO) error {
+	game := meta.Game
+	if game.SourceType == "" {
+		game.SourceType = meta.Source
+	}
+	fallbackFetchTags := len(meta.Tags) == 0
+	return s.addGameWithTags(game, meta.Tags, fallbackFetchTags)
+}
+
+func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem, fallbackFetchTags bool) error {
 	if game.ID == "" {
 		game.ID = uuid.New().String()
 	}
@@ -157,12 +167,51 @@ func (s *GameService) AddGame(game models.Game) error {
 		return err
 	}
 
+	// 优先使用已刮削出的 tags，避免重复网络请求；无 tags 时再按 source_id 兜底拉取。
+	if s.tagService != nil {
+		switch {
+		case len(tags) > 0:
+			if err := s.tagService.upsertScrapedTags(game.ID, tags); err != nil {
+				applog.LogWarningf(s.ctx, "AddGame: failed to upsert scraped tags for game %s: %v", game.Name, err)
+			}
+		case fallbackFetchTags:
+			s.syncScrapedTagsForGame(game)
+		}
+	}
+
 	// 后台异步下载封面图片（不阻塞添加流程）
 	if originalCoverURL != "" {
 		go s.asyncDownloadCoverImage(game.ID, game.Name, originalCoverURL)
 	}
 
 	return nil
+}
+
+func (s *GameService) syncScrapedTagsForGame(game models.Game) {
+	if s.tagService == nil {
+		return
+	}
+	if game.SourceType == enums.Local || game.SourceType == "" {
+		return
+	}
+	if strings.TrimSpace(game.SourceID) == "" {
+		return
+	}
+
+	metaResult, err := s.fetchMetadataResultBySource(game.SourceType, game.SourceID)
+	if err != nil {
+		applog.LogWarningf(s.ctx, "syncScrapedTagsForGame: failed to fetch tags for game %s (%s/%s): %v", game.Name, game.SourceType, game.SourceID, err)
+		return
+	}
+	if len(metaResult.Tags) == 0 {
+		applog.LogInfof(s.ctx, "syncScrapedTagsForGame: no tags returned for game %s (%s/%s)", game.Name, game.SourceType, game.SourceID)
+		return
+	}
+	if err := s.tagService.upsertScrapedTags(game.ID, metaResult.Tags); err != nil {
+		applog.LogWarningf(s.ctx, "syncScrapedTagsForGame: failed to upsert tags for game %s (%s/%s): %v", game.Name, game.SourceType, game.SourceID, err)
+		return
+	}
+	applog.LogInfof(s.ctx, "syncScrapedTagsForGame: synced %d tags for game %s", len(metaResult.Tags), game.Name)
 }
 
 // asyncDownloadCoverImage 后台异步下载封面图片并更新数据库
@@ -538,7 +587,7 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 	var mu sync.Mutex
 
 	// 这里暂不处理任何错误，直接尝试从多个来源并发获取数据，空就是网络问题或未找到，不管它
-	wg.Add(3)
+	wg.Add(4)
 
 	go func() {
 		defer wg.Done()
@@ -546,7 +595,7 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 		result, _ := bgmGetter.FetchMetadataByName(name, s.config.BangumiAccessToken)
 		if result.Game != (models.Game{}) {
 			mu.Lock()
-			games = append(games, vo.GameMetadataFromWebVO{Source: enums.Bangumi, Game: result.Game})
+			games = append(games, vo.GameMetadataFromWebVO{Source: enums.Bangumi, Game: result.Game, Tags: result.Tags})
 			mu.Unlock()
 		}
 	}()
@@ -557,7 +606,7 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 		result, _ := vndbGetter.FetchMetadataByName(name, s.config.VNDBAccessToken)
 		if result.Game != (models.Game{}) {
 			mu.Lock()
-			games = append(games, vo.GameMetadataFromWebVO{Source: enums.VNDB, Game: result.Game})
+			games = append(games, vo.GameMetadataFromWebVO{Source: enums.VNDB, Game: result.Game, Tags: result.Tags})
 			mu.Unlock()
 		}
 	}()
@@ -568,7 +617,18 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 		result, _ := ymgalGetter.FetchMetadataByName(name, "")
 		if result.Game != (models.Game{}) {
 			mu.Lock()
-			games = append(games, vo.GameMetadataFromWebVO{Source: enums.Ymgal, Game: result.Game})
+			games = append(games, vo.GameMetadataFromWebVO{Source: enums.Ymgal, Game: result.Game, Tags: result.Tags})
+			mu.Unlock()
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		steamGetter := metadata.NewSteamInfoGetterWithLanguage(s.config.Language)
+		result, _ := steamGetter.FetchMetadataByName(name, "")
+		if result.Game != (models.Game{}) {
+			mu.Lock()
+			games = append(games, vo.GameMetadataFromWebVO{Source: enums.Steam, Game: result.Game, Tags: result.Tags})
 			mu.Unlock()
 		}
 	}()
@@ -579,32 +639,76 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 }
 
 func (s *GameService) FetchMetadata(req vo.MetadataRequest) (models.Game, error) {
-	var result metadata.MetadataResult
-	var e error
+	result, err := s.FetchMetadataFromWeb(req)
+	if err != nil {
+		return models.Game{}, err
+	}
+	return result.Game, nil
+}
 
+func (s *GameService) FetchMetadataFromWeb(req vo.MetadataRequest) (vo.GameMetadataFromWebVO, error) {
 	if game, err := fetchFromLocal(req.ID); err == nil {
-		return game, nil
+		return vo.GameMetadataFromWebVO{Source: enums.Local, Game: game}, nil
 	}
 
-	sourceId := strings.ToLower(req.ID)
+	result, err := s.fetchMetadataResultByRequest(req)
+	if err != nil {
+		return vo.GameMetadataFromWebVO{}, err
+	}
+
+	return vo.GameMetadataFromWebVO{
+		Source: req.Source,
+		Game:   result.Game,
+		Tags:   result.Tags,
+	}, nil
+}
+
+func (s *GameService) fetchMetadataResultByRequest(req vo.MetadataRequest) (metadata.MetadataResult, error) {
+	sourceID := strings.TrimSpace(req.ID)
+	if sourceID == "" {
+		return metadata.MetadataResult{}, errors.New("metadata id is empty")
+	}
+
 	switch req.Source {
 	case enums.Bangumi:
-		bgmGetter := metadata.NewBangumiInfoGetter()
-		result, e = bgmGetter.FetchMetadata(sourceId, s.config.BangumiAccessToken)
+		return s.fetchMetadataResultBySource(req.Source, strings.ToLower(sourceID))
 	case enums.VNDB:
-		if !isVndbId(sourceId) {
-			return models.Game{}, fmt.Errorf("invalid VNDB ID format: %s", req.ID)
+		if !isVndbId(strings.ToLower(sourceID)) {
+			return metadata.MetadataResult{}, fmt.Errorf("invalid VNDB ID format: %s", req.ID)
 		}
-		vndbGetter := metadata.NewVNDBInfoGetterWithLanguage(s.config.Language)
-		result, e = vndbGetter.FetchMetadata(sourceId, s.config.VNDBAccessToken)
+		return s.fetchMetadataResultBySource(req.Source, strings.ToLower(sourceID))
 	case enums.Ymgal:
-		if !isYmgalId(sourceId) {
-			return models.Game{}, fmt.Errorf("invalid Ymgal ID format: %s", req.ID)
+		if !isYmgalId(strings.ToLower(sourceID)) {
+			return metadata.MetadataResult{}, fmt.Errorf("invalid Ymgal ID format: %s", req.ID)
 		}
-		ymgalGetter := metadata.NewYmgalInfoGetter()
-		result, e = ymgalGetter.FetchMetadata(sourceId, "")
+		return s.fetchMetadataResultBySource(req.Source, strings.ToLower(sourceID))
+	case enums.Steam:
+		if !isSteamAppID(sourceID) {
+			return metadata.MetadataResult{}, fmt.Errorf("invalid Steam app ID format: %s", req.ID)
+		}
+		return s.fetchMetadataResultBySource(req.Source, sourceID)
+	default:
+		return metadata.MetadataResult{}, fmt.Errorf("unsupported source type: %s", req.Source)
 	}
-	return result.Game, e
+}
+
+func (s *GameService) fetchMetadataResultBySource(source enums.SourceType, sourceID string) (metadata.MetadataResult, error) {
+	switch source {
+	case enums.Bangumi:
+		getter := metadata.NewBangumiInfoGetter()
+		return getter.FetchMetadata(sourceID, s.config.BangumiAccessToken)
+	case enums.VNDB:
+		getter := metadata.NewVNDBInfoGetterWithLanguage(s.config.Language)
+		return getter.FetchMetadata(sourceID, s.config.VNDBAccessToken)
+	case enums.Ymgal:
+		getter := metadata.NewYmgalInfoGetter()
+		return getter.FetchMetadata(sourceID, "")
+	case enums.Steam:
+		getter := metadata.NewSteamInfoGetterWithLanguage(s.config.Language)
+		return getter.FetchMetadata(sourceID, "")
+	default:
+		return metadata.MetadataResult{}, fmt.Errorf("unsupported source type: %s", source)
+	}
 }
 
 func fetchFromLocal(id string) (models.Game, error) {
@@ -623,6 +727,27 @@ func isYmgalId(sourceId string) bool {
 	return strings.HasPrefix(sourceId, "ga") && len(sourceId) > 2
 }
 
+// isSteamAppID 判断是否包含可解析的 Steam AppID（支持纯数字或常见 URL/协议前缀）。
+func isSteamAppID(sourceId string) bool {
+	id := strings.TrimSpace(sourceId)
+	if id == "" {
+		return false
+	}
+
+	// 支持纯 appid，也支持带前缀/URL 的形式（如 steam://rungameid/620、.../app/620/...）
+	inDigits := false
+	for i := 0; i < len(id); i++ {
+		if id[i] >= '0' && id[i] <= '9' {
+			inDigits = true
+			continue
+		}
+		if inDigits {
+			return true
+		}
+	}
+	return inDigits
+}
+
 // UpdateGameFromRemote 从远程数据源更新游戏信息
 func (s *GameService) UpdateGameFromRemote(gameID string) error {
 	// 获取现有游戏信息
@@ -636,21 +761,7 @@ func (s *GameService) UpdateGameFromRemote(gameID string) error {
 	}
 
 	sourceId := strings.ToLower(existingGame.SourceID)
-	var metaResult metadata.MetadataResult
-
-	switch existingGame.SourceType {
-	case enums.Bangumi:
-		getter := metadata.NewBangumiInfoGetter()
-		metaResult, err = getter.FetchMetadata(sourceId, s.config.BangumiAccessToken)
-	case enums.VNDB:
-		getter := metadata.NewVNDBInfoGetterWithLanguage(s.config.Language)
-		metaResult, err = getter.FetchMetadata(sourceId, s.config.VNDBAccessToken)
-	case enums.Ymgal:
-		getter := metadata.NewYmgalInfoGetter()
-		metaResult, err = getter.FetchMetadata(sourceId, "")
-	default:
-		return fmt.Errorf("unsupported source type: %s", existingGame.SourceType)
-	}
+	metaResult, err := s.fetchMetadataResultBySource(existingGame.SourceType, sourceId)
 	if err != nil {
 		return fmt.Errorf("failed to fetch metadata from remote: %w", err)
 	}

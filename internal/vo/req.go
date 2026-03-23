@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"lunabox/internal/enums"
 	"lunabox/internal/models"
+	"lunabox/internal/utils/metadata"
 )
 
 type AISummaryRequest struct {
@@ -12,21 +13,22 @@ type AISummaryRequest struct {
 }
 
 type MetadataRequest struct {
-	Source enums.SourceType `json:"source"` // "bangumi" or "vndb"
+	Source enums.SourceType `json:"source"` // "bangumi" | "vndb" | "ymgal" | "steam"
 	ID     string           `json:"id"`
 }
 
 // BatchImportCandidate 批量导入候选项
 type BatchImportCandidate struct {
-	FolderPath  string           `json:"folder_path"`            // 文件夹路径
-	FolderName  string           `json:"folder_name"`            // 文件夹名
-	Executables []string         `json:"executables"`            // 检测到的可执行文件列表
-	SelectedExe string           `json:"selected_exe"`           // 选中的可执行文件
-	SearchName  string           `json:"search_name"`            // 用于搜索的名称（用户可编辑）
-	IsSelected  bool             `json:"is_selected"`            // 是否选中导入
-	MatchedGame *models.Game     `json:"matched_game,omitempty"` // 匹配到的游戏信息
-	MatchSource enums.SourceType `json:"match_source,omitempty"` // 匹配来源
-	MatchStatus string           `json:"match_status"`           // 匹配状态: pending, matched, not_found, error
+	FolderPath  string             `json:"folder_path"`            // 文件夹路径
+	FolderName  string             `json:"folder_name"`            // 文件夹名
+	Executables []string           `json:"executables"`            // 检测到的可执行文件列表
+	SelectedExe string             `json:"selected_exe"`           // 选中的可执行文件
+	SearchName  string             `json:"search_name"`            // 用于搜索的名称（用户可编辑）
+	IsSelected  bool               `json:"is_selected"`            // 是否选中导入
+	MatchedGame *models.Game       `json:"matched_game,omitempty"` // 匹配到的游戏信息
+	MatchedTags []metadata.TagItem `json:"matched_tags,omitempty"` // 匹配到的标签
+	MatchSource enums.SourceType   `json:"match_source,omitempty"` // 匹配来源
+	MatchStatus string             `json:"match_status"`           // 匹配状态: pending, matched, not_found, error
 }
 
 // BatchImportRequest 批量导入请求
@@ -100,7 +102,7 @@ type InstallRequest struct {
 	StartupPath    string `json:"startup_path"`    // 启动相对路径（可选；有值时拼接下载目录作为可执行路径）
 	Title          string `json:"title"`           // 游戏标题（fallback 展示用）
 	DownloadSource string `json:"download_source"` // 下载来源：Shionlib / Umbra 等（可选，用于用户识别）
-	MetaSource     string `json:"meta_source"`     // 元数据来源：bangumi / vndb / ymgal（可选）
+	MetaSource     string `json:"meta_source"`     // 元数据来源：bangumi / vndb / ymgal / steam（可选）
 	MetaID         string `json:"meta_id"`         // 元数据 ID，对应刮削源的 ID（可选）
 	Size           int64  `json:"size"`            // 文件大小（bytes，必填；会做强校验并限制下载上限）
 	ChecksumAlgo   string `json:"checksum_algo"`   // 校验算法：sha256/blake3（必填）

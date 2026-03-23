@@ -2,7 +2,13 @@ import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { enums, models, vo } from "../../../wailsjs/go/models";
-import { AddGame, FetchMetadata, FetchMetadataByName, SelectCoverImageWithTempID, SelectGameExecutable } from "../../../wailsjs/go/service/GameService";
+import {
+  AddGameFromWebMetadata,
+  FetchMetadataByName,
+  FetchMetadataFromWeb,
+  SelectCoverImageWithTempID,
+  SelectGameExecutable,
+} from "../../../wailsjs/go/service/GameService";
 import { BetterSelect } from "../ui/BetterSelect";
 
 interface AddGameModalProps {
@@ -84,17 +90,20 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
     }
   };
 
-  const saveGame = async (game: models.Game) => {
+  const saveGameFromWebMetadata = async (meta: vo.GameMetadataFromWebVO) => {
     try {
-      game.path = executablePath;
-      // Ensure other fields are set if missing?
-      // The backend AddGame handles ID generation if empty.
-      await AddGame(game);
+      const gameMeta = vo.GameMetadataFromWebVO.createFrom(meta);
+      if (!gameMeta.Game) {
+        toast.error(t("addGameModal.toast.saveGameFailed"));
+        return;
+      }
+      gameMeta.Game.path = executablePath;
+      await AddGameFromWebMetadata(gameMeta);
       onGameAdded();
       resetAndClose();
     }
     catch (error) {
-      console.error("Failed to save game:", error);
+      console.error("Failed to save game from metadata:", error);
       toast.error(t("addGameModal.toast.saveGameFailed"));
     }
   };
@@ -108,9 +117,9 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
         source: manualSource,
         id: manualId,
       });
-      const game = await FetchMetadata(request);
-      if (game) {
-        await saveGame(game);
+      const metadata = await FetchMetadataFromWeb(request);
+      if (metadata && metadata.Game) {
+        await saveGameFromWebMetadata(metadata);
       }
     }
     catch (error) {
@@ -151,7 +160,11 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
         source_type: enums.SourceType.LOCAL,
         status: enums.GameStatus.NOT_STARTED,
       });
-      await AddGame(game);
+      await AddGameFromWebMetadata(new vo.GameMetadataFromWebVO({
+        Source: enums.SourceType.LOCAL,
+        Game: game,
+        Tags: [],
+      }));
       onGameAdded();
       resetAndClose();
     }
@@ -235,7 +248,7 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
                 .map((item, index) => (
                   <div
                     key={index}
-                    onClick={() => saveGame(item.Game!)} // 使用非空断言，因为上面已过滤
+                    onClick={() => saveGameFromWebMetadata(item)}
                     className="w-44 cursor-pointer rounded-lg border border-brand-200 p-3 transition hover:border-neutral-500 hover:shadow-md dark:border-brand-700 dark:hover:border-neutral-400"
                   >
                     <div className="aspect-[3/4] w-full overflow-hidden rounded-md bg-brand-200 dark:bg-brand-700">

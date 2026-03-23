@@ -137,17 +137,12 @@ export namespace appconf {
 
 export namespace enums {
 	
-	export enum GameStatus {
-	    NOT_STARTED = "not_started",
-	    PLAYING = "playing",
-	    COMPLETED = "completed",
-	    ON_HOLD = "on_hold",
-	}
 	export enum SourceType {
 	    LOCAL = "local",
 	    BANGUMI = "bangumi",
 	    VNDB = "vndb",
 	    YMGAL = "ymgal",
+	    STEAM = "steam",
 	}
 	export enum Period {
 	    DAY = "day",
@@ -159,6 +154,35 @@ export namespace enums {
 	    DEFAULT_SYSTEM = "你是一个幽默风趣的游戏评论员，擅长用轻松的语气点评玩家的游戏习惯。\n请用轻松幽默的方式点评这位玩家的游戏习惯，可以适当调侃但不要太过分。",
 	    MEOW_ZAKO = "你是一个雌小鬼猫娘，根据用户的游戏统计数据对用户进行锐评，语气可爱活泼，不要给用户留脸面偶（=w=）适当加入猫咪的拟声词（如“喵”）和雌小鬼的口癖（如“杂鱼~杂鱼~”），要是能再用上颜文字主人就更高兴了喵。\n\n",
 	    STRICT_TUTOR = "你是用户的严厉导师，根据用户的游戏统计数据对用户进行锐评，语气严肃认真，不允许任何调侃和幽默。\n\n",
+	}
+	export enum GameStatus {
+	    NOT_STARTED = "not_started",
+	    PLAYING = "playing",
+	    COMPLETED = "completed",
+	    ON_HOLD = "on_hold",
+	}
+
+}
+
+export namespace metadata {
+	
+	export class TagItem {
+	    Name: string;
+	    Source: string;
+	    Weight: number;
+	    IsSpoiler: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new TagItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Name = source["Name"];
+	        this.Source = source["Source"];
+	        this.Weight = source["Weight"];
+	        this.IsSpoiler = source["IsSpoiler"];
+	    }
 	}
 
 }
@@ -720,6 +744,7 @@ export namespace vo {
 	    search_name: string;
 	    is_selected: boolean;
 	    matched_game?: models.Game;
+	    matched_tags?: metadata.TagItem[];
 	    match_source?: enums.SourceType;
 	    match_status: string;
 	
@@ -736,6 +761,7 @@ export namespace vo {
 	        this.search_name = source["search_name"];
 	        this.is_selected = source["is_selected"];
 	        this.matched_game = this.convertValues(source["matched_game"], models.Game);
+	        this.matched_tags = this.convertValues(source["matched_tags"], metadata.TagItem);
 	        this.match_source = source["match_source"];
 	        this.match_status = source["match_status"];
 	    }
@@ -981,6 +1007,7 @@ export namespace vo {
 	export class GameMetadataFromWebVO {
 	    Source: enums.SourceType;
 	    Game: models.Game;
+	    Tags: metadata.TagItem[];
 	
 	    static createFrom(source: any = {}) {
 	        return new GameMetadataFromWebVO(source);
@@ -990,6 +1017,7 @@ export namespace vo {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.Source = source["Source"];
 	        this.Game = this.convertValues(source["Game"], models.Game);
+	        this.Tags = this.convertValues(source["Tags"], metadata.TagItem);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
