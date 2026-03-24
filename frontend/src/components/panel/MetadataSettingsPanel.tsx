@@ -138,7 +138,7 @@ export function MetadataSettingsPanel({ formData, onChange }: MetadataSettingsPa
 
         <div className="space-y-3">
           {sourceItems.map(item => (
-            <div key={item.value} className="flex items-center justify-between rounded-lg border border-brand-200 p-4 dark:border-brand-700">
+            <div key={item.value} className="glass-panel flex items-center justify-between rounded-lg border border-brand-200 p-4 dark:border-brand-700">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center select-none pt-1">
                   <img src={item.icon} alt={item.label} className="h-[22px] w-auto object-contain brightness-0 opacity-80 transition-all dark:invert dark:opacity-90" />
