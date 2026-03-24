@@ -121,47 +121,48 @@ export function CloudBackupSettingsPanel({ formData, onChange }: CloudBackupSett
         />
       </div>
 
+      <div className="space-y-2">
+        <div className="block text-sm font-medium text-brand-700 dark:text-brand-300">{t("settings.cloudBackup.backupPasswordLabel")}</div>
+        {formData.backup_password
+          ? (
+              <div className="space-y-2">
+                <div className="glass-panel px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md text-brand-600 dark:text-brand-300">
+                  ********
+                </div>
+                <p className="text-xs text-brand-500 dark:text-brand-400">
+                  <span className="text-success-600 dark:text-success-400">
+                    {t("settings.cloudBackup.passwordSet")}
+                    {" "}
+                    {formData.backup_user_id?.substring(0, 8)}
+                    ...
+                  </span>
+                </p>
+              </div>
+            )
+          : (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(true)}
+                  className="glass-btn-neutral w-full px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-md transition-colors flex items-center justify-center gap-2"
+                >
+                  <span className="i-mdi-lock-plus text-lg" />
+                  {t("settings.cloudBackup.setPasswordBtn")}
+                </button>
+                <p className="text-xs text-brand-500 dark:text-brand-400">
+                  {t("settings.cloudBackup.passwordForIdHint")}
+                </p>
+                <p className="text-xs text-warning-600 dark:text-warning-400">
+                  {t("settings.cloudBackup.passwordWarning")}
+                </p>
+              </div>
+            )}
+      </div>
+
       {/* S3 Configuration */}
       {formData.cloud_backup_provider === "s3" && (
         <div className="glass-card space-y-4 p-4 bg-brand-100 dark:bg-brand-800 rounded-lg">
           <h3 className="text-sm font-medium text-brand-800 dark:text-brand-200">{t("settings.cloudBackup.s3Section")}</h3>
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">{t("settings.cloudBackup.backupPasswordLabel")}</label>
-            {formData.backup_password
-              ? (
-                  <div className="space-y-2">
-                    <div className="px-3 py-2 bg-brand-100 dark:bg-brand-700 border border-brand-300 dark:border-brand-600 rounded-md text-brand-600 dark:text-brand-300">
-                      ********
-                    </div>
-                    <p className="text-xs text-brand-500 dark:text-brand-400">
-                      <span className="text-success-600 dark:text-success-400">
-                        {t("settings.cloudBackup.passwordSet")}
-                        {" "}
-                        {formData.backup_user_id?.substring(0, 8)}
-                        ...
-                      </span>
-                    </p>
-                  </div>
-                )
-              : (
-                  <div className="space-y-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowPasswordModal(true)}
-                      className="glass-btn-neutral w-full px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-md transition-colors flex items-center justify-center gap-2"
-                    >
-                      <span className="i-mdi-lock-plus text-lg" />
-                      {t("settings.cloudBackup.setPasswordBtn")}
-                    </button>
-                    <p className="text-xs text-brand-500 dark:text-brand-400">
-                      {t("settings.cloudBackup.passwordForIdHint")}
-                    </p>
-                    <p className="text-xs text-warning-600 dark:text-warning-400">
-                      {t("settings.cloudBackup.passwordWarning")}
-                    </p>
-                  </div>
-                )}
-          </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">S3 端点 (Endpoint)</label>
             <input type="text" name="s3_endpoint" value={formData.s3_endpoint || ""} onChange={handleChange} placeholder="https://s3.example.com" className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white" />
