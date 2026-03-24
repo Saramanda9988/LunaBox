@@ -1,8 +1,4 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Types
-
 export type ButtonVariant = "secondary" | "primary" | "danger" | "ghost";
 export type ButtonSize = "sm" | "md" | "lg";
 
@@ -17,9 +13,6 @@ interface BetterButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   isLoading?: boolean;
   children?: ReactNode;
 }
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Style maps
 
 const variantClasses: Record<ButtonVariant, string> = {
   secondary:
@@ -51,9 +44,6 @@ const iconSizeClasses: Record<ButtonSize, string> = {
   md: "text-lg",
   lg: "text-xl",
 };
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Component
 
 export function BetterButton({
   variant = "secondary",

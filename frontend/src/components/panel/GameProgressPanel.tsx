@@ -3,7 +3,7 @@ import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { service } from "../../../wailsjs/go/models";
 import { GetGameProgress, UpsertGameProgress } from "../../../wailsjs/go/service/GameProgressService";
-import { BetterSelect } from "../ui/BetterSelect";
+import { BetterSelect } from "../ui/better/BetterSelect";
 
 interface GameProgressPanelProps {
   gameId: string;

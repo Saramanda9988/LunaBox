@@ -15,7 +15,7 @@ import { GameLaunchPanel } from "../components/panel/GameLaunchPanel";
 import { GameProgressPanel } from "../components/panel/GameProgressPanel";
 import { GameStatsPanel } from "../components/panel/GameStatsPanel";
 import { GameDetailSkeleton } from "../components/skeleton/GameDetailSkeleton";
-import { GameTags } from "../components/tag/GameTags";
+import { GameTags } from "../components/ui/GameTags";
 import { useAppStore } from "../store";
 import { formatLocalDate } from "../utils/time";
 import { Route as rootRoute } from "./__root";

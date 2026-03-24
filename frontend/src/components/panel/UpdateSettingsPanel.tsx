@@ -3,8 +3,8 @@ import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { CheckForUpdates, SkipVersion } from "../../../wailsjs/go/service/UpdateService";
-import { BetterButton } from "../ui/BetterButton";
-import { BetterSwitch } from "../ui/BetterSwitch";
+import { BetterButton } from "../ui/better/BetterButton";
+import { BetterSwitch } from "../ui/better/BetterSwitch";
 import { UpdateDialog } from "../ui/UpdateDialog";
 
 interface UpdateSettingsPanelProps {

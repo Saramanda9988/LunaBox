@@ -2,8 +2,8 @@ import type { models } from "../../../wailsjs/go/models";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { OpenLocalPath } from "../../../wailsjs/go/service/GameService";
-import { BetterButton } from "../ui/BetterButton";
-import { BetterSelect } from "../ui/BetterSelect";
+import { BetterButton } from "../ui/better/BetterButton";
+import { BetterSelect } from "../ui/better/BetterSelect";
 
 interface GameEditFormProps {
   game: models.Game;

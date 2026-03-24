@@ -1,7 +1,7 @@
 import type { appconf } from "../../../wailsjs/go/models";
 import { useTranslation } from "react-i18next";
 import { enums } from "../../../wailsjs/go/models";
-import { BetterSelect } from "../ui/BetterSelect";
+import { BetterSelect } from "../ui/better/BetterSelect";
 
 interface AISettingsProps {
   formData: appconf.AppConfig;

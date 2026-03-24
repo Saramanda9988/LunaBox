@@ -1,8 +1,8 @@
 import type { appconf, models } from "../../../wailsjs/go/models";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { BetterButton } from "../ui/BetterButton";
-import { BetterSwitch } from "../ui/BetterSwitch";
+import { BetterButton } from "../ui/better/BetterButton";
+import { BetterSwitch } from "../ui/better/BetterSwitch";
 
 interface GameLaunchPanelProps {
   game: models.Game;

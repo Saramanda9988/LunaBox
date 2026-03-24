@@ -16,7 +16,7 @@ import { BatchImportModal } from "../components/modal/BatchImportModal";
 import { ConfirmModal } from "../components/modal/ConfirmModal";
 import { GameImportModal } from "../components/modal/GameImportModal";
 import { LibrarySkeleton } from "../components/skeleton/LibrarySkeleton";
-import { BetterDropdownMenu } from "../components/ui/BetterDropdownMenu";
+import { BetterDropdownMenu } from "../components/ui/better/BetterDropdownMenu";
 import { sortOptions, statusOptions } from "../consts/options";
 import { useTagGameFilter } from "../hooks/useTagGameFilter";
 import { useAppStore } from "../store";

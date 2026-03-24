@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BetterSelect } from "../ui/BetterSelect";
+import { BetterSelect } from "../ui/better/BetterSelect";
 
 interface TimezoneSelectModalProps {
   isOpen: boolean;

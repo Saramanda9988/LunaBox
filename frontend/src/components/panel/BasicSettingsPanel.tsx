@@ -1,8 +1,8 @@
 import type { appconf } from "../../../wailsjs/go/models";
 import { useTranslation } from "react-i18next";
 import { appZoomOptions } from "../../consts/options";
-import { BetterSelect } from "../ui/BetterSelect";
-import { BetterSwitch } from "../ui/BetterSwitch";
+import { BetterSelect } from "../ui/better/BetterSelect";
+import { BetterSwitch } from "../ui/better/BetterSwitch";
 
 interface BetterSelectOption {
   value: string;

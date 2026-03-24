@@ -1,6 +1,6 @@
 import type { appconf } from "../../../wailsjs/go/models";
 import { useTranslation } from "react-i18next";
-import { BetterSwitch } from "../ui/BetterSwitch";
+import { BetterSwitch } from "../ui/better/BetterSwitch";
 
 interface AutoBackupSettingsProps {
   formData: appconf.AppConfig;

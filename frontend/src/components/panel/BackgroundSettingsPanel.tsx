@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { SaveCroppedBackgroundImage, SelectAndCropBackgroundImage } from "../../../wailsjs/go/service/ConfigService";
 import { detectImageBrightness } from "../../utils/detectImageBrightness";
 import { ImageCropperModal } from "../modal/ImageCropperModal";
-import { BetterSwitch } from "../ui/BetterSwitch";
+import { BetterSwitch } from "../ui/better/BetterSwitch";
 
 interface BackgroundSettingsProps {
   formData: appconf.AppConfig;

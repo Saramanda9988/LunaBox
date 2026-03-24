@@ -1,9 +1,5 @@
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Types
-// ──────────────────────────────────────────────────────────────────────────────
-
 export interface DropdownMenuItem {
   /** 唯一 key */
   key: string;

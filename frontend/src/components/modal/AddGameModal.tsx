@@ -9,7 +9,7 @@ import {
   SelectCoverImageWithTempID,
   SelectGameExecutable,
 } from "../../../wailsjs/go/service/GameService";
-import { BetterSelect } from "../ui/BetterSelect";
+import { BetterSelect } from "../ui/better/BetterSelect";
 
 interface AddGameModalProps {
   isOpen: boolean;

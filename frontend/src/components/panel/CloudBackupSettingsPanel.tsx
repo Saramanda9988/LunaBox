@@ -6,8 +6,8 @@ import { GetOneDriveAuthURL, SetupCloudBackup, StartOneDriveAuth, TestOneDriveCo
 import { GetAppConfig } from "../../../wailsjs/go/service/ConfigService";
 import { BrowserOpenURL } from "../../../wailsjs/runtime";
 import { PasswordInputModal } from "../modal/PasswordInputModal";
-import { BetterSelect } from "../ui/BetterSelect";
-import { BetterSwitch } from "../ui/BetterSwitch";
+import { BetterSelect } from "../ui/better/BetterSelect";
+import { BetterSwitch } from "../ui/better/BetterSwitch";
 
 interface CloudBackupSettingsProps {
   formData: appconf.AppConfig;

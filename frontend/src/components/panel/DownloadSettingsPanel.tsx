@@ -2,8 +2,8 @@ import type { appconf } from "../../../wailsjs/go/models";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { SelectDirectory } from "../../../wailsjs/go/service/ConfigService";
-import { BetterButton } from "../ui/BetterButton";
-import { BetterSelect } from "../ui/BetterSelect";
+import { BetterButton } from "../ui/better/BetterButton";
+import { BetterSelect } from "../ui/better/BetterSelect";
 
 interface GameLibrarySettingsPanelProps {
   formData: appconf.AppConfig;
