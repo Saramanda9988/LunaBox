@@ -50,6 +50,10 @@ export function OpenLocalPath(arg1) {
   return window['go']['service']['GameService']['OpenLocalPath'](arg1);
 }
 
+export function RefreshAllGamesMetadata() {
+  return window['go']['service']['GameService']['RefreshAllGamesMetadata']();
+}
+
 export function ResolveExecutablePathForImport(arg1) {
   return window['go']['service']['GameService']['ResolveExecutablePathForImport'](arg1);
 }

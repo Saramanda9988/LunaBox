@@ -31,6 +31,12 @@ type GameService struct {
 	tagService *TagService
 }
 
+type metadataSearchSource struct {
+	getter metadata.Getter
+	source enums.SourceType
+	token  string
+}
+
 func NewGameService() *GameService {
 	return &GameService{}
 }
@@ -586,52 +592,21 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
+	searchSources := s.getConfiguredMetadataSearchSources()
 	// 这里暂不处理任何错误，直接尝试从多个来源并发获取数据，空就是网络问题或未找到，不管它
-	wg.Add(4)
-
-	go func() {
-		defer wg.Done()
-		bgmGetter := metadata.NewBangumiInfoGetter()
-		result, _ := bgmGetter.FetchMetadataByName(name, s.config.BangumiAccessToken)
-		if result.Game != (models.Game{}) {
-			mu.Lock()
-			games = append(games, vo.GameMetadataFromWebVO{Source: enums.Bangumi, Game: result.Game, Tags: result.Tags})
-			mu.Unlock()
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		vndbGetter := metadata.NewVNDBInfoGetterWithLanguage(s.config.Language)
-		result, _ := vndbGetter.FetchMetadataByName(name, s.config.VNDBAccessToken)
-		if result.Game != (models.Game{}) {
-			mu.Lock()
-			games = append(games, vo.GameMetadataFromWebVO{Source: enums.VNDB, Game: result.Game, Tags: result.Tags})
-			mu.Unlock()
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		ymgalGetter := metadata.NewYmgalInfoGetter()
-		result, _ := ymgalGetter.FetchMetadataByName(name, "")
-		if result.Game != (models.Game{}) {
-			mu.Lock()
-			games = append(games, vo.GameMetadataFromWebVO{Source: enums.Ymgal, Game: result.Game, Tags: result.Tags})
-			mu.Unlock()
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		steamGetter := metadata.NewSteamInfoGetterWithLanguage(s.config.Language)
-		result, _ := steamGetter.FetchMetadataByName(name, "")
-		if result.Game != (models.Game{}) {
-			mu.Lock()
-			games = append(games, vo.GameMetadataFromWebVO{Source: enums.Steam, Game: result.Game, Tags: result.Tags})
-			mu.Unlock()
-		}
-	}()
+	wg.Add(len(searchSources))
+	for _, searchSource := range searchSources {
+		src := searchSource
+		go func() {
+			defer wg.Done()
+			result, _ := src.getter.FetchMetadataByName(name, src.token)
+			if result.Game != (models.Game{}) {
+				mu.Lock()
+				games = append(games, vo.GameMetadataFromWebVO{Source: src.source, Game: result.Game, Tags: result.Tags})
+				mu.Unlock()
+			}
+		}()
+	}
 
 	wg.Wait()
 
@@ -794,6 +769,40 @@ func (s *GameService) UpdateGameFromRemote(gameID string) error {
 	return nil
 }
 
+func (s *GameService) RefreshAllGamesMetadata() (vo.MetadataRefreshResult, error) {
+	result := vo.MetadataRefreshResult{}
+
+	games, err := s.GetGames()
+	if err != nil {
+		return result, fmt.Errorf("failed to get games: %w", err)
+	}
+
+	result.TotalGames = len(games)
+	enabledSources := s.getConfiguredMetadataSourceSet()
+
+	for _, game := range games {
+		if game.SourceType == "" || game.SourceType == enums.Local || strings.TrimSpace(game.SourceID) == "" {
+			result.SkippedGames++
+			continue
+		}
+
+		if _, enabled := enabledSources[game.SourceType]; !enabled {
+			result.SkippedGames++
+			continue
+		}
+
+		if err := s.UpdateGameFromRemote(game.ID); err != nil {
+			result.FailedGames++
+			applog.LogWarningf(s.ctx, "RefreshAllGamesMetadata: failed to update game %s (%s): %v", game.Name, game.ID, err)
+			continue
+		}
+
+		result.UpdatedGames++
+	}
+
+	return result, nil
+}
+
 // GetRunningProcesses 获取系统中正在运行的进程列表（过滤掉系统进程）
 func (s *GameService) GetRunningProcesses() ([]processutils.ProcessInfo, error) {
 	return processutils.GetRunningProcesses()
@@ -914,4 +923,80 @@ func (s *GameService) findGameIDByPath(path string) (string, bool) {
 		return "", false
 	}
 	return id, true
+}
+
+func (s *GameService) getConfiguredMetadataSearchSources() []metadataSearchSource {
+	bangumiToken := ""
+	vndbToken := ""
+	language := ""
+	if s.config != nil {
+		bangumiToken = s.config.BangumiAccessToken
+		vndbToken = s.config.VNDBAccessToken
+		language = s.config.Language
+	}
+
+	sources := make([]metadataSearchSource, 0, 4)
+	for _, source := range s.getConfiguredMetadataSources() {
+		switch source {
+		case enums.Bangumi:
+			sources = append(sources, metadataSearchSource{
+				getter: metadata.NewBangumiInfoGetter(),
+				source: enums.Bangumi,
+				token:  bangumiToken,
+			})
+		case enums.VNDB:
+			sources = append(sources, metadataSearchSource{
+				getter: metadata.NewVNDBInfoGetterWithLanguage(language),
+				source: enums.VNDB,
+				token:  vndbToken,
+			})
+		case enums.Ymgal:
+			sources = append(sources, metadataSearchSource{
+				getter: metadata.NewYmgalInfoGetter(),
+				source: enums.Ymgal,
+				token:  "",
+			})
+		case enums.Steam:
+			sources = append(sources, metadataSearchSource{
+				getter: metadata.NewSteamInfoGetterWithLanguage(language),
+				source: enums.Steam,
+				token:  "",
+			})
+		}
+	}
+	return sources
+}
+
+func (s *GameService) getConfiguredMetadataSources() []enums.SourceType {
+	defaultSources := []enums.SourceType{enums.Bangumi, enums.VNDB, enums.Ymgal, enums.Steam}
+	if s.config == nil || len(s.config.MetadataSources) == 0 {
+		return defaultSources
+	}
+
+	result := make([]enums.SourceType, 0, len(defaultSources))
+	seen := make(map[enums.SourceType]struct{}, len(defaultSources))
+	for _, source := range s.config.MetadataSources {
+		normalized := enums.SourceType(strings.ToLower(strings.TrimSpace(source)))
+		switch normalized {
+		case enums.Bangumi, enums.VNDB, enums.Ymgal, enums.Steam:
+			if _, exists := seen[normalized]; exists {
+				continue
+			}
+			seen[normalized] = struct{}{}
+			result = append(result, normalized)
+		}
+	}
+
+	if len(result) == 0 {
+		return defaultSources
+	}
+	return result
+}
+
+func (s *GameService) getConfiguredMetadataSourceSet() map[enums.SourceType]struct{} {
+	sourceSet := make(map[enums.SourceType]struct{})
+	for _, source := range s.getConfiguredMetadataSources() {
+		sourceSet[source] = struct{}{}
+	}
+	return sourceSet
 }

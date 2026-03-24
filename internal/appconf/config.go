@@ -7,16 +7,32 @@ import (
 	"lunabox/internal/utils/apputils"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+var defaultMetadataSources = []string{
+	string(enums.Bangumi),
+	string(enums.VNDB),
+	string(enums.Ymgal),
+	string(enums.Steam),
+}
+
+var allowedMetadataSourceSet = map[string]struct{}{
+	string(enums.Bangumi): {},
+	string(enums.VNDB):    {},
+	string(enums.Ymgal):   {},
+	string(enums.Steam):   {},
+}
 
 // AppConfig 应用配置结构体
 type AppConfig struct {
-	BangumiAccessToken string `json:"access_token,omitempty"`
-	VNDBAccessToken    string `json:"vndb_access_token,omitempty"`
-	Theme              string `json:"theme"`         // light or dark
-	Language           string `json:"language"`      // zh, en, etc.
-	SidebarOpen        bool   `json:"sidebar_open"`  // 侧边栏是否展开
-	CloseToTray        bool   `json:"close_to_tray"` // 关闭时最小化到托盘
+	BangumiAccessToken string   `json:"access_token,omitempty"`
+	VNDBAccessToken    string   `json:"vndb_access_token,omitempty"`
+	MetadataSources    []string `json:"metadata_sources,omitempty"` // 元数据拉取来源列表（bangumi/vndb/ymgal/steam）
+	Theme              string   `json:"theme"`                      // light or dark
+	Language           string   `json:"language"`                   // zh, en, etc.
+	SidebarOpen        bool     `json:"sidebar_open"`               // 侧边栏是否展开
+	CloseToTray        bool     `json:"close_to_tray"`              // 关闭时最小化到托盘
 	// AI 配置
 	AIProvider     string `json:"ai_provider,omitempty"`      // openai, deepseek, etc.
 	AIBaseURL      string `json:"ai_base_url,omitempty"`      // API base URL
@@ -104,6 +120,7 @@ func LoadConfig() (*AppConfig, error) {
 	config := &AppConfig{
 		BangumiAccessToken:     "",
 		VNDBAccessToken:        "",
+		MetadataSources:        cloneStringSlice(defaultMetadataSources),
 		Theme:                  "light",
 		Language:               "zh-CN",
 		SidebarOpen:            true,
@@ -183,6 +200,8 @@ func LoadConfig() (*AppConfig, error) {
 		return config, err
 	}
 
+	config.MetadataSources = normalizeMetadataSources(config.MetadataSources)
+
 	if config.WindowZoomFactor <= 0 {
 		config.WindowZoomFactor = 1.0
 	}
@@ -206,10 +225,50 @@ func SaveConfig(config *AppConfig) error {
 	if err != nil {
 		return err
 	}
+	config.MetadataSources = normalizeMetadataSources(config.MetadataSources)
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return err
 	}
 
 	return os.WriteFile(configPath, data, 0644)
+}
+
+func normalizeMetadataSources(sources []string) []string {
+	if len(sources) == 0 {
+		return cloneStringSlice(defaultMetadataSources)
+	}
+
+	result := make([]string, 0, len(defaultMetadataSources))
+	seen := make(map[string]struct{}, len(defaultMetadataSources))
+
+	for _, source := range sources {
+		normalized := strings.ToLower(strings.TrimSpace(source))
+		if normalized == "" {
+			continue
+		}
+		if _, ok := allowedMetadataSourceSet[normalized]; !ok {
+			continue
+		}
+		if _, exists := seen[normalized]; exists {
+			continue
+		}
+
+		seen[normalized] = struct{}{}
+		result = append(result, normalized)
+	}
+
+	if len(result) == 0 {
+		return cloneStringSlice(defaultMetadataSources)
+	}
+	return result
+}
+
+func cloneStringSlice(values []string) []string {
+	if len(values) == 0 {
+		return []string{}
+	}
+	cloned := make([]string, len(values))
+	copy(cloned, values)
+	return cloned
 }

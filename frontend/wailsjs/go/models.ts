@@ -3,6 +3,7 @@ export namespace appconf {
 	export class AppConfig {
 	    access_token?: string;
 	    vndb_access_token?: string;
+	    metadata_sources?: string[];
 	    theme: string;
 	    language: string;
 	    sidebar_open: boolean;
@@ -71,6 +72,7 @@ export namespace appconf {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.access_token = source["access_token"];
 	        this.vndb_access_token = source["vndb_access_token"];
+	        this.metadata_sources = source["metadata_sources"];
 	        this.theme = source["theme"];
 	        this.language = source["language"];
 	        this.sidebar_open = source["sidebar_open"];
@@ -1229,6 +1231,24 @@ export namespace vo {
 	    }
 	}
 	
+	export class MetadataRefreshResult {
+	    total_games: number;
+	    updated_games: number;
+	    skipped_games: number;
+	    failed_games: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new MetadataRefreshResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.total_games = source["total_games"];
+	        this.updated_games = source["updated_games"];
+	        this.skipped_games = source["skipped_games"];
+	        this.failed_games = source["failed_games"];
+	    }
+	}
 	export class MetadataRequest {
 	    source: enums.SourceType;
 	    id: string;

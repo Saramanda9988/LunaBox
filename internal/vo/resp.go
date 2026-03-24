@@ -23,6 +23,13 @@ type GameMetadataFromWebVO struct {
 	Tags   []metadata.TagItem
 }
 
+type MetadataRefreshResult struct {
+	TotalGames   int `json:"total_games"`
+	UpdatedGames int `json:"updated_games"`
+	SkippedGames int `json:"skipped_games"`
+	FailedGames  int `json:"failed_games"`
+}
+
 // LastPlayedGame 上次游玩的游戏信息
 type LastPlayedGame struct {
 	Game           models.Game `json:"game"`

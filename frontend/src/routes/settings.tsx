@@ -14,6 +14,7 @@ import { DBBackupPanel } from "../components/panel/DBBackupPanel";
 import { DownloadSettingsPanel } from "../components/panel/DownloadSettingsPanel";
 import { FullDataBackupPanel } from "../components/panel/FullDataBackupPanel";
 import { GameSettingsPanel } from "../components/panel/GameSettingsPanel";
+import { MetadataSettingsPanel } from "../components/panel/MetadataSettingsPanel";
 import { UpdateSettingsPanel } from "../components/panel/UpdateSettingsPanel";
 import { SettingsSkeleton } from "../components/skeleton/SettingsSkeleton";
 import { CollapsibleSection } from "../components/ui/CollapsibleSection";
@@ -128,6 +129,10 @@ function SettingsPage() {
       <div className="mx-auto w-full max-w-5xl space-y-6">
         <CollapsibleSection title={t("settings.sections.basic")} icon="i-mdi-database-settings" defaultOpen={true}>
           <BasicSettingsPanel formData={draftConfig} onChange={handleDraftChange} onZoomChange={handleZoomChange} />
+        </CollapsibleSection>
+
+        <CollapsibleSection title={t("settings.sections.metadata")} icon="i-mdi-database-search" defaultOpen={false}>
+          <MetadataSettingsPanel formData={draftConfig} onChange={handleDraftChange} />
         </CollapsibleSection>
 
         <CollapsibleSection title={t("settings.sections.appearance")} icon="i-mdi-palette" defaultOpen={false}>

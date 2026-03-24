@@ -128,6 +128,7 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	// 更新应用配置 in-memory
 	s.config.BangumiAccessToken = newConfig.BangumiAccessToken
 	s.config.VNDBAccessToken = newConfig.VNDBAccessToken
+	s.config.MetadataSources = newConfig.MetadataSources
 	s.config.Theme = newConfig.Theme
 	s.config.Language = newConfig.Language
 	s.config.SidebarOpen = newConfig.SidebarOpen
