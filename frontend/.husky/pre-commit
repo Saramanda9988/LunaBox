@@ -1,1 +1,1 @@
-npx lint-staged
+cd frontend && pnpm exec lint-staged
