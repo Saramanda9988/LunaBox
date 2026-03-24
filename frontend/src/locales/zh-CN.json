@@ -534,6 +534,7 @@
     "preparingSettings": "正在准备设置...",
     "sections": {
       "basic": "基础配置",
+      "metadata": "元数据设置",
       "appearance": "外观设置",
       "game": "游玩配置",
       "download": "下载配置",
@@ -626,6 +627,29 @@
       "toast": {
         "leSelectFailed": "选择 Locale Emulator 失败",
         "magpieSelectFailed": "选择 Magpie 失败"
+      }
+    },
+    "metadata": {
+      "sourceTitle": "元数据拉取来源",
+      "sourceHint": "获取游戏元数据时，仅会从已启用的来源中获取。",
+      "sourceHints": {
+        "bangumi": "条目丰富，中文信息较完整。",
+        "vndb": "视觉小说游戏信息最全面",
+        "ymgal": "中文语境下的 Galgame 信息补充来源。",
+        "steam": "适合 Steam 平台发行的游戏信息。"
+      },
+      "refreshTitle": "全量更新数据库元数据",
+      "refreshHint": "按当前启用来源批量刷新库内游戏的名称、简介、厂商、封面和标签。",
+      "refreshButton": "更新全部游戏元数据",
+      "refreshing": "更新中...",
+      "modal": {
+        "refreshTitle": "确认全量更新元数据",
+        "refreshMessage": "将按当前启用来源批量更新数据库中所有可更新游戏的元数据。此操作可能耗时较长，是否继续？"
+      },
+      "toast": {
+        "atLeastOneSource": "至少需要启用一个元数据来源",
+        "refreshSuccess": "元数据更新完成：成功 {{updated}}，失败 {{failed}}，跳过 {{skipped}}",
+        "refreshFailed": "全量更新失败：{{error}}"
       }
     },
     "cloudBackup": {

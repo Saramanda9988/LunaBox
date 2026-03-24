@@ -534,6 +534,7 @@
     "preparingSettings": "Preparing settings...",
     "sections": {
       "basic": "Basic Configuration",
+      "metadata": "Metadata Settings",
       "appearance": "Appearance",
       "game": "Game Settings",
       "download": "Download Settings",
@@ -626,6 +627,29 @@
       "toast": {
         "leSelectFailed": "Failed to select Locale Emulator",
         "magpieSelectFailed": "Failed to select Magpie"
+      }
+    },
+    "metadata": {
+      "sourceTitle": "Metadata Sources",
+      "sourceHint": "Automatic metadata search will only use enabled sources.",
+      "sourceHints": {
+        "bangumi": "Rich in entries, with comprehensive Chinese information.",
+        "vndb": "The most comprehensive source for Visual Novel game information.",
+        "ymgal": "Supplementary information source for Galgames in the Chinese context.",
+        "steam": "Suitable for game information released on the Steam platform."
+      },
+      "refreshTitle": "Refresh Metadata For Entire Library",
+      "refreshHint": "Bulk refresh game title, summary, company, cover, and tags using currently enabled sources.",
+      "refreshButton": "Refresh All Game Metadata",
+      "refreshing": "Refreshing...",
+      "modal": {
+        "refreshTitle": "Confirm Full Metadata Refresh",
+        "refreshMessage": "This will update metadata for all updatable games in your database using currently enabled sources. This may take a while. Continue?"
+      },
+      "toast": {
+        "atLeastOneSource": "At least one metadata source must remain enabled",
+        "refreshSuccess": "Metadata refresh complete: updated {{updated}}, failed {{failed}}, skipped {{skipped}}",
+        "refreshFailed": "Full metadata refresh failed: {{error}}"
       }
     },
     "cloudBackup": {

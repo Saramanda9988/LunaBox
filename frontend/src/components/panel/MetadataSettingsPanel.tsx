@@ -48,26 +48,30 @@ export function MetadataSettingsPanel({ formData, onChange }: MetadataSettingsPa
 
   const selectedSources = normalizeMetadataSources(formData.metadata_sources);
 
-  const sourceItems: Array<{ value: string; label: string; hint: string }> = [
+  const sourceItems: Array<{ value: string; label: string; hint: string; icon: string }> = [
     {
       value: "bangumi",
       label: "Bangumi",
       hint: t("settings.metadata.sourceHints.bangumi"),
+      icon: "/bangumi-logo.png",
     },
     {
       value: "vndb",
       label: "VNDB",
       hint: t("settings.metadata.sourceHints.vndb"),
+      icon: "/vndb-logo.svg",
     },
     {
       value: "ymgal",
       label: "Ymgal",
       hint: t("settings.metadata.sourceHints.ymgal"),
+      icon: "/ymgal-logo.png",
     },
     {
       value: "steam",
       label: "Steam",
       hint: t("settings.metadata.sourceHints.steam"),
+      icon: "/steam-logo.png",
     },
   ];
 
@@ -134,10 +138,12 @@ export function MetadataSettingsPanel({ formData, onChange }: MetadataSettingsPa
 
         <div className="space-y-3">
           {sourceItems.map(item => (
-            <div key={item.value} className="flex items-center justify-between rounded-lg border border-brand-200 p-3 dark:border-brand-700">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-brand-800 dark:text-brand-200">{item.label}</p>
-                <p className="mt-1 text-xs text-brand-500 dark:text-brand-400">{item.hint}</p>
+            <div key={item.value} className="flex items-center justify-between rounded-lg border border-brand-200 p-4 dark:border-brand-700">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center select-none pt-1">
+                  <img src={item.icon} alt={item.label} className="h-[22px] w-auto object-contain brightness-0 opacity-80 transition-all dark:invert dark:opacity-90" />
+                </div>
+                <p className="text-xs text-brand-500 dark:text-brand-400">{item.hint}</p>
               </div>
               <BetterSwitch
                 id={`metadata-source-${item.value}`}

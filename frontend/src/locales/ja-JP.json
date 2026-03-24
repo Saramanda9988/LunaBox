@@ -534,6 +534,7 @@
     "preparingSettings": "設定を準備中...",
     "sections": {
       "basic": "基本設定",
+      "metadata": "メタデータ設定",
       "appearance": "外観設定",
       "game": "ゲーム設定",
       "download": "ダウンロード設定",
@@ -626,6 +627,29 @@
       "toast": {
         "leSelectFailed": "Locale Emulator の選択に失敗しました",
         "magpieSelectFailed": "Magpie の選択に失敗しました"
+      }
+    },
+    "metadata": {
+      "sourceTitle": "メタデータ取得ソース",
+      "sourceHint": "自動メタデータ検索では、有効化したソースのみを使用します。",
+      "sourceHints": {
+        "bangumi": "項目が豊富で、中国語の情報が比較的完全に揃っています。",
+        "vndb": "ビジュアルノベルのゲーム情報が最も包括的です。",
+        "ymgal": "中国語圏における Galgame の補完的な情報ソースです。",
+        "steam": "Steam プラットフォームでリリースされたゲーム情報に適しています。"
+      },
+      "refreshTitle": "ライブラリ全体のメタデータ更新",
+      "refreshHint": "現在有効なソースで、ゲーム名・概要・メーカー・カバー・タグを一括更新します。",
+      "refreshButton": "全ゲームのメタデータを更新",
+      "refreshing": "更新中...",
+      "modal": {
+        "refreshTitle": "メタデータ全量更新の確認",
+        "refreshMessage": "現在有効なソースを使って、データベース内の更新可能な全ゲームのメタデータを一括更新します。時間がかかる場合があります。続行しますか？"
+      },
+      "toast": {
+        "atLeastOneSource": "少なくとも1つのメタデータソースを有効にしてください",
+        "refreshSuccess": "メタデータ更新完了: 更新 {{updated}} 件、失敗 {{failed}} 件、スキップ {{skipped}} 件",
+        "refreshFailed": "全量更新に失敗しました: {{error}}"
       }
     },
     "cloudBackup": {
