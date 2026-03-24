@@ -243,13 +243,13 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
           <div className="space-y-6">
             <p className="text-brand-600 dark:text-brand-300">{t("addGameModal.whichResult")}</p>
 
-            <div className="flex max-h-[400px] flex-wrap justify-center gap-4 overflow-y-auto p-1">
+            <div className="flex w-full snap-x gap-4 overflow-x-auto p-2 pb-6 pt-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {metadataResults.filter(item => item.Game)
                 .map((item, index) => (
                   <div
                     key={index}
                     onClick={() => saveGameFromWebMetadata(item)}
-                    className="w-44 cursor-pointer rounded-lg border border-brand-200 p-3 transition hover:border-neutral-500 hover:shadow-md dark:border-brand-700 dark:hover:border-neutral-400"
+                    className="w-36 shrink-0 snap-center cursor-pointer rounded-xl border border-brand-200 bg-brand-50/50 p-3 shadow-sm transition-all hover:-translate-y-1 hover:border-brand-400 hover:shadow-md dark:border-brand-700 dark:bg-brand-800/50 dark:hover:border-brand-500 sm:w-40"
                   >
                     <div className="aspect-[3/4] w-full overflow-hidden rounded-md bg-brand-200 dark:bg-brand-700">
                       {item.Game!.cover_url
