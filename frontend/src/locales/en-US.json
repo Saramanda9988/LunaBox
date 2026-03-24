@@ -633,10 +633,10 @@
       "sourceTitle": "Metadata Sources",
       "sourceHint": "Automatic metadata search will only use enabled sources.",
       "sourceHints": {
-        "bangumi": "Rich in entries, with comprehensive Chinese information.",
-        "vndb": "The most comprehensive source for Visual Novel game information.",
-        "ymgal": "Supplementary information source for Galgames in the Chinese context.",
-        "steam": "Suitable for game information released on the Steam platform."
+        "bangumi": "Focuses on anime, music, and games",
+        "vndb": "A comprehensive database of visual novel information",
+        "ymgal": "Please experience this wonderful literary genre",
+        "steam": "Suitable for game information released on the Steam platform"
       },
       "refreshTitle": "Refresh Metadata For Entire Library",
       "refreshHint": "Bulk refresh game title, summary, company, cover, and tags using currently enabled sources.",
