@@ -68,16 +68,22 @@ export function FilterBar({
   const [initialized, setInitialized] = useState(false);
   const { t } = useTranslation();
 
-  const finalSearchPlaceholder = searchPlaceholder || `${t("common.search")}...`;
-  const activeFilterCount = (statusFilter ? 1 : 0) + (filterMenuExtraActive ? 1 : 0);
+  const finalSearchPlaceholder
+    = searchPlaceholder || `${t("common.search")}...`;
+  const activeFilterCount
+    = (statusFilter ? 1 : 0) + (filterMenuExtraActive ? 1 : 0);
 
   // 初始化时从 localStorage 恢复所有设置
   useEffect(() => {
     if (storageKey && !initialized) {
       const savedSortBy = localStorage.getItem(`${storageKey}_sortBy`);
       const savedSortOrder = localStorage.getItem(`${storageKey}_sortOrder`);
-      const savedSearchQuery = localStorage.getItem(`${storageKey}_searchQuery`);
-      const savedStatusFilter = localStorage.getItem(`${storageKey}_statusFilter`);
+      const savedSearchQuery = localStorage.getItem(
+        `${storageKey}_searchQuery`,
+      );
+      const savedStatusFilter = localStorage.getItem(
+        `${storageKey}_statusFilter`,
+      );
 
       // 验证保存的 sortBy 是否在 sortOptions 中
       if (savedSortBy && sortOptions.some(opt => opt.value === savedSortBy)) {
@@ -152,8 +158,8 @@ export function FilterBar({
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 my-4">
       <div className="relative flex-1 max-w-md">
-        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-          <div className="i-mdi-magnify text-brand-700" />
+        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none transition-colors z-10">
+          <div className="i-mdi-magnify text-lg text-brand-700 dark:text-brand-400" />
         </div>
         <input
           type="text"
@@ -176,13 +182,25 @@ export function FilterBar({
             type="button"
             onClick={() => onBatchModeChange(!batchMode)}
             className={`glass-panel flex items-center gap-1.5 px-3 py-2 text-sm
-                       ${batchMode
+                       ${
+          batchMode
             ? "text-brand-900 dark:text-white bg-brand-100 dark:bg-brand-700 border-brand-300 dark:border-brand-600"
-            : "text-brand-500 dark:text-brand-400 bg-white dark:bg-brand-800 border-brand-200 dark:border-brand-700"}
+            : "text-brand-500 dark:text-brand-400 bg-white dark:bg-brand-800 border-brand-200 dark:border-brand-700"
+          }
                        border rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700`}
-            title={batchMode ? t("filterBar.exitBatchSelection") : t("filterBar.enterBatchSelection")}
+            title={
+              batchMode
+                ? t("filterBar.exitBatchSelection")
+                : t("filterBar.enterBatchSelection")
+            }
           >
-            <div className={batchMode ? "i-mdi-close-circle-outline text-lg" : "i-mdi-checkbox-multiple-marked-outline text-lg"} />
+            <div
+              className={
+                batchMode
+                  ? "i-mdi-close-circle-outline text-lg"
+                  : "i-mdi-checkbox-multiple-marked-outline text-lg"
+              }
+            />
           </button>
         )}
 
@@ -218,7 +236,9 @@ export function FilterBar({
 
             {statusOptions && onStatusFilterChange && (
               <>
-                {filterMenuExtra && <div className="my-1 border-t border-brand-200 dark:border-brand-700" />}
+                {filterMenuExtra && (
+                  <div className="my-1 border-t border-brand-200 dark:border-brand-700" />
+                )}
                 <div className="px-2 py-1.5">
                   <div className="mb-1.5 text-xs font-medium text-brand-400 dark:text-brand-500">
                     {t("filterBar.status")}
@@ -230,9 +250,11 @@ export function FilterBar({
                         type="button"
                         onClick={() => handleStatusFilterChange(option.value)}
                         className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors
-                          ${(statusFilter || "") === option.value
+                          ${
+                      (statusFilter || "") === option.value
                         ? "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-200 ring-1 ring-brand-300 dark:ring-brand-500"
-                        : "bg-brand-50 text-brand-500 hover:bg-brand-100 dark:bg-brand-900/50 dark:text-brand-400 dark:hover:bg-brand-700/70"}`}
+                        : "bg-brand-50 text-brand-500 hover:bg-brand-100 dark:bg-brand-900/50 dark:text-brand-400 dark:hover:bg-brand-700/70"
+                      }`}
                       >
                         {option.label}
                       </button>
@@ -257,12 +279,16 @@ export function FilterBar({
                     type="button"
                     onClick={() => handleSortByChange(option.value)}
                     className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm transition-colors
-                      ${sortBy === option.value
+                      ${
+                  sortBy === option.value
                     ? "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-200"
-                    : "text-brand-600 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-700/70"}`}
+                    : "text-brand-600 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-700/70"
+                  }`}
                   >
                     <span>{option.label}</span>
-                    {sortBy === option.value && <div className="i-mdi-check text-base" />}
+                    {sortBy === option.value && (
+                      <div className="i-mdi-check text-base" />
+                    )}
                   </button>
                 ))}
               </div>
@@ -277,9 +303,11 @@ export function FilterBar({
                   type="button"
                   onClick={() => handleSortOrderChange("asc")}
                   className={`flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-colors
-                    ${sortOrder === "asc"
+                    ${
+    sortOrder === "asc"
       ? "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-200"
-      : "bg-brand-50 text-brand-500 hover:bg-brand-100 dark:bg-brand-900/50 dark:text-brand-400 dark:hover:bg-brand-700/70"}`}
+      : "bg-brand-50 text-brand-500 hover:bg-brand-100 dark:bg-brand-900/50 dark:text-brand-400 dark:hover:bg-brand-700/70"
+    }`}
                 >
                   <div className="i-mdi-sort-ascending text-base" />
                   {t("filterBar.sortAsc")}
@@ -288,9 +316,11 @@ export function FilterBar({
                   type="button"
                   onClick={() => handleSortOrderChange("desc")}
                   className={`flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-colors
-                    ${sortOrder === "desc"
+                    ${
+    sortOrder === "desc"
       ? "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-200"
-      : "bg-brand-50 text-brand-500 hover:bg-brand-100 dark:bg-brand-900/50 dark:text-brand-400 dark:hover:bg-brand-700/70"}`}
+      : "bg-brand-50 text-brand-500 hover:bg-brand-100 dark:bg-brand-900/50 dark:text-brand-400 dark:hover:bg-brand-700/70"
+    }`}
                 >
                   <div className="i-mdi-sort-descending text-base" />
                   {t("filterBar.sortDesc")}
