@@ -9,6 +9,7 @@ import (
 	"lunabox/internal/models"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -39,7 +40,10 @@ var _ Getter = (*SteamInfoGetter)(nil)
 const (
 	steamAppDetailsAPIURL = "https://store.steampowered.com/api/appdetails"
 	steamStoreSearchAPI   = "https://store.steampowered.com/api/storesearch/"
+	steamAppReviewsAPIURL = "https://store.steampowered.com/appreviews/%d"
 )
+
+var steamReleaseDateRegex = regexp.MustCompile(`(\d{4})\D+(\d{1,2})\D+(\d{1,2})`)
 
 type steamGenre struct {
 	ID          string `json:"id"`
@@ -86,6 +90,16 @@ type steamStoreSearchResp struct {
 type steamSearchItem struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
+}
+
+type steamReviewQuerySummary struct {
+	TotalPositive int `json:"total_positive"`
+	TotalNegative int `json:"total_negative"`
+}
+
+type steamReviewResponse struct {
+	Success      int                     `json:"success"`
+	QuerySummary steamReviewQuerySummary `json:"query_summary"`
 }
 
 func (s SteamInfoGetter) FetchMetadata(id string, token string) (MetadataResult, error) {
@@ -194,6 +208,12 @@ func (s SteamInfoGetter) fetchByAppIDAndLang(appID int, lang string) (MetadataRe
 	if data.Data.Metacritic.Score > 0 {
 		rating = float64(data.Data.Metacritic.Score) / 10.0
 	}
+	// Metacritic 为空时，回退到 Steam 评测正负比评分
+	if rating <= 0 {
+		if reviewRating, reviewErr := s.fetchReviewRating(appID); reviewErr == nil {
+			rating = reviewRating
+		}
+	}
 	rating = normalizeTenPointRating(rating)
 
 	game := models.Game{
@@ -202,7 +222,7 @@ func (s SteamInfoGetter) fetchByAppIDAndLang(appID int, lang string) (MetadataRe
 		Company:     strings.Join(data.Data.Developers, ", "),
 		Summary:     strings.TrimSpace(data.Data.ShortDescription),
 		Rating:      rating,
-		ReleaseDate: strings.TrimSpace(data.Data.ReleaseDate.Date),
+		ReleaseDate: normalizeSteamReleaseDate(data.Data.ReleaseDate.Date),
 		SourceType:  enums.Steam,
 		SourceID:    key,
 		CachedAt:    time.Now(),
@@ -462,4 +482,110 @@ func extractLeadingDigits(value string) string {
 		end++
 	}
 	return value[start:end]
+}
+
+func (s SteamInfoGetter) fetchReviewRating(appID int) (float64, error) {
+	params := url.Values{}
+	params.Add("json", "1")
+	params.Add("language", "all")
+	params.Add("purchase_type", "all")
+	params.Add("num_per_page", "0")
+	params.Add("filter", "summary")
+
+	reqURL := fmt.Sprintf("%s?%s", fmt.Sprintf(steamAppReviewsAPIURL, appID), params.Encode())
+	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("User-Agent", metadataUserAgent)
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer closeResponseBody(resp.Body)
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("steam appreviews API returned status: %d, body: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var reviewResp steamReviewResponse
+	if err := json.Unmarshal(bodyBytes, &reviewResp); err != nil {
+		return 0, err
+	}
+	if reviewResp.Success != 1 {
+		return 0, fmt.Errorf("steam appreviews API returned unsuccessful payload for app id: %d", appID)
+	}
+
+	total := reviewResp.QuerySummary.TotalPositive + reviewResp.QuerySummary.TotalNegative
+	if total <= 0 {
+		return 0, nil
+	}
+
+	positiveRatio := float64(reviewResp.QuerySummary.TotalPositive) / float64(total)
+	return normalizeTenPointRating(positiveRatio * 10.0), nil
+}
+
+func normalizeSteamReleaseDate(raw string) string {
+	text := strings.TrimSpace(raw)
+	if text == "" {
+		return ""
+	}
+
+	// 优先处理类似 "2025 年 7 月 18 日" / "2025年7月18日" / "2025/7/18"
+	if m := steamReleaseDateRegex.FindStringSubmatch(text); len(m) == 4 {
+		year, _ := strconv.Atoi(m[1])
+		month, _ := strconv.Atoi(m[2])
+		day, _ := strconv.Atoi(m[3])
+		if normalized, ok := buildISODate(year, month, day); ok {
+			return normalized
+		}
+	}
+
+	replaced := strings.NewReplacer(
+		"年", "-",
+		"月", "-",
+		"日", "",
+		".", "-",
+		"/", "-",
+		"，", ",",
+	).Replace(text)
+	replaced = strings.Join(strings.Fields(replaced), " ")
+
+	layouts := []string{
+		"2006-1-2",
+		"2006-01-02",
+		"2 Jan, 2006",
+		"Jan 2, 2006",
+		"2 Jan 2006",
+		"Jan 2 2006",
+		"2 January, 2006",
+		"January 2, 2006",
+		"2 January 2006",
+		"January 2 2006",
+	}
+
+	for _, layout := range layouts {
+		if parsed, err := time.Parse(layout, replaced); err == nil {
+			return parsed.Format("2006-01-02")
+		}
+	}
+
+	// 解析失败时保留原始值，避免丢数据
+	return text
+}
+
+func buildISODate(year int, month int, day int) (string, bool) {
+	if year < 1900 || year > 3000 || month < 1 || month > 12 || day < 1 || day > 31 {
+		return "", false
+	}
+	dt := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
+	if dt.Year() != year || int(dt.Month()) != month || dt.Day() != day {
+		return "", false
+	}
+	return dt.Format("2006-01-02"), true
 }
