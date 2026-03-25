@@ -128,6 +128,8 @@ Issues and Pull Requests are welcome.
 - [ ] Gallery feature
 - [ ] Expose MCP and provide link-based game launch capability for AI
 - [ ] "What to play next" recommendation feature
+- [ ] Support Linux/macOS platform
+- [ ] Support Korean/Traditional Chinese and other languages
 
 ## 😀 Open Source Inspired by Open Source
 
