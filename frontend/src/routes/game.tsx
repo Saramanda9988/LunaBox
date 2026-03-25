@@ -356,6 +356,10 @@ function GameDetailPage() {
   };
 
   const ratingText = game.rating > 0 ? `${game.rating.toFixed(1)} / 10` : "-";
+  const createdAtText = formatLocalDate(
+    game.created_at,
+    config?.time_zone,
+  ).replaceAll("/", "-");
   const releaseDateText = game.release_date?.trim() || "-";
 
   return (
@@ -445,7 +449,7 @@ function GameDetailPage() {
             </div>
             <div>
               <div className="font-semibold mb-1">{t("common.createdAt")}</div>
-              <div>{formatLocalDate(game.created_at, config?.time_zone)}</div>
+              <div>{createdAtText}</div>
             </div>
             <div>
               <div className="font-semibold mb-1">{t("game.rating")}</div>
