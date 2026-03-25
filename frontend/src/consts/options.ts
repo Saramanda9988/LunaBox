@@ -11,6 +11,8 @@ export const statusOptions = [
 export const sortOptions = [
   { label: "common.name", value: "name" },
   { label: "common.createdAt", value: "created_at" },
+  { label: "common.rating", value: "rating" },
+  { label: "common.releaseDate", value: "release_date" },
 ];
 
 export const APP_ZOOM_LEVELS = [0.8, 0.9, 1, 1.1, 1.25, 1.5] as const;
@@ -43,7 +45,12 @@ export function normalizeAppZoomFactor(value?: number) {
 
 export function getNextAppZoomFactor(current: number, direction: 1 | -1) {
   const normalized = normalizeAppZoomFactor(current);
-  const currentIndex = APP_ZOOM_LEVELS.findIndex(level => level === normalized);
-  const nextIndex = Math.min(APP_ZOOM_LEVELS.length - 1, Math.max(0, currentIndex + direction));
+  const currentIndex = APP_ZOOM_LEVELS.findIndex(
+    level => level === normalized,
+  );
+  const nextIndex = Math.min(
+    APP_ZOOM_LEVELS.length - 1,
+    Math.max(0, currentIndex + direction),
+  );
   return APP_ZOOM_LEVELS[nextIndex];
 }

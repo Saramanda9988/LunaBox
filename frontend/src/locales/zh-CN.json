@@ -19,6 +19,8 @@
     "onHold": "搁置",
     "name": "名称",
     "createdAt": "添加时间",
+    "rating": "评分",
+    "releaseDate": "发售日期",
     "selectAll": "全选",
     "clearStore": "清空",
     "selected": "已选",

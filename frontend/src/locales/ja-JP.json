@@ -19,6 +19,8 @@
     "onHold": "保留中",
     "name": "名前",
     "createdAt": "追加日",
+    "rating": "評価",
+    "releaseDate": "発売日",
     "selectAll": "すべて選択",
     "clearStore": "クリア",
     "selected": "選択済み",

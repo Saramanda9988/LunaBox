@@ -19,6 +19,8 @@
     "onHold": "On Hold",
     "name": "Name",
     "createdAt": "Date Added",
+    "rating": "Rating",
+    "releaseDate": "Release Date",
     "selectAll": "Select All",
     "clearStore": "Clear",
     "selected": "Selected",
