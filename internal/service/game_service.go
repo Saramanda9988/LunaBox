@@ -37,6 +37,8 @@ type metadataSearchSource struct {
 	token  string
 }
 
+const metadataRefreshInterval = 300 * time.Millisecond
+
 func NewGameService() *GameService {
 	return &GameService{}
 }
@@ -636,10 +638,6 @@ func (s *GameService) FetchMetadata(req vo.MetadataRequest) (models.Game, error)
 }
 
 func (s *GameService) FetchMetadataFromWeb(req vo.MetadataRequest) (vo.GameMetadataFromWebVO, error) {
-	if game, err := fetchFromLocal(req.ID); err == nil {
-		return vo.GameMetadataFromWebVO{Source: enums.Local, Game: game}, nil
-	}
-
 	result, err := s.fetchMetadataResultByRequest(req)
 	if err != nil {
 		return vo.GameMetadataFromWebVO{}, err
@@ -698,12 +696,6 @@ func (s *GameService) fetchMetadataResultBySource(source enums.SourceType, sourc
 	default:
 		return metadata.MetadataResult{}, fmt.Errorf("unsupported source type: %s", source)
 	}
-}
-
-func fetchFromLocal(id string) (models.Game, error) {
-	// 这个函数暂时返回错误，表示未实现从本地数据库获取
-	// 如果需要实现，应该在这里查询数据库
-	return models.Game{}, fmt.Errorf("game not found in local cache")
 }
 
 // isVndbId 判断是否符合VNDB ID的格式（以字母v开头，后面跟数字）
@@ -810,10 +802,12 @@ func (s *GameService) RefreshAllGamesMetadata() (vo.MetadataRefreshResult, error
 		if err := s.UpdateGameFromRemote(game.ID); err != nil {
 			result.FailedGames++
 			applog.LogWarningf(s.ctx, "RefreshAllGamesMetadata: failed to update game %s (%s): %v", game.Name, game.ID, err)
-			continue
+		} else {
+			result.UpdatedGames++
 		}
 
-		result.UpdatedGames++
+		// FIXME:哪天抽出专门的metadata_service来，这里和import_service中的方法有点重复了
+		time.Sleep(metadataRefreshInterval)
 	}
 
 	return result, nil
