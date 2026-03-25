@@ -1074,6 +1074,14 @@ func mergeMetadataIntoGame(target *models.Game, metadata models.Game) bool {
 		target.Summary = summary
 		changed = true
 	}
+	if metadata.Rating > 0 && target.Rating != metadata.Rating {
+		target.Rating = metadata.Rating
+		changed = true
+	}
+	if releaseDate := strings.TrimSpace(metadata.ReleaseDate); releaseDate != "" && target.ReleaseDate != releaseDate {
+		target.ReleaseDate = releaseDate
+		changed = true
+	}
 	if metadata.SourceType != "" && target.SourceType != metadata.SourceType {
 		target.SourceType = metadata.SourceType
 		changed = true

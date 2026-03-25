@@ -43,12 +43,18 @@ func initTestSchema(t *testing.T, db *sql.DB) {
 			cover_url TEXT,
 			company TEXT,
 			summary TEXT,
+			rating DOUBLE DEFAULT 0,
+			release_date TEXT DEFAULT '',
 			path TEXT,
 			save_path TEXT,
+			process_name TEXT DEFAULT '',
+			status TEXT DEFAULT 'not_started',
 			source_type TEXT,
 			cached_at TIMESTAMP,
 			source_id TEXT,
-			created_at TIMESTAMP
+			created_at TIMESTAMP,
+			use_locale_emulator BOOLEAN DEFAULT FALSE,
+			use_magpie BOOLEAN DEFAULT FALSE
 		)`,
 		`CREATE TABLE IF NOT EXISTS game_categories (
 			game_id TEXT,

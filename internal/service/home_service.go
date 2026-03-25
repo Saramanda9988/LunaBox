@@ -39,6 +39,8 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 			COALESCE(g.cover_url, '') as cover_url, 
 			COALESCE(g.company, '') as company, 
 			COALESCE(g.summary, '') as summary, 
+			COALESCE(g.rating, 0) as rating,
+			COALESCE(g.release_date, '') as release_date,
 			COALESCE(g.path, '') as path, 
 			COALESCE(g.source_type, '') as source_type, 
 			g.cached_at, 
@@ -56,7 +58,7 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 	var lastPlayedDur, totalPlayedDur int
 
 	err := s.db.QueryRow(lastPlayedQuery).Scan(
-		&g.ID, &g.Name, &g.CoverURL, &g.Company, &g.Summary, &g.Path, &g.SourceType, &g.CachedAt, &g.SourceID, &g.CreatedAt,
+		&g.ID, &g.Name, &g.CoverURL, &g.Company, &g.Summary, &g.Rating, &g.ReleaseDate, &g.Path, &g.SourceType, &g.CachedAt, &g.SourceID, &g.CreatedAt,
 		&lastPlayedAt, &lastPlayedDur, &totalPlayedDur,
 	)
 	if err == nil {

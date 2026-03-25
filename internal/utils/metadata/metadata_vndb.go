@@ -67,6 +67,8 @@ type vndbQueryResult struct {
 	Titles      []vndbTitle     `json:"titles"`
 	Image       vndbImage       `json:"image"`
 	Description string          `json:"description"`
+	Rating      float64         `json:"rating"`
+	Released    string          `json:"released"`
 	Developers  []vndbDeveloper `json:"developers"`
 	Tags        []vndbTag       `json:"tags"`
 }
@@ -86,7 +88,7 @@ func (v VNDBInfoGetter) FetchMetadataByName(name string, token string) (Metadata
 func (v VNDBInfoGetter) queryVNDB(filters []interface{}) (MetadataResult, error) {
 	reqBody := vndbRequest{
 		Filters: filters,
-		Fields:  "id, title, titles.lang, titles.title, titles.latin, titles.official, titles.main, image.url, description, developers.name, tags.name, tags.rating, tags.spoiler",
+		Fields:  "id, title, titles.lang, titles.title, titles.latin, titles.official, titles.main, image.url, description, rating, released, developers.name, tags.name, tags.rating, tags.spoiler",
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -131,13 +133,15 @@ func (v VNDBInfoGetter) queryVNDB(filters []interface{}) (MetadataResult, error)
 	}
 
 	game := models.Game{
-		Name:       displayName,
-		CoverURL:   result.Image.URL,
-		Company:    company,
-		Summary:    result.Description,
-		SourceType: enums.VNDB,
-		SourceID:   result.ID,
-		CachedAt:   time.Now(),
+		Name:        displayName,
+		CoverURL:    result.Image.URL,
+		Company:     company,
+		Summary:     result.Description,
+		Rating:      normalizeTenPointRating(result.Rating),
+		ReleaseDate: strings.TrimSpace(result.Released),
+		SourceType:  enums.VNDB,
+		SourceID:    result.ID,
+		CachedAt:    time.Now(),
 	}
 
 	return MetadataResult{Game: game, Tags: extractVNDBTags(result.Tags)}, nil

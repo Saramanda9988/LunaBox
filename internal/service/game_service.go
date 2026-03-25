@@ -149,10 +149,10 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 	}
 
 	query := `INSERT INTO games (
-		id, name, cover_url, company, summary, path, 
+		id, name, cover_url, company, summary, rating, release_date, path, 
 		source_type, cached_at, source_id, created_at,
 		use_locale_emulator, use_magpie
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := s.db.ExecContext(s.ctx, query,
 		game.ID,
@@ -160,6 +160,8 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 		game.CoverURL,
 		game.Company,
 		game.Summary,
+		game.Rating,
+		game.ReleaseDate,
 		game.Path,
 		string(game.SourceType),
 		game.CachedAt,
@@ -346,6 +348,8 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 		COALESCE(cover_url, '') as cover_url, 
 		COALESCE(company, '') as company, 
 		COALESCE(summary, '') as summary, 
+		COALESCE(rating, 0) as rating,
+		COALESCE(release_date, '') as release_date,
 		COALESCE(path, '') as path, 
 		COALESCE(save_path, '') as save_path,
 		COALESCE(status, 'not_started') as status,
@@ -377,6 +381,8 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 			&game.CoverURL,
 			&game.Company,
 			&game.Summary,
+			&game.Rating,
+			&game.ReleaseDate,
 			&game.Path,
 			&game.SavePath,
 			&status,
@@ -411,6 +417,8 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		COALESCE(cover_url, '') as cover_url, 
 		COALESCE(company, '') as company, 
 		COALESCE(summary, '') as summary, 
+		COALESCE(rating, 0) as rating,
+		COALESCE(release_date, '') as release_date,
 		COALESCE(path, '') as path, 
 		COALESCE(save_path, '') as save_path,
 		COALESCE(process_name, '') as process_name,
@@ -434,6 +442,8 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		&game.CoverURL,
 		&game.Company,
 		&game.Summary,
+		&game.Rating,
+		&game.ReleaseDate,
 		&game.Path,
 		&game.SavePath,
 		&game.ProcessName,
@@ -466,6 +476,8 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		cover_url = ?,
 		company = ?,
 		summary = ?,
+		rating = ?,
+		release_date = ?,
 		path = ?,
 		save_path = ?,
 		process_name = ?,
@@ -482,6 +494,8 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		game.CoverURL,
 		game.Company,
 		game.Summary,
+		game.Rating,
+		game.ReleaseDate,
 		game.Path,
 		game.SavePath,
 		game.ProcessName,
@@ -747,6 +761,8 @@ func (s *GameService) UpdateGameFromRemote(gameID string) error {
 	existingGame.Name = remoteGame.Name
 	existingGame.Company = remoteGame.Company
 	existingGame.Summary = remoteGame.Summary
+	existingGame.Rating = remoteGame.Rating
+	existingGame.ReleaseDate = remoteGame.ReleaseDate
 	existingGame.CachedAt = time.Now()
 
 	existingGame.CoverURL = remoteGame.CoverURL

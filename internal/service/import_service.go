@@ -583,15 +583,17 @@ func (s *ImportService) ImportFromPlaynite(jsonPath string, skipNoPath bool) (Im
 // convertPlayniteToGame 将 Playnite 的游戏数据转换为本地的 Game 模型
 func (s *ImportService) convertPlayniteToGame(pg playnite.PlayniteGame) models.Game {
 	game := models.Game{
-		ID:         pg.ID,
-		Name:       pg.Name,
-		Company:    pg.Company,
-		Summary:    pg.Summary,
-		Path:       pg.Path,
-		SourceType: s.stringToSourceType(pg.SourceType),
-		SourceID:   pg.SourceID,
-		CreatedAt:  pg.CreatedAt,
-		CachedAt:   time.Now(),
+		ID:          pg.ID,
+		Name:        pg.Name,
+		Company:     pg.Company,
+		Summary:     pg.Summary,
+		Rating:      pg.Rating,
+		ReleaseDate: pg.ReleaseDate,
+		Path:        pg.Path,
+		SourceType:  s.stringToSourceType(pg.SourceType),
+		SourceID:    pg.SourceID,
+		CreatedAt:   pg.CreatedAt,
+		CachedAt:    time.Now(),
 	}
 
 	// 处理 SavePath

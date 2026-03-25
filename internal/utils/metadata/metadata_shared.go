@@ -3,6 +3,7 @@ package metadata
 import (
 	"io"
 	"lunabox/internal/models"
+	"math"
 	"net/http"
 	"time"
 
@@ -39,4 +40,26 @@ func closeResponseBody(body io.ReadCloser) {
 	if err := body.Close(); err != nil {
 		log.Warnf("Error closing response body: %v", err)
 	}
+}
+
+func normalizeTenPointRating(raw float64) float64 {
+	if raw <= 0 || math.IsNaN(raw) || math.IsInf(raw, 0) {
+		return 0
+	}
+
+	score := raw
+	// 某些来源可能返回 100 分制
+	if score > 10 && score <= 100 {
+		score = score / 10
+	}
+
+	if score < 0 {
+		score = 0
+	}
+	if score > 10 {
+		score = 10
+	}
+
+	// 保留 2 位小数
+	return math.Round(score*100) / 100
 }

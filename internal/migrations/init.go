@@ -23,6 +23,8 @@ func InitSchema(db *sql.DB) error {
 			cover_url TEXT,
 			company TEXT,
 			summary TEXT,
+			rating DOUBLE DEFAULT 0,
+			release_date TEXT DEFAULT '',
 			path TEXT,
 			save_path TEXT,
 			status TEXT DEFAULT 'not_started',

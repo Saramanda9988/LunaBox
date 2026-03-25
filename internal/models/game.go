@@ -11,6 +11,8 @@ type Game struct {
 	CoverURL          string           `json:"cover_url"`
 	Company           string           `json:"company"`
 	Summary           string           `json:"summary"`
+	Rating            float64          `json:"rating"`       // 游戏评分（统一按 10 分制存储）
+	ReleaseDate       string           `json:"release_date"` // 发售日期（源站原始日期字符串）
 	Path              string           `json:"path"`         // 启动路径
 	SavePath          string           `json:"save_path"`    // 存档目录路径
 	ProcessName       string           `json:"process_name"` // 实际监控的进程名（当启动器和游戏进程不同时使用）

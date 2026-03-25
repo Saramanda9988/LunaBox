@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -45,13 +46,14 @@ type ymgalTokenResponse struct {
 }
 
 type ymgalGame struct {
-	Gid          int64  `json:"gid"`
-	Name         string `json:"name"`
-	ChineseName  string `json:"chineseName"`
-	Introduction string `json:"introduction"`
-	MainImg      string `json:"mainImg"`
-	ReleaseDate  string `json:"releaseDate"`
-	DeveloperID  int64  `json:"developerId"`
+	Gid          int64       `json:"gid"`
+	Name         string      `json:"name"`
+	ChineseName  string      `json:"chineseName"`
+	Introduction string      `json:"introduction"`
+	MainImg      string      `json:"mainImg"`
+	ReleaseDate  string      `json:"releaseDate"`
+	Score        interface{} `json:"score"`
+	DeveloperID  int64       `json:"developerId"`
 }
 
 type ymgalResponse struct {
@@ -238,12 +240,36 @@ func (y YmgalInfoGetter) convertToModel(g *ymgalGame) (models.Game, error) {
 	}
 
 	return models.Game{
-		Name:       name,
-		CoverURL:   g.MainImg,
-		Company:    "",
-		Summary:    g.Introduction,
-		SourceType: enums.Ymgal,
-		SourceID:   strconv.FormatInt(g.Gid, 10),
-		CachedAt:   time.Now(),
+		Name:        name,
+		CoverURL:    g.MainImg,
+		Company:     "",
+		Summary:     g.Introduction,
+		Rating:      normalizeTenPointRating(parseYmgalScore(g.Score)),
+		ReleaseDate: strings.TrimSpace(g.ReleaseDate),
+		SourceType:  enums.Ymgal,
+		SourceID:    strconv.FormatInt(g.Gid, 10),
+		CachedAt:    time.Now(),
 	}, nil
+}
+
+func parseYmgalScore(raw interface{}) float64 {
+	switch v := raw.(type) {
+	case float64:
+		return v
+	case float32:
+		return float64(v)
+	case int:
+		return float64(v)
+	case int64:
+		return float64(v)
+	case json.Number:
+		if score, err := v.Float64(); err == nil {
+			return score
+		}
+	case string:
+		if score, err := strconv.ParseFloat(strings.TrimSpace(v), 64); err == nil {
+			return score
+		}
+	}
+	return 0
 }

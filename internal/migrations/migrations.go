@@ -230,6 +230,45 @@ func migration154(tx *sql.Tx) error {
 	return nil
 }
 
+// migration155 添加 games.rating 和 games.release_date 列，用于存储刮削得到的评分与发售日期
+func migration155(tx *sql.Tx) error {
+	_, err := tx.Exec(`
+		ALTER TABLE games
+		ADD COLUMN IF NOT EXISTS rating DOUBLE DEFAULT 0
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to add rating column to games: %w", err)
+	}
+
+	_, err = tx.Exec(`
+		ALTER TABLE games
+		ADD COLUMN IF NOT EXISTS release_date TEXT DEFAULT ''
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to add release_date column to games: %w", err)
+	}
+
+	_, err = tx.Exec(`
+		UPDATE games
+		SET rating = 0
+		WHERE rating IS NULL
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to normalize games rating values: %w", err)
+	}
+
+	_, err = tx.Exec(`
+		UPDATE games
+		SET release_date = ''
+		WHERE release_date IS NULL
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to normalize games release_date values: %w", err)
+	}
+
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
@@ -261,6 +300,11 @@ var migrations = []Migration{
 		Version:     154,
 		Description: "Add game_tags table for Bangumi/VNDB/user tag metadata",
 		Up:          migration154,
+	},
+	{
+		Version:     155,
+		Description: "Add rating and release_date columns to games table for scraped metadata",
+		Up:          migration155,
 	},
 	// {
 	// 	Version:     114,

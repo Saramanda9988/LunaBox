@@ -51,14 +51,26 @@ type steamCategory struct {
 	Description string `json:"description"`
 }
 
+type steamReleaseDate struct {
+	ComingSoon bool   `json:"coming_soon"`
+	Date       string `json:"date"`
+}
+
+type steamMetacritic struct {
+	Score int    `json:"score"`
+	URL   string `json:"url"`
+}
+
 type steamAppData struct {
-	SteamAppID       int             `json:"steam_appid"`
-	Name             string          `json:"name"`
-	HeaderImage      string          `json:"header_image"`
-	ShortDescription string          `json:"short_description"`
-	Developers       []string        `json:"developers"`
-	Genres           []steamGenre    `json:"genres"`
-	Categories       []steamCategory `json:"categories"`
+	SteamAppID       int              `json:"steam_appid"`
+	Name             string           `json:"name"`
+	HeaderImage      string           `json:"header_image"`
+	ShortDescription string           `json:"short_description"`
+	ReleaseDate      steamReleaseDate `json:"release_date"`
+	Metacritic       steamMetacritic  `json:"metacritic"`
+	Developers       []string         `json:"developers"`
+	Genres           []steamGenre     `json:"genres"`
+	Categories       []steamCategory  `json:"categories"`
 }
 
 type steamAppDetailResult struct {
@@ -178,14 +190,22 @@ func (s SteamInfoGetter) fetchByAppIDAndLang(appID int, lang string) (MetadataRe
 		return MetadataResult{}, fmt.Errorf("steam appdetails API returned empty game name for app id: %d", appID)
 	}
 
+	rating := 0.0
+	if data.Data.Metacritic.Score > 0 {
+		rating = float64(data.Data.Metacritic.Score) / 10.0
+	}
+	rating = normalizeTenPointRating(rating)
+
 	game := models.Game{
-		Name:       strings.TrimSpace(data.Data.Name),
-		CoverURL:   strings.TrimSpace(data.Data.HeaderImage),
-		Company:    strings.Join(data.Data.Developers, ", "),
-		Summary:    strings.TrimSpace(data.Data.ShortDescription),
-		SourceType: enums.Steam,
-		SourceID:   key,
-		CachedAt:   time.Now(),
+		Name:        strings.TrimSpace(data.Data.Name),
+		CoverURL:    strings.TrimSpace(data.Data.HeaderImage),
+		Company:     strings.Join(data.Data.Developers, ", "),
+		Summary:     strings.TrimSpace(data.Data.ShortDescription),
+		Rating:      rating,
+		ReleaseDate: strings.TrimSpace(data.Data.ReleaseDate.Date),
+		SourceType:  enums.Steam,
+		SourceID:    key,
+		CachedAt:    time.Now(),
 	}
 
 	return MetadataResult{
