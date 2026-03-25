@@ -122,27 +122,21 @@ wails build
 
 ## 🗺️ RoadMap
 
-- [x] 自动更新检查与提示
-
-- [x] 完善日志系统
+- [ ] 完善日志系统
 
 - [ ] 支持从ReinaManager中导入数据
-
-- [x] 支持自定义背景图片
-
-- [x] 更漂亮的默认首页，首页自定义
-
-- [x] 支持 i18n
 
 - [ ] 自部署 docker 服务端
 
 - [ ] im 平台机器人插件
 
-- [x] 更好的ai系统，长期记忆 + 人格面具 + 外部搜素
+- [ ] 实现多端同步功能
 
-- [x] 更多的统计导出模板
+- [ ] 画廊功能
 
-- [x] 支持locale emulator等启动参数的游戏启动
+- [ ] mcp暴露，提供link启动游戏功能，为ai提供能力
+
+- [ ] “下一部玩什么” 推荐功能
 
 ## 😀 从开源到开源
 
@@ -161,6 +155,7 @@ wails build
 - [VNDB](https://vndb.org/) - The Visual Novel Database
 - [月幕gal](https://www.ymgal.games/) - 请感受这绝妙的文艺体裁
 - [萌娘百科](https://zh.moegirl.org.cn/) - 万物皆可萌的百科全书
+- [Steam](https://store.steampowered.com/) - 全球最大的数字游戏发行平台
 
 解压功能提供:
 

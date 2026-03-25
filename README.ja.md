@@ -120,17 +120,14 @@ Issue と Pull Request を歓迎します。
 
 ## 🗺️ Roadmap
 
-- [x] 自動更新チェックと通知
-- [x] ログシステムの改善
+- [ ] ログシステムの改善
 - [ ] ReinaManager からのデータ取り込み対応
-- [x] カスタム背景画像対応
-- [x] より美しいデフォルトホームとホーム画面カスタマイズ
-- [x] i18n 対応
 - [ ] セルフホスト Docker サーバー
 - [ ] IM プラットフォーム向け Bot プラグイン
-- [x] より良い AI システム：長期記憶 + ペルソナ + 外部検索
-- [x] 統計エクスポートテンプレートの追加
-- [x] Locale Emulator など起動オプション対応のゲーム起動
+- [ ] マルチデバイス同期機能
+- [ ] ギャラリー機能
+- [ ] MCP を公開し、AI 向けにリンク起動機能を提供
+- [ ] 「次に何を遊ぶか」レコメンド機能
 
 ## 😀 オープンソースから、オープンソースへ
 
@@ -148,6 +145,8 @@ Issue と Pull Request を歓迎します。
 - [Bangumi](https://github.com/bangumi) - Bangumi番组计划
 - [VNDB](https://vndb.org/) - The Visual Novel Database
 - [月幕gal](https://www.ymgal.games/) - 请感受这绝妙的文艺体裁
+- [萌娘百科](https://zh.moegirl.org.cn/) - 万物皆可萌的百科全书
+- [Steam](https://store.steampowered.com/) - 世界最大のデジタルゲーム配信プラットフォーム
 
 解凍機能提供：
 

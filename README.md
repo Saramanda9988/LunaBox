@@ -120,17 +120,14 @@ Issues and Pull Requests are welcome.
 
 ## 🗺️ Roadmap
 
-- [x] Auto update check and notifications
-- [x] Improved logging system
-- [ ] Import data from ReinaManager
-- [x] Custom background images
-- [x] Better default home and homepage customization
-- [x] i18n support
+- [ ] Improve logging system
+- [ ] Support importing data from ReinaManager
 - [ ] Self-hosted Docker server
 - [ ] IM platform bot plugin
-- [x] Better AI system: long-term memory + persona + external search
-- [x] More stat export templates
-- [x] Game launch support with Locale Emulator and other launch options
+- [ ] Multi-device synchronization
+- [ ] Gallery feature
+- [ ] Expose MCP and provide link-based game launch capability for AI
+- [ ] "What to play next" recommendation feature
 
 ## 😀 Open Source Inspired by Open Source
 
@@ -149,6 +146,7 @@ Game metadata APIs:
 - [VNDB](https://vndb.org/) - The Visual Novel Database
 - [月幕gal](https://www.ymgal.games/) - 请感受这绝妙的文艺体裁
 - [萌娘百科](https://zh.moegirl.org.cn/) - 万物皆可萌的百科全书
+- [Steam](https://store.steampowered.com/) - The world's largest digital game distribution platform
 
 Archive extraction support:
 
