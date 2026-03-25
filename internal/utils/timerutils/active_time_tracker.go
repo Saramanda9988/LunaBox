@@ -1,11 +1,11 @@
-package timer
+package timerutils
 
 import (
 	"context"
 	"database/sql"
 	"log"
 	"lunabox/internal/applog"
-	"lunabox/internal/service/timer/focusing"
+	"lunabox/internal/utils/timerutils/focusing"
 	"sync"
 	"time"
 )

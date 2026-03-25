@@ -7,8 +7,8 @@ import (
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
 	"lunabox/internal/models"
-	"lunabox/internal/service/timer"
 	"lunabox/internal/utils/processutils"
+	"lunabox/internal/utils/timerutils"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -31,7 +31,7 @@ type StartService struct {
 	backupService     *BackupService
 	gameService       *GameService
 	sessionService    *SessionService
-	activeTimeTracker *timer.ActiveTimeTracker
+	activeTimeTracker *timerutils.ActiveTimeTracker
 
 	// 进程选择相关
 	pendingProcessSelect   map[string]chan string // gameID -> channel，用于接收用户选择的进程名
@@ -50,7 +50,7 @@ func (s *StartService) Init(ctx context.Context, db *sql.DB, config *appconf.App
 	// db 不再使用，但保留参数以保持与其他服务的接口一致性
 	s.config = config
 	// 初始化内部服务
-	s.activeTimeTracker = timer.NewActiveTimeTracker(ctx, db)
+	s.activeTimeTracker = timerutils.NewActiveTimeTracker(ctx, db)
 	// 确保 map 已初始化
 	if s.pendingProcessSelect == nil {
 		s.pendingProcessSelect = make(map[string]chan string)
