@@ -275,6 +275,8 @@
     "backToLibrary": "ライブラリに戻る",
     "dataSource": "データソース",
     "developer": "開発",
+    "rating": "評価",
+    "releaseDate": "発売日",
     "summary": "概要",
     "noSummary": "概要はありません",
     "noCover": "カバーなし",

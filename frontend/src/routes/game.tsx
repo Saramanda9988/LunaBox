@@ -4,8 +4,22 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { enums } from "../../wailsjs/go/models";
-import { AddGameToCategory, GetCategories, GetCategoriesByGame, RemoveGameFromCategory } from "../../wailsjs/go/service/CategoryService";
-import { DeleteGame, GetGameByID, SelectCoverImage, SelectGameExecutable, SelectSaveDirectory, SelectSaveFile, UpdateGame, UpdateGameFromRemote } from "../../wailsjs/go/service/GameService";
+import {
+  AddGameToCategory,
+  GetCategories,
+  GetCategoriesByGame,
+  RemoveGameFromCategory,
+} from "../../wailsjs/go/service/CategoryService";
+import {
+  DeleteGame,
+  GetGameByID,
+  SelectCoverImage,
+  SelectGameExecutable,
+  SelectSaveDirectory,
+  SelectSaveFile,
+  UpdateGame,
+  UpdateGameFromRemote,
+} from "../../wailsjs/go/service/GameService";
 import { StartGameWithTracking } from "../../wailsjs/go/service/StartService";
 import { AddToCategoryModal } from "../components/modal/AddToCategoryModal";
 import { ConfirmModal } from "../components/modal/ConfirmModal";
@@ -81,7 +95,8 @@ function GameDetailPage() {
     if (!game || isInitialMount.current)
       return;
 
-    const hasChanges = JSON.stringify(game) !== JSON.stringify(originalGameData.current);
+    const hasChanges
+      = JSON.stringify(game) !== JSON.stringify(originalGameData.current);
     if (!hasChanges)
       return;
 
@@ -92,7 +107,9 @@ function GameDetailPage() {
       }
       catch (error) {
         console.error("Failed to auto-save game:", error);
-        toast.error(t("game.toast.saveFailed", { error: (error as Error).message }));
+        toast.error(
+          t("game.toast.saveFailed", { error: (error as Error).message }),
+        );
       }
     }, 500);
 
@@ -111,7 +128,13 @@ function GameDetailPage() {
       <div className="flex flex-col items-center justify-center h-full space-y-4 text-brand-500">
         <div className="i-mdi-gamepad-variant-outline text-6xl" />
         <p className="text-xl">{t("game.notFound")}</p>
-        <button type="button" onClick={() => navigate({ to: "/library" })} className="text-neutral-600 hover:underline">{t("game.backToLibrary")}</button>
+        <button
+          type="button"
+          onClick={() => navigate({ to: "/library" })}
+          className="text-neutral-600 hover:underline"
+        >
+          {t("game.backToLibrary")}
+        </button>
       </div>
     );
   }
@@ -208,10 +231,29 @@ function GameDetailPage() {
   };
 
   const statusConfig = {
-    [enums.GameStatus.NOT_STARTED]: { label: t("common.notStarted"), icon: "i-mdi-clock-outline", color: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300" },
-    [enums.GameStatus.PLAYING]: { label: t("common.playing"), icon: "i-mdi-gamepad-variant", color: "bg-neutral-100 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300" },
-    [enums.GameStatus.COMPLETED]: { label: t("common.completed"), icon: "i-mdi-trophy", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300" },
-    [enums.GameStatus.ON_HOLD]: { label: t("common.onHold"), icon: "i-mdi-pause-circle-outline", color: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" },
+    [enums.GameStatus.NOT_STARTED]: {
+      label: t("common.notStarted"),
+      icon: "i-mdi-clock-outline",
+      color: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
+    },
+    [enums.GameStatus.PLAYING]: {
+      label: t("common.playing"),
+      icon: "i-mdi-gamepad-variant",
+      color:
+        "bg-neutral-100 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300",
+    },
+    [enums.GameStatus.COMPLETED]: {
+      label: t("common.completed"),
+      icon: "i-mdi-trophy",
+      color:
+        "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
+    },
+    [enums.GameStatus.ON_HOLD]: {
+      label: t("common.onHold"),
+      icon: "i-mdi-pause-circle-outline",
+      color:
+        "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
+    },
   };
 
   const handleStartGame = async () => {
@@ -313,8 +355,13 @@ function GameDetailPage() {
     }
   };
 
+  const ratingText = game.rating > 0 ? `${game.rating.toFixed(1)} / 10` : "-";
+  const releaseDateText = game.release_date?.trim() || "-";
+
   return (
-    <div className={`space-y-8 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${isLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
+    <div
+      className={`space-y-8 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${isLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}
+    >
       {/* Back Button */}
       <button
         type="button"
@@ -328,27 +375,27 @@ function GameDetailPage() {
       {/* Header Section */}
       <div className="flex gap-6 items-center">
         <div className="relative w-60 flex-shrink-0 rounded-lg overflow-hidden shadow-lg bg-brand-200 dark:bg-brand-800">
-          {game.cover_url
-            ? (
-                <img
-                  src={game.cover_url}
-                  alt={game.name}
-                  className="w-full h-auto block"
-                  referrerPolicy="no-referrer"
-                  draggable="false"
-                  onDragStart={e => e.preventDefault()}
-                />
-              )
-            : (
-                <div className="w-full h-64 flex items-center justify-center text-brand-400">
-                  {t("game.noCover")}
-                </div>
-              )}
+          {game.cover_url ? (
+            <img
+              src={game.cover_url}
+              alt={game.name}
+              className="w-full h-auto block"
+              referrerPolicy="no-referrer"
+              draggable="false"
+              onDragStart={e => e.preventDefault()}
+            />
+          ) : (
+            <div className="w-full h-64 flex items-center justify-center text-brand-400">
+              {t("game.noCover")}
+            </div>
+          )}
         </div>
 
         <div className="flex-1 space-y-4">
           <div className="flex flex-col gap-3">
-            <h1 className="text-4xl font-bold text-brand-900 dark:text-white">{game.name}</h1>
+            <h1 className="text-4xl font-bold text-brand-900 dark:text-white">
+              {game.name}
+            </h1>
             {/* 操作和状态标签组 */}
             <div className="flex items-center gap-4">
               <button
@@ -359,22 +406,22 @@ function GameDetailPage() {
                 <div className="i-mdi-play text-lg" />
                 {t("gameCard.startGame")}
               </button>
-
               <div className="h-6 w-px bg-brand-200 dark:bg-brand-700" />
               {" "}
               {/* 分隔线 */}
-
               <div className="flex gap-1.5">
                 {Object.entries(statusConfig).map(([key, config]) => {
-                  const isActive = (game.status || enums.GameStatus.NOT_STARTED) === key;
+                  const isActive
+                    = (game.status || enums.GameStatus.NOT_STARTED) === key;
                   return (
                     <button
                       type="button"
                       key={key}
                       onClick={() => handleStatusChange(key)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${isActive
-                        ? `${config.color} ring-2 ring-offset-1 ring-brand-400 dark:ring-offset-brand-900`
-                        : "bg-brand-100 text-brand-500 dark:bg-brand-700 dark:text-brand-400 hover:bg-brand-200 dark:hover:bg-brand-600"
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                        isActive
+                          ? `${config.color} ring-2 ring-offset-1 ring-brand-400 dark:ring-offset-brand-900`
+                          : "bg-brand-100 text-brand-500 dark:bg-brand-700 dark:text-brand-400 hover:bg-brand-200 dark:hover:bg-brand-600"
                       }`}
                       title={config.label}
                     >
@@ -387,7 +434,7 @@ function GameDetailPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-4 text-sm text-brand-750 dark:text-brand-400">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-sm text-brand-750 dark:text-brand-400">
             <div>
               <div className="font-semibold mb-1">{t("game.dataSource")}</div>
               <div>{game.source_type}</div>
@@ -400,18 +447,31 @@ function GameDetailPage() {
               <div className="font-semibold mb-1">{t("common.createdAt")}</div>
               <div>{formatLocalDate(game.created_at, config?.time_zone)}</div>
             </div>
-            {/* Placeholders for missing data */}
+            <div>
+              <div className="font-semibold mb-1">{t("game.rating")}</div>
+              <div>{ratingText}</div>
+            </div>
+            <div>
+              <div className="font-semibold mb-1">{t("game.releaseDate")}</div>
+              <div>{releaseDateText}</div>
+            </div>
           </div>
 
           <div className="mt-4">
-            <div className="font-semibold mb-2 text-brand-900 dark:text-white">{t("game.summary")}</div>
+            <div className="font-semibold mb-2 text-brand-900 dark:text-white">
+              {t("game.summary")}
+            </div>
             <p className="text-brand-750 dark:text-brand-400 text-sm leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto scrollbar-hide pr-2">
               {game.summary || t("game.noSummary")}
             </p>
           </div>
 
           <div className="mt-3">
-            <GameTags gameId={gameId} showNSFW={config?.show_nsfw_tags} refreshToken={tagRefreshToken} />
+            <GameTags
+              gameId={gameId}
+              showNSFW={config?.show_nsfw_tags}
+              refreshToken={tagRefreshToken}
+            />
           </div>
         </div>
       </div>
@@ -427,9 +487,11 @@ function GameDetailPage() {
                 onClick={() => setActiveTab(tab)}
                 className={`
                   whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-                  ${activeTab === tab
+                  ${
+              activeTab === tab
                 ? "border-neutral-500 text-brand-700 dark:text-neutral-400"
-                : "border-transparent text-brand-700 hover:text-brand-750 hover:border-brand-300 dark:text-brand-400 dark:hover:text-brand-300"}
+                : "border-transparent text-brand-700 hover:text-brand-750 hover:border-brand-300 dark:text-brand-400 dark:hover:text-brand-300"
+              }
                 `}
               >
                 {tab === "stats" && t("game.tabs.stats")}
@@ -452,9 +514,7 @@ function GameDetailPage() {
       </div>
 
       {/* Content */}
-      {activeTab === "stats" && (
-        <GameStatsPanel gameId={gameId} />
-      )}
+      {activeTab === "stats" && <GameStatsPanel gameId={gameId} />}
 
       {activeTab === "edit" && game && (
         <GameEditPanel
@@ -482,9 +542,7 @@ function GameDetailPage() {
         <GameBackupPanel gameId={gameId} savePath={game?.save_path} />
       )}
 
-      {activeTab === "progress" && (
-        <GameProgressPanel gameId={gameId} />
-      )}
+      {activeTab === "progress" && <GameProgressPanel gameId={gameId} />}
 
       <ConfirmModal
         isOpen={isDeleteModalOpen}

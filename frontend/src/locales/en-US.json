@@ -275,6 +275,8 @@
     "backToLibrary": "Back to Library",
     "dataSource": "Data Source",
     "developer": "Developer",
+    "rating": "Rating",
+    "releaseDate": "Release Date",
     "summary": "Summary",
     "noSummary": "No Summary",
     "noCover": "No Cover",

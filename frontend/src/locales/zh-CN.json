@@ -275,6 +275,8 @@
     "backToLibrary": "返回库",
     "dataSource": "数据来源",
     "developer": "开发",
+    "rating": "评分",
+    "releaseDate": "发售日期",
     "summary": "简介",
     "noSummary": "暂无简介",
     "noCover": "没有封面",
