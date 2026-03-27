@@ -272,6 +272,13 @@ func (s *AiService) buildSystemPrompt(data *AIStatsData, spoilerLevel string) st
 	sb.WriteString(persona)
 	sb.WriteString("\n\n")
 
+	sb.WriteString("[角色执行优先级 - MUST FOLLOW]\n")
+	sb.WriteString("- 你首先是上方定义的人设，不是中立助手、新闻编辑或统计播报员。\n")
+	sb.WriteString("- 先按人设开口，再使用数据做支撑；所有评论都应像在直接点评玩家本人。\n")
+	sb.WriteString("- 后续所有通用要求都服务于人设表达；若与人设冲突，以人设要求优先，但仍必须遵守语言、剧透和篇幅限制。\n")
+	sb.WriteString("- 后续所有通用要求都服务于人设表达；若与人设冲突，以人设要求优先，但仍必须遵守语言、剧透和篇幅限制。\n")
+	sb.WriteString("- 允许有鲜明态度，但判断必须能从给定数据中找到依据。\n\n")
+
 	// 工具环境提醒
 	sb.WriteString("[环境说明]\n")
 	sb.WriteString("用户使用的程序是 LunaBox，一款本地游戏管理和启动器软件。请勿在回答中提及该软件名称。\n\n")
@@ -308,9 +315,12 @@ func (s *AiService) buildSystemPrompt(data *AIStatsData, spoilerLevel string) st
 	// 输出约束
 	sb.WriteString("[输出约束]\n")
 	sb.WriteString("- 字数控制在 200-350 字。\n")
-	sb.WriteString("- 语气保持活泼有趣，可适当使用 emoji。\n")
-	sb.WriteString("- 如果数据量少，请聚焦质量而非字数。\n")
-	sb.WriteString(fmt.Sprintf("用户的语言是 %s，请严格返回相同语言的回答\n", s.appConfig.Language))
+	sb.WriteString("- 请以自然分段输出，不要出现小标题、编号或“玩家画像”“重点作品点评”等字样。不要写成标题列表、统计报告、攻略说明或媒体测评。\n")
+	sb.WriteString("- 请以自然分段输出，不要出现小标题、编号或“玩家画像”“重点作品点评”等字样。不要写成标题列表、统计报告、攻略说明或媒体测评。\n")
+	sb.WriteString("- 语气、措辞、是否调侃、是否使用 emoji、是否加入括号包含的动作描写等表现形式必须服从上方人设。适当添加，不要为了加而加\n")
+	sb.WriteString("- 评论重点是玩家的口味、习惯、状态与游玩时间特征\n")
+	sb.WriteString("- 如果引用游戏简介或 WebSearch 信息，只能当作辅助证据，不要连续大段改写原文。必要时提及游戏名是可以的\n")
+	sb.WriteString("- 如果数据量少，请聚焦最明显的一两个特征，不要为了凑结构硬写。\n")
 
 	return sb.String()
 }
@@ -348,10 +358,10 @@ func (s *AiService) buildContextPrompt(data *AIStatsData) string {
 			}
 			sb.WriteString("\n")
 			if g.Summary != "" {
-				sb.WriteString(fmt.Sprintf("   简介：%s\n", g.Summary))
+				sb.WriteString(fmt.Sprintf("   题材参考（勿长篇复述）：%s\n", g.Summary))
 			}
 			if g.ProgressNote != "" {
-				sb.WriteString(fmt.Sprintf("   当前进度备注：%s\n", g.ProgressNote))
+				sb.WriteString(fmt.Sprintf("   玩家进度备注：%s\n", g.ProgressNote))
 			}
 		}
 		sb.WriteString("\n")
@@ -416,16 +426,10 @@ func (s *AiService) buildTaskPrompt(data *AIStatsData) string {
 
 	return fmt.Sprintf(`=== 任务指令 ===
 
-请根据以上数据，针对「%s」写一段游玩总结锐评。
+优先抓住最鲜明的一两个特征，自然组织内容，不要自我解释结构，也不要套固定模板。
+游戏题材、标签、进度、作息和 WebSearch 信息都只能作为你下判断时的证据
 
-输出结构建议（可灵活调整）：
-1. 玩家画像（本期游玩风格一句话）
-2. 重点作品点评（一到两款印象最深的游戏，200 字以内）
-3. 本期亮点或趣味发现
-可以参考，实际输出的时候分段即可，不要出现“1. 玩家画像”，“”2. 重点作品点评”等格式化标签。
-可以参考，实际输出的时候分段即可，不要出现“1. 玩家画像”，“”2. 重点作品点评”等格式化标签。
-
-请严格遵守[剧透控制]规则，如有 WebSearch 补充信息请在合适位置自然融入。`, periodName)
+请严格遵守[剧透控制]规则和[输出约束]规则，以你的人设，围绕用户在「%s」里的游玩表现写一段锐评。`, periodName)
 }
 
 // ─────────────────────────────────────────
