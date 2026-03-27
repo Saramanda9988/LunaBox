@@ -14,6 +14,18 @@
 
 </div>
 
+<p align="center">
+  <a href="https://github.com/Saramanda9988/LunaBox/releases">
+    <img src="https://img.shields.io/github/downloads/Saramanda9988/LunaBox/total?color=369eff&labelColor=black&logo=github&style=flat-square&label=Downloads" />
+  </a>
+  <a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=Eq5DkGu1gs6tL9bUEJFiq46r6czdpQaR&authKey=w1NRtvE8fYAgShdzGFGx4QDaKQyJRypgHOrVMOhxK5cjUbGt4TXu4px2L%2FJem2WN&noverify=0&group_code=1094948837" target="_blank">
+    <img src="https://img.shields.io/badge/QQ-Group-12B7F5?style=flat-square&logo=tencent-qq&logoColor=white&labelColor=black" />
+  </a>
+  <a href="https://t.me/+6YTPdl-6YeM1OGNl" target="_blank">
+    <img src="https://img.shields.io/badge/Telegram-2CA5E0?style=flat-square&logo=telegram&logoColor=white&labelColor=black" />
+  </a>
+</p>
+
 
 ## ✨ 特性
 
