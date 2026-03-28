@@ -1,5 +1,15 @@
 # 后端规范
 
+## 建议阅读顺序
+
+按需展开，不要把本页当成必须逐字读完的手册：
+
+1. 只改 service / SQL / migration：先读 `平台约束`、`Schema 与 Migration`、`Service 设计与依赖注入`
+2. 需要文件、压缩包、下载参数校验、图片、进程、代理、元数据抓取等辅助能力：再看本页的 `internal/utils 速查`
+3. 确认要复用某个工具包后，再打开 [backend-utils.md](backend-utils.md) 或对应源码目录
+
+---
+
 ## 平台约束
 
 - MUST：当前软件**仅支持 Windows**。
@@ -48,9 +58,32 @@
 
 ---
 
-## 工具函数（internal/utils）
+## internal/utils 速查
 
 - MUST 新增工具函数前先检查 `internal/utils/` 是否已有实现；优先复用/扩展。
+- SHOULD 先按“场景”找 package，不要直接在 service 里重复封装文件/压缩/图片/进程/代理逻辑。
+- SHOULD 把“下载协议/文件辅助”和“下载任务状态机”分开：
+  通用的 URL、checksum、文件名、archive format 处理优先放 `internal/utils/downloadutils`，
+  任务状态、暂停恢复、解压后导入继续留在 service。
+
+常见场景与优先入口：
+
+| 场景 | 优先 package | 常用入口 |
+|------|--------------|----------|
+| 应用数据目录、缓存目录、模板目录 | `internal/utils/apputils` | `GetDataDir`、`GetCacheDir`、`GetConfigDir`、`GetTemplatesDir` |
+| 文件复制、打开目录、查找可执行文件 | `internal/utils/apputils` | `CopyFile`、`CopyDir`、`OpenDirectory`、`OpenFileOrFolder`、`FindExecutables` |
+| ZIP / 7z / RAR 等归档处理 | `internal/utils/archiveutils` | `ExtractArchive`、`ZipDirectory`、`ZipFileOrDirectory`、`UnzipFile` |
+| 下载 URL / checksum / 文件名 / archive format 辅助 | `internal/utils/downloadutils` | `ValidateDownloadURL`、`ValidateChecksumFields`、`SanitizeDownloadedFileName`、`BuildExpectedExtractDir` |
+| 封面/背景图落盘与本地路径管理 | `internal/utils/imageutils` | `SaveCoverImage`、`DownloadAndSaveCoverImage`、`SaveBackgroundImage`、`CropAndSaveBackgroundImage` |
+| 元数据抓取（Bangumi/VNDB/Steam/Ymgal） | `internal/utils/metadata` | `NewBangumiInfoGetter`、`NewVNDBInfoGetterWithLanguage`、`NewSteamInfoGetterWithLanguage`、`NewYmgalInfoGetter` |
+| 进程枚举、PID 查询、退出监听 | `internal/utils/processutils` | `GetRunningProcesses`、`GetProcessPIDByName`、`WaitForProcessExitAsync` |
+| 活跃时长与焦点追踪 | `internal/utils/timerutils` | `NewActiveTimeTracker`、`focusing.NewFocusTracker` |
+| 下载代理解析 | `internal/utils/proxyutils` | `ResolveDownloadProxy` |
+| SQL 小工具 | `internal/utils` | `UniqueNonEmptyStrings`、`BuildPlaceholders` |
+| 备份口令派生用户 ID | `internal/utils` | `GenerateUserID` |
+| Web 搜索补充信息 | `internal/utils` | `SearchViaTavily`、`SearchViaDuckDuckGo`、`SearchViaMoeGirl` |
+
+细节说明与注意事项见 [backend-utils.md](backend-utils.md)。
 
 ---
 
@@ -59,7 +92,7 @@
 优先级：Wails runtime API > Go 标准库（`os`/`io`/`filepath`/`exec`）> Windows API
 
 - MUST 优先使用 Wails runtime API（文件选择对话框、窗口控制、事件等）。
-- MAY 确实需要时才使用 Windows API（参考 `internal/utils/process.go` 的风格与封装方式）。
+- MAY 确实需要时才使用 Windows API（参考 `internal/utils/processutils/process_windows.go` 与 `internal/utils/timerutils/focusing/windows_focus.go` 的封装方式）。
 - MUST NOT 用"命令输出文本/返回字符串内容"判断成功与否；以 Go 的 `error`、退出码、系统错误码为准，避免编码/语言环境导致的乱码与误判。
 
 ---

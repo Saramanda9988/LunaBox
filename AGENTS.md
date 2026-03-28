@@ -39,7 +39,7 @@ Wails v2 桌面应用（仅 Windows）。
 
 ## 关键文件落点（快速定位）
 
-详见 → [.github/spec/docs/anchors.md](.github/spec/docs/anchors.md)
+详见 → [docs/anchors.md](docs/anchors.md)
 
 | 类型 | 文件 |
 |------|------|
@@ -51,6 +51,18 @@ Wails v2 桌面应用（仅 Windows）。
 | 初始建表 | `internal/migrations/init.go` |
 | Migrations | `internal/migrations/migrations.go` |
 | Services | `internal/service/*_service.go` |
+| 后端工具函数 | `internal/utils/*`（按场景细分 package） |
+
+---
+
+## 渐进式披露阅读顺序
+
+按任务复杂度逐层展开，不要一上来通读全部文档：
+
+1. 先看本文件，只确定任务属于前端、后端还是流程问题
+2. 涉及后端 service / DB / migration：先读 [backend.md](docs/backend.md)
+3. 涉及文件、压缩包、图片、进程、代理、元数据抓取等辅助能力：再从 [backend-utils.md](docs/backend-utils.md) 进入对应 `internal/utils/*` 子包
+4. 仍不确定文件落点：回到 [anchors.md](docs/anchors.md)
 
 ---
 
@@ -62,6 +74,7 @@ Wails v2 桌面应用（仅 Windows）。
 |----------|----------|
 | 新增/修改前端页面、组件、样式 | [frontend.md](docs/frontend.md) |
 | 新增/修改后端 service、DB、migration | [backend.md](docs/backend.md) |
+| 需要复用后端工具函数（`internal/utils/*`） | [backend-utils.md](docs/backend-utils.md) |
 | 不确定文件落点 | [anchors.md](docs/anchors.md) |
 | 提交前自检、变更流程 | [workflow.md](docs/workflow.md) |
 

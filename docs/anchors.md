@@ -25,5 +25,6 @@
 | 初始建表（新安装时的完整 schema） | `internal/migrations/init.go` → `InitSchema(...)` |
 | Migration 列表 | `internal/migrations/migrations.go` |
 | Services | `internal/service/*_service.go` |
-| 工具函数 | `internal/utils/` |
-| Windows API 封装参考 | `internal/utils/process.go` |
+| 工具函数 | `internal/utils/`（分 `apputils` / `archiveutils` / `downloadutils` / `imageutils` / `metadata` / `processutils` / `proxyutils` / `timerutils` 等） |
+| 工具函数索引 | `docs/backend-utils.md` |
+| Windows API 封装参考 | `internal/utils/processutils/process_windows.go` |
