@@ -186,19 +186,39 @@ func main() {
 	}
 
 	// ================================================================
-	logDir, _ := apputils.GetSubDir("logs")
-	appLogger := applog.NewFileLogger(filepath.Join(logDir, "app.log"))
+	applog.SetMode(applog.ModeCLI)
 
 	var loadErr error
 	config, loadErr = appconf.LoadConfig()
 	if loadErr != nil {
-		appLogger.Fatal(loadErr.Error())
+		fmt.Fprintf(os.Stderr, "load config failed: %v\n", loadErr)
+		os.Exit(1)
 	}
+
+	if config.PendingFullRestore != "" {
+		restored, restoreErr := service.ExecuteFullDataRestore(config)
+		if restoreErr != nil {
+			fmt.Fprintf(os.Stderr, "fail to restore full data: %v\n", restoreErr)
+		} else if restored {
+			fmt.Fprintln(os.Stdout, "full data restored successfully")
+		}
+	}
+
+	if config.PendingDBRestore != "" {
+		restored, restoreErr := service.ExecuteDBRestore(config)
+		if restoreErr != nil {
+			fmt.Fprintf(os.Stderr, "fail to restore database: %v\n", restoreErr)
+		} else if restored {
+			fmt.Fprintln(os.Stdout, "database restored successfully")
+		}
+	}
+
+	logDir, _ := apputils.GetSubDir("logs")
+	appLogger := applog.NewFileLogger(filepath.Join(logDir, "app.log"))
 
 	gameService := service.NewGameService()
 	aiService := service.NewAiService()
 	backupService := service.NewBackupService()
-	cloudSyncService := service.NewCloudSyncService()
 	homeService := service.NewHomeService()
 	statsService := service.NewStatsService()
 	startService := service.NewStartService()
@@ -219,6 +239,39 @@ func main() {
 			downloadService.SetPendingInstall(pendingInstallReq)
 		}
 	}
+
+	execPath, err := apputils.GetDataDir()
+	if err != nil {
+		appLogger.Fatal(err.Error())
+	}
+	dbPath := filepath.Join(execPath, "lunabox.db")
+	db, err = sql.Open("duckdb", dbPath)
+	if err != nil {
+		appLogger.Fatal(err.Error())
+	}
+
+	timeZone := config.TimeZone
+	if timeZone == "" {
+		timeZone = "UTC"
+		appLogger.Warning("TimeZone not configured, using UTC. Please set timezone in settings.")
+	}
+
+	_, err = db.Exec(fmt.Sprintf("SET TimeZone = '%s'", timeZone))
+	if err != nil {
+		appLogger.Warning("Failed to set timezone: " + err.Error())
+	} else {
+		appLogger.Info("Database timezone set to: " + timeZone)
+	}
+
+	if err := migrations.InitSchema(db); err != nil {
+		appLogger.Fatal(err.Error())
+	}
+
+	appLogger.Info("Checking for pending database migrations...")
+	if err := migrations.Run(context.Background(), db); err != nil {
+		appLogger.Fatal("Database migration failed: " + err.Error())
+	}
+	appLogger.Info("Database migrations completed")
 
 	// 创建本地文件处理器
 	localFileHandler, err := apputils.NewLocalFileHandler()
@@ -259,7 +312,7 @@ func main() {
 						return
 					}
 
-					if strings.HasPrefix(r.URL.Path, "/local/") {
+					if localFileHandler != nil && strings.HasPrefix(r.URL.Path, "/local/") {
 						localFileHandler.ServeHTTP(w, r)
 						return
 					}
@@ -304,68 +357,8 @@ func main() {
 		},
 		OnStartup: func(ctx context.Context) {
 			appState.SetContext(ctx)
-			var err error
-
-			// 检查是否有待恢复的全量数据备份（在打开数据库前执行）
-			if config.PendingFullRestore != "" {
-				restored, restoreErr := service.ExecuteFullDataRestore(config)
-				if restoreErr != nil {
-					appLogger.Error("fail to restore full data: " + restoreErr.Error())
-				} else if restored {
-					appLogger.Info("full data restored successfully")
-				}
-			}
-
-			// 检查是否有待恢复的数据库备份（在打开数据库前执行）
-			if config.PendingDBRestore != "" {
-				restored, restoreErr := service.ExecuteDBRestore(config)
-				if restoreErr != nil {
-					appLogger.Error("fail to restore database: " + restoreErr.Error())
-				} else if restored {
-					appLogger.Info("database restored successfully")
-				}
-			}
-
-			execPath, err := apputils.GetDataDir()
-			if err != nil {
-				appLogger.Fatal(err.Error())
-			}
-			dbPath := filepath.Join(execPath, "lunabox.db")
-			db, err = sql.Open("duckdb", dbPath)
-			if err != nil {
-				appLogger.Fatal(err.Error())
-			}
-
-			// 设置时区为本地时区，确保 TIMESTAMPTZ 的聚合操作使用正确的日界线
-			// 这对于按日期统计游戏时长非常重要
-			// 注意：需要用户在前端设置时区（使用 Intl.DateTimeFormat().resolvedOptions().timeZone）
-			timeZone := config.TimeZone
-			if timeZone == "" {
-				// 未配置时区，使用 UTC 作为默认值
-				timeZone = "UTC"
-				appLogger.Warning("TimeZone not configured, using UTC. Please set timezone in settings.")
-			}
-
-			_, err = db.Exec(fmt.Sprintf("SET TimeZone = '%s'", timeZone))
-			if err != nil {
-				appLogger.Warning("Failed to set timezone: " + err.Error())
-			} else {
-				appLogger.Info("Database timezone set to: " + timeZone)
-			}
-
-			if err := migrations.InitSchema(db); err != nil {
-				appLogger.Fatal(err.Error())
-			}
-
-			// 运行数据库迁移（安全、只执行一次）
-			appLogger.Info("Checking for pending database migrations...")
-			if err := migrations.Run(ctx, db); err != nil {
-				appLogger.Fatal("Database migration failed: " + err.Error())
-			}
-			appLogger.Info("Database migrations completed")
-
+			applog.SetMode(applog.ModeGUI)
 			configService.Init(ctx, db, config)
-			// 设置安全退出回调
 			configService.SetQuitHandler(func() {
 				appState.QuitApplication()
 			})
@@ -374,7 +367,6 @@ func main() {
 			tagService.Init(ctx, db, config)
 			aiService.Init(ctx, db, config)
 			backupService.Init(ctx, db, config)
-			cloudSyncService.Init(ctx, db, config)
 			homeService.Init(ctx, db, config)
 			statsService.Init(ctx, db, config)
 			sessionService.Init(ctx, db, config)
@@ -386,17 +378,11 @@ func main() {
 			updateService.Init(ctx, configService)
 			gameProgressService.Init(ctx, db, config)
 
-			// 设置 StartService 的 BackupService GameService SessionService依赖
 			startService.SetBackupService(backupService)
 			startService.SetGameService(gameService)
 			startService.SetSessionService(sessionService)
 			downloadService.SetGameService(gameService)
 			gameService.SetTagService(tagService)
-			gameService.SetCloudSyncService(cloudSyncService)
-			categoryService.SetCloudSyncService(cloudSyncService)
-			sessionService.SetCloudSyncService(cloudSyncService)
-
-			// 设置 ImportService 的 SessionService 依赖（用于导入游玩记录）
 			importService.SetSessionService(sessionService)
 
 			// 启动 IPC Server (用于 CLI 通信)
@@ -424,8 +410,6 @@ func main() {
 			case <-time.After(5 * time.Second):
 				appLogger.Error("system tray initialization timed out")
 			}
-
-			cloudSyncService.RunStartupSync()
 		},
 		OnShutdown: func(ctx context.Context) {
 			appState.BeginShutdown()
@@ -483,7 +467,6 @@ func main() {
 			gameService,
 			aiService,
 			backupService,
-			cloudSyncService,
 			homeService,
 			statsService,
 			startService,
