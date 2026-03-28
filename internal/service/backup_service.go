@@ -1133,8 +1133,9 @@ func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
 		return false, fmt.Errorf("全量备份中缺少数据库内容")
 	}
 
-	// 恢复应用数据目录
-	for _, dirName := range []string{"covers", "backgrounds", "logs", "backups"} {
+	// 恢复关键应用数据目录。
+	// logs 目录中的当前日志文件在 Windows 下可能被本进程占用，不能让它阻塞整次恢复。
+	for _, dirName := range []string{"covers", "backgrounds", "backups"} {
 		srcDir := filepath.Join(tempDir, dirName)
 		if _, err := os.Stat(srcDir); err != nil {
 			continue
@@ -1146,6 +1147,16 @@ func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
 		}
 		if err := apputils.CopyDir(srcDir, dstDir); err != nil {
 			return false, fmt.Errorf("恢复目录 %s 失败: %w", dirName, err)
+		}
+	}
+
+	logsSrcDir := filepath.Join(tempDir, "logs")
+	if _, err := os.Stat(logsSrcDir); err == nil {
+		logsDstDir := filepath.Join(dataDir, "logs")
+		if err := os.RemoveAll(logsDstDir); err != nil {
+			fmt.Printf("警告: 跳过恢复 logs 目录，当前日志文件可能被占用: %v\n", err)
+		} else if err := apputils.CopyDir(logsSrcDir, logsDstDir); err != nil {
+			fmt.Printf("警告: 恢复 logs 目录失败，已跳过: %v\n", err)
 		}
 	}
 
