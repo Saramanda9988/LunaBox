@@ -5,7 +5,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -33,6 +35,17 @@ func NewS3Provider(cfg S3Config) (*S3Provider, error) {
 	if cfg.Endpoint == "" || cfg.AccessKey == "" || cfg.SecretKey == "" || cfg.Bucket == "" {
 		return nil, fmt.Errorf("S3 配置不完整")
 	}
+	endpointURL, err := url.Parse(cfg.Endpoint)
+	if err != nil || endpointURL.Scheme == "" || endpointURL.Host == "" {
+		return nil, fmt.Errorf("S3 Endpoint 无效")
+	}
+	if endpointURL.Scheme != "http" && endpointURL.Scheme != "https" {
+		return nil, fmt.Errorf("S3 Endpoint 协议无效")
+	}
+	if endpointURL.User != nil || endpointURL.RawQuery != "" || endpointURL.Fragment != "" {
+		return nil, fmt.Errorf("S3 Endpoint 格式无效")
+	}
+	cfg.Endpoint = strings.TrimRight(endpointURL.String(), "/")
 
 	resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 		return aws.Endpoint{URL: cfg.Endpoint}, nil

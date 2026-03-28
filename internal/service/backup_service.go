@@ -43,6 +43,68 @@ func (s *BackupService) getCloudProvider() (cloudprovider.CloudStorageProvider, 
 	return cloudprovider.NewCloudProvider(s.ctx, s.config)
 }
 
+func isPathWithinBase(basePath, targetPath string) bool {
+	absBase, err := filepath.Abs(basePath)
+	if err != nil {
+		return false
+	}
+	absTarget, err := filepath.Abs(targetPath)
+	if err != nil {
+		return false
+	}
+
+	if resolvedBase, err := filepath.EvalSymlinks(absBase); err == nil {
+		absBase = resolvedBase
+	}
+	if resolvedTarget, err := filepath.EvalSymlinks(absTarget); err == nil {
+		absTarget = resolvedTarget
+	}
+
+	relPath, err := filepath.Rel(absBase, absTarget)
+	if err != nil {
+		return false
+	}
+
+	return relPath == "." || (!strings.HasPrefix(relPath, ".."+string(filepath.Separator)) && relPath != "..")
+}
+
+func isValidCloudPathSegment(value string) bool {
+	if value == "" {
+		return false
+	}
+
+	return !strings.ContainsAny(value, `/\`) && value != "." && value != ".."
+}
+
+func (s *BackupService) validateGameCloudKey(provider cloudprovider.CloudStorageProvider, gameID, cloudKey string) error {
+	if !isValidCloudPathSegment(gameID) {
+		return fmt.Errorf("无效的游戏标识")
+	}
+	if cloudKey == "" || !strings.HasSuffix(strings.ToLower(cloudKey), ".zip") {
+		return fmt.Errorf("无效的云端备份 key")
+	}
+
+	expectedPrefix := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s/", gameID))
+	if !strings.HasPrefix(cloudKey, expectedPrefix) {
+		return fmt.Errorf("云端备份 key 不属于当前游戏")
+	}
+
+	return nil
+}
+
+func (s *BackupService) validateDBCloudKey(provider cloudprovider.CloudStorageProvider, cloudKey string) error {
+	if cloudKey == "" || !strings.HasSuffix(strings.ToLower(cloudKey), ".zip") {
+		return fmt.Errorf("无效的云端数据库备份 key")
+	}
+
+	expectedPrefix := provider.GetCloudPath(s.config.BackupUserID, "database/")
+	if !strings.HasPrefix(cloudKey, expectedPrefix) {
+		return fmt.Errorf("云端数据库备份 key 不属于当前用户")
+	}
+
+	return nil
+}
+
 // SelectBackupSavePath 选择全量备份保存路径
 func (s *BackupService) SelectBackupSavePath() (string, error) {
 	timestamp := time.Now().Format("2006-01-02T15-04-05")
@@ -86,7 +148,7 @@ func (s *BackupService) SelectBackupRestorePath() (string, error) {
 // SetupCloudBackup 设置云备份密码（只能设置一次）
 func (s *BackupService) SetupCloudBackup(password string) (string, error) {
 	// 检查是否已经设置过密码
-	if s.config.BackupPassword != "" {
+	if s.config.BackupUserID != "" {
 		applog.LogWarningf(s.ctx, "SetupCloudBackup: backup password already set")
 		return "", fmt.Errorf("备份密码已设置，无法修改")
 	}
@@ -101,7 +163,6 @@ func (s *BackupService) SetupCloudBackup(password string) (string, error) {
 
 	// 更新配置
 	s.config.BackupUserID = userID
-	s.config.BackupPassword = password
 
 	// 立即保存配置到文件
 	if err := appconf.SaveConfig(s.config); err != nil {
@@ -109,7 +170,7 @@ func (s *BackupService) SetupCloudBackup(password string) (string, error) {
 		return "", fmt.Errorf("保存配置失败: %w", err)
 	}
 
-	applog.LogInfof(s.ctx, "SetupCloudBackup: backup password set successfully, user_id: %s", userID)
+	applog.LogInfof(s.ctx, "SetupCloudBackup: backup password set successfully")
 	return userID, nil
 }
 
@@ -134,12 +195,15 @@ func (s *BackupService) GetOneDriveAuthURL() string {
 
 // StartOneDriveAuth 启动 OneDrive 授权流程（使用本地回调服务器）
 func (s *BackupService) StartOneDriveAuth() (string, error) {
-	code, err := onedrive.StartOneDriveAuthServer(s.ctx, 5*time.Minute)
+	code, redirectURI, err := onedrive.StartOneDriveAuthFlow(s.ctx, s.config.OneDriveClientID, 5*time.Minute, func(url string) error {
+		runtime.BrowserOpenURL(s.ctx, url)
+		return nil
+	})
 	if err != nil {
 		applog.LogErrorf(s.ctx, "StartOneDriveAuth: failed to get auth code: %v", err)
 		return "", err
 	}
-	tokenResp, err := onedrive.ExchangeOneDriveCodeForToken(s.ctx, s.config.OneDriveClientID, code)
+	tokenResp, err := onedrive.ExchangeOneDriveCodeForTokenWithRedirect(s.ctx, s.config.OneDriveClientID, code, redirectURI)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "StartOneDriveAuth: failed to exchange code for token: %v", err)
 		return "", err
@@ -316,7 +380,7 @@ func (s *BackupService) RestoreBackup(backupPath string) error {
 	}
 
 	// 验证备份路径在合法目录下
-	if !strings.HasPrefix(backupPath, backupDir) {
+	if !isPathWithinBase(backupDir, backupPath) {
 		return fmt.Errorf("无效的备份路径")
 	}
 
@@ -407,7 +471,7 @@ func (s *BackupService) DeleteBackup(backupPath string) error {
 	}
 
 	// 验证备份路径在合法目录下
-	if !strings.HasPrefix(backupPath, backupDir) {
+	if !isPathWithinBase(backupDir, backupPath) {
 		return fmt.Errorf("无效的备份路径")
 	}
 
@@ -420,6 +484,9 @@ func (s *BackupService) DeleteBackup(backupPath string) error {
 func (s *BackupService) UploadGameBackupToCloud(gameID string, backupPath string) error {
 	if s.config.BackupUserID == "" {
 		return fmt.Errorf("备份用户 ID 未设置")
+	}
+	if !isValidCloudPathSegment(gameID) {
+		return fmt.Errorf("无效的游戏标识")
 	}
 
 	provider, err := s.getCloudProvider()
@@ -437,7 +504,9 @@ func (s *BackupService) UploadGameBackupToCloud(gameID string, backupPath string
 
 	// 确保文件夹存在 (OneDrive 需要)
 	folderPath := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s", gameID))
-	provider.EnsureDir(s.ctx, folderPath)
+	if err := provider.EnsureDir(s.ctx, folderPath); err != nil {
+		return fmt.Errorf("创建云端目录失败: %w", err)
+	}
 
 	if err := provider.UploadFile(s.ctx, cloudPath, backupPath); err != nil {
 		return fmt.Errorf("上传失败: %w", err)
@@ -445,7 +514,9 @@ func (s *BackupService) UploadGameBackupToCloud(gameID string, backupPath string
 
 	// 更新 latest
 	latestPath := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s/latest.zip", gameID))
-	provider.UploadFile(s.ctx, latestPath, backupPath)
+	if err := provider.UploadFile(s.ctx, latestPath, backupPath); err != nil {
+		return fmt.Errorf("更新 latest 备份失败: %w", err)
+	}
 
 	s.cleanupOldCloudBackups(gameID)
 	return nil
@@ -455,6 +526,9 @@ func (s *BackupService) UploadGameBackupToCloud(gameID string, backupPath string
 func (s *BackupService) GetCloudGameBackups(gameID string) ([]vo.CloudBackupItem, error) {
 	if s.config.BackupUserID == "" {
 		return nil, fmt.Errorf("备份用户 ID 未设置")
+	}
+	if !isValidCloudPathSegment(gameID) {
+		return nil, fmt.Errorf("无效的游戏标识")
 	}
 
 	provider, err := s.getCloudProvider()
@@ -477,13 +551,18 @@ func (s *BackupService) DownloadCloudBackup(cloudKey string, gameID string) (str
 	if err != nil {
 		return "", err
 	}
+	if err := s.validateGameCloudKey(provider, gameID, cloudKey); err != nil {
+		return "", err
+	}
 
 	backupDir, err := s.GetBackupDir()
 	if err != nil {
 		return "", err
 	}
 	cloudDownloadDir := filepath.Join(backupDir, gameID, "cloud_download")
-	os.MkdirAll(cloudDownloadDir, 0755)
+	if err := os.MkdirAll(cloudDownloadDir, 0755); err != nil {
+		return "", fmt.Errorf("创建云端下载目录失败: %w", err)
+	}
 
 	destPath := filepath.Join(cloudDownloadDir, filepath.Base(cloudKey))
 	if err := provider.DownloadFile(s.ctx, cloudKey, destPath); err != nil {
@@ -713,7 +792,7 @@ func (s *BackupService) DeleteDBBackup(backupPath string) error {
 	if err != nil {
 		return err
 	}
-	if !strings.HasPrefix(backupPath, backupDir) {
+	if !isPathWithinBase(backupDir, backupPath) {
 		return fmt.Errorf("无效的备份路径")
 	}
 	return os.Remove(backupPath)
@@ -853,14 +932,18 @@ func (s *BackupService) UploadDBBackupToCloud(backupPath string) error {
 	cloudKey := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("database/%s", fileName))
 
 	folderPath := provider.GetCloudPath(s.config.BackupUserID, "database")
-	provider.EnsureDir(s.ctx, folderPath)
+	if err := provider.EnsureDir(s.ctx, folderPath); err != nil {
+		return fmt.Errorf("创建云端目录失败: %w", err)
+	}
 
 	if err := provider.UploadFile(s.ctx, cloudKey, backupPath); err != nil {
 		return fmt.Errorf("上传失败: %w", err)
 	}
 
 	latestKey := provider.GetCloudPath(s.config.BackupUserID, "database/latest.zip")
-	provider.UploadFile(s.ctx, latestKey, backupPath)
+	if err := provider.UploadFile(s.ctx, latestKey, backupPath); err != nil {
+		return fmt.Errorf("更新 latest 数据库备份失败: %w", err)
+	}
 
 	s.cleanupOldCloudDBBackups()
 	return nil
@@ -893,13 +976,18 @@ func (s *BackupService) DownloadCloudDBBackup(cloudKey string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if err := s.validateDBCloudKey(provider, cloudKey); err != nil {
+		return "", err
+	}
 
 	backupDir, err := s.GetDBBackupDir()
 	if err != nil {
 		return "", err
 	}
 	cloudDownloadDir := filepath.Join(backupDir, "cloud_download")
-	os.MkdirAll(cloudDownloadDir, 0755)
+	if err := os.MkdirAll(cloudDownloadDir, 0755); err != nil {
+		return "", fmt.Errorf("创建云端下载目录失败: %w", err)
+	}
 
 	destPath := filepath.Join(cloudDownloadDir, filepath.Base(cloudKey))
 	if err := provider.DownloadFile(s.ctx, cloudKey, destPath); err != nil {

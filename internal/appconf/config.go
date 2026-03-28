@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"lunabox/internal/enums"
+	"lunabox/internal/utils"
 	"lunabox/internal/utils/apputils"
 	"os"
 	"path/filepath"
@@ -206,14 +207,14 @@ func LoadConfig() (*AppConfig, error) {
 		config.WindowZoomFactor = 1.0
 	}
 
-	// corner case: 如果有密码但没有 user_id（可能是旧版本的配置文件）
-	if config.BackupPassword != "" && config.BackupUserID == "" {
-		log.Printf("Fixing config: found password without user_id, clearing...")
+	// 备份口令只在初始化时使用，不应长期明文落盘。
+	if config.BackupPassword != "" {
+		if config.BackupUserID == "" {
+			config.BackupUserID = utils.GenerateUserID(config.BackupPassword)
+		}
 		config.BackupPassword = ""
 		if err := SaveConfig(config); err != nil {
-			log.Printf("Failed to save fixed config: %v", err)
-		} else {
-			log.Printf("Config fixed: password clearing successfully")
+			log.Printf("Failed to save sanitized backup config: %v", err)
 		}
 	}
 
@@ -226,7 +227,9 @@ func SaveConfig(config *AppConfig) error {
 		return err
 	}
 	config.MetadataSources = normalizeMetadataSources(config.MetadataSources)
-	data, err := json.MarshalIndent(config, "", "  ")
+	configCopy := *config
+	configCopy.BackupPassword = ""
+	data, err := json.MarshalIndent(&configCopy, "", "  ")
 	if err != nil {
 		return err
 	}

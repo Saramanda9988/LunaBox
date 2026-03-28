@@ -15,11 +15,11 @@ import (
 
 // OneDrive 常量
 const (
-	oneDriveAuthURL  = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
-	oneDriveTokenURL = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
-	oneDriveAPIBase  = "https://graph.microsoft.com/v1.0/me/drive"
-	smallFileLimit   = 4 * 1024 * 1024 // 4MB
-	redirectURI      = "http://localhost:23456/callback"
+	oneDriveAuthURL   = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+	oneDriveTokenURL  = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+	oneDriveAPIBase   = "https://graph.microsoft.com/v1.0/me/drive"
+	smallFileLimit    = 4 * 1024 * 1024 // 4MB
+	legacyRedirectURI = "http://localhost:23456/callback"
 )
 
 // OneDriveConfig OneDrive 配置
@@ -86,6 +86,10 @@ func NewOneDriveProvider(cfg OneDriveConfig) (*OneDriveProvider, error) {
 
 // GetOneDriveAuthURL 获取 OAuth 授权 URL
 func GetOneDriveAuthURL(clientID string) string {
+	return buildOneDriveAuthURL(clientID, legacyRedirectURI, "")
+}
+
+func buildOneDriveAuthURL(clientID, redirectURI, state string) string {
 	params := url.Values{
 		"client_id":     {clientID},
 		"response_type": {"code"},
@@ -93,11 +97,19 @@ func GetOneDriveAuthURL(clientID string) string {
 		"scope":         {"Files.ReadWrite.AppFolder offline_access"},
 		"response_mode": {"query"},
 	}
+	if state != "" {
+		params.Set("state", state)
+	}
 	return oneDriveAuthURL + "?" + params.Encode()
 }
 
 // ExchangeOneDriveCodeForToken 用授权码换取 token
 func ExchangeOneDriveCodeForToken(ctx context.Context, clientID, code string) (*OneDriveTokenResponse, error) {
+	return ExchangeOneDriveCodeForTokenWithRedirect(ctx, clientID, code, legacyRedirectURI)
+}
+
+// ExchangeOneDriveCodeForTokenWithRedirect 用授权码和指定回调地址换取 token
+func ExchangeOneDriveCodeForTokenWithRedirect(ctx context.Context, clientID, code, redirectURI string) (*OneDriveTokenResponse, error) {
 	if clientID == "" {
 		return nil, fmt.Errorf("OneDrive Client ID 未配置")
 	}
@@ -149,7 +161,6 @@ func (p *OneDriveProvider) refreshAccessToken(ctx context.Context) error {
 		"client_id":     {p.config.ClientID},
 		"refresh_token": {p.config.RefreshToken},
 		"grant_type":    {"refresh_token"},
-		"redirect_uri":  {redirectURI},
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", oneDriveTokenURL, strings.NewReader(data.Encode()))
