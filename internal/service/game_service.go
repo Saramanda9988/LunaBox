@@ -29,6 +29,7 @@ type GameService struct {
 	db         *sql.DB
 	config     *appconf.AppConfig
 	tagService *TagService
+	cloudSync  *CloudSyncService
 }
 
 type metadataSearchSource struct {
@@ -51,6 +52,10 @@ func (s *GameService) Init(ctx context.Context, db *sql.DB, config *appconf.AppC
 
 func (s *GameService) SetTagService(ts *TagService) {
 	s.tagService = ts
+}
+
+func (s *GameService) SetCloudSyncService(cloudSync *CloudSyncService) {
+	s.cloudSync = cloudSync
 }
 
 func (s *GameService) SelectGameExecutable() (string, error) {
@@ -135,6 +140,9 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 	if game.CachedAt.IsZero() {
 		game.CachedAt = time.Now()
 	}
+	if game.UpdatedAt.IsZero() {
+		game.UpdatedAt = time.Now()
+	}
 
 	// 保存原始封面URL用于后台下载
 	originalCoverURL := game.CoverURL
@@ -152,9 +160,9 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 
 	query := `INSERT INTO games (
 		id, name, cover_url, company, summary, rating, release_date, path, 
-		source_type, cached_at, source_id, created_at,
+		source_type, cached_at, source_id, created_at, updated_at,
 		use_locale_emulator, use_magpie
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := s.db.ExecContext(s.ctx, query,
 		game.ID,
@@ -169,12 +177,17 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 		game.CachedAt,
 		game.SourceID,
 		game.CreatedAt,
+		game.UpdatedAt,
 		game.UseLocaleEmulator,
 		game.UseMagpie,
 	)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "AddGame: failed to insert game %s: %v", game.Name, err)
 		return err
+	}
+
+	if err := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityGame, game.ID); err != nil {
+		applog.LogWarningf(s.ctx, "AddGame: failed to clear game tombstone for %s: %v", game.ID, err)
 	}
 
 	// 优先使用已刮削出的 tags，避免重复网络请求；无 tags 时再按 source_id 兜底拉取。
@@ -193,6 +206,8 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 	if originalCoverURL != "" {
 		go s.asyncDownloadCoverImage(game.ID, game.Name, originalCoverURL)
 	}
+
+	s.notifyCloudSync()
 
 	return nil
 }
@@ -251,43 +266,32 @@ func (s *GameService) asyncDownloadCoverImage(gameID, gameName, coverURL string)
 
 // updateCoverURL 更新游戏的封面URL
 func (s *GameService) updateCoverURL(gameID, coverURL string) error {
-	query := `UPDATE games SET cover_url = ? WHERE id = ?`
-	_, err := s.db.ExecContext(s.ctx, query, coverURL, gameID)
+	query := `UPDATE games SET cover_url = ?, updated_at = ? WHERE id = ?`
+	_, err := s.db.ExecContext(s.ctx, query, coverURL, time.Now(), gameID)
+	if err == nil {
+		s.notifyCloudSync()
+	}
 	return err
 }
 
 func (s *GameService) DeleteGame(id string) error {
-	// 先删除关联的游戏分类记录
-	_, err := s.db.ExecContext(s.ctx, "DELETE FROM game_categories WHERE game_id = ?", id)
+	tx, err := s.db.Begin()
 	if err != nil {
-		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game_categories for id %s: %v", id, err)
-		return fmt.Errorf("failed to delete game categories: %w", err)
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to begin transaction: %v", err)
+		return err
 	}
+	defer tx.Rollback()
 
-	// 删除关联的游玩会话记录
-	_, err = s.db.ExecContext(s.ctx, "DELETE FROM play_sessions WHERE game_id = ?", id)
-	if err != nil {
-		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete play_sessions for id %s: %v", id, err)
-		return fmt.Errorf("failed to delete play sessions: %w", err)
-	}
-	// 删除游戏记录
-	result, err := s.db.ExecContext(s.ctx, "DELETE FROM games WHERE id = ?", id)
-	if err != nil {
-		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game for id %s: %v", id, err)
-		return fmt.Errorf("failed to delete game: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		applog.LogErrorf(s.ctx, "DeleteGame: failed to get rows affected for id %s: %v", id, err)
+	if err := s.deleteGameTx(tx, id, time.Now()); err != nil {
 		return err
 	}
 
-	if rowsAffected == 0 {
-		applog.LogWarningf(s.ctx, "DeleteGame: game not found with id: %s", id)
-		return fmt.Errorf("game not found with id: %s", id)
+	if err := tx.Commit(); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to commit transaction: %v", err)
+		return err
 	}
 
+	s.notifyCloudSync()
 	return nil
 }
 
@@ -297,12 +301,6 @@ func (s *GameService) DeleteGames(ids []string) error {
 		return nil
 	}
 
-	placeholders := utils.BuildPlaceholders(len(ids))
-	args := make([]interface{}, 0, len(ids))
-	for _, id := range ids {
-		args = append(args, id)
-	}
-
 	tx, err := s.db.Begin()
 	if err != nil {
 		applog.LogErrorf(s.ctx, "DeleteGames: failed to begin transaction: %v", err)
@@ -310,30 +308,11 @@ func (s *GameService) DeleteGames(ids []string) error {
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.ExecContext(s.ctx, fmt.Sprintf("DELETE FROM game_categories WHERE game_id IN (%s)", placeholders), args...); err != nil {
-		applog.LogErrorf(s.ctx, "DeleteGames: failed to delete game_categories: %v", err)
-		return fmt.Errorf("failed to delete game categories: %w", err)
-	}
-
-	if _, err := tx.ExecContext(s.ctx, fmt.Sprintf("DELETE FROM play_sessions WHERE game_id IN (%s)", placeholders), args...); err != nil {
-		applog.LogErrorf(s.ctx, "DeleteGames: failed to delete play_sessions: %v", err)
-		return fmt.Errorf("failed to delete play sessions: %w", err)
-	}
-
-	result, err := tx.ExecContext(s.ctx, fmt.Sprintf("DELETE FROM games WHERE id IN (%s)", placeholders), args...)
-	if err != nil {
-		applog.LogErrorf(s.ctx, "DeleteGames: failed to delete games: %v", err)
-		return fmt.Errorf("failed to delete games: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		applog.LogErrorf(s.ctx, "DeleteGames: failed to get rows affected: %v", err)
-		return err
-	}
-	if rowsAffected == 0 {
-		applog.LogWarningf(s.ctx, "DeleteGames: no games deleted")
-		return fmt.Errorf("no games deleted")
+	now := time.Now()
+	for _, id := range ids {
+		if err := s.deleteGameTx(tx, id, now); err != nil {
+			return err
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -341,6 +320,7 @@ func (s *GameService) DeleteGames(ids []string) error {
 		return err
 	}
 
+	s.notifyCloudSync()
 	return nil
 }
 
@@ -359,6 +339,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 		cached_at, 
 		COALESCE(source_id, '') as source_id, 
 		created_at,
+		COALESCE(updated_at, created_at, cached_at) as updated_at,
 		COALESCE(use_locale_emulator, FALSE) as use_locale_emulator,
 		COALESCE(use_magpie, FALSE) as use_magpie
 	FROM games 
@@ -392,6 +373,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 			&game.CachedAt,
 			&game.SourceID,
 			&game.CreatedAt,
+			&game.UpdatedAt,
 			&game.UseLocaleEmulator,
 			&game.UseMagpie,
 		)
@@ -429,6 +411,7 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		cached_at, 
 		COALESCE(source_id, '') as source_id, 
 		created_at,
+		COALESCE(updated_at, created_at, cached_at) as updated_at,
 		COALESCE(use_locale_emulator, FALSE) as use_locale_emulator,
 		COALESCE(use_magpie, FALSE) as use_magpie
 	FROM games 
@@ -454,6 +437,7 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		&game.CachedAt,
 		&game.SourceID,
 		&game.CreatedAt,
+		&game.UpdatedAt,
 		&game.UseLocaleEmulator,
 		&game.UseMagpie,
 	)
@@ -473,6 +457,8 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 }
 
 func (s *GameService) UpdateGame(game models.Game) error {
+	game.UpdatedAt = time.Now()
+
 	query := `UPDATE games SET 
 		name = ?,
 		cover_url = ?,
@@ -487,6 +473,7 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		source_type = ?,
 		cached_at = ?,
 		source_id = ?,
+		updated_at = ?,
 		use_locale_emulator = ?,
 		use_magpie = ?
 	WHERE id = ?`
@@ -505,6 +492,7 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		string(game.SourceType),
 		game.CachedAt,
 		game.SourceID,
+		game.UpdatedAt,
 		game.UseLocaleEmulator,
 		game.UseMagpie,
 		game.ID,
@@ -526,7 +514,91 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		return fmt.Errorf("game not found with id: %s", game.ID)
 	}
 
+	if err := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityGame, game.ID); err != nil {
+		applog.LogWarningf(s.ctx, "UpdateGame: failed to clear game tombstone for %s: %v", game.ID, err)
+	}
+	s.notifyCloudSync()
 	return nil
+}
+
+func (s *GameService) deleteGameTx(tx *sql.Tx, id string, deletedAt time.Time) error {
+	var gameExists bool
+	if err := tx.QueryRowContext(s.ctx, "SELECT EXISTS(SELECT 1 FROM games WHERE id = ?)", id).Scan(&gameExists); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to check game existence for id %s: %v", id, err)
+		return fmt.Errorf("failed to check game existence: %w", err)
+	}
+	if !gameExists {
+		applog.LogWarningf(s.ctx, "DeleteGame: game not found with id: %s", id)
+		return fmt.Errorf("game not found with id: %s", id)
+	}
+
+	relRows, err := tx.QueryContext(s.ctx, "SELECT game_id, category_id FROM game_categories WHERE game_id = ?", id)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to query game_categories for id %s: %v", id, err)
+		return fmt.Errorf("failed to query game categories: %w", err)
+	}
+	var relationIDs []string
+	for relRows.Next() {
+		var gameID string
+		var categoryID string
+		if scanErr := relRows.Scan(&gameID, &categoryID); scanErr != nil {
+			relRows.Close()
+			return fmt.Errorf("failed to scan game category relation: %w", scanErr)
+		}
+		relationIDs = append(relationIDs, relationTombstoneID(gameID, categoryID))
+	}
+	relRows.Close()
+
+	sessionRows, err := tx.QueryContext(s.ctx, "SELECT id FROM play_sessions WHERE game_id = ?", id)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to query play_sessions for id %s: %v", id, err)
+		return fmt.Errorf("failed to query play sessions: %w", err)
+	}
+	var sessionIDs []string
+	for sessionRows.Next() {
+		var sessionID string
+		if scanErr := sessionRows.Scan(&sessionID); scanErr != nil {
+			sessionRows.Close()
+			return fmt.Errorf("failed to scan play session id: %w", scanErr)
+		}
+		sessionIDs = append(sessionIDs, sessionID)
+	}
+	sessionRows.Close()
+
+	for _, relationID := range relationIDs {
+		if err := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityGameCategory, relationID, deletedAt); err != nil {
+			return err
+		}
+	}
+	for _, sessionID := range sessionIDs {
+		if err := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityPlaySession, sessionID, deletedAt); err != nil {
+			return err
+		}
+	}
+	if err := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityGame, id, deletedAt); err != nil {
+		return err
+	}
+
+	if _, err := tx.ExecContext(s.ctx, "DELETE FROM game_categories WHERE game_id = ?", id); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game_categories for id %s: %v", id, err)
+		return fmt.Errorf("failed to delete game categories: %w", err)
+	}
+	if _, err := tx.ExecContext(s.ctx, "DELETE FROM play_sessions WHERE game_id = ?", id); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete play_sessions for id %s: %v", id, err)
+		return fmt.Errorf("failed to delete play sessions: %w", err)
+	}
+	if _, err := tx.ExecContext(s.ctx, "DELETE FROM games WHERE id = ?", id); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game for id %s: %v", id, err)
+		return fmt.Errorf("failed to delete game: %w", err)
+	}
+
+	return nil
+}
+
+func (s *GameService) notifyCloudSync() {
+	if s.cloudSync != nil {
+		s.cloudSync.NotifyLibraryChanged()
+	}
 }
 
 // SelectSaveFile 选择存档文件

@@ -18,6 +18,7 @@ type CategoryService struct {
 	ctx    context.Context
 	db     *sql.DB
 	config *appconf.AppConfig
+	cloud  *CloudSyncService
 }
 
 func NewCategoryService() *CategoryService {
@@ -31,23 +32,61 @@ func (s *CategoryService) Init(ctx context.Context, db *sql.DB, config *appconf.
 	s.ensureSystemCategories()
 }
 
+func (s *CategoryService) SetCloudSyncService(cloudSync *CloudSyncService) {
+	s.cloud = cloudSync
+}
+
 func (s *CategoryService) ensureSystemCategories() {
 	var count int
-	err := s.db.QueryRow("SELECT count(*) FROM categories WHERE is_system = true AND name = ?", "最喜欢的游戏").Scan(&count)
+	err := s.db.QueryRow("SELECT count(*) FROM categories WHERE id = ?", systemFavoritesCategoryID).Scan(&count)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "Error checking system category: %v", err)
 		return
 	}
 
-	if count == 0 {
-		id := uuid.New().String()
+	if count > 0 {
+		return
+	}
+
+	var legacyID string
+	err = s.db.QueryRow(`
+		SELECT id
+		FROM categories
+		WHERE is_system = true AND name = ?
+		ORDER BY created_at ASC, id ASC
+		LIMIT 1
+	`, systemFavoritesCategoryName).Scan(&legacyID)
+	switch {
+	case err == sql.ErrNoRows:
 		now := time.Now()
-		_, err := s.db.Exec(`
+		_, err = s.db.Exec(`
 			INSERT INTO categories (id, name, emoji, is_system, created_at, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?)
-		`, id, "最喜欢的游戏", "❤️", true, now, now)
+		`, systemFavoritesCategoryID, systemFavoritesCategoryName, "❤️", true, now, now)
 		if err != nil {
 			applog.LogErrorf(s.ctx, "Error creating system category: %v", err)
+		}
+	case err != nil:
+		applog.LogErrorf(s.ctx, "Error checking legacy system category: %v", err)
+	default:
+		tx, beginErr := s.db.Begin()
+		if beginErr != nil {
+			applog.LogErrorf(s.ctx, "Error beginning system category normalization: %v", beginErr)
+			return
+		}
+		defer tx.Rollback()
+
+		if _, err := tx.Exec(`
+			UPDATE categories
+			SET id = ?, updated_at = ?
+			WHERE id = ?
+		`, systemFavoritesCategoryID, time.Now(), legacyID); err != nil {
+			applog.LogErrorf(s.ctx, "Error normalizing system category: %v", err)
+			return
+		}
+
+		if err := tx.Commit(); err != nil {
+			applog.LogErrorf(s.ctx, "Error committing system category normalization: %v", err)
 		}
 	}
 }
@@ -110,6 +149,12 @@ func (s *CategoryService) AddCategory(name string, emoji string) error {
 	if err != nil {
 		applog.LogErrorf(s.ctx, "AddCategory: failed to insert category %s: %v", name, err)
 	}
+	if err == nil {
+		if clearErr := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityCategory, id); clearErr != nil {
+			applog.LogWarningf(s.ctx, "AddCategory: failed to clear category tombstone %s: %v", id, clearErr)
+		}
+		s.notifyCloudSync()
+	}
 	return err
 }
 
@@ -130,13 +175,30 @@ func (s *CategoryService) UpdateCategory(id, name, emoji string) error {
 	if err != nil {
 		applog.LogErrorf(s.ctx, "UpdateCategory: failed to update category %s to name %s: %v", id, name, err)
 	}
+	if err == nil {
+		if clearErr := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityCategory, id); clearErr != nil {
+			applog.LogWarningf(s.ctx, "UpdateCategory: failed to clear category tombstone %s: %v", id, clearErr)
+		}
+		s.notifyCloudSync()
+	}
 	return err
 }
 
 func (s *CategoryService) AddGameToCategory(gameID, categoryID string) error {
-	_, err := s.db.Exec("INSERT INTO game_categories (game_id, category_id) VALUES (?, ?)", gameID, categoryID)
+	now := time.Now()
+	_, err := s.db.Exec(`
+		INSERT INTO game_categories (game_id, category_id, updated_at)
+		VALUES (?, ?, ?)
+		ON CONFLICT (game_id, category_id) DO UPDATE SET updated_at = EXCLUDED.updated_at
+	`, gameID, categoryID, now)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "AddGameToCategory: failed to add game %s to category %s: %v", gameID, categoryID, err)
+	}
+	if err == nil {
+		if clearErr := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityGameCategory, relationTombstoneID(gameID, categoryID)); clearErr != nil {
+			applog.LogWarningf(s.ctx, "AddGameToCategory: failed to clear relation tombstone for %s/%s: %v", gameID, categoryID, clearErr)
+		}
+		s.notifyCloudSync()
 	}
 	return err
 }
@@ -155,7 +217,11 @@ func (s *CategoryService) AddGamesToCategories(gameIDs []string, categoryIDs []s
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.Prepare("INSERT INTO game_categories (game_id, category_id) VALUES (?, ?) ON CONFLICT DO NOTHING")
+	stmt, err := tx.Prepare(`
+		INSERT INTO game_categories (game_id, category_id, updated_at)
+		VALUES (?, ?, ?)
+		ON CONFLICT (game_id, category_id) DO UPDATE SET updated_at = EXCLUDED.updated_at
+	`)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "AddGamesToCategories: failed to prepare statement: %v", err)
 		return err
@@ -164,8 +230,11 @@ func (s *CategoryService) AddGamesToCategories(gameIDs []string, categoryIDs []s
 
 	for _, gameID := range gameIDs {
 		for _, categoryID := range categoryIDs {
-			if _, err := stmt.Exec(gameID, categoryID); err != nil {
+			if _, err := stmt.Exec(gameID, categoryID, time.Now()); err != nil {
 				applog.LogErrorf(s.ctx, "AddGamesToCategories: failed to add game %s to category %s: %v", gameID, categoryID, err)
+				return err
+			}
+			if err := deleteSyncTombstone(s.ctx, tx, cloudSyncEntityGameCategory, relationTombstoneID(gameID, categoryID)); err != nil {
 				return err
 			}
 		}
@@ -175,13 +244,26 @@ func (s *CategoryService) AddGamesToCategories(gameIDs []string, categoryIDs []s
 		applog.LogErrorf(s.ctx, "AddGamesToCategories: failed to commit transaction: %v", err)
 		return err
 	}
+	s.notifyCloudSync()
 	return nil
 }
 
 func (s *CategoryService) RemoveGameFromCategory(gameID, categoryID string) error {
-	_, err := s.db.Exec("DELETE FROM game_categories WHERE game_id = ? AND category_id = ?", gameID, categoryID)
+	result, err := s.db.Exec("DELETE FROM game_categories WHERE game_id = ? AND category_id = ?", gameID, categoryID)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "RemoveGameFromCategory: failed to remove game %s from category %s: %v", gameID, categoryID, err)
+	}
+	if err == nil {
+		rowsAffected, rowsErr := result.RowsAffected()
+		if rowsErr != nil {
+			return rowsErr
+		}
+		if rowsAffected > 0 {
+			if tombstoneErr := upsertSyncTombstone(s.ctx, s.db, cloudSyncEntityGameCategory, relationTombstoneID(gameID, categoryID), time.Now()); tombstoneErr != nil {
+				return tombstoneErr
+			}
+			s.notifyCloudSync()
+		}
 	}
 	return err
 }
@@ -200,9 +282,42 @@ func (s *CategoryService) RemoveGamesFromCategory(gameIDs []string, categoryID s
 	}
 
 	query := fmt.Sprintf("DELETE FROM game_categories WHERE category_id = ? AND game_id IN (%s)", placeholders)
-	_, err := s.db.Exec(query, args...)
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	rows, err := tx.QueryContext(s.ctx, fmt.Sprintf("SELECT game_id FROM game_categories WHERE category_id = ? AND game_id IN (%s)", placeholders), args...)
+	if err != nil {
+		return err
+	}
+	var tombstoneIDs []string
+	for rows.Next() {
+		var gameID string
+		if scanErr := rows.Scan(&gameID); scanErr != nil {
+			rows.Close()
+			return scanErr
+		}
+		tombstoneIDs = append(tombstoneIDs, relationTombstoneID(gameID, categoryID))
+	}
+	rows.Close()
+
+	_, err = tx.Exec(query, args...)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "RemoveGamesFromCategory: failed to remove games from category %s: %v", categoryID, err)
+		return err
+	}
+	for _, tombstoneID := range tombstoneIDs {
+		if tombstoneErr := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityGameCategory, tombstoneID, time.Now()); tombstoneErr != nil {
+			return tombstoneErr
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	if len(tombstoneIDs) > 0 {
+		s.notifyCloudSync()
 	}
 	return err
 }
@@ -226,10 +341,31 @@ func (s *CategoryService) DeleteCategory(id string) error {
 	}
 	defer tx.Rollback()
 
+	relationRows, err := tx.QueryContext(s.ctx, "SELECT game_id FROM game_categories WHERE category_id = ?", id)
+	if err != nil {
+		return err
+	}
+	var relationTombstones []string
+	for relationRows.Next() {
+		var gameID string
+		if scanErr := relationRows.Scan(&gameID); scanErr != nil {
+			relationRows.Close()
+			return scanErr
+		}
+		relationTombstones = append(relationTombstones, relationTombstoneID(gameID, id))
+	}
+	relationRows.Close()
+
 	_, err = tx.Exec("DELETE FROM game_categories WHERE category_id = ?", id)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "DeleteCategory: failed to delete game_categories for id %s: %v", id, err)
 		return err
+	}
+
+	for _, tombstoneID := range relationTombstones {
+		if tombstoneErr := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityGameCategory, tombstoneID, time.Now()); tombstoneErr != nil {
+			return tombstoneErr
+		}
 	}
 
 	_, err = tx.Exec("DELETE FROM categories WHERE id = ?", id)
@@ -238,10 +374,15 @@ func (s *CategoryService) DeleteCategory(id string) error {
 		return err
 	}
 
+	if tombstoneErr := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityCategory, id, time.Now()); tombstoneErr != nil {
+		return tombstoneErr
+	}
+
 	if err := tx.Commit(); err != nil {
 		applog.LogErrorf(s.ctx, "DeleteCategory: failed to commit transaction for id %s: %v", id, err)
 		return err
 	}
+	s.notifyCloudSync()
 	return nil
 }
 
@@ -270,9 +411,44 @@ func (s *CategoryService) DeleteCategories(ids []string) error {
 			SELECT id FROM categories WHERE id IN (%s) AND is_system = false
 		)
 	`, placeholders)
+
+	relationRows, err := tx.QueryContext(s.ctx, fmt.Sprintf(`
+		SELECT game_id, category_id
+		FROM game_categories
+		WHERE category_id IN (
+			SELECT id FROM categories WHERE id IN (%s) AND is_system = false
+		)
+	`, placeholders), args...)
+	if err != nil {
+		return err
+	}
+	var relationTombstones []string
+	for relationRows.Next() {
+		var gameID string
+		var categoryID string
+		if scanErr := relationRows.Scan(&gameID, &categoryID); scanErr != nil {
+			relationRows.Close()
+			return scanErr
+		}
+		relationTombstones = append(relationTombstones, relationTombstoneID(gameID, categoryID))
+	}
+	relationRows.Close()
+
 	if _, err := tx.Exec(queryDeleteRelations, args...); err != nil {
 		applog.LogErrorf(s.ctx, "DeleteCategories: failed to delete game_categories: %v", err)
 		return err
+	}
+
+	now := time.Now()
+	for _, tombstoneID := range relationTombstones {
+		if tombstoneErr := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityGameCategory, tombstoneID, now); tombstoneErr != nil {
+			return tombstoneErr
+		}
+	}
+	for _, id := range ids {
+		if tombstoneErr := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityCategory, id, now); tombstoneErr != nil {
+			return tombstoneErr
+		}
 	}
 
 	queryDeleteCategories := fmt.Sprintf("DELETE FROM categories WHERE id IN (%s) AND is_system = false", placeholders)
@@ -285,7 +461,14 @@ func (s *CategoryService) DeleteCategories(ids []string) error {
 		applog.LogErrorf(s.ctx, "DeleteCategories: failed to commit transaction: %v", err)
 		return err
 	}
+	s.notifyCloudSync()
 	return nil
+}
+
+func (s *CategoryService) notifyCloudSync() {
+	if s.cloud != nil {
+		s.cloud.NotifyLibraryChanged()
+	}
 }
 
 func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, error) {

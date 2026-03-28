@@ -687,6 +687,21 @@
       "oneDriveNoteItem5": "For higher security, you can customize the Client ID below",
       "testing": "Testing...",
       "testConnection": "Test Connection",
+      "syncEnableLabel": "Enable Cloud Sync",
+      "syncEnableHint": "Treat the cloud library as the trusted source and sync library data across devices",
+      "syncStatusLabel": "Sync Status",
+      "syncStatusIdle": "Not synced yet",
+      "syncStatusSyncing": "Syncing",
+      "syncStatusSuccess": "Last sync succeeded",
+      "syncStatusFailed": "Last sync failed",
+      "syncNotConfigured": "Finish cloud storage setup first",
+      "syncLastTimeLabel": "Last sync time:",
+      "syncNever": "Never synced",
+      "syncNow": "Sync Now",
+      "syncingNow": "Syncing...",
+      "syncScopeHint": "Syncs games, categories, category links, play sessions, and cover assets.",
+      "syncLocalOnlyHint": "V1 does not sync device-local paths, save files, or other machine-specific launch settings.",
+      "syncRequiresBackup": "Cloud sync reuses the current cloud storage setup. Enable cloud backup and finish account/storage setup first.",
       "toast": {
         "passwordTooShort": "Password must be at least 6 characters",
         "passwordMismatch": "Passwords do not match",
@@ -697,7 +712,9 @@
         "oneDriveTestSuccess": "OneDrive connection test successful",
         "oneDriveTestFailed": "OneDrive connection test failed: {{error}}",
         "oneDriveAuthSuccess": "OneDrive authorized successfully",
-        "oneDriveAuthFailed": "Authorization failed: {{error}}"
+        "oneDriveAuthFailed": "Authorization failed: {{error}}",
+        "syncSuccess": "Cloud sync completed",
+        "syncFailed": "Cloud sync failed: {{error}}"
       }
     },
     "autoBackup": {

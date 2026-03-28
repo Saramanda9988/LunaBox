@@ -1,5 +1,5 @@
-import type { appconf } from "../../../wailsjs/go/models";
-import { useState } from "react";
+import type { appconf, vo } from "../../../wailsjs/go/models";
+import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import {
@@ -8,6 +8,10 @@ import {
   TestOneDriveConnection,
   TestS3Connection,
 } from "../../../wailsjs/go/service/BackupService";
+import {
+  GetCloudSyncStatus,
+  SyncNow,
+} from "../../../wailsjs/go/service/CloudSyncService";
 import { GetAppConfig } from "../../../wailsjs/go/service/ConfigService";
 import { PasswordInputModal } from "../modal/PasswordInputModal";
 import { BetterSelect } from "../ui/better/BetterSelect";
@@ -18,20 +22,73 @@ interface CloudBackupSettingsProps {
   onChange: (data: appconf.AppConfig) => void;
 }
 
+function isCloudProviderConfigured(config: appconf.AppConfig) {
+  if (!config.cloud_backup_enabled || !config.backup_user_id) {
+    return false;
+  }
+
+  if (config.cloud_backup_provider === "onedrive") {
+    return Boolean(config.onedrive_refresh_token);
+  }
+
+  return Boolean(config.s3_endpoint && config.s3_access_key);
+}
+
+function formatSyncTime(value: string | undefined, locale: string) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
 export function CloudBackupSettingsPanel({
   formData,
   onChange,
 }: CloudBackupSettingsProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [testingS3, setTestingS3] = useState(false);
   const [testingOneDrive, setTestingOneDrive] = useState(false);
   const [authorizingOneDrive, setAuthorizingOneDrive] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<vo.CloudSyncStatus | null>(null);
+  const [syncingNow, setSyncingNow] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     onChange({ ...formData, [name]: value } as appconf.AppConfig);
   };
+
+  const refreshSyncStatus = useCallback(async () => {
+    try {
+      const status = await GetCloudSyncStatus();
+      setSyncStatus(status);
+    }
+    catch (err) {
+      console.error("Failed to refresh cloud sync status:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshSyncStatus();
+  }, [refreshSyncStatus]);
+
+  useEffect(() => {
+    if (formData.cloud_sync_enabled) {
+      void refreshSyncStatus();
+      return;
+    }
+
+    setSyncStatus(null);
+  }, [formData.cloud_sync_enabled, refreshSyncStatus]);
 
   const handleSetupBackupPassword = async (
     password: string,
@@ -56,6 +113,7 @@ export function CloudBackupSettingsPanel({
       );
       const updatedConfig = await GetAppConfig();
       onChange(updatedConfig);
+      void refreshSyncStatus();
     }
     catch (err: any) {
       toast.error(t("settings.cloudBackup.toast.setupFailed", { error: err }));
@@ -101,6 +159,7 @@ export function CloudBackupSettingsPanel({
         onedrive_refresh_token: refreshToken,
       } as appconf.AppConfig);
       toast.success(t("settings.cloudBackup.toast.oneDriveAuthSuccess"));
+      void refreshSyncStatus();
     }
     catch (err: any) {
       toast.error(
@@ -112,17 +171,84 @@ export function CloudBackupSettingsPanel({
     }
   };
 
+  const handleSyncNow = async () => {
+    if (!formData.cloud_sync_enabled || !isCloudProviderConfigured(formData)) {
+      return;
+    }
+
+    setSyncingNow(true);
+    const loading = toast.loading(t("settings.cloudBackup.syncingNow"));
+
+    try {
+      const status = await SyncNow();
+      setSyncStatus(status);
+      toast.dismiss(loading);
+      toast.success(t("settings.cloudBackup.toast.syncSuccess"));
+    }
+    catch (err: any) {
+      toast.dismiss(loading);
+      toast.error(
+        t("settings.cloudBackup.toast.syncFailed", {
+          error: err?.message || err,
+        }),
+      );
+    }
+    finally {
+      setSyncingNow(false);
+      void refreshSyncStatus();
+    }
+  };
+
+  const effectiveSyncStatus: vo.CloudSyncStatus = syncStatus ?? {
+    enabled: formData.cloud_sync_enabled || false,
+    configured: isCloudProviderConfigured(formData),
+    syncing: false,
+    last_sync_time: formData.last_cloud_sync_time || "",
+    last_sync_status: formData.last_cloud_sync_status || "idle",
+    last_sync_error: formData.last_cloud_sync_error || "",
+  };
+  const syncConfigured
+    = effectiveSyncStatus.configured || isCloudProviderConfigured(formData);
+  const syncBusy = syncingNow || effectiveSyncStatus.syncing;
+  const syncStatusLabel = (() => {
+    switch (effectiveSyncStatus.last_sync_status) {
+      case "success":
+        return t("settings.cloudBackup.syncStatusSuccess");
+      case "failed":
+        return t("settings.cloudBackup.syncStatusFailed");
+      case "syncing":
+        return t("settings.cloudBackup.syncStatusSyncing");
+      default:
+        return t("settings.cloudBackup.syncStatusIdle");
+    }
+  })();
+  const syncStatusClass = (() => {
+    switch (effectiveSyncStatus.last_sync_status) {
+      case "success":
+        return "bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300";
+      case "failed":
+        return "bg-error-100 text-error-700 dark:bg-error-900/40 dark:text-error-300";
+      case "syncing":
+        return "bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300";
+      default:
+        return "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-300";
+    }
+  })();
+  const lastSyncDisplay = effectiveSyncStatus.last_sync_time
+    ? formatSyncTime(effectiveSyncStatus.last_sync_time, i18n.language)
+    : t("settings.cloudBackup.syncNever");
+
   return (
     <div className="space-y-4">
-      <div className="glass-card flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-800/50 rounded-lg">
+      <div className="glass-card flex items-center justify-between rounded-lg bg-brand-50 p-4 dark:bg-brand-800/50">
         <div className="flex flex-col">
           <label
             htmlFor="cloud_backup_enabled"
-            className="text-sm font-medium text-brand-700 dark:text-brand-300 cursor-pointer"
+            className="cursor-pointer text-sm font-medium text-brand-700 dark:text-brand-300"
           >
             {t("settings.cloudBackup.enableLabel")}
           </label>
-          <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
+          <p className="mt-1 text-xs text-brand-500 dark:text-brand-400">
             {t("settings.cloudBackup.enableHint")}
           </p>
         </div>
@@ -161,7 +287,7 @@ export function CloudBackupSettingsPanel({
         </div>
         {formData.backup_user_id ? (
           <div className="space-y-2">
-            <div className="glass-panel px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md text-brand-600 dark:text-brand-300">
+            <div className="glass-panel rounded-md border border-brand-300 px-3 py-2 text-brand-600 dark:border-brand-600 dark:text-brand-300">
               ********
             </div>
             <p className="text-xs text-brand-500 dark:text-brand-400">
@@ -178,7 +304,7 @@ export function CloudBackupSettingsPanel({
             <button
               type="button"
               onClick={() => setShowPasswordModal(true)}
-              className="glass-btn-neutral w-full px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-md transition-colors flex items-center justify-center gap-2"
+              className="glass-btn-neutral flex w-full items-center justify-center gap-2 rounded-md bg-brand-600 px-4 py-2 text-white transition-colors hover:bg-brand-700"
             >
               <span className="i-mdi-lock-plus text-lg" />
               {t("settings.cloudBackup.setPasswordBtn")}
@@ -193,15 +319,14 @@ export function CloudBackupSettingsPanel({
         )}
       </div>
 
-      {/* S3 Configuration */}
       {formData.cloud_backup_provider === "s3" && (
-        <div className="glass-card space-y-4 p-4 bg-brand-100 dark:bg-brand-800 rounded-lg">
+        <div className="glass-card space-y-4 rounded-lg bg-brand-100 p-4 dark:bg-brand-800">
           <h3 className="text-sm font-medium text-brand-800 dark:text-brand-200">
             {t("settings.cloudBackup.s3Section")}
           </h3>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-              S3 端点 (Endpoint)
+              S3 Endpoint
             </label>
             <input
               type="text"
@@ -209,13 +334,13 @@ export function CloudBackupSettingsPanel({
               value={formData.s3_endpoint || ""}
               onChange={handleChange}
               placeholder="https://s3.example.com"
-              className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
+              className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                区域 (Region)
+                Region
               </label>
               <input
                 type="text"
@@ -223,12 +348,12 @@ export function CloudBackupSettingsPanel({
                 value={formData.s3_region || ""}
                 onChange={handleChange}
                 placeholder="us-east-1"
-                className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
+                className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               />
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                存储桶 (Bucket)
+                Bucket
               </label>
               <input
                 type="text"
@@ -236,7 +361,7 @@ export function CloudBackupSettingsPanel({
                 value={formData.s3_bucket || ""}
                 onChange={handleChange}
                 placeholder="lunabox-backup"
-                className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
+                className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               />
             </div>
           </div>
@@ -249,7 +374,7 @@ export function CloudBackupSettingsPanel({
               name="s3_access_key"
               value={formData.s3_access_key || ""}
               onChange={handleChange}
-              className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
+              className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
             />
           </div>
           <div className="space-y-2">
@@ -261,7 +386,7 @@ export function CloudBackupSettingsPanel({
               name="s3_secret_key"
               value={formData.s3_secret_key || ""}
               onChange={handleChange}
-              className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
+              className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
             />
           </div>
           <div className="flex justify-end">
@@ -269,7 +394,7 @@ export function CloudBackupSettingsPanel({
               type="button"
               onClick={handleTestS3}
               disabled={testingS3}
-              className="glass-btn-neutral px-3 py-1.5 text-sm bg-brand-100 text-brand-700 rounded-md hover:bg-brand-200 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600 disabled:opacity-50"
+              className="glass-btn-neutral rounded-md bg-brand-100 px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-200 disabled:opacity-50 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600"
             >
               {testingS3
                 ? t("settings.cloudBackup.testing")
@@ -279,17 +404,16 @@ export function CloudBackupSettingsPanel({
         </div>
       )}
 
-      {/* OneDrive Configuration */}
       {formData.cloud_backup_provider === "onedrive" && (
-        <div className="space-y-4 p-4 bg-brand-100 dark:bg-brand-800 rounded-lg">
+        <div className="space-y-4 rounded-lg bg-brand-100 p-4 dark:bg-brand-800">
           <h3 className="text-sm font-medium text-brand-800 dark:text-brand-200">
             {t("settings.cloudBackup.oneDriveSection")}
           </h3>
 
-          <div className="p-3 bg-brand-100 dark:bg-brand-700 rounded-md border border-brand-300 dark:border-brand-600">
+          <div className="rounded-md border border-brand-300 bg-brand-100 p-3 dark:border-brand-600 dark:bg-brand-700">
             <div className="flex items-start gap-2">
-              <span className="i-mdi-information-outline text-lg text-warning-500 dark:text-brand-400 mt-0.5 flex-shrink-0" />
-              <div className="text-xs text-brand-600 dark:text-brand-400 space-y-1">
+              <span className="i-mdi-information-outline mt-0.5 flex-shrink-0 text-lg text-warning-500 dark:text-brand-400" />
+              <div className="space-y-1 text-xs text-brand-600 dark:text-brand-400">
                 <p className="font-medium">
                   {t("settings.cloudBackup.oneDriveNote")}
                 </p>
@@ -304,7 +428,6 @@ export function CloudBackupSettingsPanel({
             </div>
           </div>
 
-          {/* Client ID Configuration */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
               Client ID
@@ -322,7 +445,7 @@ export function CloudBackupSettingsPanel({
               value={formData.onedrive_client_id || ""}
               onChange={handleChange}
               placeholder="26fcab6e-41ea-49ff-8ec9-063983cae3ef (default)"
-              className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white font-mono text-sm"
+              className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 font-mono text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
             />
             <p className="text-xs text-brand-500 dark:text-brand-400">
               {t("settings.cloudBackup.clientIdHint")}
@@ -344,7 +467,7 @@ export function CloudBackupSettingsPanel({
             </label>
             {formData.onedrive_refresh_token ? (
               <div className="flex items-center gap-2">
-                <span className="text-success-600 dark:text-success-400 flex items-center gap-1">
+                <span className="flex items-center gap-1 text-success-600 dark:text-success-400">
                   <span className="i-mdi-check-circle text-lg" />
                   {t("settings.cloudBackup.authorized")}
                 </span>
@@ -355,7 +478,7 @@ export function CloudBackupSettingsPanel({
                       ...formData,
                       onedrive_refresh_token: "",
                     } as appconf.AppConfig)}
-                  className="px-2 py-1 text-xs text-error-600 hover:bg-error-100 dark:hover:bg-error-900 rounded"
+                  className="rounded px-2 py-1 text-xs text-error-600 hover:bg-error-100 dark:hover:bg-error-900"
                 >
                   {t("settings.cloudBackup.revokeAuth")}
                 </button>
@@ -366,7 +489,7 @@ export function CloudBackupSettingsPanel({
                   type="button"
                   onClick={handleOneDriveAuth}
                   disabled={authorizingOneDrive}
-                  className="glass-btn-neutral px-3 py-1.5 text-sm bg-neutral-600 text-white rounded-md hover:bg-neutral-700 disabled:opacity-50 flex items-center gap-2"
+                  className="glass-btn-neutral flex items-center gap-2 rounded-md bg-neutral-600 px-3 py-1.5 text-sm text-white hover:bg-neutral-700 disabled:opacity-50"
                 >
                   {authorizingOneDrive ? (
                     <>
@@ -388,13 +511,14 @@ export function CloudBackupSettingsPanel({
               </div>
             )}
           </div>
+
           {formData.onedrive_refresh_token && (
             <div className="flex justify-end">
               <button
                 type="button"
                 onClick={handleTestOneDrive}
                 disabled={testingOneDrive}
-                className="glass-btn-neutral px-3 py-1.5 text-sm bg-brand-100 text-brand-700 rounded-md hover:bg-brand-200 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600 disabled:opacity-50"
+                className="glass-btn-neutral rounded-md bg-brand-100 px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-200 disabled:opacity-50 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600"
               >
                 {testingOneDrive
                   ? t("settings.cloudBackup.testing")
@@ -404,6 +528,91 @@ export function CloudBackupSettingsPanel({
           )}
         </div>
       )}
+
+      <div className="glass-card space-y-4 rounded-lg bg-brand-50 p-4 dark:bg-brand-800/50">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col">
+            <label
+              htmlFor="cloud_sync_enabled"
+              className="cursor-pointer text-sm font-medium text-brand-700 dark:text-brand-300"
+            >
+              {t("settings.cloudBackup.syncEnableLabel")}
+            </label>
+            <p className="mt-1 text-xs text-brand-500 dark:text-brand-400">
+              {t("settings.cloudBackup.syncEnableHint")}
+            </p>
+          </div>
+          <BetterSwitch
+            id="cloud_sync_enabled"
+            checked={formData.cloud_sync_enabled || false}
+            onCheckedChange={checked =>
+              onChange({
+                ...formData,
+                cloud_sync_enabled: checked,
+              } as appconf.AppConfig)}
+          />
+        </div>
+
+        <div className="rounded-lg border border-brand-200 bg-white/70 p-3 dark:border-brand-700 dark:bg-brand-900/30">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="text-sm font-medium text-brand-700 dark:text-brand-300">
+                {t("settings.cloudBackup.syncStatusLabel")}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${syncStatusClass}`}
+                >
+                  {syncStatusLabel}
+                </span>
+                {!syncConfigured && (
+                  <span className="text-xs text-warning-600 dark:text-warning-400">
+                    {t("settings.cloudBackup.syncNotConfigured")}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSyncNow}
+              disabled={
+                !formData.cloud_sync_enabled || !syncConfigured || syncBusy
+              }
+              className="glass-btn-neutral flex items-center gap-2 rounded-md bg-brand-600 px-3 py-2 text-sm text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span
+                className={`text-base ${syncBusy ? "i-mdi-loading animate-spin" : "i-mdi-cloud-sync-outline"}`}
+              />
+              {syncBusy
+                ? t("settings.cloudBackup.syncingNow")
+                : t("settings.cloudBackup.syncNow")}
+            </button>
+          </div>
+
+          <div className="mt-3 space-y-2 text-xs text-brand-500 dark:text-brand-400">
+            <p>
+              <span className="font-medium text-brand-600 dark:text-brand-300">
+                {t("settings.cloudBackup.syncLastTimeLabel")}
+              </span>
+              {" "}
+              {lastSyncDisplay}
+            </p>
+            {effectiveSyncStatus.last_sync_error && (
+              <p className="text-error-600 dark:text-error-400">
+                {effectiveSyncStatus.last_sync_error}
+              </p>
+            )}
+            <p>{t("settings.cloudBackup.syncScopeHint")}</p>
+            <p>{t("settings.cloudBackup.syncLocalOnlyHint")}</p>
+            {!formData.cloud_backup_enabled && (
+              <p className="text-warning-600 dark:text-warning-400">
+                {t("settings.cloudBackup.syncRequiresBackup")}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
 
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
@@ -419,7 +628,7 @@ export function CloudBackupSettingsPanel({
             } as appconf.AppConfig)}
           min={1}
           max={100}
-          className="glass-input w-32 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
+          className="glass-input w-32 rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
         />
         <p className="text-xs text-brand-500 dark:text-brand-400">
           {t("settings.cloudBackup.retentionHint")}

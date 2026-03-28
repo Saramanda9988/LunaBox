@@ -130,6 +130,16 @@ type CloudBackupStatus struct {
 	Provider   string `json:"provider"`   // 云备份提供商: s3, onedrive
 }
 
+// CloudSyncStatus 云同步状态
+type CloudSyncStatus struct {
+	Enabled        bool   `json:"enabled"`
+	Configured     bool   `json:"configured"`
+	Syncing        bool   `json:"syncing"`
+	LastSyncTime   string `json:"last_sync_time"`
+	LastSyncStatus string `json:"last_sync_status"`
+	LastSyncError  string `json:"last_sync_error"`
+}
+
 // CloudBackupItem 云端备份项
 type CloudBackupItem struct {
 	Key       string    `json:"key"`        // S3 对象 key

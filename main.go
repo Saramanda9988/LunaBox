@@ -198,6 +198,7 @@ func main() {
 	gameService := service.NewGameService()
 	aiService := service.NewAiService()
 	backupService := service.NewBackupService()
+	cloudSyncService := service.NewCloudSyncService()
 	homeService := service.NewHomeService()
 	statsService := service.NewStatsService()
 	startService := service.NewStartService()
@@ -373,6 +374,7 @@ func main() {
 			tagService.Init(ctx, db, config)
 			aiService.Init(ctx, db, config)
 			backupService.Init(ctx, db, config)
+			cloudSyncService.Init(ctx, db, config)
 			homeService.Init(ctx, db, config)
 			statsService.Init(ctx, db, config)
 			sessionService.Init(ctx, db, config)
@@ -390,6 +392,9 @@ func main() {
 			startService.SetSessionService(sessionService)
 			downloadService.SetGameService(gameService)
 			gameService.SetTagService(tagService)
+			gameService.SetCloudSyncService(cloudSyncService)
+			categoryService.SetCloudSyncService(cloudSyncService)
+			sessionService.SetCloudSyncService(cloudSyncService)
 
 			// 设置 ImportService 的 SessionService 依赖（用于导入游玩记录）
 			importService.SetSessionService(sessionService)
@@ -419,6 +424,8 @@ func main() {
 			case <-time.After(5 * time.Second):
 				appLogger.Error("system tray initialization timed out")
 			}
+
+			cloudSyncService.RunStartupSync()
 		},
 		OnShutdown: func(ctx context.Context) {
 			appState.BeginShutdown()
@@ -476,6 +483,7 @@ func main() {
 			gameService,
 			aiService,
 			backupService,
+			cloudSyncService,
 			homeService,
 			statsService,
 			startService,

@@ -687,6 +687,21 @@
       "oneDriveNoteItem5": "如需更高安全性，可在下方自定义 Client ID",
       "testing": "测试中...",
       "testConnection": "测试连接",
+      "syncEnableLabel": "启用云同步",
+      "syncEnableHint": "以云端仓库为可信源，同步游戏库数据到其他设备",
+      "syncStatusLabel": "同步状态",
+      "syncStatusIdle": "未同步",
+      "syncStatusSyncing": "同步中",
+      "syncStatusSuccess": "最近一次成功",
+      "syncStatusFailed": "最近一次失败",
+      "syncNotConfigured": "需要先完成云存储配置",
+      "syncLastTimeLabel": "最后同步时间:",
+      "syncNever": "尚未同步",
+      "syncNow": "立即同步",
+      "syncingNow": "同步中...",
+      "syncScopeHint": "会同步游戏、分类、分类归属、游玩记录和封面资源。",
+      "syncLocalOnlyHint": "v1 不同步设备本地路径、存档文件和其他仅限本机的运行配置。",
+      "syncRequiresBackup": "云同步依赖当前的云存储配置，请先启用云备份并完成账号/存储设置。",
       "toast": {
         "passwordTooShort": "密码长度至少为6位",
         "passwordMismatch": "两次输入的密码不一致",
@@ -697,7 +712,9 @@
         "oneDriveTestSuccess": "OneDrive 连接测试成功",
         "oneDriveTestFailed": "OneDrive 连接测试失败: {{error}}",
         "oneDriveAuthSuccess": "OneDrive 授权成功",
-        "oneDriveAuthFailed": "授权失败: {{error}}"
+        "oneDriveAuthFailed": "授权失败: {{error}}",
+        "syncSuccess": "云同步完成",
+        "syncFailed": "云同步失败: {{error}}"
       }
     },
     "autoBackup": {

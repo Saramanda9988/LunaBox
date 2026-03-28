@@ -50,6 +50,10 @@ type AppConfig struct {
 	CloudBackupProvider  string `json:"cloud_backup_provider,omitempty"`  // 云备份提供商: s3, onedrive
 	BackupPassword       string `json:"backup_password,omitempty"`        // 备份密码（用于生成 user-id 和加密）
 	BackupUserID         string `json:"backup_user_id,omitempty"`         // 云端用户标识（由备份密码 hash 生成）
+	CloudSyncEnabled     bool   `json:"cloud_sync_enabled"`               // 是否启用云同步
+	LastCloudSyncTime    string `json:"last_cloud_sync_time,omitempty"`   // 上次云同步时间
+	LastCloudSyncStatus  string `json:"last_cloud_sync_status,omitempty"` // 上次云同步状态: idle/syncing/success/failed
+	LastCloudSyncError   string `json:"last_cloud_sync_error,omitempty"`  // 上次云同步错误
 	S3Endpoint           string `json:"s3_endpoint,omitempty"`            // S3 兼容端点
 	S3Region             string `json:"s3_region,omitempty"`              // S3 区域
 	S3Bucket             string `json:"s3_bucket,omitempty"`              // S3 存储桶
@@ -135,6 +139,10 @@ func LoadConfig() (*AppConfig, error) {
 		CloudBackupProvider:    "s3",
 		BackupPassword:         "",
 		BackupUserID:           "",
+		CloudSyncEnabled:       false,
+		LastCloudSyncTime:      "",
+		LastCloudSyncStatus:    "idle",
+		LastCloudSyncError:     "",
 		S3Endpoint:             "",
 		TimeZone:               "",
 		S3Region:               "",

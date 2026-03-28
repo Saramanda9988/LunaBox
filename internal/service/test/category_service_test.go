@@ -23,15 +23,23 @@ func TestCategoryService_Init(t *testing.T) {
 	}
 
 	foundSystemCategory := false
+	systemCategoryCount := 0
 	for _, c := range categories {
 		if c.Name == "最喜欢的游戏" && c.IsSystem {
 			foundSystemCategory = true
+			systemCategoryCount++
+			if c.ID != "system:favorites" {
+				t.Errorf("系统分类 ID 不正确: 期望 %s, 得到 %s", "system:favorites", c.ID)
+			}
 			break
 		}
 	}
 
 	if !foundSystemCategory {
 		t.Error("初始化时未创建系统分类 '最喜欢的游戏'")
+	}
+	if systemCategoryCount != 1 {
+		t.Errorf("期望仅存在 1 个最喜欢系统分类，实际为 %d", systemCategoryCount)
 	}
 }
 

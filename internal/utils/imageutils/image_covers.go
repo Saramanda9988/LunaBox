@@ -10,9 +10,14 @@ import (
 	"time"
 )
 
+// GetCoverDir returns the managed covers directory path.
+func GetCoverDir() (string, error) {
+	return ensureManagedImageDir("covers")
+}
+
 // SaveCoverImage 保存封面图片到应用的封面目录
 func SaveCoverImage(srcPath string, gameID string) (string, error) {
-	coverDir, err := ensureManagedImageDir("covers")
+	coverDir, err := GetCoverDir()
 	if err != nil {
 		return "", err
 	}
@@ -31,6 +36,56 @@ func SaveCoverImage(srcPath string, gameID string) (string, error) {
 	}
 
 	return "/local/covers/" + destFileName, nil
+}
+
+// FindManagedCoverFile locates the managed local cover file for a game ID.
+func FindManagedCoverFile(gameID string) (string, string, error) {
+	coverDir, err := GetCoverDir()
+	if err != nil {
+		return "", "", err
+	}
+
+	for _, ext := range managedImageExtensions {
+		fileName := gameID + ext
+		absPath := filepath.Join(coverDir, fileName)
+		if _, statErr := os.Stat(absPath); statErr == nil {
+			return absPath, "/local/covers/" + fileName, nil
+		}
+	}
+
+	return "", "", nil
+}
+
+// RemoveManagedCover removes all managed local cover files for a game ID.
+func RemoveManagedCover(gameID string) error {
+	coverDir, err := GetCoverDir()
+	if err != nil {
+		return err
+	}
+
+	removeFilesWithBaseName(coverDir, gameID)
+	return nil
+}
+
+// PrepareManagedCoverDestination clears old cover variants and returns the target absolute path and local URL.
+func PrepareManagedCoverDestination(gameID, ext string) (string, string, error) {
+	coverDir, err := GetCoverDir()
+	if err != nil {
+		return "", "", err
+	}
+
+	if ext == "" {
+		ext = ".jpg"
+	}
+	if !strings.HasPrefix(ext, ".") {
+		ext = "." + ext
+	}
+	ext = strings.ToLower(ext)
+
+	removeFilesWithBaseName(coverDir, gameID)
+
+	fileName := gameID + ext
+	return filepath.Join(coverDir, fileName), "/local/covers/" + fileName, nil
 }
 
 // ResolveCoverPath 解析封面图片路径
@@ -59,7 +114,7 @@ func DownloadAndSaveCoverImage(imageURL string, gameID string) (string, error) {
 		return imageURL, nil
 	}
 
-	coverDir, err := ensureManagedImageDir("covers")
+	coverDir, err := GetCoverDir()
 	if err != nil {
 		return imageURL, err
 	}
@@ -93,7 +148,7 @@ func RenameTempCover(tempCoverURL string, gameID string) (string, error) {
 		return tempCoverURL, nil
 	}
 
-	coverDir, err := ensureManagedImageDir("covers")
+	coverDir, err := GetCoverDir()
 	if err != nil {
 		return tempCoverURL, err
 	}

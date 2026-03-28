@@ -687,6 +687,21 @@
       "oneDriveNoteItem5": "より高い安全性が必要な場合は、以下で Client ID をカスタマイズしてください",
       "testing": "テスト中...",
       "testConnection": "接続テスト",
+      "syncEnableLabel": "クラウド同期を有効化",
+      "syncEnableHint": "クラウドライブラリを信頼できるソースとして、端末間でライブラリデータを同期します",
+      "syncStatusLabel": "同期状態",
+      "syncStatusIdle": "未同期",
+      "syncStatusSyncing": "同期中",
+      "syncStatusSuccess": "前回の同期は成功",
+      "syncStatusFailed": "前回の同期は失敗",
+      "syncNotConfigured": "先にクラウドストレージ設定を完了してください",
+      "syncLastTimeLabel": "最終同期時刻:",
+      "syncNever": "まだ同期していません",
+      "syncNow": "今すぐ同期",
+      "syncingNow": "同期中...",
+      "syncScopeHint": "ゲーム、カテゴリ、カテゴリ関連、プレイ記録、カバー画像を同期します。",
+      "syncLocalOnlyHint": "v1 では端末ローカルのパス、セーブデータ、その他マシン固有の起動設定は同期しません。",
+      "syncRequiresBackup": "クラウド同期は現在のクラウドストレージ設定を再利用します。先にクラウドバックアップを有効化し、アカウント/保存先設定を完了してください。",
       "toast": {
         "passwordTooShort": "パスワードは6文字以上必要です",
         "passwordMismatch": "2回入力したパスワードが一致しません",
@@ -697,7 +712,9 @@
         "oneDriveTestSuccess": "OneDrive 接続テストに成功しました",
         "oneDriveTestFailed": "OneDrive 接続テストに失敗しました: {{error}}",
         "oneDriveAuthSuccess": "OneDrive 認証に成功しました",
-        "oneDriveAuthFailed": "認証に失敗しました: {{error}}"
+        "oneDriveAuthFailed": "認証に失敗しました: {{error}}",
+        "syncSuccess": "クラウド同期が完了しました",
+        "syncFailed": "クラウド同期に失敗しました: {{error}}"
       }
     },
     "autoBackup": {
