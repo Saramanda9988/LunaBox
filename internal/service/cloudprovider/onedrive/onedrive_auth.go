@@ -12,7 +12,10 @@ import (
 	"time"
 )
 
-const localCallbackPath = "/callback"
+const (
+	localCallbackPort = 23456
+	localCallbackPath = "/callback"
+)
 
 // OneDriveAuthResult OAuth 授权结果
 type OneDriveAuthResult struct {
@@ -29,7 +32,7 @@ type oneDriveAuthSession struct {
 }
 
 func newOneDriveAuthSession() (*oneDriveAuthSession, error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", localCallbackPort))
 	if err != nil {
 		return nil, fmt.Errorf("无法启动本地服务器: %w", err)
 	}
@@ -44,7 +47,7 @@ func newOneDriveAuthSession() (*oneDriveAuthSession, error) {
 		resultChan:  make(chan OneDriveAuthResult, 1),
 		listener:    listener,
 		state:       state,
-		redirectURI: fmt.Sprintf("http://%s%s", listener.Addr().String(), localCallbackPath),
+		redirectURI: legacyRedirectURI,
 	}
 
 	mux := http.NewServeMux()
@@ -130,6 +133,14 @@ func (s *oneDriveAuthSession) handleOAuthCallback(w http.ResponseWriter, r *http
 		return
 	}
 
+	if !isLoopbackRequest(r.RemoteAddr) {
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprint(w, `<!DOCTYPE html><html><head><title>授权失败</title></head><body>
+			<h1>授权失败</h1><p>回调来源无效</p><p>请返回应用后重试。</p>
+			</body></html>`)
+		return
+	}
+
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
 	errorMsg := r.URL.Query().Get("error")
@@ -166,4 +177,13 @@ func (s *oneDriveAuthSession) handleOAuthCallback(w http.ResponseWriter, r *http
 		<h1>授权成功！</h1><p>您可以关闭此窗口并返回应用。</p>
 		<script>window.close();</script>
 		</body></html>`)
+}
+
+func isLoopbackRequest(remoteAddr string) bool {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		return false
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
