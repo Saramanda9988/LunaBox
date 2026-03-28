@@ -2,8 +2,8 @@
 package protocol
 
 import (
-	"encoding/hex"
 	"fmt"
+	"lunabox/internal/utils/downloadutils"
 	"lunabox/internal/vo"
 	"net/url"
 	"strconv"
@@ -31,7 +31,7 @@ func ParseURL(rawURL string) (*vo.InstallRequest, error) {
 	req := &vo.InstallRequest{
 		URL:            q.Get("url"),
 		FileName:       q.Get("file_name"),
-		ArchiveFormat:  strings.ToLower(strings.TrimSpace(q.Get("archive_format"))),
+		ArchiveFormat:  downloadutils.NormalizeArchiveFormat(q.Get("archive_format")),
 		StartupPath:    q.Get("startup_path"),
 		Title:          q.Get("title"),
 		DownloadSource: q.Get("download_source"),
@@ -50,15 +50,8 @@ func ParseURL(rawURL string) (*vo.InstallRequest, error) {
 	if req.URL == "" {
 		return nil, fmt.Errorf("missing required parameter: url")
 	}
-	parsedDownloadURL, err := url.Parse(req.URL)
-	if err != nil {
-		return nil, fmt.Errorf("invalid url: %w", err)
-	}
-	if parsedDownloadURL.Scheme != "http" && parsedDownloadURL.Scheme != "https" {
-		return nil, fmt.Errorf("url must use http or https")
-	}
-	if strings.TrimSpace(parsedDownloadURL.Hostname()) == "" {
-		return nil, fmt.Errorf("url host is required")
+	if err := downloadutils.ValidateDownloadURL(req.URL); err != nil {
+		return nil, err
 	}
 	if strings.TrimSpace(req.FileName) == "" {
 		return nil, fmt.Errorf("missing required parameter: file_name")
@@ -66,7 +59,7 @@ func ParseURL(rawURL string) (*vo.InstallRequest, error) {
 	if req.ArchiveFormat == "" {
 		return nil, fmt.Errorf("missing required parameter: archive_format")
 	}
-	if !isSupportedArchiveFormat(req.ArchiveFormat) {
+	if !downloadutils.IsSupportedArchiveFormat(req.ArchiveFormat) {
 		return nil, fmt.Errorf("unsupported archive_format: %s", req.ArchiveFormat)
 	}
 
@@ -105,28 +98,11 @@ func ParseURL(rawURL string) (*vo.InstallRequest, error) {
 	if req.Checksum == "" {
 		return nil, fmt.Errorf("missing required parameter: checksum")
 	}
-	switch req.ChecksumAlgo {
-	case "sha256", "blake3":
-	default:
-		return nil, fmt.Errorf("unsupported checksum_algo: %s", req.ChecksumAlgo)
-	}
-	if _, err := hex.DecodeString(req.Checksum); err != nil {
-		return nil, fmt.Errorf("checksum must be lowercase hex")
-	}
-	if len(req.Checksum) != 64 {
-		return nil, fmt.Errorf("checksum must be 64 hex characters")
+	if err := downloadutils.ValidateChecksumFields(req.ChecksumAlgo, req.Checksum); err != nil {
+		return nil, err
 	}
 
 	return req, nil
-}
-
-func isSupportedArchiveFormat(format string) bool {
-	switch format {
-	case "none", "zip", "rar", "7z", "tar", "tar.gz", "tar.bz2", "tar.xz", "tar.zst", "tgz", "tbz2", "txz", "tzst":
-		return true
-	default:
-		return false
-	}
 }
 
 // IsProtocolURL reports whether the string looks like a lunabox:// URL.

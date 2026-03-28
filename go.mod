@@ -44,6 +44,7 @@ require (
 	github.com/bodgit/sevenzip v1.6.1 // indirect
 	github.com/bodgit/windows v1.0.1 // indirect
 	github.com/cavaliergopher/cpio v1.0.1 // indirect
+	github.com/cavaliergopher/grab/v3 v3.0.1
 	github.com/cavaliergopher/rpm v1.3.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect

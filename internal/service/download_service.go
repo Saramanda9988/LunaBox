@@ -9,13 +9,13 @@ import (
 	"errors"
 	"fmt"
 	"hash"
-	"io"
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
 	"lunabox/internal/enums"
 	"lunabox/internal/models"
 	"lunabox/internal/utils/apputils"
 	"lunabox/internal/utils/archiveutils"
+	"lunabox/internal/utils/downloadutils"
 	"lunabox/internal/utils/proxyutils"
 	"lunabox/internal/vo"
 	"net"
@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	grab "github.com/cavaliergopher/grab/v3"
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/zeebo/blake3"
@@ -44,6 +45,7 @@ const (
 	DownloadStatusError       DownloadStatus = "error"
 	DownloadStatusCancelled   DownloadStatus = "cancelled"
 	DownloadManualExtractFlag                = "manual_extract_required"
+	downloadUserAgent                        = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 LunaBox/1.0"
 )
 
 // DownloadTask 单个下载任务
@@ -175,7 +177,7 @@ func (s *DownloadService) CancelDownload(taskID string) error {
 		if path, err := s.getTaskDestPath(task.Request); err == nil {
 			destPath = path
 		}
-		extractPath := buildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
+		extractPath := downloadutils.BuildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
 		s.cancelTaskAndCleanup(task, destPath, extractPath)
 		return nil
 	}
@@ -425,315 +427,34 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 		return
 	}
 
-	// 确定下载目标路径
-	destDir, err := s.getDownloadDir()
+	destPath, extractPath, client, err := s.prepareDownloadExecution(task)
 	if err != nil {
-		s.failTask(task, fmt.Sprintf("failed to get download dir: %v", err))
+		s.failTask(task, err.Error())
 		return
 	}
-	fileName := sanitizeDownloadedFileName(task.Request.FileName)
-	if fileName == "" {
-		s.failTask(task, "invalid file_name")
-		return
-	}
-	destPath := filepath.Join(destDir, fileName)
 
-	resumeOffset := int64(0)
-	if fileInfo, statErr := os.Stat(destPath); statErr == nil && !fileInfo.IsDir() {
-		resumeOffset = fileInfo.Size()
-	}
-	if resumeOffset > task.Request.Size {
-		applog.LogWarningf(s.ctx, "partial file exceeds declared size for task %s, reset partial file", task.ID)
-		_ = os.Remove(destPath)
-		resumeOffset = 0
-	}
-
-	s.mu.Lock()
-	if resumeOffset > 0 {
-		task.Downloaded = resumeOffset
-	}
-	task.Total = task.Request.Size
-	task.pauseReq = false
-	task.cancelReq = false
-	s.mu.Unlock()
-
-	// 创建 HTTP 请求（支持取消）
-	client, proxyDesc, err := newSecureDownloadClient(s.config) // 大文件不设超时，靠 context cancel
+	resp, err := s.downloadWithGrab(ctx, task, client, destPath)
 	if err != nil {
-		s.failTask(task, fmt.Sprintf("create download client: %v", err))
+		if s.handleGrabDownloadInterruption(task, err, destPath, extractPath) {
+			return
+		}
+		s.failTask(task, formatGrabDownloadError(task, err))
 		return
 	}
-	applog.LogInfof(s.ctx, "Download proxy for task %s: %s", task.ID, proxyDesc)
-	buildRequest := func(offset int64) (*http.Response, error) {
-		req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, task.Request.URL, nil)
-		if reqErr != nil {
-			return nil, reqErr
-		}
-		if offset > 0 {
-			req.Header.Set("Range", fmt.Sprintf("bytes=%d-", offset))
-		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 LunaBox/1.0")
-		return client.Do(req)
+	if resp != nil {
+		s.updateTaskProgressFromGrab(task, resp)
 	}
 
-	resp, err := buildRequest(resumeOffset)
+	finalPath, manualExtractRequired, handled, err := s.postProcessDownloadedTask(task, destPath, extractPath)
+	if handled {
+		return
+	}
 	if err != nil {
-		if errors.Is(err, context.Canceled) && s.isTaskPauseRequested(task) {
-			s.markTaskPaused(task)
-			return
-		}
-		if errors.Is(err, context.Canceled) && s.isTaskCancelled(task) {
-			extractPath := buildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
-			s.cancelTaskAndCleanup(task, destPath, extractPath)
-			return
-		}
-		s.failTask(task, fmt.Sprintf("http request: %v", err))
-		return
-	}
-	if resumeOffset > 0 && resp.StatusCode == http.StatusRequestedRangeNotSatisfiable {
-		_ = resp.Body.Close()
-		applog.LogWarningf(s.ctx, "range request got 416 for task %s, reset partial file and retry full download", task.ID)
-		_ = os.Remove(destPath)
-		resumeOffset = 0
-		s.mu.Lock()
-		task.Downloaded = 0
-		task.Progress = 0
-		s.mu.Unlock()
-		resp, err = buildRequest(0)
-		if err != nil {
-			if errors.Is(err, context.Canceled) && s.isTaskPauseRequested(task) {
-				s.markTaskPaused(task)
-				return
-			}
-			if errors.Is(err, context.Canceled) && s.isTaskCancelled(task) {
-				extractPath := buildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
-				s.cancelTaskAndCleanup(task, destPath, extractPath)
-				return
-			}
-			s.failTask(task, fmt.Sprintf("http request after range reset: %v", err))
-			return
-		}
-	}
-	defer resp.Body.Close()
-
-	if resumeOffset > 0 && resp.StatusCode != http.StatusPartialContent && resp.StatusCode != http.StatusOK {
-		s.failTask(task, fmt.Sprintf("server returned %d for range request", resp.StatusCode))
-		return
-	}
-	if resumeOffset == 0 && resp.StatusCode != http.StatusOK {
-		s.failTask(task, fmt.Sprintf("server returned %d", resp.StatusCode))
+		s.failTask(task, err.Error())
 		return
 	}
 
-	if resumeOffset > 0 && resp.StatusCode == http.StatusOK {
-		resumeOffset = 0
-		s.mu.Lock()
-		task.Downloaded = 0
-		task.Progress = 0
-		s.mu.Unlock()
-	}
-	if task.Request.Size > 0 && resp.ContentLength > 0 && task.Request.Size != resp.ContentLength+resumeOffset {
-		s.failTask(task, fmt.Sprintf("size mismatch before download: expected=%d got=%d", task.Request.Size, resp.ContentLength))
-		return
-	}
-
-	// 如果请求中没有 size，用 Content-Length 补充
-	s.mu.Lock()
-	task.Status = DownloadStatusDownloading
-	s.mu.Unlock()
-	s.emitProgress(task)
-
-	// 创建/追加目标文件
-	fileFlags := os.O_CREATE | os.O_WRONLY | os.O_TRUNC
-	if resumeOffset > 0 {
-		fileFlags = os.O_CREATE | os.O_WRONLY | os.O_APPEND
-	}
-	f, err := os.OpenFile(destPath, fileFlags, 0644)
-	if err != nil {
-		s.failTask(task, fmt.Sprintf("create file: %v", err))
-		return
-	}
-	fileClosed := false
-	closeFile := func() error {
-		if fileClosed {
-			return nil
-		}
-		fileClosed = true
-		return f.Close()
-	}
-
-	checksumState, err := newChecksumState(task.Request.ChecksumAlgo)
-	if err != nil {
-		_ = closeFile()
-		s.failTask(task, fmt.Sprintf("invalid checksum algo: %v", err))
-		return
-	}
-	if checksumState != nil && resumeOffset > 0 {
-		if err := hashExistingFilePortion(destPath, resumeOffset, checksumState); err != nil {
-			_ = closeFile()
-			s.failTask(task, fmt.Sprintf("prepare checksum state: %v", err))
-			return
-		}
-	}
-
-	// 流式写入 + 进度上报（每 500ms 或每 5MB 上报一次）
-	buf := make([]byte, 32*1024)
-	lastEmit := time.Now()
-	lastEmitBytes := int64(0)
-
-	for {
-		select {
-		case <-ctx.Done():
-			s.mu.Lock()
-			pauseRequested := task.pauseReq
-			task.pauseReq = false
-			s.mu.Unlock()
-			_ = closeFile()
-			if pauseRequested {
-				s.markTaskPaused(task)
-				applog.LogInfof(s.ctx, "Download paused: %s", task.ID)
-			} else {
-				extractPath := buildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
-				s.cancelTaskAndCleanup(task, destPath, extractPath)
-				applog.LogInfof(s.ctx, "Download cancelled: %s", task.ID)
-			}
-			return
-		default:
-		}
-
-		n, readErr := resp.Body.Read(buf)
-		if n > 0 {
-			s.mu.Lock()
-			remaining := task.Total - task.Downloaded
-			s.mu.Unlock()
-			if remaining < int64(n) {
-				_ = closeFile()
-				_ = os.Remove(destPath)
-				s.failTask(task, fmt.Sprintf("response exceeded declared size: expected=%d remaining=%d chunk=%d", task.Total, remaining, n))
-				return
-			}
-			if _, writeErr := f.Write(buf[:n]); writeErr != nil {
-				_ = closeFile()
-				s.failTask(task, fmt.Sprintf("write file: %v", writeErr))
-				return
-			}
-			if checksumState != nil {
-				if _, hashErr := checksumState.Write(buf[:n]); hashErr != nil {
-					_ = closeFile()
-					s.failTask(task, fmt.Sprintf("hash file: %v", hashErr))
-					return
-				}
-			}
-			s.mu.Lock()
-			task.Downloaded += int64(n)
-			task.Progress = float64(task.Downloaded) / float64(task.Total) * 100
-			currentDownloaded := task.Downloaded
-			s.mu.Unlock()
-
-			now := time.Now()
-			bytesSinceLastEmit := currentDownloaded - lastEmitBytes
-			if now.Sub(lastEmit) >= 500*time.Millisecond || bytesSinceLastEmit >= 5*1024*1024 {
-				s.emitProgress(task)
-				lastEmit = now
-				lastEmitBytes = currentDownloaded
-			}
-		}
-		if readErr == io.EOF {
-			break
-		}
-		if readErr != nil {
-			if errors.Is(readErr, context.Canceled) {
-				_ = closeFile()
-				s.mu.Lock()
-				pauseRequested := task.pauseReq
-				task.pauseReq = false
-				if pauseRequested {
-					s.mu.Unlock()
-					s.markTaskPaused(task)
-					applog.LogInfof(s.ctx, "Download paused (read canceled): %s", task.ID)
-				} else {
-					s.mu.Unlock()
-					extractPath := buildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
-					s.cancelTaskAndCleanup(task, destPath, extractPath)
-					applog.LogInfof(s.ctx, "Download cancelled (read canceled): %s", task.ID)
-				}
-				return
-			}
-			_ = closeFile()
-			s.failTask(task, fmt.Sprintf("read response: %v", readErr))
-			return
-		}
-	}
-
-	s.mu.RLock()
-	downloadedBytes := task.Downloaded
-	s.mu.RUnlock()
-
-	if task.Request.Size > 0 && downloadedBytes != task.Request.Size {
-		_ = closeFile()
-		s.failTask(task, fmt.Sprintf("size mismatch after download: expected=%d got=%d", task.Request.Size, downloadedBytes))
-		return
-	}
-
-	if err := verifyChecksum(task.Request.ChecksumAlgo, task.Request.Checksum, checksumState); err != nil {
-		_ = closeFile()
-		s.failTask(task, fmt.Sprintf("checksum verify failed: %v", err))
-		return
-	}
-
-	if err := closeFile(); err != nil {
-		s.failTask(task, fmt.Sprintf("close file before post process: %v", err))
-		return
-	}
-
-	extractPath := buildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
-	s.mu.Lock()
-	task.Status = DownloadStatusExtracting
-	s.mu.Unlock()
-	s.emitProgress(task)
-
-	if s.isTaskCancelled(task) {
-		s.cancelTaskAndCleanup(task, destPath, extractPath)
-		return
-	}
-
-	// 下载完成后处理（压缩包解压/路径归一）
-	finalPath, manualExtractRequired, err := s.handleDownloadedFile(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
-	if err != nil {
-		if s.isTaskCancelled(task) {
-			s.cancelTaskAndCleanup(task, destPath, extractPath)
-			return
-		}
-		s.failTask(task, fmt.Sprintf("post process download file: %v", err))
-		return
-	}
-	finalPath, err = normalizeGamePath(finalPath)
-	if err != nil {
-		if s.isTaskCancelled(task) {
-			s.cancelTaskAndCleanup(task, destPath, extractPath, finalPath)
-			return
-		}
-		s.failTask(task, fmt.Sprintf("normalize game path: %v", err))
-		return
-	}
-	if s.isTaskCancelled(task) {
-		s.cancelTaskAndCleanup(task, destPath, extractPath, finalPath)
-		return
-	}
-
-	// 下载完成
-	s.mu.Lock()
-	task.Status = DownloadStatusDone
-	task.Progress = 100
-	task.FilePath = finalPath
-	if manualExtractRequired {
-		task.Error = DownloadManualExtractFlag
-	} else {
-		task.Error = ""
-	}
-	s.mu.Unlock()
-	s.emitProgress(task)
-	applog.LogInfof(s.ctx, "Download complete: %s  path=%s", task.ID, finalPath)
+	s.completeDownloadTask(task, finalPath, manualExtractRequired)
 
 	// 先抓取元数据，再把元数据用于自动创建/更新游戏记录
 	metadata := s.fetchMetadataForTask(task)
@@ -832,7 +553,7 @@ func (s *DownloadService) getTaskDestPath(req vo.InstallRequest) (string, error)
 	if err != nil {
 		return "", err
 	}
-	name := sanitizeDownloadedFileName(req.FileName)
+	name := downloadutils.SanitizeDownloadedFileName(req.FileName)
 	if name == "" {
 		return "", fmt.Errorf("invalid file_name")
 	}
@@ -900,18 +621,18 @@ func (s *DownloadService) fetchMetadataForTask(task *DownloadTask) *vo.GameMetad
 }
 
 func (s *DownloadService) handleDownloadedFile(downloadedPath string, fileName string, archiveFormat string, title string) (string, bool, error) {
-	format := normalizeArchiveFormat(archiveFormat)
+	format := downloadutils.NormalizeArchiveFormat(archiveFormat)
 	if format == "none" {
 		return downloadedPath, false, nil
 	}
-	if !isSupportedArchiveFormat(format) {
+	if !downloadutils.IsSupportedArchiveFormat(format) {
 		return "", false, fmt.Errorf("unsupported archive_format: %s", archiveFormat)
 	}
 
-	baseName := trimArchiveSuffixByFormat(strings.TrimSpace(fileName), format)
-	baseName = sanitizeFileName(baseName)
+	baseName := downloadutils.TrimArchiveSuffixByFormat(strings.TrimSpace(fileName), format)
+	baseName = downloadutils.SanitizeFileName(baseName)
 	if baseName == "" {
-		baseName = sanitizeFileName(title)
+		baseName = downloadutils.SanitizeFileName(title)
 	}
 	if baseName == "" {
 		baseName = "game"
@@ -1198,6 +919,261 @@ func (s *DownloadService) cleanupDownloadArtifacts(paths ...string) {
 	}
 }
 
+func (s *DownloadService) prepareDownloadExecution(task *DownloadTask) (string, string, *grab.Client, error) {
+	destPath, err := s.getTaskDestPath(task.Request)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("resolve download path: %w", err)
+	}
+	extractPath := downloadutils.BuildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
+
+	resumeOffset := s.inspectResumeOffset(task, destPath)
+	client, proxyDesc, err := newGrabDownloadClient(s.config)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("create download client: %w", err)
+	}
+
+	applog.LogInfof(s.ctx, "Download proxy for task %s: %s", task.ID, proxyDesc)
+	s.markTaskDownloading(task, resumeOffset)
+
+	return destPath, extractPath, client, nil
+}
+
+func (s *DownloadService) inspectResumeOffset(task *DownloadTask, destPath string) int64 {
+	resumeOffset := int64(0)
+	if fileInfo, err := os.Stat(destPath); err == nil && !fileInfo.IsDir() {
+		resumeOffset = fileInfo.Size()
+	}
+	if resumeOffset > task.Request.Size {
+		applog.LogWarningf(s.ctx, "partial file exceeds declared size for task %s, reset partial file", task.ID)
+		_ = os.Remove(destPath)
+		return 0
+	}
+	return resumeOffset
+}
+
+func (s *DownloadService) markTaskDownloading(task *DownloadTask, resumeOffset int64) {
+	progress := 0.0
+	if resumeOffset > 0 && task.Request.Size > 0 {
+		progress = float64(resumeOffset) / float64(task.Request.Size) * 100
+	}
+
+	s.mu.Lock()
+	task.Status = DownloadStatusDownloading
+	task.Progress = progress
+	task.Downloaded = resumeOffset
+	task.Total = task.Request.Size
+	task.pauseReq = false
+	task.cancelReq = false
+	task.Error = ""
+	task.FilePath = ""
+	s.mu.Unlock()
+
+	s.emitProgress(task)
+}
+
+func (s *DownloadService) handleGrabDownloadInterruption(task *DownloadTask, err error, destPath string, extractPath string) bool {
+	if !errors.Is(err, context.Canceled) {
+		return false
+	}
+
+	if s.isTaskPauseRequested(task) {
+		s.markTaskPaused(task)
+		applog.LogInfof(s.ctx, "Download paused: %s", task.ID)
+		return true
+	}
+
+	s.cancelTaskAndCleanup(task, destPath, extractPath)
+	applog.LogInfof(s.ctx, "Download cancelled: %s", task.ID)
+	return true
+}
+
+func (s *DownloadService) postProcessDownloadedTask(task *DownloadTask, destPath string, extractPath string) (string, bool, bool, error) {
+	s.markTaskExtracting(task)
+
+	if s.isTaskCancelled(task) {
+		s.cancelTaskAndCleanup(task, destPath, extractPath)
+		return "", false, true, nil
+	}
+
+	finalPath, manualExtractRequired, err := s.handleDownloadedFile(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
+	if err != nil {
+		if s.isTaskCancelled(task) {
+			s.cancelTaskAndCleanup(task, destPath, extractPath)
+			return "", false, true, nil
+		}
+		return "", false, false, fmt.Errorf("post process download file: %w", err)
+	}
+
+	finalPath, err = normalizeGamePath(finalPath)
+	if err != nil {
+		if s.isTaskCancelled(task) {
+			s.cancelTaskAndCleanup(task, destPath, extractPath, finalPath)
+			return "", false, true, nil
+		}
+		return "", false, false, fmt.Errorf("normalize game path: %w", err)
+	}
+
+	if s.isTaskCancelled(task) {
+		s.cancelTaskAndCleanup(task, destPath, extractPath, finalPath)
+		return "", false, true, nil
+	}
+
+	return finalPath, manualExtractRequired, false, nil
+}
+
+func (s *DownloadService) markTaskExtracting(task *DownloadTask) {
+	s.mu.Lock()
+	task.Status = DownloadStatusExtracting
+	s.mu.Unlock()
+	s.emitProgress(task)
+}
+
+func (s *DownloadService) completeDownloadTask(task *DownloadTask, finalPath string, manualExtractRequired bool) {
+	s.mu.Lock()
+	task.Status = DownloadStatusDone
+	task.Progress = 100
+	task.FilePath = finalPath
+	if manualExtractRequired {
+		task.Error = DownloadManualExtractFlag
+	} else {
+		task.Error = ""
+	}
+	s.mu.Unlock()
+
+	s.emitProgress(task)
+	applog.LogInfof(s.ctx, "Download complete: %s  path=%s", task.ID, finalPath)
+}
+
+func (s *DownloadService) downloadWithGrab(ctx context.Context, task *DownloadTask, client *grab.Client, destPath string) (*grab.Response, error) {
+	for attempt := 0; attempt < 2; attempt++ {
+		resp, err := s.runGrabAttempt(ctx, task, client, destPath)
+		if err != nil && attempt == 0 && shouldRetryGrabFromScratch(err, destPath) {
+			applog.LogWarningf(s.ctx, "grab resume failed for task %s, reset partial file and retry full download: %v", task.ID, err)
+			if removeErr := os.Remove(destPath); removeErr != nil && !os.IsNotExist(removeErr) {
+				return resp, fmt.Errorf("reset partial download: %w", removeErr)
+			}
+			s.mu.Lock()
+			task.Downloaded = 0
+			task.Progress = 0
+			s.mu.Unlock()
+			s.emitProgress(task)
+			continue
+		}
+		return resp, err
+	}
+
+	return nil, fmt.Errorf("download failed after retry")
+}
+
+func (s *DownloadService) runGrabAttempt(ctx context.Context, task *DownloadTask, client *grab.Client, destPath string) (*grab.Response, error) {
+	req, err := newGrabDownloadRequest(ctx, task, destPath)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := client.Do(req)
+	s.updateTaskProgressFromGrab(task, resp)
+	s.emitProgress(task)
+
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			s.updateTaskProgressFromGrab(task, resp)
+			s.emitProgress(task)
+		case <-resp.Done:
+			s.updateTaskProgressFromGrab(task, resp)
+			s.emitProgress(task)
+			return resp, resp.Err()
+		}
+	}
+}
+
+func (s *DownloadService) updateTaskProgressFromGrab(task *DownloadTask, resp *grab.Response) {
+	if resp == nil {
+		return
+	}
+
+	downloaded := resp.BytesComplete()
+	total := task.Request.Size
+	if size := resp.Size(); size > 0 {
+		total = size
+	}
+
+	progress := 0.0
+	if total > 0 {
+		progress = float64(downloaded) / float64(total) * 100
+		if progress > 100 {
+			progress = 100
+		}
+	}
+
+	s.mu.Lock()
+	task.Downloaded = downloaded
+	task.Total = total
+	task.Progress = progress
+	s.mu.Unlock()
+}
+
+func newGrabDownloadRequest(ctx context.Context, task *DownloadTask, destPath string) (*grab.Request, error) {
+	req, err := grab.NewRequest(destPath, task.Request.URL)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	req = req.WithContext(ctx)
+	req.Size = task.Request.Size
+	req.IgnoreRemoteTime = true
+	req.HTTPRequest.Header.Set("User-Agent", downloadUserAgent)
+
+	checksumHash, checksumBytes, err := newGrabChecksumState(task.Request.ChecksumAlgo, task.Request.Checksum)
+	if err != nil {
+		return nil, fmt.Errorf("configure checksum: %w", err)
+	}
+	req.SetChecksum(checksumHash, checksumBytes, false)
+
+	return req, nil
+}
+
+func newGrabDownloadClient(config *appconf.AppConfig) (*grab.Client, string, error) {
+	httpClient, proxyDesc, err := newSecureDownloadClient(config)
+	if err != nil {
+		return nil, "", err
+	}
+
+	client := grab.NewClient()
+	client.HTTPClient = httpClient
+	client.UserAgent = downloadUserAgent
+
+	return client, proxyDesc, nil
+}
+
+func shouldRetryGrabFromScratch(err error, destPath string) bool {
+	if strings.TrimSpace(destPath) == "" {
+		return false
+	}
+
+	if info, statErr := os.Stat(destPath); statErr != nil || info.IsDir() || info.Size() <= 0 {
+		return false
+	}
+
+	var statusErr grab.StatusCodeError
+	return errors.As(err, &statusErr) && int(statusErr) == http.StatusRequestedRangeNotSatisfiable
+}
+
+func formatGrabDownloadError(task *DownloadTask, err error) string {
+	switch {
+	case errors.Is(err, grab.ErrBadLength):
+		return fmt.Sprintf("size mismatch during download: expected=%d", task.Request.Size)
+	case errors.Is(err, grab.ErrBadChecksum):
+		return "checksum verify failed: checksum mismatch"
+	default:
+		return fmt.Sprintf("download failed: %v", err)
+	}
+}
+
 func collapseSingleRootDirectory(dir string) (string, bool) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -1216,28 +1192,6 @@ func collapseSingleRootDirectory(dir string) (string, bool) {
 	return filepath.Join(dir, only.Name()), true
 }
 
-func buildExpectedExtractDir(downloadedPath string, fileName string, archiveFormat string, title string) string {
-	if strings.TrimSpace(downloadedPath) == "" {
-		return ""
-	}
-
-	format := normalizeArchiveFormat(archiveFormat)
-	if format == "none" || !isSupportedArchiveFormat(format) {
-		return ""
-	}
-
-	baseName := trimArchiveSuffixByFormat(strings.TrimSpace(fileName), format)
-	baseName = sanitizeFileName(baseName)
-	if baseName == "" {
-		baseName = sanitizeFileName(title)
-	}
-	if baseName == "" {
-		baseName = "game"
-	}
-
-	return filepath.Join(filepath.Dir(downloadedPath), baseName)
-}
-
 // =================== 辅助函数 ===================
 
 func (s *DownloadService) getDownloadDir() (string, error) {
@@ -1252,86 +1206,26 @@ func (s *DownloadService) getDownloadDir() (string, error) {
 	return dir, os.MkdirAll(dir, 0755)
 }
 
-func sanitizeFileName(name string) string {
-	invalid := []rune{'/', '\\', ':', '*', '?', '"', '<', '>', '|', '\x00'}
-	result := []rune(name)
-	for i, c := range result {
-		for _, inv := range invalid {
-			if c == inv {
-				result[i] = '_'
-				break
-			}
-		}
-	}
-	s := string(result)
-	if len(s) > 200 {
-		s = s[:200]
-	}
-	return s
-}
-
-func sanitizeDownloadedFileName(name string) string {
-	trimmed := strings.TrimSpace(name)
-	if trimmed == "" {
-		return ""
-	}
-	base := filepath.Base(trimmed)
-	if base == "." || base == ".." {
-		return ""
-	}
-	safe := strings.TrimSpace(sanitizeFileName(base))
-	if safe == "" || safe == "." || safe == ".." {
-		return ""
-	}
-	return safe
-}
-
-func normalizeArchiveFormat(format string) string {
-	return strings.ToLower(strings.TrimSpace(format))
-}
-
-func validateDownloadURL(rawURL string) error {
-	parsed, err := url.Parse(strings.TrimSpace(rawURL))
-	if err != nil {
-		return fmt.Errorf("invalid url: %w", err)
-	}
-	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return fmt.Errorf("url must use http or https")
-	}
-	host := parsed.Hostname()
-	if host == "" {
-		return fmt.Errorf("url host is required")
-	}
-	if isBlockedHostname(host) {
-		return fmt.Errorf("url host is not allowed")
-	}
-	if ip := net.ParseIP(host); ip != nil && isBlockedIP(ip) {
-		return fmt.Errorf("url host resolves to a blocked address")
-	}
-	return nil
-}
-
-func validateChecksumFields(algo string, checksum string) error {
+func newGrabChecksumState(algo string, checksum string) (hash.Hash, []byte, error) {
 	trimmedAlgo := strings.ToLower(strings.TrimSpace(algo))
 	trimmedChecksum := strings.ToLower(strings.TrimSpace(checksum))
-	if trimmedAlgo == "" || trimmedChecksum == "" {
-		return fmt.Errorf("checksum_algo and checksum are required")
+	if trimmedAlgo == "" {
+		return nil, nil, nil
 	}
 
-	if _, err := hex.DecodeString(trimmedChecksum); err != nil {
-		return fmt.Errorf("checksum must be lowercase hex")
+	sum, err := hex.DecodeString(trimmedChecksum)
+	if err != nil {
+		return nil, nil, fmt.Errorf("decode checksum: %w", err)
 	}
 
 	switch trimmedAlgo {
-	case "sha256", "blake3":
-		if len(trimmedChecksum) != 64 {
-			return fmt.Errorf("%s checksum must be 64 hex characters", trimmedAlgo)
-		}
+	case "sha256":
+		return sha256.New(), sum, nil
+	case "blake3":
+		return blake3.New(), sum, nil
 	default:
-		return fmt.Errorf("unsupported checksum_algo: %s", algo)
+		return nil, nil, fmt.Errorf("unsupported checksum algo: %s", algo)
 	}
-
-	return nil
 }
 
 func isBlockedHostname(host string) bool {
@@ -1419,74 +1313,27 @@ func newSecureDownloadClient(config *appconf.AppConfig) (*http.Client, string, e
 			if len(via) >= 5 {
 				return fmt.Errorf("too many redirects")
 			}
-			return validateDownloadURL(req.URL.String())
+			return downloadutils.ValidateDownloadURL(req.URL.String())
 		},
 	}, proxyDesc, nil
-}
-
-func isSupportedArchiveFormat(format string) bool {
-	switch normalizeArchiveFormat(format) {
-	case "none", "zip", "rar", "7z", "tar", "tar.gz", "tar.bz2", "tar.xz", "tar.zst", "tgz", "tbz2", "txz", "tzst":
-		return true
-	default:
-		return false
-	}
-}
-
-func trimArchiveSuffixByFormat(name string, format string) string {
-	trimmedName := strings.TrimSpace(name)
-	if trimmedName == "" {
-		return ""
-	}
-
-	lower := strings.ToLower(trimmedName)
-	var suffixes []string
-	switch format {
-	case "zip":
-		suffixes = []string{".zip"}
-	case "rar":
-		suffixes = []string{".rar"}
-	case "7z":
-		suffixes = []string{".7z"}
-	case "tar":
-		suffixes = []string{".tar"}
-	case "tar.gz", "tgz":
-		suffixes = []string{".tar.gz", ".tgz"}
-	case "tar.bz2", "tbz2":
-		suffixes = []string{".tar.bz2", ".tbz2"}
-	case "tar.xz", "txz":
-		suffixes = []string{".tar.xz", ".txz"}
-	case "tar.zst", "tzst":
-		suffixes = []string{".tar.zst", ".tzst"}
-	default:
-		suffixes = nil
-	}
-
-	for _, suffix := range suffixes {
-		if strings.HasSuffix(lower, suffix) {
-			return strings.TrimSpace(trimmedName[:len(trimmedName)-len(suffix)])
-		}
-	}
-
-	return strings.TrimSuffix(trimmedName, filepath.Ext(trimmedName))
 }
 
 func validateInstallRequest(req vo.InstallRequest) error {
 	if strings.TrimSpace(req.URL) == "" {
 		return fmt.Errorf("missing url")
 	}
-	if err := validateDownloadURL(req.URL); err != nil {
+	if err := downloadutils.ValidateDownloadURL(req.URL); err != nil {
 		return err
 	}
-	if sanitizeDownloadedFileName(req.FileName) == "" {
+	if downloadutils.SanitizeDownloadedFileName(req.FileName) == "" {
 		return fmt.Errorf("missing or invalid file_name")
 	}
 
-	format := normalizeArchiveFormat(req.ArchiveFormat)
+	format := downloadutils.NormalizeArchiveFormat(req.ArchiveFormat)
 	if format == "" {
 		return fmt.Errorf("missing archive_format")
 	}
-	if !isSupportedArchiveFormat(format) {
+	if !downloadutils.IsSupportedArchiveFormat(format) {
 		return fmt.Errorf("unsupported archive_format: %s", req.ArchiveFormat)
 	}
 
@@ -1506,7 +1353,7 @@ func validateInstallRequest(req vo.InstallRequest) error {
 
 	algo := strings.ToLower(strings.TrimSpace(req.ChecksumAlgo))
 	checksum := strings.ToLower(strings.TrimSpace(req.Checksum))
-	if err := validateChecksumFields(algo, checksum); err != nil {
+	if err := downloadutils.ValidateChecksumFields(algo, checksum); err != nil {
 		return err
 	}
 
@@ -1620,68 +1467,4 @@ func pathSegmentEquals(a string, b string) bool {
 func pathExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
-}
-
-type checksumWriter struct {
-	h hash.Hash
-}
-
-func newChecksumState(algo string) (*checksumWriter, error) {
-	trimmedAlgo := strings.ToLower(strings.TrimSpace(algo))
-	if trimmedAlgo == "" {
-		return nil, nil
-	}
-	switch trimmedAlgo {
-	case "sha256":
-		return &checksumWriter{h: sha256.New()}, nil
-	case "blake3":
-		return &checksumWriter{h: blake3.New()}, nil
-	default:
-		return nil, fmt.Errorf("unsupported checksum algo: %s", algo)
-	}
-}
-
-func (w *checksumWriter) Write(p []byte) (int, error) {
-	if w == nil || w.h == nil {
-		return len(p), nil
-	}
-	return w.h.Write(p)
-}
-
-func hashExistingFilePortion(path string, bytesToHash int64, writer *checksumWriter) error {
-	if writer == nil || writer.h == nil || bytesToHash <= 0 {
-		return nil
-	}
-
-	file, err := os.Open(path)
-	if err != nil {
-		return fmt.Errorf("open existing file: %w", err)
-	}
-	defer file.Close()
-
-	limited := io.LimitReader(file, bytesToHash)
-	if _, err := io.Copy(writer, limited); err != nil {
-		return fmt.Errorf("hash existing file: %w", err)
-	}
-
-	return nil
-}
-
-func verifyChecksum(algo string, expected string, writer *checksumWriter) error {
-	trimmedAlgo := strings.ToLower(strings.TrimSpace(algo))
-	trimmedExpected := strings.ToLower(strings.TrimSpace(expected))
-	if trimmedAlgo == "" && trimmedExpected == "" {
-		return nil
-	}
-	if trimmedAlgo == "" || trimmedExpected == "" {
-		return fmt.Errorf("checksum_algo/checksum not paired")
-	}
-	if writer == nil || writer.h == nil {
-		return fmt.Errorf("checksum state missing")
-	}
-	got := hex.EncodeToString(writer.h.Sum(nil))
-	if got != trimmedExpected {
-		return fmt.Errorf("%s mismatch: expected=%s got=%s", trimmedAlgo, trimmedExpected, got)
-	}
-	return nil
 }
