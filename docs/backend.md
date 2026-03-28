@@ -47,6 +47,7 @@
 ## Service 设计与依赖注入
 
 - MUST 以 service 作为业务边界，按 domain 划分，不需要 DAO 层。
+- MUST service 方法主要暴露给Wails前端的接口，内部逻辑可以再细分为多个私有方法。
 - MUST SQL 操作封装在 service 内部的私有方法中，避免在多个文件随意拼 SQL。
 - MUST 在 `main.go` 中创建 service 实例并调用 `Init(...)` 完成基础注入（ctx/db/config）。
 - MUST service 间依赖通过 `SetXxxService(...)` 注入（参照 `StartService.SetSessionService`、`ImportService.SetSessionService`），不要直接 new 另一个 service。
@@ -63,8 +64,8 @@
 - MUST 新增工具函数前先检查 `internal/utils/` 是否已有实现；优先复用/扩展。
 - SHOULD 先按“场景”找 package，不要直接在 service 里重复封装文件/压缩/图片/进程/代理逻辑。
 - SHOULD 把“下载协议/文件辅助”和“下载任务状态机”分开：
-  通用的 URL、checksum、文件名、archive format 处理优先放 `internal/utils/downloadutils`，
-  任务状态、暂停恢复、解压后导入继续留在 service。
+  通用的 URL、checksum、文件名、archive format 处理，以及可复用的单连接/分片下载传输优先放 `internal/utils/downloadutils`，
+  任务状态、暂停恢复、事件推送、解压后导入继续留在 service。
 
 常见场景与优先入口：
 
@@ -73,7 +74,7 @@
 | 应用数据目录、缓存目录、模板目录 | `internal/utils/apputils` | `GetDataDir`、`GetCacheDir`、`GetConfigDir`、`GetTemplatesDir` |
 | 文件复制、打开目录、查找可执行文件 | `internal/utils/apputils` | `CopyFile`、`CopyDir`、`OpenDirectory`、`OpenFileOrFolder`、`FindExecutables` |
 | ZIP / 7z / RAR 等归档处理 | `internal/utils/archiveutils` | `ExtractArchive`、`ZipDirectory`、`ZipFileOrDirectory`、`UnzipFile` |
-| 下载 URL / checksum / 文件名 / archive format 辅助 | `internal/utils/downloadutils` | `ValidateDownloadURL`、`ValidateChecksumFields`、`SanitizeDownloadedFileName`、`BuildExpectedExtractDir` |
+| 下载 URL / checksum / 文件名 / archive format / 传输辅助 | `internal/utils/downloadutils` | `ValidateDownloadURL`、`ValidateChecksumFields`、`SanitizeDownloadedFileName`、`BuildExpectedExtractDir`、`NewDownloader` |
 | 封面/背景图落盘与本地路径管理 | `internal/utils/imageutils` | `SaveCoverImage`、`DownloadAndSaveCoverImage`、`SaveBackgroundImage`、`CropAndSaveBackgroundImage` |
 | 元数据抓取（Bangumi/VNDB/Steam/Ymgal） | `internal/utils/metadata` | `NewBangumiInfoGetter`、`NewVNDBInfoGetterWithLanguage`、`NewSteamInfoGetterWithLanguage`、`NewYmgalInfoGetter` |
 | 进程枚举、PID 查询、退出监听 | `internal/utils/processutils` | `GetRunningProcesses`、`GetProcessPIDByName`、`WaitForProcessExitAsync` |

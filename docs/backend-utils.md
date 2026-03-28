@@ -16,7 +16,7 @@
 |------|---------|----------|
 | 应用目录、文件复制、打开资源管理器、查找 exe | `internal/utils/apputils` | `GetDataDir`、`CopyFile`、`OpenFileOrFolder`、`FindExecutables` |
 | 压缩与解压 | `internal/utils/archiveutils` | `ExtractArchive`、`ZipDirectory`、`ZipFileOrDirectory`、`UnzipFile` |
-| 下载 URL / checksum / 文件名 / archive format 辅助 | `internal/utils/downloadutils` | `ValidateDownloadURL`、`ValidateChecksumFields`、`SanitizeDownloadedFileName`、`BuildExpectedExtractDir` |
+| 下载 URL / checksum / 文件名 / archive format / 传输辅助 | `internal/utils/downloadutils` | `ValidateDownloadURL`、`ValidateChecksumFields`、`SanitizeDownloadedFileName`、`BuildExpectedExtractDir`、`NewDownloader` |
 | 封面图/背景图管理 | `internal/utils/imageutils` | `SaveCoverImage`、`DownloadAndSaveCoverImage`、`SaveBackgroundImage` |
 | 游戏元数据抓取 | `internal/utils/metadata` | `NewBangumiInfoGetter`、`NewVNDBInfoGetterWithLanguage`、`NewSteamInfoGetterWithLanguage`、`NewYmgalInfoGetter` |
 | 进程查询与退出监听 | `internal/utils/processutils` | `GetRunningProcesses`、`GetProcessPIDByName`、`WaitForProcessExitAsync` |
@@ -99,7 +99,7 @@
 
 ## `downloadutils`
 
-适用场景：下载请求的通用参数校验、archive format 归一化、下载文件名清洗、推导预期解压目录。
+适用场景：下载请求的通用参数校验、archive format 归一化、下载文件名清洗、推导预期解压目录，以及可复用的安全下载传输能力。
 
 优先复用：
 
@@ -113,12 +113,15 @@
 | `BuildExpectedExtractDir(downloadedPath, fileName, archiveFormat, title)` | 生成下载后默认解压目录 |
 | `ValidateDownloadURL(rawURL)` | 校验下载 URL 协议、host 和内网/回环等受限地址 |
 | `ValidateChecksumFields(algo, checksum)` | 校验 checksum 算法和值格式 |
+| `NewDownloader(config)` / `Downloader.Download(ctx, req)` | 统一下载入口，自动在单连接与分片下载间选择，并复用安全代理/拨号限制 |
+| `InspectResumeOffset(destPath, expectedSize)` | 检查普通下载或分片下载的可续传字节数 |
+| `MultipartTempDir(destPath)` | 获取分片下载的临时目录路径 |
 
 注意：
 
-- 这里适合放“下载协议/文件辅助”，不适合放“下载任务状态机”。
+- 这里适合放“下载协议/文件辅助”和“可复用的传输实现”，不适合放“下载任务状态机”。
 - `downloadutils` 可以被 `protocol`、`service` 等多处复用；如果某段逻辑只服务单个下载流程，就继续留在当前 service。
-- 代理拨号限制、任务暂停恢复、解压失败后的业务回退，不属于这个 package。
+- 代理拨号限制、续传探测、分片下载状态文件都可以放这里；任务暂停恢复、事件推送、解压失败后的业务回退不属于这个 package。
 
 ---
 
