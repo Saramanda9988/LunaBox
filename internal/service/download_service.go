@@ -2,13 +2,10 @@ package service
 
 import (
 	"context"
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash"
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
 	"lunabox/internal/enums"
@@ -16,21 +13,15 @@ import (
 	"lunabox/internal/utils/apputils"
 	"lunabox/internal/utils/archiveutils"
 	"lunabox/internal/utils/downloadutils"
-	"lunabox/internal/utils/proxyutils"
 	"lunabox/internal/vo"
-	"net"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
-	grab "github.com/cavaliergopher/grab/v3"
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
-	"github.com/zeebo/blake3"
 )
 
 // DownloadStatus 下载状态
@@ -45,7 +36,6 @@ const (
 	DownloadStatusError       DownloadStatus = "error"
 	DownloadStatusCancelled   DownloadStatus = "cancelled"
 	DownloadManualExtractFlag                = "manual_extract_required"
-	downloadUserAgent                        = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 LunaBox/1.0"
 )
 
 // DownloadTask 单个下载任务
@@ -178,7 +168,7 @@ func (s *DownloadService) CancelDownload(taskID string) error {
 			destPath = path
 		}
 		extractPath := downloadutils.BuildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
-		s.cancelTaskAndCleanup(task, destPath, extractPath)
+		s.cancelTaskAndCleanup(task, destPath, extractPath, downloadutils.MultipartTempDir(destPath))
 		return nil
 	}
 
@@ -427,22 +417,29 @@ func (s *DownloadService) runDownload(ctx context.Context, task *DownloadTask) {
 		return
 	}
 
-	destPath, extractPath, client, err := s.prepareDownloadExecution(task)
+	destPath, extractPath, downloader, err := s.prepareDownloadExecution(task)
 	if err != nil {
 		s.failTask(task, err.Error())
 		return
 	}
 
-	resp, err := s.downloadWithGrab(ctx, task, client, destPath)
+	err = downloader.Download(ctx, downloadutils.TransferRequest{
+		URL:             task.Request.URL,
+		DestinationPath: destPath,
+		ExpectedSize:    task.Request.Size,
+		ChecksumAlgo:    task.Request.ChecksumAlgo,
+		Checksum:        task.Request.Checksum,
+		Progress: func(progress downloadutils.Progress) {
+			s.updateTaskProgress(task, progress.Downloaded, progress.Total)
+			s.emitProgress(task)
+		},
+	})
 	if err != nil {
-		if s.handleGrabDownloadInterruption(task, err, destPath, extractPath) {
+		if s.handleGrabDownloadInterruption(task, err, destPath, extractPath, downloadutils.MultipartTempDir(destPath)) {
 			return
 		}
-		s.failTask(task, formatGrabDownloadError(task, err))
+		s.failTask(task, downloadutils.FormatDownloadError(task.Request.Size, err))
 		return
-	}
-	if resp != nil {
-		s.updateTaskProgressFromGrab(task, resp)
 	}
 
 	finalPath, manualExtractRequired, handled, err := s.postProcessDownloadedTask(task, destPath, extractPath)
@@ -919,7 +916,7 @@ func (s *DownloadService) cleanupDownloadArtifacts(paths ...string) {
 	}
 }
 
-func (s *DownloadService) prepareDownloadExecution(task *DownloadTask) (string, string, *grab.Client, error) {
+func (s *DownloadService) prepareDownloadExecution(task *DownloadTask) (string, string, *downloadutils.Downloader, error) {
 	destPath, err := s.getTaskDestPath(task.Request)
 	if err != nil {
 		return "", "", nil, fmt.Errorf("resolve download path: %w", err)
@@ -927,7 +924,12 @@ func (s *DownloadService) prepareDownloadExecution(task *DownloadTask) (string, 
 	extractPath := downloadutils.BuildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
 
 	resumeOffset := s.inspectResumeOffset(task, destPath)
-	client, proxyDesc, err := newGrabDownloadClient(s.config)
+	config := downloadutils.TransferConfig{}
+	if s.config != nil {
+		config.ProxyMode = s.config.DownloadProxyMode
+		config.ProxyURL = s.config.DownloadProxyURL
+	}
+	downloader, proxyDesc, err := downloadutils.NewDownloader(config)
 	if err != nil {
 		return "", "", nil, fmt.Errorf("create download client: %w", err)
 	}
@@ -935,20 +937,11 @@ func (s *DownloadService) prepareDownloadExecution(task *DownloadTask) (string, 
 	applog.LogInfof(s.ctx, "Download proxy for task %s: %s", task.ID, proxyDesc)
 	s.markTaskDownloading(task, resumeOffset)
 
-	return destPath, extractPath, client, nil
+	return destPath, extractPath, downloader, nil
 }
 
 func (s *DownloadService) inspectResumeOffset(task *DownloadTask, destPath string) int64 {
-	resumeOffset := int64(0)
-	if fileInfo, err := os.Stat(destPath); err == nil && !fileInfo.IsDir() {
-		resumeOffset = fileInfo.Size()
-	}
-	if resumeOffset > task.Request.Size {
-		applog.LogWarningf(s.ctx, "partial file exceeds declared size for task %s, reset partial file", task.ID)
-		_ = os.Remove(destPath)
-		return 0
-	}
-	return resumeOffset
+	return downloadutils.InspectResumeOffset(destPath, task.Request.Size)
 }
 
 func (s *DownloadService) markTaskDownloading(task *DownloadTask, resumeOffset int64) {
@@ -971,7 +964,7 @@ func (s *DownloadService) markTaskDownloading(task *DownloadTask, resumeOffset i
 	s.emitProgress(task)
 }
 
-func (s *DownloadService) handleGrabDownloadInterruption(task *DownloadTask, err error, destPath string, extractPath string) bool {
+func (s *DownloadService) handleGrabDownloadInterruption(task *DownloadTask, err error, cleanupPaths ...string) bool {
 	if !errors.Is(err, context.Canceled) {
 		return false
 	}
@@ -982,7 +975,7 @@ func (s *DownloadService) handleGrabDownloadInterruption(task *DownloadTask, err
 		return true
 	}
 
-	s.cancelTaskAndCleanup(task, destPath, extractPath)
+	s.cancelTaskAndCleanup(task, cleanupPaths...)
 	applog.LogInfof(s.ctx, "Download cancelled: %s", task.ID)
 	return true
 }
@@ -991,14 +984,14 @@ func (s *DownloadService) postProcessDownloadedTask(task *DownloadTask, destPath
 	s.markTaskExtracting(task)
 
 	if s.isTaskCancelled(task) {
-		s.cancelTaskAndCleanup(task, destPath, extractPath)
+		s.cancelTaskAndCleanup(task, destPath, extractPath, downloadutils.MultipartTempDir(destPath))
 		return "", false, true, nil
 	}
 
 	finalPath, manualExtractRequired, err := s.handleDownloadedFile(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
 	if err != nil {
 		if s.isTaskCancelled(task) {
-			s.cancelTaskAndCleanup(task, destPath, extractPath)
+			s.cancelTaskAndCleanup(task, destPath, extractPath, downloadutils.MultipartTempDir(destPath))
 			return "", false, true, nil
 		}
 		return "", false, false, fmt.Errorf("post process download file: %w", err)
@@ -1007,14 +1000,14 @@ func (s *DownloadService) postProcessDownloadedTask(task *DownloadTask, destPath
 	finalPath, err = normalizeGamePath(finalPath)
 	if err != nil {
 		if s.isTaskCancelled(task) {
-			s.cancelTaskAndCleanup(task, destPath, extractPath, finalPath)
+			s.cancelTaskAndCleanup(task, destPath, extractPath, finalPath, downloadutils.MultipartTempDir(destPath))
 			return "", false, true, nil
 		}
 		return "", false, false, fmt.Errorf("normalize game path: %w", err)
 	}
 
 	if s.isTaskCancelled(task) {
-		s.cancelTaskAndCleanup(task, destPath, extractPath, finalPath)
+		s.cancelTaskAndCleanup(task, destPath, extractPath, finalPath, downloadutils.MultipartTempDir(destPath))
 		return "", false, true, nil
 	}
 
@@ -1044,64 +1037,7 @@ func (s *DownloadService) completeDownloadTask(task *DownloadTask, finalPath str
 	applog.LogInfof(s.ctx, "Download complete: %s  path=%s", task.ID, finalPath)
 }
 
-func (s *DownloadService) downloadWithGrab(ctx context.Context, task *DownloadTask, client *grab.Client, destPath string) (*grab.Response, error) {
-	for attempt := 0; attempt < 2; attempt++ {
-		resp, err := s.runGrabAttempt(ctx, task, client, destPath)
-		if err != nil && attempt == 0 && shouldRetryGrabFromScratch(err, destPath) {
-			applog.LogWarningf(s.ctx, "grab resume failed for task %s, reset partial file and retry full download: %v", task.ID, err)
-			if removeErr := os.Remove(destPath); removeErr != nil && !os.IsNotExist(removeErr) {
-				return resp, fmt.Errorf("reset partial download: %w", removeErr)
-			}
-			s.mu.Lock()
-			task.Downloaded = 0
-			task.Progress = 0
-			s.mu.Unlock()
-			s.emitProgress(task)
-			continue
-		}
-		return resp, err
-	}
-
-	return nil, fmt.Errorf("download failed after retry")
-}
-
-func (s *DownloadService) runGrabAttempt(ctx context.Context, task *DownloadTask, client *grab.Client, destPath string) (*grab.Response, error) {
-	req, err := newGrabDownloadRequest(ctx, task, destPath)
-	if err != nil {
-		return nil, err
-	}
-
-	resp := client.Do(req)
-	s.updateTaskProgressFromGrab(task, resp)
-	s.emitProgress(task)
-
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			s.updateTaskProgressFromGrab(task, resp)
-			s.emitProgress(task)
-		case <-resp.Done:
-			s.updateTaskProgressFromGrab(task, resp)
-			s.emitProgress(task)
-			return resp, resp.Err()
-		}
-	}
-}
-
-func (s *DownloadService) updateTaskProgressFromGrab(task *DownloadTask, resp *grab.Response) {
-	if resp == nil {
-		return
-	}
-
-	downloaded := resp.BytesComplete()
-	total := task.Request.Size
-	if size := resp.Size(); size > 0 {
-		total = size
-	}
-
+func (s *DownloadService) updateTaskProgress(task *DownloadTask, downloaded int64, total int64) {
 	progress := 0.0
 	if total > 0 {
 		progress = float64(downloaded) / float64(total) * 100
@@ -1115,63 +1051,6 @@ func (s *DownloadService) updateTaskProgressFromGrab(task *DownloadTask, resp *g
 	task.Total = total
 	task.Progress = progress
 	s.mu.Unlock()
-}
-
-func newGrabDownloadRequest(ctx context.Context, task *DownloadTask, destPath string) (*grab.Request, error) {
-	req, err := grab.NewRequest(destPath, task.Request.URL)
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
-	}
-
-	req = req.WithContext(ctx)
-	req.Size = task.Request.Size
-	req.IgnoreRemoteTime = true
-	req.HTTPRequest.Header.Set("User-Agent", downloadUserAgent)
-
-	checksumHash, checksumBytes, err := newGrabChecksumState(task.Request.ChecksumAlgo, task.Request.Checksum)
-	if err != nil {
-		return nil, fmt.Errorf("configure checksum: %w", err)
-	}
-	req.SetChecksum(checksumHash, checksumBytes, false)
-
-	return req, nil
-}
-
-func newGrabDownloadClient(config *appconf.AppConfig) (*grab.Client, string, error) {
-	httpClient, proxyDesc, err := newSecureDownloadClient(config)
-	if err != nil {
-		return nil, "", err
-	}
-
-	client := grab.NewClient()
-	client.HTTPClient = httpClient
-	client.UserAgent = downloadUserAgent
-
-	return client, proxyDesc, nil
-}
-
-func shouldRetryGrabFromScratch(err error, destPath string) bool {
-	if strings.TrimSpace(destPath) == "" {
-		return false
-	}
-
-	if info, statErr := os.Stat(destPath); statErr != nil || info.IsDir() || info.Size() <= 0 {
-		return false
-	}
-
-	var statusErr grab.StatusCodeError
-	return errors.As(err, &statusErr) && int(statusErr) == http.StatusRequestedRangeNotSatisfiable
-}
-
-func formatGrabDownloadError(task *DownloadTask, err error) string {
-	switch {
-	case errors.Is(err, grab.ErrBadLength):
-		return fmt.Sprintf("size mismatch during download: expected=%d", task.Request.Size)
-	case errors.Is(err, grab.ErrBadChecksum):
-		return "checksum verify failed: checksum mismatch"
-	default:
-		return fmt.Sprintf("download failed: %v", err)
-	}
 }
 
 func collapseSingleRootDirectory(dir string) (string, bool) {
@@ -1204,118 +1083,6 @@ func (s *DownloadService) getDownloadDir() (string, error) {
 	}
 	dir := filepath.Join(home, "Games")
 	return dir, os.MkdirAll(dir, 0755)
-}
-
-func newGrabChecksumState(algo string, checksum string) (hash.Hash, []byte, error) {
-	trimmedAlgo := strings.ToLower(strings.TrimSpace(algo))
-	trimmedChecksum := strings.ToLower(strings.TrimSpace(checksum))
-	if trimmedAlgo == "" {
-		return nil, nil, nil
-	}
-
-	sum, err := hex.DecodeString(trimmedChecksum)
-	if err != nil {
-		return nil, nil, fmt.Errorf("decode checksum: %w", err)
-	}
-
-	switch trimmedAlgo {
-	case "sha256":
-		return sha256.New(), sum, nil
-	case "blake3":
-		return blake3.New(), sum, nil
-	default:
-		return nil, nil, fmt.Errorf("unsupported checksum algo: %s", algo)
-	}
-}
-
-func isBlockedHostname(host string) bool {
-	trimmed := strings.ToLower(strings.TrimSpace(host))
-	return trimmed == "localhost" || strings.HasSuffix(trimmed, ".localhost")
-}
-
-func isBlockedIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalMulticast() || ip.IsLinkLocalUnicast() || ip.IsMulticast() || ip.IsUnspecified()
-}
-
-func resolveAllowedAddress(ctx context.Context, address string) (string, error) {
-	host, port, err := net.SplitHostPort(address)
-	if err != nil {
-		return "", err
-	}
-	if isBlockedHostname(host) {
-		return "", fmt.Errorf("blocked host: %s", host)
-	}
-	if ip := net.ParseIP(host); ip != nil {
-		if isBlockedIP(ip) {
-			return "", fmt.Errorf("blocked ip: %s", host)
-		}
-		return net.JoinHostPort(ip.String(), port), nil
-	}
-
-	resolver := net.Resolver{}
-	ips, err := resolver.LookupIPAddr(ctx, host)
-	if err != nil {
-		return "", err
-	}
-	for _, ip := range ips {
-		if isBlockedIP(ip.IP) {
-			continue
-		}
-		return net.JoinHostPort(ip.IP.String(), port), nil
-	}
-
-	return "", fmt.Errorf("host %s resolved only to blocked addresses", host)
-}
-
-func newSecureDownloadClient(config *appconf.AppConfig) (*http.Client, string, error) {
-	var mode string
-	var proxyURL string
-	if config != nil {
-		mode = config.DownloadProxyMode
-		proxyURL = config.DownloadProxyURL
-	}
-
-	selection, proxyDesc, err := proxyutils.ResolveDownloadProxy(mode, proxyURL)
-	if err != nil {
-		return nil, "", fmt.Errorf("resolve download proxy: %w", err)
-	}
-
-	allowedProxyTargets := map[string]struct{}{}
-	if selection != nil {
-		allowedProxyTargets = selection.AllowedDialTargets()
-	}
-
-	dialer := &net.Dialer{}
-	transport := &http.Transport{
-		Proxy: func(req *http.Request) (*url.URL, error) {
-			if selection == nil {
-				return nil, nil
-			}
-			return selection.Proxy(req)
-		},
-		DialContext: func(ctx context.Context, network string, address string) (net.Conn, error) {
-			if _, ok := allowedProxyTargets[address]; ok {
-				return dialer.DialContext(ctx, network, address)
-			}
-
-			resolvedAddress, err := resolveAllowedAddress(ctx, address)
-			if err != nil {
-				return nil, err
-			}
-			return dialer.DialContext(ctx, network, resolvedAddress)
-		},
-	}
-
-	return &http.Client{
-		Timeout:   0,
-		Transport: transport,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 5 {
-				return fmt.Errorf("too many redirects")
-			}
-			return downloadutils.ValidateDownloadURL(req.URL.String())
-		},
-	}, proxyDesc, nil
 }
 
 func validateInstallRequest(req vo.InstallRequest) error {
