@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"lunabox/internal/applog"
 	"lunabox/internal/cli"
 	"lunabox/internal/cli/ipcclient"
 	"lunabox/internal/cli/ipcserver"
@@ -25,12 +26,11 @@ import (
 	"lunabox/internal/migrations"
 	"lunabox/internal/service"
 
-	"github.com/wailsapp/wails/v2/pkg/options/windows"
-
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/logger"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/energye/systray"
@@ -187,7 +187,7 @@ func main() {
 
 	// ================================================================
 	logDir, _ := apputils.GetSubDir("logs")
-	appLogger := logger.NewFileLogger(filepath.Join(logDir, "app.log"))
+	appLogger := applog.NewFileLogger(filepath.Join(logDir, "app.log"))
 
 	var loadErr error
 	config, loadErr = appconf.LoadConfig()

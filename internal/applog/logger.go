@@ -59,7 +59,7 @@ func SetColorEnabled(enabled bool) {
 
 // logToCLI 输出到 CLI 控制台（带颜色）
 func logToCLI(level, format string, args ...interface{}) {
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	timestamp := time.Now().Format(logFileTimestampLayout)
 	message := fmt.Sprintf(format, args...)
 
 	var colorCode string
