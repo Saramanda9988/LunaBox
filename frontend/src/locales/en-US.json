@@ -990,6 +990,15 @@
     "placeholder": "Select a timezone",
     "confirmBtn": "Confirm and Restart"
   },
+  "exitSyncToast": {
+    "syncingTitle": "Syncing Cloud Backup",
+    "syncingMessage": "The app is exiting. Please do not force close it.",
+    "successTitle": "Cloud Backup Synced",
+    "successMessage": "The app will close automatically.",
+    "errorTitle": "Cloud Backup Failed",
+    "errorMessage": "Sync failed: {{error}}. The app will close automatically.",
+    "timeoutMessage": "Sync timed out. Please check your network connection."
+  },
   "updateDialog": {
     "newVersion": "New Version Available",
     "available": "An update is available for LunaBox",

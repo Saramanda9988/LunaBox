@@ -1,5 +1,8 @@
 import type { vo } from "../wailsjs/go/models";
-import type { ProcessSelectData } from "./hooks/useAppRuntimeEffects";
+import type {
+  ProcessSelectData,
+  QuitSyncRequest,
+} from "./hooks/useAppRuntimeEffects";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,6 +15,7 @@ import { useAppRuntimeEffects } from "./hooks/useAppRuntimeEffects";
 import { useAppTheme } from "./hooks/useAppTheme";
 import { useAppZoom } from "./hooks/useAppZoom";
 import { useDownloadNotifications } from "./hooks/useDownloadNotifications";
+import { useExitSyncToast } from "./hooks/useExitSyncToast";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
 import { Route as rootRoute } from "./routes/__root";
 import { Route as categoriesRoute } from "./routes/categories";
@@ -24,7 +28,16 @@ import { Route as settingsRoute } from "./routes/settings";
 import { Route as statsRoute } from "./routes/stats";
 import { useAppStore } from "./store";
 
-const routeTree = rootRoute.addChildren([indexRoute, libraryRoute, gameRoute, statsRoute, categoriesRoute, categoryRoute, settingsRoute, downloadsRoute]);
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  libraryRoute,
+  gameRoute,
+  statsRoute,
+  categoriesRoute,
+  categoryRoute,
+  settingsRoute,
+  downloadsRoute,
+]);
 
 const router = createRouter({ routeTree });
 
@@ -38,11 +51,23 @@ function App() {
   const config = useAppStore(state => state.config);
   const fetchConfig = useAppStore(state => state.fetchConfig);
   const patchLiveConfig = useAppStore(state => state.patchLiveConfig);
-  const { updateInfo, showUpdateDialog, setShowUpdateDialog, handleSkipVersion } = useUpdateCheck();
-  const [processSelectData, setProcessSelectData] = useState<ProcessSelectData>({ isOpen: false, gameID: "", launcherExeName: "" });
-  const [installRequest, setInstallRequest] = useState<vo.InstallRequest | null>(null);
+  const {
+    updateInfo,
+    showUpdateDialog,
+    setShowUpdateDialog,
+    handleSkipVersion,
+  } = useUpdateCheck();
+  const [processSelectData, setProcessSelectData] = useState<ProcessSelectData>(
+    { isOpen: false, gameID: "", launcherExeName: "" },
+  );
+  const [installRequest, setInstallRequest]
+    = useState<vo.InstallRequest | null>(null);
+  const [quitSyncRequest, setQuitSyncRequest]
+    = useState<QuitSyncRequest | null>(null);
   const { i18n } = useTranslation();
-  const showTimezoneModal = Boolean(config && (!config.time_zone || config.time_zone === ""));
+  const showTimezoneModal = Boolean(
+    config && (!config.time_zone || config.time_zone === ""),
+  );
 
   useEffect(() => {
     fetchConfig();
@@ -68,7 +93,13 @@ function App() {
 
   useAppTheme(config);
   useAppZoom({ config, patchLiveConfig });
-  useAppRuntimeEffects({ config, setProcessSelectData, setInstallRequest });
+  useAppRuntimeEffects({
+    config,
+    setProcessSelectData,
+    setInstallRequest,
+    setQuitSyncRequest,
+  });
+  useExitSyncToast({ quitSyncRequest });
   useDownloadNotifications(i18n);
 
   return (
@@ -89,8 +120,18 @@ function App() {
         isOpen={processSelectData.isOpen}
         gameID={processSelectData.gameID}
         launcherExeName={processSelectData.launcherExeName}
-        onClose={() => setProcessSelectData({ isOpen: false, gameID: "", launcherExeName: "" })}
-        onSelected={() => setProcessSelectData({ isOpen: false, gameID: "", launcherExeName: "" })}
+        onClose={() =>
+          setProcessSelectData({
+            isOpen: false,
+            gameID: "",
+            launcherExeName: "",
+          })}
+        onSelected={() =>
+          setProcessSelectData({
+            isOpen: false,
+            gameID: "",
+            launcherExeName: "",
+          })}
       />
       <InstallConfirmModal
         request={installRequest}

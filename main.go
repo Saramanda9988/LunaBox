@@ -55,8 +55,10 @@ type lifecycleState struct {
 	ctxMu sync.RWMutex
 	ctx   context.Context
 
-	forceQuit    atomic.Bool
-	shuttingDown atomic.Bool
+	forceQuit               atomic.Bool
+	shuttingDown            atomic.Bool
+	quitRequestPending      atomic.Bool
+	frontendQuitSyncPlanned atomic.Bool
 
 	trayReady     chan struct{}
 	trayReadyOnce sync.Once
@@ -104,6 +106,10 @@ func (s *lifecycleState) BeginShutdown() {
 	s.shuttingDown.Store(true)
 }
 
+func (s *lifecycleState) HasPendingQuitRequest() bool {
+	return s.quitRequestPending.Load()
+}
+
 func (s *lifecycleState) ShowMainWindow() {
 	if s.shuttingDown.Load() {
 		return
@@ -114,6 +120,7 @@ func (s *lifecycleState) ShowMainWindow() {
 		return
 	}
 
+	runtime.WindowUnminimise(ctx)
 	runtime.WindowShow(ctx)
 }
 
@@ -131,6 +138,29 @@ func (s *lifecycleState) QuitApplication() {
 	s.shuttingDown.Store(true)
 	s.RequestTrayQuit()
 	runtime.Quit(ctx)
+}
+
+func (s *lifecycleState) RequestFrontendQuitSync(reason string) bool {
+	if s.shuttingDown.Load() {
+		return false
+	}
+
+	ctx := s.Context()
+	if ctx == nil {
+		return false
+	}
+
+	if !s.quitRequestPending.CompareAndSwap(false, true) {
+		return true
+	}
+
+	s.frontendQuitSyncPlanned.Store(true)
+	runtime.WindowUnminimise(ctx)
+	runtime.WindowShow(ctx)
+	runtime.EventsEmit(ctx, "app:quit-sync-requested", map[string]string{
+		"reason": reason,
+	})
+	return true
 }
 
 func (s *lifecycleState) StartTray() {
@@ -154,6 +184,17 @@ func (s *lifecycleState) WaitForTrayExit(timeout time.Duration) bool {
 	case <-time.After(timeout):
 		return false
 	}
+}
+
+func shouldRunFrontendQuitSync(config *appconf.AppConfig) bool {
+	if config == nil {
+		return false
+	}
+
+	return config.AutoBackupDB &&
+		config.CloudBackupEnabled &&
+		config.BackupUserID != "" &&
+		config.AutoUploadDBToCloud
 }
 
 // isBindingsBuild 检测当前是否为生成绑定的构建（通过环境变量判断）
@@ -396,9 +437,15 @@ func main() {
 			if appState.ShouldForceQuit() {
 				return false
 			}
+			if appState.HasPendingQuitRequest() {
+				return true
+			}
 			if config.CloseToTray {
 				runtime.WindowHide(ctx)
 				return true
+			}
+			if shouldRunFrontendQuitSync(config) {
+				return appState.RequestFrontendQuitSync("window-close")
 			}
 			return false
 		},
@@ -461,54 +508,83 @@ func main() {
 		OnShutdown: func(ctx context.Context) {
 			appState.BeginShutdown()
 
-			// 先关闭 IPC Server，避免退出过程中还有外部请求进入。
-			if err := ipcserver.ShutdownServer(ipcHTTPServer); err != nil {
-				appLogger.Error("failed to shutdown IPC server: " + err.Error())
+			shutdownStartedAt := time.Now()
+			logShutdownStep := func(step string, fn func()) {
+				stepStartedAt := time.Now()
+				appLogger.Info("shutdown step started: " + step)
+				fn()
+				appLogger.Info(fmt.Sprintf("shutdown step finished: %s (elapsed: %s)", step, time.Since(stepStartedAt)))
 			}
 
-			// 关闭系统托盘
-			appState.RequestTrayQuit()
-			if appState.WaitForTrayExit(1200 * time.Millisecond) {
-				appLogger.Info("system tray exited successfully")
-			} else {
-				appLogger.Warning("system tray exit timed out, continuing shutdown")
-			}
+			logShutdownStep("shutdown IPC server", func() {
+				// 先关闭 IPC Server，避免退出过程中还有外部请求进入。
+				if err := ipcserver.ShutdownServer(ipcHTTPServer); err != nil {
+					appLogger.Error("failed to shutdown IPC server: " + err.Error())
+				}
+			})
 
 			// 从 configService 获取最新配置（避免使用启动时的旧配置覆盖文件）
-			latestConfig, err := configService.GetAppConfig()
-			if err != nil {
-				appLogger.Error("failed to get latest config: " + err.Error())
-			} else {
-				// 更新窗口大小到最新配置
-				latestConfig.WindowWidth = config.WindowWidth
-				latestConfig.WindowHeight = config.WindowHeight
-				config = &latestConfig
-			}
+			logShutdownStep("refresh latest config", func() {
+				latestConfig, err := configService.GetAppConfig()
+				if err != nil {
+					appLogger.Error("failed to get latest config: " + err.Error())
+				} else {
+					// 更新窗口大小到最新配置
+					latestConfig.WindowWidth = config.WindowWidth
+					latestConfig.WindowHeight = config.WindowHeight
+					config = &latestConfig
+				}
+			})
 
 			// 清理所有待定的进程选择会话（防止遗留临时会话）
-			appLogger.Info("cleaning up pending process selections...")
-			startService.CleanupPendingSessions()
+			logShutdownStep("cleanup pending process selections", func() {
+				appLogger.Info("cleaning up pending process selections...")
+				startService.CleanupPendingSessions()
+			})
 
-			// 自动备份数据库（在关闭数据库前）
-			if config.AutoBackupDB {
-				appLogger.Info("performing automatic database backup...")
-				_, err := backupService.CreateAndUploadDBBackup()
-				if err != nil {
-					appLogger.Error("automatic database backup failed: " + err.Error())
-				} else {
-					appLogger.Info("automatic database backup succeeded")
+			logShutdownStep("automatic database backup", func() {
+				// 退出流程只做本地数据库备份，避免网络上传拖慢或阻塞应用退出。
+				if !config.AutoBackupDB {
+					appLogger.Info("automatic database backup disabled, skipping")
+					return
 				}
-			}
+				if appState.frontendQuitSyncPlanned.Load() {
+					appLogger.Info("automatic database backup already handled by frontend quit sync flow, skipping shutdown backup")
+					return
+				}
+
+				appLogger.Info("performing automatic local database backup...")
+				if _, err := backupService.CreateDBBackup(); err != nil {
+					appLogger.Error("automatic local database backup failed: " + err.Error())
+				} else {
+					appLogger.Info("automatic local database backup succeeded")
+				}
+			})
 
 			// 关闭数据库连接
-			if err := db.Close(); err != nil {
-				appLogger.Error("failed to close database: " + err.Error())
-			}
+			logShutdownStep("close database connection", func() {
+				if err := db.Close(); err != nil {
+					appLogger.Error("failed to close database: " + err.Error())
+				}
+			})
 
 			// 保存最终配置
-			if err := appconf.SaveConfig(config); err != nil {
-				appLogger.Error("failed to save config: " + err.Error())
-			}
+			logShutdownStep("save final config", func() {
+				if err := appconf.SaveConfig(config); err != nil {
+					appLogger.Error("failed to save config: " + err.Error())
+				}
+			})
+
+			logShutdownStep("shutdown system tray", func() {
+				appState.RequestTrayQuit()
+				if appState.WaitForTrayExit(1200 * time.Millisecond) {
+					appLogger.Info("system tray exited successfully")
+				} else {
+					appLogger.Warning("system tray exit timed out, continuing shutdown")
+				}
+			})
+
+			appLogger.Info(fmt.Sprintf("shutdown completed (total elapsed: %s)", time.Since(shutdownStartedAt)))
 		},
 		Bind:     bindServices,
 		EnumBind: enumBindings,
@@ -546,6 +622,11 @@ func onSystrayReady() {
 	})
 
 	mQuit.Click(func() {
+		if shouldRunFrontendQuitSync(config) {
+			appState.RequestFrontendQuitSync("tray-menu")
+			return
+		}
+
 		appState.QuitApplication()
 	})
 

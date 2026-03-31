@@ -990,6 +990,15 @@
     "placeholder": "请选择时区",
     "confirmBtn": "确认并重启应用"
   },
+  "exitSyncToast": {
+    "syncingTitle": "正在同步云备份",
+    "syncingMessage": "正在退出，请不要强行关闭应用。",
+    "successTitle": "云备份同步成功",
+    "successMessage": "应用即将自动退出。",
+    "errorTitle": "云备份同步失败",
+    "errorMessage": "同步失败：{{error}}。应用即将自动退出。",
+    "timeoutMessage": "同步超时，请检查网络连接"
+  },
   "updateDialog": {
     "newVersion": "发现新版本",
     "available": "LunaBox 有可用的更新",

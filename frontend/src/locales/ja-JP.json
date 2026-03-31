@@ -990,6 +990,15 @@
     "placeholder": "タイムゾーンを選択してください",
     "confirmBtn": "保存して再起動"
   },
+  "exitSyncToast": {
+    "syncingTitle": "クラウドバックアップを同期中",
+    "syncingMessage": "終了中です。アプリを強制終了しないでください。",
+    "successTitle": "クラウドバックアップの同期完了",
+    "successMessage": "まもなく自動的に終了します。",
+    "errorTitle": "クラウドバックアップの同期失敗",
+    "errorMessage": "同期に失敗しました: {{error}}。アプリはまもなく終了します。",
+    "timeoutMessage": "同期がタイムアウトしました。ネットワーク接続を確認してください。"
+  },
   "updateDialog": {
     "newVersion": "新しいバージョンが見つかりました",
     "available": "LunaBox に利用可能な更新があります",
