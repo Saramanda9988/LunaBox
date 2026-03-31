@@ -156,6 +156,16 @@ func (s *lifecycleState) WaitForTrayExit(timeout time.Duration) bool {
 	}
 }
 
+// isBindingsBuild 检测当前是否为生成绑定的构建（通过环境变量判断）
+// FIXME: 现在这样做是因为前置恢复逻辑和数据库初始化会影响wails generate module的正常执行，这里用了很tricky的方法做了一个兼容
+func isBindingsBuild() bool {
+	_, hasTSPrefix := os.LookupEnv("tsprefix")
+	_, hasTSSuffix := os.LookupEnv("tssuffix")
+	_, hasTSOutputType := os.LookupEnv("tsoutputtype")
+
+	return hasTSPrefix || hasTSSuffix || hasTSOutputType
+}
+
 func main() {
 	// ================================================================
 	// 启动参数预处理：在 Wails 初始化之前处理协议参数
@@ -233,11 +243,48 @@ func main() {
 	gameProgressService := service.NewGameProgressService()
 	tagService := service.NewTagService()
 
+	bindServices := []interface{}{
+		gameService,
+		aiService,
+		backupService,
+		homeService,
+		statsService,
+		startService,
+		categoryService,
+		configService,
+		importService,
+		versionService,
+		templateService,
+		updateService,
+		sessionService,
+		downloadService,
+		gameProgressService,
+		tagService,
+	}
+	enumBindings := []interface{}{
+		enums.AllSourceTypes,
+		enums.AllPeriodTypes,
+		enums.Prompts,
+		enums.AllGameStatuses,
+	}
+
 	// 如果有待安装 URL，解析并暂存到 downloadService
 	if pendingURL != "" {
 		if pendingInstallReq != nil {
 			downloadService.SetPendingInstall(pendingInstallReq)
 		}
+	}
+
+	if isBindingsBuild() {
+		bootstrapErr := wails.Run(&options.App{
+			Bind:     bindServices,
+			EnumBind: enumBindings,
+		})
+		if bootstrapErr != nil {
+			fmt.Fprintf(os.Stderr, "generate bindings failed: %v\n", bootstrapErr)
+			os.Exit(1)
+		}
+		return
 	}
 
 	execPath, err := apputils.GetDataDir()
@@ -463,30 +510,8 @@ func main() {
 				appLogger.Error("failed to save config: " + err.Error())
 			}
 		},
-		Bind: []interface{}{
-			gameService,
-			aiService,
-			backupService,
-			homeService,
-			statsService,
-			startService,
-			categoryService,
-			configService,
-			importService,
-			versionService,
-			templateService,
-			updateService,
-			sessionService,
-			downloadService,
-			gameProgressService,
-			tagService,
-		},
-		EnumBind: []interface{}{
-			enums.AllSourceTypes,
-			enums.AllPeriodTypes,
-			enums.Prompts,
-			enums.AllGameStatuses,
-		},
+		Bind:     bindServices,
+		EnumBind: enumBindings,
 	})
 
 	if bootstrapErr != nil {
