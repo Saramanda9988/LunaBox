@@ -32,6 +32,8 @@ const (
 	multipartDownloadMinPart    int64 = 8 * 1024 * 1024
 	multipartDownloadMaxParts         = 8
 	multipartStateVersion             = 1
+	transientReadRetryDelay           = 1200 * time.Millisecond
+	maxTransientReadRetries           = 2
 	defaultRetryAfter                 = 2 * time.Second
 	minRetryAfter                     = 100 * time.Millisecond
 	grabMax429Retries                 = 5
@@ -186,6 +188,7 @@ func (d *Downloader) downloadWithMultipart(ctx context.Context, req TransferRequ
 		concurrency = 1
 	}
 	rateLimitedAtOne := 0
+	transientReadRetries := 0
 	for {
 		pending, err := session.pendingSegments()
 		if err != nil {
@@ -202,6 +205,7 @@ func (d *Downloader) downloadWithMultipart(ctx context.Context, req TransferRequ
 		err = d.downloadMultipartWave(ctx, req.URL, session, pending, concurrency, &downloaded, req.Progress)
 		if err == nil {
 			rateLimitedAtOne = 0
+			transientReadRetries = 0
 			continue
 		}
 		if errors.Is(err, errMultipartUnsupported) {
@@ -225,6 +229,15 @@ func (d *Downloader) downloadWithMultipart(ctx context.Context, req TransferRequ
 			}
 			concurrency = nextConcurrency
 			continue
+		}
+		if isRetryableDownloadReadError(err) {
+			transientReadRetries++
+			if transientReadRetries <= maxTransientReadRetries {
+				if waitErr := waitForRetryAfter(ctx, transientReadRetryDelay); waitErr != nil {
+					return waitErr
+				}
+				continue
+			}
 		}
 
 		return err
@@ -445,6 +458,7 @@ func (d *Downloader) probeMultipartSupport(ctx context.Context, req TransferRequ
 func (d *Downloader) downloadWithGrab(ctx context.Context, req TransferRequest) error {
 	rangeResetRetried := false
 	rateLimitRetries := 0
+	transientReadRetries := 0
 	for {
 		resp, err := d.runGrabAttempt(ctx, req)
 		if err != nil && !rangeResetRetried && shouldRetryGrabFromScratch(err, req.DestinationPath) {
@@ -467,6 +481,15 @@ func (d *Downloader) downloadWithGrab(ctx context.Context, req TransferRequest) 
 				return waitErr
 			}
 			continue
+		}
+		if err != nil && isRetryableDownloadReadError(err) {
+			transientReadRetries++
+			if transientReadRetries <= maxTransientReadRetries {
+				if waitErr := waitForRetryAfter(ctx, transientReadRetryDelay); waitErr != nil {
+					return waitErr
+				}
+				continue
+			}
 		}
 		return err
 	}
@@ -843,6 +866,18 @@ func shouldRetryGrabFromScratch(err error, destPath string) bool {
 
 	var statusErr grab.StatusCodeError
 	return errors.As(err, &statusErr) && int(statusErr) == http.StatusRequestedRangeNotSatisfiable
+}
+
+func isRetryableDownloadReadError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+
+	message := strings.ToLower(strings.TrimSpace(err.Error()))
+	return message == "eof" || strings.Contains(message, "unexpected eof")
 }
 
 func isGrabRateLimited(resp *grab.Response, err error) bool {

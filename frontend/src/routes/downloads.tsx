@@ -4,7 +4,16 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
-import { CancelDownload, DeleteDownloadTask, GetDownloadTasks, ImportDownloadTaskAsGame, OpenDownloadTaskLocation, PauseDownload, ResumeDownload } from "../../wailsjs/go/service/DownloadService";
+import {
+  CancelDownload,
+  DeleteDownloadTask,
+  GetDownloadTasks,
+  ImportDownloadTaskAsGame,
+  OpenDownloadTaskLocation,
+  PauseDownload,
+  ResumeDownload,
+  RetryDownload,
+} from "../../wailsjs/go/service/DownloadService";
 import { GetGames } from "../../wailsjs/go/service/GameService";
 import { ClipboardSetText, EventsOn } from "../../wailsjs/runtime/runtime";
 import { DownloadCard } from "../components/card/DownloadCard";
@@ -38,35 +47,44 @@ function DownloadsPage() {
   const { t } = useTranslation();
   const [tasks, setTasks] = useState<DownloadTaskVM[]>([]);
   const [importingTaskId, setImportingTaskId] = useState<string | null>(null);
-  const [importedTaskIds, setImportedTaskIds] = useState<Record<string, boolean>>({});
+  const [importedTaskIds, setImportedTaskIds] = useState<
+    Record<string, boolean>
+  >({});
 
-  const normalizeSource = useCallback((source: string) => source.trim().toLowerCase(), []);
+  const normalizeSource = useCallback(
+    (source: string) => source.trim().toLowerCase(),
+    [],
+  );
 
-  const markImportedTasks = useCallback(async (targetTasks: DownloadTaskVM[]) => {
-    const games = await GetGames();
-    const gameList = (games as models.Game[]) ?? [];
+  const markImportedTasks = useCallback(
+    async (targetTasks: DownloadTaskVM[]) => {
+      const games = await GetGames();
+      const gameList = (games as models.Game[]) ?? [];
 
-    const nextImported: Record<string, boolean> = {};
-    for (const task of targetTasks) {
-      const taskSource = normalizeSource(task.request.meta_source || "");
-      const taskSourceID = (task.request.meta_id || "").trim();
+      const nextImported: Record<string, boolean> = {};
+      for (const task of targetTasks) {
+        const taskSource = normalizeSource(task.request.meta_source || "");
+        const taskSourceID = (task.request.meta_id || "").trim();
 
-      const imported = gameList.some((game) => {
-        const byPath = !!task.file_path && game.path === task.file_path;
-        const bySource = taskSource !== ""
-          && taskSourceID !== ""
-          && normalizeSource(game.source_type || "") === taskSource
-          && (game.source_id || "").trim() === taskSourceID;
-        return byPath || bySource;
-      });
+        const imported = gameList.some((game) => {
+          const byPath = !!task.file_path && game.path === task.file_path;
+          const bySource
+            = taskSource !== ""
+              && taskSourceID !== ""
+              && normalizeSource(game.source_type || "") === taskSource
+              && (game.source_id || "").trim() === taskSourceID;
+          return byPath || bySource;
+        });
 
-      if (imported) {
-        nextImported[task.id] = true;
+        if (imported) {
+          nextImported[task.id] = true;
+        }
       }
-    }
 
-    setImportedTaskIds(nextImported);
-  }, [normalizeSource]);
+      setImportedTaskIds(nextImported);
+    },
+    [normalizeSource],
+  );
 
   // 加载已有任务
   const loadTasks = useCallback(async () => {
@@ -81,23 +99,26 @@ function DownloadsPage() {
   }, [loadTasks]);
 
   useEffect(() => {
-    const unsubscribe = EventsOn("download:progress", async (evt: DownloadTaskVM) => {
-      setTasks((prev) => {
-        const idx = prev.findIndex(t => t.id === evt.id);
-        if (idx === -1) {
-          // 新任务
-          return [...prev, evt];
-        }
-        const next = [...prev];
-        next[idx] = { ...next[idx], ...evt };
-        return next;
-      });
+    const unsubscribe = EventsOn(
+      "download:progress",
+      async (evt: DownloadTaskVM) => {
+        setTasks((prev) => {
+          const idx = prev.findIndex(t => t.id === evt.id);
+          if (idx === -1) {
+            // 新任务
+            return [...prev, evt];
+          }
+          const next = [...prev];
+          next[idx] = { ...next[idx], ...evt };
+          return next;
+        });
 
-      if (evt.status === "done") {
-        const latest = await GetDownloadTasks();
-        await markImportedTasks((latest as DownloadTaskVM[]) ?? []);
-      }
-    });
+        if (evt.status === "done") {
+          const latest = await GetDownloadTasks();
+          await markImportedTasks((latest as DownloadTaskVM[]) ?? []);
+        }
+      },
+    );
 
     return unsubscribe;
   }, [markImportedTasks]);
@@ -124,6 +145,15 @@ function DownloadsPage() {
     }
   };
 
+  const handleRetry = async (id: string) => {
+    try {
+      await RetryDownload(id);
+    }
+    catch {
+      toast.error(t("downloads.toast.retryFailed", "重试下载失败"));
+    }
+  };
+
   const handleDelete = async (id: string) => {
     await DeleteDownloadTask(id);
     setTasks(prev => prev.filter(task => task.id !== id));
@@ -135,8 +165,7 @@ function DownloadsPage() {
     const ok = await ClipboardSetText(url);
     if (ok)
       toast.success(t("downloads.toast.copyURLSuccess", "下载地址已复制"));
-    else
-      toast.error(t("downloads.toast.copyURLFailed", "复制失败"));
+    else toast.error(t("downloads.toast.copyURLFailed", "复制失败"));
   };
 
   const handleOpenFolder = async (id: string) => {
@@ -172,8 +201,17 @@ function DownloadsPage() {
       await markImportedTasks(normalized);
     }
     catch (error) {
-      if (error instanceof Error && error.message.includes("select executable cancelled")) {
-        toast(t("downloads.toast.selectExecutableCancelled", "已取消选择可执行文件"), { icon: "⚠️" });
+      if (
+        error instanceof Error
+        && error.message.includes("select executable cancelled")
+      ) {
+        toast(
+          t(
+            "downloads.toast.selectExecutableCancelled",
+            "已取消选择可执行文件",
+          ),
+          { icon: "⚠️" },
+        );
         return;
       }
       console.error("Failed to import game from download task:", error);
@@ -186,11 +224,24 @@ function DownloadsPage() {
 
   // 排序：活跃任务在前
   const sorted = [...tasks].sort((a, b) => {
-    const order: Record<string, number> = { downloading: 0, extracting: 1, paused: 2, pending: 3, error: 4, done: 5, cancelled: 6 };
+    const order: Record<string, number> = {
+      downloading: 0,
+      extracting: 1,
+      paused: 2,
+      pending: 3,
+      error: 4,
+      done: 5,
+      cancelled: 6,
+    };
     return (order[a.status] ?? 5) - (order[b.status] ?? 5);
   });
 
-  const activeCount = tasks.filter(t => t.status === "downloading" || t.status === "pending" || t.status === "extracting").length;
+  const activeCount = tasks.filter(
+    t =>
+      t.status === "downloading"
+      || t.status === "pending"
+      || t.status === "extracting",
+  ).length;
 
   return (
     <div className="mx-auto flex h-full max-w-8xl flex-col space-y-6 p-8">
@@ -202,7 +253,9 @@ function DownloadsPage() {
             </h1>
             <p className="mt-1 text-sm text-brand-500 dark:text-brand-400">
               {activeCount > 0
-                ? t("downloads.activeCount", "{{count}} 个任务进行中", { count: activeCount })
+                ? t("downloads.activeCount", "{{count}} 个任务进行中", {
+                    count: activeCount,
+                  })
                 : t("downloads.noActive", "暂无进行中的任务")}
             </p>
           </div>
@@ -210,32 +263,31 @@ function DownloadsPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto pr-1">
-        {sorted.length === 0
-          ? (
-              <div className="glass-panel mx-auto flex h-full w-full max-w-5xl flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-brand-300 text-brand-400 select-none dark:border-brand-700 dark:text-brand-500">
-                <span className="i-mdi-download-off text-5xl" />
-                <p className="text-sm">{t("downloads.empty", "暂无下载任务")}</p>
-              </div>
-            )
-          : (
-              <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-3">
-                {sorted.map(task => (
-                  <DownloadCard
-                    key={task.id}
-                    task={task as unknown as service.DownloadTask}
-                    onCancel={handleCancel}
-                    onPause={handlePause}
-                    onResume={handleResume}
-                    onDelete={handleDelete}
-                    onCopyURL={handleCopyURL}
-                    onOpenFolder={handleOpenFolder}
-                    onImportAsGame={handleImportAsGame}
-                    importing={importingTaskId === task.id}
-                    imported={!!importedTaskIds[task.id]}
-                  />
-                ))}
-              </div>
-            )}
+        {sorted.length === 0 ? (
+          <div className="glass-panel mx-auto flex h-full w-full max-w-5xl flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-brand-300 text-brand-400 select-none dark:border-brand-700 dark:text-brand-500">
+            <span className="i-mdi-download-off text-5xl" />
+            <p className="text-sm">{t("downloads.empty", "暂无下载任务")}</p>
+          </div>
+        ) : (
+          <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-3">
+            {sorted.map(task => (
+              <DownloadCard
+                key={task.id}
+                task={task as unknown as service.DownloadTask}
+                onCancel={handleCancel}
+                onPause={handlePause}
+                onResume={handleResume}
+                onRetry={handleRetry}
+                onDelete={handleDelete}
+                onCopyURL={handleCopyURL}
+                onOpenFolder={handleOpenFolder}
+                onImportAsGame={handleImportAsGame}
+                importing={importingTaskId === task.id}
+                imported={!!importedTaskIds[task.id]}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
