@@ -105,6 +105,7 @@
     "inputPlaceholder": "タグを入力",
     "addFailed": "タグの追加に失敗しました",
     "deleteFailed": "タグの削除に失敗しました",
+    "deleteScrapedHint": "自動タグを削除しました。メタデータを再取得すると再び表示される場合があります",
     "revealSpoiler": "クリックしてネタバレタグを表示"
   },
   "gameCard": {

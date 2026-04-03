@@ -71,17 +71,17 @@ func (s *TagService) AddUserTag(gameID string, tagName string) error {
 	return nil
 }
 
-// DeleteTag 删除 tag（仅允许删除 source='user' 的 tag）
+// DeleteTag 删除 tag。自动刮削 tag 允许手动删除，但重新刮削后可能再次出现。
 func (s *TagService) DeleteTag(tagID string) error {
 	result, err := s.db.ExecContext(s.ctx, `
-		DELETE FROM game_tags WHERE id = ? AND source = 'user'
+		DELETE FROM game_tags WHERE id = ?
 	`, tagID)
 	if err != nil {
 		return fmt.Errorf("failed to delete tag: %w", err)
 	}
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
-		return fmt.Errorf("tag not found or not deletable (only user tags can be deleted)")
+		return fmt.Errorf("tag not found")
 	}
 	return nil
 }

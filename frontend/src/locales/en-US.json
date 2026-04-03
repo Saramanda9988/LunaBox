@@ -105,6 +105,7 @@
     "inputPlaceholder": "Enter a tag",
     "addFailed": "Failed to add tag",
     "deleteFailed": "Failed to delete tag",
+    "deleteScrapedHint": "Auto tag removed. It may appear again after refreshing metadata.",
     "revealSpoiler": "Click to reveal spoiler tag"
   },
   "gameCard": {

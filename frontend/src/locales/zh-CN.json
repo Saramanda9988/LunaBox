@@ -105,6 +105,7 @@
     "inputPlaceholder": "输入标签",
     "addFailed": "添加标签失败",
     "deleteFailed": "删除标签失败",
+    "deleteScrapedHint": "已删除自动标签；重新获取元数据后它可能再次出现",
     "revealSpoiler": "点击显示剧透标签"
   },
   "gameCard": {

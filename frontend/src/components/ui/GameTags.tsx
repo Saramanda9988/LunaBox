@@ -3,7 +3,11 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { AddUserTag, DeleteTag, GetTagsByGame } from "../../../wailsjs/go/service/TagService";
+import {
+  AddUserTag,
+  DeleteTag,
+  GetTagsByGame,
+} from "../../../wailsjs/go/service/TagService";
 
 interface GameTagsProps {
   gameId: string;
@@ -11,7 +15,11 @@ interface GameTagsProps {
   refreshToken?: number;
 }
 
-export function GameTags({ gameId, showNSFW = false, refreshToken = 0 }: GameTagsProps) {
+export function GameTags({
+  gameId,
+  showNSFW = false,
+  refreshToken = 0,
+}: GameTagsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [tags, setTags] = useState<models.GameTag[]>([]);
@@ -20,7 +28,9 @@ export function GameTags({ gameId, showNSFW = false, refreshToken = 0 }: GameTag
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    GetTagsByGame(gameId).then(result => setTags(result ?? [])).catch(() => {});
+    GetTagsByGame(gameId)
+      .then(result => setTags(result ?? []))
+      .catch(() => {});
   }, [gameId, refreshToken]);
 
   useEffect(() => {
@@ -47,10 +57,13 @@ export function GameTags({ gameId, showNSFW = false, refreshToken = 0 }: GameTag
     }
   };
 
-  const handleDeleteTag = async (tagId: string) => {
+  const handleDeleteTag = async (tag: models.GameTag) => {
     try {
-      await DeleteTag(tagId);
-      setTags(prev => prev.filter(t => t.id !== tagId));
+      await DeleteTag(tag.id);
+      setTags(prev => prev.filter(t => t.id !== tag.id));
+      if (tag.source !== "user") {
+        toast.success(t("tags.deleteScrapedHint"));
+      }
     }
     catch {
       toast.error(t("tags.deleteFailed"));
@@ -85,40 +98,38 @@ export function GameTags({ gameId, showNSFW = false, refreshToken = 0 }: GameTag
           key={tag.id}
           tag={tag}
           onClick={() => handleTagClick(tag.name)}
-          onDelete={tag.source === "user" ? () => handleDeleteTag(tag.id) : undefined}
+          onDelete={() => handleDeleteTag(tag)}
         />
       ))}
 
-      {isAdding
-        ? (
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputValue}
-              onChange={e => setInputValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter")
-                  handleAddTag();
-                if (e.key === "Escape") {
-                  setIsAdding(false);
-                  setInputValue("");
-                }
-              }}
-              onBlur={handleAddTag}
-              placeholder={t("tags.inputPlaceholder")}
-              className="px-2.5 py-1 text-xs rounded-full border border-brand-400 dark:border-brand-500 bg-white dark:bg-brand-800 text-brand-900 dark:text-white outline-none w-28"
-            />
-          )
-        : (
-            <button
-              type="button"
-              onClick={() => setIsAdding(true)}
-              className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border border-dashed border-brand-300 dark:border-brand-600 text-brand-500 dark:text-brand-400 hover:border-brand-500 dark:hover:border-brand-400 transition-colors"
-            >
-              <div className="i-mdi-plus text-sm" />
-              {t("tags.add")}
-            </button>
-          )}
+      {isAdding ? (
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={e => setInputValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter")
+              handleAddTag();
+            if (e.key === "Escape") {
+              setIsAdding(false);
+              setInputValue("");
+            }
+          }}
+          onBlur={handleAddTag}
+          placeholder={t("tags.inputPlaceholder")}
+          className="px-2.5 py-1 text-xs rounded-full border border-brand-400 dark:border-brand-500 bg-white dark:bg-brand-800 text-brand-900 dark:text-white outline-none w-28"
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsAdding(true)}
+          className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border border-dashed border-brand-300 dark:border-brand-600 text-brand-500 dark:text-brand-400 hover:border-brand-500 dark:hover:border-brand-400 transition-colors"
+        >
+          <div className="i-mdi-plus text-sm" />
+          {t("tags.add")}
+        </button>
+      )}
     </div>
   );
 }
@@ -138,31 +149,31 @@ function TagPill({ tag, onClick, onDelete }: TagPillProps) {
   return (
     <span
       className={`group relative inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full transition-all
-        ${isUser
+        ${
+    isUser
       ? "border border-dashed border-brand-400 dark:border-brand-500 text-brand-700 dark:text-brand-300"
-      : "border border-brand-200 dark:border-brand-700 text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-800/60"}
+      : "border border-brand-200 dark:border-brand-700 text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-800/60"
+    }
       `}
     >
-      {isSpoiler
-        ? (
-            <button
-              type="button"
-              onClick={() => setRevealed(true)}
-              className="blur-sm hover:blur-none transition-all cursor-pointer select-none"
-              title={t("tags.revealSpoiler")}
-            >
-              {tag.name}
-            </button>
-          )
-        : (
-            <button
-              type="button"
-              onClick={onClick}
-              className="cursor-pointer hover:underline"
-            >
-              {tag.name}
-            </button>
-          )}
+      {isSpoiler ? (
+        <button
+          type="button"
+          onClick={() => setRevealed(true)}
+          className="blur-sm hover:blur-none transition-all cursor-pointer select-none"
+          title={t("tags.revealSpoiler")}
+        >
+          {tag.name}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onClick}
+          className="cursor-pointer hover:underline"
+        >
+          {tag.name}
+        </button>
+      )}
       {onDelete && (
         <button
           type="button"
