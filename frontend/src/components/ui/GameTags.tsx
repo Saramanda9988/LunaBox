@@ -78,11 +78,11 @@ export function GameTags({
 
   if (visibleTags.length === 0 && !isAdding) {
     return (
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => setIsAdding(true)}
-          className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border border-dashed border-brand-300 dark:border-brand-600 text-brand-500 dark:text-brand-400 hover:border-brand-500 dark:hover:border-brand-400 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-brand-300 px-3 py-1.5 text-xs text-brand-500 transition-all duration-200 hover:border-brand-500 hover:bg-brand-50 hover:text-brand-600 dark:border-brand-600 dark:text-brand-400 dark:hover:border-brand-400 dark:hover:bg-brand-800/50 dark:hover:text-brand-200"
         >
           <div className="i-mdi-plus text-sm" />
           {t("tags.add")}
@@ -92,7 +92,7 @@ export function GameTags({
   }
 
   return (
-    <div className="flex items-center gap-1.5 flex-wrap">
+    <div className="flex flex-wrap items-center gap-2">
       {visibleTags.map(tag => (
         <TagPill
           key={tag.id}
@@ -118,13 +118,13 @@ export function GameTags({
           }}
           onBlur={handleAddTag}
           placeholder={t("tags.inputPlaceholder")}
-          className="px-2.5 py-1 text-xs rounded-full border border-brand-400 dark:border-brand-500 bg-white dark:bg-brand-800 text-brand-900 dark:text-white outline-none w-28"
+          className="w-32 rounded-full border border-brand-300 bg-white/90 px-3 py-1.5 text-xs text-brand-900 outline-none transition-all duration-200 placeholder:text-brand-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-200 dark:border-brand-600 dark:bg-brand-900/80 dark:text-white dark:placeholder:text-brand-500 dark:focus:border-brand-400 dark:focus:bg-brand-900 dark:focus:ring-brand-700"
         />
       ) : (
         <button
           type="button"
           onClick={() => setIsAdding(true)}
-          className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border border-dashed border-brand-300 dark:border-brand-600 text-brand-500 dark:text-brand-400 hover:border-brand-500 dark:hover:border-brand-400 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-brand-300 px-3 py-1.5 text-xs text-brand-500 transition-all duration-200 hover:border-brand-500 hover:bg-brand-50 hover:text-brand-600 dark:border-brand-600 dark:text-brand-400 dark:hover:border-brand-400 dark:hover:bg-brand-800/50 dark:hover:text-brand-200"
         >
           <div className="i-mdi-plus text-sm" />
           {t("tags.add")}
@@ -145,22 +145,21 @@ function TagPill({ tag, onClick, onDelete }: TagPillProps) {
   const [revealed, setRevealed] = useState(false);
   const isSpoiler = tag.is_spoiler && !revealed;
   const isUser = tag.source === "user";
+  const pillClass = isUser
+    ? "border border-dashed border-brand-400/80 bg-white/70 text-brand-700 dark:border-brand-500/70 dark:bg-brand-900/45 dark:text-brand-200"
+    : "border border-brand-200/90 bg-brand-50/70 text-brand-700 dark:border-brand-700/80 dark:bg-brand-800/55 dark:text-brand-200";
+  const textButtonClass
+    = "max-w-full truncate rounded-full px-0.5 transition-colors duration-200";
 
   return (
     <span
-      className={`group relative inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full transition-all
-        ${
-    isUser
-      ? "border border-dashed border-brand-400 dark:border-brand-500 text-brand-700 dark:text-brand-300"
-      : "border border-brand-200 dark:border-brand-700 text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-800/60"
-    }
-      `}
+      className={`group relative inline-flex max-w-full items-center rounded-full px-3 py-1.5 text-xs transition-colors duration-200 ${pillClass}`}
     >
       {isSpoiler ? (
         <button
           type="button"
           onClick={() => setRevealed(true)}
-          className="blur-sm hover:blur-none transition-all cursor-pointer select-none"
+          className={`${textButtonClass} cursor-pointer select-none blur-sm hover:text-brand-900 hover:blur-none dark:hover:text-white`}
           title={t("tags.revealSpoiler")}
         >
           {tag.name}
@@ -169,7 +168,7 @@ function TagPill({ tag, onClick, onDelete }: TagPillProps) {
         <button
           type="button"
           onClick={onClick}
-          className="cursor-pointer hover:underline"
+          className={`${textButtonClass} cursor-pointer hover:text-brand-900 dark:hover:text-white`}
         >
           {tag.name}
         </button>
@@ -183,9 +182,9 @@ function TagPill({ tag, onClick, onDelete }: TagPillProps) {
               onDelete();
             }
           }}
-          className="opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 text-brand-400 hover:text-red-500 dark:hover:text-red-400"
+          className="absolute -right-1 -top-1 inline-flex h-4.5 w-4.5 items-center justify-center rounded-full border border-brand-200 bg-white text-brand-400 opacity-0 shadow-sm transition-all duration-200 group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:scale-100 group-focus-within:opacity-100 hover:border-red-200 hover:bg-red-50 hover:text-red-500 focus:translate-y-0 focus:scale-100 focus:opacity-100 dark:border-brand-700 dark:bg-brand-950 dark:text-brand-500 dark:hover:border-red-500/40 dark:hover:bg-red-500/12 dark:hover:text-red-300"
         >
-          <div className="i-mdi-close text-xs" />
+          <div className="i-mdi-close text-[10px]" />
         </button>
       )}
     </span>
