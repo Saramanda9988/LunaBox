@@ -445,7 +445,21 @@ function GameDetailPage() {
             </div>
             <div>
               <div className="font-semibold mb-1">{t("game.developer")}</div>
-              <div>{game.company || "-"}</div>
+              {game.company?.trim() ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate({
+                      to: "/library",
+                      search: { searchQuery: game.company.trim() },
+                    })}
+                  className="max-w-full break-all text-left text-brand-750 dark:text-brand-400"
+                >
+                  {game.company}
+                </button>
+              ) : (
+                <div>-</div>
+              )}
             </div>
             <div>
               <div className="font-semibold mb-1">{t("common.createdAt")}</div>
