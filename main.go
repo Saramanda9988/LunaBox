@@ -59,6 +59,8 @@ type lifecycleState struct {
 	shuttingDown            atomic.Bool
 	quitRequestPending      atomic.Bool
 	frontendQuitSyncPlanned atomic.Bool
+	frontendQuitSyncRunning atomic.Bool
+	frontendQuitSyncBacked  atomic.Bool
 
 	trayReady     chan struct{}
 	trayReadyOnce sync.Once
@@ -155,11 +157,36 @@ func (s *lifecycleState) RequestFrontendQuitSync(reason string) bool {
 	}
 
 	s.frontendQuitSyncPlanned.Store(true)
+	s.frontendQuitSyncRunning.Store(false)
+	s.frontendQuitSyncBacked.Store(false)
 	runtime.WindowUnminimise(ctx)
 	runtime.WindowShow(ctx)
 	runtime.EventsEmit(ctx, "app:quit-sync-requested", map[string]string{
 		"reason": reason,
 	})
+	return true
+}
+
+func (s *lifecycleState) BeginFrontendQuitSyncBackup() {
+	s.frontendQuitSyncRunning.Store(true)
+}
+
+func (s *lifecycleState) MarkFrontendQuitSyncLocalBackupCreated() {
+	s.frontendQuitSyncBacked.Store(true)
+}
+
+func (s *lifecycleState) FinishFrontendQuitSyncBackup() {
+	s.frontendQuitSyncRunning.Store(false)
+}
+
+func (s *lifecycleState) WaitForFrontendQuitSyncBackup(timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for s.frontendQuitSyncRunning.Load() {
+		if time.Now().After(deadline) {
+			return false
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 	return true
 }
 
@@ -488,6 +515,18 @@ func main() {
 			tagService.Init(ctx, db, config)
 			aiService.Init(ctx, db, config)
 			backupService.Init(ctx, db, config)
+			service.ConfigureBackupServiceQuitSyncDBBackupHooks(
+				backupService,
+				func() {
+					appState.BeginFrontendQuitSyncBackup()
+				},
+				func() {
+					appState.MarkFrontendQuitSyncLocalBackupCreated()
+				},
+				func() {
+					appState.FinishFrontendQuitSyncBackup()
+				},
+			)
 			homeService.Init(ctx, db, config)
 			statsService.Init(ctx, db, config)
 			sessionService.Init(ctx, db, config)
@@ -587,8 +626,15 @@ func main() {
 					return
 				}
 				if appState.frontendQuitSyncPlanned.Load() {
-					appLogger.Info("automatic database backup already handled by frontend quit sync flow, skipping shutdown backup")
-					return
+					if appState.WaitForFrontendQuitSyncBackup(3 * time.Second) {
+						appLogger.Info("frontend quit sync backup flow settled before shutdown fallback check")
+					} else {
+						appLogger.Warning("frontend quit sync backup flow still running after grace period, checking fallback backup state")
+					}
+					if appState.frontendQuitSyncBacked.Load() {
+						appLogger.Info("automatic database backup already produced a local backup in frontend quit sync flow, skipping shutdown backup")
+						return
+					}
 				}
 
 				appLogger.Info("performing automatic local database backup...")

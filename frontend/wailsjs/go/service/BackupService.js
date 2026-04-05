@@ -6,6 +6,10 @@ export function CreateAndUploadDBBackup() {
   return window['go']['service']['BackupService']['CreateAndUploadDBBackup']();
 }
 
+export function CreateAndUploadDBBackupForQuit() {
+  return window['go']['service']['BackupService']['CreateAndUploadDBBackupForQuit']();
+}
+
 export function CreateBackup(arg1) {
   return window['go']['service']['BackupService']['CreateBackup'](arg1);
 }

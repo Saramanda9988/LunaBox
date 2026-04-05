@@ -93,7 +93,7 @@ export function GameLaunchPanel({
             </p>
           </div>
 
-          <div className="rounded-xl border border-brand-200/80 bg-brand-50/70 p-4 dark:border-brand-700 dark:bg-brand-900/30">
+          <div className="glass-panel rounded-xl border border-brand-200/80 bg-brand-50/70 p-4 dark:border-brand-700 dark:bg-brand-900/30">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="min-w-0">
                 <p className="text-sm font-medium text-brand-800 dark:text-brand-200">

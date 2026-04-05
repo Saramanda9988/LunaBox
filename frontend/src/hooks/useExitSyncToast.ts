@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import type { QuitSyncRequest } from "./useAppRuntimeEffects";
 
-import { CreateAndUploadDBBackup } from "../../wailsjs/go/service/BackupService";
+import { CreateAndUploadDBBackupForQuit } from "../../wailsjs/go/service/BackupService";
 import { SafeQuit } from "../../wailsjs/go/service/ConfigService";
 
 const EXIT_SYNC_TOAST_ID = "exit-sync";
@@ -49,7 +49,7 @@ export function useExitSyncToast({ quitSyncRequest }: UseExitSyncToastOptions) {
 
       try {
         await Promise.race([
-          CreateAndUploadDBBackup(),
+          CreateAndUploadDBBackupForQuit(),
           new Promise<never>((_, reject) => {
             syncTimeoutTimer = window.setTimeout(() => {
               reject(new Error(t("exitSyncToast.timeoutMessage")));
