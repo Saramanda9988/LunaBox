@@ -11,10 +11,19 @@ interface GameLaunchPanelProps {
   onSelectProcessExecutable: () => void;
 }
 
-export function GameLaunchPanel({ game, config, onGameChange, onSelectProcessExecutable }: GameLaunchPanelProps) {
+export function GameLaunchPanel({
+  game,
+  config,
+  onGameChange,
+  onSelectProcessExecutable,
+}: GameLaunchPanelProps) {
   const { t } = useTranslation();
-  const hasLocaleEmulatorPath = config?.locale_emulator_path && config?.locale_emulator_path.length > 0;
+  const hasLocaleEmulatorPath
+    = config?.locale_emulator_path && config?.locale_emulator_path.length > 0;
   const hasMagpiePath = config?.magpie_path && config?.magpie_path.length > 0;
+  const executableName = game.path
+    ? game.path.split(/[\\/]/).pop()
+    : t("gameLaunch.noPathSet");
 
   const handleLocaleEmulatorToggle = (checked: boolean) => {
     if (checked && !hasLocaleEmulatorPath) {
@@ -33,38 +42,42 @@ export function GameLaunchPanel({ game, config, onGameChange, onSelectProcessExe
   };
 
   return (
-    <div className="glass-panel mx-auto bg-white dark:bg-brand-800 p-8 rounded-lg shadow-sm">
-      <div className="space-y-8">
-        {/* 进程监控配置 */}
-        <div className="flex items-center gap-2">
-          <div className="i-mdi-monitor text-xl text-brand-600 dark:text-brand-400" />
-          <h3 className="text-sm font-semibold text-brand-900 dark:text-white">{t("gameLaunch.processMonitor")}</h3>
-        </div>
+    <div className="space-y-6">
+      {/* Process Monitor */}
+      <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
+        <div className="space-y-6">
+          <div className="border-brand-200 dark:border-brand-700">
+            <h3 className="text-lg font-semibold text-brand-900 dark:text-white">
+              {t("gameLaunch.processMonitor")}
+            </h3>
+            <p className="text-sm text-brand-500 dark:text-brand-400 mt-1"></p>
+          </div>
 
-        <div className="rounded-lg space-y-4">
           <div>
-            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-2">
+            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
               {t("gameLaunch.executable")}
             </label>
-            <div className="text-sm text-neutral-600 dark:text-neutral-400 font-mono bg-white dark:bg-brand-800 px-3 py-1.5 rounded border border-brand-200 dark:border-brand-700">
-              {game.path ? game.path.split(/[\\/]/).pop() : t("gameLaunch.noPathSet")}
+            <div className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-brand-50 dark:bg-brand-700 text-brand-900 dark:text-white font-mono break-all text-sm">
+              {executableName}
             </div>
-            <p className="mt-1 text-xs text-brand-400">
+            <p className="mt-1 text-xs text-brand-500">
               {t("gameLaunch.executableHint")}
             </p>
           </div>
 
-          <div className="border-t border-brand-200 dark:border-brand-700 my-4" />
-
           <div>
-            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-2">
+            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
               {t("gameLaunch.actualProcess")}
             </label>
-            <div className="flex items-center gap-2">
+            <div className="flex gap-2">
               <input
                 type="text"
                 value={game.process_name || ""}
-                onChange={e => onGameChange({ ...game, process_name: e.target.value } as models.Game)}
+                onChange={e =>
+                  onGameChange({
+                    ...game,
+                    process_name: e.target.value,
+                  } as models.Game)}
                 className="glass-input flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none font-mono"
               />
               <BetterButton
@@ -73,67 +86,80 @@ export function GameLaunchPanel({ game, config, onGameChange, onSelectProcessExe
                 title={t("gameLaunch.selectProcessFile")}
               />
             </div>
-            <p className="mt-2 text-xs text-brand-400 leading-relaxed whitespace-pre-line">
+            <p className="mt-1 text-xs text-brand-500">
               {t("gameLaunch.processHint")}
             </p>
           </div>
         </div>
+      </div>
 
-        {/* 启动工具配置 */}
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="i-mdi-tools text-xl text-brand-600 dark:text-brand-400" />
-            <h3 className="text-sm font-semibold text-brand-900 dark:text-white">{t("gameLaunch.enhancementTools")}</h3>
+      {/* Enhancement Tools */}
+      <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
+        <div className="space-y-6">
+          <div className="border-brand-200 dark:border-brand-700 pb-2">
+            <h3 className="text-lg font-semibold text-brand-900 dark:text-white">
+              {t("gameLaunch.enhancementTools")}
+            </h3>
           </div>
 
-          <div className="flex items-center justify-between p-4">
-            <div className="flex-1 mr-4">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0 pr-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-brand-700 dark:text-brand-300">Locale Emulator</span>
-                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-brand-200 dark:bg-brand-600 text-brand-800 dark:text-brand-100 rounded">{t("gameLaunch.leLabel")}</span>
+                <span className="text-sm font-medium text-brand-700 dark:text-brand-300">
+                  Locale Emulator
+                </span>
+                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-brand-100 dark:bg-brand-600 text-brand-800 dark:text-brand-100 rounded">
+                  {t("gameLaunch.leLabel")}
+                </span>
               </div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+              <p className="mt-1 text-xs text-brand-500 dark:text-brand-400">
                 {t("gameLaunch.leDesc")}
               </p>
               {!hasLocaleEmulatorPath && (
-                <p className="text-xs text-error-500 mt-1 flex items-center gap-1">
-                  <div className="i-mdi-alert-circle text-sm" />
-                  {" "}
-                  {t("gameLaunch.leNotConfigured")}
+                <p className="mt-1 flex items-center gap-1 text-xs text-error-500">
+                  <div className="i-mdi-alert-circle text-sm shrink-0" />
+                  <span>{t("gameLaunch.leNotConfigured")}</span>
                 </p>
               )}
             </div>
-            <BetterSwitch
-              id="use_locale_emulator"
-              checked={game.use_locale_emulator || false}
-              onCheckedChange={handleLocaleEmulatorToggle}
-              disabled={!hasLocaleEmulatorPath}
-            />
+            <div className="shrink-0">
+              <BetterSwitch
+                id="use_locale_emulator"
+                checked={game.use_locale_emulator || false}
+                onCheckedChange={handleLocaleEmulatorToggle}
+                disabled={!hasLocaleEmulatorPath}
+              />
+            </div>
           </div>
 
-          <div className="flex items-center justify-between p-4">
-            <div className="flex-1 mr-4">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0 pr-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-brand-700 dark:text-brand-300">Magpie</span>
-                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-brand-200 dark:bg-brand-600 text-brand-800 dark:text-brand-100 rounded">{t("gameLaunch.magpieLabel")}</span>
+                <span className="text-sm font-medium text-brand-700 dark:text-brand-300">
+                  Magpie
+                </span>
+                <span className="px-1.5 py-0.5 text-[10px] font-medium bg-brand-100 dark:bg-brand-600 text-brand-800 dark:text-brand-100 rounded">
+                  {t("gameLaunch.magpieLabel")}
+                </span>
               </div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+              <p className="mt-1 text-xs text-brand-500 dark:text-brand-400">
                 {t("gameLaunch.magpieDesc")}
               </p>
               {!hasMagpiePath && (
-                <p className="text-xs text-error-500 mt-1 flex items-center gap-1">
-                  <div className="i-mdi-alert-circle text-sm" />
-                  {" "}
-                  {t("gameLaunch.magpieNotConfigured")}
+                <p className="mt-1 flex items-center gap-1 text-xs text-error-500">
+                  <div className="i-mdi-alert-circle text-sm shrink-0" />
+                  <span>{t("gameLaunch.magpieNotConfigured")}</span>
                 </p>
               )}
             </div>
-            <BetterSwitch
-              id="use_magpie"
-              checked={game.use_magpie || false}
-              onCheckedChange={handleMagpieToggle}
-              disabled={!hasMagpiePath}
-            />
+            <div className="shrink-0">
+              <BetterSwitch
+                id="use_magpie"
+                checked={game.use_magpie || false}
+                onCheckedChange={handleMagpieToggle}
+                disabled={!hasMagpiePath}
+              />
+            </div>
           </div>
         </div>
       </div>

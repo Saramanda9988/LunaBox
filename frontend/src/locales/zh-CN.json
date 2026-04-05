@@ -317,7 +317,6 @@
     "title": "游玩进度",
     "hint": "记录当前进度，AI 总结将严格遵守您设置的剧透边界",
     "newRecord": "新增记录",
-    "appendHint": "表单会自动带入最近一条记录。每次保存都会追加到游玩记录链，不会覆盖旧记录。",
     "latestRecordedAt": "最近记录时间：{{time}}",
     "addRecord": "新增记录",
     "historyTitle": "游玩记录链",
