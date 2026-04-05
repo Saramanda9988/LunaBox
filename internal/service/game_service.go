@@ -652,7 +652,9 @@ func (s *GameService) ExportLaunchShortcut(gameID string) (string, error) {
 
 	defaultDir := ""
 	if desktopDir, err := apputils.GetDesktopDir(); err == nil {
-		defaultDir = desktopDir
+		if info, statErr := os.Stat(desktopDir); statErr == nil && info.IsDir() {
+			defaultDir = desktopDir
+		}
 	}
 
 	savePath, err := runtime.SaveFileDialog(s.ctx, runtime.SaveDialogOptions{
@@ -674,6 +676,14 @@ func (s *GameService) ExportLaunchShortcut(gameID string) (string, error) {
 	}
 
 	iconPath := resolveLaunchShortcutIconPath(game.Path)
+	if iconPath != "" {
+		cachePath, cacheErr := apputils.ExportShortcutIconCache(iconPath, game.ID)
+		if cacheErr != nil {
+			applog.LogWarningf(s.ctx, "ExportLaunchShortcut: failed to cache icon from %s: %v", iconPath, cacheErr)
+		} else {
+			iconPath = cachePath
+		}
+	}
 	if err := apputils.WriteInternetShortcut(savePath, apputils.InternetShortcut{
 		URL:       launchURL,
 		IconFile:  iconPath,
