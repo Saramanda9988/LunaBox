@@ -12,6 +12,7 @@ import {
 } from "../../wailsjs/go/service/CategoryService";
 import {
   DeleteGame,
+  ExportLaunchShortcut,
   GetGameByID,
   SelectCoverImage,
   SelectGameExecutable,
@@ -355,6 +356,24 @@ function GameDetailPage() {
     }
   };
 
+  const handleExportLaunchShortcut = async () => {
+    if (!game)
+      return;
+    try {
+      const savePath = await ExportLaunchShortcut(game.id);
+      if (!savePath) {
+        return;
+      }
+      toast.success(
+        t("gameLaunch.toast.shortcutExportSuccess", { path: savePath }),
+      );
+    }
+    catch (error) {
+      console.error("Failed to export launch shortcut:", error);
+      toast.error(t("gameLaunch.toast.shortcutExportFailed", { error }));
+    }
+  };
+
   const ratingText = game.rating > 0 ? `${game.rating.toFixed(1)} / 10` : "-";
   const createdAtText = formatLocalDate(
     game.created_at,
@@ -553,6 +572,7 @@ function GameDetailPage() {
           config={config || undefined}
           onGameChange={setGame}
           onSelectProcessExecutable={handleSelectProcessExecutable}
+          onExportShortcut={handleExportLaunchShortcut}
         />
       )}
 

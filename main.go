@@ -216,24 +216,51 @@ func main() {
 	// lunabox:// URL：检查 GUI 是否已运行
 	var pendingURL string
 	var pendingInstallReq *vo.InstallRequest
+	var pendingLaunchReq *vo.ProtocolLaunchRequest
 	if len(args) == 1 && protocol.IsProtocolURL(args[0]) {
 		pendingURL = args[0]
-		req, err := protocol.ParseURL(pendingURL)
+
+		action, err := protocol.ParseAction(pendingURL)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error parsing URL: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error parsing URL action: %v\n", err)
 			os.Exit(1)
 		}
-		pendingInstallReq = req
 
-		// 如果 GUI 已运行，转发安装请求给它并退出
-		if ipcclient.IsServerRunning() {
-			if err := ipcclient.RemoteInstall(req); err != nil {
-				fmt.Fprintf(os.Stderr, "Error forwarding to LunaBox: %v\n", err)
+		switch action {
+		case protocol.ActionInstall:
+			req, err := protocol.ParseInstallURL(pendingURL)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error parsing install URL: %v\n", err)
 				os.Exit(1)
 			}
-			return
+			pendingInstallReq = req
+
+			if ipcclient.IsServerRunning() {
+				if err := ipcclient.RemoteInstall(req); err != nil {
+					fmt.Fprintf(os.Stderr, "Error forwarding install request to LunaBox: %v\n", err)
+					os.Exit(1)
+				}
+				return
+			}
+		case protocol.ActionLaunch:
+			req, err := protocol.ParseLaunchURL(pendingURL)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error parsing launch URL: %v\n", err)
+				os.Exit(1)
+			}
+			pendingLaunchReq = req
+
+			if ipcclient.IsServerRunning() {
+				if err := ipcclient.RemoteLaunch(req); err != nil {
+					fmt.Fprintf(os.Stderr, "Error forwarding launch request to LunaBox: %v\n", err)
+					os.Exit(1)
+				}
+				return
+			}
+		default:
+			fmt.Fprintf(os.Stderr, "Unsupported URL action: %s\n", action)
+			os.Exit(1)
 		}
-		// GUI 未运行，当前进程继续启动 GUI
 	}
 
 	// ================================================================
@@ -478,6 +505,17 @@ func main() {
 			downloadService.SetGameService(gameService)
 			gameService.SetTagService(tagService)
 			importService.SetSessionService(sessionService)
+
+			if pendingLaunchReq != nil {
+				req := *pendingLaunchReq
+				go func() {
+					// 等待前端完成事件订阅，确保协议启动失败时用户能看到提示。
+					time.Sleep(1200 * time.Millisecond)
+					if err := startService.HandleProtocolLaunch(req); err != nil {
+						appLogger.Error("protocol launch failed: " + err.Error())
+					}
+				}()
+			}
 
 			// 启动 IPC Server (用于 CLI 通信)
 			// 构造 CLI CoreApp 以共享 GUI 的服务实例

@@ -123,6 +123,34 @@ func RemoteInstall(req interface{}) error {
 	return nil
 }
 
+func RemoteLaunch(req interface{}) error {
+	serverURL, ok := findRunningServerURL()
+	if !ok {
+		return fmt.Errorf("failed to connect to LunaBox: IPC server not running")
+	}
+
+	jsonBody, _ := json.Marshal(req)
+	resp, err := http.Post(serverURL+"/launch", "application/json", bytes.NewReader(jsonBody))
+	if err != nil {
+		return fmt.Errorf("failed to connect to LunaBox: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("LunaBox returned error status: %d", resp.StatusCode)
+	}
+
+	var launchResp LaunchResponse
+	if err := json.NewDecoder(resp.Body).Decode(&launchResp); err != nil {
+		return fmt.Errorf("failed to decode launch response: %w", err)
+	}
+	if launchResp.Error != "" {
+		return fmt.Errorf(launchResp.Error)
+	}
+
+	return nil
+}
+
 func RemoteRun(args []string) (string, error) {
 	serverURL, ok := findRunningServerURL()
 	if !ok {
@@ -152,4 +180,9 @@ func RemoteRun(args []string) (string, error) {
 	}
 
 	return cmdResp.Output, nil
+}
+
+type LaunchResponse struct {
+	Started bool   `json:"started"`
+	Error   string `json:"error,omitempty"`
 }

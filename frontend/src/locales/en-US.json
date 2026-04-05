@@ -396,6 +396,8 @@
     "actualProcess": "Actual Game Process",
     "selectProcessFile": "Select Process File",
     "processHint": "Specify the actual game process name (including .exe extension).\nIf not specified, LunaBox attempts to monitor the executable path. If the selected file is a launcher, you'll need to manually select the actual process when prompted.\nFill this in advance to avoid selecting it every time.",
+    "exportShortcut": "Export Launch Shortcut",
+    "exportShortcutHint": "Export a `.url` shortcut file. Double-clicking it will bring LunaBox back and start the game with monitoring using the current game settings.",
     "enhancementTools": "Launch Enhancements",
     "leLabel": "Region Emulator",
     "leDesc": "Simulate a Japanese locale environment to launch the game, fixing text encoding and region lock issues.",
@@ -405,7 +407,9 @@
     "magpieNotConfigured": "Please configure Magpie.exe path in settings first",
     "toast": {
       "lePathRequired": "Please configure Locale Emulator path in settings first",
-      "magpiePathRequired": "Please configure Magpie path in settings first"
+      "magpiePathRequired": "Please configure Magpie path in settings first",
+      "shortcutExportSuccess": "Launch shortcut exported\n{{path}}",
+      "shortcutExportFailed": "Failed to export launch shortcut: {{error}}"
     }
   },
   "gameStats": {

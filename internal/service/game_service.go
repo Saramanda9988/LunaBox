@@ -9,13 +9,16 @@ import (
 	"lunabox/internal/applog"
 	"lunabox/internal/enums"
 	"lunabox/internal/models"
+	"lunabox/internal/protocol"
 	"lunabox/internal/utils"
 	"lunabox/internal/utils/apputils"
+	"lunabox/internal/utils/downloadutils"
 	"lunabox/internal/utils/imageutils"
 	"lunabox/internal/utils/metadata"
 	"lunabox/internal/utils/processutils"
 	"lunabox/internal/vo"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -629,6 +632,62 @@ func (s *GameService) SelectCoverImageWithTempID() (string, error) {
 	return coverPath, nil
 }
 
+// ExportLaunchShortcut exports a per-game .url shortcut that re-enters LunaBox via protocol.
+func (s *GameService) ExportLaunchShortcut(gameID string) (string, error) {
+	game, err := s.GetGameByID(gameID)
+	if err != nil {
+		return "", fmt.Errorf("加载游戏失败: %w", err)
+	}
+
+	launchURL, err := protocol.BuildLaunchURL(game.ID)
+	if err != nil {
+		return "", fmt.Errorf("生成快捷启动链接失败: %w", err)
+	}
+
+	defaultName := strings.TrimSpace(downloadutils.SanitizeFileName(game.Name))
+	if defaultName == "" {
+		defaultName = strings.TrimSpace(game.ID)
+	}
+	defaultName += ".url"
+
+	defaultDir := ""
+	if desktopDir, err := apputils.GetDesktopDir(); err == nil {
+		defaultDir = desktopDir
+	}
+
+	savePath, err := runtime.SaveFileDialog(s.ctx, runtime.SaveDialogOptions{
+		Title:            "导出快捷启动方式",
+		DefaultDirectory: defaultDir,
+		DefaultFilename:  defaultName,
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "Internet Shortcut (*.url)",
+				Pattern:     "*.url",
+			},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("打开保存对话框失败: %w", err)
+	}
+	if strings.TrimSpace(savePath) == "" {
+		return "", nil
+	}
+
+	iconPath := resolveLaunchShortcutIconPath(game.Path)
+	if err := apputils.WriteInternetShortcut(savePath, apputils.InternetShortcut{
+		URL:       launchURL,
+		IconFile:  iconPath,
+		IconIndex: 0,
+	}); err != nil {
+		return "", fmt.Errorf("写入快捷方式文件失败: %w", err)
+	}
+
+	if !strings.EqualFold(filepath.Ext(savePath), ".url") {
+		savePath += ".url"
+	}
+	return savePath, nil
+}
+
 func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWebVO, error) {
 	var games []vo.GameMetadataFromWebVO
 	var wg sync.WaitGroup
@@ -1001,6 +1060,37 @@ func (s *GameService) getConfiguredMetadataSearchSources() []metadataSearchSourc
 		}
 	}
 	return sources
+}
+
+func resolveLaunchShortcutIconPath(gamePath string) string {
+	trimmedPath := strings.TrimSpace(gamePath)
+	if trimmedPath != "" {
+		absPath, err := filepath.Abs(filepath.Clean(trimmedPath))
+		if err == nil {
+			if info, statErr := os.Stat(absPath); statErr == nil && !info.IsDir() && canUseShortcutIconSource(absPath) {
+				return absPath
+			}
+		}
+	}
+
+	exePath, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	absExePath, err := filepath.Abs(exePath)
+	if err != nil {
+		return exePath
+	}
+	return absExePath
+}
+
+func canUseShortcutIconSource(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".exe", ".ico", ".dll":
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *GameService) getConfiguredMetadataSources() []enums.SourceType {

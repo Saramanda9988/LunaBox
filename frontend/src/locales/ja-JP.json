@@ -396,6 +396,8 @@
     "actualProcess": "実際のゲームプロセス",
     "selectProcessFile": "プロセスファイルを選択",
     "processHint": "実際に動作しているゲームのプロセス名（.exe 拡張子を含む）を指定します。\n指定しない場合、LunaBox は実行パスの監視を試みます。前回の選択がランチャーだった場合は、ゲーム起動後に表示される選択ダイアログでこのプロセスを手動指定する必要があります。\nここで事前入力しておくと、毎回の起動時に手動選択する手間を省けます。",
+    "exportShortcut": "起動ショートカットを書き出す",
+    "exportShortcutHint": "`.url` ショートカットファイルを書き出します。ダブルクリックすると LunaBox が呼び出され、現在のゲーム設定で起動と監視を行います。",
     "enhancementTools": "起動強化ツール",
     "leLabel": "ロケールエミュレーター",
     "leDesc": "日本語環境エミュレーションでゲームを起動し、文字化けや地域制限の問題を解決します。",
@@ -405,7 +407,9 @@
     "magpieNotConfigured": "先に設定画面で Magpie.exe のパスを設定してください",
     "toast": {
       "lePathRequired": "先に設定画面で Locale Emulator のパスを設定してください",
-      "magpiePathRequired": "先に設定画面で Magpie のパスを設定してください"
+      "magpiePathRequired": "先に設定画面で Magpie のパスを設定してください",
+      "shortcutExportSuccess": "起動ショートカットを書き出しました\n{{path}}",
+      "shortcutExportFailed": "起動ショートカットの書き出しに失敗しました: {{error}}"
     }
   },
   "gameStats": {

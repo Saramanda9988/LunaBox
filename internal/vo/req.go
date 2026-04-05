@@ -109,3 +109,9 @@ type InstallRequest struct {
 	Checksum       string `json:"checksum"`        // 校验值（64 位 hex，小写，必填）
 	ExpiresAt      int64  `json:"expires_at"`      // 请求过期时间（Unix 秒，必填）
 }
+
+// ProtocolLaunchRequest 通过 lunabox://launch?game_id=... 触发的启动请求
+type ProtocolLaunchRequest struct {
+	GameID string `json:"game_id"`           // 游戏库中的稳定 ID（必填）
+	RawURL string `json:"raw_url,omitempty"` // 原始协议 URL（调试用途）
+}

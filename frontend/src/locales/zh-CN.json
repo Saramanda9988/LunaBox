@@ -396,6 +396,8 @@
     "actualProcess": "实际游戏进程",
     "selectProcessFile": "选择进程文件",
     "processHint": "指定实际游戏的进程名称（包含 .exe 后缀）。\n如果不指定，LunaBox 会尝试监控可执行路径。如果之前的选择是启动器，您需要在游戏启动后弹出的选择框中手动指定此进程。\n在此处预先填写可避免每次启动时手动选择。",
+    "exportShortcut": "导出快捷启动方式",
+    "exportShortcutHint": "导出一个 `.url` 快捷方式文件。双击后会唤起 LunaBox，并按当前游戏配置启动和监控该游戏。",
     "enhancementTools": "启动增强工具",
     "leLabel": "转区工具",
     "leDesc": "使用日文环境模拟启动游戏，解决乱码和区域限制问题。",
@@ -405,7 +407,9 @@
     "magpieNotConfigured": "请先在设置中配置 Magpie.exe 路径",
     "toast": {
       "lePathRequired": "请先在设置中配置 Locale Emulator 路径",
-      "magpiePathRequired": "请先在设置中配置 Magpie 路径"
+      "magpiePathRequired": "请先在设置中配置 Magpie 路径",
+      "shortcutExportSuccess": "快捷启动方式已导出\n{{path}}",
+      "shortcutExportFailed": "导出快捷启动方式失败: {{error}}"
     }
   },
   "gameStats": {

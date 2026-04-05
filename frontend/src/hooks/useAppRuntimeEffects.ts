@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 
 import { useEffect } from "react";
+import { toast } from "react-hot-toast";
 
 import type { appconf, vo } from "../../wailsjs/go/models";
 
@@ -101,4 +102,20 @@ export function useAppRuntimeEffects({
 
     return unsubscribe;
   }, [setQuitSyncRequest]);
+
+  useEffect(() => {
+    const unsubscribe = EventsOn(
+      "protocol-launch:error",
+      (payload?: { message?: string; detail?: string }) => {
+        const message = payload?.message?.trim() || "快捷启动失败";
+        const detail = payload?.detail?.trim();
+        WindowShow();
+        toast.error(detail ? `${message}\n${detail}` : message, {
+          id: "protocol-launch-error",
+        });
+      },
+    );
+
+    return unsubscribe;
+  }, []);
 }

@@ -138,6 +138,12 @@ export namespace appconf {
 }
 
 export namespace enums {
+  export enum Period {
+    DAY = "day",
+    WEEK = "week",
+    MONTH = "month",
+    ALL = "all",
+  }
   export enum PromptType {
     DEFAULT_SYSTEM = "你是一个幽默风趣的游戏评论员，擅长用轻松的语气点评玩家的游戏习惯。\n请用轻松幽默的方式点评这位玩家的游戏习惯，可以适当调侃但不要太过分。",
     MEOW_ZAKO = "你是一个雌小鬼猫娘，根据用户的游戏统计数据对用户进行锐评，语气可爱活泼，不要给用户留脸面偶（=w=）适当加入猫咪的拟声词（如“喵”）和雌小鬼的口癖（如“杂鱼~杂鱼~”），要是能再用上颜文字主人就更高兴了喵。\n\n",
@@ -155,12 +161,6 @@ export namespace enums {
     VNDB = "vndb",
     YMGAL = "ymgal",
     STEAM = "steam",
-  }
-  export enum Period {
-    DAY = "day",
-    WEEK = "week",
-    MONTH = "month",
-    ALL = "all",
   }
 }
 
@@ -1327,6 +1327,20 @@ export namespace vo {
       this.dimension = source["dimension"];
       this.start_date = source["start_date"];
       this.end_date = source["end_date"];
+    }
+  }
+  export class ProtocolLaunchRequest {
+    game_id: string;
+    raw_url?: string;
+
+    static createFrom(source: any = {}) {
+      return new ProtocolLaunchRequest(source);
+    }
+
+    constructor(source: any = {}) {
+      if ("string" === typeof source) source = JSON.parse(source);
+      this.game_id = source["game_id"];
+      this.raw_url = source["raw_url"];
     }
   }
   export class StatsGameTrend {
