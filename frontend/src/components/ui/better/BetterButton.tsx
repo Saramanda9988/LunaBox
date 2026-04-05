@@ -34,6 +34,13 @@ const variantClasses: Record<ButtonVariant, string> = {
     + "border border-transparent",
 };
 
+const glassClasses: Record<ButtonVariant, string> = {
+  secondary: "glass-btn-neutral",
+  primary: "glass-btn-primary",
+  danger: "glass-btn-error",
+  ghost: "glass-btn-none",
+};
+
 const sizeClasses: Record<ButtonSize, string> = {
   sm: "px-2.5 py-1 text-xs gap-1",
   md: "px-4 py-2 text-sm gap-1.5",
@@ -67,6 +74,7 @@ export function BetterButton({
         "transition-all duration-200 active:scale-95",
         "disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100",
         variantClasses[variant],
+        glassClasses[variant],
         sizeClasses[size],
         className,
       ].join(" ")}
