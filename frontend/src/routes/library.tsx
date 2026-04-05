@@ -26,6 +26,7 @@ import { BetterDropdownMenu } from "../components/ui/better/BetterDropdownMenu";
 import { sortOptions, statusOptions } from "../consts/options";
 import { useTagGameFilter } from "../hooks/useTagGameFilter";
 import { useAppStore } from "../store";
+import { compareNullableDateLike } from "../utils/sort";
 import { Route as rootRoute } from "./__root";
 
 interface LibrarySearch {
@@ -61,7 +62,7 @@ function LibraryPage() {
     () => routeSearchQuery?.trim() || "",
   );
   const [sortBy, setSortBy] = useState<
-    "name" | "created_at" | "rating" | "release_date"
+    "name" | "last_played_at" | "created_at" | "rating" | "release_date"
   >("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -181,6 +182,12 @@ function LibraryPage() {
       switch (sortBy) {
         case "name":
           comparison = a.name.localeCompare(b.name);
+          break;
+        case "last_played_at":
+          comparison = compareNullableDateLike(
+            a.last_played_at,
+            b.last_played_at,
+          );
           break;
         case "created_at":
           comparison = String(a.created_at || "").localeCompare(
@@ -366,7 +373,14 @@ function LibraryPage() {
         disableStoredSearchQuery={Boolean(routeSearchQuery?.trim())}
         sortBy={sortBy}
         onSortByChange={val =>
-          setSortBy(val as "name" | "created_at" | "rating" | "release_date")}
+          setSortBy(
+            val as
+            | "name"
+            | "last_played_at"
+            | "created_at"
+            | "rating"
+            | "release_date",
+          )}
         sortOptions={sortOptions.map(opt => ({
           ...opt,
           label: t(opt.label),

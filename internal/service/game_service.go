@@ -345,24 +345,31 @@ func (s *GameService) DeleteGames(ids []string) error {
 }
 
 func (s *GameService) GetGames() ([]models.Game, error) {
+	// FIXME: 这里对于上次游玩时间查询使用了一个子查询，可能存在性能问题，后续可以考虑优化或者在 game 中增加一个 last_played_at 字段来直接存储每个游戏的最近游玩时间
 	query := `SELECT 
-		id, name, 
-		COALESCE(cover_url, '') as cover_url, 
-		COALESCE(company, '') as company, 
-		COALESCE(summary, '') as summary, 
-		COALESCE(rating, 0) as rating,
-		COALESCE(release_date, '') as release_date,
-		COALESCE(path, '') as path, 
-		COALESCE(save_path, '') as save_path,
-		COALESCE(status, 'not_started') as status,
-		COALESCE(source_type, '') as source_type, 
-		cached_at, 
-		COALESCE(source_id, '') as source_id, 
-		created_at,
-		COALESCE(use_locale_emulator, FALSE) as use_locale_emulator,
-		COALESCE(use_magpie, FALSE) as use_magpie
-	FROM games 
-	ORDER BY created_at DESC`
+		g.id, g.name, 
+		COALESCE(g.cover_url, '') as cover_url, 
+		COALESCE(g.company, '') as company, 
+		COALESCE(g.summary, '') as summary, 
+		COALESCE(g.rating, 0) as rating,
+		COALESCE(g.release_date, '') as release_date,
+		COALESCE(g.path, '') as path, 
+		COALESCE(g.save_path, '') as save_path,
+		COALESCE(g.status, 'not_started') as status,
+		COALESCE(g.source_type, '') as source_type, 
+		g.cached_at, 
+		COALESCE(g.source_id, '') as source_id, 
+		g.created_at,
+		latest.last_played_at,
+		COALESCE(g.use_locale_emulator, FALSE) as use_locale_emulator,
+		COALESCE(g.use_magpie, FALSE) as use_magpie
+	FROM games g
+	LEFT JOIN (
+		SELECT game_id, MAX(start_time) as last_played_at
+		FROM play_sessions
+		GROUP BY game_id
+	) latest ON latest.game_id = g.id
+	ORDER BY g.created_at DESC`
 
 	rows, err := s.db.QueryContext(s.ctx, query)
 	if err != nil {
@@ -376,6 +383,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 		var game models.Game
 		var sourceType string
 		var status string
+		var lastPlayedAt sql.NullTime
 
 		err := rows.Scan(
 			&game.ID,
@@ -392,6 +400,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 			&game.CachedAt,
 			&game.SourceID,
 			&game.CreatedAt,
+			&lastPlayedAt,
 			&game.UseLocaleEmulator,
 			&game.UseMagpie,
 		)
@@ -402,6 +411,10 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 
 		game.SourceType = enums.SourceType(sourceType)
 		game.Status = enums.GameStatus(status)
+		if lastPlayedAt.Valid {
+			lastPlayed := lastPlayedAt.Time
+			game.LastPlayedAt = &lastPlayed
+		}
 		games = append(games, game)
 	}
 
@@ -414,29 +427,37 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 }
 
 func (s *GameService) GetGameByID(id string) (models.Game, error) {
+	// FIXME: 这里对于上次游玩时间查询使用了一个子查询，可能存在性能问题，后续可以考虑优化或者在 game 中增加一个 last_played_at 字段来直接存储每个游戏的最近游玩时间
 	query := `SELECT 
-		id, name, 
-		COALESCE(cover_url, '') as cover_url, 
-		COALESCE(company, '') as company, 
-		COALESCE(summary, '') as summary, 
-		COALESCE(rating, 0) as rating,
-		COALESCE(release_date, '') as release_date,
-		COALESCE(path, '') as path, 
-		COALESCE(save_path, '') as save_path,
-		COALESCE(process_name, '') as process_name,
-		COALESCE(status, 'not_started') as status,
-		COALESCE(source_type, '') as source_type, 
-		cached_at, 
-		COALESCE(source_id, '') as source_id, 
-		created_at,
-		COALESCE(use_locale_emulator, FALSE) as use_locale_emulator,
-		COALESCE(use_magpie, FALSE) as use_magpie
-	FROM games 
-	WHERE id = ?`
+		g.id, g.name, 
+		COALESCE(g.cover_url, '') as cover_url, 
+		COALESCE(g.company, '') as company, 
+		COALESCE(g.summary, '') as summary, 
+		COALESCE(g.rating, 0) as rating,
+		COALESCE(g.release_date, '') as release_date,
+		COALESCE(g.path, '') as path, 
+		COALESCE(g.save_path, '') as save_path,
+		COALESCE(g.process_name, '') as process_name,
+		COALESCE(g.status, 'not_started') as status,
+		COALESCE(g.source_type, '') as source_type, 
+		g.cached_at, 
+		COALESCE(g.source_id, '') as source_id, 
+		g.created_at,
+		latest.last_played_at,
+		COALESCE(g.use_locale_emulator, FALSE) as use_locale_emulator,
+		COALESCE(g.use_magpie, FALSE) as use_magpie
+	FROM games g
+	LEFT JOIN (
+		SELECT game_id, MAX(start_time) as last_played_at
+		FROM play_sessions
+		GROUP BY game_id
+	) latest ON latest.game_id = g.id
+	WHERE g.id = ?`
 
 	var game models.Game
 	var sourceType string
 	var status string
+	var lastPlayedAt sql.NullTime
 
 	err := s.db.QueryRowContext(s.ctx, query, id).Scan(
 		&game.ID,
@@ -454,6 +475,7 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		&game.CachedAt,
 		&game.SourceID,
 		&game.CreatedAt,
+		&lastPlayedAt,
 		&game.UseLocaleEmulator,
 		&game.UseMagpie,
 	)
@@ -469,6 +491,10 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 
 	game.SourceType = enums.SourceType(sourceType)
 	game.Status = enums.GameStatus(status)
+	if lastPlayedAt.Valid {
+		lastPlayed := lastPlayedAt.Time
+		game.LastPlayedAt = &lastPlayed
+	}
 	return game, nil
 }
 

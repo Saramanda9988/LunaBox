@@ -10,6 +10,7 @@ export const statusOptions = [
 
 export const sortOptions = [
   { label: "common.name", value: "name" },
+  { label: "common.lastPlayedAt", value: "last_played_at" },
   { label: "common.createdAt", value: "created_at" },
   { label: "common.rating", value: "rating" },
   { label: "common.releaseDate", value: "release_date" },

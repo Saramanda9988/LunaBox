@@ -18,6 +18,7 @@
     "completed": "Completed",
     "onHold": "On Hold",
     "name": "Name",
+    "lastPlayedAt": "Last Played",
     "createdAt": "Date Added",
     "rating": "Rating",
     "releaseDate": "Release Date",

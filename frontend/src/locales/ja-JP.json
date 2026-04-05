@@ -18,6 +18,7 @@
     "completed": "クリア済み",
     "onHold": "保留中",
     "name": "名前",
+    "lastPlayedAt": "最終プレイ",
     "createdAt": "追加日",
     "rating": "評価",
     "releaseDate": "発売日",

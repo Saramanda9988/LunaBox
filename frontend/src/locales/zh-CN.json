@@ -18,6 +18,7 @@
     "completed": "已通关",
     "onHold": "搁置",
     "name": "名称",
+    "lastPlayedAt": "最近游玩",
     "createdAt": "添加时间",
     "rating": "评分",
     "releaseDate": "发售日期",
