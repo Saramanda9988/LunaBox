@@ -316,6 +316,13 @@
   "gameProgress": {
     "title": "游玩进度",
     "hint": "记录当前进度，AI 总结将严格遵守您设置的剧透边界",
+    "newRecord": "新增记录",
+    "appendHint": "表单会自动带入最近一条记录。每次保存都会追加到游玩记录链，不会覆盖旧记录。",
+    "latestRecordedAt": "最近记录时间：{{time}}",
+    "addRecord": "新增记录",
+    "historyTitle": "游玩记录链",
+    "historyEmpty": "还没有游玩记录。新增第一条后，这里会开始形成完整的游玩时间线。",
+    "noNote": "没有填写备注",
     "recorded": "已记录",
     "chapter": "当前章节",
     "chapterPlaceholder": "如：第二章 / Chapter 2",
@@ -337,7 +344,7 @@
       "full": "AI 不受剧透限制，可自由讨论全结局与所有剧情。"
     },
     "toast": {
-      "saved": "游玩进度已保存",
+      "saved": "已新增游玩记录",
       "saveFailed": "保存失败"
     }
   },

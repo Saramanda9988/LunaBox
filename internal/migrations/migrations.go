@@ -269,6 +269,19 @@ func migration155(tx *sql.Tx) error {
 	return nil
 }
 
+// migration156 将 game_progress 升级为历史链模型
+func migration156(tx *sql.Tx) error {
+	_, err := tx.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_game_progress_game_timeline
+		ON game_progress(game_id, updated_at)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create idx_game_progress_game_timeline: %w", err)
+	}
+
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
@@ -305,6 +318,11 @@ var migrations = []Migration{
 		Version:     155,
 		Description: "Add rating and release_date columns to games table for scraped metadata",
 		Up:          migration155,
+	},
+	{
+		Version:     156,
+		Description: "Add game_progress timeline index for append-only history reads",
+		Up:          migration156,
 	},
 	// {
 	// 	Version:     114,

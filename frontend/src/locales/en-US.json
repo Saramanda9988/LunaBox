@@ -316,6 +316,13 @@
   "gameProgress": {
     "title": "Play Progress",
     "hint": "Record your current progress so AI summaries respect your spoiler boundaries",
+    "newRecord": "Add Record",
+    "appendHint": "The form is prefilled from your latest entry. Each save appends a new progress record instead of overwriting older ones.",
+    "latestRecordedAt": "Latest recorded at: {{time}}",
+    "addRecord": "Add Record",
+    "historyTitle": "Progress Timeline",
+    "historyEmpty": "No progress records yet. Your first entry will start the full play history timeline here.",
+    "noNote": "No note added",
     "recorded": "Recorded",
     "chapter": "Current Chapter",
     "chapterPlaceholder": "e.g.: Chapter 2",
@@ -337,7 +344,7 @@
       "full": "No spoiler restrictions. AI can freely discuss all endings and story content."
     },
     "toast": {
-      "saved": "Play progress saved",
+      "saved": "Progress record added",
       "saveFailed": "Failed to save"
     }
   },

@@ -174,7 +174,22 @@ func (s *AiService) getStatsForAI(dimension enums.Period) (*AIStatsData, error) 
 			COALESCE(gp.route, '') AS route
 		FROM play_sessions ps
 		JOIN games g ON ps.game_id = g.id
-		LEFT JOIN game_progress gp ON g.id = gp.game_id
+		LEFT JOIN (
+			SELECT game_id, spoiler_boundary, progress_note, route
+			FROM (
+				SELECT
+					game_id,
+					spoiler_boundary,
+					progress_note,
+					route,
+					ROW_NUMBER() OVER (
+						PARTITION BY game_id
+						ORDER BY updated_at DESC, id DESC
+					) AS rn
+				FROM game_progress
+			) latest_progress
+			WHERE rn = 1
+		) gp ON g.id = gp.game_id
 		WHERE ps.start_time >= %s AND ps.start_time <= %s + INTERVAL 1 DAY
 		GROUP BY g.id, g.name, g.company, g.summary, g.status,
 		         gp.spoiler_boundary, gp.progress_note, gp.route

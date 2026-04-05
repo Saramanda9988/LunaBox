@@ -44,6 +44,8 @@ func (s *GameProgressService) GetGameProgress(gameID string) (*GameProgress, err
 		SELECT id, game_id, chapter, route, progress_note, spoiler_boundary, updated_at
 		FROM game_progress
 		WHERE game_id = ?
+		ORDER BY updated_at DESC, id DESC
+		LIMIT 1
 	`, gameID)
 
 	var gp GameProgress
@@ -57,7 +59,36 @@ func (s *GameProgressService) GetGameProgress(gameID string) (*GameProgress, err
 	return &gp, nil
 }
 
-// UpsertGameProgress 创建或更新游玩进度
+// ListGameProgresses 获取指定游戏的全部游玩进度记录
+func (s *GameProgressService) ListGameProgresses(gameID string) ([]GameProgress, error) {
+	rows, err := s.db.QueryContext(s.ctx, `
+		SELECT id, game_id, chapter, route, progress_note, spoiler_boundary, updated_at
+		FROM game_progress
+		WHERE game_id = ?
+		ORDER BY updated_at DESC, id DESC
+	`, gameID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list game progress: %w", err)
+	}
+	defer rows.Close()
+
+	progresses := make([]GameProgress, 0)
+	for rows.Next() {
+		var gp GameProgress
+		if err := rows.Scan(&gp.ID, &gp.GameID, &gp.Chapter, &gp.Route, &gp.ProgressNote, &gp.SpoilerBoundary, &gp.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan game progress: %w", err)
+		}
+		progresses = append(progresses, gp)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate game progress rows: %w", err)
+	}
+
+	return progresses, nil
+}
+
+// UpsertGameProgress 追加保存游玩进度
 func (s *GameProgressService) UpsertGameProgress(gp GameProgress) (*GameProgress, error) {
 	if gp.GameID == "" {
 		return nil, fmt.Errorf("game_id is required")
@@ -72,38 +103,16 @@ func (s *GameProgressService) UpsertGameProgress(gp GameProgress) (*GameProgress
 		return nil, fmt.Errorf("invalid spoiler_boundary: %s", gp.SpoilerBoundary)
 	}
 
-	// 检查是否已存在
-	existing, err := s.GetGameProgress(gp.GameID)
-	if err != nil {
-		return nil, err
-	}
-
 	now := time.Now()
-	if existing == nil {
-		// 新增
-		gp.ID = uuid.New().String()
-		gp.UpdatedAt = now
-		_, err = s.db.ExecContext(s.ctx, `
-			INSERT INTO game_progress (id, game_id, chapter, route, progress_note, spoiler_boundary, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?)
-		`, gp.ID, gp.GameID, gp.Chapter, gp.Route, gp.ProgressNote, gp.SpoilerBoundary, gp.UpdatedAt)
-		if err != nil {
-			applog.LogError(s.ctx, "[GameProgressService] insert failed: "+err.Error())
-			return nil, fmt.Errorf("failed to insert game progress: %w", err)
-		}
-	} else {
-		// 更新
-		gp.ID = existing.ID
-		gp.UpdatedAt = now
-		_, err = s.db.ExecContext(s.ctx, `
-			UPDATE game_progress
-			SET chapter = ?, route = ?, progress_note = ?, spoiler_boundary = ?, updated_at = ?
-			WHERE game_id = ?
-		`, gp.Chapter, gp.Route, gp.ProgressNote, gp.SpoilerBoundary, gp.UpdatedAt, gp.GameID)
-		if err != nil {
-			applog.LogError(s.ctx, "[GameProgressService] update failed: "+err.Error())
-			return nil, fmt.Errorf("failed to update game progress: %w", err)
-		}
+	gp.ID = uuid.New().String()
+	gp.UpdatedAt = now
+	_, err := s.db.ExecContext(s.ctx, `
+		INSERT INTO game_progress (id, game_id, chapter, route, progress_note, spoiler_boundary, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, gp.ID, gp.GameID, gp.Chapter, gp.Route, gp.ProgressNote, gp.SpoilerBoundary, gp.UpdatedAt)
+	if err != nil {
+		applog.LogError(s.ctx, "[GameProgressService] insert failed: "+err.Error())
+		return nil, fmt.Errorf("failed to insert game progress: %w", err)
 	}
 
 	return &gp, nil
