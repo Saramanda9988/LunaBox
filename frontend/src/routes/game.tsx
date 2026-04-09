@@ -276,7 +276,7 @@ function GameDetailPage() {
   };
 
   const handleStatusChange = async (newStatus: string) => {
-    if (!game)
+    if (!game || (game.status || enums.GameStatus.NOT_STARTED) === newStatus)
       return;
     const updatedGame = { ...game, status: newStatus } as models.Game;
     setGame(updatedGame);
