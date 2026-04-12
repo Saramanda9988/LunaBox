@@ -5,6 +5,7 @@ import { ListGameProgresses } from "../../../wailsjs/go/service/GameProgressServ
 import { useAppStore } from "../../store";
 import { formatLocalDateTime } from "../../utils/time";
 import { AddGameProgressModal } from "../modal/AddGameProgressModal";
+import { GameProgressSkeleton } from "../skeleton/GameProgressSkeleton";
 import { BetterButton } from "../ui/better/BetterButton";
 
 interface GameProgressPanelProps {
@@ -26,6 +27,7 @@ export function GameProgressPanel({ gameId }: GameProgressPanelProps) {
   const config = useAppStore(state => state.config);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [showLoadingSkeleton, setShowLoadingSkeleton] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [progressHistory, setProgressHistory] = useState<
     service.GameProgress[]
@@ -48,6 +50,25 @@ export function GameProgressPanel({ gameId }: GameProgressPanelProps) {
   useEffect(() => {
     loadHistory();
   }, [gameId]);
+
+  useEffect(() => {
+    let timer: number | undefined;
+
+    if (isLoading && progressHistory.length === 0) {
+      timer = window.setTimeout(() => {
+        setShowLoadingSkeleton(true);
+      }, 300);
+    }
+    else {
+      setShowLoadingSkeleton(false);
+    }
+
+    return () => {
+      if (timer !== undefined) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [isLoading, progressHistory.length]);
 
   const spoilerOptions = SPOILER_OPTIONS.map(o => ({
     value: o.value,
@@ -88,16 +109,7 @@ export function GameProgressPanel({ gameId }: GameProgressPanelProps) {
         </div>
 
         <div className="mt-4 flex-1 min-h-[14rem]">
-          {isLoading ? (
-            <div className="space-y-3">
-              <div className="h-24 rounded-lg bg-brand-100 dark:bg-brand-700 animate-pulse" />
-              <div className="h-24 rounded-lg bg-brand-100 dark:bg-brand-700 animate-pulse" />
-            </div>
-          ) : progressHistory.length === 0 ? (
-            <div className="flex h-full min-h-[14rem] items-center justify-center rounded-lg border border-dashed border-brand-300 px-4 py-6 text-center text-sm text-brand-500 dark:border-brand-600 dark:text-brand-400">
-              {t("gameProgress.historyEmpty")}
-            </div>
-          ) : (
+          {progressHistory.length > 0 ? (
             <div className="space-y-3">
               {progressHistory.map(progress => (
                 <article
@@ -149,6 +161,16 @@ export function GameProgressPanel({ gameId }: GameProgressPanelProps) {
                   </div>
                 </article>
               ))}
+            </div>
+          ) : isLoading ? (
+            showLoadingSkeleton ? (
+              <GameProgressSkeleton />
+            ) : (
+              <div className="min-h-[14rem]" />
+            )
+          ) : (
+            <div className="flex h-full min-h-[14rem] items-center justify-center rounded-lg border border-dashed border-brand-300 px-4 py-6 text-center text-sm text-brand-500 dark:border-brand-600 dark:text-brand-400">
+              {t("gameProgress.historyEmpty")}
             </div>
           )}
         </div>
