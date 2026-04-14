@@ -8,6 +8,8 @@ import {appconf} from '../models';
 
 export function CreateAndUploadDBBackup():Promise<vo.DBBackupInfo>;
 
+export function CreateAndUploadDBBackupForQuit():Promise<vo.DBBackupInfo>;
+
 export function CreateBackup(arg1:string):Promise<models.GameBackup>;
 
 export function CreateDBBackup():Promise<vo.DBBackupInfo>;

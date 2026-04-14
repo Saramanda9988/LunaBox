@@ -14,6 +14,10 @@ export function Init(arg1, arg2, arg3) {
   return window['go']['service']['GameProgressService']['Init'](arg1, arg2, arg3);
 }
 
+export function ListGameProgresses(arg1) {
+  return window['go']['service']['GameProgressService']['ListGameProgresses'](arg1);
+}
+
 export function UpsertGameProgress(arg1) {
   return window['go']['service']['GameProgressService']['UpsertGameProgress'](arg1);
 }

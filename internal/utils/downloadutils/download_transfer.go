@@ -28,13 +28,27 @@ import (
 const (
 	DefaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 LunaBox/1.0"
 
-	multipartDownloadMinSize  int64 = 32 * 1024 * 1024
-	multipartDownloadMinPart  int64 = 8 * 1024 * 1024
-	multipartDownloadMaxParts       = 8
-	multipartStateVersion           = 1
+	multipartDownloadMinSize    int64 = 32 * 1024 * 1024
+	multipartDownloadMinPart    int64 = 8 * 1024 * 1024
+	multipartDownloadMaxParts         = 8
+	multipartStateVersion             = 1
+	transientReadRetryDelay           = 1200 * time.Millisecond
+	maxTransientReadRetries           = 2
+	defaultRetryAfter                 = 2 * time.Second
+	minRetryAfter                     = 100 * time.Millisecond
+	grabMax429Retries                 = 5
+	multipartMax429RetriesAtOne       = 5
 )
 
 var errMultipartUnsupported = errors.New("multipart download unsupported")
+
+type rateLimitError struct {
+	retryAfter time.Duration
+}
+
+func (e *rateLimitError) Error() string {
+	return fmt.Sprintf("server returned %d %s", http.StatusTooManyRequests, http.StatusText(http.StatusTooManyRequests))
+}
 
 type Progress struct {
 	Downloaded int64
@@ -169,18 +183,133 @@ func (d *Downloader) downloadWithMultipart(ctx context.Context, req TransferRequ
 	downloaded.Store(initialDownloaded)
 	emitProgress(req.Progress, downloaded.Load(), session.size)
 
+	concurrency := len(session.parts)
+	if concurrency < 1 {
+		concurrency = 1
+	}
+	rateLimitedAtOne := 0
+	transientReadRetries := 0
+	for {
+		pending, err := session.pendingSegments()
+		if err != nil {
+			return fmt.Errorf("inspect multipart state: %w", err)
+		}
+		if len(pending) == 0 {
+			break
+		}
+
+		if concurrency > len(pending) {
+			concurrency = len(pending)
+		}
+
+		err = d.downloadMultipartWave(ctx, req.URL, session, pending, concurrency, &downloaded, req.Progress)
+		if err == nil {
+			rateLimitedAtOne = 0
+			transientReadRetries = 0
+			continue
+		}
+		if errors.Is(err, errMultipartUnsupported) {
+			_ = os.RemoveAll(MultipartTempDir(session.destPath))
+			return err
+		}
+
+		var limitErr *rateLimitError
+		if errors.As(err, &limitErr) {
+			if waitErr := waitForRetryAfter(ctx, limitErr.retryAfter); waitErr != nil {
+				return waitErr
+			}
+			nextConcurrency := reduceMultipartConcurrency(concurrency)
+			if nextConcurrency == 1 && concurrency == 1 {
+				rateLimitedAtOne++
+				if rateLimitedAtOne > multipartMax429RetriesAtOne {
+					return err
+				}
+			} else {
+				rateLimitedAtOne = 0
+			}
+			concurrency = nextConcurrency
+			continue
+		}
+		if isRetryableDownloadReadError(err) {
+			transientReadRetries++
+			if transientReadRetries <= maxTransientReadRetries {
+				if waitErr := waitForRetryAfter(ctx, transientReadRetryDelay); waitErr != nil {
+					return waitErr
+				}
+				continue
+			}
+		}
+
+		return err
+	}
+
+	if err := session.mergeIntoDestination(); err != nil {
+		_ = os.Remove(session.destPath)
+		return fmt.Errorf("merge multipart files: %w", err)
+	}
+	if err := verifyDownloadedFileChecksum(session.destPath, req.ChecksumAlgo, req.Checksum); err != nil {
+		_ = os.Remove(session.destPath)
+		_ = os.RemoveAll(MultipartTempDir(session.destPath))
+		return fmt.Errorf("checksum verify failed: %w", err)
+	}
+	_ = os.RemoveAll(session.tempDir)
+
+	emitProgress(req.Progress, session.size, session.size)
+	return nil
+}
+
+func (d *Downloader) downloadMultipartWave(
+	ctx context.Context,
+	rawURL string,
+	session *multipartSession,
+	segments []multipartSegment,
+	concurrency int,
+	downloaded *atomic.Int64,
+	progress func(Progress),
+) error {
+	if concurrency < 1 {
+		concurrency = 1
+	}
+	if concurrency > len(segments) {
+		concurrency = len(segments)
+	}
+
 	workerCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	errCh := make(chan error, len(session.parts))
+	jobs := make(chan multipartSegment, len(segments))
+	for _, segment := range segments {
+		jobs <- segment
+	}
+	close(jobs)
+
+	errCh := make(chan error, concurrency)
 	var wg sync.WaitGroup
-	for _, segment := range session.parts {
-		segment := segment
+	for i := 0; i < concurrency; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := d.downloadMultipartSegment(workerCtx, req.URL, segment, session.partPath(segment.Index), &downloaded); err != nil {
-				errCh <- err
+			for segment := range jobs {
+				if workerCtx.Err() != nil {
+					return
+				}
+				if err := d.downloadMultipartSegment(workerCtx, rawURL, segment, session.partPath(segment.Index), downloaded); err != nil {
+					if errors.Is(err, context.Canceled) {
+						if ctx.Err() != nil {
+							select {
+							case errCh <- ctx.Err():
+							default:
+							}
+						}
+						return
+					}
+					select {
+					case errCh <- err:
+					default:
+					}
+					cancel()
+					return
+				}
 			}
 		}()
 	}
@@ -199,7 +328,7 @@ loop:
 	for {
 		select {
 		case <-ticker.C:
-			emitProgress(req.Progress, downloaded.Load(), session.size)
+			emitProgress(progress, downloaded.Load(), session.size)
 		case err := <-errCh:
 			if err != nil && firstErr == nil {
 				firstErr = err
@@ -222,27 +351,13 @@ drainErrors:
 		}
 	}
 
-	emitProgress(req.Progress, downloaded.Load(), session.size)
-
+	emitProgress(progress, downloaded.Load(), session.size)
 	if firstErr != nil {
-		if errors.Is(firstErr, errMultipartUnsupported) {
-			_ = os.RemoveAll(MultipartTempDir(session.destPath))
-		}
 		return firstErr
 	}
-
-	if err := session.mergeIntoDestination(); err != nil {
-		_ = os.Remove(session.destPath)
-		return fmt.Errorf("merge multipart files: %w", err)
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
-	if err := verifyDownloadedFileChecksum(session.destPath, req.ChecksumAlgo, req.Checksum); err != nil {
-		_ = os.Remove(session.destPath)
-		_ = os.RemoveAll(MultipartTempDir(session.destPath))
-		return fmt.Errorf("checksum verify failed: %w", err)
-	}
-	_ = os.RemoveAll(session.tempDir)
-
-	emitProgress(req.Progress, session.size, session.size)
 	return nil
 }
 
@@ -272,6 +387,9 @@ func (d *Downloader) downloadMultipartSegment(ctx context.Context, rawURL string
 
 	if resp.StatusCode == http.StatusOK {
 		return errMultipartUnsupported
+	}
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return newRateLimitError(resp)
 	}
 	if resp.StatusCode != http.StatusPartialContent {
 		return grab.StatusCodeError(resp.StatusCode)
@@ -338,9 +456,13 @@ func (d *Downloader) probeMultipartSupport(ctx context.Context, req TransferRequ
 }
 
 func (d *Downloader) downloadWithGrab(ctx context.Context, req TransferRequest) error {
-	for attempt := 0; attempt < 2; attempt++ {
+	rangeResetRetried := false
+	rateLimitRetries := 0
+	transientReadRetries := 0
+	for {
 		resp, err := d.runGrabAttempt(ctx, req)
-		if err != nil && attempt == 0 && shouldRetryGrabFromScratch(err, req.DestinationPath) {
+		if err != nil && !rangeResetRetried && shouldRetryGrabFromScratch(err, req.DestinationPath) {
+			rangeResetRetried = true
 			if removeErr := os.Remove(req.DestinationPath); removeErr != nil && !os.IsNotExist(removeErr) {
 				return fmt.Errorf("reset partial download: %w", removeErr)
 			}
@@ -350,10 +472,27 @@ func (d *Downloader) downloadWithGrab(ctx context.Context, req TransferRequest) 
 		if resp != nil {
 			emitProgress(req.Progress, resp.BytesComplete(), totalFromGrabResponse(resp, req.ExpectedSize))
 		}
+		if err != nil && isGrabRateLimited(resp, err) {
+			rateLimitRetries++
+			if rateLimitRetries > grabMax429Retries {
+				return err
+			}
+			if waitErr := waitForRetryAfter(ctx, retryAfterFromResponse(resp.HTTPResponse)); waitErr != nil {
+				return waitErr
+			}
+			continue
+		}
+		if err != nil && isRetryableDownloadReadError(err) {
+			transientReadRetries++
+			if transientReadRetries <= maxTransientReadRetries {
+				if waitErr := waitForRetryAfter(ctx, transientReadRetryDelay); waitErr != nil {
+					return waitErr
+				}
+				continue
+			}
+		}
 		return err
 	}
-
-	return fmt.Errorf("download failed after retry")
 }
 
 func (d *Downloader) runGrabAttempt(ctx context.Context, req TransferRequest) (*grab.Response, error) {
@@ -544,6 +683,21 @@ func (s *multipartSession) completedBytes() (int64, error) {
 	return total, nil
 }
 
+func (s *multipartSession) pendingSegments() ([]multipartSegment, error) {
+	pending := make([]multipartSegment, 0, len(s.parts))
+	for _, segment := range s.parts {
+		partLength := segment.End - segment.Start + 1
+		size, err := currentPartSize(s.partPath(segment.Index), partLength)
+		if err != nil {
+			return nil, err
+		}
+		if size < partLength {
+			pending = append(pending, segment)
+		}
+	}
+	return pending, nil
+}
+
 func (s *multipartSession) mergeIntoDestination() error {
 	file, err := os.OpenFile(s.destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
@@ -712,6 +866,100 @@ func shouldRetryGrabFromScratch(err error, destPath string) bool {
 
 	var statusErr grab.StatusCodeError
 	return errors.As(err, &statusErr) && int(statusErr) == http.StatusRequestedRangeNotSatisfiable
+}
+
+func isRetryableDownloadReadError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+
+	message := strings.ToLower(strings.TrimSpace(err.Error()))
+	return message == "eof" || strings.Contains(message, "unexpected eof")
+}
+
+func isGrabRateLimited(resp *grab.Response, err error) bool {
+	if resp == nil || resp.HTTPResponse == nil {
+		return false
+	}
+	if resp.HTTPResponse.StatusCode != http.StatusTooManyRequests {
+		return false
+	}
+	var statusErr grab.StatusCodeError
+	return errors.As(err, &statusErr) && int(statusErr) == http.StatusTooManyRequests
+}
+
+func newRateLimitError(resp *http.Response) error {
+	return &rateLimitError{retryAfter: retryAfterFromResponse(resp)}
+}
+
+func retryAfterFromResponse(resp *http.Response) time.Duration {
+	if resp == nil {
+		return defaultRetryAfter
+	}
+	return parseRetryAfter(resp.Header.Get("Retry-After"))
+}
+
+func parseRetryAfter(value string) time.Duration {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return defaultRetryAfter
+	}
+
+	if seconds, err := time.ParseDuration(trimmed + "s"); err == nil {
+		if seconds >= 0 {
+			return seconds
+		}
+	}
+
+	if when, err := http.ParseTime(trimmed); err == nil {
+		wait := time.Until(when)
+		if wait >= 0 {
+			return wait
+		}
+		return 0
+	}
+
+	return defaultRetryAfter
+}
+
+func waitForRetryAfter(ctx context.Context, delay time.Duration) error {
+	if delay < 0 {
+		delay = defaultRetryAfter
+	}
+	if delay == 0 {
+		delay = minRetryAfter
+	}
+
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
+func reduceMultipartConcurrency(current int) int {
+	if current <= 1 {
+		return 1
+	}
+
+	next := current / 2
+	if next < 1 {
+		next = 1
+	}
+	if next == current {
+		next = current - 1
+	}
+	if next < 1 {
+		next = 1
+	}
+	return next
 }
 
 func equalBytes(left []byte, right []byte) bool {

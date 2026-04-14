@@ -472,6 +472,7 @@ func (s *CategoryService) notifyCloudSync() {
 }
 
 func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, error) {
+	// FIXME: 这里对于上次游玩时间查询使用了一个子查询，可能存在性能问题，后续可以考虑优化或者在 game 中增加一个 last_played_at 字段来直接存储每个游戏的最近游玩时间
 	query := `
 		SELECT g.id, g.name,
 			COALESCE(g.cover_url, '') as cover_url,
@@ -487,10 +488,16 @@ func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, 
 			g.cached_at,
 			COALESCE(g.source_id, '') as source_id,
 			g.created_at,
+			latest.last_played_at,
 			COALESCE(g.use_locale_emulator, FALSE) as use_locale_emulator,
 			COALESCE(g.use_magpie, FALSE) as use_magpie
 		FROM games g
 		JOIN game_categories gc ON g.id = gc.game_id
+		LEFT JOIN (
+			SELECT game_id, MAX(start_time) as last_played_at
+			FROM play_sessions
+			GROUP BY game_id
+		) latest ON latest.game_id = g.id
 		WHERE gc.category_id = ?
 		ORDER BY g.created_at DESC
 	`
@@ -504,9 +511,14 @@ func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, 
 	var games []models.Game
 	for rows.Next() {
 		var g models.Game
-		if err := rows.Scan(&g.ID, &g.Name, &g.CoverURL, &g.Company, &g.Summary, &g.Rating, &g.ReleaseDate, &g.Path, &g.SavePath, &g.ProcessName, &g.Status, &g.SourceType, &g.CachedAt, &g.SourceID, &g.CreatedAt, &g.UseLocaleEmulator, &g.UseMagpie); err != nil {
+		var lastPlayedAt sql.NullTime
+		if err := rows.Scan(&g.ID, &g.Name, &g.CoverURL, &g.Company, &g.Summary, &g.Rating, &g.ReleaseDate, &g.Path, &g.SavePath, &g.ProcessName, &g.Status, &g.SourceType, &g.CachedAt, &g.SourceID, &g.CreatedAt, &lastPlayedAt, &g.UseLocaleEmulator, &g.UseMagpie); err != nil {
 			applog.LogErrorf(s.ctx, "GetGamesByCategory: failed to scan row for category %s: %v", categoryID, err)
 			return nil, err
+		}
+		if lastPlayedAt.Valid {
+			lastPlayed := lastPlayedAt.Time
+			g.LastPlayedAt = &lastPlayed
 		}
 		games = append(games, g)
 	}

@@ -94,3 +94,6 @@ type InstallResponse struct {
 	TaskID string `json:"task_id,omitempty"`
 	Error  string `json:"error,omitempty"`
 }
+
+// LaunchResponse IPC /launch 响应
+type LaunchResponse = ipccore.LaunchResponse

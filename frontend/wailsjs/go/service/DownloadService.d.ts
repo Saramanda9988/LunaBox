@@ -24,6 +24,8 @@ export function PauseDownload(arg1:string):Promise<void>;
 
 export function ResumeDownload(arg1:string):Promise<void>;
 
+export function RetryDownload(arg1:string):Promise<void>;
+
 export function SetGameService(arg1:service.GameService):Promise<void>;
 
 export function SetPendingInstall(arg1:vo.InstallRequest):Promise<void>;

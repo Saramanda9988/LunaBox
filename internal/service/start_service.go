@@ -9,6 +9,7 @@ import (
 	"lunabox/internal/models"
 	"lunabox/internal/utils/processutils"
 	"lunabox/internal/utils/timerutils"
+	"lunabox/internal/vo"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,6 +19,12 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+type protocolLaunchErrorEvent struct {
+	Message string `json:"message"`
+	Detail  string `json:"detail,omitempty"`
+	GameID  string `json:"game_id,omitempty"`
+}
 
 // LaunchOptions 定义游戏启动选项
 type LaunchOptions struct {
@@ -82,6 +89,43 @@ func (s *StartService) StartGameWithTracking(gameID string) (bool, error) {
 // 供 CLI 调用，支持覆盖 LE 和 Magpie 设置
 func (s *StartService) StartGameWithOptions(gameID string, options LaunchOptions) (bool, error) {
 	return s.startGame(gameID, options)
+}
+
+// HandleProtocolLaunch validates and dispatches a protocol-triggered game launch.
+func (s *StartService) HandleProtocolLaunch(req vo.ProtocolLaunchRequest) error {
+	gameID := strings.TrimSpace(req.GameID)
+	if gameID == "" {
+		err := fmt.Errorf("missing required parameter: game_id")
+		s.emitProtocolLaunchError("快捷启动失败", err.Error(), "")
+		return err
+	}
+
+	if s.gameService == nil {
+		err := fmt.Errorf("game service is not initialized")
+		s.emitProtocolLaunchError("快捷启动失败", err.Error(), gameID)
+		return err
+	}
+
+	game, err := s.gameService.GetGameByID(gameID)
+	if err != nil {
+		wrappedErr := fmt.Errorf("failed to resolve target game: %w", err)
+		s.emitProtocolLaunchError("未找到该游戏快捷方式对应的游戏记录", err.Error(), gameID)
+		return wrappedErr
+	}
+
+	started, err := s.StartGameWithTracking(gameID)
+	if err != nil {
+		wrappedErr := fmt.Errorf("start game via protocol: %w", err)
+		s.emitProtocolLaunchError(fmt.Sprintf("启动《%s》失败", game.Name), err.Error(), gameID)
+		return wrappedErr
+	}
+	if !started {
+		err := fmt.Errorf("game failed to start")
+		s.emitProtocolLaunchError(fmt.Sprintf("启动《%s》失败", game.Name), err.Error(), gameID)
+		return err
+	}
+
+	return nil
 }
 
 // startGame 内部启动方法，支持通过 options 覆盖配置
@@ -287,6 +331,17 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 		// 使用原有的 waitForGameExit：可以利用 cmd.Wait() 事件驱动
 		s.waitForGameExit(cmd, sessionID, gameID, startTime, actualProcessID)
 	}
+}
+
+func (s *StartService) emitProtocolLaunchError(message string, detail string, gameID string) {
+	if s.ctx == nil {
+		return
+	}
+	runtime.EventsEmit(s.ctx, "protocol-launch:error", protocolLaunchErrorEvent{
+		Message: strings.TrimSpace(message),
+		Detail:  strings.TrimSpace(detail),
+		GameID:  strings.TrimSpace(gameID),
+	})
 }
 
 // promptUserToSelectProcess 提示用户选择实际的游戏进程

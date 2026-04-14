@@ -9,10 +9,13 @@ export default defineConfig({
   ],
 
   rules: [
-    ["scrollbar-hide", {
-      "scrollbar-width": "none",
-      "-ms-overflow-style": "none",
-    }],
+    [
+      "scrollbar-hide",
+      {
+        "scrollbar-width": "none",
+        "-ms-overflow-style": "none",
+      },
+    ],
   ],
 
   // 自定义 variants - 支持 data-glass 属性
@@ -34,36 +37,64 @@ export default defineConfig({
     {
       "glass": "backdrop-filter backdrop-blur-20 backdrop-saturate-180",
       "glass-border": "border border-white/18 dark:border-white/10",
-      "glass-text": "drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)] drop-shadow-[0_0_8px_rgba(0,0,0,0.2)]",
+      "glass-text":
+        "drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)] drop-shadow-[0_0_8px_rgba(0,0,0,0.2)]",
     },
 
     // 玻璃态层级系统（从不透明到透明）
 
     // 1. glass-aside - 侧边栏（最不透明，需要清晰的导航）
-    [/^glass-aside$/, () => "data-glass:bg-white/12 data-glass:dark:bg-black/15 data-glass:backdrop-blur-28 data-glass:backdrop-saturate-180 data-glass:border-r data-glass:border-white/20 data-glass:dark:border-white/12"],
+    [
+      /^glass-aside$/,
+      () =>
+        "data-glass:bg-white/12 data-glass:dark:bg-black/15 data-glass:backdrop-blur-28 data-glass:backdrop-saturate-180 data-glass:border-r data-glass:border-white/20 data-glass:dark:border-white/12",
+    ],
 
     // 2. glass-btn - 按钮（保持可见，需要明确的交互反馈）
-    [/^glass-btn-(.*)$/, ([, color]) => {
-      const colorMap: Record<string, string> = {
-        neutral: "data-glass:bg-neutral-600/65",
-        error: "data-glass:bg-error-500/65",
-        success: "data-glass:bg-success-600/65",
-        primary: "data-glass:bg-primary-600/65",
-      };
-      return `data-glass:backdrop-blur-12 data-glass:border data-glass:border-white/25 data-glass:dark:border-white/15 ${colorMap[color] || "data-glass:bg-neutral-600/65"}`;
-    }],
+    [
+      /^glass-btn-(.*)$/,
+      ([, color]) => {
+        const colorMap: Record<string, string> = {
+          neutral:
+            "data-glass:bg-white/30 data-glass:dark:bg-black/30 data-glass:text-brand-900 data-glass:dark:text-brand-100 data-glass:hover:bg-white/40 data-glass:dark:hover:bg-black/40",
+          error:
+            "data-glass:bg-error-500/70 data-glass:text-white data-glass:hover:bg-error-500/80",
+          success:
+            "data-glass:bg-success-600/70 data-glass:text-white data-glass:hover:bg-success-600/80",
+          primary:
+            "data-glass:bg-primary-600/70 data-glass:text-white data-glass:hover:bg-primary-600/80",
+        };
+        return `data-glass:backdrop-blur-12 data-glass:border data-glass:border-white/30 data-glass:dark:border-white/15 ${colorMap[color] || colorMap.neutral}`;
+      },
+    ],
 
     // 3. glass-card - 卡片（统计卡、列表项等，中等透明）
-    [/^glass-card$/, () => "data-glass:bg-white/8 data-glass:dark:bg-black/12 data-glass:backdrop-blur-20 data-glass:backdrop-saturate-180 data-glass:border data-glass:border-white/22 data-glass:dark:border-white/12"],
+    [
+      /^glass-card$/,
+      () =>
+        "data-glass:bg-white/8 data-glass:dark:bg-black/12 data-glass:backdrop-blur-20 data-glass:backdrop-saturate-180 data-glass:border data-glass:border-white/22 data-glass:dark:border-white/12",
+    ],
 
     // 4. glass-panel - 面板容器（较透明，轻量感）
-    [/^glass-panel$/, () => "data-glass:bg-white/5 data-glass:dark:bg-black/8 data-glass:backdrop-blur-20 data-glass:backdrop-saturate-180 data-glass:border data-glass:border-white/18 data-glass:dark:border-white/10"],
+    [
+      /^glass-panel$/,
+      () =>
+        "data-glass:bg-white/5 data-glass:dark:bg-black/8 data-glass:backdrop-blur-20 data-glass:backdrop-saturate-180 data-glass:border data-glass:border-white/18 data-glass:dark:border-white/10",
+    ],
 
     // 5. glass-input - 输入框（最透明，突出内容）
-    [/^glass-input$/, () => "data-glass:bg-white/3 data-glass:dark:bg-black/5 data-glass:backdrop-blur-16 data-glass:backdrop-saturate-150 data-glass:border data-glass:border-white/25 data-glass:dark:border-white/18"],
+    [
+      /^glass-input$/,
+      () =>
+        "data-glass:bg-white/3 data-glass:dark:bg-black/5 data-glass:backdrop-blur-16 data-glass:backdrop-saturate-150 data-glass:border data-glass:border-white/25 data-glass:dark:border-white/18",
+    ],
 
     // 6. glass-btn-none - 透明按钮（仅保留交互反馈）
-    [/^glass-btn-none$/, () => "data-glass:bg-white/5 data-glass:dark:bg-black/8  data-glass:backdrop-blur-10 data-glass:bg-transparent data-glass:hover:bg-white/10 data-glass:dark:hover:bg-black/12"],
+    [
+      /^glass-btn-none$/,
+      () =>
+        "data-glass:bg-white/5 data-glass:dark:bg-black/8  data-glass:backdrop-blur-10 data-glass:bg-transparent data-glass:hover:bg-white/10 data-glass:dark:hover:bg-black/12",
+    ],
   ],
 
   theme: {

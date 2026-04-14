@@ -18,6 +18,7 @@
     "completed": "クリア済み",
     "onHold": "保留中",
     "name": "名前",
+    "lastPlayedAt": "最終プレイ",
     "createdAt": "追加日",
     "rating": "評価",
     "releaseDate": "発売日",
@@ -105,6 +106,7 @@
     "inputPlaceholder": "タグを入力",
     "addFailed": "タグの追加に失敗しました",
     "deleteFailed": "タグの削除に失敗しました",
+    "deleteScrapedHint": "自動タグを削除しました。メタデータを再取得すると再び表示される場合があります",
     "revealSpoiler": "クリックしてネタバレタグを表示"
   },
   "gameCard": {
@@ -314,6 +316,12 @@
   "gameProgress": {
     "title": "プレイ進捗",
     "hint": "現在の進捗を記録します。AI 要約はここで設定したネタバレ境界を厳守します",
+    "newRecord": "新しい記録を追加",
+    "latestRecordedAt": "最新の記録日時: {{time}}",
+    "addRecord": "記録を追加",
+    "historyTitle": "進捗タイムライン",
+    "historyEmpty": "まだ進捗記録がありません。最初の記録を追加すると、ここにプレイ履歴が積み上がります。",
+    "noNote": "メモはありません",
     "recorded": "記録済み",
     "chapter": "現在のチャプター",
     "chapterPlaceholder": "例：第二章 / Chapter 2",
@@ -335,7 +343,7 @@
       "full": "AI はすべてのエンディングとストーリーについて自由に話せます。"
     },
     "toast": {
-      "saved": "プレイ進捗を保存しました",
+      "saved": "進捗記録を追加しました",
       "saveFailed": "プレイ進捗の保存に失敗しました"
     }
   },
@@ -388,6 +396,8 @@
     "actualProcess": "実際のゲームプロセス",
     "selectProcessFile": "プロセスファイルを選択",
     "processHint": "実際に動作しているゲームのプロセス名（.exe 拡張子を含む）を指定します。\n指定しない場合、LunaBox は実行パスの監視を試みます。前回の選択がランチャーだった場合は、ゲーム起動後に表示される選択ダイアログでこのプロセスを手動指定する必要があります。\nここで事前入力しておくと、毎回の起動時に手動選択する手間を省けます。",
+    "exportShortcut": "起動ショートカットを書き出す",
+    "exportShortcutHint": "`.url` ショートカットファイルを書き出します。ダブルクリックすると LunaBox が呼び出され、現在のゲーム設定で起動と監視を行います。",
     "enhancementTools": "起動強化ツール",
     "leLabel": "ロケールエミュレーター",
     "leDesc": "日本語環境エミュレーションでゲームを起動し、文字化けや地域制限の問題を解決します。",
@@ -397,7 +407,9 @@
     "magpieNotConfigured": "先に設定画面で Magpie.exe のパスを設定してください",
     "toast": {
       "lePathRequired": "先に設定画面で Locale Emulator のパスを設定してください",
-      "magpiePathRequired": "先に設定画面で Magpie のパスを設定してください"
+      "magpiePathRequired": "先に設定画面で Magpie のパスを設定してください",
+      "shortcutExportSuccess": "起動ショートカットを書き出しました\n{{path}}",
+      "shortcutExportFailed": "起動ショートカットの書き出しに失敗しました: {{error}}"
     }
   },
   "gameStats": {
@@ -852,6 +864,7 @@
     "openFolder": "フォルダーを開く",
     "pause": "ダウンロードを一時停止",
     "resume": "ダウンロードを再開",
+    "retry": "ダウンロードを再試行",
     "cancel": "ダウンロードをキャンセル",
     "delete": "記録を削除",
     "importAsGame": "ゲームとしてインポート",
@@ -876,6 +889,7 @@
       "openFolderFailed": "フォルダーを開けませんでした",
       "pauseFailed": "ダウンロードの一時停止に失敗しました",
       "resumeFailed": "ダウンロードの再開に失敗しました",
+      "retryFailed": "ダウンロードの再試行に失敗しました",
       "noFilePath": "ダウンロードファイルのパスが存在しません",
       "alreadyImported": "このタスクはすでにゲームとしてインポートされています",
       "importGameSuccess": "ゲームとしてのインポートに成功しました",
@@ -1006,6 +1020,15 @@
     "unknown": "不明",
     "placeholder": "タイムゾーンを選択してください",
     "confirmBtn": "保存して再起動"
+  },
+  "exitSyncToast": {
+    "syncingTitle": "クラウドバックアップを同期中",
+    "syncingMessage": "終了中です。アプリを強制終了しないでください。",
+    "successTitle": "クラウドバックアップの同期完了",
+    "successMessage": "まもなく自動的に終了します。",
+    "errorTitle": "クラウドバックアップの同期失敗",
+    "errorMessage": "同期に失敗しました: {{error}}。アプリはまもなく終了します。",
+    "timeoutMessage": "同期がタイムアウトしました。ネットワーク接続を確認してください。"
   },
   "updateDialog": {
     "newVersion": "新しいバージョンが見つかりました",

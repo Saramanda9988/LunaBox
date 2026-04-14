@@ -77,6 +77,29 @@ func StartServer(app *cli.CoreApp) *http.Server {
 		json.NewEncoder(w).Encode(InstallResponse{TaskID: ""})
 	})
 
+	// /launch: 接收来自新启动实例转发的 lunabox:// 启动请求
+	mux.HandleFunc("/launch", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var req vo.ProtocolLaunchRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		resp := LaunchResponse{}
+		if err := app.StartService.HandleProtocolLaunch(req); err != nil {
+			resp.Error = err.Error()
+		} else {
+			resp.Started = true
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
 	listener, port, err := chooseIPCListener()
 	if err != nil {
 		applog.LogErrorf(app.Ctx, "IPC Server failed to acquire port: %v", err)

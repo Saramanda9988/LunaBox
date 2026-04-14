@@ -10,6 +10,10 @@ export function CleanupPendingSessions() {
   return window['go']['service']['StartService']['CleanupPendingSessions']();
 }
 
+export function HandleProtocolLaunch(arg1) {
+  return window['go']['service']['StartService']['HandleProtocolLaunch'](arg1);
+}
+
 export function Init(arg1, arg2, arg3) {
   return window['go']['service']['StartService']['Init'](arg1, arg2, arg3);
 }

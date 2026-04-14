@@ -9,13 +9,16 @@ import (
 	"lunabox/internal/applog"
 	"lunabox/internal/enums"
 	"lunabox/internal/models"
+	"lunabox/internal/protocol"
 	"lunabox/internal/utils"
 	"lunabox/internal/utils/apputils"
+	"lunabox/internal/utils/downloadutils"
 	"lunabox/internal/utils/imageutils"
 	"lunabox/internal/utils/metadata"
 	"lunabox/internal/utils/processutils"
 	"lunabox/internal/vo"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -325,25 +328,32 @@ func (s *GameService) DeleteGames(ids []string) error {
 }
 
 func (s *GameService) GetGames() ([]models.Game, error) {
+	// FIXME: 这里对于上次游玩时间查询使用了一个子查询，可能存在性能问题，后续可以考虑优化或者在 game 中增加一个 last_played_at 字段来直接存储每个游戏的最近游玩时间
 	query := `SELECT 
-		id, name, 
-		COALESCE(cover_url, '') as cover_url, 
-		COALESCE(company, '') as company, 
-		COALESCE(summary, '') as summary, 
-		COALESCE(rating, 0) as rating,
-		COALESCE(release_date, '') as release_date,
-		COALESCE(path, '') as path, 
-		COALESCE(save_path, '') as save_path,
-		COALESCE(status, 'not_started') as status,
-		COALESCE(source_type, '') as source_type, 
-		cached_at, 
-		COALESCE(source_id, '') as source_id, 
-		created_at,
-		COALESCE(updated_at, created_at, cached_at) as updated_at,
-		COALESCE(use_locale_emulator, FALSE) as use_locale_emulator,
-		COALESCE(use_magpie, FALSE) as use_magpie
-	FROM games 
-	ORDER BY created_at DESC`
+		g.id, g.name, 
+		COALESCE(g.cover_url, '') as cover_url, 
+		COALESCE(g.company, '') as company, 
+		COALESCE(g.summary, '') as summary, 
+		COALESCE(g.rating, 0) as rating,
+		COALESCE(g.release_date, '') as release_date,
+		COALESCE(g.path, '') as path, 
+		COALESCE(g.save_path, '') as save_path,
+		COALESCE(g.status, 'not_started') as status,
+		COALESCE(g.source_type, '') as source_type, 
+		g.cached_at, 
+		COALESCE(g.source_id, '') as source_id, 
+		g.created_at,
+		COALESCE(g.updated_at, g.created_at, g.cached_at) as updated_at,
+		latest.last_played_at,
+		COALESCE(g.use_locale_emulator, FALSE) as use_locale_emulator,
+		COALESCE(g.use_magpie, FALSE) as use_magpie
+	FROM games g
+	LEFT JOIN (
+		SELECT game_id, MAX(start_time) as last_played_at
+		FROM play_sessions
+		GROUP BY game_id
+	) latest ON latest.game_id = g.id
+	ORDER BY g.created_at DESC`
 
 	rows, err := s.db.QueryContext(s.ctx, query)
 	if err != nil {
@@ -357,6 +367,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 		var game models.Game
 		var sourceType string
 		var status string
+		var lastPlayedAt sql.NullTime
 
 		err := rows.Scan(
 			&game.ID,
@@ -374,6 +385,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 			&game.SourceID,
 			&game.CreatedAt,
 			&game.UpdatedAt,
+			&lastPlayedAt,
 			&game.UseLocaleEmulator,
 			&game.UseMagpie,
 		)
@@ -384,6 +396,10 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 
 		game.SourceType = enums.SourceType(sourceType)
 		game.Status = enums.GameStatus(status)
+		if lastPlayedAt.Valid {
+			lastPlayed := lastPlayedAt.Time
+			game.LastPlayedAt = &lastPlayed
+		}
 		games = append(games, game)
 	}
 
@@ -396,30 +412,38 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 }
 
 func (s *GameService) GetGameByID(id string) (models.Game, error) {
+	// FIXME: 这里对于上次游玩时间查询使用了一个子查询，可能存在性能问题，后续可以考虑优化或者在 game 中增加一个 last_played_at 字段来直接存储每个游戏的最近游玩时间
 	query := `SELECT 
-		id, name, 
-		COALESCE(cover_url, '') as cover_url, 
-		COALESCE(company, '') as company, 
-		COALESCE(summary, '') as summary, 
-		COALESCE(rating, 0) as rating,
-		COALESCE(release_date, '') as release_date,
-		COALESCE(path, '') as path, 
-		COALESCE(save_path, '') as save_path,
-		COALESCE(process_name, '') as process_name,
-		COALESCE(status, 'not_started') as status,
-		COALESCE(source_type, '') as source_type, 
-		cached_at, 
-		COALESCE(source_id, '') as source_id, 
-		created_at,
-		COALESCE(updated_at, created_at, cached_at) as updated_at,
-		COALESCE(use_locale_emulator, FALSE) as use_locale_emulator,
-		COALESCE(use_magpie, FALSE) as use_magpie
-	FROM games 
-	WHERE id = ?`
+		g.id, g.name, 
+		COALESCE(g.cover_url, '') as cover_url, 
+		COALESCE(g.company, '') as company, 
+		COALESCE(g.summary, '') as summary, 
+		COALESCE(g.rating, 0) as rating,
+		COALESCE(g.release_date, '') as release_date,
+		COALESCE(g.path, '') as path, 
+		COALESCE(g.save_path, '') as save_path,
+		COALESCE(g.process_name, '') as process_name,
+		COALESCE(g.status, 'not_started') as status,
+		COALESCE(g.source_type, '') as source_type, 
+		g.cached_at, 
+		COALESCE(g.source_id, '') as source_id, 
+		g.created_at,
+		COALESCE(g.updated_at, g.created_at, g.cached_at) as updated_at,
+		latest.last_played_at,
+		COALESCE(g.use_locale_emulator, FALSE) as use_locale_emulator,
+		COALESCE(g.use_magpie, FALSE) as use_magpie
+	FROM games g
+	LEFT JOIN (
+		SELECT game_id, MAX(start_time) as last_played_at
+		FROM play_sessions
+		GROUP BY game_id
+	) latest ON latest.game_id = g.id
+	WHERE g.id = ?`
 
 	var game models.Game
 	var sourceType string
 	var status string
+	var lastPlayedAt sql.NullTime
 
 	err := s.db.QueryRowContext(s.ctx, query, id).Scan(
 		&game.ID,
@@ -438,6 +462,7 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		&game.SourceID,
 		&game.CreatedAt,
 		&game.UpdatedAt,
+		&lastPlayedAt,
 		&game.UseLocaleEmulator,
 		&game.UseMagpie,
 	)
@@ -453,6 +478,10 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 
 	game.SourceType = enums.SourceType(sourceType)
 	game.Status = enums.GameStatus(status)
+	if lastPlayedAt.Valid {
+		lastPlayed := lastPlayedAt.Time
+		game.LastPlayedAt = &lastPlayed
+	}
 	return game, nil
 }
 
@@ -673,6 +702,72 @@ func (s *GameService) SelectCoverImageWithTempID() (string, error) {
 	}
 
 	return coverPath, nil
+}
+
+// ExportLaunchShortcut exports a per-game .url shortcut that re-enters LunaBox via protocol.
+func (s *GameService) ExportLaunchShortcut(gameID string) (string, error) {
+	game, err := s.GetGameByID(gameID)
+	if err != nil {
+		return "", fmt.Errorf("加载游戏失败: %w", err)
+	}
+
+	launchURL, err := protocol.BuildLaunchURL(game.ID)
+	if err != nil {
+		return "", fmt.Errorf("生成快捷启动链接失败: %w", err)
+	}
+
+	defaultName := strings.TrimSpace(downloadutils.SanitizeFileName(game.Name))
+	if defaultName == "" {
+		defaultName = strings.TrimSpace(game.ID)
+	}
+	defaultName += ".url"
+
+	defaultDir := ""
+	if desktopDir, err := apputils.GetDesktopDir(); err == nil {
+		if info, statErr := os.Stat(desktopDir); statErr == nil && info.IsDir() {
+			defaultDir = desktopDir
+		}
+	}
+
+	savePath, err := runtime.SaveFileDialog(s.ctx, runtime.SaveDialogOptions{
+		Title:            "导出快捷启动方式",
+		DefaultDirectory: defaultDir,
+		DefaultFilename:  defaultName,
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "Internet Shortcut (*.url)",
+				Pattern:     "*.url",
+			},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("打开保存对话框失败: %w", err)
+	}
+	if strings.TrimSpace(savePath) == "" {
+		return "", nil
+	}
+
+	iconPath := resolveLaunchShortcutIconPath(game.Path)
+	if iconPath != "" {
+		cachePath, cacheErr := apputils.ExportShortcutIconCache(iconPath, game.ID)
+		if cacheErr != nil {
+			applog.LogWarningf(s.ctx, "ExportLaunchShortcut: failed to cache icon from %s: %v", iconPath, cacheErr)
+		} else {
+			iconPath = cachePath
+		}
+	}
+	if err := apputils.WriteInternetShortcut(savePath, apputils.InternetShortcut{
+		URL:       launchURL,
+		IconFile:  iconPath,
+		IconIndex: 0,
+	}); err != nil {
+		return "", fmt.Errorf("写入快捷方式文件失败: %w", err)
+	}
+
+	if !strings.EqualFold(filepath.Ext(savePath), ".url") {
+		savePath += ".url"
+	}
+	return savePath, nil
 }
 
 func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWebVO, error) {
@@ -1047,6 +1142,37 @@ func (s *GameService) getConfiguredMetadataSearchSources() []metadataSearchSourc
 		}
 	}
 	return sources
+}
+
+func resolveLaunchShortcutIconPath(gamePath string) string {
+	trimmedPath := strings.TrimSpace(gamePath)
+	if trimmedPath != "" {
+		absPath, err := filepath.Abs(filepath.Clean(trimmedPath))
+		if err == nil {
+			if info, statErr := os.Stat(absPath); statErr == nil && !info.IsDir() && canUseShortcutIconSource(absPath) {
+				return absPath
+			}
+		}
+	}
+
+	exePath, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	absExePath, err := filepath.Abs(exePath)
+	if err != nil {
+		return exePath
+	}
+	return absExePath
+}
+
+func canUseShortcutIconSource(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".exe", ".ico", ".dll":
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *GameService) getConfiguredMetadataSources() []enums.SourceType {

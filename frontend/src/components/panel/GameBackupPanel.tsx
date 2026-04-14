@@ -28,7 +28,9 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
   const config = useAppStore(state => state.config);
   const [backups, setBackups] = useState<models.GameBackup[]>([]);
   const [cloudBackups, setCloudBackups] = useState<vo.CloudBackupItem[]>([]);
-  const [cloudStatus, setCloudStatus] = useState<vo.CloudBackupStatus | null>(null);
+  const [cloudStatus, setCloudStatus] = useState<vo.CloudBackupStatus | null>(
+    null,
+  );
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [loadingLocal, setLoadingLocal] = useState(true);
@@ -46,7 +48,7 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
     title: "",
     message: "",
     type: "info",
-    onConfirm: () => { },
+    onConfirm: () => {},
   });
 
   const loadBackups = useCallback(async () => {
@@ -205,9 +207,13 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
       <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-brand-900 dark:text-white">{t("gameBackup.title")}</h3>
+            <h3 className="text-lg font-semibold text-brand-900 dark:text-white">
+              {t("gameBackup.title")}
+            </h3>
             <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">
-              {savePath ? t("gameBackup.pathLabel", { path: savePath }) : t("gameBackup.pathPlaceholder")}
+              {savePath
+                ? t("gameBackup.pathLabel", { path: savePath })
+                : t("gameBackup.pathPlaceholder")}
             </p>
           </div>
           <div className="flex gap-2">
@@ -225,7 +231,9 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
               className="glass-btn-neutral px-4 py-2 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isBackingUp && <div className="i-mdi-loading animate-spin" />}
-              {isBackingUp ? t("gameBackup.backingUp") : t("gameBackup.backupNow")}
+              {isBackingUp
+                ? t("gameBackup.backingUp")
+                : t("gameBackup.backupNow")}
             </button>
           </div>
         </div>
@@ -234,7 +242,9 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
       {/* 本地备份历史列表 */}
       <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
         <div className="flex items-center gap-2 mb-4">
-          <h3 className="text-lg font-semibold text-brand-900 dark:text-white">{t("gameBackup.localBackups")}</h3>
+          <h3 className="text-lg font-semibold text-brand-900 dark:text-white">
+            {t("gameBackup.localBackups")}
+          </h3>
           {config?.auto_backup_game_save && (
             <span className="px-2 py-0.5 text-xs font-medium bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-400 rounded-full flex items-center gap-1">
               <div className="i-mdi-shield-check text-sm" />
@@ -242,65 +252,69 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
             </span>
           )}
         </div>
-        {loadingLocal
-          ? (
-              <div className="flex justify-center py-8">
-                <div className="i-mdi-loading animate-spin text-2xl text-brand-500" />
-              </div>
-            )
-          : backups.length === 0
-            ? (
-                <div className="text-center py-8 text-brand-500">{t("gameBackup.noLocalBackups")}</div>
-              )
-            : (
-                <div className="space-y-3">
-                  {backups.map(backup => (
-                    <div
-                      key={backup.path}
-                      className="data-glass:bg-white/1 data-glass:dark:bg-black/1 flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-700 rounded-lg"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="i-mdi-archive text-2xl text-brand-500" />
-                        <div>
-                          <div className="font-medium text-brand-900 dark:text-white">
-                            {formatLocalDateTime(backup.created_at, config?.time_zone)}
-                          </div>
-                          <div className="text-sm text-brand-500">
-                            {t("gameBackup.size")}
-                            {formatFileSize(backup.size)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {cloudEnabled && (
-                          <button
-                            onClick={() => handleUploadToCloud(backup.path)}
-                            disabled={isUploading}
-                            title={t("gameBackup.uploadToCloud")}
-                            className="p-2 text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded transition-colors disabled:opacity-50"
-                          >
-                            <div className={`i-mdi-cloud-upload text-xl ${isUploading ? "animate-pulse" : ""}`} />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleRestoreBackup(backup.path, backup.created_at)}
-                          title={t("gameBackup.restore")}
-                          className="p-2 text-success-600 hover:bg-success-100 dark:hover:bg-success-900 rounded transition-colors"
-                        >
-                          <div className="i-mdi-backup-restore text-xl" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteBackup(backup.path)}
-                          title={t("common.delete")}
-                          className="p-2 text-error-600 hover:bg-error-100 dark:hover:bg-error-900 rounded transition-colors"
-                        >
-                          <div className="i-mdi-delete text-xl" />
-                        </button>
-                      </div>
+        {loadingLocal ? (
+          <div className="flex justify-center py-8">
+            <div className="i-mdi-loading animate-spin text-2xl text-brand-500" />
+          </div>
+        ) : backups.length === 0 ? (
+          <div className="text-center py-8 text-brand-500">
+            {t("gameBackup.noLocalBackups")}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {backups.map(backup => (
+              <div
+                key={backup.path}
+                className="data-glass:bg-white/1 data-glass:dark:bg-black/1 flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-700 rounded-lg"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="i-mdi-archive text-2xl text-brand-500" />
+                  <div>
+                    <div className="font-medium text-brand-900 dark:text-white">
+                      {formatLocalDateTime(
+                        backup.created_at,
+                        config?.time_zone,
+                      )}
                     </div>
-                  ))}
+                    <div className="text-sm text-brand-500">
+                      {t("gameBackup.size")}
+                      {formatFileSize(backup.size)}
+                    </div>
+                  </div>
                 </div>
-              )}
+                <div className="flex gap-2">
+                  {cloudEnabled && (
+                    <button
+                      onClick={() => handleUploadToCloud(backup.path)}
+                      disabled={isUploading}
+                      title={t("gameBackup.uploadToCloud")}
+                      className="p-2 text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded transition-colors disabled:opacity-50"
+                    >
+                      <div
+                        className={`i-mdi-cloud-upload text-xl ${isUploading ? "animate-pulse" : ""}`}
+                      />
+                    </button>
+                  )}
+                  <button
+                    onClick={() =>
+                      handleRestoreBackup(backup.path, backup.created_at)}
+                    title={t("gameBackup.restore")}
+                    className="p-2 text-success-600 hover:bg-success-100 dark:hover:bg-success-900 rounded transition-colors"
+                  >
+                    <div className="i-mdi-backup-restore text-xl" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteBackup(backup.path)}
+                    title={t("common.delete")}
+                    className="p-2 text-error-600 hover:bg-error-100 dark:hover:bg-error-900 rounded transition-colors"
+                  >
+                    <div className="i-mdi-delete text-xl" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 云端备份列表 */}
@@ -318,61 +332,73 @@ export function GameBackupPanel({ gameId, savePath }: GameBackupPanelProps) {
               title={t("gameBackup.refreshCloudList")}
               className="p-2 text-brand-600 hover:bg-brand-100 dark:hover:bg-brand-700 rounded transition-colors disabled:opacity-50"
             >
-              <div className={`i-mdi-refresh text-xl ${loadingCloud ? "animate-spin" : ""}`} />
+              <div
+                className={`i-mdi-refresh text-xl ${loadingCloud ? "animate-spin" : ""}`}
+              />
             </button>
           </div>
-          {loadingCloud
-            ? (
-                <div className="flex justify-center py-8">
-                  <div className="i-mdi-loading animate-spin text-2xl text-brand-500" />
-                </div>
-              )
-            : cloudBackups.length === 0
-              ? (
-                  <div className="text-center py-8 text-brand-500">{t("gameBackup.noCloudBackups")}</div>
-                )
-              : (
-                  <div className="space-y-3">
-                    {cloudBackups.map(backup => (
-                      <div
-                        key={backup.key}
-                        className="data-glass:bg-white/1 data-glass:dark:bg-black/1 flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-900/30 rounded-lg"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="i-mdi-cloud-check text-2xl text-neutral-500" />
-                          <div>
-                            <div className="font-medium text-brand-900 dark:text-white">
-                              {backup.name || formatLocalDateTime(backup.created_at, config?.time_zone)}
-                            </div>
-                            <div className="text-sm text-brand-500">
-                              {formatLocalDateTime(backup.created_at, config?.time_zone)}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleRestoreFromCloud(backup.key, backup.name)}
-                            title={t("gameBackup.restoreFromCloud")}
-                            className="p-2 text-success-600 hover:bg-success-100 dark:hover:bg-success-900 rounded transition-colors"
-                          >
-                            <div className="i-mdi-cloud-download text-xl" />
-                          </button>
-                        </div>
+          {loadingCloud ? (
+            <div className="flex justify-center py-8">
+              <div className="i-mdi-loading animate-spin text-2xl text-brand-500" />
+            </div>
+          ) : cloudBackups.length === 0 ? (
+            <div className="text-center py-8 text-brand-500">
+              {t("gameBackup.noCloudBackups")}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {cloudBackups.map(backup => (
+                <div
+                  key={backup.key}
+                  className="data-glass:bg-white/1 data-glass:dark:bg-black/1 flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-900/30 rounded-lg"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="i-mdi-cloud-check text-2xl text-neutral-500" />
+                    <div>
+                      <div className="font-medium text-brand-900 dark:text-white">
+                        {backup.name
+                          || formatLocalDateTime(
+                            backup.created_at,
+                            config?.time_zone,
+                          )}
                       </div>
-                    ))}
+                      <div className="text-sm text-brand-500">
+                        {formatLocalDateTime(
+                          backup.created_at,
+                          config?.time_zone,
+                        )}
+                      </div>
+                    </div>
                   </div>
-                )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() =>
+                        handleRestoreFromCloud(backup.key, backup.name)}
+                      title={t("gameBackup.restoreFromCloud")}
+                      className="p-2 text-success-600 hover:bg-success-100 dark:hover:bg-success-900 rounded transition-colors"
+                    >
+                      <div className="i-mdi-cloud-download text-xl" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {/* 云备份未配置提示 */}
       {!cloudEnabled && (
-        <div className="bg-brand-50 dark:bg-brand-800 p-4 rounded-lg border border-brand-200 dark:border-brand-700">
+        <div className="glass-panel bg-brand-50 dark:bg-brand-800 p-4 rounded-lg border border-brand-200 dark:border-brand-700">
           <div className="flex items-center gap-3">
             <div className="i-mdi-cloud-off-outline text-2xl text-brand-400" />
             <div>
-              <div className="font-medium text-brand-700 dark:text-brand-300">{t("gameBackup.cloudNotEnabled")}</div>
-              <div className="text-sm text-brand-500">{t("gameBackup.cloudConfigHint")}</div>
+              <div className="font-medium text-brand-700 dark:text-brand-300">
+                {t("gameBackup.cloudNotEnabled")}
+              </div>
+              <div className="text-sm text-brand-500">
+                {t("gameBackup.cloudConfigHint")}
+              </div>
             </div>
           </div>
         </div>

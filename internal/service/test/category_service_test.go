@@ -5,6 +5,7 @@ import (
 	"lunabox/internal/appconf"
 	"lunabox/internal/service"
 	"testing"
+	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
@@ -355,4 +356,71 @@ func TestCategoryService_BatchOperations(t *testing.T) {
 			t.Error("系统分类不应被批量删除")
 		}
 	})
+}
+
+func TestCategoryService_GetGamesByCategory_LastPlayedAt(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	categoryService := service.NewCategoryService()
+	categoryService.Init(context.Background(), db, &appconf.AppConfig{})
+
+	gameService := service.NewGameService()
+	gameService.Init(context.Background(), db, &appconf.AppConfig{})
+
+	game := createTestGame()
+	game.ID = "category-last-played-001"
+	if err := addGameViaMetadata(gameService, game); err != nil {
+		t.Fatalf("添加游戏失败: %v", err)
+	}
+
+	if err := categoryService.AddCategory("最近游玩分类", ""); err != nil {
+		t.Fatalf("添加分类失败: %v", err)
+	}
+
+	categories, err := categoryService.GetCategories()
+	if err != nil {
+		t.Fatalf("获取分类失败: %v", err)
+	}
+
+	var categoryID string
+	for _, c := range categories {
+		if c.Name == "最近游玩分类" {
+			categoryID = c.ID
+			break
+		}
+	}
+	if categoryID == "" {
+		t.Fatal("未找到测试分类")
+	}
+
+	if err := categoryService.AddGameToCategory(game.ID, categoryID); err != nil {
+		t.Fatalf("添加游戏到分类失败: %v", err)
+	}
+
+	lastPlayedAt := time.Now().Add(-2 * time.Hour)
+	if _, err := db.Exec(
+		"INSERT INTO play_sessions (id, game_id, start_time, end_time, duration) VALUES (?, ?, ?, ?, ?)",
+		"category-last-played-session",
+		game.ID,
+		lastPlayedAt,
+		lastPlayedAt.Add(20*time.Minute),
+		1200,
+	); err != nil {
+		t.Fatalf("插入游玩记录失败: %v", err)
+	}
+
+	games, err := categoryService.GetGamesByCategory(categoryID)
+	if err != nil {
+		t.Fatalf("获取分类游戏失败: %v", err)
+	}
+	if len(games) != 1 {
+		t.Fatalf("期望分类下有 1 个游戏, 实际为 %d", len(games))
+	}
+	if games[0].LastPlayedAt == nil {
+		t.Fatal("期望返回最近游玩时间，但得到 nil")
+	}
+	if !games[0].LastPlayedAt.Equal(lastPlayedAt) {
+		t.Errorf("最近游玩时间不正确: 期望 %v, 得到 %v", lastPlayedAt, *games[0].LastPlayedAt)
+	}
 }

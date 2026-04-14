@@ -12,6 +12,7 @@ import {
 } from "../../wailsjs/go/service/CategoryService";
 import {
   DeleteGame,
+  ExportLaunchShortcut,
   GetGameByID,
   SelectCoverImage,
   SelectGameExecutable,
@@ -275,7 +276,7 @@ function GameDetailPage() {
   };
 
   const handleStatusChange = async (newStatus: string) => {
-    if (!game)
+    if (!game || (game.status || enums.GameStatus.NOT_STARTED) === newStatus)
       return;
     const updatedGame = { ...game, status: newStatus } as models.Game;
     setGame(updatedGame);
@@ -352,6 +353,24 @@ function GameDetailPage() {
     catch (error) {
       console.error("Failed to select executable:", error);
       toast.error(t("game.toast.selectFileFailed"));
+    }
+  };
+
+  const handleExportLaunchShortcut = async () => {
+    if (!game)
+      return;
+    try {
+      const savePath = await ExportLaunchShortcut(game.id);
+      if (!savePath) {
+        return;
+      }
+      toast.success(
+        t("gameLaunch.toast.shortcutExportSuccess", { path: savePath }),
+      );
+    }
+    catch (error) {
+      console.error("Failed to export launch shortcut:", error);
+      toast.error(t("gameLaunch.toast.shortcutExportFailed", { error }));
     }
   };
 
@@ -445,7 +464,21 @@ function GameDetailPage() {
             </div>
             <div>
               <div className="font-semibold mb-1">{t("game.developer")}</div>
-              <div>{game.company || "-"}</div>
+              {game.company?.trim() ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate({
+                      to: "/library",
+                      search: { searchQuery: game.company.trim() },
+                    })}
+                  className="max-w-full break-all text-left text-brand-750 dark:text-brand-400"
+                >
+                  {game.company}
+                </button>
+              ) : (
+                <div>-</div>
+              )}
             </div>
             <div>
               <div className="font-semibold mb-1">{t("common.createdAt")}</div>
@@ -539,6 +572,7 @@ function GameDetailPage() {
           config={config || undefined}
           onGameChange={setGame}
           onSelectProcessExecutable={handleSelectProcessExecutable}
+          onExportShortcut={handleExportLaunchShortcut}
         />
       )}
 

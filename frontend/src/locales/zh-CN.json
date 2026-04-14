@@ -18,6 +18,7 @@
     "completed": "已通关",
     "onHold": "搁置",
     "name": "名称",
+    "lastPlayedAt": "最近游玩",
     "createdAt": "添加时间",
     "rating": "评分",
     "releaseDate": "发售日期",
@@ -105,6 +106,7 @@
     "inputPlaceholder": "输入标签",
     "addFailed": "添加标签失败",
     "deleteFailed": "删除标签失败",
+    "deleteScrapedHint": "已删除自动标签；重新获取元数据后它可能再次出现",
     "revealSpoiler": "点击显示剧透标签"
   },
   "gameCard": {
@@ -314,6 +316,12 @@
   "gameProgress": {
     "title": "游玩进度",
     "hint": "记录当前进度，AI 总结将严格遵守您设置的剧透边界",
+    "newRecord": "新增记录",
+    "latestRecordedAt": "最近记录时间：{{time}}",
+    "addRecord": "新增记录",
+    "historyTitle": "游玩记录链",
+    "historyEmpty": "还没有游玩记录。新增第一条后，这里会开始形成完整的游玩时间线。",
+    "noNote": "没有填写备注",
     "recorded": "已记录",
     "chapter": "当前章节",
     "chapterPlaceholder": "如：第二章 / Chapter 2",
@@ -335,7 +343,7 @@
       "full": "AI 不受剧透限制，可自由讨论全结局与所有剧情。"
     },
     "toast": {
-      "saved": "游玩进度已保存",
+      "saved": "已新增游玩记录",
       "saveFailed": "保存失败"
     }
   },
@@ -388,6 +396,8 @@
     "actualProcess": "实际游戏进程",
     "selectProcessFile": "选择进程文件",
     "processHint": "指定实际游戏的进程名称（包含 .exe 后缀）。\n如果不指定，LunaBox 会尝试监控可执行路径。如果之前的选择是启动器，您需要在游戏启动后弹出的选择框中手动指定此进程。\n在此处预先填写可避免每次启动时手动选择。",
+    "exportShortcut": "导出快捷启动方式",
+    "exportShortcutHint": "导出一个 `.url` 快捷方式文件。双击后会唤起 LunaBox，并按当前游戏配置启动和监控该游戏。",
     "enhancementTools": "启动增强工具",
     "leLabel": "转区工具",
     "leDesc": "使用日文环境模拟启动游戏，解决乱码和区域限制问题。",
@@ -397,7 +407,9 @@
     "magpieNotConfigured": "请先在设置中配置 Magpie.exe 路径",
     "toast": {
       "lePathRequired": "请先在设置中配置 Locale Emulator 路径",
-      "magpiePathRequired": "请先在设置中配置 Magpie 路径"
+      "magpiePathRequired": "请先在设置中配置 Magpie 路径",
+      "shortcutExportSuccess": "快捷启动方式已导出\n{{path}}",
+      "shortcutExportFailed": "导出快捷启动方式失败: {{error}}"
     }
   },
   "gameStats": {
@@ -852,6 +864,7 @@
     "openFolder": "打开所在文件夹",
     "pause": "暂停下载",
     "resume": "继续下载",
+    "retry": "重试下载",
     "cancel": "取消下载",
     "delete": "删除记录",
     "importAsGame": "导入为游戏",
@@ -876,6 +889,7 @@
       "openFolderFailed": "打开文件夹失败",
       "pauseFailed": "暂停下载失败",
       "resumeFailed": "继续下载失败",
+      "retryFailed": "重试下载失败",
       "noFilePath": "下载文件路径不存在",
       "alreadyImported": "该任务已导入为游戏",
       "importGameSuccess": "导入为游戏成功",
@@ -1006,6 +1020,15 @@
     "unknown": "未知",
     "placeholder": "请选择时区",
     "confirmBtn": "确认并重启应用"
+  },
+  "exitSyncToast": {
+    "syncingTitle": "正在同步云备份",
+    "syncingMessage": "正在退出，请不要强行关闭应用。",
+    "successTitle": "云备份同步成功",
+    "successMessage": "应用即将自动退出。",
+    "errorTitle": "云备份同步失败",
+    "errorMessage": "同步失败：{{error}}。应用即将自动退出。",
+    "timeoutMessage": "同步超时，请检查网络连接"
   },
   "updateDialog": {
     "newVersion": "发现新版本",

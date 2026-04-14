@@ -130,6 +130,15 @@ func GetTemplatesDir() (string, error) {
 	return GetSubDir("templates")
 }
 
+// GetDesktopDir 获取当前用户桌面目录
+func GetDesktopDir() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(homeDir, "Desktop"), nil
+}
+
 // IsPortableMode 返回是否为便携模式
 func IsPortableMode() bool {
 	return version.BuildMode == "portable"

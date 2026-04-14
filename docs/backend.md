@@ -57,6 +57,26 @@
 - 在一个 service 的方法里 `NewOtherService()` 直接创建并使用另一个 service。
 - 把一段复杂 SQL 复制到多个 service 里"各写一份"。
 
+**配置同步约束（MUST）：**
+
+- 新增或修改 `internal/appconf.AppConfig` 字段时，除了 `LoadConfig/SaveConfig` 外，还必须同步检查 `internal/service/config_service.go` 的 `UpdateAppConfig(...)`。
+- `UpdateAppConfig(...)` 负责把前端提交的新配置写回运行中的 in-memory config；漏字段会导致：
+  - 配置文件已更新，但当前进程仍使用旧值
+  - 设置页回显不稳定
+  - 运行时逻辑（如退出判断、自动备份、云同步）读取到错误配置
+
+---
+
+## 应用退出生命周期（Wails）
+
+- MUST 区分 `OnBeforeClose`、前端退出流、`OnShutdown` 三层职责：
+  - `OnBeforeClose`：拦截关闭请求、保存窗口态、决定是隐藏到托盘还是转交前端退出流
+  - 前端退出流：处理可交互的“退出前同步/提示”逻辑，例如云同步 toast
+  - `OnShutdown`：只做无交互的最终清理，如停 IPC、清理 session、关闭 DB、保存配置、退出托盘
+- MUST NOT 在 `OnShutdown` 内新增依赖前端交互的流程；此时前端已进入销毁阶段。
+- SHOULD 将可能耗时、可能失败、需要反馈给用户的退出动作前移到前端退出流。
+- 当前项目中，退出前数据库云同步通过 `main.go` 发出 `app:quit-sync-requested` 事件，由前端处理；`OnShutdown` 则跳过重复的数据库退出备份。
+
 ---
 
 ## internal/utils 速查

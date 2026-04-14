@@ -131,17 +131,18 @@ func (s *AiService) getStatsForAI(dimension enums.Period) (*AIStatsData, error) 
 	now := time.Now().In(loc)
 
 	var startDateExpr string
+	endDateExpr := "current_date"
 	var startDate time.Time
 	switch dimension {
 	case enums.Day:
 		startDateExpr = "current_date - INTERVAL 6 DAY"
 		startDate = now.AddDate(0, 0, -6)
 	case enums.Week:
-		startDateExpr = "current_date - INTERVAL 27 DAY"
-		startDate = now.AddDate(0, 0, -27)
+		startDateExpr = "current_date - INTERVAL 6 DAY"
+		startDate = now.AddDate(0, 0, -6)
 	case enums.Month:
-		startDateExpr = "date_trunc('month', current_date) - INTERVAL 5 MONTH"
-		startDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, loc).AddDate(0, -5, 0)
+		startDateExpr = "current_date - INTERVAL 29 DAY"
+		startDate = now.AddDate(0, 0, -29)
 	default:
 		startDateExpr = "current_date - INTERVAL 6 DAY"
 		startDate = now.AddDate(0, 0, -6)
@@ -149,7 +150,7 @@ func (s *AiService) getStatsForAI(dimension enums.Period) (*AIStatsData, error) 
 	data.DateRange = fmt.Sprintf("%s 至 %s", startDate.Format("2006-01-02"), now.Format("2006-01-02"))
 
 	// 总游玩次数和时长
-	queryTotal := fmt.Sprintf("SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions WHERE start_time >= %s", startDateExpr)
+	queryTotal := fmt.Sprintf("SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions WHERE start_time >= %s AND start_time <= %s + INTERVAL 1 DAY", startDateExpr, endDateExpr)
 	if err := s.db.QueryRowContext(s.ctx, queryTotal).Scan(&data.TotalPlayCount, &data.TotalPlayDuration); err != nil {
 		return nil, err
 	}
@@ -173,13 +174,28 @@ func (s *AiService) getStatsForAI(dimension enums.Period) (*AIStatsData, error) 
 			COALESCE(gp.route, '') AS route
 		FROM play_sessions ps
 		JOIN games g ON ps.game_id = g.id
-		LEFT JOIN game_progress gp ON g.id = gp.game_id
-		WHERE ps.start_time >= %s
+		LEFT JOIN (
+			SELECT game_id, spoiler_boundary, progress_note, route
+			FROM (
+				SELECT
+					game_id,
+					spoiler_boundary,
+					progress_note,
+					route,
+					ROW_NUMBER() OVER (
+						PARTITION BY game_id
+						ORDER BY updated_at DESC, id DESC
+					) AS rn
+				FROM game_progress
+			) latest_progress
+			WHERE rn = 1
+		) gp ON g.id = gp.game_id
+		WHERE ps.start_time >= %s AND ps.start_time <= %s + INTERVAL 1 DAY
 		GROUP BY g.id, g.name, g.company, g.summary, g.status,
 		         gp.spoiler_boundary, gp.progress_note, gp.route
 		ORDER BY total_duration DESC
 		LIMIT 5
-	`, startDateExpr)
+	`, startDateExpr, endDateExpr)
 
 	rows, err := s.db.QueryContext(s.ctx, queryLeaderboard, globalSpoiler)
 	if err != nil {
@@ -238,10 +254,10 @@ func (s *AiService) getStatsForAI(dimension enums.Period) (*AIStatsData, error) 
 			hour(timezone(?, ps.start_time)) AS hr
 		FROM play_sessions ps
 		JOIN games g ON ps.game_id = g.id
-		WHERE ps.start_time >= %s
+		WHERE ps.start_time >= %s AND ps.start_time <= %s + INTERVAL 1 DAY
 		ORDER BY ps.start_time DESC
 		LIMIT ?
-	`, startDateExpr)
+	`, startDateExpr, endDateExpr)
 	sessRows, err := s.db.QueryContext(s.ctx, sessionQuery, tz, tz, contextLimit)
 	if err == nil {
 		defer sessRows.Close()

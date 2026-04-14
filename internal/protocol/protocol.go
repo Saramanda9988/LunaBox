@@ -12,19 +12,52 @@ import (
 )
 
 const Scheme = "lunabox"
+const (
+	ActionInstall = "install"
+	ActionLaunch  = "launch"
+)
 
-// ParseURL parses a lunabox:// URI into an InstallRequest.
-// Supports: lunabox://install?url=...&file_name=...&archive_format=...&checksum_algo=...&checksum=...&expires_at=...
-func ParseURL(rawURL string) (*vo.InstallRequest, error) {
+func parseProtocolURL(rawURL string) (*url.URL, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid URL: %w", err)
 	}
-	if u.Scheme != Scheme {
+	if !strings.EqualFold(u.Scheme, Scheme) {
 		return nil, fmt.Errorf("unexpected scheme %q (expected %q)", u.Scheme, Scheme)
 	}
-	if u.Host != "install" {
-		return nil, fmt.Errorf("unsupported action %q (only \"install\" is supported)", u.Host)
+	return u, nil
+}
+
+// ParseAction returns the supported lunabox:// action name.
+func ParseAction(rawURL string) (string, error) {
+	u, err := parseProtocolURL(rawURL)
+	if err != nil {
+		return "", err
+	}
+
+	action := strings.ToLower(strings.TrimSpace(u.Host))
+	switch action {
+	case ActionInstall, ActionLaunch:
+		return action, nil
+	default:
+		return "", fmt.Errorf("unsupported action %q", u.Host)
+	}
+}
+
+// ParseURL parses a lunabox://install URI into an InstallRequest.
+// Supports: lunabox://install?url=...&file_name=...&archive_format=...&checksum_algo=...&checksum=...&expires_at=...
+func ParseURL(rawURL string) (*vo.InstallRequest, error) {
+	return ParseInstallURL(rawURL)
+}
+
+// ParseInstallURL parses a lunabox://install URI into an InstallRequest.
+func ParseInstallURL(rawURL string) (*vo.InstallRequest, error) {
+	u, err := parseProtocolURL(rawURL)
+	if err != nil {
+		return nil, err
+	}
+	if !strings.EqualFold(u.Host, ActionInstall) {
+		return nil, fmt.Errorf("unsupported action %q (only %q is supported)", u.Host, ActionInstall)
 	}
 
 	q := u.Query()
@@ -105,7 +138,44 @@ func ParseURL(rawURL string) (*vo.InstallRequest, error) {
 	return req, nil
 }
 
+// ParseLaunchURL parses a lunabox://launch URI into a ProtocolLaunchRequest.
+func ParseLaunchURL(rawURL string) (*vo.ProtocolLaunchRequest, error) {
+	u, err := parseProtocolURL(rawURL)
+	if err != nil {
+		return nil, err
+	}
+	if !strings.EqualFold(u.Host, ActionLaunch) {
+		return nil, fmt.Errorf("unsupported action %q (only %q is supported)", u.Host, ActionLaunch)
+	}
+
+	gameID := strings.TrimSpace(u.Query().Get("game_id"))
+	if gameID == "" {
+		return nil, fmt.Errorf("missing required parameter: game_id")
+	}
+
+	return &vo.ProtocolLaunchRequest{
+		GameID: gameID,
+		RawURL: rawURL,
+	}, nil
+}
+
+// BuildLaunchURL returns a lunabox://launch URI for the given game ID.
+func BuildLaunchURL(gameID string) (string, error) {
+	trimmedID := strings.TrimSpace(gameID)
+	if trimmedID == "" {
+		return "", fmt.Errorf("game_id is required")
+	}
+
+	values := url.Values{}
+	values.Set("game_id", trimmedID)
+	return (&url.URL{
+		Scheme:   Scheme,
+		Host:     ActionLaunch,
+		RawQuery: values.Encode(),
+	}).String(), nil
+}
+
 // IsProtocolURL reports whether the string looks like a lunabox:// URL.
 func IsProtocolURL(s string) bool {
-	return len(s) > len(Scheme)+3 && s[:len(Scheme)+3] == Scheme+"://"
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(s)), Scheme+"://")
 }

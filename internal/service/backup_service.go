@@ -26,6 +26,10 @@ type BackupService struct {
 	ctx    context.Context
 	db     *sql.DB
 	config *appconf.AppConfig
+
+	onQuitSyncDBBackupStart        func()
+	onQuitSyncDBBackupLocalCreated func()
+	onQuitSyncDBBackupFinish       func()
 }
 
 func NewBackupService() *BackupService {
@@ -36,6 +40,12 @@ func (s *BackupService) Init(ctx context.Context, db *sql.DB, config *appconf.Ap
 	s.ctx = ctx
 	s.db = db
 	s.config = config
+}
+
+func ConfigureBackupServiceQuitSyncDBBackupHooks(s *BackupService, onStart func(), onLocalCreated func(), onFinish func()) {
+	s.onQuitSyncDBBackupStart = onStart
+	s.onQuitSyncDBBackupLocalCreated = onLocalCreated
+	s.onQuitSyncDBBackupFinish = onFinish
 }
 
 // getCloudProvider 获取云备份提供商
@@ -1029,9 +1039,28 @@ func (s *BackupService) cleanupOldCloudDBBackups() {
 
 // CreateAndUploadDBBackup 创建数据库备份并上传到云端
 func (s *BackupService) CreateAndUploadDBBackup() (*vo.DBBackupInfo, error) {
+	return s.createAndUploadDBBackup(false)
+}
+
+// CreateAndUploadDBBackupForQuit 创建数据库备份并上传到云端（退出流程专用）
+func (s *BackupService) CreateAndUploadDBBackupForQuit() (*vo.DBBackupInfo, error) {
+	return s.createAndUploadDBBackup(true)
+}
+
+func (s *BackupService) createAndUploadDBBackup(trackQuitSync bool) (*vo.DBBackupInfo, error) {
+	if trackQuitSync && s.onQuitSyncDBBackupStart != nil {
+		s.onQuitSyncDBBackupStart()
+	}
+	if trackQuitSync && s.onQuitSyncDBBackupFinish != nil {
+		defer s.onQuitSyncDBBackupFinish()
+	}
+
 	backup, err := s.CreateDBBackup()
 	if err != nil {
 		return nil, err
+	}
+	if trackQuitSync && s.onQuitSyncDBBackupLocalCreated != nil {
+		s.onQuitSyncDBBackupLocalCreated()
 	}
 
 	// 只有在启用云备份、配置完整且开启数据库自动上传时才上传

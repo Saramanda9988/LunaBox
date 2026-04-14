@@ -38,6 +38,10 @@ export function ResumeDownload(arg1) {
   return window['go']['service']['DownloadService']['ResumeDownload'](arg1);
 }
 
+export function RetryDownload(arg1) {
+  return window['go']['service']['DownloadService']['RetryDownload'](arg1);
+}
+
 export function SetGameService(arg1) {
   return window['go']['service']['DownloadService']['SetGameService'](arg1);
 }

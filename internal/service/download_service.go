@@ -219,12 +219,26 @@ func (s *DownloadService) ResumeDownload(taskID string) error {
 		s.mu.Unlock()
 		return fmt.Errorf("task %s is not paused", taskID)
 	}
-	task.pauseReq = false
-	task.cancelReq = false
-	ctx, cancel := context.WithCancel(s.ctx)
-	task.cancel = cancel
-	task.Status = DownloadStatusPending
-	task.Error = ""
+	ctx := s.requeueTaskLocked(task)
+	s.mu.Unlock()
+	s.emitProgress(task)
+	go s.runDownload(ctx, task)
+	return nil
+}
+
+// RetryDownload 重新尝试一个失败的下载任务
+func (s *DownloadService) RetryDownload(taskID string) error {
+	s.mu.Lock()
+	task, ok := s.tasks[taskID]
+	if !ok {
+		s.mu.Unlock()
+		return fmt.Errorf("task %s not found", taskID)
+	}
+	if task.Status != DownloadStatusError {
+		s.mu.Unlock()
+		return fmt.Errorf("task %s is not retryable", taskID)
+	}
+	ctx := s.requeueTaskLocked(task)
 	s.mu.Unlock()
 	s.emitProgress(task)
 	go s.runDownload(ctx, task)
@@ -1051,6 +1065,17 @@ func (s *DownloadService) updateTaskProgress(task *DownloadTask, downloaded int6
 	task.Total = total
 	task.Progress = progress
 	s.mu.Unlock()
+}
+
+func (s *DownloadService) requeueTaskLocked(task *DownloadTask) context.Context {
+	ctx, cancel := context.WithCancel(s.ctx)
+	task.cancel = cancel
+	task.Status = DownloadStatusPending
+	task.Error = ""
+	task.FilePath = ""
+	task.pauseReq = false
+	task.cancelReq = false
+	return ctx
 }
 
 func collapseSingleRootDirectory(dir string) (string, bool) {

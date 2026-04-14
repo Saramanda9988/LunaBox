@@ -164,6 +164,58 @@ func TestGameService_GetGames(t *testing.T) {
 			t.Errorf("期望空列表, 实际获取 %d 个游戏", len(games))
 		}
 	})
+
+	t.Run("返回最近游玩时间", func(t *testing.T) {
+		newDB, newCleanup := setupTestDB(t)
+		defer newCleanup()
+
+		newService := service.NewGameService()
+		newService.Init(context.Background(), newDB, &appconf.AppConfig{})
+
+		game := createTestGame()
+		game.ID = "last-played-test-001"
+		if err := addGameViaMetadata(newService, game); err != nil {
+			t.Fatalf("添加游戏失败: %v", err)
+		}
+
+		olderStart := time.Now().Add(-4 * time.Hour)
+		newerStart := time.Now().Add(-90 * time.Minute)
+		if _, err := newDB.Exec(
+			"INSERT INTO play_sessions (id, game_id, start_time, end_time, duration) VALUES (?, ?, ?, ?, ?)",
+			"ps-last-played-older",
+			game.ID,
+			olderStart,
+			olderStart.Add(30*time.Minute),
+			1800,
+		); err != nil {
+			t.Fatalf("插入旧游玩记录失败: %v", err)
+		}
+		if _, err := newDB.Exec(
+			"INSERT INTO play_sessions (id, game_id, start_time, end_time, duration) VALUES (?, ?, ?, ?, ?)",
+			"ps-last-played-newer",
+			game.ID,
+			newerStart,
+			newerStart.Add(45*time.Minute),
+			2700,
+		); err != nil {
+			t.Fatalf("插入新游玩记录失败: %v", err)
+		}
+
+		games, err := newService.GetGames()
+		if err != nil {
+			t.Fatalf("获取游戏列表失败: %v", err)
+		}
+
+		if len(games) != 1 {
+			t.Fatalf("期望获取 1 个游戏, 实际获取 %d 个", len(games))
+		}
+		if games[0].LastPlayedAt == nil {
+			t.Fatal("期望返回最近游玩时间，但得到 nil")
+		}
+		if !games[0].LastPlayedAt.Equal(newerStart) {
+			t.Errorf("最近游玩时间不正确: 期望 %v, 得到 %v", newerStart, *games[0].LastPlayedAt)
+		}
+	})
 }
 
 func TestGameService_UpdateGame(t *testing.T) {

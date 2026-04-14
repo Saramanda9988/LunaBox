@@ -26,10 +26,12 @@ import { BetterDropdownMenu } from "../components/ui/better/BetterDropdownMenu";
 import { sortOptions, statusOptions } from "../consts/options";
 import { useTagGameFilter } from "../hooks/useTagGameFilter";
 import { useAppStore } from "../store";
+import { compareNullableDateLike } from "../utils/sort";
 import { Route as rootRoute } from "./__root";
 
 interface LibrarySearch {
   tagFilter?: string;
+  searchQuery?: string;
 }
 
 export const Route = createRoute({
@@ -38,13 +40,16 @@ export const Route = createRoute({
   validateSearch: (search: Record<string, unknown>): LibrarySearch => ({
     tagFilter:
       typeof search.tagFilter === "string" ? search.tagFilter : undefined,
+    searchQuery:
+      typeof search.searchQuery === "string" ? search.searchQuery : undefined,
   }),
   component: LibraryPage,
 });
 
 function LibraryPage() {
   const navigate = useNavigate();
-  const { tagFilter: routeTagFilter } = Route.useSearch();
+  const { tagFilter: routeTagFilter, searchQuery: routeSearchQuery }
+    = Route.useSearch();
   const games = useAppStore(state => state.games);
   const gamesLoading = useAppStore(state => state.gamesLoading);
   const fetchGames = useAppStore(state => state.fetchGames);
@@ -53,9 +58,11 @@ function LibraryPage() {
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
   const [isBatchImportOpen, setIsBatchImportOpen] = useState(false);
   const [importSource, setImportSource] = useState<ImportSource | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(
+    () => routeSearchQuery?.trim() || "",
+  );
   const [sortBy, setSortBy] = useState<
-    "name" | "created_at" | "rating" | "release_date"
+    "name" | "last_played_at" | "created_at" | "rating" | "release_date"
   >("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -103,6 +110,27 @@ function LibraryPage() {
     });
   }, [navigate, routeTagFilter]);
 
+  const clearRouteSearchQuery = useCallback(() => {
+    if (!routeSearchQuery) {
+      return;
+    }
+    void navigate({
+      to: "/library",
+      search: prev => ({ ...prev, searchQuery: undefined }),
+      replace: true,
+    });
+  }, [navigate, routeSearchQuery]);
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchQuery(value);
+      if (routeSearchQuery) {
+        clearRouteSearchQuery();
+      }
+    },
+    [clearRouteSearchQuery, routeSearchQuery],
+  );
+
   const {
     selectedTags,
     tagInput,
@@ -122,6 +150,14 @@ function LibraryPage() {
     }
     selectTag(incomingTag, { manual: false });
   }, [routeTagFilter, selectTag]);
+
+  useEffect(() => {
+    const incomingSearchQuery = routeSearchQuery?.trim();
+    if (!incomingSearchQuery) {
+      return;
+    }
+    setSearchQuery(incomingSearchQuery);
+  }, [routeSearchQuery]);
 
   const filteredGames = games
     .filter((game) => {
@@ -146,6 +182,12 @@ function LibraryPage() {
       switch (sortBy) {
         case "name":
           comparison = a.name.localeCompare(b.name);
+          break;
+        case "last_played_at":
+          comparison = compareNullableDateLike(
+            a.last_played_at,
+            b.last_played_at,
+          );
           break;
         case "created_at":
           comparison = String(a.created_at || "").localeCompare(
@@ -326,11 +368,19 @@ function LibraryPage() {
 
       <FilterBar
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={handleSearchChange}
         searchPlaceholder={t("library.searchPlaceholder")}
+        disableStoredSearchQuery={Boolean(routeSearchQuery?.trim())}
         sortBy={sortBy}
         onSortByChange={val =>
-          setSortBy(val as "name" | "created_at" | "rating" | "release_date")}
+          setSortBy(
+            val as
+            | "name"
+            | "last_played_at"
+            | "created_at"
+            | "rating"
+            | "release_date",
+          )}
         sortOptions={sortOptions.map(opt => ({
           ...opt,
           label: t(opt.label),

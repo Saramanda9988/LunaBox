@@ -270,8 +270,21 @@ func migration155(tx *sql.Tx) error {
 	return nil
 }
 
-// migration156 添加云同步所需的时间戳/墓碑结构，并归一系统分类 ID
+// migration156 将 game_progress 升级为历史链模型
 func migration156(tx *sql.Tx) error {
+	_, err := tx.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_game_progress_game_timeline
+		ON game_progress(game_id, updated_at)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create idx_game_progress_game_timeline: %w", err)
+	}
+
+	return nil
+}
+
+// migration157 添加云同步所需的时间戳/墓碑结构，并归一系统分类 ID
+func migration157(tx *sql.Tx) error {
 	if _, err := tx.Exec(`
 		ALTER TABLE games
 		ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -437,8 +450,13 @@ var migrations = []Migration{
 	},
 	{
 		Version:     156,
-		Description: "Add cloud sync metadata columns and tombstones, normalize system favorites category identity",
+		Description: "Add game_progress timeline index for append-only history reads",
 		Up:          migration156,
+	},
+	{
+		Version:     157,
+		Description: "Add cloud sync metadata columns and tombstones, normalize system favorites category identity",
+		Up:          migration157,
 	},
 	// {
 	// 	Version:     114,

@@ -18,6 +18,7 @@ import { AddGameToCategoryModal } from "../components/modal/AddGameToCategoryMod
 import { CategorySkeleton } from "../components/skeleton/CategorySkeleton";
 import { sortOptions, statusOptions } from "../consts/options";
 import { useTagGameFilter } from "../hooks/useTagGameFilter";
+import { compareNullableDateLike } from "../utils/sort";
 import { Route as rootRoute } from "./__root";
 
 export const Route = createRoute({
@@ -38,7 +39,7 @@ function CategoryDetailPage() {
   const [allGames, setAllGames] = useState<models.Game[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<
-    "name" | "created_at" | "rating" | "release_date"
+    "name" | "last_played_at" | "created_at" | "rating" | "release_date"
   >("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -158,6 +159,12 @@ function CategoryDetailPage() {
       switch (sortBy) {
         case "name":
           comparison = a.name.localeCompare(b.name);
+          break;
+        case "last_played_at":
+          comparison = compareNullableDateLike(
+            a.last_played_at,
+            b.last_played_at,
+          );
           break;
         case "created_at":
           comparison = String(a.created_at || "").localeCompare(
@@ -304,7 +311,14 @@ function CategoryDetailPage() {
           searchPlaceholder={t("library.searchPlaceholder")}
           sortBy={sortBy}
           onSortByChange={val =>
-            setSortBy(val as "name" | "created_at" | "rating" | "release_date")}
+            setSortBy(
+              val as
+              | "name"
+              | "last_played_at"
+              | "created_at"
+              | "rating"
+              | "release_date",
+            )}
           sortOptions={sortOptions.map(opt => ({
             ...opt,
             label: t(opt.label),

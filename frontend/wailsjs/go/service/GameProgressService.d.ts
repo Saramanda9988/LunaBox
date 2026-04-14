@@ -11,4 +11,6 @@ export function GetGameProgress(arg1:string):Promise<service.GameProgress>;
 
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;
 
+export function ListGameProgresses(arg1:string):Promise<Array<service.GameProgress>>;
+
 export function UpsertGameProgress(arg1:service.GameProgress):Promise<service.GameProgress>;

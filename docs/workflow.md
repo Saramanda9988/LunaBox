@@ -21,6 +21,7 @@
 - [ ] 没有把局部样式硬塞进 `style.css`（除非是全局不可避免项）
 - [ ] 新增组件遵守 HeadlessUI/Radix 封装约束，没有直接引入大型 UI 框架
 - [ ] 页面最外层盒子没有设置颜色与不透明度
+- [ ] 应用级副作用是否已优先抽到 `frontend/src/hooks/`，而不是把复杂 `useEffect` 堆在 `App.tsx`
 
 ### 后端
 
@@ -28,6 +29,8 @@
 - [ ] Migration 幂等且事务安全，空库也能跑通
 - [ ] 没有引入非 Windows 平台的系统调用
 - [ ] 底层操作优先 Wails/Go 标准库
+- [ ] 若新增/修改 `AppConfig` 字段，已同步检查 `LoadConfig/SaveConfig` 与 `ConfigService.UpdateAppConfig(...)`
+- [ ] 若修改退出逻辑，已核对 `OnBeforeClose` / 前端退出流 / `OnShutdown` 的职责边界，没有把交互流程塞进 `OnShutdown`
 
 ### 通用
 

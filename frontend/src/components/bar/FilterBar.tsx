@@ -16,6 +16,7 @@ interface FilterBarProps {
   searchQuery: string;
   onSearchChange: (value: string) => void;
   searchPlaceholder?: string;
+  disableStoredSearchQuery?: boolean;
   sortBy: string;
   onSortByChange: (value: string) => void;
   sortOptions: SortOption[];
@@ -45,6 +46,7 @@ export function FilterBar({
   searchQuery,
   onSearchChange,
   searchPlaceholder,
+  disableStoredSearchQuery = false,
   sortBy,
   onSortByChange,
   sortOptions,
@@ -76,6 +78,11 @@ export function FilterBar({
   // 初始化时从 localStorage 恢复所有设置
   useEffect(() => {
     if (storageKey && !initialized) {
+      if (disableStoredSearchQuery) {
+        setInitialized(true);
+        return;
+      }
+
       const savedSortBy = localStorage.getItem(`${storageKey}_sortBy`);
       const savedSortOrder = localStorage.getItem(`${storageKey}_sortOrder`);
       const savedSearchQuery = localStorage.getItem(
@@ -109,7 +116,13 @@ export function FilterBar({
 
       setInitialized(true);
     }
-  }, [storageKey, sortOptions, statusOptions, initialized]);
+  }, [
+    disableStoredSearchQuery,
+    storageKey,
+    sortOptions,
+    statusOptions,
+    initialized,
+  ]);
 
   // 处理搜索查询变更
   const handleSearchChange = (value: string) => {

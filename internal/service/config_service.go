@@ -160,6 +160,8 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.AutoBackupDB = newConfig.AutoBackupDB
 	s.config.AutoBackupGameSave = newConfig.AutoBackupGameSave
 	s.config.AutoUploadToCloud = newConfig.AutoUploadToCloud
+	s.config.AutoUploadDBToCloud = newConfig.AutoUploadDBToCloud
+	s.config.AutoUploadSaveToCloud = newConfig.AutoUploadSaveToCloud
 	s.config.LocalBackupRetention = newConfig.LocalBackupRetention
 	s.config.LocalDBBackupRetention = newConfig.LocalDBBackupRetention
 	s.config.WindowZoomFactor = newConfig.WindowZoomFactor
