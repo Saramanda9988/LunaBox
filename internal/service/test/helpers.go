@@ -74,6 +74,26 @@ func initTestSchema(t *testing.T, db *sql.DB) {
 			duration INTEGER,
 			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 		)`,
+		`CREATE TABLE IF NOT EXISTS game_progress (
+			id TEXT PRIMARY KEY,
+			game_id TEXT NOT NULL,
+			chapter TEXT DEFAULT '',
+			route TEXT DEFAULT '',
+			progress_note TEXT DEFAULT '',
+			spoiler_boundary TEXT DEFAULT 'none',
+			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS game_tags (
+			id TEXT PRIMARY KEY,
+			game_id TEXT NOT NULL,
+			name TEXT NOT NULL,
+			source TEXT NOT NULL,
+			weight DOUBLE DEFAULT 1.0,
+			is_spoiler BOOLEAN DEFAULT FALSE,
+			created_at TIMESTAMPTZ,
+			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE (game_id, name, source)
+		)`,
 		`CREATE TABLE IF NOT EXISTS sync_tombstones (
 			entity_type TEXT NOT NULL,
 			entity_id TEXT NOT NULL,

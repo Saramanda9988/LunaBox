@@ -549,6 +549,8 @@ func main() {
 			gameService.SetCloudSyncService(cloudSyncService)
 			categoryService.SetCloudSyncService(cloudSyncService)
 			sessionService.SetCloudSyncService(cloudSyncService)
+			gameProgressService.SetCloudSyncService(cloudSyncService)
+			tagService.SetCloudSyncService(cloudSyncService)
 			importService.SetSessionService(sessionService)
 
 			if pendingLaunchReq != nil {

@@ -411,6 +411,26 @@ func migration157(tx *sql.Tx) error {
 	return nil
 }
 
+// migration158 为 game_tags 添加 updated_at，供云同步进行冲突解决
+func migration158(tx *sql.Tx) error {
+	if _, err := tx.Exec(`
+		ALTER TABLE game_tags
+		ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+	`); err != nil {
+		return fmt.Errorf("failed to add updated_at column to game_tags: %w", err)
+	}
+
+	if _, err := tx.Exec(`
+		UPDATE game_tags
+		SET updated_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
+		WHERE updated_at IS NULL
+	`); err != nil {
+		return fmt.Errorf("failed to normalize game_tags updated_at values: %w", err)
+	}
+
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
@@ -457,6 +477,11 @@ var migrations = []Migration{
 		Version:     157,
 		Description: "Add cloud sync metadata columns and tombstones, normalize system favorites category identity",
 		Up:          migration157,
+	},
+	{
+		Version:     158,
+		Description: "Add updated_at to game_tags for cloud sync conflict resolution",
+		Up:          migration158,
 	},
 	// {
 	// 	Version:     114,

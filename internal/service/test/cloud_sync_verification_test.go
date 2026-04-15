@@ -44,6 +44,8 @@ func TestGameServiceDeleteGameCreatesSyncTombstones(t *testing.T) {
 	gameID := "game-1"
 	categoryID := "cat-1"
 	sessionID := "session-1"
+	progressID := "progress-1"
+	tagID := "tag-1"
 
 	if _, err := db.Exec(`INSERT INTO games (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`, gameID, "Game One", now, now); err != nil {
 		t.Fatalf("failed to insert game: %v", err)
@@ -57,6 +59,14 @@ func TestGameServiceDeleteGameCreatesSyncTombstones(t *testing.T) {
 	if _, err := db.Exec(`INSERT INTO play_sessions (id, game_id, start_time, end_time, duration, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
 		sessionID, gameID, now, now.Add(time.Hour), int(time.Hour.Seconds()), now); err != nil {
 		t.Fatalf("failed to insert play session: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO game_progress (id, game_id, chapter, route, progress_note, spoiler_boundary, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		progressID, gameID, "chapter 1", "route a", "note", "none", now); err != nil {
+		t.Fatalf("failed to insert game progress: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO game_tags (id, game_id, name, source, weight, is_spoiler, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		tagID, gameID, "mystery", "user", 1.0, false, now, now); err != nil {
+		t.Fatalf("failed to insert game tag: %v", err)
 	}
 
 	gameService := service.NewGameService()
@@ -83,6 +93,8 @@ func TestGameServiceDeleteGameCreatesSyncTombstones(t *testing.T) {
 	expected := []string{
 		"game::" + gameID,
 		"play_session::" + sessionID,
+		"game_progress::" + progressID,
+		"game_tag::" + gameID + "::user::mystery",
 		"game_category::" + gameID + "::" + categoryID,
 	}
 	for _, key := range expected {
@@ -140,5 +152,36 @@ func TestSessionServiceBatchAddClearsTombstoneAndRespectsUpdatedAt(t *testing.T)
 	}
 	if delta > time.Millisecond {
 		t.Fatalf("expected updated_at to match inserted value within tolerance, got %s vs %s", updatedAt, session.UpdatedAt)
+	}
+}
+
+func TestTagServiceDeleteTagCreatesTombstone(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	now := time.Now()
+	gameID := "game-3"
+	tagID := "tag-3"
+	if _, err := db.Exec(`INSERT INTO games (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)`, gameID, "Game Three", now, now); err != nil {
+		t.Fatalf("failed to insert game: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO game_tags (id, game_id, name, source, weight, is_spoiler, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		tagID, gameID, "favorite", "user", 1.0, false, now, now); err != nil {
+		t.Fatalf("failed to insert game tag: %v", err)
+	}
+
+	tagService := service.NewTagService()
+	tagService.Init(context.Background(), db, &appconf.AppConfig{})
+	if err := tagService.DeleteTag(tagID); err != nil {
+		t.Fatalf("DeleteTag failed: %v", err)
+	}
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sync_tombstones WHERE entity_type = ? AND entity_id = ?`,
+		"game_tag", gameID+"::user::favorite").Scan(&count); err != nil {
+		t.Fatalf("failed to query tag tombstone: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected one game_tag tombstone, got %d", count)
 	}
 }

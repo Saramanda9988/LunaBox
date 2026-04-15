@@ -12,6 +12,8 @@ const (
 	cloudSyncEntityCategory     = "category"
 	cloudSyncEntityGameCategory = "game_category"
 	cloudSyncEntityPlaySession  = "play_session"
+	cloudSyncEntityGameProgress = "game_progress"
+	cloudSyncEntityGameTag      = "game_tag"
 
 	systemFavoritesCategoryID   = "system:favorites"
 	systemFavoritesCategoryName = "最喜欢的游戏"
@@ -51,4 +53,8 @@ func deleteSyncTombstone(ctx context.Context, exec execContexter, entityType, en
 
 func relationTombstoneID(gameID, categoryID string) string {
 	return gameID + "::" + categoryID
+}
+
+func tagTombstoneID(gameID, source, name string) string {
+	return gameID + "::" + source + "::" + name
 }

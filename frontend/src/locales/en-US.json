@@ -711,7 +711,7 @@
       "syncNever": "Never synced",
       "syncNow": "Sync Now",
       "syncingNow": "Syncing...",
-      "syncScopeHint": "Syncs games, categories, category links, play sessions, and cover assets.",
+      "syncScopeHint": "Syncs games, categories, category links, play sessions, progress history, tags, and cover assets.",
       "syncLocalOnlyHint": "V1 does not sync device-local paths, save files, or other machine-specific launch settings.",
       "syncRequiresBackup": "Cloud sync reuses the current cloud storage setup. Enable cloud backup and finish account/storage setup first.",
       "toast": {

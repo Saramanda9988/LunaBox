@@ -711,7 +711,7 @@
       "syncNever": "尚未同步",
       "syncNow": "立即同步",
       "syncingNow": "同步中...",
-      "syncScopeHint": "会同步游戏、分类、分类归属、游玩记录和封面资源。",
+      "syncScopeHint": "会同步游戏、分类、分类归属、游玩记录、游玩进度、标签和封面资源。",
       "syncLocalOnlyHint": "v1 不同步设备本地路径、存档文件和其他仅限本机的运行配置。",
       "syncRequiresBackup": "云同步依赖当前的云存储配置，请先启用云备份并完成账号/存储设置。",
       "toast": {

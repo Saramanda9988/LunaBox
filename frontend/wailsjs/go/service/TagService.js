@@ -25,3 +25,7 @@ export function Init(arg1, arg2, arg3) {
 export function SearchTagsInLibrary(arg1) {
   return window['go']['service']['TagService']['SearchTagsInLibrary'](arg1);
 }
+
+export function SetCloudSyncService(arg1) {
+  return window['go']['service']['TagService']['SetCloudSyncService'](arg1);
+}

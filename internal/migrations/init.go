@@ -88,6 +88,7 @@ func InitSchema(db *sql.DB) error {
 			weight      DOUBLE DEFAULT 1.0,
 			is_spoiler  BOOLEAN DEFAULT FALSE,
 			created_at  TIMESTAMPTZ,
+			updated_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 			UNIQUE (game_id, name, source)
 		)
 		`,

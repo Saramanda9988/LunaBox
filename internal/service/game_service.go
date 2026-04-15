@@ -594,6 +594,40 @@ func (s *GameService) deleteGameTx(tx *sql.Tx, id string, deletedAt time.Time) e
 	}
 	sessionRows.Close()
 
+	progressRows, err := tx.QueryContext(s.ctx, "SELECT id FROM game_progress WHERE game_id = ?", id)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to query game_progress for id %s: %v", id, err)
+		return fmt.Errorf("failed to query game progress: %w", err)
+	}
+	var progressIDs []string
+	for progressRows.Next() {
+		var progressID string
+		if scanErr := progressRows.Scan(&progressID); scanErr != nil {
+			progressRows.Close()
+			return fmt.Errorf("failed to scan game progress id: %w", scanErr)
+		}
+		progressIDs = append(progressIDs, progressID)
+	}
+	progressRows.Close()
+
+	tagRows, err := tx.QueryContext(s.ctx, "SELECT game_id, source, name FROM game_tags WHERE game_id = ?", id)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to query game_tags for id %s: %v", id, err)
+		return fmt.Errorf("failed to query game tags: %w", err)
+	}
+	var tagIDs []string
+	for tagRows.Next() {
+		var gameID string
+		var source string
+		var name string
+		if scanErr := tagRows.Scan(&gameID, &source, &name); scanErr != nil {
+			tagRows.Close()
+			return fmt.Errorf("failed to scan game tag identity: %w", scanErr)
+		}
+		tagIDs = append(tagIDs, tagTombstoneID(gameID, source, name))
+	}
+	tagRows.Close()
+
 	for _, relationID := range relationIDs {
 		if err := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityGameCategory, relationID, deletedAt); err != nil {
 			return err
@@ -601,6 +635,16 @@ func (s *GameService) deleteGameTx(tx *sql.Tx, id string, deletedAt time.Time) e
 	}
 	for _, sessionID := range sessionIDs {
 		if err := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityPlaySession, sessionID, deletedAt); err != nil {
+			return err
+		}
+	}
+	for _, progressID := range progressIDs {
+		if err := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityGameProgress, progressID, deletedAt); err != nil {
+			return err
+		}
+	}
+	for _, tagID := range tagIDs {
+		if err := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityGameTag, tagID, deletedAt); err != nil {
 			return err
 		}
 	}
@@ -615,6 +659,14 @@ func (s *GameService) deleteGameTx(tx *sql.Tx, id string, deletedAt time.Time) e
 	if _, err := tx.ExecContext(s.ctx, "DELETE FROM play_sessions WHERE game_id = ?", id); err != nil {
 		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete play_sessions for id %s: %v", id, err)
 		return fmt.Errorf("failed to delete play sessions: %w", err)
+	}
+	if _, err := tx.ExecContext(s.ctx, "DELETE FROM game_progress WHERE game_id = ?", id); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game_progress for id %s: %v", id, err)
+		return fmt.Errorf("failed to delete game progress: %w", err)
+	}
+	if _, err := tx.ExecContext(s.ctx, "DELETE FROM game_tags WHERE game_id = ?", id); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game_tags for id %s: %v", id, err)
+		return fmt.Errorf("failed to delete game tags: %w", err)
 	}
 	if _, err := tx.ExecContext(s.ctx, "DELETE FROM games WHERE id = ?", id); err != nil {
 		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game for id %s: %v", id, err)

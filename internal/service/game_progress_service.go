@@ -26,6 +26,7 @@ type GameProgressService struct {
 	ctx       context.Context
 	db        *sql.DB
 	appConfig *appconf.AppConfig
+	cloud     *CloudSyncService
 }
 
 func NewGameProgressService() *GameProgressService {
@@ -36,6 +37,10 @@ func (s *GameProgressService) Init(ctx context.Context, db *sql.DB, appConfig *a
 	s.ctx = ctx
 	s.db = db
 	s.appConfig = appConfig
+}
+
+func (s *GameProgressService) SetCloudSyncService(cloudSync *CloudSyncService) {
+	s.cloud = cloudSync
 }
 
 // GetGameProgress 获取指定游戏的游玩进度记录
@@ -115,14 +120,61 @@ func (s *GameProgressService) UpsertGameProgress(gp GameProgress) (*GameProgress
 		return nil, fmt.Errorf("failed to insert game progress: %w", err)
 	}
 
+	if err := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityGameProgress, gp.ID); err != nil {
+		applog.LogWarningf(s.ctx, "UpsertGameProgress: failed to clear progress tombstone %s: %v", gp.ID, err)
+	}
+	s.notifyCloudSync()
+
 	return &gp, nil
 }
 
 // DeleteGameProgress 删除游玩进度（当游戏被删除时同步清理）
 func (s *GameProgressService) DeleteGameProgress(gameID string) error {
-	_, err := s.db.ExecContext(s.ctx, "DELETE FROM game_progress WHERE game_id = ?", gameID)
+	tx, err := s.db.BeginTx(s.ctx, nil)
 	if err != nil {
+		return fmt.Errorf("failed to begin delete game progress tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	rows, err := tx.QueryContext(s.ctx, "SELECT id FROM game_progress WHERE game_id = ?", gameID)
+	if err != nil {
+		return fmt.Errorf("failed to query game progress ids: %w", err)
+	}
+
+	var progressIDs []string
+	for rows.Next() {
+		var progressID string
+		if err := rows.Scan(&progressID); err != nil {
+			rows.Close()
+			return fmt.Errorf("failed to scan game progress id: %w", err)
+		}
+		progressIDs = append(progressIDs, progressID)
+	}
+	rows.Close()
+
+	if _, err := tx.ExecContext(s.ctx, "DELETE FROM game_progress WHERE game_id = ?", gameID); err != nil {
 		return fmt.Errorf("failed to delete game progress: %w", err)
 	}
+
+	now := time.Now()
+	for _, progressID := range progressIDs {
+		if err := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityGameProgress, progressID, now); err != nil {
+			return err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit delete game progress tx: %w", err)
+	}
+
+	if len(progressIDs) > 0 {
+		s.notifyCloudSync()
+	}
 	return nil
+}
+
+func (s *GameProgressService) notifyCloudSync() {
+	if s.cloud != nil {
+		s.cloud.NotifyLibraryChanged()
+	}
 }

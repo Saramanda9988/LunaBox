@@ -43,16 +43,18 @@ type CloudSyncService struct {
 }
 
 type cloudSyncSnapshot struct {
-	SchemaVersion  int                    `json:"schema_version"`
-	RevisionID     string                 `json:"revision_id"`
-	ExportedAt     time.Time              `json:"exported_at"`
-	DeviceID       string                 `json:"device_id"`
-	Games          []cloudSyncGame        `json:"games"`
-	Categories     []cloudSyncCategory    `json:"categories"`
-	GameCategories []cloudSyncRelation    `json:"game_categories"`
-	PlaySessions   []cloudSyncPlaySession `json:"play_sessions"`
-	Tombstones     []cloudSyncTombstone   `json:"tombstones"`
-	Covers         []cloudSyncCoverAsset  `json:"covers"`
+	SchemaVersion  int                     `json:"schema_version"`
+	RevisionID     string                  `json:"revision_id"`
+	ExportedAt     time.Time               `json:"exported_at"`
+	DeviceID       string                  `json:"device_id"`
+	Games          []cloudSyncGame         `json:"games"`
+	Categories     []cloudSyncCategory     `json:"categories"`
+	GameCategories []cloudSyncRelation     `json:"game_categories"`
+	PlaySessions   []cloudSyncPlaySession  `json:"play_sessions"`
+	GameProgresses []cloudSyncGameProgress `json:"game_progresses"`
+	GameTags       []cloudSyncGameTag      `json:"game_tags"`
+	Tombstones     []cloudSyncTombstone    `json:"tombstones"`
+	Covers         []cloudSyncCoverAsset   `json:"covers"`
 }
 
 type cloudSyncGame struct {
@@ -90,6 +92,27 @@ type cloudSyncPlaySession struct {
 	StartTime time.Time `json:"start_time"`
 	EndTime   time.Time `json:"end_time"`
 	Duration  int       `json:"duration"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type cloudSyncGameProgress struct {
+	ID              string    `json:"id"`
+	GameID          string    `json:"game_id"`
+	Chapter         string    `json:"chapter"`
+	Route           string    `json:"route"`
+	ProgressNote    string    `json:"progress_note"`
+	SpoilerBoundary string    `json:"spoiler_boundary"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+type cloudSyncGameTag struct {
+	ID        string    `json:"id"`
+	GameID    string    `json:"game_id"`
+	Name      string    `json:"name"`
+	Source    string    `json:"source"`
+	Weight    float64   `json:"weight"`
+	IsSpoiler bool      `json:"is_spoiler"`
+	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
@@ -357,6 +380,59 @@ func (s *CloudSyncService) buildLocalState() (cloudSyncLocalState, error) {
 		snapshot.PlaySessions = append(snapshot.PlaySessions, session)
 	}
 
+	progressRows, err := s.db.QueryContext(s.ctx, `
+		SELECT id, game_id, COALESCE(chapter, ''), COALESCE(route, ''), COALESCE(progress_note, ''),
+		       COALESCE(spoiler_boundary, 'none'), COALESCE(updated_at, CURRENT_TIMESTAMP)
+		FROM game_progress
+	`)
+	if err != nil {
+		return state, fmt.Errorf("query game progress for cloud sync: %w", err)
+	}
+	defer progressRows.Close()
+
+	for progressRows.Next() {
+		var progress cloudSyncGameProgress
+		if err := progressRows.Scan(
+			&progress.ID,
+			&progress.GameID,
+			&progress.Chapter,
+			&progress.Route,
+			&progress.ProgressNote,
+			&progress.SpoilerBoundary,
+			&progress.UpdatedAt,
+		); err != nil {
+			return state, fmt.Errorf("scan game progress for cloud sync: %w", err)
+		}
+		snapshot.GameProgresses = append(snapshot.GameProgresses, progress)
+	}
+
+	tagRows, err := s.db.QueryContext(s.ctx, `
+		SELECT id, game_id, name, source, COALESCE(weight, 1.0), COALESCE(is_spoiler, FALSE),
+		       COALESCE(created_at, CURRENT_TIMESTAMP), COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
+		FROM game_tags
+	`)
+	if err != nil {
+		return state, fmt.Errorf("query game tags for cloud sync: %w", err)
+	}
+	defer tagRows.Close()
+
+	for tagRows.Next() {
+		var tag cloudSyncGameTag
+		if err := tagRows.Scan(
+			&tag.ID,
+			&tag.GameID,
+			&tag.Name,
+			&tag.Source,
+			&tag.Weight,
+			&tag.IsSpoiler,
+			&tag.CreatedAt,
+			&tag.UpdatedAt,
+		); err != nil {
+			return state, fmt.Errorf("scan game tag for cloud sync: %w", err)
+		}
+		snapshot.GameTags = append(snapshot.GameTags, tag)
+	}
+
 	tombstoneRows, err := s.db.QueryContext(s.ctx, `
 		SELECT entity_type, entity_id, deleted_at
 		FROM sync_tombstones
@@ -383,6 +459,11 @@ func (s *CloudSyncService) buildLocalState() (cloudSyncLocalState, error) {
 		return left < right
 	})
 	sort.Slice(snapshot.PlaySessions, func(i, j int) bool { return snapshot.PlaySessions[i].ID < snapshot.PlaySessions[j].ID })
+	sort.Slice(snapshot.GameProgresses, func(i, j int) bool { return snapshot.GameProgresses[i].ID < snapshot.GameProgresses[j].ID })
+	sort.Slice(snapshot.GameTags, func(i, j int) bool {
+		return tagTombstoneID(snapshot.GameTags[i].GameID, snapshot.GameTags[i].Source, snapshot.GameTags[i].Name) <
+			tagTombstoneID(snapshot.GameTags[j].GameID, snapshot.GameTags[j].Source, snapshot.GameTags[j].Name)
+	})
 	sort.Slice(snapshot.Tombstones, func(i, j int) bool {
 		left := snapshot.Tombstones[i].EntityType + "::" + snapshot.Tombstones[i].EntityID
 		right := snapshot.Tombstones[j].EntityType + "::" + snapshot.Tombstones[j].EntityID
@@ -545,6 +626,36 @@ func (s *CloudSyncService) mergeSnapshots(local, remote cloudSyncSnapshot, remot
 		}
 	}
 
+	mergedGameMap := mapGames(merged.Games)
+
+	localProgressMap := mapGameProgresses(local.GameProgresses)
+	remoteProgressMap := mapGameProgresses(remote.GameProgresses)
+	localProgressTombstones := mapTombstones(local.Tombstones, cloudSyncEntityGameProgress)
+	remoteProgressTombstones := mapTombstones(remote.Tombstones, cloudSyncEntityGameProgress)
+	for _, id := range unionKeys4(localProgressMap, remoteProgressMap, localProgressTombstones, remoteProgressTombstones) {
+		if progress, ok, deletedAt := mergeGameProgress(localProgressMap[id], remoteProgressMap[id], localProgressTombstones[id], remoteProgressTombstones[id]); ok {
+			if _, gameExists := mergedGameMap[progress.GameID]; gameExists {
+				merged.GameProgresses = append(merged.GameProgresses, progress)
+			}
+		} else if !deletedAt.IsZero() {
+			merged.Tombstones = append(merged.Tombstones, cloudSyncTombstone{EntityType: cloudSyncEntityGameProgress, EntityID: id, DeletedAt: deletedAt})
+		}
+	}
+
+	localTagMap := mapGameTags(local.GameTags)
+	remoteTagMap := mapGameTags(remote.GameTags)
+	localTagTombstones := mapTombstones(local.Tombstones, cloudSyncEntityGameTag)
+	remoteTagTombstones := mapTombstones(remote.Tombstones, cloudSyncEntityGameTag)
+	for _, id := range unionKeys4(localTagMap, remoteTagMap, localTagTombstones, remoteTagTombstones) {
+		if tag, ok, deletedAt := mergeGameTag(localTagMap[id], remoteTagMap[id], localTagTombstones[id], remoteTagTombstones[id]); ok {
+			if _, gameExists := mergedGameMap[tag.GameID]; gameExists {
+				merged.GameTags = append(merged.GameTags, tag)
+			}
+		} else if !deletedAt.IsZero() {
+			merged.Tombstones = append(merged.Tombstones, cloudSyncTombstone{EntityType: cloudSyncEntityGameTag, EntityID: id, DeletedAt: deletedAt})
+		}
+	}
+
 	merged.Covers = s.mergeCovers(local, remote, merged.Games)
 
 	sort.Slice(merged.Games, func(i, j int) bool { return merged.Games[i].ID < merged.Games[j].ID })
@@ -555,6 +666,11 @@ func (s *CloudSyncService) mergeSnapshots(local, remote cloudSyncSnapshot, remot
 		return left < right
 	})
 	sort.Slice(merged.PlaySessions, func(i, j int) bool { return merged.PlaySessions[i].ID < merged.PlaySessions[j].ID })
+	sort.Slice(merged.GameProgresses, func(i, j int) bool { return merged.GameProgresses[i].ID < merged.GameProgresses[j].ID })
+	sort.Slice(merged.GameTags, func(i, j int) bool {
+		return tagTombstoneID(merged.GameTags[i].GameID, merged.GameTags[i].Source, merged.GameTags[i].Name) <
+			tagTombstoneID(merged.GameTags[j].GameID, merged.GameTags[j].Source, merged.GameTags[j].Name)
+	})
 	sort.Slice(merged.Tombstones, func(i, j int) bool {
 		left := merged.Tombstones[i].EntityType + "::" + merged.Tombstones[i].EntityID
 		right := merged.Tombstones[j].EntityType + "::" + merged.Tombstones[j].EntityID
@@ -710,6 +826,17 @@ func (s *CloudSyncService) applyMergedSnapshot(snapshot cloudSyncSnapshot, cover
 			if _, err := tx.ExecContext(s.ctx, `DELETE FROM play_sessions WHERE id = ?`, tombstone.EntityID); err != nil {
 				return fmt.Errorf("delete synced play session: %w", err)
 			}
+		case cloudSyncEntityGameProgress:
+			if _, err := tx.ExecContext(s.ctx, `DELETE FROM game_progress WHERE id = ?`, tombstone.EntityID); err != nil {
+				return fmt.Errorf("delete synced game progress: %w", err)
+			}
+		case cloudSyncEntityGameTag:
+			parts := strings.SplitN(tombstone.EntityID, "::", 3)
+			if len(parts) == 3 {
+				if _, err := tx.ExecContext(s.ctx, `DELETE FROM game_tags WHERE game_id = ? AND source = ? AND name = ?`, parts[0], parts[1], parts[2]); err != nil {
+					return fmt.Errorf("delete synced game tag: %w", err)
+				}
+			}
 		case cloudSyncEntityCategory:
 			if tombstone.EntityID != systemFavoritesCategoryID {
 				if _, err := tx.ExecContext(s.ctx, `DELETE FROM game_categories WHERE category_id = ?`, tombstone.EntityID); err != nil {
@@ -725,6 +852,12 @@ func (s *CloudSyncService) applyMergedSnapshot(snapshot cloudSyncSnapshot, cover
 			}
 			if _, err := tx.ExecContext(s.ctx, `DELETE FROM play_sessions WHERE game_id = ?`, tombstone.EntityID); err != nil {
 				return fmt.Errorf("delete synced game sessions: %w", err)
+			}
+			if _, err := tx.ExecContext(s.ctx, `DELETE FROM game_progress WHERE game_id = ?`, tombstone.EntityID); err != nil {
+				return fmt.Errorf("delete synced game progress: %w", err)
+			}
+			if _, err := tx.ExecContext(s.ctx, `DELETE FROM game_tags WHERE game_id = ?`, tombstone.EntityID); err != nil {
+				return fmt.Errorf("delete synced game tags: %w", err)
 			}
 			if _, err := tx.ExecContext(s.ctx, `DELETE FROM games WHERE id = ?`, tombstone.EntityID); err != nil {
 				return fmt.Errorf("delete synced game: %w", err)
@@ -802,6 +935,37 @@ func (s *CloudSyncService) applyMergedSnapshot(snapshot cloudSyncSnapshot, cover
 		}
 	}
 
+	for _, progress := range snapshot.GameProgresses {
+		if _, err := tx.ExecContext(s.ctx, `
+			INSERT INTO game_progress (id, game_id, chapter, route, progress_note, spoiler_boundary, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT (id) DO UPDATE SET
+				game_id = EXCLUDED.game_id,
+				chapter = EXCLUDED.chapter,
+				route = EXCLUDED.route,
+				progress_note = EXCLUDED.progress_note,
+				spoiler_boundary = EXCLUDED.spoiler_boundary,
+				updated_at = EXCLUDED.updated_at
+		`, progress.ID, progress.GameID, progress.Chapter, progress.Route, progress.ProgressNote, progress.SpoilerBoundary, progress.UpdatedAt); err != nil {
+			return fmt.Errorf("upsert synced game progress %s: %w", progress.ID, err)
+		}
+	}
+
+	for _, tag := range snapshot.GameTags {
+		if _, err := tx.ExecContext(s.ctx, `
+			INSERT INTO game_tags (id, game_id, name, source, weight, is_spoiler, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT (game_id, name, source) DO UPDATE SET
+				id = EXCLUDED.id,
+				weight = EXCLUDED.weight,
+				is_spoiler = EXCLUDED.is_spoiler,
+				created_at = EXCLUDED.created_at,
+				updated_at = EXCLUDED.updated_at
+		`, tag.ID, tag.GameID, tag.Name, tag.Source, tag.Weight, tag.IsSpoiler, tag.CreatedAt, tag.UpdatedAt); err != nil {
+			return fmt.Errorf("upsert synced game tag %s/%s/%s: %w", tag.GameID, tag.Source, tag.Name, err)
+		}
+	}
+
 	if _, err := tx.ExecContext(s.ctx, `DELETE FROM sync_tombstones`); err != nil {
 		return fmt.Errorf("clear local sync tombstones: %w", err)
 	}
@@ -869,6 +1033,22 @@ func mapPlaySessions(items []cloudSyncPlaySession) map[string]cloudSyncPlaySessi
 	result := make(map[string]cloudSyncPlaySession, len(items))
 	for _, item := range items {
 		result[item.ID] = item
+	}
+	return result
+}
+
+func mapGameProgresses(items []cloudSyncGameProgress) map[string]cloudSyncGameProgress {
+	result := make(map[string]cloudSyncGameProgress, len(items))
+	for _, item := range items {
+		result[item.ID] = item
+	}
+	return result
+}
+
+func mapGameTags(items []cloudSyncGameTag) map[string]cloudSyncGameTag {
+	result := make(map[string]cloudSyncGameTag, len(items))
+	for _, item := range items {
+		result[tagTombstoneID(item.GameID, item.Source, item.Name)] = item
 	}
 	return result
 }
@@ -1099,6 +1279,90 @@ func mergeSession(local, remote cloudSyncPlaySession, localDeleted, remoteDelete
 	}
 	if !hasBest || bestDeleted {
 		return cloudSyncPlaySession{}, false, best.Timestamp
+	}
+	return bestRecord, true, time.Time{}
+}
+
+func mergeGameProgress(local, remote cloudSyncGameProgress, localDeleted, remoteDeleted time.Time) (cloudSyncGameProgress, bool, time.Time) {
+	best := cloudSyncCandidate{}
+	hasBest := false
+	bestDeleted := false
+	bestRecord := cloudSyncGameProgress{}
+
+	if !local.UpdatedAt.IsZero() {
+		best = cloudSyncCandidate{Timestamp: local.UpdatedAt, Source: 0}
+		bestRecord = local
+		hasBest = true
+	}
+	if !remote.UpdatedAt.IsZero() {
+		candidate := cloudSyncCandidate{Timestamp: remote.UpdatedAt, Source: 1}
+		if !hasBest || compareCloudSyncCandidate(candidate, best) > 0 {
+			best = candidate
+			bestRecord = remote
+			hasBest = true
+			bestDeleted = false
+		}
+	}
+	if !localDeleted.IsZero() {
+		candidate := cloudSyncCandidate{Timestamp: localDeleted, Source: 0, Deleted: true}
+		if !hasBest || compareCloudSyncCandidate(candidate, best) > 0 {
+			best = candidate
+			hasBest = true
+			bestDeleted = true
+		}
+	}
+	if !remoteDeleted.IsZero() {
+		candidate := cloudSyncCandidate{Timestamp: remoteDeleted, Source: 1, Deleted: true}
+		if !hasBest || compareCloudSyncCandidate(candidate, best) > 0 {
+			best = candidate
+			hasBest = true
+			bestDeleted = true
+		}
+	}
+	if !hasBest || bestDeleted {
+		return cloudSyncGameProgress{}, false, best.Timestamp
+	}
+	return bestRecord, true, time.Time{}
+}
+
+func mergeGameTag(local, remote cloudSyncGameTag, localDeleted, remoteDeleted time.Time) (cloudSyncGameTag, bool, time.Time) {
+	best := cloudSyncCandidate{}
+	hasBest := false
+	bestDeleted := false
+	bestRecord := cloudSyncGameTag{}
+
+	if !local.UpdatedAt.IsZero() {
+		best = cloudSyncCandidate{Timestamp: local.UpdatedAt, Source: 0}
+		bestRecord = local
+		hasBest = true
+	}
+	if !remote.UpdatedAt.IsZero() {
+		candidate := cloudSyncCandidate{Timestamp: remote.UpdatedAt, Source: 1}
+		if !hasBest || compareCloudSyncCandidate(candidate, best) > 0 {
+			best = candidate
+			bestRecord = remote
+			hasBest = true
+			bestDeleted = false
+		}
+	}
+	if !localDeleted.IsZero() {
+		candidate := cloudSyncCandidate{Timestamp: localDeleted, Source: 0, Deleted: true}
+		if !hasBest || compareCloudSyncCandidate(candidate, best) > 0 {
+			best = candidate
+			hasBest = true
+			bestDeleted = true
+		}
+	}
+	if !remoteDeleted.IsZero() {
+		candidate := cloudSyncCandidate{Timestamp: remoteDeleted, Source: 1, Deleted: true}
+		if !hasBest || compareCloudSyncCandidate(candidate, best) > 0 {
+			best = candidate
+			hasBest = true
+			bestDeleted = true
+		}
+	}
+	if !hasBest || bestDeleted {
+		return cloudSyncGameTag{}, false, best.Timestamp
 	}
 	return bestRecord, true, time.Time{}
 }
