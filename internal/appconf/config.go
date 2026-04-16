@@ -3,7 +3,7 @@ package appconf
 import (
 	"encoding/json"
 	"log"
-	"lunabox/internal/enums"
+	enums2 "lunabox/internal/common/enums"
 	"lunabox/internal/utils"
 	"lunabox/internal/utils/apputils"
 	"os"
@@ -12,17 +12,17 @@ import (
 )
 
 var defaultMetadataSources = []string{
-	string(enums.Bangumi),
-	string(enums.VNDB),
-	string(enums.Ymgal),
-	string(enums.Steam),
+	string(enums2.Bangumi),
+	string(enums2.VNDB),
+	string(enums2.Ymgal),
+	string(enums2.Steam),
 }
 
 var allowedMetadataSourceSet = map[string]struct{}{
-	string(enums.Bangumi): {},
-	string(enums.VNDB):    {},
-	string(enums.Ymgal):   {},
-	string(enums.Steam):   {},
+	string(enums2.Bangumi): {},
+	string(enums2.VNDB):    {},
+	string(enums2.Ymgal):   {},
+	string(enums2.Steam):   {},
 }
 
 // AppConfig 应用配置结构体
@@ -135,7 +135,7 @@ func LoadConfig() (*AppConfig, error) {
 		AIBaseURL:              "",
 		AIAPIKey:               "",
 		AIModel:                "",
-		AISystemPrompt:         string(enums.DefaultSystemPrompt),
+		AISystemPrompt:         string(enums2.DefaultSystemPrompt),
 		CloudBackupEnabled:     false,
 		CloudBackupProvider:    "s3",
 		BackupPassword:         "",

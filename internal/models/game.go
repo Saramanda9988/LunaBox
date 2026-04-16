@@ -1,7 +1,7 @@
 package models
 
 import (
-	"lunabox/internal/enums"
+	"lunabox/internal/common/enums"
 	"time"
 )
 
@@ -22,8 +22,8 @@ type Game struct {
 	SourceID          string           `json:"source_id"`
 	CreatedAt         time.Time        `json:"created_at"`
 	UpdatedAt         time.Time        `json:"updated_at"`
-	UseLocaleEmulator bool             `json:"use_locale_emulator"` // 是否使用 Locale Emulator 转区启动
-	UseMagpie         bool             `json:"use_magpie"`          // 是否使用 Magpie 超分辨率缩放
+	UseLocaleEmulator bool             `json:"use_locale_emulator"`      // 是否使用 Locale Emulator 转区启动
+	UseMagpie         bool             `json:"use_magpie"`               // 是否使用 Magpie 超分辨率缩放
 	LastPlayedAt      *time.Time       `json:"last_played_at,omitempty"` // 最近一次游玩开始时间（由 play_sessions 聚合）
 }
 

@@ -3,7 +3,7 @@ package test
 import (
 	"context"
 	"lunabox/internal/appconf"
-	"lunabox/internal/enums"
+	"lunabox/internal/common/enums"
 	"lunabox/internal/models"
 	"lunabox/internal/service"
 	"testing"

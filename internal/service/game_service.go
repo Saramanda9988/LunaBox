@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
-	"lunabox/internal/enums"
+	enums2 "lunabox/internal/common/enums"
+	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
 	"lunabox/internal/protocol"
 	"lunabox/internal/utils"
@@ -16,7 +17,6 @@ import (
 	"lunabox/internal/utils/imageutils"
 	"lunabox/internal/utils/metadata"
 	"lunabox/internal/utils/processutils"
-	"lunabox/internal/vo"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,7 +36,7 @@ type GameService struct {
 
 type metadataSearchSource struct {
 	getter metadata.Getter
-	source enums.SourceType
+	source enums2.SourceType
 	token  string
 }
 
@@ -212,7 +212,7 @@ func (s *GameService) syncScrapedTagsForGame(game models.Game) {
 	if s.tagService == nil {
 		return
 	}
-	if game.SourceType == enums.Local || game.SourceType == "" {
+	if game.SourceType == enums2.Local || game.SourceType == "" {
 		return
 	}
 	if strings.TrimSpace(game.SourceID) == "" {
@@ -382,8 +382,8 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 			return nil, fmt.Errorf("failed to scan game: %w", err)
 		}
 
-		game.SourceType = enums.SourceType(sourceType)
-		game.Status = enums.GameStatus(status)
+		game.SourceType = enums2.SourceType(sourceType)
+		game.Status = enums2.GameStatus(status)
 		if lastPlayedAt.Valid {
 			lastPlayed := lastPlayedAt.Time
 			game.LastPlayedAt = &lastPlayed
@@ -464,8 +464,8 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		return models.Game{}, fmt.Errorf("failed to query game: %w", err)
 	}
 
-	game.SourceType = enums.SourceType(sourceType)
-	game.Status = enums.GameStatus(status)
+	game.SourceType = enums2.SourceType(sourceType)
+	game.Status = enums2.GameStatus(status)
 	if lastPlayedAt.Valid {
 		lastPlayed := lastPlayedAt.Time
 		game.LastPlayedAt = &lastPlayed
@@ -857,19 +857,19 @@ func (s *GameService) fetchMetadataResultByRequest(req vo.MetadataRequest) (meta
 	}
 
 	switch req.Source {
-	case enums.Bangumi:
+	case enums2.Bangumi:
 		return s.fetchMetadataResultBySource(req.Source, strings.ToLower(sourceID))
-	case enums.VNDB:
+	case enums2.VNDB:
 		if !isVndbId(strings.ToLower(sourceID)) {
 			return metadata.MetadataResult{}, fmt.Errorf("invalid VNDB ID format: %s", req.ID)
 		}
 		return s.fetchMetadataResultBySource(req.Source, strings.ToLower(sourceID))
-	case enums.Ymgal:
+	case enums2.Ymgal:
 		if !isYmgalId(strings.ToLower(sourceID)) {
 			return metadata.MetadataResult{}, fmt.Errorf("invalid Ymgal ID format: %s", req.ID)
 		}
 		return s.fetchMetadataResultBySource(req.Source, strings.ToLower(sourceID))
-	case enums.Steam:
+	case enums2.Steam:
 		if !isSteamAppID(sourceID) {
 			return metadata.MetadataResult{}, fmt.Errorf("invalid Steam app ID format: %s", req.ID)
 		}
@@ -879,18 +879,18 @@ func (s *GameService) fetchMetadataResultByRequest(req vo.MetadataRequest) (meta
 	}
 }
 
-func (s *GameService) fetchMetadataResultBySource(source enums.SourceType, sourceID string) (metadata.MetadataResult, error) {
+func (s *GameService) fetchMetadataResultBySource(source enums2.SourceType, sourceID string) (metadata.MetadataResult, error) {
 	switch source {
-	case enums.Bangumi:
+	case enums2.Bangumi:
 		getter := metadata.NewBangumiInfoGetter()
 		return getter.FetchMetadata(sourceID, s.config.BangumiAccessToken)
-	case enums.VNDB:
+	case enums2.VNDB:
 		getter := metadata.NewVNDBInfoGetterWithLanguage(s.config.Language)
 		return getter.FetchMetadata(sourceID, s.config.VNDBAccessToken)
-	case enums.Ymgal:
+	case enums2.Ymgal:
 		getter := metadata.NewYmgalInfoGetter()
 		return getter.FetchMetadata(sourceID, "")
-	case enums.Steam:
+	case enums2.Steam:
 		getter := metadata.NewSteamInfoGetterWithLanguage(s.config.Language)
 		return getter.FetchMetadata(sourceID, "")
 	default:
@@ -989,7 +989,7 @@ func (s *GameService) RefreshAllGamesMetadata() (vo.MetadataRefreshResult, error
 	enabledSources := s.getConfiguredMetadataSourceSet()
 
 	for _, game := range games {
-		if game.SourceType == "" || game.SourceType == enums.Local || strings.TrimSpace(game.SourceID) == "" {
+		if game.SourceType == "" || game.SourceType == enums2.Local || strings.TrimSpace(game.SourceID) == "" {
 			result.SkippedGames++
 			continue
 		}
@@ -1095,7 +1095,7 @@ func (s *GameService) BatchUpdateStatus(ids []string, status string) error {
 	return tx.Commit()
 }
 
-func (s *GameService) findGameIDBySource(source enums.SourceType, sourceID string) (string, bool) {
+func (s *GameService) findGameIDBySource(source enums2.SourceType, sourceID string) (string, bool) {
 	if s.db == nil || sourceID == "" {
 		return "", false
 	}
@@ -1148,28 +1148,28 @@ func (s *GameService) getConfiguredMetadataSearchSources() []metadataSearchSourc
 	sources := make([]metadataSearchSource, 0, 4)
 	for _, source := range s.getConfiguredMetadataSources() {
 		switch source {
-		case enums.Bangumi:
+		case enums2.Bangumi:
 			sources = append(sources, metadataSearchSource{
 				getter: metadata.NewBangumiInfoGetter(),
-				source: enums.Bangumi,
+				source: enums2.Bangumi,
 				token:  bangumiToken,
 			})
-		case enums.VNDB:
+		case enums2.VNDB:
 			sources = append(sources, metadataSearchSource{
 				getter: metadata.NewVNDBInfoGetterWithLanguage(language),
-				source: enums.VNDB,
+				source: enums2.VNDB,
 				token:  vndbToken,
 			})
-		case enums.Ymgal:
+		case enums2.Ymgal:
 			sources = append(sources, metadataSearchSource{
 				getter: metadata.NewYmgalInfoGetter(),
-				source: enums.Ymgal,
+				source: enums2.Ymgal,
 				token:  "",
 			})
-		case enums.Steam:
+		case enums2.Steam:
 			sources = append(sources, metadataSearchSource{
 				getter: metadata.NewSteamInfoGetterWithLanguage(language),
-				source: enums.Steam,
+				source: enums2.Steam,
 				token:  "",
 			})
 		}
@@ -1208,18 +1208,18 @@ func canUseShortcutIconSource(path string) bool {
 	}
 }
 
-func (s *GameService) getConfiguredMetadataSources() []enums.SourceType {
-	defaultSources := []enums.SourceType{enums.Bangumi, enums.VNDB, enums.Ymgal, enums.Steam}
+func (s *GameService) getConfiguredMetadataSources() []enums2.SourceType {
+	defaultSources := []enums2.SourceType{enums2.Bangumi, enums2.VNDB, enums2.Ymgal, enums2.Steam}
 	if s.config == nil || len(s.config.MetadataSources) == 0 {
 		return defaultSources
 	}
 
-	result := make([]enums.SourceType, 0, len(defaultSources))
-	seen := make(map[enums.SourceType]struct{}, len(defaultSources))
+	result := make([]enums2.SourceType, 0, len(defaultSources))
+	seen := make(map[enums2.SourceType]struct{}, len(defaultSources))
 	for _, source := range s.config.MetadataSources {
-		normalized := enums.SourceType(strings.ToLower(strings.TrimSpace(source)))
+		normalized := enums2.SourceType(strings.ToLower(strings.TrimSpace(source)))
 		switch normalized {
-		case enums.Bangumi, enums.VNDB, enums.Ymgal, enums.Steam:
+		case enums2.Bangumi, enums2.VNDB, enums2.Ymgal, enums2.Steam:
 			if _, exists := seen[normalized]; exists {
 				continue
 			}
@@ -1234,8 +1234,8 @@ func (s *GameService) getConfiguredMetadataSources() []enums.SourceType {
 	return result
 }
 
-func (s *GameService) getConfiguredMetadataSourceSet() map[enums.SourceType]struct{} {
-	sourceSet := make(map[enums.SourceType]struct{})
+func (s *GameService) getConfiguredMetadataSourceSet() map[enums2.SourceType]struct{} {
+	sourceSet := make(map[enums2.SourceType]struct{})
 	for _, source := range s.getConfiguredMetadataSources() {
 		sourceSet[source] = struct{}{}
 	}

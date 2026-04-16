@@ -1,7 +1,7 @@
 package vo
 
 import (
-	"lunabox/internal/enums"
+	enums "lunabox/internal/common/enums"
 	"lunabox/internal/models"
 	"lunabox/internal/utils/metadata"
 	"time"

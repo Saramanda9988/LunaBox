@@ -5,14 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"lunabox/internal/common/vo"
 	"net/http"
 	"time"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"lunabox/internal/applog"
 	"lunabox/internal/cli"
-	"lunabox/internal/vo"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // StartServer 启动 IPC 服务器 (在 GUI 进程中运行)
