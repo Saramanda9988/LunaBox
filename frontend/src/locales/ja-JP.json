@@ -555,7 +555,7 @@
       "game": "ゲーム設定",
       "download": "ダウンロード設定",
       "cloudBackup": "クラウド設定",
-      "autoBackup": "自動バックアップ",
+      "autoBackup": "同期とバックアップ",
       "ai": "AI 設定",
       "dbBackup": "データベースバックアップ",
       "fullDataBackup": "全量データバックアップ",
@@ -669,6 +669,9 @@
       }
     },
     "cloudBackup": {
+      "serviceEnableLabel": "クラウドサービスを有効化",
+      "serviceEnableHint": "クラウドバックアップのアップロードとクラウド同期を制御します。無効化しても現在のプロバイダー設定や認証状態は保持されます。",
+      "serviceDisabledHint": "クラウドサービスを無効化すると、クラウドへのアップロードとクラウド同期は停止しますが、現在のプロバイダー、認証情報、認証状態は保持されます。",
       "enableLabel": "クラウドバックアップを有効化",
       "enableHint": "データをクラウドストレージに同期します",
       "providerLabel": "クラウドストレージプロバイダー",
@@ -735,6 +738,14 @@
       }
     },
     "autoBackup": {
+      "localSection": "ローカルバックアップ",
+      "localSectionHint": "アプリ終了時やゲーム終了時のローカルバックアップ動作を管理します。",
+      "cloudBackupSection": "クラウドバックアップ",
+      "cloudBackupSectionHint": "バックアップの自動クラウドアップロードと、クラウド上の保持数を管理します。",
+      "cloudSyncSection": "クラウド同期",
+      "cloudSyncSectionHint": "メタデータ同期の有効化とバックグラウンド同期頻度を管理します。",
+      "cloudServiceRequiredHint": "先にクラウド設定でクラウドサービスを有効化してください。",
+      "cloudSyncConfigRequiredHint": "先にクラウド設定でプロバイダー設定、認証、バックアップパスワードの設定を完了してください。",
       "backupDbOnExit": "アプリ終了時にデータベースを自動バックアップ",
       "backupDbOnExitHint": "アプリ終了時にデータベースバックアップを自動作成し、ゲームライブラリデータを保護します",
       "backupSaveOnExit": "ゲーム終了時にセーブを自動バックアップ",
@@ -1001,6 +1012,7 @@
     "categories": "コレクション",
     "cloudSync": "クラウド同期",
     "cloudSyncReadyHint": "クリックすると手動で同期を実行します",
+    "cloudServiceDisabledHint": "クラウドサービスは無効です。先に設定で有効化してください。",
     "cloudSyncDisabledHint": "先に設定でクラウド同期を有効化し、設定を完了してください",
     "settings": "設定",
     "github": "GitHub"

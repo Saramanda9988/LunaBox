@@ -15,7 +15,11 @@ interface BasicSettingsProps {
   onZoomChange: (zoomFactor: number) => void;
 }
 
-export function BasicSettingsPanel({ formData, onChange, onZoomChange }: BasicSettingsProps) {
+export function BasicSettingsPanel({
+  formData,
+  onChange,
+  onZoomChange,
+}: BasicSettingsProps) {
   const { t } = useTranslation();
 
   const COMMON_TIMEZONES: BetterSelectOption[] = [
@@ -41,16 +45,21 @@ export function BasicSettingsPanel({ formData, onChange, onZoomChange }: BasicSe
     { value: "UTC", label: "Coordinated Universal Time (UTC)" },
   ];
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     const { name, value, type } = e.target;
-    const newValue = type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
+    const newValue
+      = type === "checkbox" ? (e.target as HTMLInputElement).checked : value;
     onChange({ ...formData, [name]: newValue } as appconf.AppConfig);
   };
 
   return (
     <>
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">Bangumi Access Token</label>
+        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+          Bangumi Access Token
+        </label>
         <input
           type="text"
           name="access_token"
@@ -58,11 +67,15 @@ export function BasicSettingsPanel({ formData, onChange, onZoomChange }: BasicSe
           onChange={handleChange}
           className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
         />
-        <p className="text-xs text-brand-500 dark:text-brand-400">{t("settings.basic.bangumiTokenHint")}</p>
+        <p className="text-xs text-brand-500 dark:text-brand-400">
+          {t("settings.basic.bangumiTokenHint")}
+        </p>
       </div>
 
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">VNDB Access Token</label>
+        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+          VNDB Access Token
+        </label>
         <input
           type="text"
           name="vndb_access_token"
@@ -73,11 +86,14 @@ export function BasicSettingsPanel({ formData, onChange, onZoomChange }: BasicSe
       </div>
 
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">{t("settings.basic.themeLabel")}</label>
+        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+          {t("settings.basic.themeLabel")}
+        </label>
         <BetterSelect
           name="theme"
           value={formData.theme}
-          onChange={value => onChange({ ...formData, theme: value } as appconf.AppConfig)}
+          onChange={value =>
+            onChange({ ...formData, theme: value } as appconf.AppConfig)}
           options={[
             { value: "light", label: t("settings.basic.themeLight") },
             { value: "dark", label: t("settings.basic.themeDark") },
@@ -87,11 +103,14 @@ export function BasicSettingsPanel({ formData, onChange, onZoomChange }: BasicSe
       </div>
 
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">{t("settings.basic.languageLabel")}</label>
+        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+          {t("settings.basic.languageLabel")}
+        </label>
         <BetterSelect
           name="language"
           value={formData.language}
-          onChange={value => onChange({ ...formData, language: value } as appconf.AppConfig)}
+          onChange={value =>
+            onChange({ ...formData, language: value } as appconf.AppConfig)}
           options={[
             { value: "zh-CN", label: "简体中文" },
             { value: "en-US", label: "English" },
@@ -101,37 +120,52 @@ export function BasicSettingsPanel({ formData, onChange, onZoomChange }: BasicSe
       </div>
 
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">{t("settings.basic.zoomLabel")}</label>
+        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+          {t("settings.basic.zoomLabel")}
+        </label>
         <BetterSelect
           name="window_zoom_factor"
           value={String(formData.window_zoom_factor || 1)}
           onChange={value => onZoomChange(Number(value))}
           options={appZoomOptions}
         />
-        <span className="text-xs text-brand-500 dark:text-brand-400">{t("settings.basic.zoomHint")}</span>
+        <p className="text-xs text-brand-500 dark:text-brand-400">
+          {t("settings.basic.zoomHint")}
+        </p>
       </div>
 
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">{t("settings.basic.timezoneLabel")}</label>
+        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+          {t("settings.basic.timezoneLabel")}
+        </label>
         <BetterSelect
           name="timezone"
           value={formData.time_zone || "Asia/Shanghai"}
-          onChange={value => onChange({ ...formData, time_zone: value } as appconf.AppConfig)}
+          onChange={value =>
+            onChange({ ...formData, time_zone: value } as appconf.AppConfig)}
           options={COMMON_TIMEZONES}
           placeholder={t("settings.basic.timezonePlaceholder")}
         />
-        <span className="text-xs text-brand-500 dark:text-brand-400">{t("settings.basic.timezoneHint")}</span>
+        <p className="text-xs text-brand-500 dark:text-brand-400">
+          {t("settings.basic.timezoneHint")}
+        </p>
       </div>
 
-      <div className="flex items-center justify-between p-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-          {t("settings.basic.closeToTray")}
-        </label>
-        <BetterSwitch
-          id="close_to_tray"
-          checked={formData.close_to_tray || false}
-          onCheckedChange={checked => onChange({ ...formData, close_to_tray: checked } as appconf.AppConfig)}
-        />
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-4">
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+            {t("settings.basic.closeToTray")}
+          </label>
+          <BetterSwitch
+            id="close_to_tray"
+            checked={formData.close_to_tray || false}
+            onCheckedChange={checked =>
+              onChange({
+                ...formData,
+                close_to_tray: checked,
+              } as appconf.AppConfig)}
+          />
+        </div>
       </div>
     </>
   );

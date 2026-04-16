@@ -35,7 +35,7 @@ export function useCloudSync({ config }: UseCloudSyncOptions) {
   }, []);
 
   const refreshSyncStatus = useCallback(async () => {
-    if (!config?.cloud_sync_enabled) {
+    if (!config?.cloud_backup_enabled || !config?.cloud_sync_enabled) {
       setSyncStatus(null);
       return null;
     }
@@ -49,7 +49,7 @@ export function useCloudSync({ config }: UseCloudSyncOptions) {
       console.error("Failed to refresh cloud sync status:", err);
       return null;
     }
-  }, [config?.cloud_sync_enabled]);
+  }, [config?.cloud_backup_enabled, config?.cloud_sync_enabled]);
 
   useEffect(() => {
     if (!config) {
@@ -81,11 +81,19 @@ export function useCloudSync({ config }: UseCloudSyncOptions) {
     = effectiveSyncStatus.configured || isCloudProviderConfigured(config);
   const syncBusy = syncingNow || effectiveSyncStatus.syncing;
   const canSyncNow = Boolean(
-    config?.cloud_sync_enabled && syncConfigured && !syncBusy,
+    config?.cloud_backup_enabled
+    && config?.cloud_sync_enabled
+    && syncConfigured
+    && !syncBusy,
   );
 
   const handleSyncNow = useCallback(async () => {
-    if (!config?.cloud_sync_enabled || !syncConfigured || syncBusy) {
+    if (
+      !config?.cloud_backup_enabled
+      || !config?.cloud_sync_enabled
+      || !syncConfigured
+      || syncBusy
+    ) {
       return null;
     }
 
@@ -113,6 +121,7 @@ export function useCloudSync({ config }: UseCloudSyncOptions) {
       void refreshSyncStatus();
     }
   }, [
+    config?.cloud_backup_enabled,
     config?.cloud_sync_enabled,
     refreshSyncStatus,
     syncBusy,

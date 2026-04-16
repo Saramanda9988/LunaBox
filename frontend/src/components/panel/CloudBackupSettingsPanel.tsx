@@ -9,7 +9,6 @@ import {
   TestS3Connection,
 } from "../../../wailsjs/go/service/BackupService";
 import { GetAppConfig } from "../../../wailsjs/go/service/ConfigService";
-import { getSyncIntervalSeconds } from "../../utils/cloudSync";
 import { PasswordInputModal } from "../modal/PasswordInputModal";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
@@ -112,54 +111,32 @@ export function CloudBackupSettingsPanel({
       setAuthorizingOneDrive(false);
     }
   };
-  const syncIntervalSeconds = getSyncIntervalSeconds(formData);
 
   return (
     <div className="space-y-4">
-      <div className="glass-card flex items-center justify-between rounded-lg bg-brand-50 p-4 dark:bg-brand-800/50">
-        <div className="flex flex-col">
-          <label
-            htmlFor="cloud_backup_enabled"
-            className="cursor-pointer text-sm font-medium text-brand-700 dark:text-brand-300"
-          >
-            {t("settings.cloudBackup.enableLabel")}
-          </label>
-          <p className="mt-1 text-xs text-brand-500 dark:text-brand-400">
-            {t("settings.cloudBackup.enableHint")}
-          </p>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1 space-y-2">
+            <label
+              htmlFor="cloud_backup_enabled"
+              className="block cursor-pointer text-sm font-medium text-brand-700 dark:text-brand-300"
+            >
+              {t("settings.cloudBackup.serviceEnableLabel")}
+            </label>
+            <p className="text-xs text-brand-500 dark:text-brand-400">
+              {t("settings.cloudBackup.serviceEnableHint")}
+            </p>
+          </div>
+          <BetterSwitch
+            id="cloud_backup_enabled"
+            checked={formData.cloud_backup_enabled || false}
+            onCheckedChange={checked =>
+              onChange({
+                ...formData,
+                cloud_backup_enabled: checked,
+              } as appconf.AppConfig)}
+          />
         </div>
-        <BetterSwitch
-          id="cloud_backup_enabled"
-          checked={formData.cloud_backup_enabled || false}
-          onCheckedChange={checked =>
-            onChange({
-              ...formData,
-              cloud_backup_enabled: checked,
-            } as appconf.AppConfig)}
-        />
-      </div>
-
-      <div className="glass-card flex items-center justify-between rounded-lg bg-brand-50 p-4 dark:bg-brand-800/50">
-        <div className="flex flex-col">
-          <label
-            htmlFor="cloud_sync_enabled"
-            className="cursor-pointer text-sm font-medium text-brand-700 dark:text-brand-300"
-          >
-            {t("settings.cloudBackup.syncEnableLabel")}
-          </label>
-          <p className="mt-1 text-xs text-brand-500 dark:text-brand-400">
-            {t("settings.cloudBackup.syncEnableHint")}
-          </p>
-        </div>
-        <BetterSwitch
-          id="cloud_sync_enabled"
-          checked={formData.cloud_sync_enabled || false}
-          onCheckedChange={checked =>
-            onChange({
-              ...formData,
-              cloud_sync_enabled: checked,
-            } as appconf.AppConfig)}
-        />
       </div>
 
       <div className="space-y-2">
@@ -220,9 +197,9 @@ export function CloudBackupSettingsPanel({
 
       {formData.cloud_backup_provider === "s3" && (
         <div className="glass-card space-y-4 rounded-lg bg-brand-100 p-4 dark:bg-brand-800">
-          <h3 className="text-sm font-medium text-brand-800 dark:text-brand-200">
+          <div className="block text-sm font-semibold text-brand-700 dark:text-brand-300">
             {t("settings.cloudBackup.s3Section")}
-          </h3>
+          </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
               S3 Endpoint
@@ -305,9 +282,9 @@ export function CloudBackupSettingsPanel({
 
       {formData.cloud_backup_provider === "onedrive" && (
         <div className="space-y-4 rounded-lg bg-brand-100 p-4 dark:bg-brand-800">
-          <h3 className="text-sm font-medium text-brand-800 dark:text-brand-200">
+          <div className="block text-sm font-semibold text-brand-700 dark:text-brand-300">
             {t("settings.cloudBackup.oneDriveSection")}
-          </h3>
+          </div>
 
           <div className="rounded-md border border-brand-300 bg-brand-100 p-3 dark:border-brand-600 dark:bg-brand-700">
             <div className="flex items-start gap-2">
@@ -428,55 +405,11 @@ export function CloudBackupSettingsPanel({
         </div>
       )}
 
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-          {t("settings.cloudBackup.retentionLabel")}
-        </label>
-        <input
-          type="number"
-          value={formData.cloud_backup_retention || 5}
-          onChange={e =>
-            onChange({
-              ...formData,
-              cloud_backup_retention: Number.parseInt(e.target.value) || 20,
-            } as appconf.AppConfig)}
-          min={1}
-          max={100}
-          className="glass-input w-32 rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
-        />
-        <p className="text-xs text-brand-500 dark:text-brand-400">
-          {t("settings.cloudBackup.retentionHint")}
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-          {t("settings.cloudBackup.syncIntervalLabel")}
-        </label>
-        <div className="flex items-center gap-3">
-          <input
-            type="number"
-            min={15}
-            step={5}
-            value={syncIntervalSeconds}
-            onChange={(e) => {
-              const raw = Number.parseInt(e.target.value, 10);
-              const nextValue = Number.isNaN(raw) ? 60 : Math.max(15, raw);
-              onChange({
-                ...formData,
-                cloud_sync_interval_sec: nextValue,
-              } as appconf.AppConfig);
-            }}
-            className="glass-input w-32 rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
-          />
-          <span className="text-sm text-brand-500 dark:text-brand-400">
-            {t("settings.cloudBackup.syncIntervalUnit")}
-          </span>
+      {!formData.cloud_backup_enabled && (
+        <div className="rounded-lg border border-dashed border-brand-300 bg-brand-100/60 px-4 py-3 text-xs text-brand-600 dark:border-brand-600 dark:bg-brand-800/60 dark:text-brand-300">
+          {t("settings.cloudBackup.serviceDisabledHint")}
         </div>
-        <p className="text-xs text-brand-500 dark:text-brand-400">
-          {t("settings.cloudBackup.syncIntervalHint")}
-        </p>
-      </div>
+      )}
 
       <PasswordInputModal
         isOpen={showPasswordModal}

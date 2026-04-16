@@ -555,7 +555,7 @@
       "game": "Game Settings",
       "download": "Download Settings",
       "cloudBackup": "Cloud Configuration",
-      "autoBackup": "Auto Backup",
+      "autoBackup": "Sync & Backup",
       "ai": "AI Configuration",
       "dbBackup": "Database Backup",
       "fullDataBackup": "Full Data Backup",
@@ -669,6 +669,9 @@
       }
     },
     "cloudBackup": {
+      "serviceEnableLabel": "Enable Cloud Services",
+      "serviceEnableHint": "Controls cloud backup uploads and cloud sync. Disabling it keeps the current provider and authorization settings intact.",
+      "serviceDisabledHint": "When cloud services are disabled, backup uploads and cloud sync stop running, but the current provider, credentials, and authorization are kept.",
       "enableLabel": "Enable Cloud Backup",
       "enableHint": "Sync your data to cloud storage",
       "providerLabel": "Cloud Storage Provider",
@@ -735,6 +738,14 @@
       }
     },
     "autoBackup": {
+      "localSection": "Local Backup",
+      "localSectionHint": "Manage backup behavior when the app exits or a game closes.",
+      "cloudBackupSection": "Cloud Backup",
+      "cloudBackupSectionHint": "Manage automatic cloud uploads and how many backups are retained in the cloud.",
+      "cloudSyncSection": "Cloud Sync",
+      "cloudSyncSectionHint": "Manage whether metadata sync is enabled and how often background sync runs.",
+      "cloudServiceRequiredHint": "Enable cloud services first in Cloud Configuration.",
+      "cloudSyncConfigRequiredHint": "Finish provider setup, authorization, and backup password setup in Cloud Configuration first.",
       "backupDbOnExit": "Auto backup database on app exit",
       "backupDbOnExitHint": "Automatically creates a database backup when the app closes, protecting your game library data",
       "backupSaveOnExit": "Auto backup game saves on game exit",
@@ -1001,6 +1012,7 @@
     "categories": "Collections",
     "cloudSync": "Cloud Sync",
     "cloudSyncReadyHint": "Click to run a manual cloud sync now",
+    "cloudServiceDisabledHint": "Cloud services are off. Enable them first in Settings.",
     "cloudSyncDisabledHint": "Enable and finish cloud sync setup in Settings first",
     "settings": "Settings",
     "github": "GitHub"

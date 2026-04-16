@@ -29,7 +29,10 @@ function normalizeMetadataSources(sources?: string[]): string[] {
   return normalized.length > 0 ? normalized : [...DEFAULT_METADATA_SOURCES];
 }
 
-export function MetadataSettingsPanel({ formData, onChange }: MetadataSettingsPanelProps) {
+export function MetadataSettingsPanel({
+  formData,
+  onChange,
+}: MetadataSettingsPanelProps) {
   const { t } = useTranslation();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -43,12 +46,17 @@ export function MetadataSettingsPanel({ formData, onChange }: MetadataSettingsPa
     title: "",
     message: "",
     type: "info",
-    onConfirm: () => { },
+    onConfirm: () => {},
   });
 
   const selectedSources = normalizeMetadataSources(formData.metadata_sources);
 
-  const sourceItems: Array<{ value: string; label: string; hint: string; icon: string }> = [
+  const sourceItems: Array<{
+    value: string;
+    label: string;
+    hint: string;
+    icon: string;
+  }> = [
     {
       value: "bangumi",
       label: "Bangumi",
@@ -91,7 +99,10 @@ export function MetadataSettingsPanel({ formData, onChange }: MetadataSettingsPa
       }
     }
 
-    onChange({ ...formData, metadata_sources: nextSources } as appconf.AppConfig);
+    onChange({
+      ...formData,
+      metadata_sources: nextSources,
+    } as appconf.AppConfig);
   };
 
   const handleRefreshAllMetadata = () => {
@@ -107,15 +118,20 @@ export function MetadataSettingsPanel({ formData, onChange }: MetadataSettingsPa
       onConfirm: async () => {
         setIsRefreshing(true);
         try {
-          const refreshResult: vo.MetadataRefreshResult = await RefreshAllGamesMetadata();
-          toast.success(t("settings.metadata.toast.refreshSuccess", {
-            updated: refreshResult.updated_games,
-            failed: refreshResult.failed_games,
-            skipped: refreshResult.skipped_games,
-          }));
+          const refreshResult: vo.MetadataRefreshResult
+            = await RefreshAllGamesMetadata();
+          toast.success(
+            t("settings.metadata.toast.refreshSuccess", {
+              updated: refreshResult.updated_games,
+              failed: refreshResult.failed_games,
+              skipped: refreshResult.skipped_games,
+            }),
+          );
         }
         catch (err) {
-          toast.error(t("settings.metadata.toast.refreshFailed", { error: err }));
+          toast.error(
+            t("settings.metadata.toast.refreshFailed", { error: err }),
+          );
         }
         finally {
           setIsRefreshing(false);
@@ -128,27 +144,40 @@ export function MetadataSettingsPanel({ formData, onChange }: MetadataSettingsPa
     <>
       <div className="space-y-4">
         <div>
-          <h3 className="text-sm font-semibold text-brand-900 dark:text-white">
+          <div className="block text-sm font-semibold text-brand-700 dark:text-brand-300">
             {t("settings.metadata.sourceTitle")}
-          </h3>
-          <p className="mt-1 text-xs text-brand-500 dark:text-brand-400">
-            {t("settings.metadata.sourceHint")}
-          </p>
+          </div>
         </div>
 
         <div className="space-y-3">
           {sourceItems.map(item => (
-            <div key={item.value} className="glass-panel flex items-center justify-between rounded-lg border border-brand-200 p-4 dark:border-brand-700">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center select-none pt-1">
-                  <img src={item.icon} alt={item.label} className="h-[22px] w-auto object-contain brightness-0 opacity-80 transition-all dark:invert dark:opacity-90" />
+            <div
+              key={item.value}
+              className="glass-panel flex items-center justify-between rounded-lg border border-brand-200 p-4 dark:border-brand-700"
+            >
+              <div className="flex-1 space-y-2">
+                <div className="flex items-center gap-2 select-none">
+                  <img
+                    src={item.icon}
+                    alt={item.label}
+                    className="h-[22px] w-auto object-contain brightness-0 opacity-80 transition-all dark:invert dark:opacity-90"
+                  />
+                  <label
+                    htmlFor={`metadata-source-${item.value}`}
+                    className="block text-sm font-medium text-brand-700 dark:text-brand-300"
+                  >
+                    {item.label}
+                  </label>
                 </div>
-                <p className="text-xs text-brand-500 dark:text-brand-400">{item.hint}</p>
+                <p className="text-xs text-brand-500 dark:text-brand-400">
+                  {item.hint}
+                </p>
               </div>
               <BetterSwitch
                 id={`metadata-source-${item.value}`}
                 checked={selectedSources.includes(item.value)}
-                onCheckedChange={checked => handleToggleSource(item.value, checked)}
+                onCheckedChange={checked =>
+                  handleToggleSource(item.value, checked)}
               />
             </div>
           ))}
@@ -156,12 +185,9 @@ export function MetadataSettingsPanel({ formData, onChange }: MetadataSettingsPa
       </div>
 
       <div className="mt-6 border-brand-200 pt-6 dark:border-brand-700">
-        <h3 className="text-sm font-semibold text-brand-900 dark:text-white">
+        <div className="block text-sm font-semibold text-brand-700 dark:text-brand-300">
           {t("settings.metadata.refreshTitle")}
-        </h3>
-        <p className="mt-1 text-xs text-brand-500 dark:text-brand-400">
-          {t("settings.metadata.refreshHint")}
-        </p>
+        </div>
         <BetterButton
           className="mt-4 w-full justify-center sm:w-auto"
           variant="primary"
@@ -169,7 +195,9 @@ export function MetadataSettingsPanel({ formData, onChange }: MetadataSettingsPa
           isLoading={isRefreshing}
           onClick={handleRefreshAllMetadata}
         >
-          {isRefreshing ? t("settings.metadata.refreshing") : t("settings.metadata.refreshButton")}
+          {isRefreshing
+            ? t("settings.metadata.refreshing")
+            : t("settings.metadata.refreshButton")}
         </BetterButton>
       </div>
 

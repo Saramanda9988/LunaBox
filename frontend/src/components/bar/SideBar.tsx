@@ -79,6 +79,10 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
     = "flex items-center rounded-xl p-2 text-brand-700 no-underline transition-colors hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 dark:text-brand-300 dark:hover:bg-brand-700 [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100 data-glass:hover:bg-white/10 data-glass:hover:dark:bg-black/10 data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20";
   const footerActionClass
     = "relative flex items-center justify-center rounded-xl p-2.5 text-brand-700 transition-colors hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 dark:text-brand-300 dark:hover:bg-brand-700 data-glass:hover:bg-white/10 data-glass:hover:dark:bg-black/10";
+  const cloudServiceEnabled = Boolean(config?.cloud_backup_enabled);
+  const cloudSyncEnabled = Boolean(
+    cloudServiceEnabled && config?.cloud_sync_enabled,
+  );
   const cloudSyncStatusLabel = getCloudSyncStatusLabel(
     effectiveSyncStatus.last_sync_status,
     t,
@@ -91,7 +95,30 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
     config?.time_zone,
     t("settings.cloudBackup.syncNever"),
   );
+  const cloudSyncHint = (() => {
+    if (!cloudServiceEnabled) {
+      return t("sideBar.cloudServiceDisabledHint");
+    }
+
+    if (!cloudSyncEnabled) {
+      return t("sideBar.cloudSyncDisabledHint");
+    }
+
+    if (!syncConfigured) {
+      return t("settings.cloudBackup.syncNotConfigured");
+    }
+
+    return t("sideBar.cloudSyncReadyHint");
+  })();
   const cloudSyncIconClass = (() => {
+    if (!cloudServiceEnabled) {
+      return "i-mdi-cloud-off-outline text-brand-400 dark:text-brand-500";
+    }
+
+    if (!cloudSyncEnabled) {
+      return "i-mdi-cloud-outline text-brand-400 dark:text-brand-500";
+    }
+
     if (syncBusy) {
       return "i-mdi-loading animate-spin";
     }
@@ -195,8 +222,16 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
       >
         <div
           className="group relative"
-          onMouseEnter={() => void refreshSyncStatus()}
-          onFocusCapture={() => void refreshSyncStatus()}
+          onMouseEnter={() => {
+            if (cloudSyncEnabled) {
+              void refreshSyncStatus();
+            }
+          }}
+          onFocusCapture={() => {
+            if (cloudSyncEnabled) {
+              void refreshSyncStatus();
+            }
+          }}
         >
           <button
             type="button"
@@ -229,27 +264,34 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
                   {t("sideBar.cloudSync")}
                 </span>
                 <div className="flex items-center gap-1.5">
-                  {!syncConfigured && (
+                  {cloudSyncEnabled && !syncConfigured && (
                     <span className="text-[9px] font-medium text-warning-600 dark:text-warning-400">
                       {t("settings.cloudBackup.syncNotConfigured")}
                     </span>
                   )}
-                  <span
-                    className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${cloudSyncStatusClass}`}
-                  >
-                    {cloudSyncStatusLabel}
-                  </span>
+                  {cloudSyncEnabled && (
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${cloudSyncStatusClass}`}
+                    >
+                      {cloudSyncStatusLabel}
+                    </span>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-brand-400 dark:text-brand-500 text-[10px]">
-                  {t("settings.cloudBackup.syncLastTimeLabel")}
-                </span>
-                <span className="text-[10px] font-medium text-brand-700 dark:text-brand-100">
-                  {cloudSyncLastTime}
-                </span>
-              </div>
-              {effectiveSyncStatus.last_sync_error && (
+              <p className="text-[10px] leading-4 text-brand-600 dark:text-brand-300">
+                {cloudSyncHint}
+              </p>
+              {cloudSyncEnabled && (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-brand-400 dark:text-brand-500 text-[10px]">
+                    {t("settings.cloudBackup.syncLastTimeLabel")}
+                  </span>
+                  <span className="text-[10px] font-medium text-brand-700 dark:text-brand-100">
+                    {cloudSyncLastTime}
+                  </span>
+                </div>
+              )}
+              {cloudSyncEnabled && effectiveSyncStatus.last_sync_error && (
                 <p className="mt-0.5 line-clamp-2 text-[9px] leading-3 text-error-600 dark:text-error-400">
                   {effectiveSyncStatus.last_sync_error}
                 </p>
