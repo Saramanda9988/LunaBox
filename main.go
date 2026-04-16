@@ -9,7 +9,7 @@ import (
 	"lunabox/internal/cli"
 	"lunabox/internal/cli/ipcclient"
 	"lunabox/internal/cli/ipcserver"
-	enums2 "lunabox/internal/common/enums"
+	"lunabox/internal/common/enums"
 	"lunabox/internal/common/vo"
 	"lunabox/internal/protocol"
 	"lunabox/internal/utils/apputils"
@@ -367,10 +367,10 @@ func main() {
 		tagService,
 	}
 	enumBindings := []interface{}{
-		enums2.AllSourceTypes,
-		enums2.AllPeriodTypes,
-		enums2.Prompts,
-		enums2.AllGameStatuses,
+		enums.AllSourceTypes,
+		enums.AllPeriodTypes,
+		enums.Prompts,
+		enums.AllGameStatuses,
 	}
 
 	// 如果有待安装 URL，解析并暂存到 downloadService
