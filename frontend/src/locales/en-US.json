@@ -554,7 +554,7 @@
       "appearance": "Appearance",
       "game": "Game Settings",
       "download": "Download Settings",
-      "cloudBackup": "Cloud Backup",
+      "cloudBackup": "Cloud Configuration",
       "autoBackup": "Auto Backup",
       "ai": "AI Configuration",
       "dbBackup": "Database Backup",
@@ -994,10 +994,14 @@
     }
   },
   "sideBar": {
+    "toggle": "Toggle sidebar",
     "home": "Home",
     "library": "Library",
     "stats": "Statistics",
     "categories": "Collections",
+    "cloudSync": "Cloud Sync",
+    "cloudSyncReadyHint": "Click to run a manual cloud sync now",
+    "cloudSyncDisabledHint": "Enable and finish cloud sync setup in Settings first",
     "settings": "Settings",
     "github": "GitHub"
   },

@@ -554,7 +554,7 @@
       "appearance": "外観設定",
       "game": "ゲーム設定",
       "download": "ダウンロード設定",
-      "cloudBackup": "クラウドバックアップ設定",
+      "cloudBackup": "クラウド設定",
       "autoBackup": "自動バックアップ",
       "ai": "AI 設定",
       "dbBackup": "データベースバックアップ",
@@ -994,10 +994,14 @@
     }
   },
   "sideBar": {
+    "toggle": "サイドバーを切り替え",
     "home": "ホーム",
     "library": "ゲームライブラリ",
     "stats": "統計",
     "categories": "コレクション",
+    "cloudSync": "クラウド同期",
+    "cloudSyncReadyHint": "クリックすると手動で同期を実行します",
+    "cloudSyncDisabledHint": "先に設定でクラウド同期を有効化し、設定を完了してください",
     "settings": "設定",
     "github": "GitHub"
   },

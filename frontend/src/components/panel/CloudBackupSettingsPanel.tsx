@@ -1,5 +1,5 @@
-import type { appconf, vo } from "../../../wailsjs/go/models";
-import { useCallback, useEffect, useState } from "react";
+import type { appconf } from "../../../wailsjs/go/models";
+import { useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import {
@@ -8,11 +8,8 @@ import {
   TestOneDriveConnection,
   TestS3Connection,
 } from "../../../wailsjs/go/service/BackupService";
-import {
-  GetCloudSyncStatus,
-  SyncNow,
-} from "../../../wailsjs/go/service/CloudSyncService";
 import { GetAppConfig } from "../../../wailsjs/go/service/ConfigService";
+import { getSyncIntervalSeconds } from "../../utils/cloudSync";
 import { PasswordInputModal } from "../modal/PasswordInputModal";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
@@ -22,81 +19,20 @@ interface CloudBackupSettingsProps {
   onChange: (data: appconf.AppConfig) => void;
 }
 
-function isCloudProviderConfigured(config: appconf.AppConfig) {
-  if (!config.cloud_backup_enabled || !config.backup_user_id) {
-    return false;
-  }
-
-  if (config.cloud_backup_provider === "onedrive") {
-    return Boolean(config.onedrive_refresh_token);
-  }
-
-  return Boolean(config.s3_endpoint && config.s3_access_key);
-}
-
-function formatSyncTime(value: string | undefined, locale: string) {
-  if (!value) {
-    return "";
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
-
-function getSyncIntervalSeconds(config: appconf.AppConfig) {
-  if (!config.cloud_sync_interval_sec || config.cloud_sync_interval_sec <= 0) {
-    return 60;
-  }
-
-  return Math.max(15, config.cloud_sync_interval_sec);
-}
-
 export function CloudBackupSettingsPanel({
   formData,
   onChange,
 }: CloudBackupSettingsProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [testingS3, setTestingS3] = useState(false);
   const [testingOneDrive, setTestingOneDrive] = useState(false);
   const [authorizingOneDrive, setAuthorizingOneDrive] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<vo.CloudSyncStatus | null>(null);
-  const [syncingNow, setSyncingNow] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     onChange({ ...formData, [name]: value } as appconf.AppConfig);
   };
-
-  const refreshSyncStatus = useCallback(async () => {
-    try {
-      const status = await GetCloudSyncStatus();
-      setSyncStatus(status);
-    }
-    catch (err) {
-      console.error("Failed to refresh cloud sync status:", err);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refreshSyncStatus();
-  }, [refreshSyncStatus]);
-
-  useEffect(() => {
-    if (formData.cloud_sync_enabled) {
-      void refreshSyncStatus();
-      return;
-    }
-
-    setSyncStatus(null);
-  }, [formData.cloud_sync_enabled, refreshSyncStatus]);
 
   const handleSetupBackupPassword = async (
     password: string,
@@ -121,7 +57,6 @@ export function CloudBackupSettingsPanel({
       );
       const updatedConfig = await GetAppConfig();
       onChange(updatedConfig);
-      void refreshSyncStatus();
     }
     catch (err: any) {
       toast.error(t("settings.cloudBackup.toast.setupFailed", { error: err }));
@@ -167,7 +102,6 @@ export function CloudBackupSettingsPanel({
         onedrive_refresh_token: refreshToken,
       } as appconf.AppConfig);
       toast.success(t("settings.cloudBackup.toast.oneDriveAuthSuccess"));
-      void refreshSyncStatus();
     }
     catch (err: any) {
       toast.error(
@@ -178,74 +112,7 @@ export function CloudBackupSettingsPanel({
       setAuthorizingOneDrive(false);
     }
   };
-
-  const handleSyncNow = async () => {
-    if (!formData.cloud_sync_enabled || !isCloudProviderConfigured(formData)) {
-      return;
-    }
-
-    setSyncingNow(true);
-    const loading = toast.loading(t("settings.cloudBackup.syncingNow"));
-
-    try {
-      const status = await SyncNow();
-      setSyncStatus(status);
-      toast.dismiss(loading);
-      toast.success(t("settings.cloudBackup.toast.syncSuccess"));
-    }
-    catch (err: any) {
-      toast.dismiss(loading);
-      toast.error(
-        t("settings.cloudBackup.toast.syncFailed", {
-          error: err?.message || err,
-        }),
-      );
-    }
-    finally {
-      setSyncingNow(false);
-      void refreshSyncStatus();
-    }
-  };
-
-  const effectiveSyncStatus: vo.CloudSyncStatus = syncStatus ?? {
-    enabled: formData.cloud_sync_enabled || false,
-    configured: isCloudProviderConfigured(formData),
-    syncing: false,
-    last_sync_time: formData.last_cloud_sync_time || "",
-    last_sync_status: formData.last_cloud_sync_status || "idle",
-    last_sync_error: formData.last_cloud_sync_error || "",
-  };
-  const syncConfigured
-    = effectiveSyncStatus.configured || isCloudProviderConfigured(formData);
-  const syncBusy = syncingNow || effectiveSyncStatus.syncing;
   const syncIntervalSeconds = getSyncIntervalSeconds(formData);
-  const syncStatusLabel = (() => {
-    switch (effectiveSyncStatus.last_sync_status) {
-      case "success":
-        return t("settings.cloudBackup.syncStatusSuccess");
-      case "failed":
-        return t("settings.cloudBackup.syncStatusFailed");
-      case "syncing":
-        return t("settings.cloudBackup.syncStatusSyncing");
-      default:
-        return t("settings.cloudBackup.syncStatusIdle");
-    }
-  })();
-  const syncStatusClass = (() => {
-    switch (effectiveSyncStatus.last_sync_status) {
-      case "success":
-        return "bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300";
-      case "failed":
-        return "bg-error-100 text-error-700 dark:bg-error-900/40 dark:text-error-300";
-      case "syncing":
-        return "bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300";
-      default:
-        return "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-300";
-    }
-  })();
-  const lastSyncDisplay = effectiveSyncStatus.last_sync_time
-    ? formatSyncTime(effectiveSyncStatus.last_sync_time, i18n.language)
-    : t("settings.cloudBackup.syncNever");
 
   return (
     <div className="space-y-4">
@@ -271,37 +138,6 @@ export function CloudBackupSettingsPanel({
             } as appconf.AppConfig)}
         />
       </div>
-
-      {formData.cloud_sync_enabled && (
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-            {t("settings.cloudBackup.syncIntervalLabel")}
-          </label>
-          <div className="flex items-center gap-3">
-            <input
-              type="number"
-              min={15}
-              step={5}
-              value={syncIntervalSeconds}
-              onChange={(e) => {
-                const raw = Number.parseInt(e.target.value, 10);
-                const nextValue = Number.isNaN(raw) ? 60 : Math.max(15, raw);
-                onChange({
-                  ...formData,
-                  cloud_sync_interval_sec: nextValue,
-                } as appconf.AppConfig);
-              }}
-              className="glass-input w-32 rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
-            />
-            <span className="text-sm text-brand-500 dark:text-brand-400">
-              {t("settings.cloudBackup.syncIntervalUnit")}
-            </span>
-          </div>
-          <p className="text-xs text-brand-500 dark:text-brand-400">
-            {t("settings.cloudBackup.syncIntervalHint")}
-          </p>
-        </div>
-      )}
 
       <div className="glass-card flex items-center justify-between rounded-lg bg-brand-50 p-4 dark:bg-brand-800/50">
         <div className="flex flex-col">
@@ -592,77 +428,6 @@ export function CloudBackupSettingsPanel({
         </div>
       )}
 
-      <div className="glass-card space-y-4 rounded-lg bg-brand-50 p-4 dark:bg-brand-800/50">
-        <div className="rounded-lg border border-brand-200 bg-white/70 p-3 dark:border-brand-700 dark:bg-brand-900/30">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="space-y-1">
-              <div className="text-sm font-medium text-brand-700 dark:text-brand-300">
-                {t("settings.cloudBackup.syncStatusLabel")}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${syncStatusClass}`}
-                >
-                  {syncStatusLabel}
-                </span>
-                {!syncConfigured && (
-                  <span className="text-xs text-warning-600 dark:text-warning-400">
-                    {t("settings.cloudBackup.syncNotConfigured")}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleSyncNow}
-              disabled={
-                !formData.cloud_sync_enabled || !syncConfigured || syncBusy
-              }
-              className="glass-btn-neutral flex items-center gap-2 rounded-md bg-brand-600 px-3 py-2 text-sm text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <span
-                className={`text-base ${syncBusy ? "i-mdi-loading animate-spin" : "i-mdi-cloud-sync-outline"}`}
-              />
-              {syncBusy
-                ? t("settings.cloudBackup.syncingNow")
-                : t("settings.cloudBackup.syncNow")}
-            </button>
-          </div>
-
-          <div className="mt-3 space-y-2 text-xs text-brand-500 dark:text-brand-400">
-            <p>
-              <span className="font-medium text-brand-600 dark:text-brand-300">
-                {t("settings.cloudBackup.syncLastTimeLabel")}
-              </span>
-              {" "}
-              {lastSyncDisplay}
-            </p>
-            {effectiveSyncStatus.last_sync_error && (
-              <p className="text-error-600 dark:text-error-400">
-                {effectiveSyncStatus.last_sync_error}
-              </p>
-            )}
-            <p>
-              <span className="font-medium text-brand-600 dark:text-brand-300">
-                {t("settings.cloudBackup.syncStrategyLabel")}
-              </span>
-              {" "}
-              {t("settings.cloudBackup.syncStrategyValue", {
-                seconds: syncIntervalSeconds,
-              })}
-            </p>
-            <p>{t("settings.cloudBackup.syncScopeHint")}</p>
-            <p>{t("settings.cloudBackup.syncLocalOnlyHint")}</p>
-            {!formData.cloud_backup_enabled && (
-              <p className="text-warning-600 dark:text-warning-400">
-                {t("settings.cloudBackup.syncRequiresBackup")}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
           {t("settings.cloudBackup.retentionLabel")}
@@ -681,6 +446,35 @@ export function CloudBackupSettingsPanel({
         />
         <p className="text-xs text-brand-500 dark:text-brand-400">
           {t("settings.cloudBackup.retentionHint")}
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+          {t("settings.cloudBackup.syncIntervalLabel")}
+        </label>
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            min={15}
+            step={5}
+            value={syncIntervalSeconds}
+            onChange={(e) => {
+              const raw = Number.parseInt(e.target.value, 10);
+              const nextValue = Number.isNaN(raw) ? 60 : Math.max(15, raw);
+              onChange({
+                ...formData,
+                cloud_sync_interval_sec: nextValue,
+              } as appconf.AppConfig);
+            }}
+            className="glass-input w-32 rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+          />
+          <span className="text-sm text-brand-500 dark:text-brand-400">
+            {t("settings.cloudBackup.syncIntervalUnit")}
+          </span>
+        </div>
+        <p className="text-xs text-brand-500 dark:text-brand-400">
+          {t("settings.cloudBackup.syncIntervalHint")}
         </p>
       </div>
 
