@@ -10,6 +10,8 @@ import (
 	"lunabox/internal/service/cloudsync"
 	"sync"
 	"time"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 const (
@@ -17,6 +19,8 @@ const (
 	cloudSyncStateSyncing = "syncing"
 	cloudSyncStateSuccess = "success"
 	cloudSyncStateFailed  = "failed"
+
+	cloudSyncStatusChangedEvent = "cloud-sync:status-changed"
 )
 
 type CloudSyncService struct {
@@ -44,14 +48,7 @@ func (s *CloudSyncService) GetCloudSyncStatus() vo.CloudSyncStatus {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	return vo.CloudSyncStatus{
-		Enabled:        s.config.CloudSyncEnabled,
-		Configured:     cloudprovider.IsConfigured(s.config),
-		Syncing:        s.syncing,
-		LastSyncTime:   s.config.LastCloudSyncTime,
-		LastSyncStatus: s.config.LastCloudSyncStatus,
-		LastSyncError:  s.config.LastCloudSyncError,
-	}
+	return s.currentStatusLocked()
 }
 
 func (s *CloudSyncService) SyncNow() (vo.CloudSyncStatus, error) {
@@ -65,13 +62,9 @@ func (s *CloudSyncService) SyncNow() (vo.CloudSyncStatus, error) {
 	s.config.LastCloudSyncStatus = cloudSyncStateSyncing
 	s.config.LastCloudSyncError = ""
 	_ = appconf.SaveConfig(s.config)
+	status := s.currentStatusLocked()
 	s.mu.Unlock()
-
-	defer func() {
-		s.mu.Lock()
-		s.syncing = false
-		s.mu.Unlock()
-	}()
+	s.emitStatusChanged(status)
 
 	if !s.config.CloudSyncEnabled {
 		return s.finishSync(cloudSyncStateIdle, "", nil)
@@ -124,16 +117,18 @@ func (s *CloudSyncService) currentStatusLocked() vo.CloudSyncStatus {
 
 func (s *CloudSyncService) finishSync(state, lastError string, syncErr error) (vo.CloudSyncStatus, error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
+	s.syncing = false
 	s.config.LastCloudSyncStatus = state
 	s.config.LastCloudSyncError = lastError
 	if state == cloudSyncStateSuccess {
 		s.config.LastCloudSyncTime = time.Now().Format(time.RFC3339)
 	}
 	_ = appconf.SaveConfig(s.config)
+	status := s.currentStatusLocked()
+	s.mu.Unlock()
+	s.emitStatusChanged(status)
 
-	return s.currentStatusLocked(), syncErr
+	return status, syncErr
 }
 
 func (s *CloudSyncService) RunStartupSync() {
@@ -230,4 +225,12 @@ func (s *CloudSyncService) syncInterval() time.Duration {
 		seconds = 15
 	}
 	return time.Duration(seconds) * time.Second
+}
+
+func (s *CloudSyncService) emitStatusChanged(status vo.CloudSyncStatus) {
+	if s.ctx == nil {
+		return
+	}
+
+	runtime.EventsEmit(s.ctx, cloudSyncStatusChangedEvent, status)
 }
