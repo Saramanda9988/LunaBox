@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { service } from "../../../wailsjs/go/models";
+import { models } from "../../../wailsjs/go/models";
 import {
   GetGameProgress,
   UpsertGameProgress,
@@ -81,7 +81,7 @@ export function AddGameProgressModal({
     setIsSaving(true);
     try {
       await UpsertGameProgress(
-        new service.GameProgress({
+        new models.GameProgress({
           id: "",
           game_id: gameId,
           chapter,
