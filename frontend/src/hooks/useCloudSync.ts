@@ -63,6 +63,7 @@ export function useCloudSync({ config }: UseCloudSyncOptions) {
     config?.cloud_backup_enabled,
     config?.cloud_backup_provider,
     config?.cloud_sync_enabled,
+    config?.auto_cloud_sync_enabled,
     config?.last_cloud_sync_error,
     config?.last_cloud_sync_status,
     config?.last_cloud_sync_time,

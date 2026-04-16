@@ -224,6 +224,14 @@ func shouldRunFrontendQuitSync(config *appconf.AppConfig) bool {
 		config.AutoUploadDBToCloud
 }
 
+func shouldRunAutomaticCloudSync(config *appconf.AppConfig) bool {
+	if config == nil {
+		return false
+	}
+
+	return config.CloudSyncEnabled && config.AutoCloudSyncEnabled
+}
+
 // isBindingsBuild 检测当前是否为生成绑定的构建（通过环境变量判断）
 // FIXME: 现在这样做是因为前置恢复逻辑和数据库初始化会影响wails generate module的正常执行，这里用了很tricky的方法做了一个兼容
 func isBindingsBuild() bool {
@@ -585,7 +593,9 @@ func main() {
 				appLogger.Error("system tray initialization timed out")
 			}
 
-			cloudSyncService.RunStartupSync()
+			if shouldRunAutomaticCloudSync(config) {
+				cloudSyncService.RunStartupSync()
+			}
 			cloudSyncService.StartScheduledSync()
 		},
 		OnShutdown: func(ctx context.Context) {

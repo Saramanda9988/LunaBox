@@ -51,6 +51,7 @@ type AppConfig struct {
 	BackupPassword       string `json:"backup_password,omitempty"`        // 备份密码（用于生成 user-id 和加密）
 	BackupUserID         string `json:"backup_user_id,omitempty"`         // 云端用户标识（由备份密码 hash 生成）
 	CloudSyncEnabled     bool   `json:"cloud_sync_enabled"`               // 是否启用云同步
+	AutoCloudSyncEnabled bool   `json:"auto_cloud_sync_enabled"`          // 是否启用自动云同步（启动时 + 定时）
 	CloudSyncIntervalSec int    `json:"cloud_sync_interval_sec"`          // 定时全量同步间隔（秒）
 	LastCloudSyncTime    string `json:"last_cloud_sync_time,omitempty"`   // 上次云同步时间
 	LastCloudSyncStatus  string `json:"last_cloud_sync_status,omitempty"` // 上次云同步状态: idle/syncing/success/failed
@@ -141,6 +142,7 @@ func LoadConfig() (*AppConfig, error) {
 		BackupPassword:         "",
 		BackupUserID:           "",
 		CloudSyncEnabled:       false,
+		AutoCloudSyncEnabled:   false,
 		CloudSyncIntervalSec:   60,
 		LastCloudSyncTime:      "",
 		LastCloudSyncStatus:    "idle",

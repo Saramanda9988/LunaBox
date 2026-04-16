@@ -143,6 +143,7 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.BackupPassword = newConfig.BackupPassword
 	s.config.BackupUserID = newConfig.BackupUserID
 	s.config.CloudSyncEnabled = newConfig.CloudSyncEnabled
+	s.config.AutoCloudSyncEnabled = newConfig.AutoCloudSyncEnabled
 	s.config.CloudSyncIntervalSec = newConfig.CloudSyncIntervalSec
 	s.config.LastCloudSyncTime = newConfig.LastCloudSyncTime
 	s.config.LastCloudSyncStatus = newConfig.LastCloudSyncStatus

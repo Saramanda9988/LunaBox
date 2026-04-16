@@ -22,6 +22,7 @@ export namespace appconf {
 	    backup_password?: string;
 	    backup_user_id?: string;
 	    cloud_sync_enabled: boolean;
+	    auto_cloud_sync_enabled: boolean;
 	    cloud_sync_interval_sec: number;
 	    last_cloud_sync_time?: string;
 	    last_cloud_sync_status?: string;
@@ -96,6 +97,7 @@ export namespace appconf {
 	        this.backup_password = source["backup_password"];
 	        this.backup_user_id = source["backup_user_id"];
 	        this.cloud_sync_enabled = source["cloud_sync_enabled"];
+	        this.auto_cloud_sync_enabled = source["auto_cloud_sync_enabled"];
 	        this.cloud_sync_interval_sec = source["cloud_sync_interval_sec"];
 	        this.last_cloud_sync_time = source["last_cloud_sync_time"];
 	        this.last_cloud_sync_status = source["last_cloud_sync_status"];

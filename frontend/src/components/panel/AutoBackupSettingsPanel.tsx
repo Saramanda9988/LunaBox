@@ -226,14 +226,32 @@ export function AutoBackupSettingsPanel({
             onChange({
               ...formData,
               cloud_sync_enabled: checked,
+              auto_cloud_sync_enabled: checked
+                ? formData.auto_cloud_sync_enabled || false
+                : false,
             } as appconf.AppConfig)}
           disabled={!cloudServiceEnabled}
+        />
+
+        <SettingSwitchRow
+          id="auto_cloud_sync_enabled"
+          label={t("settings.cloudBackup.autoSyncEnableLabel")}
+          hint={t("settings.cloudBackup.autoSyncEnableHint")}
+          checked={formData.auto_cloud_sync_enabled || false}
+          onCheckedChange={checked =>
+            onChange({
+              ...formData,
+              auto_cloud_sync_enabled: checked,
+            } as appconf.AppConfig)}
+          disabled={!cloudServiceEnabled || !formData.cloud_sync_enabled}
         />
 
         <div className="space-y-2 border-t border-brand-200 pt-4 dark:border-brand-700">
           <label
             className={`block text-sm font-medium ${
               cloudServiceEnabled
+              && formData.cloud_sync_enabled
+              && formData.auto_cloud_sync_enabled
                 ? "text-brand-700 dark:text-brand-300"
                 : "text-brand-400 dark:text-brand-500"
             }`}
@@ -246,7 +264,11 @@ export function AutoBackupSettingsPanel({
               min={15}
               step={5}
               value={syncIntervalSeconds}
-              disabled={!cloudServiceEnabled}
+              disabled={
+                !cloudServiceEnabled
+                || !formData.cloud_sync_enabled
+                || !formData.auto_cloud_sync_enabled
+              }
               onChange={(e) => {
                 const raw = Number.parseInt(e.target.value, 10);
                 const nextValue = Number.isNaN(raw) ? 60 : Math.max(15, raw);
@@ -272,6 +294,13 @@ export function AutoBackupSettingsPanel({
           {cloudServiceEnabled && !cloudConfigured && (
             <p className="text-xs text-warning-600 dark:text-warning-400">
               {t("settings.autoBackup.cloudSyncConfigRequiredHint")}
+            </p>
+          )}
+          {cloudServiceEnabled
+            && formData.cloud_sync_enabled
+            && !formData.auto_cloud_sync_enabled && (
+            <p className="text-xs text-brand-500 dark:text-brand-400">
+              {t("settings.autoBackup.cloudSyncManualRecommendedHint")}
             </p>
           )}
         </div>

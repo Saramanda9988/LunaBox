@@ -132,7 +132,7 @@ func (s *CloudSyncService) finishSync(state, lastError string, syncErr error) (v
 }
 
 func (s *CloudSyncService) RunStartupSync() {
-	if !s.config.CloudSyncEnabled || !cloudprovider.IsConfigured(s.config) {
+	if !s.shouldRunAutomaticSync() {
 		return
 	}
 
@@ -169,7 +169,7 @@ func (s *CloudSyncService) StartScheduledSync() {
 			case <-stop:
 				return
 			case <-ticker.C:
-				if !s.config.CloudSyncEnabled || !cloudprovider.IsConfigured(s.config) {
+				if !s.shouldRunAutomaticSync() {
 					nextSyncAt = time.Time{}
 					lastInterval = 0
 					continue
@@ -225,6 +225,12 @@ func (s *CloudSyncService) syncInterval() time.Duration {
 		seconds = 15
 	}
 	return time.Duration(seconds) * time.Second
+}
+
+func (s *CloudSyncService) shouldRunAutomaticSync() bool {
+	return s.config.CloudSyncEnabled &&
+		s.config.AutoCloudSyncEnabled &&
+		cloudprovider.IsConfigured(s.config)
 }
 
 func (s *CloudSyncService) emitStatusChanged(status vo.CloudSyncStatus) {

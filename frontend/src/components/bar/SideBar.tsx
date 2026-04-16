@@ -83,6 +83,9 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
   const cloudSyncEnabled = Boolean(
     cloudServiceEnabled && config?.cloud_sync_enabled,
   );
+  const autoCloudSyncEnabled = Boolean(
+    cloudSyncEnabled && config?.auto_cloud_sync_enabled,
+  );
   const cloudSyncStatusLabel = getCloudSyncStatusLabel(
     effectiveSyncStatus.last_sync_status,
     t,
@@ -106,6 +109,10 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
 
     if (!syncConfigured) {
       return t("settings.cloudBackup.syncNotConfigured");
+    }
+
+    if (!autoCloudSyncEnabled) {
+      return t("sideBar.cloudSyncManualRecommendedHint");
     }
 
     return t("sideBar.cloudSyncReadyHint");
@@ -267,6 +274,13 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
                   {cloudSyncEnabled && !syncConfigured && (
                     <span className="text-[9px] font-medium text-warning-600 dark:text-warning-400">
                       {t("settings.cloudBackup.syncNotConfigured")}
+                    </span>
+                  )}
+                  {cloudSyncEnabled
+                    && syncConfigured
+                    && !autoCloudSyncEnabled && (
+                    <span className="text-[9px] font-medium text-brand-500 dark:text-brand-400">
+                      {t("sideBar.cloudSyncManualTag")}
                     </span>
                   )}
                   {cloudSyncEnabled && (
