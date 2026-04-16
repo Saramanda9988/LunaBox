@@ -6,21 +6,11 @@ import (
 	"fmt"
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
+	"lunabox/internal/models"
 	"time"
 
 	"github.com/google/uuid"
 )
-
-// GameProgress 游玩进度记录
-type GameProgress struct {
-	ID              string    `json:"id"`
-	GameID          string    `json:"game_id"`
-	Chapter         string    `json:"chapter"`
-	Route           string    `json:"route"`
-	ProgressNote    string    `json:"progress_note"`
-	SpoilerBoundary string    `json:"spoiler_boundary"` // none | chapter_end | route_end | full
-	UpdatedAt       time.Time `json:"updated_at"`
-}
 
 type GameProgressService struct {
 	ctx       context.Context
@@ -39,7 +29,7 @@ func (s *GameProgressService) Init(ctx context.Context, db *sql.DB, appConfig *a
 }
 
 // GetGameProgress 获取指定游戏的游玩进度记录
-func (s *GameProgressService) GetGameProgress(gameID string) (*GameProgress, error) {
+func (s *GameProgressService) GetGameProgress(gameID string) (*models.GameProgress, error) {
 	row := s.db.QueryRowContext(s.ctx, `
 		SELECT id, game_id, chapter, route, progress_note, spoiler_boundary, updated_at
 		FROM game_progress
@@ -48,7 +38,7 @@ func (s *GameProgressService) GetGameProgress(gameID string) (*GameProgress, err
 		LIMIT 1
 	`, gameID)
 
-	var gp GameProgress
+	var gp models.GameProgress
 	err := row.Scan(&gp.ID, &gp.GameID, &gp.Chapter, &gp.Route, &gp.ProgressNote, &gp.SpoilerBoundary, &gp.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -60,7 +50,7 @@ func (s *GameProgressService) GetGameProgress(gameID string) (*GameProgress, err
 }
 
 // ListGameProgresses 获取指定游戏的全部游玩进度记录
-func (s *GameProgressService) ListGameProgresses(gameID string) ([]GameProgress, error) {
+func (s *GameProgressService) ListGameProgresses(gameID string) ([]models.GameProgress, error) {
 	rows, err := s.db.QueryContext(s.ctx, `
 		SELECT id, game_id, chapter, route, progress_note, spoiler_boundary, updated_at
 		FROM game_progress
@@ -72,9 +62,9 @@ func (s *GameProgressService) ListGameProgresses(gameID string) ([]GameProgress,
 	}
 	defer rows.Close()
 
-	progresses := make([]GameProgress, 0)
+	progresses := make([]models.GameProgress, 0)
 	for rows.Next() {
-		var gp GameProgress
+		var gp models.GameProgress
 		if err := rows.Scan(&gp.ID, &gp.GameID, &gp.Chapter, &gp.Route, &gp.ProgressNote, &gp.SpoilerBoundary, &gp.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan game progress: %w", err)
 		}
@@ -89,7 +79,7 @@ func (s *GameProgressService) ListGameProgresses(gameID string) ([]GameProgress,
 }
 
 // UpsertGameProgress 追加保存游玩进度
-func (s *GameProgressService) UpsertGameProgress(gp GameProgress) (*GameProgress, error) {
+func (s *GameProgressService) UpsertGameProgress(gp models.GameProgress) (*models.GameProgress, error) {
 	if gp.GameID == "" {
 		return nil, fmt.Errorf("game_id is required")
 	}
