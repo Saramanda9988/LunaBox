@@ -10,10 +10,6 @@ export function Init(arg1, arg2, arg3) {
   return window['go']['service']['CloudSyncService']['Init'](arg1, arg2, arg3);
 }
 
-export function NotifyLibraryChanged() {
-  return window['go']['service']['CloudSyncService']['NotifyLibraryChanged']();
-}
-
 export function RunStartupSync() {
   return window['go']['service']['CloudSyncService']['RunStartupSync']();
 }

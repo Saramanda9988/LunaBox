@@ -16,7 +16,6 @@ type SessionService struct {
 	ctx    context.Context
 	db     *sql.DB
 	config *appconf.AppConfig
-	cloud  *CloudSyncService
 }
 
 func NewSessionService() *SessionService {
@@ -27,10 +26,6 @@ func (s *SessionService) Init(ctx context.Context, db *sql.DB, config *appconf.A
 	s.ctx = ctx
 	s.db = db
 	s.config = config
-}
-
-func (s *SessionService) SetCloudSyncService(cloudSync *CloudSyncService) {
-	s.cloud = cloudSync
 }
 
 // CreatePendingSession 创建待完成的游戏会话（用于开始游戏时）
@@ -104,7 +99,6 @@ func (s *SessionService) AddPlaySession(gameID string, startTime time.Time, dura
 	if err := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityPlaySession, session.ID); err != nil {
 		applog.LogWarningf(s.ctx, "AddPlaySession: failed to clear play_session tombstone %s: %v", session.ID, err)
 	}
-	s.notifyCloudSync()
 
 	applog.LogInfof(s.ctx, "AddPlaySession: added play session for game %s, duration: %d minutes", gameID, durationMinutes)
 	return session, nil
@@ -158,7 +152,6 @@ func (s *SessionService) DeletePlaySession(sessionID string) error {
 	if err := upsertSyncTombstone(s.ctx, s.db, cloudSyncEntityPlaySession, sessionID, time.Now()); err != nil {
 		return err
 	}
-	s.notifyCloudSync()
 
 	applog.LogInfof(s.ctx, "DeletePlaySession: deleted play session %s", sessionID)
 	return nil
@@ -195,7 +188,6 @@ func (s *SessionService) UpdatePlaySession(session models.PlaySession) error {
 	if err := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityPlaySession, session.ID); err != nil {
 		applog.LogWarningf(s.ctx, "UpdatePlaySession: failed to clear play_session tombstone %s: %v", session.ID, err)
 	}
-	s.notifyCloudSync()
 
 	applog.LogInfof(s.ctx, "UpdatePlaySession: updated play session %s", session.ID)
 	return nil
@@ -238,7 +230,6 @@ func (s *SessionService) BatchAddPlaySessions(sessions []models.PlaySession) err
 		return fmt.Errorf("提交事务失败: %w", err)
 	}
 
-	s.notifyCloudSync()
 	applog.LogInfof(s.ctx, "BatchAddPlaySessions: added %d play sessions", len(sessions))
 	return nil
 }
@@ -320,14 +311,5 @@ func (s *SessionService) CleanupUnfinishedSessions() error {
 	}
 
 	applog.LogInfof(s.ctx, "CleanupUnfinishedSessions: deleted %d short sessions, updated %d sessions", deleted, updated)
-	if deleted > 0 || updated > 0 {
-		s.notifyCloudSync()
-	}
 	return nil
-}
-
-func (s *SessionService) notifyCloudSync() {
-	if s.cloud != nil {
-		s.cloud.NotifyLibraryChanged()
-	}
 }

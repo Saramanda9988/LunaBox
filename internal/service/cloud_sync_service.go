@@ -170,11 +170,6 @@ func (s *CloudSyncService) GetCloudSyncStatus() vo.CloudSyncStatus {
 	}
 }
 
-func (s *CloudSyncService) NotifyLibraryChanged() {
-	// 同步策略调整为：启动时同步 + 定时全量同步 + 手动同步。
-	// 本地数据变更不再立即触发自动上传，避免高频写云端造成不可预期覆盖。
-}
-
 func (s *CloudSyncService) SyncNow() (vo.CloudSyncStatus, error) {
 	s.mu.Lock()
 	if s.syncing {

@@ -32,7 +32,6 @@ type GameService struct {
 	db         *sql.DB
 	config     *appconf.AppConfig
 	tagService *TagService
-	cloudSync  *CloudSyncService
 }
 
 type metadataSearchSource struct {
@@ -55,10 +54,6 @@ func (s *GameService) Init(ctx context.Context, db *sql.DB, config *appconf.AppC
 
 func (s *GameService) SetTagService(ts *TagService) {
 	s.tagService = ts
-}
-
-func (s *GameService) SetCloudSyncService(cloudSync *CloudSyncService) {
-	s.cloudSync = cloudSync
 }
 
 func (s *GameService) SelectGameExecutable() (string, error) {
@@ -210,8 +205,6 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 		go s.asyncDownloadCoverImage(game.ID, game.Name, originalCoverURL)
 	}
 
-	s.notifyCloudSync()
-
 	return nil
 }
 
@@ -271,9 +264,6 @@ func (s *GameService) asyncDownloadCoverImage(gameID, gameName, coverURL string)
 func (s *GameService) updateCoverURL(gameID, coverURL string) error {
 	query := `UPDATE games SET cover_url = ?, updated_at = ? WHERE id = ?`
 	_, err := s.db.ExecContext(s.ctx, query, coverURL, time.Now(), gameID)
-	if err == nil {
-		s.notifyCloudSync()
-	}
 	return err
 }
 
@@ -294,7 +284,6 @@ func (s *GameService) DeleteGame(id string) error {
 		return err
 	}
 
-	s.notifyCloudSync()
 	return nil
 }
 
@@ -323,7 +312,6 @@ func (s *GameService) DeleteGames(ids []string) error {
 		return err
 	}
 
-	s.notifyCloudSync()
 	return nil
 }
 
@@ -546,7 +534,6 @@ func (s *GameService) UpdateGame(game models.Game) error {
 	if err := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityGame, game.ID); err != nil {
 		applog.LogWarningf(s.ctx, "UpdateGame: failed to clear game tombstone for %s: %v", game.ID, err)
 	}
-	s.notifyCloudSync()
 	return nil
 }
 
@@ -674,12 +661,6 @@ func (s *GameService) deleteGameTx(tx *sql.Tx, id string, deletedAt time.Time) e
 	}
 
 	return nil
-}
-
-func (s *GameService) notifyCloudSync() {
-	if s.cloudSync != nil {
-		s.cloudSync.NotifyLibraryChanged()
-	}
 }
 
 // SelectSaveFile 选择存档文件

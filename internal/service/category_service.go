@@ -18,7 +18,6 @@ type CategoryService struct {
 	ctx    context.Context
 	db     *sql.DB
 	config *appconf.AppConfig
-	cloud  *CloudSyncService
 }
 
 func NewCategoryService() *CategoryService {
@@ -30,10 +29,6 @@ func (s *CategoryService) Init(ctx context.Context, db *sql.DB, config *appconf.
 	s.db = db
 	s.config = config
 	s.ensureSystemCategories()
-}
-
-func (s *CategoryService) SetCloudSyncService(cloudSync *CloudSyncService) {
-	s.cloud = cloudSync
 }
 
 func (s *CategoryService) ensureSystemCategories() {
@@ -153,7 +148,6 @@ func (s *CategoryService) AddCategory(name string, emoji string) error {
 		if clearErr := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityCategory, id); clearErr != nil {
 			applog.LogWarningf(s.ctx, "AddCategory: failed to clear category tombstone %s: %v", id, clearErr)
 		}
-		s.notifyCloudSync()
 	}
 	return err
 }
@@ -179,7 +173,6 @@ func (s *CategoryService) UpdateCategory(id, name, emoji string) error {
 		if clearErr := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityCategory, id); clearErr != nil {
 			applog.LogWarningf(s.ctx, "UpdateCategory: failed to clear category tombstone %s: %v", id, clearErr)
 		}
-		s.notifyCloudSync()
 	}
 	return err
 }
@@ -198,7 +191,6 @@ func (s *CategoryService) AddGameToCategory(gameID, categoryID string) error {
 		if clearErr := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityGameCategory, relationTombstoneID(gameID, categoryID)); clearErr != nil {
 			applog.LogWarningf(s.ctx, "AddGameToCategory: failed to clear relation tombstone for %s/%s: %v", gameID, categoryID, clearErr)
 		}
-		s.notifyCloudSync()
 	}
 	return err
 }
@@ -244,7 +236,6 @@ func (s *CategoryService) AddGamesToCategories(gameIDs []string, categoryIDs []s
 		applog.LogErrorf(s.ctx, "AddGamesToCategories: failed to commit transaction: %v", err)
 		return err
 	}
-	s.notifyCloudSync()
 	return nil
 }
 
@@ -262,7 +253,6 @@ func (s *CategoryService) RemoveGameFromCategory(gameID, categoryID string) erro
 			if tombstoneErr := upsertSyncTombstone(s.ctx, s.db, cloudSyncEntityGameCategory, relationTombstoneID(gameID, categoryID), time.Now()); tombstoneErr != nil {
 				return tombstoneErr
 			}
-			s.notifyCloudSync()
 		}
 	}
 	return err
@@ -315,9 +305,6 @@ func (s *CategoryService) RemoveGamesFromCategory(gameIDs []string, categoryID s
 	}
 	if err := tx.Commit(); err != nil {
 		return err
-	}
-	if len(tombstoneIDs) > 0 {
-		s.notifyCloudSync()
 	}
 	return err
 }
@@ -382,7 +369,6 @@ func (s *CategoryService) DeleteCategory(id string) error {
 		applog.LogErrorf(s.ctx, "DeleteCategory: failed to commit transaction for id %s: %v", id, err)
 		return err
 	}
-	s.notifyCloudSync()
 	return nil
 }
 
@@ -461,14 +447,7 @@ func (s *CategoryService) DeleteCategories(ids []string) error {
 		applog.LogErrorf(s.ctx, "DeleteCategories: failed to commit transaction: %v", err)
 		return err
 	}
-	s.notifyCloudSync()
 	return nil
-}
-
-func (s *CategoryService) notifyCloudSync() {
-	if s.cloud != nil {
-		s.cloud.NotifyLibraryChanged()
-	}
 }
 
 func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, error) {

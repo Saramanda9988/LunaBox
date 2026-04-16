@@ -17,7 +17,6 @@ type TagService struct {
 	ctx    context.Context
 	db     *sql.DB
 	config *appconf.AppConfig
-	cloud  *CloudSyncService
 }
 
 func NewTagService() *TagService {
@@ -28,10 +27,6 @@ func (s *TagService) Init(ctx context.Context, db *sql.DB, config *appconf.AppCo
 	s.ctx = ctx
 	s.db = db
 	s.config = config
-}
-
-func (s *TagService) SetCloudSyncService(cloudSync *CloudSyncService) {
-	s.cloud = cloudSync
 }
 
 // GetTagsByGame 获取指定游戏的所有 tag
@@ -81,7 +76,6 @@ func (s *TagService) AddUserTag(gameID string, tagName string) error {
 	if clearErr := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityGameTag, tagTombstoneID(gameID, "user", tagName)); clearErr != nil {
 		applog.LogWarningf(s.ctx, "AddUserTag: failed to clear tag tombstone for %s/%s: %v", gameID, tagName, clearErr)
 	}
-	s.notifyCloudSync()
 	return nil
 }
 
@@ -126,7 +120,6 @@ func (s *TagService) DeleteTag(tagID string) error {
 		return fmt.Errorf("failed to commit delete tag tx: %w", err)
 	}
 
-	s.notifyCloudSync()
 	return nil
 }
 
@@ -248,12 +241,5 @@ func (s *TagService) upsertScrapedTags(gameID string, tags []metadata.TagItem) e
 		return err
 	}
 
-	s.notifyCloudSync()
 	return nil
-}
-
-func (s *TagService) notifyCloudSync() {
-	if s.cloud != nil {
-		s.cloud.NotifyLibraryChanged()
-	}
 }

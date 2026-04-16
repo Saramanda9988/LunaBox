@@ -5,7 +5,6 @@ import {models} from '../models';
 import {context} from '../models';
 import {sql} from '../models';
 import {appconf} from '../models';
-import {service} from '../models';
 
 export function AddCategory(arg1:string,arg2:string):Promise<void>;
 
@@ -30,7 +29,5 @@ export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Pr
 export function RemoveGameFromCategory(arg1:string,arg2:string):Promise<void>;
 
 export function RemoveGamesFromCategory(arg1:Array<string>,arg2:string):Promise<void>;
-
-export function SetCloudSyncService(arg1:service.CloudSyncService):Promise<void>;
 
 export function UpdateCategory(arg1:string,arg2:string,arg3:string):Promise<void>;

@@ -13,6 +13,4 @@ export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Pr
 
 export function ListGameProgresses(arg1:string):Promise<Array<service.GameProgress>>;
 
-export function SetCloudSyncService(arg1:service.CloudSyncService):Promise<void>;
-
 export function UpsertGameProgress(arg1:service.GameProgress):Promise<service.GameProgress>;

@@ -5,7 +5,6 @@ import {models} from '../models';
 import {context} from '../models';
 import {sql} from '../models';
 import {appconf} from '../models';
-import {service} from '../models';
 
 export function AddPlaySession(arg1:string,arg2:time.Time,arg3:number):Promise<models.PlaySession>;
 
@@ -20,7 +19,5 @@ export function DeletePlaySession(arg1:string):Promise<void>;
 export function GetPlaySessions(arg1:string):Promise<Array<models.PlaySession>>;
 
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;
-
-export function SetCloudSyncService(arg1:service.CloudSyncService):Promise<void>;
 
 export function UpdatePlaySession(arg1:models.PlaySession):Promise<void>;

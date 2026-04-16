@@ -26,7 +26,6 @@ type GameProgressService struct {
 	ctx       context.Context
 	db        *sql.DB
 	appConfig *appconf.AppConfig
-	cloud     *CloudSyncService
 }
 
 func NewGameProgressService() *GameProgressService {
@@ -37,10 +36,6 @@ func (s *GameProgressService) Init(ctx context.Context, db *sql.DB, appConfig *a
 	s.ctx = ctx
 	s.db = db
 	s.appConfig = appConfig
-}
-
-func (s *GameProgressService) SetCloudSyncService(cloudSync *CloudSyncService) {
-	s.cloud = cloudSync
 }
 
 // GetGameProgress 获取指定游戏的游玩进度记录
@@ -123,7 +118,6 @@ func (s *GameProgressService) UpsertGameProgress(gp GameProgress) (*GameProgress
 	if err := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityGameProgress, gp.ID); err != nil {
 		applog.LogWarningf(s.ctx, "UpsertGameProgress: failed to clear progress tombstone %s: %v", gp.ID, err)
 	}
-	s.notifyCloudSync()
 
 	return &gp, nil
 }
@@ -167,14 +161,5 @@ func (s *GameProgressService) DeleteGameProgress(gameID string) error {
 		return fmt.Errorf("failed to commit delete game progress tx: %w", err)
 	}
 
-	if len(progressIDs) > 0 {
-		s.notifyCloudSync()
-	}
 	return nil
-}
-
-func (s *GameProgressService) notifyCloudSync() {
-	if s.cloud != nil {
-		s.cloud.NotifyLibraryChanged()
-	}
 }

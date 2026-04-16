@@ -82,10 +82,6 @@ export function SelectSaveFile() {
   return window['go']['service']['GameService']['SelectSaveFile']();
 }
 
-export function SetCloudSyncService(arg1) {
-  return window['go']['service']['GameService']['SetCloudSyncService'](arg1);
-}
-
 export function SetTagService(arg1) {
   return window['go']['service']['GameService']['SetTagService'](arg1);
 }

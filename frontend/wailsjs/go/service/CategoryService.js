@@ -50,10 +50,6 @@ export function RemoveGamesFromCategory(arg1, arg2) {
   return window['go']['service']['CategoryService']['RemoveGamesFromCategory'](arg1, arg2);
 }
 
-export function SetCloudSyncService(arg1) {
-  return window['go']['service']['CategoryService']['SetCloudSyncService'](arg1);
-}
-
 export function UpdateCategory(arg1, arg2, arg3) {
   return window['go']['service']['CategoryService']['UpdateCategory'](arg1, arg2, arg3);
 }

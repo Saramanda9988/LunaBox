@@ -149,13 +149,6 @@ export namespace appconf {
 
 export namespace enums {
 	
-	export enum SourceType {
-	    LOCAL = "local",
-	    BANGUMI = "bangumi",
-	    VNDB = "vndb",
-	    YMGAL = "ymgal",
-	    STEAM = "steam",
-	}
 	export enum Period {
 	    DAY = "day",
 	    WEEK = "week",
@@ -172,6 +165,13 @@ export namespace enums {
 	    PLAYING = "playing",
 	    COMPLETED = "completed",
 	    ON_HOLD = "on_hold",
+	}
+	export enum SourceType {
+	    LOCAL = "local",
+	    BANGUMI = "bangumi",
+	    VNDB = "vndb",
+	    YMGAL = "ymgal",
+	    STEAM = "steam",
 	}
 
 }
@@ -452,18 +452,6 @@ export namespace service {
 	
 	    static createFrom(source: any = {}) {
 	        return new BackupService(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	
-	    }
-	}
-	export class CloudSyncService {
-	
-	
-	    static createFrom(source: any = {}) {
-	        return new CloudSyncService(source);
 	    }
 	
 	    constructor(source: any = {}) {

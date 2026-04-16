@@ -9,8 +9,6 @@ export function GetCloudSyncStatus():Promise<vo.CloudSyncStatus>;
 
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;
 
-export function NotifyLibraryChanged():Promise<void>;
-
 export function RunStartupSync():Promise<void>;
 
 export function StartScheduledSync():Promise<void>;

@@ -18,10 +18,6 @@ export function ListGameProgresses(arg1) {
   return window['go']['service']['GameProgressService']['ListGameProgresses'](arg1);
 }
 
-export function SetCloudSyncService(arg1) {
-  return window['go']['service']['GameProgressService']['SetCloudSyncService'](arg1);
-}
-
 export function UpsertGameProgress(arg1) {
   return window['go']['service']['GameProgressService']['UpsertGameProgress'](arg1);
 }

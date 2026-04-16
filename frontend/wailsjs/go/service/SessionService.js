@@ -30,10 +30,6 @@ export function Init(arg1, arg2, arg3) {
   return window['go']['service']['SessionService']['Init'](arg1, arg2, arg3);
 }
 
-export function SetCloudSyncService(arg1) {
-  return window['go']['service']['SessionService']['SetCloudSyncService'](arg1);
-}
-
 export function UpdatePlaySession(arg1) {
   return window['go']['service']['SessionService']['UpdatePlaySession'](arg1);
 }
