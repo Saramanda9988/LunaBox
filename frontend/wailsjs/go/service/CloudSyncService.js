@@ -18,6 +18,14 @@ export function RunStartupSync() {
   return window['go']['service']['CloudSyncService']['RunStartupSync']();
 }
 
+export function StartScheduledSync() {
+  return window['go']['service']['CloudSyncService']['StartScheduledSync']();
+}
+
+export function StopScheduledSync() {
+  return window['go']['service']['CloudSyncService']['StopScheduledSync']();
+}
+
 export function SyncNow() {
   return window['go']['service']['CloudSyncService']['SyncNow']();
 }

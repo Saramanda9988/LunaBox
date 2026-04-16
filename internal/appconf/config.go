@@ -51,6 +51,7 @@ type AppConfig struct {
 	BackupPassword       string `json:"backup_password,omitempty"`        // 备份密码（用于生成 user-id 和加密）
 	BackupUserID         string `json:"backup_user_id,omitempty"`         // 云端用户标识（由备份密码 hash 生成）
 	CloudSyncEnabled     bool   `json:"cloud_sync_enabled"`               // 是否启用云同步
+	CloudSyncIntervalSec int    `json:"cloud_sync_interval_sec"`          // 定时全量同步间隔（秒）
 	LastCloudSyncTime    string `json:"last_cloud_sync_time,omitempty"`   // 上次云同步时间
 	LastCloudSyncStatus  string `json:"last_cloud_sync_status,omitempty"` // 上次云同步状态: idle/syncing/success/failed
 	LastCloudSyncError   string `json:"last_cloud_sync_error,omitempty"`  // 上次云同步错误
@@ -140,6 +141,7 @@ func LoadConfig() (*AppConfig, error) {
 		BackupPassword:         "",
 		BackupUserID:           "",
 		CloudSyncEnabled:       false,
+		CloudSyncIntervalSec:   60,
 		LastCloudSyncTime:      "",
 		LastCloudSyncStatus:    "idle",
 		LastCloudSyncError:     "",
@@ -213,6 +215,10 @@ func LoadConfig() (*AppConfig, error) {
 
 	if config.WindowZoomFactor <= 0 {
 		config.WindowZoomFactor = 1.0
+	}
+
+	if config.CloudSyncIntervalSec <= 0 {
+		config.CloudSyncIntervalSec = 60
 	}
 
 	// 备份口令只在初始化时使用，不应长期明文落盘。

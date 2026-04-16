@@ -50,6 +50,14 @@ function formatSyncTime(value: string | undefined, locale: string) {
   }).format(date);
 }
 
+function getSyncIntervalSeconds(config: appconf.AppConfig) {
+  if (!config.cloud_sync_interval_sec || config.cloud_sync_interval_sec <= 0) {
+    return 60;
+  }
+
+  return Math.max(15, config.cloud_sync_interval_sec);
+}
+
 export function CloudBackupSettingsPanel({
   formData,
   onChange,
@@ -210,6 +218,7 @@ export function CloudBackupSettingsPanel({
   const syncConfigured
     = effectiveSyncStatus.configured || isCloudProviderConfigured(formData);
   const syncBusy = syncingNow || effectiveSyncStatus.syncing;
+  const syncIntervalSeconds = getSyncIntervalSeconds(formData);
   const syncStatusLabel = (() => {
     switch (effectiveSyncStatus.last_sync_status) {
       case "success":
@@ -259,6 +268,60 @@ export function CloudBackupSettingsPanel({
             onChange({
               ...formData,
               cloud_backup_enabled: checked,
+            } as appconf.AppConfig)}
+        />
+      </div>
+
+      {formData.cloud_sync_enabled && (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+            {t("settings.cloudBackup.syncIntervalLabel")}
+          </label>
+          <div className="flex items-center gap-3">
+            <input
+              type="number"
+              min={15}
+              step={5}
+              value={syncIntervalSeconds}
+              onChange={(e) => {
+                const raw = Number.parseInt(e.target.value, 10);
+                const nextValue = Number.isNaN(raw) ? 60 : Math.max(15, raw);
+                onChange({
+                  ...formData,
+                  cloud_sync_interval_sec: nextValue,
+                } as appconf.AppConfig);
+              }}
+              className="glass-input w-32 rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+            />
+            <span className="text-sm text-brand-500 dark:text-brand-400">
+              {t("settings.cloudBackup.syncIntervalUnit")}
+            </span>
+          </div>
+          <p className="text-xs text-brand-500 dark:text-brand-400">
+            {t("settings.cloudBackup.syncIntervalHint")}
+          </p>
+        </div>
+      )}
+
+      <div className="glass-card flex items-center justify-between rounded-lg bg-brand-50 p-4 dark:bg-brand-800/50">
+        <div className="flex flex-col">
+          <label
+            htmlFor="cloud_sync_enabled"
+            className="cursor-pointer text-sm font-medium text-brand-700 dark:text-brand-300"
+          >
+            {t("settings.cloudBackup.syncEnableLabel")}
+          </label>
+          <p className="mt-1 text-xs text-brand-500 dark:text-brand-400">
+            {t("settings.cloudBackup.syncEnableHint")}
+          </p>
+        </div>
+        <BetterSwitch
+          id="cloud_sync_enabled"
+          checked={formData.cloud_sync_enabled || false}
+          onCheckedChange={checked =>
+            onChange({
+              ...formData,
+              cloud_sync_enabled: checked,
             } as appconf.AppConfig)}
         />
       </div>
@@ -530,29 +593,6 @@ export function CloudBackupSettingsPanel({
       )}
 
       <div className="glass-card space-y-4 rounded-lg bg-brand-50 p-4 dark:bg-brand-800/50">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex flex-col">
-            <label
-              htmlFor="cloud_sync_enabled"
-              className="cursor-pointer text-sm font-medium text-brand-700 dark:text-brand-300"
-            >
-              {t("settings.cloudBackup.syncEnableLabel")}
-            </label>
-            <p className="mt-1 text-xs text-brand-500 dark:text-brand-400">
-              {t("settings.cloudBackup.syncEnableHint")}
-            </p>
-          </div>
-          <BetterSwitch
-            id="cloud_sync_enabled"
-            checked={formData.cloud_sync_enabled || false}
-            onCheckedChange={checked =>
-              onChange({
-                ...formData,
-                cloud_sync_enabled: checked,
-              } as appconf.AppConfig)}
-          />
-        </div>
-
         <div className="rounded-lg border border-brand-200 bg-white/70 p-3 dark:border-brand-700 dark:bg-brand-900/30">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-1">
@@ -603,6 +643,15 @@ export function CloudBackupSettingsPanel({
                 {effectiveSyncStatus.last_sync_error}
               </p>
             )}
+            <p>
+              <span className="font-medium text-brand-600 dark:text-brand-300">
+                {t("settings.cloudBackup.syncStrategyLabel")}
+              </span>
+              {" "}
+              {t("settings.cloudBackup.syncStrategyValue", {
+                seconds: syncIntervalSeconds,
+              })}
+            </p>
             <p>{t("settings.cloudBackup.syncScopeHint")}</p>
             <p>{t("settings.cloudBackup.syncLocalOnlyHint")}</p>
             {!formData.cloud_backup_enabled && (

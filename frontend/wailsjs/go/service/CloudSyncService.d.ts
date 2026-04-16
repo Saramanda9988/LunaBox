@@ -13,4 +13,8 @@ export function NotifyLibraryChanged():Promise<void>;
 
 export function RunStartupSync():Promise<void>;
 
+export function StartScheduledSync():Promise<void>;
+
+export function StopScheduledSync():Promise<void>;
+
 export function SyncNow():Promise<vo.CloudSyncStatus>;

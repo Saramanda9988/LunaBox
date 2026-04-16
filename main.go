@@ -591,9 +591,12 @@ func main() {
 			}
 
 			cloudSyncService.RunStartupSync()
+			cloudSyncService.StartScheduledSync()
 		},
 		OnShutdown: func(ctx context.Context) {
 			appState.BeginShutdown()
+
+			cloudSyncService.StopScheduledSync()
 
 			shutdownStartedAt := time.Now()
 			logShutdownStep := func(step string, fn func()) {

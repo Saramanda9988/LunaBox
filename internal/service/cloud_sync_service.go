@@ -37,9 +37,10 @@ type CloudSyncService struct {
 	db     *sql.DB
 	config *appconf.AppConfig
 
-	mu       sync.Mutex
-	syncing  bool
-	debounce *time.Timer
+	mu            sync.Mutex
+	syncing       bool
+	schedulerStop chan struct{}
+	schedulerDone chan struct{}
 }
 
 type cloudSyncSnapshot struct {
@@ -170,21 +171,8 @@ func (s *CloudSyncService) GetCloudSyncStatus() vo.CloudSyncStatus {
 }
 
 func (s *CloudSyncService) NotifyLibraryChanged() {
-	if !s.config.CloudSyncEnabled || !cloudprovider.IsConfigured(s.config) {
-		return
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if s.debounce != nil {
-		s.debounce.Stop()
-	}
-	s.debounce = time.AfterFunc(2*time.Second, func() {
-		if _, err := s.SyncNow(); err != nil {
-			applog.LogWarningf(s.ctx, "CloudSyncService.NotifyLibraryChanged: sync failed: %v", err)
-		}
-	})
+	// 同步策略调整为：启动时同步 + 定时全量同步 + 手动同步。
+	// 本地数据变更不再立即触发自动上传，避免高频写云端造成不可预期覆盖。
 }
 
 func (s *CloudSyncService) SyncNow() (vo.CloudSyncStatus, error) {
@@ -561,6 +549,90 @@ func (s *CloudSyncService) RunStartupSync() {
 			applog.LogWarningf(s.ctx, "CloudSyncService.RunStartupSync: sync failed: %v", err)
 		}
 	}()
+}
+
+func (s *CloudSyncService) StartScheduledSync() {
+	s.mu.Lock()
+	if s.schedulerStop != nil {
+		s.mu.Unlock()
+		return
+	}
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	s.schedulerStop = stop
+	s.schedulerDone = done
+	s.mu.Unlock()
+
+	go func() {
+		defer close(done)
+
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+
+		var nextSyncAt time.Time
+		var lastInterval time.Duration
+
+		for {
+			select {
+			case <-stop:
+				return
+			case <-ticker.C:
+				if !s.config.CloudSyncEnabled || !cloudprovider.IsConfigured(s.config) {
+					nextSyncAt = time.Time{}
+					lastInterval = 0
+					continue
+				}
+
+				interval := s.syncInterval()
+				if nextSyncAt.IsZero() || interval != lastInterval {
+					nextSyncAt = time.Now().Add(interval)
+					lastInterval = interval
+					continue
+				}
+
+				if time.Now().Before(nextSyncAt) {
+					continue
+				}
+
+				if _, err := s.SyncNow(); err != nil {
+					applog.LogWarningf(s.ctx, "CloudSyncService.StartScheduledSync: sync failed: %v", err)
+				}
+
+				interval = s.syncInterval()
+				nextSyncAt = time.Now().Add(interval)
+				lastInterval = interval
+			}
+		}
+	}()
+}
+
+func (s *CloudSyncService) StopScheduledSync() {
+	s.mu.Lock()
+	stop := s.schedulerStop
+	done := s.schedulerDone
+	if stop == nil {
+		s.mu.Unlock()
+		return
+	}
+	s.schedulerStop = nil
+	s.schedulerDone = nil
+	s.mu.Unlock()
+
+	close(stop)
+	if done != nil {
+		<-done
+	}
+}
+
+func (s *CloudSyncService) syncInterval() time.Duration {
+	seconds := s.config.CloudSyncIntervalSec
+	if seconds <= 0 {
+		seconds = 60
+	}
+	if seconds < 15 {
+		seconds = 15
+	}
+	return time.Duration(seconds) * time.Second
 }
 
 func (s *CloudSyncService) mergeSnapshots(local, remote cloudSyncSnapshot, remoteExists bool) cloudSyncSnapshot {
