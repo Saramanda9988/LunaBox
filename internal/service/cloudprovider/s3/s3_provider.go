@@ -55,6 +55,7 @@ func NewS3Provider(cfg S3Config) (*S3Provider, error) {
 		config.WithRegion(cfg.Region),
 		config.WithEndpointResolverWithOptions(resolver),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(cfg.AccessKey, cfg.SecretKey, "")),
+		config.WithResponseChecksumValidation(aws.ResponseChecksumValidationWhenRequired),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load AWS config: %w", err)
@@ -62,6 +63,7 @@ func NewS3Provider(cfg S3Config) (*S3Provider, error) {
 
 	client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
 		o.UsePathStyle = true
+		o.DisableLogOutputChecksumValidationSkipped = true
 	})
 
 	return &S3Provider{client: client, bucket: cfg.Bucket}, nil
