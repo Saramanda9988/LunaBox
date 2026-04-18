@@ -9,6 +9,7 @@ import {
   SyncNow,
 } from "../../wailsjs/go/service/CloudSyncService";
 import { EventsOn } from "../../wailsjs/runtime/runtime";
+import { useAppStore } from "../store";
 import {
   getEffectiveCloudSyncStatus,
   isCloudProviderConfigured,
@@ -22,17 +23,21 @@ export function useCloudSync({ config }: UseCloudSyncOptions) {
   const { t } = useTranslation();
   const [syncStatus, setSyncStatus] = useState<vo.CloudSyncStatus | null>(null);
   const [syncingNow, setSyncingNow] = useState(false);
+  const applyCloudSyncStatus = useAppStore(
+    state => state.applyCloudSyncStatus,
+  );
 
   useEffect(() => {
     const unsubscribe = EventsOn(
       "cloud-sync:status-changed",
       (status: vo.CloudSyncStatus) => {
         setSyncStatus(status);
+        applyCloudSyncStatus(status);
       },
     );
 
     return unsubscribe;
-  }, []);
+  }, [applyCloudSyncStatus]);
 
   const refreshSyncStatus = useCallback(async () => {
     if (!config?.cloud_backup_enabled || !config?.cloud_sync_enabled) {

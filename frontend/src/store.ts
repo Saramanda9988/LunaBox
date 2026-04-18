@@ -2,7 +2,10 @@ import { create } from "zustand";
 
 import type { appconf, models, vo } from "../wailsjs/go/models";
 
-import { GetAppConfig, UpdateAppConfig } from "../wailsjs/go/service/ConfigService";
+import {
+  GetAppConfig,
+  UpdateAppConfig,
+} from "../wailsjs/go/service/ConfigService";
 import { GetGames } from "../wailsjs/go/service/GameService";
 import { GetHomePageData } from "../wailsjs/go/service/HomeService";
 
@@ -10,7 +13,10 @@ type AISummaryCache = {
   [dimension: string]: string;
 };
 
-function withSidebarState(config: appconf.AppConfig, sidebarOpen: boolean): appconf.AppConfig {
+function withSidebarState(
+  config: appconf.AppConfig,
+  sidebarOpen: boolean,
+): appconf.AppConfig {
   return { ...config, sidebar_open: sidebarOpen };
 }
 
@@ -25,6 +31,7 @@ type AppState = {
   fetchHomeData: () => Promise<void>;
   fetchConfig: () => Promise<void>;
   patchLiveConfig: (patch: Partial<appconf.AppConfig>) => Promise<void>;
+  applyCloudSyncStatus: (status: vo.CloudSyncStatus) => void;
   setDraftConfig: (config: appconf.AppConfig) => void;
   resetDraftConfig: () => void;
   saveDraftConfig: () => Promise<void>;
@@ -75,7 +82,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   fetchConfig: async () => {
     try {
       const config = await GetAppConfig();
-      set({ config, draftConfig: { ...config }, isSidebarOpen: config.sidebar_open });
+      set({
+        config,
+        draftConfig: { ...config },
+        isSidebarOpen: config.sidebar_open,
+      });
     }
     catch (error) {
       console.error("Failed to fetch config:", error);
@@ -88,10 +99,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
 
-    const nextSidebarOpen = typeof patch.sidebar_open === "boolean" ? patch.sidebar_open : get().isSidebarOpen;
-    const nextConfig = withSidebarState({ ...previousConfig, ...patch } as appconf.AppConfig, nextSidebarOpen);
+    const nextSidebarOpen
+      = typeof patch.sidebar_open === "boolean"
+        ? patch.sidebar_open
+        : get().isSidebarOpen;
+    const nextConfig = withSidebarState(
+      { ...previousConfig, ...patch } as appconf.AppConfig,
+      nextSidebarOpen,
+    );
     const nextDraftConfig = previousDraftConfig
-      ? withSidebarState({ ...previousDraftConfig, ...patch } as appconf.AppConfig, nextSidebarOpen)
+      ? withSidebarState(
+          { ...previousDraftConfig, ...patch } as appconf.AppConfig,
+          nextSidebarOpen,
+        )
       : ({ ...nextConfig } as appconf.AppConfig);
 
     set({
@@ -112,13 +132,39 @@ export const useAppStore = create<AppState>((set, get) => ({
       console.error("Failed to patch live config:", error);
     }
   },
+  applyCloudSyncStatus: (status: vo.CloudSyncStatus) => {
+    set((state) => {
+      if (!state.config && !state.draftConfig) {
+        return state;
+      }
+
+      const patch: Partial<appconf.AppConfig> = {
+        last_cloud_sync_time: status.last_sync_time,
+        last_cloud_sync_status: status.last_sync_status,
+        last_cloud_sync_error: status.last_sync_error,
+      };
+
+      return {
+        config: state.config
+          ? ({ ...state.config, ...patch } as appconf.AppConfig)
+          : null,
+        draftConfig: state.draftConfig
+          ? ({ ...state.draftConfig, ...patch } as appconf.AppConfig)
+          : null,
+      };
+    });
+  },
   setDraftConfig: (config: appconf.AppConfig) => {
     set({ draftConfig: config });
   },
   resetDraftConfig: () => {
     const config = get().config;
     const sidebarOpen = get().isSidebarOpen;
-    set({ draftConfig: config ? withSidebarState({ ...config } as appconf.AppConfig, sidebarOpen) : null });
+    set({
+      draftConfig: config
+        ? withSidebarState({ ...config } as appconf.AppConfig, sidebarOpen)
+        : null,
+    });
   },
   saveDraftConfig: async () => {
     const draftConfig = get().draftConfig;
@@ -127,11 +173,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     const sidebarOpen = get().isSidebarOpen;
-    const nextConfig = withSidebarState({ ...draftConfig } as appconf.AppConfig, sidebarOpen);
+    const nextConfig = withSidebarState(
+      { ...draftConfig } as appconf.AppConfig,
+      sidebarOpen,
+    );
 
     try {
       await UpdateAppConfig(nextConfig);
-      set({ config: nextConfig, draftConfig: { ...nextConfig }, isSidebarOpen: sidebarOpen });
+      set({
+        config: nextConfig,
+        draftConfig: { ...nextConfig },
+        isSidebarOpen: sidebarOpen,
+      });
     }
     catch (error) {
       console.error("Failed to save draft config:", error);
