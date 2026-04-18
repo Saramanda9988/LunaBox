@@ -546,6 +546,7 @@
     }
   },
   "settings": {
+    "github": "View on GitHub",
     "title": "Settings",
     "preparingSettings": "Preparing settings...",
     "sections": {

@@ -546,6 +546,7 @@
     }
   },
   "settings": {
+    "github": "前往 GitHub 仓库",
     "title": "设置",
     "preparingSettings": "正在准备设置...",
     "sections": {

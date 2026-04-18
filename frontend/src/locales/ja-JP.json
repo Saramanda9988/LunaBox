@@ -546,6 +546,7 @@
     }
   },
   "settings": {
+    "github": "GitHubで見る",
     "title": "設定",
     "preparingSettings": "設定を準備中...",
     "sections": {

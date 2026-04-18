@@ -280,7 +280,7 @@ function SettingsPage() {
           title={t("sideBar.github")}
         >
           <div className="i-mdi-github text-xl" />
-          <span>前往 GitHub 仓库</span>
+          <span>{t("settings.github")}</span>
         </button>
       </div>
     </div>
