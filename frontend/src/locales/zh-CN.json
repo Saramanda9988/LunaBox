@@ -744,7 +744,7 @@
       "localSectionHint": "管理应用退出和游戏退出时的本地备份行为。",
       "cloudBackupSection": "云备份",
       "cloudBackupSectionHint": "管理备份产物是否自动上传到云端，以及云端备份保留数量。",
-      "cloudSyncSection": "云同步",
+      "cloudSyncSection": "云同步 (Beta)",
       "cloudSyncSectionHint": "管理数据库元数据的手动同步与自动同步策略。",
       "cloudServiceRequiredHint": "需要先在“云配置”中启用云服务。",
       "cloudSyncConfigRequiredHint": "需要先在“云配置”中完成云存储提供商、授权和备份密码设置。",

@@ -744,7 +744,7 @@
       "localSectionHint": "アプリ終了時やゲーム終了時のローカルバックアップ動作を管理します。",
       "cloudBackupSection": "クラウドバックアップ",
       "cloudBackupSectionHint": "バックアップの自動クラウドアップロードと、クラウド上の保持数を管理します。",
-      "cloudSyncSection": "クラウド同期",
+      "cloudSyncSection": "クラウド同期 (Beta)",
       "cloudSyncSectionHint": "メタデータの手動同期と、自動バックグラウンド同期の利用方針を管理します。",
       "cloudServiceRequiredHint": "先にクラウド設定でクラウドサービスを有効化してください。",
       "cloudSyncConfigRequiredHint": "先にクラウド設定でプロバイダー設定、認証、バックアップパスワードの設定を完了してください。",

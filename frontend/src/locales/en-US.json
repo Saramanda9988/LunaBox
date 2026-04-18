@@ -744,7 +744,7 @@
       "localSectionHint": "Manage backup behavior when the app exits or a game closes.",
       "cloudBackupSection": "Cloud Backup",
       "cloudBackupSectionHint": "Manage automatic cloud uploads and how many backups are retained in the cloud.",
-      "cloudSyncSection": "Cloud Sync",
+      "cloudSyncSection": "Cloud Sync (Beta)",
       "cloudSyncSectionHint": "Manage manual metadata sync and whether automatic background sync is enabled.",
       "cloudServiceRequiredHint": "Enable cloud services first in Cloud Configuration.",
       "cloudSyncConfigRequiredHint": "Finish provider setup, authorization, and backup password setup in Cloud Configuration first.",
