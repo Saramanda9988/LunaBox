@@ -118,8 +118,8 @@ export function SetupCloudBackup(arg1) {
   return window['go']['service']['BackupService']['SetupCloudBackup'](arg1);
 }
 
-export function StartOneDriveAuth() {
-  return window['go']['service']['BackupService']['StartOneDriveAuth']();
+export function StartOneDriveAuth(arg1) {
+  return window['go']['service']['BackupService']['StartOneDriveAuth'](arg1);
 }
 
 export function TestOneDriveConnection(arg1) {

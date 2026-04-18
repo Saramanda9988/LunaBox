@@ -25,6 +25,8 @@ var allowedMetadataSourceSet = map[string]struct{}{
 	string(enums2.Steam):   {},
 }
 
+const legacyOneDriveDefaultClientID = "26fcab6e-41ea-49ff-8ec9-063983cae3ef"
+
 // AppConfig 应用配置结构体
 type AppConfig struct {
 	BangumiAccessToken string   `json:"access_token,omitempty"`
@@ -154,7 +156,7 @@ func LoadConfig() (*AppConfig, error) {
 		S3AccessKey:            "",
 		S3SecretKey:            "",
 		CloudBackupRetention:   5,
-		OneDriveClientID:       "26fcab6e-41ea-49ff-8ec9-063983cae3ef",
+		OneDriveClientID:       "",
 		OneDriveRefreshToken:   "",
 		LastDBBackupTime:       "",
 		PendingDBRestore:       "",
@@ -223,12 +225,18 @@ func LoadConfig() (*AppConfig, error) {
 		config.CloudSyncIntervalSec = 60
 	}
 
+	shouldSaveSanitizedConfig := SanitizeOneDriveOAuthConfig(config)
+
 	// 备份口令只在初始化时使用，不应长期明文落盘。
 	if config.BackupPassword != "" {
 		if config.BackupUserID == "" {
 			config.BackupUserID = utils.GenerateUserID(config.BackupPassword)
 		}
 		config.BackupPassword = ""
+		shouldSaveSanitizedConfig = true
+	}
+
+	if shouldSaveSanitizedConfig {
 		if err := SaveConfig(config); err != nil {
 			log.Printf("Failed to save sanitized backup config: %v", err)
 		}
@@ -243,6 +251,7 @@ func SaveConfig(config *AppConfig) error {
 		return err
 	}
 	config.MetadataSources = normalizeMetadataSources(config.MetadataSources)
+	SanitizeOneDriveOAuthConfig(config)
 	configCopy := *config
 	configCopy.BackupPassword = ""
 	data, err := json.MarshalIndent(&configCopy, "", "  ")
@@ -290,4 +299,24 @@ func cloneStringSlice(values []string) []string {
 	cloned := make([]string, len(values))
 	copy(cloned, values)
 	return cloned
+}
+
+func SanitizeOneDriveOAuthConfig(config *AppConfig) bool {
+	if config == nil {
+		return false
+	}
+
+	trimmedClientID := strings.TrimSpace(config.OneDriveClientID)
+	changed := config.OneDriveClientID != trimmedClientID
+	config.OneDriveClientID = trimmedClientID
+
+	if config.OneDriveClientID == legacyOneDriveDefaultClientID {
+		config.OneDriveClientID = ""
+		changed = true
+		if config.OneDriveRefreshToken != "" {
+			config.OneDriveRefreshToken = ""
+		}
+	}
+
+	return changed
 }

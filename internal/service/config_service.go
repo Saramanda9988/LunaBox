@@ -119,6 +119,8 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 		return fmt.Errorf("invalid config")
 	}
 
+	appconf.SanitizeOneDriveOAuthConfig(&newConfig)
+
 	err := appconf.SaveConfig(&newConfig)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "failed to save config: %v", err)

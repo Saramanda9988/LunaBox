@@ -78,7 +78,7 @@ func IsConfigured(config *appconf.AppConfig) bool {
 	}
 	switch ProviderType(config.CloudBackupProvider) {
 	case ProviderOneDrive:
-		return config.OneDriveRefreshToken != "" && config.BackupUserID != ""
+		return config.OneDriveClientID != "" && config.OneDriveRefreshToken != "" && config.BackupUserID != ""
 	case ProviderS3:
 		return config.S3Endpoint != "" && config.S3AccessKey != "" && config.BackupUserID != ""
 	default:

@@ -64,7 +64,7 @@ export function SelectBackupSavePath():Promise<string>;
 
 export function SetupCloudBackup(arg1:string):Promise<string>;
 
-export function StartOneDriveAuth():Promise<string>;
+export function StartOneDriveAuth(arg1:string):Promise<string>;
 
 export function TestOneDriveConnection(arg1:appconf.AppConfig):Promise<void>;
 

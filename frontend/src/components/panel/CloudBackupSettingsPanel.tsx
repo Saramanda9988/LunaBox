@@ -27,9 +27,24 @@ export function CloudBackupSettingsPanel({
   const [testingOneDrive, setTestingOneDrive] = useState(false);
   const [authorizingOneDrive, setAuthorizingOneDrive] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const oneDriveClientID = formData.onedrive_client_id?.trim() || "";
+  const hasOneDriveClientID = oneDriveClientID.length > 0;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    if (name === "onedrive_client_id") {
+      const previousClientID = formData.onedrive_client_id?.trim() || "";
+      const nextClientID = value.trim();
+      onChange({
+        ...formData,
+        [name]: value,
+        ...(previousClientID !== nextClientID
+          ? { onedrive_refresh_token: "" }
+          : {}),
+      } as appconf.AppConfig);
+      return;
+    }
+
     onChange({ ...formData, [name]: value } as appconf.AppConfig);
   };
 
@@ -93,9 +108,14 @@ export function CloudBackupSettingsPanel({
   };
 
   const handleOneDriveAuth = async () => {
+    if (!hasOneDriveClientID) {
+      toast.error(t("settings.cloudBackup.toast.oneDriveClientIdRequired"));
+      return;
+    }
+
     setAuthorizingOneDrive(true);
     try {
-      const refreshToken = await StartOneDriveAuth();
+      const refreshToken = await StartOneDriveAuth(oneDriveClientID);
       onChange({
         ...formData,
         onedrive_refresh_token: refreshToken,
@@ -307,33 +327,30 @@ export function CloudBackupSettingsPanel({
           <div className="space-y-2">
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
               Client ID
-              {(!formData.onedrive_client_id
-                || formData.onedrive_client_id
-                === "26fcab6e-41ea-49ff-8ec9-063983cae3ef") && (
-                <span className="ml-2 text-xs text-brand-500 dark:text-brand-400">
-                  {t("settings.cloudBackup.clientIdUsingDefault")}
-                </span>
-              )}
             </label>
             <input
               type="text"
               name="onedrive_client_id"
               value={formData.onedrive_client_id || ""}
               onChange={handleChange}
-              placeholder="26fcab6e-41ea-49ff-8ec9-063983cae3ef (default)"
+              placeholder="your-app-client-id"
               className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 font-mono text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
             />
             <p className="text-xs text-brand-500 dark:text-brand-400">
               {t("settings.cloudBackup.clientIdHint")}
               {" "}
               <a
-                href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade"
+                href="https://box.lunarain.site/configuration/onedrive-cloud-backup.html"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline hover:text-brand-600 dark:hover:text-brand-300"
               >
-                Microsoft Entra
+                {t("settings.cloudBackup.clientIdHintLink")}
               </a>
+              {t("settings.cloudBackup.clientIdHint2")}
+            </p>
+            <p className="text-xs text-warning-600 dark:text-warning-400">
+              {t("settings.cloudBackup.clientIdChangeHint")}
             </p>
           </div>
 
@@ -364,7 +381,7 @@ export function CloudBackupSettingsPanel({
                 <button
                   type="button"
                   onClick={handleOneDriveAuth}
-                  disabled={authorizingOneDrive}
+                  disabled={authorizingOneDrive || !hasOneDriveClientID}
                   className="glass-btn-neutral flex items-center gap-2 rounded-md bg-neutral-600 px-3 py-1.5 text-sm text-white hover:bg-neutral-700 disabled:opacity-50"
                 >
                   {authorizingOneDrive ? (

@@ -204,8 +204,13 @@ func (s *BackupService) GetOneDriveAuthURL() string {
 }
 
 // StartOneDriveAuth 启动 OneDrive 授权流程（使用本地回调服务器）
-func (s *BackupService) StartOneDriveAuth() (string, error) {
-	code, redirectURI, err := onedrive.StartOneDriveAuthFlow(s.ctx, s.config.OneDriveClientID, 5*time.Minute, func(url string) error {
+func (s *BackupService) StartOneDriveAuth(clientID string) (string, error) {
+	effectiveClientID := strings.TrimSpace(clientID)
+	if effectiveClientID == "" {
+		effectiveClientID = strings.TrimSpace(s.config.OneDriveClientID)
+	}
+
+	code, redirectURI, err := onedrive.StartOneDriveAuthFlow(s.ctx, effectiveClientID, 5*time.Minute, func(url string) error {
 		runtime.BrowserOpenURL(s.ctx, url)
 		return nil
 	})
@@ -213,7 +218,7 @@ func (s *BackupService) StartOneDriveAuth() (string, error) {
 		applog.LogErrorf(s.ctx, "StartOneDriveAuth: failed to get auth code: %v", err)
 		return "", err
 	}
-	tokenResp, err := onedrive.ExchangeOneDriveCodeForTokenWithRedirect(s.ctx, s.config.OneDriveClientID, code, redirectURI)
+	tokenResp, err := onedrive.ExchangeOneDriveCodeForTokenWithRedirect(s.ctx, effectiveClientID, code, redirectURI)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "StartOneDriveAuth: failed to exchange code for token: %v", err)
 		return "", err
