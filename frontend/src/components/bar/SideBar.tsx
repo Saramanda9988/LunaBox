@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BrowserOpenURL, EventsOn } from "../../../wailsjs/runtime/runtime";
+import { EventsOn } from "../../../wailsjs/runtime/runtime";
 import { useCloudSync } from "../../hooks/useCloudSync";
 import { useAppStore } from "../../store";
 import {
@@ -83,9 +83,6 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
   const cloudSyncEnabled = Boolean(
     cloudServiceEnabled && config?.cloud_sync_enabled,
   );
-  const autoCloudSyncEnabled = Boolean(
-    cloudSyncEnabled && config?.auto_cloud_sync_enabled,
-  );
   const cloudSyncStatusLabel = getCloudSyncStatusLabel(
     effectiveSyncStatus.last_sync_status,
     t,
@@ -98,25 +95,6 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
     config?.time_zone,
     t("settings.cloudBackup.syncNever"),
   );
-  const cloudSyncHint = (() => {
-    if (!cloudServiceEnabled) {
-      return t("sideBar.cloudServiceDisabledHint");
-    }
-
-    if (!cloudSyncEnabled) {
-      return t("sideBar.cloudSyncDisabledHint");
-    }
-
-    if (!syncConfigured) {
-      return t("settings.cloudBackup.syncNotConfigured");
-    }
-
-    if (!autoCloudSyncEnabled) {
-      return t("sideBar.cloudSyncManualRecommendedHint");
-    }
-
-    return t("sideBar.cloudSyncReadyHint");
-  })();
   const cloudSyncIconClass = (() => {
     if (!cloudServiceEnabled) {
       return "i-mdi-cloud-off-outline text-brand-400 dark:text-brand-500";
@@ -150,7 +128,7 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
 
   return (
     <aside
-      className={`flex shrink-0 flex-col overflow-y-hidden overflow-x-visible ${sidebarBgClass}`}
+      className={`relative z-30 flex shrink-0 flex-col ${sidebarBgClass}`}
       style={sidebarStyle}
     >
       <div
@@ -261,52 +239,42 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
             aria-live="polite"
             className={`pointer-events-none absolute z-50 w-44 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 ${
               isSidebarOpen
-                ? "bottom-full left-0 mb-3 translate-y-2 group-hover:translate-y-0 group-focus-within:translate-y-0"
-                : "bottom-0 left-full ml-3 translate-x-2 group-hover:translate-x-0 group-focus-within:translate-x-0"
+                ? "bottom-full left-1/2 mb-3 -translate-x-1/2 translate-y-2 group-hover:-translate-x-1/2 group-hover:translate-y-0 group-focus-within:-translate-x-1/2 group-focus-within:translate-y-0"
+                : "bottom-0 left-full ml-3 translate-y-0 translate-x-2 group-hover:translate-x-0 group-hover:translate-y-0 group-focus-within:translate-x-0 group-focus-within:translate-y-0"
             }`}
           >
-            <div className="glass-panel flex flex-col gap-1.5 rounded-lg border border-brand-200/80 bg-white/92 p-2.5 shadow-lg backdrop-blur-xl dark:border-brand-700/80 dark:bg-brand-900/88 data-glass:bg-white/78 data-glass:dark:bg-black/42">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-[10px] font-medium text-brand-500 dark:text-brand-400">
+            <div className="glass-panel flex flex-col gap-2 rounded-lg border border-brand-200/80 bg-white/92 p-2.5 shadow-lg backdrop-blur-xl dark:border-brand-700/80 dark:bg-brand-900/88 data-glass:bg-white/78 data-glass:dark:bg-black/42">
+              <div className="flex flex-col items-start gap-1.5">
+                <span className="text-[10px] font-medium text-brand-500 dark:text-brand-400 whitespace-nowrap">
                   {t("sideBar.cloudSync")}
                 </span>
                 <div className="flex items-center gap-1.5">
                   {cloudSyncEnabled && !syncConfigured && (
-                    <span className="text-[9px] font-medium text-warning-600 dark:text-warning-400">
+                    <span className="text-[9px] font-medium text-warning-600 dark:text-warning-400 whitespace-normal break-words">
                       {t("settings.cloudBackup.syncNotConfigured")}
-                    </span>
-                  )}
-                  {cloudSyncEnabled
-                    && syncConfigured
-                    && !autoCloudSyncEnabled && (
-                    <span className="text-[9px] font-medium text-brand-500 dark:text-brand-400">
-                      {t("sideBar.cloudSyncManualTag")}
                     </span>
                   )}
                   {cloudSyncEnabled && (
                     <span
-                      className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${cloudSyncStatusClass}`}
+                      className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold text-center whitespace-normal break-words ${cloudSyncStatusClass}`}
                     >
                       {cloudSyncStatusLabel}
                     </span>
                   )}
                 </div>
               </div>
-              <p className="text-[10px] leading-4 text-brand-600 dark:text-brand-300">
-                {cloudSyncHint}
-              </p>
               {cloudSyncEnabled && (
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-brand-400 dark:text-brand-500 text-[10px]">
+                <div className="flex flex-col items-start gap-1">
+                  <span className="text-brand-400 dark:text-brand-500 text-[10px] whitespace-nowrap">
                     {t("settings.cloudBackup.syncLastTimeLabel")}
                   </span>
-                  <span className="text-[10px] font-medium text-brand-700 dark:text-brand-100">
+                  <span className="text-[10px] font-medium text-brand-700 dark:text-brand-100 whitespace-nowrap">
                     {cloudSyncLastTime}
                   </span>
                 </div>
               )}
               {cloudSyncEnabled && effectiveSyncStatus.last_sync_error && (
-                <p className="mt-0.5 line-clamp-2 text-[9px] leading-3 text-error-600 dark:text-error-400">
+                <p className="mt-0.5 max-w-[12rem] whitespace-normal break-words text-[9px] leading-3 text-error-600 dark:text-error-400">
                   {effectiveSyncStatus.last_sync_error}
                 </p>
               )}
@@ -332,19 +300,6 @@ export function SideBar({ bgEnabled = false, bgOpacity = 0.85 }: SideBarProps) {
             )}
           </div>
         </Link>
-        <button
-          type="button"
-          onClick={() =>
-            BrowserOpenURL("https://github.com/Saramanda9988/LunaBox")}
-          className={`${footerActionClass} cursor-pointer select-none`}
-          title={t("sideBar.github")}
-          onDragStart={e => e.preventDefault()}
-        >
-          <div
-            className="i-mdi-github text-xl pointer-events-none"
-            aria-hidden="true"
-          />
-        </button>
         <Link
           to="/settings"
           className={`${footerActionClass} no-underline [&.active]:bg-brand-200 [&.active]:text-brand-900 dark:[&.active]:bg-brand-700 dark:[&.active]:text-brand-100 select-none data-glass:[&.active]:bg-white/20 data-glass:[&.active]:dark:bg-black/20`}
