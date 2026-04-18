@@ -64,21 +64,21 @@ jobs:
       - name: Build Portable Version
         if: matrix.mode == 'portable'
         run: |
-          $LDFLAGS = "-X 'lunabox/internal/version.Version=${{ steps.get_version.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.get_version.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.get_version.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=portable'"
+          $LDFLAGS = "-s -w -X 'lunabox/internal/version.Version=${{ steps.get_version.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.get_version.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.get_version.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=portable'"
           # Build GUI
           wails build -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -o LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.exe
           
           # Build CLI
-          go build -ldflags "$LDFLAGS" -o build/bin/lunacli.exe ./cmd/lunacli
+          go build -trimpath -ldflags "$LDFLAGS" -o build/bin/lunacli.exe ./cmd/lunacli
         shell: pwsh
 
       - name: Build Installer Version
         if: matrix.mode == 'installer'
         run: |
-          $LDFLAGS = "-X 'lunabox/internal/version.Version=${{ steps.get_version.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.get_version.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.get_version.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=installer'"
+          $LDFLAGS = "-s -w -X 'lunabox/internal/version.Version=${{ steps.get_version.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.get_version.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.get_version.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=installer'"
           
           # Build CLI first (needed for installer)
-          go build -ldflags "$LDFLAGS" -o build/bin/lunacli.exe ./cmd/lunacli
+          go build -trimpath -ldflags "$LDFLAGS" -o build/bin/lunacli.exe ./cmd/lunacli
           
           # Build GUI with NSIS
           wails build -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -nsis

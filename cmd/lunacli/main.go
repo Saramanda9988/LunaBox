@@ -3,23 +3,20 @@ package main
 import (
 	"fmt"
 	"os"
-	"slices"
 
-	"lunabox/internal/cli"
 	"lunabox/internal/cli/ipcclient"
 )
 
 // localOnlyCommands 必须在本地运行、不转发给 GUI 的命令。
-// 这些命令仍然走 Cobra，只是执行位置留在当前进程。
+// 其余命令统一要求 GUI 进程在线，以保持语义一致。
 var localOnlyCommands = map[string]bool{
 	"luna-sama": true,
-	"protocol":  true,
 }
 
 func main() {
 	args := os.Args[1:]
 
-	// Help / 本地命令不需要 GUI 进程，直接在当前进程执行。
+	// 仅保留真正必须在当前进程执行的本地命令。
 	if shouldRunLocally(args) {
 		if err := runLocalCommand(args); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -43,20 +40,5 @@ func main() {
 }
 
 func shouldRunLocally(args []string) bool {
-	if len(args) == 0 {
-		return true
-	}
-
-	if localOnlyCommands[args[0]] || args[0] == "help" {
-		return true
-	}
-
-	return slices.Contains(args, "--help") ||
-		slices.Contains(args, "-h") ||
-		slices.Contains(args, "--register-protocol") ||
-		slices.Contains(args, "--unregister-protocol")
-}
-
-func runLocalCommand(args []string) error {
-	return cli.RunCommand(os.Stdout, &cli.CoreApp{}, args)
+	return len(args) > 0 && localOnlyCommands[args[0]]
 }
