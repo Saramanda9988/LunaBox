@@ -8,4 +8,5 @@ type PlaySession struct {
 	StartTime time.Time `json:"start_time"`
 	EndTime   time.Time `json:"end_time"`
 	Duration  int       `json:"duration"` // seconds
+	UpdatedAt time.Time `json:"updated_at"`
 }

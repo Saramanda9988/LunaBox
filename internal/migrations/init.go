@@ -32,12 +32,14 @@ func InitSchema(db *sql.DB) error {
 			cached_at TIMESTAMPTZ,
 			source_id TEXT,
 			created_at TIMESTAMPTZ,
+			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 			use_locale_emulator BOOLEAN DEFAULT FALSE,
 			use_magpie BOOLEAN DEFAULT FALSE
 		)`,
 		`CREATE TABLE IF NOT EXISTS game_categories (
 			game_id TEXT,
 			category_id TEXT,
+			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (game_id, category_id)
 		)`,
 		`CREATE TABLE IF NOT EXISTS play_sessions (
@@ -45,7 +47,16 @@ func InitSchema(db *sql.DB) error {
 			game_id TEXT,
 			start_time TIMESTAMPTZ,
 			end_time TIMESTAMPTZ,
-			duration INTEGER
+			duration INTEGER,
+			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS sync_tombstones (
+			entity_type TEXT NOT NULL,
+			entity_id TEXT NOT NULL,
+			parent_id TEXT DEFAULT '',
+			secondary_id TEXT DEFAULT '',
+			deleted_at TIMESTAMPTZ NOT NULL,
+			PRIMARY KEY (entity_type, entity_id, parent_id, secondary_id)
 		)`,
 		`CREATE TABLE IF NOT EXISTS game_progress (
 			id TEXT PRIMARY KEY,
@@ -77,6 +88,7 @@ func InitSchema(db *sql.DB) error {
 			weight      DOUBLE DEFAULT 1.0,
 			is_spoiler  BOOLEAN DEFAULT FALSE,
 			created_at  TIMESTAMPTZ,
+			updated_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 			UNIQUE (game_id, name, source)
 		)
 		`,

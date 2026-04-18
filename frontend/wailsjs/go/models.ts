@@ -21,6 +21,12 @@ export namespace appconf {
 	    cloud_backup_provider?: string;
 	    backup_password?: string;
 	    backup_user_id?: string;
+	    cloud_sync_enabled: boolean;
+	    auto_cloud_sync_enabled: boolean;
+	    cloud_sync_interval_sec: number;
+	    last_cloud_sync_time?: string;
+	    last_cloud_sync_status?: string;
+	    last_cloud_sync_error?: string;
 	    s3_endpoint?: string;
 	    s3_region?: string;
 	    s3_bucket?: string;
@@ -90,6 +96,12 @@ export namespace appconf {
 	        this.cloud_backup_provider = source["cloud_backup_provider"];
 	        this.backup_password = source["backup_password"];
 	        this.backup_user_id = source["backup_user_id"];
+	        this.cloud_sync_enabled = source["cloud_sync_enabled"];
+	        this.auto_cloud_sync_enabled = source["auto_cloud_sync_enabled"];
+	        this.cloud_sync_interval_sec = source["cloud_sync_interval_sec"];
+	        this.last_cloud_sync_time = source["last_cloud_sync_time"];
+	        this.last_cloud_sync_status = source["last_cloud_sync_status"];
+	        this.last_cloud_sync_error = source["last_cloud_sync_error"];
 	        this.s3_endpoint = source["s3_endpoint"];
 	        this.s3_region = source["s3_region"];
 	        this.s3_bucket = source["s3_bucket"];
@@ -139,6 +151,13 @@ export namespace appconf {
 
 export namespace enums {
 	
+	export enum SourceType {
+	    LOCAL = "local",
+	    BANGUMI = "bangumi",
+	    VNDB = "vndb",
+	    YMGAL = "ymgal",
+	    STEAM = "steam",
+	}
 	export enum Period {
 	    DAY = "day",
 	    WEEK = "week",
@@ -155,13 +174,6 @@ export namespace enums {
 	    PLAYING = "playing",
 	    COMPLETED = "completed",
 	    ON_HOLD = "on_hold",
-	}
-	export enum SourceType {
-	    LOCAL = "local",
-	    BANGUMI = "bangumi",
-	    VNDB = "vndb",
-	    YMGAL = "ymgal",
-	    STEAM = "steam",
 	}
 
 }
@@ -207,9 +219,10 @@ export namespace models {
 	    cached_at: time.Time;
 	    source_id: string;
 	    created_at: time.Time;
-	    last_played_at?: time.Time;
+	    updated_at: time.Time;
 	    use_locale_emulator: boolean;
 	    use_magpie: boolean;
+	    last_played_at?: time.Time;
 	
 	    static createFrom(source: any = {}) {
 	        return new Game(source);
@@ -232,9 +245,10 @@ export namespace models {
 	        this.cached_at = this.convertValues(source["cached_at"], time.Time);
 	        this.source_id = source["source_id"];
 	        this.created_at = this.convertValues(source["created_at"], time.Time);
-	        this.last_played_at = this.convertValues(source["last_played_at"], time.Time);
+	        this.updated_at = this.convertValues(source["updated_at"], time.Time);
 	        this.use_locale_emulator = source["use_locale_emulator"];
 	        this.use_magpie = source["use_magpie"];
+	        this.last_played_at = this.convertValues(source["last_played_at"], time.Time);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -293,6 +307,48 @@ export namespace models {
 		    return a;
 		}
 	}
+	export class GameProgress {
+	    id: string;
+	    game_id: string;
+	    chapter: string;
+	    route: string;
+	    progress_note: string;
+	    spoiler_boundary: string;
+	    updated_at: time.Time;
+	
+	    static createFrom(source: any = {}) {
+	        return new GameProgress(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.game_id = source["game_id"];
+	        this.chapter = source["chapter"];
+	        this.route = source["route"];
+	        this.progress_note = source["progress_note"];
+	        this.spoiler_boundary = source["spoiler_boundary"];
+	        this.updated_at = this.convertValues(source["updated_at"], time.Time);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class GameTag {
 	    id: string;
 	    game_id: string;
@@ -301,6 +357,7 @@ export namespace models {
 	    weight: number;
 	    is_spoiler: boolean;
 	    created_at: time.Time;
+	    updated_at: time.Time;
 	
 	    static createFrom(source: any = {}) {
 	        return new GameTag(source);
@@ -315,6 +372,7 @@ export namespace models {
 	        this.weight = source["weight"];
 	        this.is_spoiler = source["is_spoiler"];
 	        this.created_at = this.convertValues(source["created_at"], time.Time);
+	        this.updated_at = this.convertValues(source["updated_at"], time.Time);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -341,6 +399,7 @@ export namespace models {
 	    start_time: time.Time;
 	    end_time: time.Time;
 	    duration: number;
+	    updated_at: time.Time;
 	
 	    static createFrom(source: any = {}) {
 	        return new PlaySession(source);
@@ -353,6 +412,7 @@ export namespace models {
 	        this.start_time = this.convertValues(source["start_time"], time.Time);
 	        this.end_time = this.convertValues(source["end_time"], time.Time);
 	        this.duration = source["duration"];
+	        this.updated_at = this.convertValues(source["updated_at"], time.Time);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -479,48 +539,6 @@ export namespace service {
 	        this.total = source["total"];
 	        this.error = source["error"];
 	        this.file_path = source["file_path"];
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class GameProgress {
-	    id: string;
-	    game_id: string;
-	    chapter: string;
-	    route: string;
-	    progress_note: string;
-	    spoiler_boundary: string;
-	    updated_at: time.Time;
-	
-	    static createFrom(source: any = {}) {
-	        return new GameProgress(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.game_id = source["game_id"];
-	        this.chapter = source["chapter"];
-	        this.route = source["route"];
-	        this.progress_note = source["progress_note"];
-	        this.spoiler_boundary = source["spoiler_boundary"];
-	        this.updated_at = this.convertValues(source["updated_at"], time.Time);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -886,6 +904,28 @@ export namespace vo {
 	        this.configured = source["configured"];
 	        this.user_id = source["user_id"];
 	        this.provider = source["provider"];
+	    }
+	}
+	export class CloudSyncStatus {
+	    enabled: boolean;
+	    configured: boolean;
+	    syncing: boolean;
+	    last_sync_time: string;
+	    last_sync_status: string;
+	    last_sync_error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CloudSyncStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enabled = source["enabled"];
+	        this.configured = source["configured"];
+	        this.syncing = source["syncing"];
+	        this.last_sync_time = source["last_sync_time"];
+	        this.last_sync_status = source["last_sync_status"];
+	        this.last_sync_error = source["last_sync_error"];
 	    }
 	}
 	export class DBBackupInfo {

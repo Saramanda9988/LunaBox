@@ -114,27 +114,29 @@ export function CloudBackupSettingsPanel({
 
   return (
     <div className="space-y-4">
-      <div className="glass-card flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-800/50 rounded-lg">
-        <div className="flex flex-col">
-          <label
-            htmlFor="cloud_backup_enabled"
-            className="text-sm font-medium text-brand-700 dark:text-brand-300 cursor-pointer"
-          >
-            {t("settings.cloudBackup.enableLabel")}
-          </label>
-          <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
-            {t("settings.cloudBackup.enableHint")}
-          </p>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1 space-y-2">
+            <label
+              htmlFor="cloud_backup_enabled"
+              className="block cursor-pointer text-sm font-medium text-brand-700 dark:text-brand-300"
+            >
+              {t("settings.cloudBackup.serviceEnableLabel")}
+            </label>
+            <p className="text-xs text-brand-500 dark:text-brand-400">
+              {t("settings.cloudBackup.serviceEnableHint")}
+            </p>
+          </div>
+          <BetterSwitch
+            id="cloud_backup_enabled"
+            checked={formData.cloud_backup_enabled || false}
+            onCheckedChange={checked =>
+              onChange({
+                ...formData,
+                cloud_backup_enabled: checked,
+              } as appconf.AppConfig)}
+          />
         </div>
-        <BetterSwitch
-          id="cloud_backup_enabled"
-          checked={formData.cloud_backup_enabled || false}
-          onCheckedChange={checked =>
-            onChange({
-              ...formData,
-              cloud_backup_enabled: checked,
-            } as appconf.AppConfig)}
-        />
       </div>
 
       <div className="space-y-2">
@@ -161,7 +163,7 @@ export function CloudBackupSettingsPanel({
         </div>
         {formData.backup_user_id ? (
           <div className="space-y-2">
-            <div className="glass-panel px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md text-brand-600 dark:text-brand-300">
+            <div className="glass-panel rounded-md border border-brand-300 px-3 py-2 text-brand-600 dark:border-brand-600 dark:text-brand-300">
               ********
             </div>
             <p className="text-xs text-brand-500 dark:text-brand-400">
@@ -178,7 +180,7 @@ export function CloudBackupSettingsPanel({
             <button
               type="button"
               onClick={() => setShowPasswordModal(true)}
-              className="glass-btn-neutral w-full px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-md transition-colors flex items-center justify-center gap-2"
+              className="glass-btn-neutral flex w-full items-center justify-center gap-2 rounded-md bg-brand-600 px-4 py-2 text-white transition-colors hover:bg-brand-700"
             >
               <span className="i-mdi-lock-plus text-lg" />
               {t("settings.cloudBackup.setPasswordBtn")}
@@ -193,15 +195,14 @@ export function CloudBackupSettingsPanel({
         )}
       </div>
 
-      {/* S3 Configuration */}
       {formData.cloud_backup_provider === "s3" && (
-        <div className="glass-card space-y-4 p-4 bg-brand-100 dark:bg-brand-800 rounded-lg">
-          <h3 className="text-sm font-medium text-brand-800 dark:text-brand-200">
+        <div className="glass-card space-y-4 rounded-lg bg-brand-100 p-4 dark:bg-brand-800">
+          <div className="block text-sm font-semibold text-brand-700 dark:text-brand-300">
             {t("settings.cloudBackup.s3Section")}
-          </h3>
+          </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-              S3 端点 (Endpoint)
+              S3 Endpoint
             </label>
             <input
               type="text"
@@ -209,13 +210,13 @@ export function CloudBackupSettingsPanel({
               value={formData.s3_endpoint || ""}
               onChange={handleChange}
               placeholder="https://s3.example.com"
-              className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
+              className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                区域 (Region)
+                Region
               </label>
               <input
                 type="text"
@@ -223,12 +224,12 @@ export function CloudBackupSettingsPanel({
                 value={formData.s3_region || ""}
                 onChange={handleChange}
                 placeholder="us-east-1"
-                className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
+                className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               />
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                存储桶 (Bucket)
+                Bucket
               </label>
               <input
                 type="text"
@@ -236,7 +237,7 @@ export function CloudBackupSettingsPanel({
                 value={formData.s3_bucket || ""}
                 onChange={handleChange}
                 placeholder="lunabox-backup"
-                className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
+                className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               />
             </div>
           </div>
@@ -249,7 +250,7 @@ export function CloudBackupSettingsPanel({
               name="s3_access_key"
               value={formData.s3_access_key || ""}
               onChange={handleChange}
-              className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
+              className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
             />
           </div>
           <div className="space-y-2">
@@ -261,7 +262,7 @@ export function CloudBackupSettingsPanel({
               name="s3_secret_key"
               value={formData.s3_secret_key || ""}
               onChange={handleChange}
-              className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
+              className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
             />
           </div>
           <div className="flex justify-end">
@@ -269,7 +270,7 @@ export function CloudBackupSettingsPanel({
               type="button"
               onClick={handleTestS3}
               disabled={testingS3}
-              className="glass-btn-neutral px-3 py-1.5 text-sm bg-brand-100 text-brand-700 rounded-md hover:bg-brand-200 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600 disabled:opacity-50"
+              className="glass-btn-neutral rounded-md bg-brand-100 px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-200 disabled:opacity-50 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600"
             >
               {testingS3
                 ? t("settings.cloudBackup.testing")
@@ -279,17 +280,16 @@ export function CloudBackupSettingsPanel({
         </div>
       )}
 
-      {/* OneDrive Configuration */}
       {formData.cloud_backup_provider === "onedrive" && (
-        <div className="space-y-4 p-4 bg-brand-100 dark:bg-brand-800 rounded-lg">
-          <h3 className="text-sm font-medium text-brand-800 dark:text-brand-200">
+        <div className="space-y-4 rounded-lg bg-brand-100 p-4 dark:bg-brand-800">
+          <div className="block text-sm font-semibold text-brand-700 dark:text-brand-300">
             {t("settings.cloudBackup.oneDriveSection")}
-          </h3>
+          </div>
 
-          <div className="p-3 bg-brand-100 dark:bg-brand-700 rounded-md border border-brand-300 dark:border-brand-600">
+          <div className="rounded-md border border-brand-300 bg-brand-100 p-3 dark:border-brand-600 dark:bg-brand-700">
             <div className="flex items-start gap-2">
-              <span className="i-mdi-information-outline text-lg text-warning-500 dark:text-brand-400 mt-0.5 flex-shrink-0" />
-              <div className="text-xs text-brand-600 dark:text-brand-400 space-y-1">
+              <span className="i-mdi-information-outline mt-0.5 flex-shrink-0 text-lg text-warning-500 dark:text-brand-400" />
+              <div className="space-y-1 text-xs text-brand-600 dark:text-brand-400">
                 <p className="font-medium">
                   {t("settings.cloudBackup.oneDriveNote")}
                 </p>
@@ -304,7 +304,6 @@ export function CloudBackupSettingsPanel({
             </div>
           </div>
 
-          {/* Client ID Configuration */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
               Client ID
@@ -322,7 +321,7 @@ export function CloudBackupSettingsPanel({
               value={formData.onedrive_client_id || ""}
               onChange={handleChange}
               placeholder="26fcab6e-41ea-49ff-8ec9-063983cae3ef (default)"
-              className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white font-mono text-sm"
+              className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 font-mono text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
             />
             <p className="text-xs text-brand-500 dark:text-brand-400">
               {t("settings.cloudBackup.clientIdHint")}
@@ -344,7 +343,7 @@ export function CloudBackupSettingsPanel({
             </label>
             {formData.onedrive_refresh_token ? (
               <div className="flex items-center gap-2">
-                <span className="text-success-600 dark:text-success-400 flex items-center gap-1">
+                <span className="flex items-center gap-1 text-success-600 dark:text-success-400">
                   <span className="i-mdi-check-circle text-lg" />
                   {t("settings.cloudBackup.authorized")}
                 </span>
@@ -355,7 +354,7 @@ export function CloudBackupSettingsPanel({
                       ...formData,
                       onedrive_refresh_token: "",
                     } as appconf.AppConfig)}
-                  className="px-2 py-1 text-xs text-error-600 hover:bg-error-100 dark:hover:bg-error-900 rounded"
+                  className="rounded px-2 py-1 text-xs text-error-600 hover:bg-error-100 dark:hover:bg-error-900"
                 >
                   {t("settings.cloudBackup.revokeAuth")}
                 </button>
@@ -366,7 +365,7 @@ export function CloudBackupSettingsPanel({
                   type="button"
                   onClick={handleOneDriveAuth}
                   disabled={authorizingOneDrive}
-                  className="glass-btn-neutral px-3 py-1.5 text-sm bg-neutral-600 text-white rounded-md hover:bg-neutral-700 disabled:opacity-50 flex items-center gap-2"
+                  className="glass-btn-neutral flex items-center gap-2 rounded-md bg-neutral-600 px-3 py-1.5 text-sm text-white hover:bg-neutral-700 disabled:opacity-50"
                 >
                   {authorizingOneDrive ? (
                     <>
@@ -388,13 +387,14 @@ export function CloudBackupSettingsPanel({
               </div>
             )}
           </div>
+
           {formData.onedrive_refresh_token && (
             <div className="flex justify-end">
               <button
                 type="button"
                 onClick={handleTestOneDrive}
                 disabled={testingOneDrive}
-                className="glass-btn-neutral px-3 py-1.5 text-sm bg-brand-100 text-brand-700 rounded-md hover:bg-brand-200 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600 disabled:opacity-50"
+                className="glass-btn-neutral rounded-md bg-brand-100 px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-200 disabled:opacity-50 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600"
               >
                 {testingOneDrive
                   ? t("settings.cloudBackup.testing")
@@ -405,26 +405,11 @@ export function CloudBackupSettingsPanel({
         </div>
       )}
 
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-          {t("settings.cloudBackup.retentionLabel")}
-        </label>
-        <input
-          type="number"
-          value={formData.cloud_backup_retention || 5}
-          onChange={e =>
-            onChange({
-              ...formData,
-              cloud_backup_retention: Number.parseInt(e.target.value) || 20,
-            } as appconf.AppConfig)}
-          min={1}
-          max={100}
-          className="glass-input w-32 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
-        />
-        <p className="text-xs text-brand-500 dark:text-brand-400">
-          {t("settings.cloudBackup.retentionHint")}
-        </p>
-      </div>
+      {!formData.cloud_backup_enabled && (
+        <div className="rounded-lg border border-dashed border-brand-300 bg-brand-100/60 px-4 py-3 text-xs text-brand-600 dark:border-brand-600 dark:bg-brand-800/60 dark:text-brand-300">
+          {t("settings.cloudBackup.serviceDisabledHint")}
+        </div>
+      )}
 
       <PasswordInputModal
         isOpen={showPasswordModal}

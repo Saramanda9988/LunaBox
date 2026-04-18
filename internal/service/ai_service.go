@@ -9,9 +9,9 @@ import (
 	"io"
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
-	"lunabox/internal/enums"
+	enums2 "lunabox/internal/common/enums"
+	"lunabox/internal/common/vo"
 	"lunabox/internal/utils"
-	"lunabox/internal/vo"
 	"net/http"
 	"strings"
 	"time"
@@ -50,7 +50,7 @@ func (s *AiService) AISummarize(req vo.AISummaryRequest) (vo.AISummaryResponse, 
 	}
 
 	// 获取统计数据
-	statsData, err := s.getStatsForAI(enums.Period(req.Dimension))
+	statsData, err := s.getStatsForAI(enums2.Period(req.Dimension))
 	if err != nil {
 		applog.LogError(s.ctx, "[AIService] fail to get stats: "+err.Error())
 		return vo.AISummaryResponse{}, fmt.Errorf("获取统计数据失败: %w", err)
@@ -118,7 +118,7 @@ type SessionInfo struct {
 	Hour      int // 本地时间小时
 }
 
-func (s *AiService) getStatsForAI(dimension enums.Period) (*AIStatsData, error) {
+func (s *AiService) getStatsForAI(dimension enums2.Period) (*AIStatsData, error) {
 	data := &AIStatsData{
 		Dimension: string(dimension),
 	}
@@ -134,13 +134,13 @@ func (s *AiService) getStatsForAI(dimension enums.Period) (*AIStatsData, error) 
 	endDateExpr := "current_date"
 	var startDate time.Time
 	switch dimension {
-	case enums.Day:
+	case enums2.Day:
 		startDateExpr = "current_date - INTERVAL 6 DAY"
 		startDate = now.AddDate(0, 0, -6)
-	case enums.Week:
+	case enums2.Week:
 		startDateExpr = "current_date - INTERVAL 6 DAY"
 		startDate = now.AddDate(0, 0, -6)
-	case enums.Month:
+	case enums2.Month:
 		startDateExpr = "current_date - INTERVAL 29 DAY"
 		startDate = now.AddDate(0, 0, -29)
 	default:
@@ -283,7 +283,7 @@ func (s *AiService) buildSystemPrompt(data *AIStatsData, spoilerLevel string) st
 	// 人设
 	persona := s.appConfig.AISystemPrompt
 	if persona == "" {
-		persona = string(enums.DefaultSystemPrompt)
+		persona = string(enums2.DefaultSystemPrompt)
 	}
 	sb.WriteString(persona)
 	sb.WriteString("\n\n")

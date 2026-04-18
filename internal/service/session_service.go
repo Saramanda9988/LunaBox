@@ -35,13 +35,14 @@ func (s *SessionService) CreatePendingSession(gameID string, startTime time.Time
 
 	_, err := s.db.ExecContext(
 		s.ctx,
-		`INSERT INTO play_sessions (id, game_id, start_time, end_time, duration)
-		 VALUES (?, ?, ?, ?, ?)`,
+		`INSERT INTO play_sessions (id, game_id, start_time, end_time, duration, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
 		sessionID,
 		gameID,
 		startTime,
 		startTime, // 临时占位，等游戏结束后更新
 		0,         // 初始时长为 0
+		time.Now(),
 	)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "CreatePendingSession: failed to create session: %v", err)
@@ -76,21 +77,27 @@ func (s *SessionService) AddPlaySession(gameID string, startTime time.Time, dura
 		StartTime: startTime,
 		EndTime:   endTime,
 		Duration:  durationSeconds,
+		UpdatedAt: time.Now(),
 	}
 
 	_, err = s.db.ExecContext(
 		s.ctx,
-		`INSERT INTO play_sessions (id, game_id, start_time, end_time, duration)
-		 VALUES (?, ?, ?, ?, ?)`,
+		`INSERT INTO play_sessions (id, game_id, start_time, end_time, duration, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
 		session.ID,
 		session.GameID,
 		session.StartTime,
 		session.EndTime,
 		session.Duration,
+		session.UpdatedAt,
 	)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "AddPlaySession: failed to insert play session: %v", err)
 		return models.PlaySession{}, fmt.Errorf("添加游玩记录失败: %w", err)
+	}
+
+	if err := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityPlaySession, session.ID); err != nil {
+		applog.LogWarningf(s.ctx, "AddPlaySession: failed to clear play_session tombstone %s: %v", session.ID, err)
 	}
 
 	applog.LogInfof(s.ctx, "AddPlaySession: added play session for game %s, duration: %d minutes", gameID, durationMinutes)
@@ -101,7 +108,7 @@ func (s *SessionService) AddPlaySession(gameID string, startTime time.Time, dura
 func (s *SessionService) GetPlaySessions(gameID string) ([]models.PlaySession, error) {
 	rows, err := s.db.QueryContext(
 		s.ctx,
-		`SELECT id, game_id, start_time, COALESCE(end_time, start_time), duration 
+		`SELECT id, game_id, start_time, COALESCE(end_time, start_time), duration, COALESCE(updated_at, end_time, start_time) 
 		 FROM play_sessions 
 		 WHERE game_id = ? 
 		 ORDER BY start_time DESC`,
@@ -116,7 +123,7 @@ func (s *SessionService) GetPlaySessions(gameID string) ([]models.PlaySession, e
 	var sessions []models.PlaySession
 	for rows.Next() {
 		var session models.PlaySession
-		if err := rows.Scan(&session.ID, &session.GameID, &session.StartTime, &session.EndTime, &session.Duration); err != nil {
+		if err := rows.Scan(&session.ID, &session.GameID, &session.StartTime, &session.EndTime, &session.Duration, &session.UpdatedAt); err != nil {
 			applog.LogErrorf(s.ctx, "GetPlaySessions: failed to scan play session: %v", err)
 			return nil, fmt.Errorf("读取游玩记录失败: %w", err)
 		}
@@ -142,6 +149,10 @@ func (s *SessionService) DeletePlaySession(sessionID string) error {
 		return fmt.Errorf("游玩记录不存在: %s", sessionID)
 	}
 
+	if err := upsertSyncTombstone(s.ctx, s.db, cloudSyncEntityPlaySession, sessionID, time.Now()); err != nil {
+		return err
+	}
+
 	applog.LogInfof(s.ctx, "DeletePlaySession: deleted play session %s", sessionID)
 	return nil
 }
@@ -150,13 +161,15 @@ func (s *SessionService) DeletePlaySession(sessionID string) error {
 func (s *SessionService) UpdatePlaySession(session models.PlaySession) error {
 	// 重新计算结束时间
 	endTime := session.StartTime.Add(time.Duration(session.Duration) * time.Second)
+	session.UpdatedAt = time.Now()
 
 	result, err := s.db.ExecContext(
 		s.ctx,
-		`UPDATE play_sessions SET start_time = ?, end_time = ?, duration = ? WHERE id = ?`,
+		`UPDATE play_sessions SET start_time = ?, end_time = ?, duration = ?, updated_at = ? WHERE id = ?`,
 		session.StartTime,
 		endTime,
 		session.Duration,
+		session.UpdatedAt,
 		session.ID,
 	)
 	if err != nil {
@@ -170,6 +183,10 @@ func (s *SessionService) UpdatePlaySession(session models.PlaySession) error {
 	}
 	if rowsAffected == 0 {
 		return fmt.Errorf("游玩记录不存在: %s", session.ID)
+	}
+
+	if err := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityPlaySession, session.ID); err != nil {
+		applog.LogWarningf(s.ctx, "UpdatePlaySession: failed to clear play_session tombstone %s: %v", session.ID, err)
 	}
 
 	applog.LogInfof(s.ctx, "UpdatePlaySession: updated play session %s", session.ID)
@@ -189,17 +206,23 @@ func (s *SessionService) BatchAddPlaySessions(sessions []models.PlaySession) err
 	defer tx.Rollback()
 
 	stmt, err := tx.PrepareContext(s.ctx,
-		`INSERT INTO play_sessions (id, game_id, start_time, end_time, duration) VALUES (?, ?, ?, ?, ?)`)
+		`INSERT INTO play_sessions (id, game_id, start_time, end_time, duration, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return fmt.Errorf("准备语句失败: %w", err)
 	}
 	defer stmt.Close()
 
 	for _, session := range sessions {
-		_, err = stmt.ExecContext(s.ctx, session.ID, session.GameID, session.StartTime, session.EndTime, session.Duration)
+		if session.UpdatedAt.IsZero() {
+			session.UpdatedAt = time.Now()
+		}
+		_, err = stmt.ExecContext(s.ctx, session.ID, session.GameID, session.StartTime, session.EndTime, session.Duration, session.UpdatedAt)
 		if err != nil {
 			applog.LogErrorf(s.ctx, "BatchAddPlaySessions: failed to insert session: %v", err)
 			return fmt.Errorf("插入游玩记录失败: %w", err)
+		}
+		if clearErr := deleteSyncTombstone(s.ctx, tx, cloudSyncEntityPlaySession, session.ID); clearErr != nil {
+			return clearErr
 		}
 	}
 
@@ -263,6 +286,7 @@ func (s *SessionService) CleanupUnfinishedSessions() error {
 			if err != nil {
 				applog.LogErrorf(s.ctx, "CleanupUnfinishedSessions: failed to delete short session %s: %v", session.ID, err)
 			} else {
+				_ = upsertSyncTombstone(s.ctx, s.db, cloudSyncEntityPlaySession, session.ID, endTime)
 				deleted++
 				applog.LogDebugf(s.ctx, "Deleted short session %s (duration: %d seconds)", session.ID, duration)
 			}
@@ -270,14 +294,16 @@ func (s *SessionService) CleanupUnfinishedSessions() error {
 			// 时长大于等于 60 秒，更新记录
 			_, err := s.db.ExecContext(
 				s.ctx,
-				`UPDATE play_sessions SET end_time = ?, duration = ? WHERE id = ?`,
+				`UPDATE play_sessions SET end_time = ?, duration = ?, updated_at = ? WHERE id = ?`,
 				endTime,
 				duration,
+				endTime,
 				session.ID,
 			)
 			if err != nil {
 				applog.LogErrorf(s.ctx, "CleanupUnfinishedSessions: failed to update session %s: %v", session.ID, err)
 			} else {
+				_ = deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityPlaySession, session.ID)
 				updated++
 				applog.LogDebugf(s.ctx, "Updated unfinished session %s (duration: %d seconds)", session.ID, duration)
 			}

@@ -9,9 +9,10 @@ import (
 	"lunabox/internal/cli"
 	"lunabox/internal/cli/ipcclient"
 	"lunabox/internal/cli/ipcserver"
+	"lunabox/internal/common/enums"
+	"lunabox/internal/common/vo"
 	"lunabox/internal/protocol"
 	"lunabox/internal/utils/apputils"
-	"lunabox/internal/vo"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -22,7 +23,6 @@ import (
 	"time"
 
 	"lunabox/internal/appconf"
-	"lunabox/internal/enums"
 	"lunabox/internal/migrations"
 	"lunabox/internal/service"
 
@@ -224,6 +224,14 @@ func shouldRunFrontendQuitSync(config *appconf.AppConfig) bool {
 		config.AutoUploadDBToCloud
 }
 
+func shouldRunAutomaticCloudSync(config *appconf.AppConfig) bool {
+	if config == nil {
+		return false
+	}
+
+	return config.CloudSyncEnabled && config.AutoCloudSyncEnabled
+}
+
 // isBindingsBuild 检测当前是否为生成绑定的构建（通过环境变量判断）
 // FIXME: 现在这样做是因为前置恢复逻辑和数据库初始化会影响wails generate module的正常执行，这里用了很tricky的方法做了一个兼容
 func isBindingsBuild() bool {
@@ -324,6 +332,7 @@ func main() {
 	gameService := service.NewGameService()
 	aiService := service.NewAiService()
 	backupService := service.NewBackupService()
+	cloudSyncService := service.NewCloudSyncService()
 	homeService := service.NewHomeService()
 	statsService := service.NewStatsService()
 	startService := service.NewStartService()
@@ -342,6 +351,7 @@ func main() {
 		gameService,
 		aiService,
 		backupService,
+		cloudSyncService,
 		homeService,
 		statsService,
 		startService,
@@ -515,6 +525,7 @@ func main() {
 			tagService.Init(ctx, db, config)
 			aiService.Init(ctx, db, config)
 			backupService.Init(ctx, db, config)
+			cloudSyncService.Init(ctx, db, config)
 			service.ConfigureBackupServiceQuitSyncDBBackupHooks(
 				backupService,
 				func() {
@@ -581,9 +592,16 @@ func main() {
 			case <-time.After(5 * time.Second):
 				appLogger.Error("system tray initialization timed out")
 			}
+
+			if shouldRunAutomaticCloudSync(config) {
+				cloudSyncService.RunStartupSync()
+			}
+			cloudSyncService.StartScheduledSync()
 		},
 		OnShutdown: func(ctx context.Context) {
 			appState.BeginShutdown()
+
+			cloudSyncService.StopScheduledSync()
 
 			shutdownStartedAt := time.Now()
 			logShutdownStep := func(step string, fn func()) {

@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
-	"lunabox/internal/enums"
+	enums2 "lunabox/internal/common/enums"
+	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
 	"lunabox/internal/protocol"
 	"lunabox/internal/utils"
@@ -16,7 +17,6 @@ import (
 	"lunabox/internal/utils/imageutils"
 	"lunabox/internal/utils/metadata"
 	"lunabox/internal/utils/processutils"
-	"lunabox/internal/vo"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,7 +36,7 @@ type GameService struct {
 
 type metadataSearchSource struct {
 	getter metadata.Getter
-	source enums.SourceType
+	source enums2.SourceType
 	token  string
 }
 
@@ -138,6 +138,9 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 	if game.CachedAt.IsZero() {
 		game.CachedAt = time.Now()
 	}
+	if game.UpdatedAt.IsZero() {
+		game.UpdatedAt = time.Now()
+	}
 
 	// 保存原始封面URL用于后台下载
 	originalCoverURL := game.CoverURL
@@ -155,9 +158,9 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 
 	query := `INSERT INTO games (
 		id, name, cover_url, company, summary, rating, release_date, path, 
-		source_type, cached_at, source_id, created_at,
+		source_type, cached_at, source_id, created_at, updated_at,
 		use_locale_emulator, use_magpie
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := s.db.ExecContext(s.ctx, query,
 		game.ID,
@@ -172,12 +175,17 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 		game.CachedAt,
 		game.SourceID,
 		game.CreatedAt,
+		game.UpdatedAt,
 		game.UseLocaleEmulator,
 		game.UseMagpie,
 	)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "AddGame: failed to insert game %s: %v", game.Name, err)
 		return err
+	}
+
+	if err := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityGame, game.ID); err != nil {
+		applog.LogWarningf(s.ctx, "AddGame: failed to clear game tombstone for %s: %v", game.ID, err)
 	}
 
 	// 优先使用已刮削出的 tags，避免重复网络请求；无 tags 时再按 source_id 兜底拉取。
@@ -204,7 +212,7 @@ func (s *GameService) syncScrapedTagsForGame(game models.Game) {
 	if s.tagService == nil {
 		return
 	}
-	if game.SourceType == enums.Local || game.SourceType == "" {
+	if game.SourceType == enums2.Local || game.SourceType == "" {
 		return
 	}
 	if strings.TrimSpace(game.SourceID) == "" {
@@ -254,41 +262,26 @@ func (s *GameService) asyncDownloadCoverImage(gameID, gameName, coverURL string)
 
 // updateCoverURL 更新游戏的封面URL
 func (s *GameService) updateCoverURL(gameID, coverURL string) error {
-	query := `UPDATE games SET cover_url = ? WHERE id = ?`
-	_, err := s.db.ExecContext(s.ctx, query, coverURL, gameID)
+	query := `UPDATE games SET cover_url = ?, updated_at = ? WHERE id = ?`
+	_, err := s.db.ExecContext(s.ctx, query, coverURL, time.Now(), gameID)
 	return err
 }
 
 func (s *GameService) DeleteGame(id string) error {
-	// 先删除关联的游戏分类记录
-	_, err := s.db.ExecContext(s.ctx, "DELETE FROM game_categories WHERE game_id = ?", id)
+	tx, err := s.db.Begin()
 	if err != nil {
-		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game_categories for id %s: %v", id, err)
-		return fmt.Errorf("failed to delete game categories: %w", err)
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to begin transaction: %v", err)
+		return err
 	}
+	defer tx.Rollback()
 
-	// 删除关联的游玩会话记录
-	_, err = s.db.ExecContext(s.ctx, "DELETE FROM play_sessions WHERE game_id = ?", id)
-	if err != nil {
-		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete play_sessions for id %s: %v", id, err)
-		return fmt.Errorf("failed to delete play sessions: %w", err)
-	}
-	// 删除游戏记录
-	result, err := s.db.ExecContext(s.ctx, "DELETE FROM games WHERE id = ?", id)
-	if err != nil {
-		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game for id %s: %v", id, err)
-		return fmt.Errorf("failed to delete game: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		applog.LogErrorf(s.ctx, "DeleteGame: failed to get rows affected for id %s: %v", id, err)
+	if err := s.deleteGameTx(tx, id, time.Now()); err != nil {
 		return err
 	}
 
-	if rowsAffected == 0 {
-		applog.LogWarningf(s.ctx, "DeleteGame: game not found with id: %s", id)
-		return fmt.Errorf("game not found with id: %s", id)
+	if err := tx.Commit(); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to commit transaction: %v", err)
+		return err
 	}
 
 	return nil
@@ -300,12 +293,6 @@ func (s *GameService) DeleteGames(ids []string) error {
 		return nil
 	}
 
-	placeholders := utils.BuildPlaceholders(len(ids))
-	args := make([]interface{}, 0, len(ids))
-	for _, id := range ids {
-		args = append(args, id)
-	}
-
 	tx, err := s.db.Begin()
 	if err != nil {
 		applog.LogErrorf(s.ctx, "DeleteGames: failed to begin transaction: %v", err)
@@ -313,30 +300,11 @@ func (s *GameService) DeleteGames(ids []string) error {
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.ExecContext(s.ctx, fmt.Sprintf("DELETE FROM game_categories WHERE game_id IN (%s)", placeholders), args...); err != nil {
-		applog.LogErrorf(s.ctx, "DeleteGames: failed to delete game_categories: %v", err)
-		return fmt.Errorf("failed to delete game categories: %w", err)
-	}
-
-	if _, err := tx.ExecContext(s.ctx, fmt.Sprintf("DELETE FROM play_sessions WHERE game_id IN (%s)", placeholders), args...); err != nil {
-		applog.LogErrorf(s.ctx, "DeleteGames: failed to delete play_sessions: %v", err)
-		return fmt.Errorf("failed to delete play sessions: %w", err)
-	}
-
-	result, err := tx.ExecContext(s.ctx, fmt.Sprintf("DELETE FROM games WHERE id IN (%s)", placeholders), args...)
-	if err != nil {
-		applog.LogErrorf(s.ctx, "DeleteGames: failed to delete games: %v", err)
-		return fmt.Errorf("failed to delete games: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		applog.LogErrorf(s.ctx, "DeleteGames: failed to get rows affected: %v", err)
-		return err
-	}
-	if rowsAffected == 0 {
-		applog.LogWarningf(s.ctx, "DeleteGames: no games deleted")
-		return fmt.Errorf("no games deleted")
+	now := time.Now()
+	for _, id := range ids {
+		if err := s.deleteGameTx(tx, id, now); err != nil {
+			return err
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -363,6 +331,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 		g.cached_at, 
 		COALESCE(g.source_id, '') as source_id, 
 		g.created_at,
+		COALESCE(g.updated_at, g.created_at, g.cached_at) as updated_at,
 		latest.last_played_at,
 		COALESCE(g.use_locale_emulator, FALSE) as use_locale_emulator,
 		COALESCE(g.use_magpie, FALSE) as use_magpie
@@ -403,6 +372,7 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 			&game.CachedAt,
 			&game.SourceID,
 			&game.CreatedAt,
+			&game.UpdatedAt,
 			&lastPlayedAt,
 			&game.UseLocaleEmulator,
 			&game.UseMagpie,
@@ -412,8 +382,8 @@ func (s *GameService) GetGames() ([]models.Game, error) {
 			return nil, fmt.Errorf("failed to scan game: %w", err)
 		}
 
-		game.SourceType = enums.SourceType(sourceType)
-		game.Status = enums.GameStatus(status)
+		game.SourceType = enums2.SourceType(sourceType)
+		game.Status = enums2.GameStatus(status)
 		if lastPlayedAt.Valid {
 			lastPlayed := lastPlayedAt.Time
 			game.LastPlayedAt = &lastPlayed
@@ -446,6 +416,7 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		g.cached_at, 
 		COALESCE(g.source_id, '') as source_id, 
 		g.created_at,
+		COALESCE(g.updated_at, g.created_at, g.cached_at) as updated_at,
 		latest.last_played_at,
 		COALESCE(g.use_locale_emulator, FALSE) as use_locale_emulator,
 		COALESCE(g.use_magpie, FALSE) as use_magpie
@@ -478,6 +449,7 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		&game.CachedAt,
 		&game.SourceID,
 		&game.CreatedAt,
+		&game.UpdatedAt,
 		&lastPlayedAt,
 		&game.UseLocaleEmulator,
 		&game.UseMagpie,
@@ -492,8 +464,8 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		return models.Game{}, fmt.Errorf("failed to query game: %w", err)
 	}
 
-	game.SourceType = enums.SourceType(sourceType)
-	game.Status = enums.GameStatus(status)
+	game.SourceType = enums2.SourceType(sourceType)
+	game.Status = enums2.GameStatus(status)
 	if lastPlayedAt.Valid {
 		lastPlayed := lastPlayedAt.Time
 		game.LastPlayedAt = &lastPlayed
@@ -502,6 +474,8 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 }
 
 func (s *GameService) UpdateGame(game models.Game) error {
+	game.UpdatedAt = time.Now()
+
 	query := `UPDATE games SET 
 		name = ?,
 		cover_url = ?,
@@ -516,6 +490,7 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		source_type = ?,
 		cached_at = ?,
 		source_id = ?,
+		updated_at = ?,
 		use_locale_emulator = ?,
 		use_magpie = ?
 	WHERE id = ?`
@@ -534,6 +509,7 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		string(game.SourceType),
 		game.CachedAt,
 		game.SourceID,
+		game.UpdatedAt,
 		game.UseLocaleEmulator,
 		game.UseMagpie,
 		game.ID,
@@ -553,6 +529,135 @@ func (s *GameService) UpdateGame(game models.Game) error {
 	if rowsAffected == 0 {
 		applog.LogWarningf(s.ctx, "UpdateGame: game not found with id: %s", game.ID)
 		return fmt.Errorf("game not found with id: %s", game.ID)
+	}
+
+	if err := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityGame, game.ID); err != nil {
+		applog.LogWarningf(s.ctx, "UpdateGame: failed to clear game tombstone for %s: %v", game.ID, err)
+	}
+	return nil
+}
+
+func (s *GameService) deleteGameTx(tx *sql.Tx, id string, deletedAt time.Time) error {
+	var gameExists bool
+	if err := tx.QueryRowContext(s.ctx, "SELECT EXISTS(SELECT 1 FROM games WHERE id = ?)", id).Scan(&gameExists); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to check game existence for id %s: %v", id, err)
+		return fmt.Errorf("failed to check game existence: %w", err)
+	}
+	if !gameExists {
+		applog.LogWarningf(s.ctx, "DeleteGame: game not found with id: %s", id)
+		return fmt.Errorf("game not found with id: %s", id)
+	}
+
+	relRows, err := tx.QueryContext(s.ctx, "SELECT game_id, category_id FROM game_categories WHERE game_id = ?", id)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to query game_categories for id %s: %v", id, err)
+		return fmt.Errorf("failed to query game categories: %w", err)
+	}
+	var relationIDs []string
+	for relRows.Next() {
+		var gameID string
+		var categoryID string
+		if scanErr := relRows.Scan(&gameID, &categoryID); scanErr != nil {
+			relRows.Close()
+			return fmt.Errorf("failed to scan game category relation: %w", scanErr)
+		}
+		relationIDs = append(relationIDs, relationTombstoneID(gameID, categoryID))
+	}
+	relRows.Close()
+
+	sessionRows, err := tx.QueryContext(s.ctx, "SELECT id FROM play_sessions WHERE game_id = ?", id)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to query play_sessions for id %s: %v", id, err)
+		return fmt.Errorf("failed to query play sessions: %w", err)
+	}
+	var sessionIDs []string
+	for sessionRows.Next() {
+		var sessionID string
+		if scanErr := sessionRows.Scan(&sessionID); scanErr != nil {
+			sessionRows.Close()
+			return fmt.Errorf("failed to scan play session id: %w", scanErr)
+		}
+		sessionIDs = append(sessionIDs, sessionID)
+	}
+	sessionRows.Close()
+
+	progressRows, err := tx.QueryContext(s.ctx, "SELECT id FROM game_progress WHERE game_id = ?", id)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to query game_progress for id %s: %v", id, err)
+		return fmt.Errorf("failed to query game progress: %w", err)
+	}
+	var progressIDs []string
+	for progressRows.Next() {
+		var progressID string
+		if scanErr := progressRows.Scan(&progressID); scanErr != nil {
+			progressRows.Close()
+			return fmt.Errorf("failed to scan game progress id: %w", scanErr)
+		}
+		progressIDs = append(progressIDs, progressID)
+	}
+	progressRows.Close()
+
+	tagRows, err := tx.QueryContext(s.ctx, "SELECT game_id, source, name FROM game_tags WHERE game_id = ?", id)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to query game_tags for id %s: %v", id, err)
+		return fmt.Errorf("failed to query game tags: %w", err)
+	}
+	var tagIDs []string
+	for tagRows.Next() {
+		var gameID string
+		var source string
+		var name string
+		if scanErr := tagRows.Scan(&gameID, &source, &name); scanErr != nil {
+			tagRows.Close()
+			return fmt.Errorf("failed to scan game tag identity: %w", scanErr)
+		}
+		tagIDs = append(tagIDs, tagTombstoneID(gameID, source, name))
+	}
+	tagRows.Close()
+
+	for _, relationID := range relationIDs {
+		if err := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityGameCategory, relationID, deletedAt); err != nil {
+			return err
+		}
+	}
+	for _, sessionID := range sessionIDs {
+		if err := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityPlaySession, sessionID, deletedAt); err != nil {
+			return err
+		}
+	}
+	for _, progressID := range progressIDs {
+		if err := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityGameProgress, progressID, deletedAt); err != nil {
+			return err
+		}
+	}
+	for _, tagID := range tagIDs {
+		if err := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityGameTag, tagID, deletedAt); err != nil {
+			return err
+		}
+	}
+	if err := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityGame, id, deletedAt); err != nil {
+		return err
+	}
+
+	if _, err := tx.ExecContext(s.ctx, "DELETE FROM game_categories WHERE game_id = ?", id); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game_categories for id %s: %v", id, err)
+		return fmt.Errorf("failed to delete game categories: %w", err)
+	}
+	if _, err := tx.ExecContext(s.ctx, "DELETE FROM play_sessions WHERE game_id = ?", id); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete play_sessions for id %s: %v", id, err)
+		return fmt.Errorf("failed to delete play sessions: %w", err)
+	}
+	if _, err := tx.ExecContext(s.ctx, "DELETE FROM game_progress WHERE game_id = ?", id); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game_progress for id %s: %v", id, err)
+		return fmt.Errorf("failed to delete game progress: %w", err)
+	}
+	if _, err := tx.ExecContext(s.ctx, "DELETE FROM game_tags WHERE game_id = ?", id); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game_tags for id %s: %v", id, err)
+		return fmt.Errorf("failed to delete game tags: %w", err)
+	}
+	if _, err := tx.ExecContext(s.ctx, "DELETE FROM games WHERE id = ?", id); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game for id %s: %v", id, err)
+		return fmt.Errorf("failed to delete game: %w", err)
 	}
 
 	return nil
@@ -752,19 +857,19 @@ func (s *GameService) fetchMetadataResultByRequest(req vo.MetadataRequest) (meta
 	}
 
 	switch req.Source {
-	case enums.Bangumi:
+	case enums2.Bangumi:
 		return s.fetchMetadataResultBySource(req.Source, strings.ToLower(sourceID))
-	case enums.VNDB:
+	case enums2.VNDB:
 		if !isVndbId(strings.ToLower(sourceID)) {
 			return metadata.MetadataResult{}, fmt.Errorf("invalid VNDB ID format: %s", req.ID)
 		}
 		return s.fetchMetadataResultBySource(req.Source, strings.ToLower(sourceID))
-	case enums.Ymgal:
+	case enums2.Ymgal:
 		if !isYmgalId(strings.ToLower(sourceID)) {
 			return metadata.MetadataResult{}, fmt.Errorf("invalid Ymgal ID format: %s", req.ID)
 		}
 		return s.fetchMetadataResultBySource(req.Source, strings.ToLower(sourceID))
-	case enums.Steam:
+	case enums2.Steam:
 		if !isSteamAppID(sourceID) {
 			return metadata.MetadataResult{}, fmt.Errorf("invalid Steam app ID format: %s", req.ID)
 		}
@@ -774,18 +879,18 @@ func (s *GameService) fetchMetadataResultByRequest(req vo.MetadataRequest) (meta
 	}
 }
 
-func (s *GameService) fetchMetadataResultBySource(source enums.SourceType, sourceID string) (metadata.MetadataResult, error) {
+func (s *GameService) fetchMetadataResultBySource(source enums2.SourceType, sourceID string) (metadata.MetadataResult, error) {
 	switch source {
-	case enums.Bangumi:
+	case enums2.Bangumi:
 		getter := metadata.NewBangumiInfoGetter()
 		return getter.FetchMetadata(sourceID, s.config.BangumiAccessToken)
-	case enums.VNDB:
+	case enums2.VNDB:
 		getter := metadata.NewVNDBInfoGetterWithLanguage(s.config.Language)
 		return getter.FetchMetadata(sourceID, s.config.VNDBAccessToken)
-	case enums.Ymgal:
+	case enums2.Ymgal:
 		getter := metadata.NewYmgalInfoGetter()
 		return getter.FetchMetadata(sourceID, "")
-	case enums.Steam:
+	case enums2.Steam:
 		getter := metadata.NewSteamInfoGetterWithLanguage(s.config.Language)
 		return getter.FetchMetadata(sourceID, "")
 	default:
@@ -884,7 +989,7 @@ func (s *GameService) RefreshAllGamesMetadata() (vo.MetadataRefreshResult, error
 	enabledSources := s.getConfiguredMetadataSourceSet()
 
 	for _, game := range games {
-		if game.SourceType == "" || game.SourceType == enums.Local || strings.TrimSpace(game.SourceID) == "" {
+		if game.SourceType == "" || game.SourceType == enums2.Local || strings.TrimSpace(game.SourceID) == "" {
 			result.SkippedGames++
 			continue
 		}
@@ -990,7 +1095,7 @@ func (s *GameService) BatchUpdateStatus(ids []string, status string) error {
 	return tx.Commit()
 }
 
-func (s *GameService) findGameIDBySource(source enums.SourceType, sourceID string) (string, bool) {
+func (s *GameService) findGameIDBySource(source enums2.SourceType, sourceID string) (string, bool) {
 	if s.db == nil || sourceID == "" {
 		return "", false
 	}
@@ -1043,28 +1148,28 @@ func (s *GameService) getConfiguredMetadataSearchSources() []metadataSearchSourc
 	sources := make([]metadataSearchSource, 0, 4)
 	for _, source := range s.getConfiguredMetadataSources() {
 		switch source {
-		case enums.Bangumi:
+		case enums2.Bangumi:
 			sources = append(sources, metadataSearchSource{
 				getter: metadata.NewBangumiInfoGetter(),
-				source: enums.Bangumi,
+				source: enums2.Bangumi,
 				token:  bangumiToken,
 			})
-		case enums.VNDB:
+		case enums2.VNDB:
 			sources = append(sources, metadataSearchSource{
 				getter: metadata.NewVNDBInfoGetterWithLanguage(language),
-				source: enums.VNDB,
+				source: enums2.VNDB,
 				token:  vndbToken,
 			})
-		case enums.Ymgal:
+		case enums2.Ymgal:
 			sources = append(sources, metadataSearchSource{
 				getter: metadata.NewYmgalInfoGetter(),
-				source: enums.Ymgal,
+				source: enums2.Ymgal,
 				token:  "",
 			})
-		case enums.Steam:
+		case enums2.Steam:
 			sources = append(sources, metadataSearchSource{
 				getter: metadata.NewSteamInfoGetterWithLanguage(language),
-				source: enums.Steam,
+				source: enums2.Steam,
 				token:  "",
 			})
 		}
@@ -1103,18 +1208,18 @@ func canUseShortcutIconSource(path string) bool {
 	}
 }
 
-func (s *GameService) getConfiguredMetadataSources() []enums.SourceType {
-	defaultSources := []enums.SourceType{enums.Bangumi, enums.VNDB, enums.Ymgal, enums.Steam}
+func (s *GameService) getConfiguredMetadataSources() []enums2.SourceType {
+	defaultSources := []enums2.SourceType{enums2.Bangumi, enums2.VNDB, enums2.Ymgal, enums2.Steam}
 	if s.config == nil || len(s.config.MetadataSources) == 0 {
 		return defaultSources
 	}
 
-	result := make([]enums.SourceType, 0, len(defaultSources))
-	seen := make(map[enums.SourceType]struct{}, len(defaultSources))
+	result := make([]enums2.SourceType, 0, len(defaultSources))
+	seen := make(map[enums2.SourceType]struct{}, len(defaultSources))
 	for _, source := range s.config.MetadataSources {
-		normalized := enums.SourceType(strings.ToLower(strings.TrimSpace(source)))
+		normalized := enums2.SourceType(strings.ToLower(strings.TrimSpace(source)))
 		switch normalized {
-		case enums.Bangumi, enums.VNDB, enums.Ymgal, enums.Steam:
+		case enums2.Bangumi, enums2.VNDB, enums2.Ymgal, enums2.Steam:
 			if _, exists := seen[normalized]; exists {
 				continue
 			}
@@ -1129,8 +1234,8 @@ func (s *GameService) getConfiguredMetadataSources() []enums.SourceType {
 	return result
 }
 
-func (s *GameService) getConfiguredMetadataSourceSet() map[enums.SourceType]struct{} {
-	sourceSet := make(map[enums.SourceType]struct{})
+func (s *GameService) getConfiguredMetadataSourceSet() map[enums2.SourceType]struct{} {
+	sourceSet := make(map[enums2.SourceType]struct{})
 	for _, source := range s.getConfiguredMetadataSources() {
 		sourceSet[source] = struct{}{}
 	}

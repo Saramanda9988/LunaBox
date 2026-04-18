@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"lunabox/internal/applog"
+	"time"
 )
 
 // Migration 表示一个数据库迁移
@@ -282,6 +283,154 @@ func migration156(tx *sql.Tx) error {
 	return nil
 }
 
+// migration157 添加云同步所需的时间戳/墓碑结构，并归一系统分类 ID
+func migration157(tx *sql.Tx) error {
+	if _, err := tx.Exec(`
+		ALTER TABLE games
+		ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+	`); err != nil {
+		return fmt.Errorf("failed to add updated_at column to games: %w", err)
+	}
+
+	if _, err := tx.Exec(`
+		UPDATE games
+		SET updated_at = COALESCE(updated_at, created_at, cached_at, CURRENT_TIMESTAMP)
+		WHERE updated_at IS NULL
+	`); err != nil {
+		return fmt.Errorf("failed to normalize games updated_at values: %w", err)
+	}
+
+	if _, err := tx.Exec(`
+		ALTER TABLE play_sessions
+		ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+	`); err != nil {
+		return fmt.Errorf("failed to add updated_at column to play_sessions: %w", err)
+	}
+
+	if _, err := tx.Exec(`
+		UPDATE play_sessions
+		SET updated_at = COALESCE(updated_at, end_time, start_time, CURRENT_TIMESTAMP)
+		WHERE updated_at IS NULL
+	`); err != nil {
+		return fmt.Errorf("failed to normalize play_sessions updated_at values: %w", err)
+	}
+
+	if _, err := tx.Exec(`
+		ALTER TABLE game_categories
+		ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+	`); err != nil {
+		return fmt.Errorf("failed to add updated_at column to game_categories: %w", err)
+	}
+
+	if _, err := tx.Exec(`
+		UPDATE game_categories
+		SET updated_at = COALESCE(updated_at, CURRENT_TIMESTAMP)
+		WHERE updated_at IS NULL
+	`); err != nil {
+		return fmt.Errorf("failed to normalize game_categories updated_at values: %w", err)
+	}
+
+	if _, err := tx.Exec(`
+		CREATE TABLE IF NOT EXISTS sync_tombstones (
+			entity_type TEXT NOT NULL,
+			entity_id TEXT NOT NULL,
+			parent_id TEXT DEFAULT '',
+			secondary_id TEXT DEFAULT '',
+			deleted_at TIMESTAMPTZ NOT NULL,
+			PRIMARY KEY (entity_type, entity_id, parent_id, secondary_id)
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create sync_tombstones table: %w", err)
+	}
+
+	if _, err := tx.Exec(`
+		ALTER TABLE sync_tombstones
+		ADD COLUMN IF NOT EXISTS parent_id TEXT DEFAULT ''
+	`); err != nil {
+		return fmt.Errorf("failed to add parent_id column to sync_tombstones: %w", err)
+	}
+
+	if _, err := tx.Exec(`
+		ALTER TABLE sync_tombstones
+		ADD COLUMN IF NOT EXISTS secondary_id TEXT DEFAULT ''
+	`); err != nil {
+		return fmt.Errorf("failed to add secondary_id column to sync_tombstones: %w", err)
+	}
+
+	const stableFavoritesID = "system:favorites"
+	const favoritesName = "最喜欢的游戏"
+
+	var stableCount int
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM categories WHERE id = ?`, stableFavoritesID).Scan(&stableCount); err != nil {
+		return fmt.Errorf("failed to check stable favorites category: %w", err)
+	}
+
+	var legacyID string
+	err := tx.QueryRow(`
+		SELECT id
+		FROM categories
+		WHERE is_system = TRUE AND name = ? AND id <> ?
+		ORDER BY created_at ASC, id ASC
+		LIMIT 1
+	`, favoritesName, stableFavoritesID).Scan(&legacyID)
+	if err != nil && err != sql.ErrNoRows {
+		return fmt.Errorf("failed to query legacy favorites category: %w", err)
+	}
+
+	switch {
+	case stableCount == 0 && legacyID != "":
+		if _, err := tx.Exec(`UPDATE categories SET id = ? WHERE id = ?`, stableFavoritesID, legacyID); err != nil {
+			return fmt.Errorf("failed to normalize favorites category id: %w", err)
+		}
+	case stableCount > 0 && legacyID != "":
+		if _, err := tx.Exec(`
+			INSERT INTO game_categories (game_id, category_id, updated_at)
+			SELECT game_id, ?, COALESCE(updated_at, CURRENT_TIMESTAMP)
+			FROM game_categories
+			WHERE category_id = ?
+			ON CONFLICT (game_id, category_id) DO UPDATE SET updated_at = EXCLUDED.updated_at
+		`, stableFavoritesID, legacyID); err != nil {
+			return fmt.Errorf("failed to merge legacy favorites relations: %w", err)
+		}
+		if _, err := tx.Exec(`DELETE FROM game_categories WHERE category_id = ?`, legacyID); err != nil {
+			return fmt.Errorf("failed to delete legacy favorites relations: %w", err)
+		}
+		if _, err := tx.Exec(`DELETE FROM categories WHERE id = ?`, legacyID); err != nil {
+			return fmt.Errorf("failed to delete legacy favorites category: %w", err)
+		}
+	case stableCount == 0 && legacyID == "":
+		now := time.Now()
+		if _, err := tx.Exec(`
+			INSERT INTO categories (id, name, emoji, is_system, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`, stableFavoritesID, favoritesName, "❤️", true, now, now); err != nil {
+			return fmt.Errorf("failed to seed stable favorites category: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// migration158 为 game_tags 添加 updated_at，供云同步进行冲突解决
+func migration158(tx *sql.Tx) error {
+	if _, err := tx.Exec(`
+		ALTER TABLE game_tags
+		ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+	`); err != nil {
+		return fmt.Errorf("failed to add updated_at column to game_tags: %w", err)
+	}
+
+	if _, err := tx.Exec(`
+		UPDATE game_tags
+		SET updated_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
+		WHERE updated_at IS NULL
+	`); err != nil {
+		return fmt.Errorf("failed to normalize game_tags updated_at values: %w", err)
+	}
+
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
@@ -323,6 +472,16 @@ var migrations = []Migration{
 		Version:     156,
 		Description: "Add game_progress timeline index for append-only history reads",
 		Up:          migration156,
+	},
+	{
+		Version:     157,
+		Description: "Add cloud sync metadata columns and tombstones, normalize system favorites category identity",
+		Up:          migration157,
+	},
+	{
+		Version:     158,
+		Description: "Add updated_at to game_tags for cloud sync conflict resolution",
+		Up:          migration158,
 	},
 	// {
 	// 	Version:     114,

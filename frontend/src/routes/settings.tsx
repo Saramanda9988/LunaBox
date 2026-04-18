@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { GetVersionInfo } from "../../wailsjs/go/service/VersionService";
+import { BrowserOpenURL } from "../../wailsjs/runtime/runtime";
 import { AISettingsPanel } from "../components/panel/AISettingsPanel";
 import { AutoBackupSettingsPanel } from "../components/panel/AutoBackupSettingsPanel";
 import { BackgroundSettingsPanel } from "../components/panel/BackgroundSettingsPanel";
@@ -38,7 +39,9 @@ function SettingsPage() {
   const setDraftConfig = useAppStore(state => state.setDraftConfig);
   const [isLoading, setIsLoading] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
-  const [versionInfo, setVersionInfo] = useState<Record<string, string> | null>(null);
+  const [versionInfo, setVersionInfo] = useState<Record<string, string> | null>(
+    null,
+  );
   const isInitialMount = useRef(true);
 
   useEffect(() => {
@@ -121,79 +124,164 @@ function SettingsPage() {
   }
 
   return (
-    <div className={`mx-auto max-w-8xl space-y-6 p-8 transition-opacity duration-300 ${isLoading ? "pointer-events-none opacity-50" : "opacity-100"}`}>
+    <div
+      className={`mx-auto max-w-8xl space-y-6 p-8 transition-opacity duration-300 ${isLoading ? "pointer-events-none opacity-50" : "opacity-100"}`}
+    >
       <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-bold text-brand-900 dark:text-white">{t("settings.title")}</h1>
+        <h1 className="text-4xl font-bold text-brand-900 dark:text-white">
+          {t("settings.title")}
+        </h1>
       </div>
 
       <div className="mx-auto w-full max-w-5xl space-y-6">
-        <CollapsibleSection title={t("settings.sections.basic")} icon="i-mdi-database-settings" defaultOpen={true}>
-          <BasicSettingsPanel formData={draftConfig} onChange={handleDraftChange} onZoomChange={handleZoomChange} />
+        <CollapsibleSection
+          title={t("settings.sections.basic")}
+          icon="i-mdi-database-settings"
+          defaultOpen={true}
+        >
+          <BasicSettingsPanel
+            formData={draftConfig}
+            onChange={handleDraftChange}
+            onZoomChange={handleZoomChange}
+          />
         </CollapsibleSection>
 
-        <CollapsibleSection title={t("settings.sections.metadata")} icon="i-mdi-database-search" defaultOpen={false}>
-          <MetadataSettingsPanel formData={draftConfig} onChange={handleDraftChange} />
+        <CollapsibleSection
+          title={t("settings.sections.metadata")}
+          icon="i-mdi-database-search"
+          defaultOpen={false}
+        >
+          <MetadataSettingsPanel
+            formData={draftConfig}
+            onChange={handleDraftChange}
+          />
         </CollapsibleSection>
 
-        <CollapsibleSection title={t("settings.sections.appearance")} icon="i-mdi-palette" defaultOpen={false}>
-          <BackgroundSettingsPanel formData={draftConfig} onChange={handleDraftChange} />
+        <CollapsibleSection
+          title={t("settings.sections.appearance")}
+          icon="i-mdi-palette"
+          defaultOpen={false}
+        >
+          <BackgroundSettingsPanel
+            formData={draftConfig}
+            onChange={handleDraftChange}
+          />
         </CollapsibleSection>
 
-        <CollapsibleSection title={t("settings.sections.game")} icon="i-mdi-timer-play-outline" defaultOpen={false}>
-          <GameSettingsPanel formData={draftConfig} onChange={handleDraftChange} />
+        <CollapsibleSection
+          title={t("settings.sections.game")}
+          icon="i-mdi-timer-play-outline"
+          defaultOpen={false}
+        >
+          <GameSettingsPanel
+            formData={draftConfig}
+            onChange={handleDraftChange}
+          />
         </CollapsibleSection>
 
-        <CollapsibleSection title={t("settings.sections.download")} icon="i-mdi-download" defaultOpen={false}>
-          <DownloadSettingsPanel formData={draftConfig} onChange={handleDraftChange} />
+        <CollapsibleSection
+          title={t("settings.sections.download")}
+          icon="i-mdi-download"
+          defaultOpen={false}
+        >
+          <DownloadSettingsPanel
+            formData={draftConfig}
+            onChange={handleDraftChange}
+          />
         </CollapsibleSection>
 
-        <CollapsibleSection title={t("settings.sections.cloudBackup")} icon="i-mdi-cloud-upload" defaultOpen={false}>
-          <CloudBackupSettingsPanel formData={draftConfig} onChange={handleDraftChange} />
+        <CollapsibleSection
+          title={t("settings.sections.cloudBackup")}
+          icon="i-mdi-cloud-upload"
+          defaultOpen={false}
+        >
+          <CloudBackupSettingsPanel
+            formData={draftConfig}
+            onChange={handleDraftChange}
+          />
         </CollapsibleSection>
 
-        <CollapsibleSection title={t("settings.sections.autoBackup")} icon="i-mdi-backup-restore" defaultOpen={false}>
-          <AutoBackupSettingsPanel formData={draftConfig} onChange={handleDraftChange} />
+        <CollapsibleSection
+          title={t("settings.sections.autoBackup")}
+          icon="i-mdi-backup-restore"
+          defaultOpen={false}
+        >
+          <AutoBackupSettingsPanel
+            formData={draftConfig}
+            onChange={handleDraftChange}
+          />
         </CollapsibleSection>
 
-        <CollapsibleSection title={t("settings.sections.ai")} icon="i-mdi-robot-happy" defaultOpen={false}>
-          <AISettingsPanel formData={draftConfig} onChange={handleDraftChange} />
+        <CollapsibleSection
+          title={t("settings.sections.ai")}
+          icon="i-mdi-robot-happy"
+          defaultOpen={false}
+        >
+          <AISettingsPanel
+            formData={draftConfig}
+            onChange={handleDraftChange}
+          />
         </CollapsibleSection>
 
-        <CollapsibleSection title={t("settings.sections.dbBackup")} icon="i-mdi-database-refresh" defaultOpen={false}>
+        <CollapsibleSection
+          title={t("settings.sections.dbBackup")}
+          icon="i-mdi-database-refresh"
+          defaultOpen={false}
+        >
           <DBBackupPanel />
         </CollapsibleSection>
 
-        <CollapsibleSection title={t("settings.sections.fullDataBackup")} icon="i-mdi-package-variant" defaultOpen={false}>
+        <CollapsibleSection
+          title={t("settings.sections.fullDataBackup")}
+          icon="i-mdi-package-variant"
+          defaultOpen={false}
+        >
           <FullDataBackupPanel />
         </CollapsibleSection>
 
-        <CollapsibleSection title={t("settings.sections.update")} icon="i-mdi-update" defaultOpen={false}>
-          <UpdateSettingsPanel formData={draftConfig} onChange={handleDraftChange} />
+        <CollapsibleSection
+          title={t("settings.sections.update")}
+          icon="i-mdi-update"
+          defaultOpen={false}
+        >
+          <UpdateSettingsPanel
+            formData={draftConfig}
+            onChange={handleDraftChange}
+          />
         </CollapsibleSection>
       </div>
 
-      <div className="pt-4">
-        <p className="text-xs text-brand-500 dark:text-brand-400">
+      <div className="pt-4 text-center text-brand-500 dark:text-brand-400 pb-8 flex flex-col items-center justify-center">
+        <p className="text-xs">
           Lunabox made with LunaRain_079 &amp; Contributors.
         </p>
         {versionInfo && (
-          <p className="mt-1 text-xs text-brand-400 dark:text-brand-500">
+          <p className="mt-1 text-xs opacity-80">
             Version
             {" "}
             {versionInfo.version}
             {" "}
             (
             {versionInfo.commit}
-            )
-            |
+            ) |
             {" "}
             {versionInfo.buildMode}
             {" "}
             | Built at
-            {" "}
             {versionInfo.buildTime}
           </p>
         )}
+
+        <button
+          type="button"
+          onClick={() =>
+            BrowserOpenURL("https://github.com/Saramanda9988/LunaBox")}
+          className="mt-6 flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors border border-brand-200 dark:border-brand-700/80 hover:bg-brand-100 hover:text-brand-800 dark:hover:bg-brand-800 dark:hover:text-brand-100"
+          title={t("sideBar.github")}
+        >
+          <div className="i-mdi-github text-xl" />
+          <span>前往 GitHub 仓库</span>
+        </button>
       </div>
     </div>
   );

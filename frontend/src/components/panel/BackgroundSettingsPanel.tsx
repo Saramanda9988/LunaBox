@@ -2,7 +2,10 @@ import type { appconf } from "../../../wailsjs/go/models";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { SaveCroppedBackgroundImage, SelectAndCropBackgroundImage } from "../../../wailsjs/go/service/ConfigService";
+import {
+  SaveCroppedBackgroundImage,
+  SelectAndCropBackgroundImage,
+} from "../../../wailsjs/go/service/ConfigService";
 import { detectImageBrightness } from "../../utils/detectImageBrightness";
 import { ImageCropperModal } from "../modal/ImageCropperModal";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
@@ -12,7 +15,10 @@ interface BackgroundSettingsProps {
   onChange: (data: appconf.AppConfig) => void;
 }
 
-export function BackgroundSettingsPanel({ formData, onChange }: BackgroundSettingsProps) {
+export function BackgroundSettingsPanel({
+  formData,
+  onChange,
+}: BackgroundSettingsProps) {
   const { t } = useTranslation();
   const [selectedImagePath, setSelectedImagePath] = useState<string>("");
   const [showCropper, setShowCropper] = useState(false);
@@ -26,12 +32,21 @@ export function BackgroundSettingsPanel({ formData, onChange }: BackgroundSettin
       }
     }
     catch (err) {
-      toast.error(t("settings.appearance.toast.selectFailed", { error: err instanceof Error ? err.message : String(err) }));
+      toast.error(
+        t("settings.appearance.toast.selectFailed", {
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
       console.error("Failed to select background image:", err);
     }
   };
 
-  const handleCropConfirm = async (crop: { x: number; y: number; width: number; height: number }) => {
+  const handleCropConfirm = async (crop: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }) => {
     try {
       const localPath = await SaveCroppedBackgroundImage(
         selectedImagePath,
@@ -55,7 +70,11 @@ export function BackgroundSettingsPanel({ formData, onChange }: BackgroundSettin
     }
     catch (err) {
       console.error("Failed to crop and save background image:", err);
-      toast.error(t("settings.appearance.toast.cropFailed", { error: err instanceof Error ? err.message : String(err) }));
+      toast.error(
+        t("settings.appearance.toast.cropFailed", {
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
     }
   };
 
@@ -103,63 +122,82 @@ export function BackgroundSettingsPanel({ formData, onChange }: BackgroundSettin
       )}
 
       {/* Enable Toggle */}
-      <div className="flex items-center justify-between p-2">
-        <div>
-          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-            {t("settings.appearance.enableBg")}
-          </label>
-          <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
-            {t("settings.appearance.enableBgHint")}
-          </p>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1 space-y-2">
+            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+              {t("settings.appearance.enableBg")}
+            </label>
+            <p className="text-xs text-brand-500 dark:text-brand-400">
+              {t("settings.appearance.enableBgHint")}
+            </p>
+          </div>
+          <BetterSwitch
+            id="background_enabled"
+            checked={formData.background_enabled || false}
+            onCheckedChange={(checked) => {
+              const newConfig = {
+                ...formData,
+                background_enabled: checked,
+              } as appconf.AppConfig;
+              if (checked && formData.background_is_light !== undefined) {
+                newConfig.theme = formData.background_is_light
+                  ? "light"
+                  : "dark";
+              }
+              onChange(newConfig);
+            }}
+            disabled={!formData.background_image}
+          />
         </div>
-        <BetterSwitch
-          id="background_enabled"
-          checked={formData.background_enabled || false}
-          onCheckedChange={(checked) => {
-            const newConfig = { ...formData, background_enabled: checked } as appconf.AppConfig;
-            if (checked && formData.background_is_light !== undefined) {
-              newConfig.theme = formData.background_is_light ? "light" : "dark";
-            }
-            onChange(newConfig);
-          }}
-          disabled={!formData.background_image}
-        />
       </div>
 
       {/* Hide Game Cover Toggle */}
-      <div className="flex items-center justify-between p-2">
-        <div>
-          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-            {t("settings.appearance.hideGameCover")}
-          </label>
-          <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
-            {t("settings.appearance.hideGameCoverHint")}
-          </p>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1 space-y-2">
+            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+              {t("settings.appearance.hideGameCover")}
+            </label>
+            <p className="text-xs text-brand-500 dark:text-brand-400">
+              {t("settings.appearance.hideGameCoverHint")}
+            </p>
+          </div>
+          <BetterSwitch
+            id="background_hide_game_cover"
+            checked={formData.background_hide_game_cover || false}
+            onCheckedChange={checked =>
+              onChange({
+                ...formData,
+                background_hide_game_cover: checked,
+              } as appconf.AppConfig)}
+            disabled={!formData.background_enabled}
+          />
         </div>
-        <BetterSwitch
-          id="background_hide_game_cover"
-          checked={formData.background_hide_game_cover || false}
-          onCheckedChange={checked => onChange({ ...formData, background_hide_game_cover: checked } as appconf.AppConfig)}
-          disabled={!formData.background_enabled}
-        />
       </div>
 
       {/* Hide Game Hero Cover Toggle */}
-      <div className="flex items-center justify-between p-2">
-        <div>
-          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-            {t("settings.appearance.hideGameHeroCover")}
-          </label>
-          <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
-            {t("settings.appearance.hideGameHeroCoverHint")}
-          </p>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1 space-y-2">
+            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+              {t("settings.appearance.hideGameHeroCover")}
+            </label>
+            <p className="text-xs text-brand-500 dark:text-brand-400">
+              {t("settings.appearance.hideGameHeroCoverHint")}
+            </p>
+          </div>
+          <BetterSwitch
+            id="background_hide_game_hero_cover"
+            checked={formData.background_hide_game_hero_cover || false}
+            onCheckedChange={checked =>
+              onChange({
+                ...formData,
+                background_hide_game_hero_cover: checked,
+              } as appconf.AppConfig)}
+            disabled={!formData.background_enabled}
+          />
         </div>
-        <BetterSwitch
-          id="background_hide_game_hero_cover"
-          checked={formData.background_hide_game_hero_cover || false}
-          onCheckedChange={checked => onChange({ ...formData, background_hide_game_hero_cover: checked } as appconf.AppConfig)}
-          disabled={!formData.background_enabled}
-        />
       </div>
 
       {/* Background Image Selection */}
@@ -169,7 +207,9 @@ export function BackgroundSettingsPanel({ formData, onChange }: BackgroundSettin
         </label>
         <div className="flex gap-2">
           <div className="flex-1 flex items-center px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-brand-50 dark:bg-brand-800 text-sm text-brand-600 dark:text-brand-400 truncate">
-            {formData.background_image ? getFileName(formData.background_image) : t("settings.appearance.noImageSelected")}
+            {formData.background_image
+              ? getFileName(formData.background_image)
+              : t("settings.appearance.noImageSelected")}
           </div>
           <button
             type="button"

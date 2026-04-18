@@ -1,10 +1,10 @@
 package test
 
 import (
-	"lunabox/internal/enums"
+	"lunabox/internal/common/enums"
+	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
 	"lunabox/internal/service"
-	"lunabox/internal/vo"
 )
 
 func addGameViaMetadata(gameService *service.GameService, game models.Game) error {

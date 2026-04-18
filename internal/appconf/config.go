@@ -3,7 +3,7 @@ package appconf
 import (
 	"encoding/json"
 	"log"
-	"lunabox/internal/enums"
+	enums2 "lunabox/internal/common/enums"
 	"lunabox/internal/utils"
 	"lunabox/internal/utils/apputils"
 	"os"
@@ -12,17 +12,17 @@ import (
 )
 
 var defaultMetadataSources = []string{
-	string(enums.Bangumi),
-	string(enums.VNDB),
-	string(enums.Ymgal),
-	string(enums.Steam),
+	string(enums2.Bangumi),
+	string(enums2.VNDB),
+	string(enums2.Ymgal),
+	string(enums2.Steam),
 }
 
 var allowedMetadataSourceSet = map[string]struct{}{
-	string(enums.Bangumi): {},
-	string(enums.VNDB):    {},
-	string(enums.Ymgal):   {},
-	string(enums.Steam):   {},
+	string(enums2.Bangumi): {},
+	string(enums2.VNDB):    {},
+	string(enums2.Ymgal):   {},
+	string(enums2.Steam):   {},
 }
 
 // AppConfig 应用配置结构体
@@ -50,6 +50,12 @@ type AppConfig struct {
 	CloudBackupProvider  string `json:"cloud_backup_provider,omitempty"`  // 云备份提供商: s3, onedrive
 	BackupPassword       string `json:"backup_password,omitempty"`        // 备份密码（用于生成 user-id 和加密）
 	BackupUserID         string `json:"backup_user_id,omitempty"`         // 云端用户标识（由备份密码 hash 生成）
+	CloudSyncEnabled     bool   `json:"cloud_sync_enabled"`               // 是否启用云同步
+	AutoCloudSyncEnabled bool   `json:"auto_cloud_sync_enabled"`          // 是否启用自动云同步（启动时 + 定时）
+	CloudSyncIntervalSec int    `json:"cloud_sync_interval_sec"`          // 定时全量同步间隔（秒）
+	LastCloudSyncTime    string `json:"last_cloud_sync_time,omitempty"`   // 上次云同步时间
+	LastCloudSyncStatus  string `json:"last_cloud_sync_status,omitempty"` // 上次云同步状态: idle/syncing/success/failed
+	LastCloudSyncError   string `json:"last_cloud_sync_error,omitempty"`  // 上次云同步错误
 	S3Endpoint           string `json:"s3_endpoint,omitempty"`            // S3 兼容端点
 	S3Region             string `json:"s3_region,omitempty"`              // S3 区域
 	S3Bucket             string `json:"s3_bucket,omitempty"`              // S3 存储桶
@@ -130,11 +136,17 @@ func LoadConfig() (*AppConfig, error) {
 		AIBaseURL:              "",
 		AIAPIKey:               "",
 		AIModel:                "",
-		AISystemPrompt:         string(enums.DefaultSystemPrompt),
+		AISystemPrompt:         string(enums2.DefaultSystemPrompt),
 		CloudBackupEnabled:     false,
 		CloudBackupProvider:    "s3",
 		BackupPassword:         "",
 		BackupUserID:           "",
+		CloudSyncEnabled:       false,
+		AutoCloudSyncEnabled:   false,
+		CloudSyncIntervalSec:   60,
+		LastCloudSyncTime:      "",
+		LastCloudSyncStatus:    "idle",
+		LastCloudSyncError:     "",
 		S3Endpoint:             "",
 		TimeZone:               "",
 		S3Region:               "",
@@ -205,6 +217,10 @@ func LoadConfig() (*AppConfig, error) {
 
 	if config.WindowZoomFactor <= 0 {
 		config.WindowZoomFactor = 1.0
+	}
+
+	if config.CloudSyncIntervalSec <= 0 {
+		config.CloudSyncIntervalSec = 60
 	}
 
 	// 备份口令只在初始化时使用，不应长期明文落盘。

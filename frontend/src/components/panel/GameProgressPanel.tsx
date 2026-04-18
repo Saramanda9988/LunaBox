@@ -1,4 +1,4 @@
-import type { service } from "../../../wailsjs/go/models";
+import type { models } from "../../../wailsjs/go/models";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ListGameProgresses } from "../../../wailsjs/go/service/GameProgressService";
@@ -29,9 +29,9 @@ export function GameProgressPanel({ gameId }: GameProgressPanelProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [showLoadingSkeleton, setShowLoadingSkeleton] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [progressHistory, setProgressHistory] = useState<
-    service.GameProgress[]
-  >([]);
+  const [progressHistory, setProgressHistory] = useState<models.GameProgress[]>(
+    [],
+  );
 
   const loadHistory = async () => {
     setIsLoading(true);

@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
-	"lunabox/internal/enums"
+	enums2 "lunabox/internal/common/enums"
+	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
 	"lunabox/internal/utils/apputils"
 	"lunabox/internal/utils/archiveutils"
 	"lunabox/internal/utils/downloadutils"
-	"lunabox/internal/vo"
 	"os"
 	"path/filepath"
 	"strings"
@@ -356,9 +356,9 @@ func (s *DownloadService) ImportDownloadTaskAsGame(taskID string) error {
 	game := models.Game{
 		Name:       strings.TrimSpace(task.Request.Title),
 		Path:       importPath,
-		SourceType: enums.Local,
+		SourceType: enums2.Local,
 		SourceID:   "",
-		Status:     enums.StatusNotStarted,
+		Status:     enums2.StatusNotStarted,
 	}
 
 	if sourceOk {
@@ -371,7 +371,7 @@ func (s *DownloadService) ImportDownloadTaskAsGame(taskID string) error {
 		game.Path = importPath
 	}
 
-	if sourceOk && game.SourceType == enums.Local {
+	if sourceOk && game.SourceType == enums2.Local {
 		game.SourceType = metaSource
 	}
 	if game.SourceID == "" {
@@ -706,7 +706,7 @@ func (s *DownloadService) autoCreateOrUpdateGame(task *DownloadTask, gamePath st
 	game := models.Game{
 		Name:       strings.TrimSpace(task.Request.Title),
 		Path:       importPath,
-		SourceType: enums.Local,
+		SourceType: enums2.Local,
 		SourceID:   "",
 	}
 
@@ -720,7 +720,7 @@ func (s *DownloadService) autoCreateOrUpdateGame(task *DownloadTask, gamePath st
 		game.Path = importPath
 	}
 
-	if sourceOk && game.SourceType == enums.Local {
+	if sourceOk && game.SourceType == enums2.Local {
 		game.SourceType = metaSource
 	}
 	if game.SourceID == "" {
@@ -750,7 +750,7 @@ func (s *DownloadService) autoCreateOrUpdateGame(task *DownloadTask, gamePath st
 	applog.LogInfof(s.ctx, "auto import game success for task %s: %s", task.ID, game.Name)
 }
 
-func (s *DownloadService) updateExistingGame(gameID string, gamePath string, metaSource enums.SourceType, metaID string, metadata *vo.GameMetadataFromWebVO) {
+func (s *DownloadService) updateExistingGame(gameID string, gamePath string, metaSource enums2.SourceType, metaID string, metadata *vo.GameMetadataFromWebVO) {
 	game, err := s.gameService.GetGameByID(gameID)
 	if err != nil {
 		applog.LogWarningf(s.ctx, "failed to load existing game %s for path update: %v", gameID, err)
@@ -769,7 +769,7 @@ func (s *DownloadService) updateExistingGame(gameID string, gamePath string, met
 		}
 	}
 
-	if metaSource != enums.Local && game.SourceType != metaSource {
+	if metaSource != enums2.Local && game.SourceType != metaSource {
 		game.SourceType = metaSource
 		changed = true
 	}
@@ -830,18 +830,18 @@ func mergeMetadataIntoGame(target *models.Game, metadata models.Game) bool {
 	return changed
 }
 
-func parseMetaSource(metaSource string) (enums.SourceType, bool) {
+func parseMetaSource(metaSource string) (enums2.SourceType, bool) {
 	switch strings.ToLower(strings.TrimSpace(metaSource)) {
-	case string(enums.Bangumi):
-		return enums.Bangumi, true
-	case string(enums.VNDB):
-		return enums.VNDB, true
-	case string(enums.Ymgal):
-		return enums.Ymgal, true
-	case string(enums.Steam):
-		return enums.Steam, true
+	case string(enums2.Bangumi):
+		return enums2.Bangumi, true
+	case string(enums2.VNDB):
+		return enums2.VNDB, true
+	case string(enums2.Ymgal):
+		return enums2.Ymgal, true
+	case string(enums2.Steam):
+		return enums2.Steam, true
 	default:
-		return enums.Local, false
+		return enums2.Local, false
 	}
 }
 

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"lunabox/internal/enums"
+	"lunabox/internal/common/enums"
 	"lunabox/internal/models"
 	"net/http"
 	"net/url"
