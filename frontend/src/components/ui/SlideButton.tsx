@@ -29,24 +29,29 @@ export function SlideButton<T extends string = string>({
   useEffect(() => {
     const updateSliderPosition = () => {
       const selectedIndex = options.findIndex(opt => opt.value === value);
-      if (selectedIndex !== -1 && buttonsRef.current[selectedIndex]) {
-        const button = buttonsRef.current[selectedIndex];
-        const container = containerRef.current;
-        if (button && container) {
-          const containerRect = container.getBoundingClientRect();
-          const buttonRect = button.getBoundingClientRect();
-          setSliderStyle({
-            width: buttonRect.width,
-            left: buttonRect.left - containerRect.left,
-          });
-        }
+      const button = buttonsRef.current[selectedIndex];
+
+      if (selectedIndex !== -1 && button) {
+        setSliderStyle({
+          width: button.offsetWidth,
+          left: button.offsetLeft,
+        });
       }
     };
 
     updateSliderPosition();
-    // Also update on resize to handle dynamic changes
-    window.addEventListener("resize", updateSliderPosition);
-    return () => window.removeEventListener("resize", updateSliderPosition);
+
+    const resizeObserver = new ResizeObserver(updateSliderPosition);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    buttonsRef.current.forEach((button) => {
+      if (button) {
+        resizeObserver.observe(button);
+      }
+    });
+
+    return () => resizeObserver.disconnect();
   }, [value, options]);
 
   return (
