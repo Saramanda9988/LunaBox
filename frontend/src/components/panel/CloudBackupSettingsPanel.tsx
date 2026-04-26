@@ -301,7 +301,7 @@ export function CloudBackupSettingsPanel({
       )}
 
       {formData.cloud_backup_provider === "onedrive" && (
-        <div className="space-y-4 rounded-lg bg-brand-100 p-4 dark:bg-brand-800">
+        <div className="glass-card space-y-4 rounded-lg bg-brand-100 p-4 dark:bg-brand-800">
           <div className="block text-sm font-semibold text-brand-700 dark:text-brand-300">
             {t("settings.cloudBackup.oneDriveSection")}
           </div>

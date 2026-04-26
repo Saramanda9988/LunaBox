@@ -206,7 +206,7 @@ export function BackgroundSettingsPanel({
           {t("settings.appearance.bgImage")}
         </label>
         <div className="flex gap-2">
-          <div className="flex-1 flex items-center px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-brand-50 dark:bg-brand-800 text-sm text-brand-600 dark:text-brand-400 truncate">
+          <div className="glass-input flex-1 flex items-center px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-brand-50 dark:bg-brand-800 text-sm text-brand-600 dark:text-brand-400 truncate">
             {formData.background_image
               ? getFileName(formData.background_image)
               : t("settings.appearance.noImageSelected")}

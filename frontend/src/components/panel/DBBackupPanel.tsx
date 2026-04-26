@@ -21,7 +21,9 @@ export function DBBackupPanel() {
   const { t } = useTranslation();
   const config = useAppStore(state => state.config);
   const [dbBackups, setDbBackups] = useState<vo.DBBackupStatus | null>(null);
-  const [cloudDBBackups, setCloudDBBackups] = useState<vo.CloudBackupItem[]>([]);
+  const [cloudDBBackups, setCloudDBBackups] = useState<vo.CloudBackupItem[]>(
+    [],
+  );
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [restoringBackup, setRestoringBackup] = useState<string | null>(null);
   const [uploadingBackup, setUploadingBackup] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export function DBBackupPanel() {
     title: "",
     message: "",
     type: "info",
-    onConfirm: () => { },
+    onConfirm: () => {},
   });
 
   const cloudProvider = config?.cloud_backup_provider;
@@ -95,12 +97,17 @@ export function DBBackupPanel() {
       await loadDBBackups();
       if (cloudEnabled)
         await loadCloudDBBackups();
-      toast.success(cloudEnabled && config?.auto_upload_db_to_cloud
-        ? t("settings.dbBackup.toast.backupSuccessCloud")
-        : t("settings.dbBackup.toast.backupSuccess"));
+      toast.success(
+        cloudEnabled && config?.auto_upload_db_to_cloud
+          ? t("settings.dbBackup.toast.backupSuccessCloud")
+          : t("settings.dbBackup.toast.backupSuccess"),
+      );
     }
     catch (err: any) {
-      if (err.toString().includes("本地备份成功") || err.toString().includes("local backup")) {
+      if (
+        err.toString().includes("本地备份成功")
+        || err.toString().includes("local backup")
+      ) {
         await loadDBBackups();
         toast.success(t("settings.dbBackup.toast.localBackupSuccess"));
         toast.error(err.toString());
@@ -128,7 +135,9 @@ export function DBBackupPanel() {
           setTimeout(() => SafeQuit(), 1500);
         }
         catch (err: any) {
-          toast.error(t("settings.dbBackup.toast.restoreScheduleFailed", { error: err }));
+          toast.error(
+            t("settings.dbBackup.toast.restoreScheduleFailed", { error: err }),
+          );
           setRestoringBackup(null);
         }
       },
@@ -148,7 +157,9 @@ export function DBBackupPanel() {
           toast.success(t("settings.dbBackup.toast.deleteSuccess"));
         }
         catch (err: any) {
-          toast.error(t("settings.dbBackup.toast.deleteFailed", { error: err }));
+          toast.error(
+            t("settings.dbBackup.toast.deleteFailed", { error: err }),
+          );
         }
       },
     });
@@ -183,7 +194,9 @@ export function DBBackupPanel() {
           setTimeout(() => SafeQuit(), 1500);
         }
         catch (err: any) {
-          toast.error(t("settings.dbBackup.toast.restoreScheduleFailed", { error: err }));
+          toast.error(
+            t("settings.dbBackup.toast.restoreScheduleFailed", { error: err }),
+          );
           setRestoringBackup(null);
         }
       },
@@ -203,7 +216,8 @@ export function DBBackupPanel() {
     }
   }, [cloudEnabled, cloudProvider]);
 
-  const isDisabled = restoringBackup !== null || uploadingBackup !== null || isBackingUp;
+  const isDisabled
+    = restoringBackup !== null || uploadingBackup !== null || isBackingUp;
 
   return (
     <div className="space-y-6">
@@ -211,7 +225,9 @@ export function DBBackupPanel() {
       <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-brand-900 dark:text-white">{t("settings.dbBackup.sectionTitle")}</h3>
+            <h3 className="text-lg font-semibold text-brand-900 dark:text-white">
+              {t("settings.dbBackup.sectionTitle")}
+            </h3>
             <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">
               {t("settings.dbBackup.sectionHint")}
             </p>
@@ -223,7 +239,9 @@ export function DBBackupPanel() {
             className="glass-btn-neutral px-4 py-2 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isBackingUp && <div className="i-mdi-loading animate-spin" />}
-            {isBackingUp ? t("settings.dbBackup.backingUp") : t("settings.dbBackup.backupBtn")}
+            {isBackingUp
+              ? t("settings.dbBackup.backingUp")
+              : t("settings.dbBackup.backupBtn")}
           </button>
         </div>
         {dbBackups?.last_backup_time && (
@@ -238,7 +256,9 @@ export function DBBackupPanel() {
       {/* Local Backup List */}
       <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
         <div className="flex items-center gap-2 mb-4">
-          <h3 className="text-lg font-semibold text-brand-900 dark:text-white">{t("settings.dbBackup.localBackups")}</h3>
+          <h3 className="text-lg font-semibold text-brand-900 dark:text-white">
+            {t("settings.dbBackup.localBackups")}
+          </h3>
           {config?.auto_backup_db && (
             <span className="px-2 py-0.5 text-xs font-medium bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-400 rounded-full flex items-center gap-1">
               <div className="i-mdi-shield-check text-sm" />
@@ -246,82 +266,79 @@ export function DBBackupPanel() {
             </span>
           )}
         </div>
-        {loadingLocal
-          ? (
-              <div className="flex justify-center py-8">
-                <div className="i-mdi-loading animate-spin text-2xl text-brand-500" />
-              </div>
-            )
-          : dbBackups?.backups && dbBackups.backups.length > 0
-            ? (
-                <div className="space-y-3">
-                  {dbBackups.backups.map(backup => (
-                    <div
-                      key={backup.path}
-                      className="data-glass:bg-white/1 data-glass:dark:bg-black/1 flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-700 rounded-lg"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="i-mdi-database text-2xl text-brand-500" />
-                        <div>
-                          <div className="font-medium text-brand-900 dark:text-white">
-                            {formatLocalDateTime(backup.created_at, config?.time_zone)}
-                          </div>
-                          <div className="text-sm text-brand-500">
-                            {t("settings.dbBackup.sizeLabel")}
-                            {formatFileSize(backup.size)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {cloudEnabled && (
-                          <button
-                            type="button"
-                            onClick={() => handleUploadDBBackup(backup.path)}
-                            disabled={isDisabled}
-                            title={t("settings.dbBackup.uploadToCloud")}
-                            className="p-2 text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded transition-colors disabled:opacity-50"
-                          >
-                            {uploadingBackup === backup.path
-                              ? (
-                                  <div className="i-mdi-loading text-xl animate-spin" />
-                                )
-                              : (
-                                  <div className="i-mdi-cloud-upload text-xl" />
-                                )}
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleRestoreDB(backup.path)}
-                          disabled={isDisabled}
-                          title={t("settings.dbBackup.restoreBackup")}
-                          className="p-2 text-success-600 hover:bg-success-100 dark:hover:bg-success-900 rounded transition-colors disabled:opacity-50"
-                        >
-                          {restoringBackup === backup.path
-                            ? (
-                                <div className="i-mdi-loading text-xl animate-spin" />
-                              )
-                            : (
-                                <div className="i-mdi-backup-restore text-xl" />
-                              )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteDBBackup(backup.path)}
-                          disabled={isDisabled}
-                          title={t("settings.dbBackup.deleteBackup")}
-                          className="p-2 text-error-600 hover:bg-error-100 dark:hover:bg-error-900 rounded transition-colors disabled:opacity-50"
-                        >
-                          <div className="i-mdi-delete text-xl" />
-                        </button>
-                      </div>
+        {loadingLocal ? (
+          <div className="flex justify-center py-8">
+            <div className="i-mdi-loading animate-spin text-2xl text-brand-500" />
+          </div>
+        ) : dbBackups?.backups && dbBackups.backups.length > 0 ? (
+          <div className="space-y-3">
+            {dbBackups.backups.map(backup => (
+              <div
+                key={backup.path}
+                className="data-glass:bg-white/1 data-glass:dark:bg-black/1 flex items-center justify-between p-4 bg-brand-50 dark:bg-brand-700 rounded-lg"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="i-mdi-database text-2xl text-brand-500" />
+                  <div>
+                    <div className="font-medium text-brand-900 dark:text-white">
+                      {formatLocalDateTime(
+                        backup.created_at,
+                        config?.time_zone,
+                      )}
                     </div>
-                  ))}
+                    <div className="text-sm text-brand-500">
+                      {t("settings.dbBackup.sizeLabel")}
+                      {formatFileSize(backup.size)}
+                    </div>
+                  </div>
                 </div>
-              )
-            : (
-                <div className="text-center py-8 text-brand-500">{t("settings.dbBackup.noLocalBackups")}</div>
-              )}
+                <div className="flex gap-2">
+                  {cloudEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => handleUploadDBBackup(backup.path)}
+                      disabled={isDisabled}
+                      title={t("settings.dbBackup.uploadToCloud")}
+                      className="p-2 text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded transition-colors disabled:opacity-50"
+                    >
+                      {uploadingBackup === backup.path ? (
+                        <div className="i-mdi-loading text-xl animate-spin" />
+                      ) : (
+                        <div className="i-mdi-cloud-upload text-xl" />
+                      )}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRestoreDB(backup.path)}
+                    disabled={isDisabled}
+                    title={t("settings.dbBackup.restoreBackup")}
+                    className="p-2 text-success-600 hover:bg-success-100 dark:hover:bg-success-900 rounded transition-colors disabled:opacity-50"
+                  >
+                    {restoringBackup === backup.path ? (
+                      <div className="i-mdi-loading text-xl animate-spin" />
+                    ) : (
+                      <div className="i-mdi-backup-restore text-xl" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteDBBackup(backup.path)}
+                    disabled={isDisabled}
+                    title={t("settings.dbBackup.deleteBackup")}
+                    className="p-2 text-error-600 hover:bg-error-100 dark:hover:bg-error-900 rounded transition-colors disabled:opacity-50"
+                  >
+                    <div className="i-mdi-delete text-xl" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-brand-500">
+            {t("settings.dbBackup.noLocalBackups")}
+          </div>
+        )}
       </div>
 
       {/* Cloud Backup List */}
@@ -339,69 +356,78 @@ export function DBBackupPanel() {
               title={t("settings.dbBackup.refreshCloudList")}
               className="p-2 text-brand-600 hover:bg-brand-100 dark:hover:bg-brand-700 rounded transition-colors disabled:opacity-50"
             >
-              <div className={`i-mdi-refresh text-xl ${loadingCloud ? "animate-spin" : ""}`} />
+              <div
+                className={`i-mdi-refresh text-xl ${loadingCloud ? "animate-spin" : ""}`}
+              />
             </button>
           </div>
-          {loadingCloud
-            ? (
-                <div className="flex justify-center py-8">
-                  <div className="i-mdi-loading animate-spin text-2xl text-brand-500" />
-                </div>
-              )
-            : cloudDBBackups.length > 0
-              ? (
-                  <div className="space-y-3">
-                    {cloudDBBackups.map(backup => (
-                      <div
-                        key={backup.key}
-                        className="data-glass:bg-white/1 data-glass:dark:bg-black/1 flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-900/30 rounded-lg"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="i-mdi-cloud-check text-2xl text-neutral-500" />
-                          <div>
-                            <div className="font-medium text-brand-900 dark:text-white">
-                              {backup.name || formatLocalDateTime(backup.created_at, config?.time_zone)}
-                            </div>
-                            <div className="text-sm text-brand-500">
-                              {formatLocalDateTime(backup.created_at, config?.time_zone)}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleRestoreFromCloud(backup.key)}
-                            disabled={isDisabled}
-                            title={t("settings.dbBackup.restoreFromCloud")}
-                            className="p-2 text-success-600 hover:bg-success-100 dark:hover:bg-success-900 rounded transition-colors disabled:opacity-50"
-                          >
-                            {restoringBackup === backup.key
-                              ? (
-                                  <div className="i-mdi-loading text-xl animate-spin" />
-                                )
-                              : (
-                                  <div className="i-mdi-cloud-download text-xl" />
-                                )}
-                          </button>
-                        </div>
+          {loadingCloud ? (
+            <div className="flex justify-center py-8">
+              <div className="i-mdi-loading animate-spin text-2xl text-brand-500" />
+            </div>
+          ) : cloudDBBackups.length > 0 ? (
+            <div className="space-y-3">
+              {cloudDBBackups.map(backup => (
+                <div
+                  key={backup.key}
+                  className="data-glass:bg-white/1 data-glass:dark:bg-black/1 flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-900/30 rounded-lg"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="i-mdi-cloud-check text-2xl text-neutral-500" />
+                    <div>
+                      <div className="font-medium text-brand-900 dark:text-white">
+                        {backup.name
+                          || formatLocalDateTime(
+                            backup.created_at,
+                            config?.time_zone,
+                          )}
                       </div>
-                    ))}
+                      <div className="text-sm text-brand-500">
+                        {formatLocalDateTime(
+                          backup.created_at,
+                          config?.time_zone,
+                        )}
+                      </div>
+                    </div>
                   </div>
-                )
-              : (
-                  <div className="text-center py-8 text-brand-500">{t("settings.dbBackup.noCloudBackups")}</div>
-                )}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreFromCloud(backup.key)}
+                      disabled={isDisabled}
+                      title={t("settings.dbBackup.restoreFromCloud")}
+                      className="p-2 text-success-600 hover:bg-success-100 dark:hover:bg-success-900 rounded transition-colors disabled:opacity-50"
+                    >
+                      {restoringBackup === backup.key ? (
+                        <div className="i-mdi-loading text-xl animate-spin" />
+                      ) : (
+                        <div className="i-mdi-cloud-download text-xl" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-brand-500">
+              {t("settings.dbBackup.noCloudBackups")}
+            </div>
+          )}
         </div>
       )}
 
       {/* Cloud Backup Not Configured Hint */}
       {!cloudEnabled && (
-        <div className="bg-brand-50 dark:bg-brand-800 p-4 rounded-lg border border-brand-200 dark:border-brand-700">
+        <div className="glass-card bg-brand-50 dark:bg-brand-800 p-4 rounded-lg border border-brand-200 dark:border-brand-700">
           <div className="flex items-center gap-3">
             <div className="i-mdi-cloud-off-outline text-2xl text-brand-400" />
             <div>
-              <div className="font-medium text-brand-700 dark:text-brand-300">{t("settings.dbBackup.cloudNotEnabled")}</div>
-              <div className="text-sm text-brand-500">{t("settings.dbBackup.cloudNotEnabledHint")}</div>
+              <div className="font-medium text-brand-700 dark:text-brand-300">
+                {t("settings.dbBackup.cloudNotEnabled")}
+              </div>
+              <div className="text-sm text-brand-500">
+                {t("settings.dbBackup.cloudNotEnabledHint")}
+              </div>
             </div>
           </div>
         </div>
