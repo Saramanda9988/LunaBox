@@ -552,6 +552,7 @@
     "sections": {
       "basic": "基本設定",
       "metadata": "メタデータ設定",
+      "appData": "アプリデータ",
       "appearance": "外観設定",
       "game": "ゲーム設定",
       "download": "ダウンロード設定",
@@ -596,6 +597,20 @@
       "timezoneHint": "ゲーム時間を正しく表示・記録するために使用します。変更後はアプリを再起動してください",
       "timezonePlaceholder": "タイムゾーンを選択してください",
       "closeToTray": "ウィンドウを閉じたときにシステムトレイへ最小化"
+    },
+    "appData": {
+      "logsTitle": "ログエクスポート",
+      "logsHint": "現在のログディレクトリを ZIP にまとめ、問題報告や保管に利用できます。",
+      "exportLogs": "ログ ZIP をエクスポート",
+      "exportingLogs": "エクスポート中...",
+      "dataDirTitle": "データディレクトリ",
+      "dataDirHint": "データベース、カバー、背景、バックアップ、ログを含むディレクトリを開きます。",
+      "openDataDir": "データディレクトリを開く",
+      "toast": {
+        "exportLogsSuccess": "ログをエクスポートしました: {{path}}",
+        "exportLogsFailed": "ログのエクスポートに失敗しました: {{error}}",
+        "openDataDirFailed": "データディレクトリを開けませんでした: {{error}}"
+      }
     },
     "appearance": {
       "enableBg": "カスタム背景を有効化",

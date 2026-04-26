@@ -6,7 +6,13 @@ import (
 	"fmt"
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
+	"lunabox/internal/utils/apputils"
+	"lunabox/internal/utils/archiveutils"
 	"lunabox/internal/utils/imageutils"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -41,6 +47,72 @@ func (s *ConfigService) SelectDirectory(title string) (string, error) {
 		applog.LogErrorf(s.ctx, "SelectDirectory failed: %v", err)
 		return "", err
 	}
+	return selection, nil
+}
+
+// OpenDataDirectory 在系统文件管理器中打开 LunaBox 数据目录。
+func (s *ConfigService) OpenDataDirectory() (string, error) {
+	dataDir, err := apputils.GetDataDir()
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to get data directory: %v", err)
+		return "", fmt.Errorf("获取数据目录失败: %w", err)
+	}
+
+	if err := apputils.OpenDirectory(dataDir); err != nil {
+		applog.LogErrorf(s.ctx, "failed to open data directory %s: %v", dataDir, err)
+		return "", fmt.Errorf("打开数据目录失败: %w", err)
+	}
+
+	return dataDir, nil
+}
+
+// ExportLogsZip 将 logs 目录导出为 ZIP 压缩包。
+func (s *ConfigService) ExportLogsZip() (string, error) {
+	logDir, err := apputils.GetSubDir("logs")
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to get logs directory: %v", err)
+		return "", fmt.Errorf("获取日志目录失败: %w", err)
+	}
+
+	timestamp := time.Now().Format("2006-01-02T15-04-05")
+	defaultFileName := fmt.Sprintf("lunabox_logs_%s.zip", timestamp)
+	selection, err := runtime.SaveFileDialog(s.ctx, runtime.SaveDialogOptions{
+		Title:           "导出日志 ZIP",
+		DefaultFilename: defaultFileName,
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "ZIP 压缩包 (*.zip)",
+				Pattern:     "*.zip",
+			},
+		},
+	})
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to open log export save dialog: %v", err)
+		return "", fmt.Errorf("选择日志导出位置失败: %w", err)
+	}
+	if selection == "" {
+		return "", nil
+	}
+	if !strings.HasSuffix(strings.ToLower(selection), ".zip") {
+		selection += ".zip"
+	}
+
+	tempDir, err := os.MkdirTemp("", "lunabox_logs_export_*")
+	if err != nil {
+		return "", fmt.Errorf("创建临时目录失败: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	tempZip := filepath.Join(tempDir, filepath.Base(selection))
+	if _, err := archiveutils.ZipDirectory(logDir, tempZip); err != nil {
+		applog.LogErrorf(s.ctx, "failed to zip logs directory %s: %v", logDir, err)
+		return "", fmt.Errorf("压缩日志失败: %w", err)
+	}
+	if err := apputils.CopyFile(tempZip, selection); err != nil {
+		applog.LogErrorf(s.ctx, "failed to copy log archive to %s: %v", selection, err)
+		return "", fmt.Errorf("保存日志压缩包失败: %w", err)
+	}
+
 	return selection, nil
 }
 

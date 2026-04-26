@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { GetVersionInfo } from "../../wailsjs/go/service/VersionService";
 import { BrowserOpenURL } from "../../wailsjs/runtime/runtime";
 import { AISettingsPanel } from "../components/panel/AISettingsPanel";
+import { AppDataSettingsPanel } from "../components/panel/AppDataSettingsPanel";
 import { AutoBackupSettingsPanel } from "../components/panel/AutoBackupSettingsPanel";
 import { BackgroundSettingsPanel } from "../components/panel/BackgroundSettingsPanel";
 import { BasicSettingsPanel } from "../components/panel/BasicSettingsPanel";
@@ -248,6 +249,14 @@ function SettingsPage() {
             formData={draftConfig}
             onChange={handleDraftChange}
           />
+        </CollapsibleSection>
+
+        <CollapsibleSection
+          title={t("settings.sections.appData")}
+          icon="i-mdi-folder-cog-outline"
+          defaultOpen={false}
+        >
+          <AppDataSettingsPanel />
         </CollapsibleSection>
       </div>
 

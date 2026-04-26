@@ -552,6 +552,7 @@
     "sections": {
       "basic": "Basic Configuration",
       "metadata": "Metadata Settings",
+      "appData": "App Data",
       "appearance": "Appearance",
       "game": "Game Settings",
       "download": "Download Settings",
@@ -596,6 +597,20 @@
       "timezoneHint": "Used to correctly display and record play time. Restart the app after changing.",
       "timezonePlaceholder": "Select timezone",
       "closeToTray": "Minimize to system tray on close"
+    },
+    "appData": {
+      "logsTitle": "Log Export",
+      "logsHint": "Pack the current log directory into a ZIP for issue reports or archiving.",
+      "exportLogs": "Export Log ZIP",
+      "exportingLogs": "Exporting...",
+      "dataDirTitle": "Data Directory",
+      "dataDirHint": "Open the directory containing the database, covers, backgrounds, backups, and logs.",
+      "openDataDir": "Open Data Directory",
+      "toast": {
+        "exportLogsSuccess": "Logs exported: {{path}}",
+        "exportLogsFailed": "Failed to export logs: {{error}}",
+        "openDataDirFailed": "Failed to open data directory: {{error}}"
+      }
     },
     "appearance": {
       "enableBg": "Enable Custom Background",

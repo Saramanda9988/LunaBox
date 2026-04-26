@@ -4,9 +4,13 @@ import {appconf} from '../models';
 import {context} from '../models';
 import {sql} from '../models';
 
+export function ExportLogsZip():Promise<string>;
+
 export function GetAppConfig():Promise<appconf.AppConfig>;
 
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;
+
+export function OpenDataDirectory():Promise<string>;
 
 export function SafeQuit():Promise<void>;
 

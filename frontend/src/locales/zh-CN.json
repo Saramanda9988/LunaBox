@@ -552,6 +552,7 @@
     "sections": {
       "basic": "基础配置",
       "metadata": "元数据设置",
+      "appData": "应用数据",
       "appearance": "外观设置",
       "game": "游玩配置",
       "download": "下载配置",
@@ -596,6 +597,20 @@
       "timezoneHint": "用于正确显示和记录游戏时长,修改后请重启应用",
       "timezonePlaceholder": "请选择时区",
       "closeToTray": "关闭窗口时最小化到系统托盘"
+    },
+    "appData": {
+      "logsTitle": "日志导出",
+      "logsHint": "将当前日志目录打包为 ZIP，便于反馈问题或留档。",
+      "exportLogs": "导出日志 ZIP",
+      "exportingLogs": "正在导出...",
+      "dataDirTitle": "数据目录",
+      "dataDirHint": "打开数据库、封面、背景、备份与日志所在的数据目录。",
+      "openDataDir": "打开数据目录",
+      "toast": {
+        "exportLogsSuccess": "日志已导出: {{path}}",
+        "exportLogsFailed": "日志导出失败: {{error}}",
+        "openDataDirFailed": "打开数据目录失败: {{error}}"
+      }
     },
     "appearance": {
       "enableBg": "启用自定义背景",
