@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BetterSelect } from "../ui/better/BetterSelect";
+import { ModalPortal } from "../ui/ModalPortal";
 
 interface TimezoneSelectModalProps {
   isOpen: boolean;
@@ -28,10 +29,15 @@ const COMMON_TIMEZONES = [
   { value: "UTC", label: "Coordinated Universal Time (UTC)" },
 ];
 
-export function TimezoneSelectModal({ isOpen, onConfirm }: TimezoneSelectModalProps) {
+export function TimezoneSelectModal({
+  isOpen,
+  onConfirm,
+}: TimezoneSelectModalProps) {
   const { t } = useTranslation();
   const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const [selectedTimezone, setSelectedTimezone] = useState(browserTimezone || "Asia/Shanghai");
+  const [selectedTimezone, setSelectedTimezone] = useState(
+    browserTimezone || "Asia/Shanghai",
+  );
 
   // Keep timezone list labels consistent with current language
   useEffect(() => {
@@ -46,45 +52,51 @@ export function TimezoneSelectModal({ isOpen, onConfirm }: TimezoneSelectModalPr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl dark:bg-brand-800 border border-brand-200 dark:border-brand-700">
-        <div className="flex items-start gap-4 mb-6">
-          <div className="p-2 rounded-full bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400">
-            <div className="i-mdi-earth text-2xl" />
+    <ModalPortal>
+      <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl dark:bg-brand-800 border border-brand-200 dark:border-brand-700">
+          <div className="flex items-start gap-4 mb-6">
+            <div className="p-2 rounded-full bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400">
+              <div className="i-mdi-earth text-2xl" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-brand-900 dark:text-white mb-2">
+                {t("timezoneModal.title")}
+              </h3>
+              <p className="text-brand-600 dark:text-brand-400 text-sm leading-relaxed">
+                {t("timezoneModal.desc")}
+              </p>
+            </div>
           </div>
-          <div className="flex-1">
-            <h3 className="text-xl font-bold text-brand-900 dark:text-white mb-2">{t("timezoneModal.title")}</h3>
-            <p className="text-brand-600 dark:text-brand-400 text-sm leading-relaxed">
-              {t("timezoneModal.desc")}
-            </p>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-2">
+              {t("timezoneModal.detectedLabel")}
+              {" "}
+              <span className="font-semibold text-primary-600 dark:text-primary-400">
+                {browserTimezone || t("timezoneModal.unknown")}
+              </span>
+            </label>
+            <BetterSelect
+              value={selectedTimezone}
+              onChange={setSelectedTimezone}
+              options={COMMON_TIMEZONES}
+              placeholder={t("timezoneModal.placeholder")}
+              className="w-full"
+            />
           </div>
-        </div>
 
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-2">
-            {t("timezoneModal.detectedLabel")}
-            {" "}
-            <span className="font-semibold text-primary-600 dark:text-primary-400">{browserTimezone || t("timezoneModal.unknown")}</span>
-          </label>
-          <BetterSelect
-            value={selectedTimezone}
-            onChange={setSelectedTimezone}
-            options={COMMON_TIMEZONES}
-            placeholder={t("timezoneModal.placeholder")}
-            className="w-full"
-          />
-        </div>
-
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={handleConfirm}
-            className="px-6 py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors shadow-sm shadow-primary-200 dark:shadow-none"
-          >
-            {t("timezoneModal.confirmBtn")}
-          </button>
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={handleConfirm}
+              className="px-6 py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors shadow-sm shadow-primary-200 dark:shadow-none"
+            >
+              {t("timezoneModal.confirmBtn")}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }

@@ -6,6 +6,7 @@ import { SideBar } from "../components/bar/SideBar";
 import { TopBar, TOPBAR_HEIGHT } from "../components/bar/TopBar";
 import { DragDropImportModal } from "../components/modal/DragDropImportModal";
 import { AppToaster } from "../components/ui/AppToaster";
+import { APP_MODAL_ROOT_ID } from "../components/ui/ModalPortal";
 import { normalizeAppZoomFactor } from "../consts/options";
 import { useAppStore } from "../store";
 
@@ -21,14 +22,15 @@ function RootLayout() {
   const bgBlur = config?.background_blur ?? 10;
   const bgOpacity = config?.background_opacity ?? 0.85;
   const zoomFactor = normalizeAppZoomFactor(config?.window_zoom_factor);
-  const zoomStyle = zoomFactor === 1
-    ? undefined
-    : {
-      height: `${100 / zoomFactor}%`,
-      transform: `scale(${zoomFactor})`,
-      transformOrigin: "top left",
-      width: `${100 / zoomFactor}%`,
-    } satisfies React.CSSProperties;
+  const zoomStyle
+    = zoomFactor === 1
+      ? undefined
+      : ({
+          height: `${100 / zoomFactor}%`,
+          transform: `scale(${zoomFactor})`,
+          transformOrigin: "top left",
+          width: `${100 / zoomFactor}%`,
+        } satisfies React.CSSProperties);
 
   useEffect(() => {
     OnFileDrop((_x: number, _y: number, paths: string[]) => {
@@ -116,15 +118,23 @@ function RootLayout() {
         <AppToaster topOffset={TOPBAR_HEIGHT + 12} />
 
         <div className="relative flex-1 overflow-hidden">
-          <div className="absolute left-0 top-0 h-full w-full shrink-0" style={zoomStyle}>
+          <div
+            className="absolute left-0 top-0 h-full w-full shrink-0"
+            style={zoomStyle}
+          >
             <div className="flex h-full w-full overflow-hidden">
               <SideBar bgEnabled={!!bgEnabled} bgOpacity={bgOpacity} />
               <main
-                className={`flex-1 overflow-auto ${bgEnabled ? "" : "bg-brand-100 dark:bg-brand-900"
+                className={`flex-1 overflow-auto ${
+                  bgEnabled ? "" : "bg-brand-100 dark:bg-brand-900"
                 }`}
-                style={bgEnabled ? {
-                  backgroundColor: `rgba(var(--main-bg-rgb), ${bgOpacity})`,
-                } : undefined}
+                style={
+                  bgEnabled
+                    ? {
+                        backgroundColor: `rgba(var(--main-bg-rgb), ${bgOpacity})`,
+                      }
+                    : undefined
+                }
               >
                 <Outlet />
               </main>
@@ -146,6 +156,11 @@ function RootLayout() {
                 </div>
               </div>
             )}
+
+            <div
+              id={APP_MODAL_ROOT_ID}
+              className="absolute inset-0 z-60 pointer-events-none"
+            />
 
             {/* Drag-drop import modal */}
             <DragDropImportModal

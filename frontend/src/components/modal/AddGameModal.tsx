@@ -10,6 +10,7 @@ import {
   SelectGameExecutable,
 } from "../../../wailsjs/go/service/GameService";
 import { BetterSelect } from "../ui/better/BetterSelect";
+import { ModalPortal } from "../ui/ModalPortal";
 
 interface AddGameModalProps {
   isOpen: boolean;
@@ -20,15 +21,23 @@ interface AddGameModalProps {
 // step: 1=选择程序, 2=搜索结果, 3=按ID搜索, 4=手动填写
 type StepType = 1 | 2 | 3 | 4;
 
-export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps) {
+export function AddGameModal({
+  isOpen,
+  onClose,
+  onGameAdded,
+}: AddGameModalProps) {
   const [step, setStep] = useState<StepType>(1);
   const [executablePath, setExecutablePath] = useState("");
   const [gameName, setGameName] = useState("");
-  const [metadataResults, setMetadataResults] = useState<vo.GameMetadataFromWebVO[]>([]);
+  const [metadataResults, setMetadataResults] = useState<
+    vo.GameMetadataFromWebVO[]
+  >([]);
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
   const [manualId, setManualId] = useState("");
-  const [manualSource, setManualSource] = useState<enums.SourceType>(enums.SourceType.BANGUMI);
+  const [manualSource, setManualSource] = useState<enums.SourceType>(
+    enums.SourceType.BANGUMI,
+  );
 
   // 手动添加表单字段
   const [manualCoverUrl, setManualCoverUrl] = useState("");
@@ -160,11 +169,13 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
         source_type: enums.SourceType.LOCAL,
         status: enums.GameStatus.NOT_STARTED,
       });
-      await AddGameFromWebMetadata(new vo.GameMetadataFromWebVO({
-        Source: enums.SourceType.LOCAL,
-        Game: game,
-        Tags: [],
-      }));
+      await AddGameFromWebMetadata(
+        new vo.GameMetadataFromWebVO({
+          Source: enums.SourceType.LOCAL,
+          Game: game,
+          Tags: [],
+        }),
+      );
       onGameAdded();
       resetAndClose();
     }
@@ -178,245 +189,283 @@ export function AddGameModal({ isOpen, onClose, onGameAdded }: AddGameModalProps
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl dark:bg-brand-800">
-        <div className="flex items-center justify-between">
-          <h2 className="text-4xl font-bold text-brand-900 dark:text-white mb-6">{t("library.addGame")}</h2>
-          <button
-            onClick={resetAndClose}
-            className="i-mdi-close text-2xl text-brand-500 p-1 rounded-lg mb-6
+    <ModalPortal>
+      <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl dark:bg-brand-800">
+          <div className="flex items-center justify-between">
+            <h2 className="text-4xl font-bold text-brand-900 dark:text-white mb-6">
+              {t("library.addGame")}
+            </h2>
+            <button
+              onClick={resetAndClose}
+              className="i-mdi-close text-2xl text-brand-500 p-1 rounded-lg mb-6
               hover:bg-brand-100 hover:text-brand-700 focus:outline-none
               dark:text-brand-400 dark:hover:bg-brand-700 dark:hover:text-brand-200"
-          />
-        </div>
-
-        {step === 1 && (
-          <div className="space-y-6">
-            <button
-              onClick={handleSelectExecutable}
-              className="flex w-full items-center justify-center rounded-lg bg-neutral-500 py-4 text-white transition hover:bg-neutral-600"
-            >
-              <div className="i-mdi-file-find mr-2 text-xl" />
-              {t("addGameModal.selectExecutable")}
-            </button>
-
-            <div>
-              <input
-                type="text"
-                value={executablePath}
-                readOnly
-                placeholder={t("addGameModal.executablePlaceholder")}
-                className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">{t("addGameModal.gameName")}</label>
-              <input
-                type="text"
-                value={gameName}
-                onChange={e => setGameName(e.target.value)}
-                className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
-              />
-            </div>
-
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={() => setStep(4)}
-                disabled={!executablePath || !gameName}
-                className="rounded-lg border border-brand-300 px-5 py-2.5 text-sm font-medium text-brand-700 hover:bg-brand-100 disabled:opacity-50 dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-700"
-              >
-                {t("common.manualAdd")}
-              </button>
-              <button
-                onClick={handleSearchByName}
-                disabled={!executablePath || !gameName || isLoading}
-                className="rounded-lg bg-neutral-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
-              >
-                {isLoading ? t("common.searching") : t("addGameModal.searchMeta")}
-              </button>
-            </div>
+            />
           </div>
-        )}
 
-        {step === 2 && (
-          <div className="space-y-6">
-            <p className="text-brand-600 dark:text-brand-300">{t("addGameModal.whichResult")}</p>
-
-            <div className="flex w-full snap-x gap-4 overflow-x-auto p-2 pb-6 pt-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              {metadataResults.filter(item => item.Game)
-                .map((item, index) => (
-                  <div
-                    key={index}
-                    onClick={() => saveGameFromWebMetadata(item)}
-                    className="w-36 shrink-0 snap-center cursor-pointer rounded-xl border border-brand-200 bg-brand-50/50 p-3 shadow-sm transition-all hover:-translate-y-1 hover:border-brand-400 hover:shadow-md dark:border-brand-700 dark:bg-brand-800/50 dark:hover:border-brand-500 sm:w-40"
-                  >
-                    <div className="aspect-[3/4] w-full overflow-hidden rounded-md bg-brand-200 dark:bg-brand-700">
-                      {item.Game!.cover_url
-                        ? (
-                            <img src={item.Game!.cover_url} alt={item.Game!.name} className="h-full w-full object-cover" referrerPolicy="no-referrer" draggable="false" onDragStart={e => e.preventDefault()} />
-                          )
-                        : (
-                            <div className="flex h-full items-center justify-center text-brand-400">
-                              <div className="i-mdi-image-off text-4xl" />
-                            </div>
-                          )}
-                    </div>
-                    <h3 className="mt-2 truncate text-sm font-bold text-brand-900 dark:text-white" title={item.Game!.name}>{item.Game!.name}</h3>
-                    <p className="text-xs text-brand-500 dark:text-brand-400">
-                      {t("addGameModal.fromSource", { source: item.Source })}
-                    </p>
-                  </div>
-                ))}
-            </div>
-
-            <div className="flex items-center justify-between border-t border-brand-200 pt-4 dark:border-brand-700">
+          {step === 1 && (
+            <div className="space-y-6">
               <button
-                onClick={() => setStep(1)}
-                className="text-sm text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-200"
+                onClick={handleSelectExecutable}
+                className="flex w-full items-center justify-center rounded-lg bg-neutral-500 py-4 text-white transition hover:bg-neutral-600"
               >
-                &larr;
-                {" "}
-                {t("addGameModal.goBack")}
+                <div className="i-mdi-file-find mr-2 text-xl" />
+                {t("addGameModal.selectExecutable")}
               </button>
-              <div className="flex space-x-4">
-                <div className="text-sm text-brand-500 dark:text-brand-400">
-                  {t("addGameModal.noneOfAbove")}
-                </div>
-                <button
-                  onClick={() => setStep(4)}
-                  className="text-sm text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-200"
-                >
-                  {t("addGameModal.fillManually")}
-                </button>
-                <button
-                  onClick={() => setStep(3)}
-                  className="text-sm text-neutral-600 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-300"
-                >
-                  {t("addGameModal.searchById")}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {step === 3 && (
-          <div className="space-y-6">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">{t("addGameModal.dataSource")}</label>
-              <BetterSelect
-                value={manualSource}
-                onChange={value => setManualSource(value as enums.SourceType)}
-                options={[
-                  { value: enums.SourceType.BANGUMI, label: "Bangumi" },
-                  { value: enums.SourceType.VNDB, label: "VNDB" },
-                  { value: enums.SourceType.YMGAL, label: "月幕gal" },
-                ]}
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">{t("addGameModal.gameId")}</label>
-              <input
-                type="text"
-                value={manualId}
-                onChange={e => setManualId(e.target.value)}
-                placeholder={t("addGameModal.gameIdPlaceholder")}
-                className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
-              />
-            </div>
-
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={() => setStep(2)}
-                className="rounded-lg border border-brand-300 px-5 py-2.5 text-sm font-medium text-brand-700 hover:bg-brand-100 dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-700"
-              >
-                {t("common.back")}
-              </button>
-              <button
-                onClick={handleSearchById}
-                disabled={!manualId || isLoading}
-                className="rounded-lg bg-neutral-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
-              >
-                {isLoading ? t("common.searching") : t("common.confirm")}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 4 && (
-          <div className="space-y-4">
-            <p className="text-brand-600 dark:text-brand-300">{t("addGameModal.manualFillInfo")}</p>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">{t("addGameModal.gameName")}</label>
-              <input
-                type="text"
-                value={gameName}
-                onChange={e => setGameName(e.target.value)}
-                className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">{t("addGameModal.coverImage")}</label>
-              <div className="flex gap-2">
+              <div>
                 <input
                   type="text"
-                  value={manualCoverUrl}
-                  onChange={e => setManualCoverUrl(e.target.value)}
-                  placeholder={t("addGameModal.coverPlaceholder")}
-                  className="box-border block flex-1 rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+                  value={executablePath}
+                  readOnly
+                  placeholder={t("addGameModal.executablePlaceholder")}
+                  className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
                 />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">
+                  {t("addGameModal.gameName")}
+                </label>
+                <input
+                  type="text"
+                  value={gameName}
+                  onChange={e => setGameName(e.target.value)}
+                  className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-4">
                 <button
-                  type="button"
-                  onClick={handleSelectCoverImage}
-                  className="rounded-lg bg-brand-100 px-4 py-2 text-brand-700 hover:bg-brand-200 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600"
+                  onClick={() => setStep(4)}
+                  disabled={!executablePath || !gameName}
+                  className="rounded-lg border border-brand-300 px-5 py-2.5 text-sm font-medium text-brand-700 hover:bg-brand-100 disabled:opacity-50 dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-700"
                 >
-                  {t("common.select")}
+                  {t("common.manualAdd")}
+                </button>
+                <button
+                  onClick={handleSearchByName}
+                  disabled={!executablePath || !gameName || isLoading}
+                  className="rounded-lg bg-neutral-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
+                >
+                  {isLoading
+                    ? t("common.searching")
+                    : t("addGameModal.searchMeta")}
                 </button>
               </div>
-              <p className="mt-1 text-xs text-brand-500">{t("addGameModal.coverHint")}</p>
             </div>
+          )}
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">{t("addGameModal.developer")}</label>
-              <input
-                type="text"
-                value={manualCompany}
-                onChange={e => setManualCompany(e.target.value)}
-                className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
-              />
-            </div>
+          {step === 2 && (
+            <div className="space-y-6">
+              <p className="text-brand-600 dark:text-brand-300">
+                {t("addGameModal.whichResult")}
+              </p>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">{t("addGameModal.summary")}</label>
-              <textarea
-                value={manualSummary}
-                onChange={e => setManualSummary(e.target.value)}
-                rows={3}
-                className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white resize-none"
-              />
-            </div>
+              <div className="flex w-full snap-x gap-4 overflow-x-auto p-2 pb-6 pt-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                {metadataResults
+                  .filter(item => item.Game)
+                  .map((item, index) => (
+                    <div
+                      key={index}
+                      onClick={() => saveGameFromWebMetadata(item)}
+                      className="w-36 shrink-0 snap-center cursor-pointer rounded-xl border border-brand-200 bg-brand-50/50 p-3 shadow-sm transition-all hover:-translate-y-1 hover:border-brand-400 hover:shadow-md dark:border-brand-700 dark:bg-brand-800/50 dark:hover:border-brand-500 sm:w-40"
+                    >
+                      <div className="aspect-[3/4] w-full overflow-hidden rounded-md bg-brand-200 dark:bg-brand-700">
+                        {item.Game!.cover_url ? (
+                          <img
+                            src={item.Game!.cover_url}
+                            alt={item.Game!.name}
+                            className="h-full w-full object-cover"
+                            referrerPolicy="no-referrer"
+                            draggable="false"
+                            onDragStart={e => e.preventDefault()}
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-brand-400">
+                            <div className="i-mdi-image-off text-4xl" />
+                          </div>
+                        )}
+                      </div>
+                      <h3
+                        className="mt-2 truncate text-sm font-bold text-brand-900 dark:text-white"
+                        title={item.Game!.name}
+                      >
+                        {item.Game!.name}
+                      </h3>
+                      <p className="text-xs text-brand-500 dark:text-brand-400">
+                        {t("addGameModal.fromSource", { source: item.Source })}
+                      </p>
+                    </div>
+                  ))}
+              </div>
 
-            <div className="flex justify-end space-x-4 pt-2">
-              <button
-                onClick={() => setStep(1)}
-                className="rounded-lg border border-brand-300 px-5 py-2.5 text-sm font-medium text-brand-700 hover:bg-brand-100 dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-700"
-              >
-                {t("common.back")}
-              </button>
-              <button
-                onClick={handleManualSave}
-                disabled={!gameName || isLoading}
-                className="rounded-lg bg-neutral-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
-              >
-                {isLoading ? t("common.saving") : t("common.save")}
-              </button>
+              <div className="flex items-center justify-between border-t border-brand-200 pt-4 dark:border-brand-700">
+                <button
+                  onClick={() => setStep(1)}
+                  className="text-sm text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-200"
+                >
+                  &larr;
+                  {" "}
+                  {t("addGameModal.goBack")}
+                </button>
+                <div className="flex space-x-4">
+                  <div className="text-sm text-brand-500 dark:text-brand-400">
+                    {t("addGameModal.noneOfAbove")}
+                  </div>
+                  <button
+                    onClick={() => setStep(4)}
+                    className="text-sm text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-200"
+                  >
+                    {t("addGameModal.fillManually")}
+                  </button>
+                  <button
+                    onClick={() => setStep(3)}
+                    className="text-sm text-neutral-600 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-300"
+                  >
+                    {t("addGameModal.searchById")}
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {step === 3 && (
+            <div className="space-y-6">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">
+                  {t("addGameModal.dataSource")}
+                </label>
+                <BetterSelect
+                  value={manualSource}
+                  onChange={value =>
+                    setManualSource(value as enums.SourceType)}
+                  options={[
+                    { value: enums.SourceType.BANGUMI, label: "Bangumi" },
+                    { value: enums.SourceType.VNDB, label: "VNDB" },
+                    { value: enums.SourceType.YMGAL, label: "月幕gal" },
+                  ]}
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">
+                  {t("addGameModal.gameId")}
+                </label>
+                <input
+                  type="text"
+                  value={manualId}
+                  onChange={e => setManualId(e.target.value)}
+                  placeholder={t("addGameModal.gameIdPlaceholder")}
+                  className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => setStep(2)}
+                  className="rounded-lg border border-brand-300 px-5 py-2.5 text-sm font-medium text-brand-700 hover:bg-brand-100 dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-700"
+                >
+                  {t("common.back")}
+                </button>
+                <button
+                  onClick={handleSearchById}
+                  disabled={!manualId || isLoading}
+                  className="rounded-lg bg-neutral-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
+                >
+                  {isLoading ? t("common.searching") : t("common.confirm")}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-4">
+              <p className="text-brand-600 dark:text-brand-300">
+                {t("addGameModal.manualFillInfo")}
+              </p>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">
+                  {t("addGameModal.gameName")}
+                </label>
+                <input
+                  type="text"
+                  value={gameName}
+                  onChange={e => setGameName(e.target.value)}
+                  className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">
+                  {t("addGameModal.coverImage")}
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={manualCoverUrl}
+                    onChange={e => setManualCoverUrl(e.target.value)}
+                    placeholder={t("addGameModal.coverPlaceholder")}
+                    className="box-border block flex-1 rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSelectCoverImage}
+                    className="rounded-lg bg-brand-100 px-4 py-2 text-brand-700 hover:bg-brand-200 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600"
+                  >
+                    {t("common.select")}
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-brand-500">
+                  {t("addGameModal.coverHint")}
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">
+                  {t("addGameModal.developer")}
+                </label>
+                <input
+                  type="text"
+                  value={manualCompany}
+                  onChange={e => setManualCompany(e.target.value)}
+                  className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">
+                  {t("addGameModal.summary")}
+                </label>
+                <textarea
+                  value={manualSummary}
+                  onChange={e => setManualSummary(e.target.value)}
+                  rows={3}
+                  className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-4 pt-2">
+                <button
+                  onClick={() => setStep(1)}
+                  className="rounded-lg border border-brand-300 px-5 py-2.5 text-sm font-medium text-brand-700 hover:bg-brand-100 dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-700"
+                >
+                  {t("common.back")}
+                </button>
+                <button
+                  onClick={handleManualSave}
+                  disabled={!gameName || isLoading}
+                  className="rounded-lg bg-neutral-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
+                >
+                  {isLoading ? t("common.saving") : t("common.save")}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }

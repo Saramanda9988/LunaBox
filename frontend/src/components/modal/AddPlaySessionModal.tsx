@@ -3,6 +3,7 @@ import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { AddPlaySession } from "../../../wailsjs/go/service/SessionService";
 import { formatDuration, toLocalISOString } from "../../utils/time";
+import { ModalPortal } from "../ui/ModalPortal";
 
 interface AddPlaySessionModalProps {
   isOpen: boolean;
@@ -11,7 +12,12 @@ interface AddPlaySessionModalProps {
   onSuccess: () => void;
 }
 
-export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddPlaySessionModalProps) {
+export function AddPlaySessionModal({
+  isOpen,
+  gameId,
+  onClose,
+  onSuccess,
+}: AddPlaySessionModalProps) {
   const { t } = useTranslation();
   const [startTime, setStartTime] = useState(() => {
     const now = new Date();
@@ -81,79 +87,85 @@ export function AddPlaySessionModal({ isOpen, gameId, onClose, onSuccess }: AddP
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="relative bg-white dark:bg-brand-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-brand-900 dark:text-white">
-            {t("addPlaySession.title")}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-white transition-colors"
-          >
-            <div className="i-mdi-close text-xl" />
-          </button>
-        </div>
-
-        <div className="text-sm text-brand-600 dark:text-brand-400 mb-4">
-          {t("addPlaySession.desc")}
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
-              {t("addPlaySession.startTime")}
-            </label>
-            <input
-              type="datetime-local"
-              value={startTime}
-              onChange={e => setStartTime(e.target.value)}
-              max={toLocalISOString(new Date()).slice(0, 16)}
-              className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
-              {t("addPlaySession.endTime")}
-            </label>
-            <input
-              type="datetime-local"
-              value={endTime}
-              onChange={e => setEndTime(e.target.value)}
-              max={toLocalISOString(new Date()).slice(0, 16)}
-              className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
-              required
-            />
-          </div>
-
-          <div className="bg-brand-50 dark:bg-brand-700/50 rounded-lg p-3">
-            <div className="text-sm text-brand-600 dark:text-brand-400 mb-1">{t("addPlaySession.duration")}</div>
-            <div className="text-lg font-semibold text-brand-900 dark:text-white">
-              {formatDuration(calculateDuration(), t)}
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4">
+    <ModalPortal>
+      <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="relative bg-white dark:bg-brand-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-brand-900 dark:text-white">
+              {t("addPlaySession.title")}
+            </h2>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-700 rounded-md transition-colors"
+              className="text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-white transition-colors"
             >
-              {t("common.cancel")}
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? t("addPlaySession.submitting") : t("common.add")}
+              <div className="i-mdi-close text-xl" />
             </button>
           </div>
-        </form>
+
+          <div className="text-sm text-brand-600 dark:text-brand-400 mb-4">
+            {t("addPlaySession.desc")}
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
+                {t("addPlaySession.startTime")}
+              </label>
+              <input
+                type="datetime-local"
+                value={startTime}
+                onChange={e => setStartTime(e.target.value)}
+                max={toLocalISOString(new Date()).slice(0, 16)}
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
+                {t("addPlaySession.endTime")}
+              </label>
+              <input
+                type="datetime-local"
+                value={endTime}
+                onChange={e => setEndTime(e.target.value)}
+                max={toLocalISOString(new Date()).slice(0, 16)}
+                className="w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
+                required
+              />
+            </div>
+
+            <div className="bg-brand-50 dark:bg-brand-700/50 rounded-lg p-3">
+              <div className="text-sm text-brand-600 dark:text-brand-400 mb-1">
+                {t("addPlaySession.duration")}
+              </div>
+              <div className="text-lg font-semibold text-brand-900 dark:text-white">
+                {formatDuration(calculateDuration(), t)}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-700 rounded-md transition-colors"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting
+                  ? t("addPlaySession.submitting")
+                  : t("common.add")}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }

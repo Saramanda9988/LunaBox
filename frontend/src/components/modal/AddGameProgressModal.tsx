@@ -7,6 +7,7 @@ import {
   UpsertGameProgress,
 } from "../../../wailsjs/go/service/GameProgressService";
 import { BetterSelect } from "../ui/better/BetterSelect";
+import { ModalPortal } from "../ui/ModalPortal";
 
 interface AddGameProgressModalProps {
   isOpen: boolean;
@@ -117,114 +118,116 @@ export function AddGameProgressModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="relative bg-white dark:bg-brand-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 p-6">
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center gap-2">
-            <div className="i-mdi-playlist-plus text-xl text-brand-600 dark:text-brand-400" />
-            <h2 className="text-lg font-semibold text-brand-900 dark:text-white">
-              {t("gameProgress.newRecord")}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-white transition-colors"
-          >
-            <div className="i-mdi-close text-xl" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSave} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-              {t("gameProgress.chapter")}
-            </label>
-            {isLoading ? (
-              <div className="h-9 bg-brand-100 dark:bg-brand-700 rounded-md animate-pulse" />
-            ) : (
-              <input
-                type="text"
-                value={chapter}
-                onChange={e => setChapter(e.target.value)}
-                placeholder={t("gameProgress.chapterPlaceholder")}
-                className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm"
-              />
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-              {t("gameProgress.route")}
-            </label>
-            {isLoading ? (
-              <div className="h-9 bg-brand-100 dark:bg-brand-700 rounded-md animate-pulse" />
-            ) : (
-              <input
-                type="text"
-                value={route}
-                onChange={e => setRoute(e.target.value)}
-                placeholder={t("gameProgress.routePlaceholder")}
-                className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm"
-              />
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-              {t("gameProgress.progressNote")}
-            </label>
-            {isLoading ? (
-              <div className="h-20 bg-brand-100 dark:bg-brand-700 rounded-md animate-pulse" />
-            ) : (
-              <textarea
-                value={progressNote}
-                onChange={e => setProgressNote(e.target.value)}
-                rows={3}
-                placeholder={t("gameProgress.progressNotePlaceholder")}
-                className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm resize-none"
-              />
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-              {t("gameProgress.spoilerBoundary")}
-            </label>
-            {isLoading ? (
-              <div className="h-9 bg-brand-100 dark:bg-brand-700 rounded-md animate-pulse" />
-            ) : (
-              <>
-                <BetterSelect
-                  value={spoilerBoundary}
-                  onChange={setSpoilerBoundary}
-                  options={spoilerOptions}
-                />
-                <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
-                  {boundaryHints[spoilerBoundary]}
-                </p>
-              </>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-3 pt-6 border-t border-brand-200 dark:border-brand-700 mt-6">
+    <ModalPortal>
+      <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="relative bg-white dark:bg-brand-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 p-6">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-2">
+              <div className="i-mdi-playlist-plus text-xl text-brand-600 dark:text-brand-400" />
+              <h2 className="text-lg font-semibold text-brand-900 dark:text-white">
+                {t("gameProgress.newRecord")}
+              </h2>
+            </div>
             <button
-              type="submit"
-              disabled={isSaving || isLoading}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-600 text-white text-sm font-medium hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              type="button"
+              onClick={onClose}
+              className="text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-white transition-colors"
             >
-              <span
-                className={
-                  isSaving
-                    ? "i-mdi-loading animate-spin"
-                    : "i-mdi-playlist-plus"
-                }
-              />
-              {isSaving ? t("common.saving") : t("gameProgress.addRecord")}
+              <div className="i-mdi-close text-xl" />
             </button>
           </div>
-        </form>
+
+          <form onSubmit={handleSave} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                {t("gameProgress.chapter")}
+              </label>
+              {isLoading ? (
+                <div className="h-9 bg-brand-100 dark:bg-brand-700 rounded-md animate-pulse" />
+              ) : (
+                <input
+                  type="text"
+                  value={chapter}
+                  onChange={e => setChapter(e.target.value)}
+                  placeholder={t("gameProgress.chapterPlaceholder")}
+                  className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm"
+                />
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                {t("gameProgress.route")}
+              </label>
+              {isLoading ? (
+                <div className="h-9 bg-brand-100 dark:bg-brand-700 rounded-md animate-pulse" />
+              ) : (
+                <input
+                  type="text"
+                  value={route}
+                  onChange={e => setRoute(e.target.value)}
+                  placeholder={t("gameProgress.routePlaceholder")}
+                  className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm"
+                />
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                {t("gameProgress.progressNote")}
+              </label>
+              {isLoading ? (
+                <div className="h-20 bg-brand-100 dark:bg-brand-700 rounded-md animate-pulse" />
+              ) : (
+                <textarea
+                  value={progressNote}
+                  onChange={e => setProgressNote(e.target.value)}
+                  rows={3}
+                  placeholder={t("gameProgress.progressNotePlaceholder")}
+                  className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm resize-none"
+                />
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                {t("gameProgress.spoilerBoundary")}
+              </label>
+              {isLoading ? (
+                <div className="h-9 bg-brand-100 dark:bg-brand-700 rounded-md animate-pulse" />
+              ) : (
+                <>
+                  <BetterSelect
+                    value={spoilerBoundary}
+                    onChange={setSpoilerBoundary}
+                    options={spoilerOptions}
+                  />
+                  <p className="text-xs text-brand-500 dark:text-brand-400 mt-1">
+                    {boundaryHints[spoilerBoundary]}
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-6 border-t border-brand-200 dark:border-brand-700 mt-6">
+              <button
+                type="submit"
+                disabled={isSaving || isLoading}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-600 text-white text-sm font-medium hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span
+                  className={
+                    isSaving
+                      ? "i-mdi-loading animate-spin"
+                      : "i-mdi-playlist-plus"
+                  }
+                />
+                {isSaving ? t("common.saving") : t("gameProgress.addRecord")}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }

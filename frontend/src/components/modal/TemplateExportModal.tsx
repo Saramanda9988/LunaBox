@@ -9,6 +9,7 @@ import {
   PrepareExportData,
   RenderTemplate,
 } from "../../../wailsjs/go/service/TemplateService";
+import { ModalPortal } from "../ui/ModalPortal";
 
 interface TemplateExportModalProps {
   isOpen: boolean;
@@ -74,7 +75,9 @@ export function TemplateExportModal({
 
     setExporting(true);
     try {
-      const iframe = previewRef.current.querySelector("iframe") as HTMLIFrameElement;
+      const iframe = previewRef.current.querySelector(
+        "iframe",
+      ) as HTMLIFrameElement;
       if (!iframe || !iframe.contentWindow) {
         throw new Error("Cannot access preview content");
       }
@@ -92,15 +95,19 @@ export function TemplateExportModal({
       }
 
       const html2canvas = (await import("html2canvas")).default;
-      const iframeWindow = iframe.contentWindow as Window & { html2canvas?: typeof html2canvas };
+      const iframeWindow = iframe.contentWindow as Window & {
+        html2canvas?: typeof html2canvas;
+      };
 
       if (!iframeWindow.html2canvas) {
         const script = iframeDoc.createElement("script");
-        script.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
+        script.src
+          = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
         iframeDoc.head.appendChild(script);
         await new Promise<void>((resolve, reject) => {
           script.onload = () => resolve();
-          script.onerror = () => reject(new Error("Failed to load html2canvas"));
+          script.onerror = () =>
+            reject(new Error("Failed to load html2canvas"));
           setTimeout(() => resolve(), 3000);
         });
       }
@@ -150,7 +157,11 @@ export function TemplateExportModal({
     }
     catch (err) {
       console.error("Failed to export image:", err);
-      toast.error(t("stats.templateExport.toast.exportFailed", { error: err instanceof Error ? err.message : String(err) }));
+      toast.error(
+        t("stats.templateExport.toast.exportFailed", {
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
     }
     finally {
       setExporting(false);
@@ -182,165 +193,170 @@ export function TemplateExportModal({
   if (!isOpen)
     return null;
 
-  const selectedTemplate = templates.find(tmpl => tmpl.id === selectedTemplateId);
+  const selectedTemplate = templates.find(
+    tmpl => tmpl.id === selectedTemplateId,
+  );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-6xl h-[85vh] rounded-xl bg-white shadow-xl dark:bg-brand-800 border border-brand-200 dark:border-brand-700 flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-brand-200 dark:border-brand-700">
-          <div className="flex items-center gap-3">
-            <span className="i-mdi-image-filter-hdr text-2xl text-neutral-600 dark:text-neutral-400" />
-            <h2 className="text-xl font-bold text-brand-900 dark:text-white">{t("stats.templateExport.title")}</h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 transition-colors"
-          >
-            <span className="i-mdi-close text-xl text-brand-600 dark:text-brand-400" />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Left: Template Selection */}
-          <div className="w-64 border-r border-brand-200 dark:border-brand-700 flex flex-col">
-            <div className="p-4 border-b border-brand-200 dark:border-brand-700">
-              <h3 className="text-sm font-semibold text-brand-900 dark:text-white mb-1">{t("stats.templateExport.selectTemplate")}</h3>
-              <p className="text-xs text-brand-500 dark:text-brand-400">
-                {t("stats.templateExport.selectTemplateHint")}
-              </p>
+    <ModalPortal>
+      <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="w-full max-w-6xl h-[85vh] rounded-xl bg-white shadow-xl dark:bg-brand-800 border border-brand-200 dark:border-brand-700 flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-brand-200 dark:border-brand-700">
+            <div className="flex items-center gap-3">
+              <span className="i-mdi-image-filter-hdr text-2xl text-neutral-600 dark:text-neutral-400" />
+              <h2 className="text-xl font-bold text-brand-900 dark:text-white">
+                {t("stats.templateExport.title")}
+              </h2>
             </div>
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
-              {templates.map(template => (
-                <button
-                  key={template.id}
-                  type="button"
-                  onClick={() => setSelectedTemplateId(template.id)}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors ${selectedTemplateId === template.id
-                    ? "bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300"
-                    : "hover:bg-brand-50 dark:hover:bg-brand-700/50 text-brand-700 dark:text-brand-300"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    {template.is_builtin
-                      ? (
-                          <span className="i-mdi-check-decagram text-neutral-500" />
-                        )
-                      : (
-                          <span className="i-mdi-file-document-outline text-brand-400" />
-                        )}
-                    <span className="font-medium text-sm">{template.name}</span>
-                  </div>
-                  {template.description && (
-                    <p className="text-xs text-brand-500 dark:text-brand-400 mt-1 ml-6 line-clamp-2">
-                      {template.description}
-                    </p>
-                  )}
-                </button>
-              ))}
-            </div>
-            <div className="p-3 border-t border-brand-200 dark:border-brand-700">
-              <button
-                type="button"
-                onClick={handleOpenTemplatesDir}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-700/50 rounded-lg transition-colors"
-              >
-                <span className="i-mdi-folder-open" />
-                {t("stats.templateExport.openTemplatesDir")}
-              </button>
-            </div>
-          </div>
-
-          {/* Right: Preview */}
-          <div className="flex-1 flex flex-col overflow-hidden bg-brand-50 dark:bg-brand-900/50">
-            {/* Template Info */}
-            {selectedTemplate && (
-              <div className="px-4 py-3 border-b border-brand-200 dark:border-brand-700 bg-white dark:bg-brand-800">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-semibold text-brand-900 dark:text-white">
-                      {selectedTemplate.name}
-                    </h4>
-                    <p className="text-xs text-brand-500 dark:text-brand-400">
-                      {selectedTemplate.author && `${t("stats.templateExport.authorPrefix")} ${selectedTemplate.author} · `}
-                      {t("stats.templateExport.versionPrefix")}
-                      {" "}
-                      {selectedTemplate.version}
-                      {selectedTemplate.is_builtin && t("stats.templateExport.builtinTag")}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Preview Area */}
-            <div ref={previewRef} className="flex-1 overflow-auto p-4">
-              {loading
-                ? (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="flex items-center gap-3 text-brand-500 dark:text-brand-400">
-                        <span className="i-mdi-loading animate-spin text-2xl" />
-                        <span>{t("stats.templateExport.rendering")}</span>
-                      </div>
-                    </div>
-                  )
-                : previewHtml
-                  ? (
-                      <iframe
-                        srcDoc={previewHtml}
-                        className="w-full h-full border-0 rounded-lg shadow-lg bg-white"
-                        title={t("stats.templateExport.templatePreviewTitle")}
-                        sandbox="allow-same-origin allow-scripts"
-                      />
-                    )
-                  : (
-                      <div className="flex items-center justify-center h-full text-brand-500 dark:text-brand-400">
-                        {t("stats.templateExport.selectToPreview")}
-                      </div>
-                    )}
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-brand-200 dark:border-brand-700 bg-brand-50 dark:bg-brand-900/30">
-          <p className="text-xs text-brand-500 dark:text-brand-400">
-            <span className="i-mdi-information-outline mr-1" />
-            {t("stats.templateExport.tipText")}
-          </p>
-          <div className="flex gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 rounded-lg dark:text-brand-300 dark:hover:bg-brand-700 transition-colors"
+              className="p-2 rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 transition-colors"
             >
-              {t("stats.templateExport.cancelBtn")}
+              <span className="i-mdi-close text-xl text-brand-600 dark:text-brand-400" />
             </button>
-            <button
-              type="button"
-              onClick={handleExport}
-              disabled={!previewHtml || exporting}
-              className="px-4 py-2 text-sm font-medium text-white bg-neutral-600 hover:bg-neutral-700 rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {exporting
-                ? (
-                    <>
-                      <span className="i-mdi-loading animate-spin" />
-                      {t("stats.templateExport.exporting")}
-                    </>
-                  )
-                : (
-                    <>
-                      <span className="i-mdi-download" />
-                      {t("stats.templateExport.exportBtn")}
-                    </>
-                  )}
-            </button>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Left: Template Selection */}
+            <div className="w-64 border-r border-brand-200 dark:border-brand-700 flex flex-col">
+              <div className="p-4 border-b border-brand-200 dark:border-brand-700">
+                <h3 className="text-sm font-semibold text-brand-900 dark:text-white mb-1">
+                  {t("stats.templateExport.selectTemplate")}
+                </h3>
+                <p className="text-xs text-brand-500 dark:text-brand-400">
+                  {t("stats.templateExport.selectTemplateHint")}
+                </p>
+              </div>
+              <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                {templates.map(template => (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => setSelectedTemplateId(template.id)}
+                    className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors ${
+                      selectedTemplateId === template.id
+                        ? "bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300"
+                        : "hover:bg-brand-50 dark:hover:bg-brand-700/50 text-brand-700 dark:text-brand-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {template.is_builtin ? (
+                        <span className="i-mdi-check-decagram text-neutral-500" />
+                      ) : (
+                        <span className="i-mdi-file-document-outline text-brand-400" />
+                      )}
+                      <span className="font-medium text-sm">
+                        {template.name}
+                      </span>
+                    </div>
+                    {template.description && (
+                      <p className="text-xs text-brand-500 dark:text-brand-400 mt-1 ml-6 line-clamp-2">
+                        {template.description}
+                      </p>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <div className="p-3 border-t border-brand-200 dark:border-brand-700">
+                <button
+                  type="button"
+                  onClick={handleOpenTemplatesDir}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-700/50 rounded-lg transition-colors"
+                >
+                  <span className="i-mdi-folder-open" />
+                  {t("stats.templateExport.openTemplatesDir")}
+                </button>
+              </div>
+            </div>
+
+            {/* Right: Preview */}
+            <div className="flex-1 flex flex-col overflow-hidden bg-brand-50 dark:bg-brand-900/50">
+              {/* Template Info */}
+              {selectedTemplate && (
+                <div className="px-4 py-3 border-b border-brand-200 dark:border-brand-700 bg-white dark:bg-brand-800">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-semibold text-brand-900 dark:text-white">
+                        {selectedTemplate.name}
+                      </h4>
+                      <p className="text-xs text-brand-500 dark:text-brand-400">
+                        {selectedTemplate.author
+                          && `${t("stats.templateExport.authorPrefix")} ${selectedTemplate.author} · `}
+                        {t("stats.templateExport.versionPrefix")}
+                        {" "}
+                        {selectedTemplate.version}
+                        {selectedTemplate.is_builtin
+                          && t("stats.templateExport.builtinTag")}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Preview Area */}
+              <div ref={previewRef} className="flex-1 overflow-auto p-4">
+                {loading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="flex items-center gap-3 text-brand-500 dark:text-brand-400">
+                      <span className="i-mdi-loading animate-spin text-2xl" />
+                      <span>{t("stats.templateExport.rendering")}</span>
+                    </div>
+                  </div>
+                ) : previewHtml ? (
+                  <iframe
+                    srcDoc={previewHtml}
+                    className="w-full h-full border-0 rounded-lg shadow-lg bg-white"
+                    title={t("stats.templateExport.templatePreviewTitle")}
+                    sandbox="allow-same-origin allow-scripts"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-brand-500 dark:text-brand-400">
+                    {t("stats.templateExport.selectToPreview")}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between px-6 py-4 border-t border-brand-200 dark:border-brand-700 bg-brand-50 dark:bg-brand-900/30">
+            <p className="text-xs text-brand-500 dark:text-brand-400">
+              <span className="i-mdi-information-outline mr-1" />
+              {t("stats.templateExport.tipText")}
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 rounded-lg dark:text-brand-300 dark:hover:bg-brand-700 transition-colors"
+              >
+                {t("stats.templateExport.cancelBtn")}
+              </button>
+              <button
+                type="button"
+                onClick={handleExport}
+                disabled={!previewHtml || exporting}
+                className="px-4 py-2 text-sm font-medium text-white bg-neutral-600 hover:bg-neutral-700 rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {exporting ? (
+                  <>
+                    <span className="i-mdi-loading animate-spin" />
+                    {t("stats.templateExport.exporting")}
+                  </>
+                ) : (
+                  <>
+                    <span className="i-mdi-download" />
+                    {t("stats.templateExport.exportBtn")}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
