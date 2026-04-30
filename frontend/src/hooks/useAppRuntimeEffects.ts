@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 
 import type { appconf, vo } from "../../wailsjs/go/models";
 
+import { ShouldShowMainWindowOnReady } from "../../wailsjs/go/service/ConfigService";
 import { GetPendingInstall } from "../../wailsjs/go/service/DownloadService";
 import { EventsOn, WindowShow } from "../../wailsjs/runtime/runtime";
 
@@ -61,7 +62,19 @@ export function useAppRuntimeEffects({
     let cancelled = false;
 
     document.getElementById("root")?.classList.add("ready");
-    WindowShow();
+    void ShouldShowMainWindowOnReady()
+      .then((shouldShow) => {
+        if (cancelled || !shouldShow) {
+          return;
+        }
+        WindowShow();
+      })
+      .catch((error) => {
+        console.error("Failed to resolve initial window visibility:", error);
+        if (!cancelled) {
+          WindowShow();
+        }
+      });
 
     GetPendingInstall().then((req) => {
       if (cancelled || !req) {

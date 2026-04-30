@@ -6,6 +6,7 @@ import (
 	"embed"
 	"fmt"
 	"lunabox/internal/applog"
+	"lunabox/internal/autostart"
 	"lunabox/internal/cli"
 	"lunabox/internal/cli/ipcclient"
 	"lunabox/internal/cli/ipcserver"
@@ -247,6 +248,7 @@ func main() {
 	// 启动参数预处理：在 Wails 初始化之前处理协议参数
 	// ================================================================
 	args := os.Args[1:]
+	args, launchedByAutostart := autostart.ExtractLaunchFlag(args)
 
 	// lunabox:// URL：检查 GUI 是否已运行
 	var pendingURL string
@@ -517,9 +519,15 @@ func main() {
 			appState.SetContext(ctx)
 			applog.SetMode(applog.ModeGUI)
 			configService.Init(ctx, db, config)
+			configService.SetSuppressInitialWindowShow(launchedByAutostart)
 			configService.SetQuitHandler(func() {
 				appState.QuitApplication()
 			})
+
+			if err := autostart.Sync(config.LaunchAtLogin); err != nil {
+				appLogger.Error("failed to sync launch-at-login: " + err.Error())
+			}
+
 			downloadService.Init(ctx, db, config)
 			gameService.Init(ctx, db, config)
 			tagService.Init(ctx, db, config)

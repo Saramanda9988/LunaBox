@@ -49,6 +49,7 @@ export namespace appconf {
 	    window_width: number;
 	    window_height: number;
 	    window_zoom_factor: number;
+	    launch_at_login: boolean;
 	    record_active_time_only: boolean;
 	    check_update_on_startup: boolean;
 	    update_check_url?: string;
@@ -124,6 +125,7 @@ export namespace appconf {
 	        this.window_width = source["window_width"];
 	        this.window_height = source["window_height"];
 	        this.window_zoom_factor = source["window_zoom_factor"];
+	        this.launch_at_login = source["launch_at_login"];
 	        this.record_active_time_only = source["record_active_time_only"];
 	        this.check_update_on_startup = source["check_update_on_startup"];
 	        this.update_check_url = source["update_check_url"];

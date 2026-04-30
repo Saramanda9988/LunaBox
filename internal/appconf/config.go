@@ -85,6 +85,7 @@ type AppConfig struct {
 	WindowWidth      int     `json:"window_width"`       // 窗口宽度
 	WindowHeight     int     `json:"window_height"`      // 窗口高度
 	WindowZoomFactor float64 `json:"window_zoom_factor"` // 应用界面缩放倍率
+	LaunchAtLogin    bool    `json:"launch_at_login"`    // Windows 登录后自动启动应用
 	// 活跃时间追踪配置
 	RecordActiveTimeOnly bool `json:"record_active_time_only"` // 仅记录活跃游玩时长（窗口在前台时）
 	// 自动更新配置
@@ -170,6 +171,7 @@ func LoadConfig() (*AppConfig, error) {
 		WindowWidth:            1230,
 		WindowHeight:           800,
 		WindowZoomFactor:       1.0,
+		LaunchAtLogin:          false,
 		RecordActiveTimeOnly:   false, // 默认关闭，向后兼容
 		CheckUpdateOnStartup:   true,  // 默认开启启动时检查更新
 		UpdateCheckURL:         "",

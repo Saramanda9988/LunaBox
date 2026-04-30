@@ -596,7 +596,8 @@
       "timezoneLabel": "タイムゾーン",
       "timezoneHint": "ゲーム時間を正しく表示・記録するために使用します。変更後はアプリを再起動してください",
       "timezonePlaceholder": "タイムゾーンを選択してください",
-      "closeToTray": "ウィンドウを閉じたときにシステムトレイへ最小化"
+      "closeToTray": "ウィンドウを閉じたときにシステムトレイへ最小化",
+      "launchAtLogin": "自動起動"
     },
     "appData": {
       "logsTitle": "ログエクスポート",

@@ -596,7 +596,8 @@
       "timezoneLabel": "Timezone",
       "timezoneHint": "Used to correctly display and record play time. Restart the app after changing.",
       "timezonePlaceholder": "Select timezone",
-      "closeToTray": "Minimize to system tray on close"
+      "closeToTray": "Minimize to system tray on close",
+      "launchAtLogin": "Launch at startup"
     },
     "appData": {
       "logsTitle": "Log Export",

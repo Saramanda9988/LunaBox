@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
+	"lunabox/internal/autostart"
 	"lunabox/internal/utils/apputils"
 	"lunabox/internal/utils/archiveutils"
 	"lunabox/internal/utils/imageutils"
@@ -18,10 +19,11 @@ import (
 )
 
 type ConfigService struct {
-	ctx         context.Context
-	db          *sql.DB
-	config      *appconf.AppConfig
-	quitHandler func() // 安全退出回调
+	ctx                       context.Context
+	db                        *sql.DB
+	config                    *appconf.AppConfig
+	quitHandler               func() // 安全退出回调
+	suppressInitialWindowShow bool
 }
 
 func NewConfigService() *ConfigService {
@@ -36,6 +38,22 @@ func (s *ConfigService) Init(ctx context.Context, db *sql.DB, config *appconf.Ap
 
 func (s *ConfigService) GetAppConfig() (appconf.AppConfig, error) {
 	return *s.config, nil
+}
+
+func (s *ConfigService) SetSuppressInitialWindowShow(suppress bool) {
+	s.suppressInitialWindowShow = suppress
+}
+
+func (s *ConfigService) ShouldShowMainWindowOnReady() bool {
+	if !s.suppressInitialWindowShow {
+		return true
+	}
+
+	if s.config == nil {
+		return true
+	}
+
+	return strings.TrimSpace(s.config.TimeZone) == ""
 }
 
 // SelectDirectory 打开目录选择对话框
@@ -193,8 +211,26 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 
 	appconf.SanitizeOneDriveOAuthConfig(&newConfig)
 
+	previousLaunchAtLogin := false
+	if s.config != nil {
+		previousLaunchAtLogin = s.config.LaunchAtLogin
+	}
+
+	shouldSyncLaunchAtLogin := newConfig.LaunchAtLogin != previousLaunchAtLogin || newConfig.LaunchAtLogin
+	if shouldSyncLaunchAtLogin {
+		if err := autostart.Sync(newConfig.LaunchAtLogin); err != nil {
+			applog.LogErrorf(s.ctx, "failed to sync launch-at-login: %v", err)
+			return fmt.Errorf("同步开机自启动失败: %w", err)
+		}
+	}
+
 	err := appconf.SaveConfig(&newConfig)
 	if err != nil {
+		if shouldSyncLaunchAtLogin {
+			if rollbackErr := autostart.Sync(previousLaunchAtLogin); rollbackErr != nil {
+				applog.LogErrorf(s.ctx, "failed to rollback launch-at-login after save error: %v", rollbackErr)
+			}
+		}
 		applog.LogErrorf(s.ctx, "failed to save config: %v", err)
 		return err
 	}
@@ -241,6 +277,7 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	s.config.LocalBackupRetention = newConfig.LocalBackupRetention
 	s.config.LocalDBBackupRetention = newConfig.LocalDBBackupRetention
 	s.config.WindowZoomFactor = newConfig.WindowZoomFactor
+	s.config.LaunchAtLogin = newConfig.LaunchAtLogin
 	s.config.LastFullBackupTime = newConfig.LastFullBackupTime
 	s.config.PendingFullRestore = newConfig.PendingFullRestore
 	s.config.RecordActiveTimeOnly = newConfig.RecordActiveTimeOnly

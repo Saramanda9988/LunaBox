@@ -42,6 +42,14 @@ export function SetQuitHandler(arg1) {
   return window['go']['service']['ConfigService']['SetQuitHandler'](arg1);
 }
 
+export function SetSuppressInitialWindowShow(arg1) {
+  return window['go']['service']['ConfigService']['SetSuppressInitialWindowShow'](arg1);
+}
+
+export function ShouldShowMainWindowOnReady() {
+  return window['go']['service']['ConfigService']['ShouldShowMainWindowOnReady']();
+}
+
 export function UpdateAppConfig(arg1) {
   return window['go']['service']['ConfigService']['UpdateAppConfig'](arg1);
 }

@@ -24,4 +24,8 @@ export function SelectDirectory(arg1:string):Promise<string>;
 
 export function SetQuitHandler(arg1:any):Promise<void>;
 
+export function SetSuppressInitialWindowShow(arg1:boolean):Promise<void>;
+
+export function ShouldShowMainWindowOnReady():Promise<boolean>;
+
 export function UpdateAppConfig(arg1:appconf.AppConfig):Promise<void>;

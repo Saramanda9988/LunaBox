@@ -167,6 +167,26 @@ export function BasicSettingsPanel({
           />
         </div>
       </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-4">
+          <label
+            htmlFor="launch_at_login"
+            className="block cursor-pointer text-sm font-medium text-brand-700 dark:text-brand-300"
+          >
+            {t("settings.basic.launchAtLogin")}
+          </label>
+          <BetterSwitch
+            id="launch_at_login"
+            checked={formData.launch_at_login || false}
+            onCheckedChange={checked =>
+              onChange({
+                ...formData,
+                launch_at_login: checked,
+              } as appconf.AppConfig)}
+          />
+        </div>
+      </div>
     </>
   );
 }

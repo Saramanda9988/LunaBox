@@ -596,7 +596,8 @@
       "timezoneLabel": "时区",
       "timezoneHint": "用于正确显示和记录游戏时长,修改后请重启应用",
       "timezonePlaceholder": "请选择时区",
-      "closeToTray": "关闭窗口时最小化到系统托盘"
+      "closeToTray": "关闭窗口时最小化到系统托盘",
+      "launchAtLogin": "开机自启动"
     },
     "appData": {
       "logsTitle": "日志导出",
