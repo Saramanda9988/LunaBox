@@ -11,7 +11,9 @@ export function formatDuration(seconds: number, t?: TFunc): string {
   const hourStr = t ? t("common.duration.hours") : "小时";
   const minStr = t ? t("common.duration.minutes") : "分钟";
   if (hours > 0) {
-    return minutes > 0 ? `${hours}${hourStr}${minutes}${minStr}` : `${hours}${hourStr}`;
+    return minutes > 0
+      ? `${hours}${hourStr}${minutes}${minStr}`
+      : `${hours}${hourStr}`;
   }
   return `${minutes}${minStr}`;
 }
@@ -27,6 +29,27 @@ export function formatDurationShort(seconds: number, t?: TFunc): string {
   const h = t ? t("common.duration.hoursShort") : "h";
   const m = t ? t("common.duration.minutesShort") : "m";
   return `${hours}${h} ${minutes}${m}`;
+}
+
+/**
+ * 将秒数格式化为适合图表展示的精简时长字符串（最小粒度为分钟）
+ * @param seconds - 秒数
+ * @param t - 可选的 i18n t 函数；不传时输出英文缩写
+ */
+export function formatDurationChart(seconds: number, t?: TFunc): string {
+  const totalMinutes = Math.floor(Math.max(0, seconds) / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const h = t ? t("common.duration.hoursShort") : "h";
+  const m = t ? t("common.duration.minutesShort") : "m";
+  const parts: string[] = [];
+
+  if (hours > 0) {
+    parts.push(`${hours}${h}`);
+  }
+  parts.push(`${minutes}${m}`);
+
+  return parts.join(" ");
 }
 
 /**
@@ -70,7 +93,9 @@ export function parseTime(timeValue: any): Date {
   if (typeof timeValue === "object") {
     timeStr = String(timeValue);
     if (timeStr === "[object Object]") {
-      console.warn("parseTime: received empty time.Time object, returning current time");
+      console.warn(
+        "parseTime: received empty time.Time object, returning current time",
+      );
       return new Date();
     }
   }
@@ -104,7 +129,11 @@ export const parseUTCTime = parseTime;
  * @param timezone - IANA 时区名称（如 "Asia/Shanghai"），可选，不提供时使用系统时区
  * @param options - Intl.DateTimeFormat 选项
  */
-export function formatLocalDate(timeString: any, timezone?: string, options?: Intl.DateTimeFormatOptions): string {
+export function formatLocalDate(
+  timeString: any,
+  timezone?: string,
+  options?: Intl.DateTimeFormatOptions,
+): string {
   const date = parseTime(timeString);
   return date.toLocaleDateString(undefined, {
     year: "numeric",
@@ -121,7 +150,11 @@ export function formatLocalDate(timeString: any, timezone?: string, options?: In
  * @param timezone - IANA 时区名称（如 "Asia/Shanghai"），可选，不提供时使用系统时区
  * @param options - Intl.DateTimeFormat 选项
  */
-export function formatLocalDateTime(timeString: any, timezone?: string, options?: Intl.DateTimeFormatOptions): string {
+export function formatLocalDateTime(
+  timeString: any,
+  timezone?: string,
+  options?: Intl.DateTimeFormatOptions,
+): string {
   const date = parseTime(timeString);
   return date.toLocaleString(undefined, {
     year: "numeric",

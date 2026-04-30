@@ -1,3 +1,4 @@
+import type { ChartOptions, TooltipItem } from "chart.js";
 import type { models, vo } from "../../../wailsjs/go/models";
 import {
   CategoryScale,
@@ -13,11 +14,18 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { enums } from "../../../wailsjs/go/models";
-import { DeletePlaySession, GetPlaySessions } from "../../../wailsjs/go/service/SessionService";
+import {
+  DeletePlaySession,
+  GetPlaySessions,
+} from "../../../wailsjs/go/service/SessionService";
 import { GetGameStats } from "../../../wailsjs/go/service/StatsService";
 import { useChartTheme } from "../../hooks/useChartTheme";
 import { useAppStore } from "../../store";
-import { formatDuration, formatLocalDateTime } from "../../utils/time";
+import {
+  formatDuration,
+  formatDurationChart,
+  formatLocalDateTime,
+} from "../../utils/time";
 import { HorizontalScrollChart } from "../chart/HorizontalScrollChart";
 import { AddPlaySessionModal } from "../modal/AddPlaySessionModal";
 import { ConfirmModal } from "../modal/ConfirmModal";
@@ -46,7 +54,9 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
   const [sessions, setSessions] = useState<models.PlaySession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("chart");
-  const [timeDimension, setTimeDimension] = useState<enums.Period>(enums.Period.WEEK);
+  const [timeDimension, setTimeDimension] = useState<enums.Period>(
+    enums.Period.WEEK,
+  );
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
   const { t } = useTranslation();
@@ -117,7 +127,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
     datasets: [
       {
         label: t("gameStats.chartLabel"),
-        data: stats?.recent_play_history?.map(h => h.duration / 60) || [],
+        data: stats?.recent_play_history?.map(h => h.duration) || [],
         borderColor: "rgb(59, 130, 246)",
         backgroundColor: "rgba(59, 130, 246, 0.5)",
         tension: 0.3,
@@ -125,7 +135,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
     ],
   };
 
-  const chartOptions = {
+  const chartOptions: ChartOptions<"line"> = {
     responsive: true,
     maintainAspectRatio: false,
     interaction: {
@@ -138,6 +148,16 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
       },
       title: {
         display: false,
+      },
+      tooltip: {
+        callbacks: {
+          label: (context: TooltipItem<"line">) => {
+            const label = context.dataset.label
+              ? `${context.dataset.label}: `
+              : "";
+            return `${label}${formatDurationChart(Number(context.parsed.y || 0), t)}`;
+          },
+        },
       },
     },
     scales: {
@@ -156,6 +176,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
         },
         ticks: {
           color: textColor,
+          callback: value => formatDurationChart(Number(value), t),
         },
       },
     },
@@ -166,21 +187,35 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
       {/* 统计卡片 */}
       <div className="grid grid-cols-3 gap-6">
         <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-          <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">{t("gameStats.totalPlayCount")}</div>
+          <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">
+            {t("gameStats.totalPlayCount")}
+          </div>
           <div className="text-2xl font-bold text-brand-900 dark:text-white">
             {stats?.total_play_count ?? (isLoading ? "-" : 0)}
           </div>
         </div>
         <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-          <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">{t("gameStats.todayPlayTime")}</div>
+          <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">
+            {t("gameStats.todayPlayTime")}
+          </div>
           <div className="text-2xl font-bold text-brand-900 dark:text-white">
-            {stats ? formatDuration(stats.today_play_time, t) : (isLoading ? "-" : t("gameStats.zeroMinutes"))}
+            {stats
+              ? formatDuration(stats.today_play_time, t)
+              : isLoading
+                ? "-"
+                : t("gameStats.zeroMinutes")}
           </div>
         </div>
         <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm">
-          <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">{t("gameStats.totalPlayTime")}</div>
+          <div className="text-sm text-brand-500 dark:text-brand-400 mb-2">
+            {t("gameStats.totalPlayTime")}
+          </div>
           <div className="text-2xl font-bold text-brand-900 dark:text-white">
-            {stats ? formatDuration(stats.total_play_time, t) : (isLoading ? "-" : t("gameStats.zeroMinutes"))}
+            {stats
+              ? formatDuration(stats.total_play_time, t)
+              : isLoading
+                ? "-"
+                : t("gameStats.zeroMinutes")}
           </div>
         </div>
       </div>
@@ -188,58 +223,55 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
       {/* 视图切换和操作栏 */}
       <div className="glass-card bg-white dark:bg-brand-800 rounded-lg shadow-sm">
         <div className="p-6">
-          {isLoading && !stats
-            ? (
-                <div className="h-80 flex items-center justify-center">
-                  <div className="i-mdi-loading animate-spin text-3xl text-brand-500" />
+          {isLoading && !stats ? (
+            <div className="h-80 flex items-center justify-center">
+              <div className="i-mdi-loading animate-spin text-3xl text-brand-500" />
+            </div>
+          ) : viewMode === "chart" ? (
+            <HorizontalScrollChart
+              data={chartData}
+              options={chartOptions}
+              className="h-80"
+            />
+          ) : (
+            <div className="space-y-2">
+              {sessions.length === 0 ? (
+                <div className="text-center py-12 text-brand-500">
+                  <div className="i-mdi-clock-outline text-4xl mx-auto mb-2" />
+                  <p>{t("gameStats.noPlaySessions")}</p>
                 </div>
-              )
-            : viewMode === "chart"
-              ? (
-                  <HorizontalScrollChart
-                    data={chartData}
-                    options={chartOptions}
-                    className="h-80"
-                  />
-                )
-              : (
-                  <div className="space-y-2">
-                    {sessions.length === 0
-                      ? (
-                          <div className="text-center py-12 text-brand-500">
-                            <div className="i-mdi-clock-outline text-4xl mx-auto mb-2" />
-                            <p>{t("gameStats.noPlaySessions")}</p>
-                          </div>
-                        )
-                      : (
-                          sessions.map(session => (
-                            <div
-                              key={session.id}
-                              className="flex items-center justify-between p-3 bg-brand-50 dark:bg-brand-700/50 rounded-lg"
-                            >
-                              <div className="flex-1">
-                                <div className="text-sm text-brand-900 dark:text-white">
-                                  {formatLocalDateTime(session.start_time, config?.time_zone)}
-                                </div>
-                                <div className="text-xs text-brand-500 dark:text-brand-400">
-                                  {t("gameStats.duration")}
-                                  {" "}
-                                  {formatDuration(session.duration, t)}
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => setDeleteSessionId(session.id)}
-                                className="p-1.5 text-brand-400 hover:text-error-500 hover:bg-error-50 dark:hover:bg-error-900/20 rounded transition-colors"
-                                title={t("gameStats.deleteRecord")}
-                                type="button"
-                              >
-                                <div className="i-mdi-delete-outline text-lg" />
-                              </button>
-                            </div>
-                          ))
+              ) : (
+                sessions.map(session => (
+                  <div
+                    key={session.id}
+                    className="flex items-center justify-between p-3 bg-brand-50 dark:bg-brand-700/50 rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <div className="text-sm text-brand-900 dark:text-white">
+                        {formatLocalDateTime(
+                          session.start_time,
+                          config?.time_zone,
                         )}
+                      </div>
+                      <div className="text-xs text-brand-500 dark:text-brand-400">
+                        {t("gameStats.duration")}
+                        {" "}
+                        {formatDuration(session.duration, t)}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setDeleteSessionId(session.id)}
+                      className="p-1.5 text-brand-400 hover:text-error-500 hover:bg-error-50 dark:hover:bg-error-900/20 rounded transition-colors"
+                      title={t("gameStats.deleteRecord")}
+                      type="button"
+                    >
+                      <div className="i-mdi-delete-outline text-lg" />
+                    </button>
                   </div>
-                )}
+                ))
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center justify-between p-4 border-t-1 border-brand-200 dark:border-brand-700">
           <div className="flex gap-4">
@@ -247,7 +279,10 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
             <SlideButton
               options={[
                 { label: t("gameStats.period.week"), value: enums.Period.WEEK },
-                { label: t("gameStats.period.month"), value: enums.Period.MONTH },
+                {
+                  label: t("gameStats.period.month"),
+                  value: enums.Period.MONTH,
+                },
                 { label: t("gameStats.period.all"), value: enums.Period.ALL },
               ]}
               value={timeDimension}
@@ -259,9 +294,10 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
             <div className="flex gap-2">
               <button
                 onClick={() => setViewMode("chart")}
-                className={`glass-btn-neutral flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === "chart"
-                  ? "bg-neutral-600 text-white"
-                  : "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-300 hover:bg-brand-200 dark:hover:bg-brand-600"
+                className={`glass-btn-neutral flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === "chart"
+                    ? "bg-neutral-600 text-white"
+                    : "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-300 hover:bg-brand-200 dark:hover:bg-brand-600"
                 }`}
                 type="button"
               >
@@ -269,9 +305,10 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
               </button>
               <button
                 onClick={() => setViewMode("sessions")}
-                className={`glass-btn-neutral flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === "sessions"
-                  ? "bg-neutral-600 text-white"
-                  : "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-300 hover:bg-brand-200 dark:hover:bg-brand-600"
+                className={`glass-btn-neutral flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === "sessions"
+                    ? "bg-neutral-600 text-white"
+                    : "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-300 hover:bg-brand-200 dark:hover:bg-brand-600"
                 }`}
                 type="button"
               >
