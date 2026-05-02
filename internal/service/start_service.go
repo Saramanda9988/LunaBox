@@ -26,6 +26,8 @@ type protocolLaunchErrorEvent struct {
 	GameID  string `json:"game_id,omitempty"`
 }
 
+const homeRefreshRequestedEvent = "home:refresh-requested"
+
 // LaunchOptions 定义游戏启动选项
 type LaunchOptions struct {
 	UseLocaleEmulator *bool // 是否使用 Locale Emulator，nil 表示使用游戏配置
@@ -486,6 +488,8 @@ func (s *StartService) finalizePlaySession(sessionID string, gameID string, star
 		err := s.sessionService.DeletePlaySession(sessionID)
 		if err != nil {
 			applog.LogErrorf(s.ctx, "Failed to delete short play session %s: %v", sessionID, err)
+		} else {
+			s.requestHomeRefresh()
 		}
 		return
 	}
@@ -504,10 +508,20 @@ func (s *StartService) finalizePlaySession(sessionID string, gameID string, star
 		return
 	}
 
+	s.requestHomeRefresh()
+
 	// 自动备份游戏存档
 	if s.config.AutoBackupGameSave && s.backupService != nil {
 		s.autoBackupGameSave(gameID)
 	}
+}
+
+func (s *StartService) requestHomeRefresh() {
+	if s.ctx == nil {
+		return
+	}
+
+	runtime.EventsEmit(s.ctx, homeRefreshRequestedEvent)
 }
 
 // updateGameProcessName 更新游戏的进程名

@@ -141,4 +141,12 @@ export function useAppRuntimeEffects({
 
     return unsubscribe;
   }, [refreshHomeData]);
+
+  useEffect(() => {
+    const unsubscribe = EventsOn("home:refresh-requested", () => {
+      void refreshHomeData();
+    });
+
+    return unsubscribe;
+  }, [refreshHomeData]);
 }
