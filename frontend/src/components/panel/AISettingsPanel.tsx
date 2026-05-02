@@ -9,14 +9,32 @@ interface AISettingsProps {
   onChange: (data: appconf.AppConfig) => void;
 }
 
+const defaultMCPPort = 39200;
+
+function normalizeMCPPort(port: number | undefined) {
+  if (!Number.isInteger(port) || port! < 1 || port! > 65535) {
+    return defaultMCPPort;
+  }
+  return port!;
+}
+
 export function AISettingsPanel({ formData, onChange }: AISettingsProps) {
   const { t } = useTranslation();
+  const effectiveMCPPort = normalizeMCPPort(formData.mcp_port);
+  const mcpEndpoint = `http://127.0.0.1:${effectiveMCPPort}/mcp`;
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
     onChange({ ...formData, [name]: value } as appconf.AppConfig);
+  };
+
+  const handleMCPPortChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange({
+      ...formData,
+      mcp_port: normalizeMCPPort(e.target.valueAsNumber),
+    } as appconf.AppConfig);
   };
 
   const PROMPT_LABELS: Record<string, string> = {
@@ -186,6 +204,55 @@ export function AISettingsPanel({ formData, onChange }: AISettingsProps) {
           </p>
         </div>
       )}
+
+      <div className="space-y-2">
+        <span className="block text-sm font-semibold text-brand-700 dark:text-brand-300">
+          {t("settings.ai.mcpSectionLabel")}
+        </span>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1 space-y-2">
+            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+              {t("settings.ai.mcpEnableLabel")}
+            </label>
+            <p className="text-xs text-brand-500 dark:text-brand-400">
+              {t("settings.ai.mcpEnableHint")}
+            </p>
+          </div>
+          <BetterSwitch
+            id="mcp_enabled"
+            checked={formData.mcp_enabled || false}
+            onCheckedChange={checked =>
+              onChange({
+                ...formData,
+                mcp_enabled: checked,
+              } as appconf.AppConfig)}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+          {t("settings.ai.mcpPortLabel")}
+        </label>
+        <input
+          type="number"
+          name="mcp_port"
+          min={1}
+          max={65535}
+          value={effectiveMCPPort}
+          onChange={handleMCPPortChange}
+          className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm"
+        />
+        <p className="text-xs text-brand-500 dark:text-brand-400">
+          {t("settings.ai.mcpPortHint")}
+        </p>
+        <p className="text-xs text-brand-500 dark:text-brand-400">
+          {t("settings.ai.mcpEndpointHint", { endpoint: mcpEndpoint })}
+        </p>
+      </div>
     </div>
   );
 }

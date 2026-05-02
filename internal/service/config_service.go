@@ -23,6 +23,7 @@ type ConfigService struct {
 	db                        *sql.DB
 	config                    *appconf.AppConfig
 	quitHandler               func() // 安全退出回调
+	configUpdateHook          func(appconf.AppConfig) error
 	suppressInitialWindowShow bool
 }
 
@@ -210,6 +211,12 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	}
 
 	appconf.SanitizeOneDriveOAuthConfig(&newConfig)
+	newConfig.MCPPort = appconf.NormalizeMCPPort(newConfig.MCPPort)
+
+	var previousConfig appconf.AppConfig
+	if s.config != nil {
+		previousConfig = *s.config
+	}
 
 	previousLaunchAtLogin := false
 	if s.config != nil {
@@ -235,87 +242,40 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 		return err
 	}
 
-	// 更新应用配置 in-memory
-	s.config.BangumiAccessToken = newConfig.BangumiAccessToken
-	s.config.VNDBAccessToken = newConfig.VNDBAccessToken
-	s.config.MetadataSources = newConfig.MetadataSources
-	s.config.Theme = newConfig.Theme
-	s.config.Language = newConfig.Language
-	s.config.SidebarOpen = newConfig.SidebarOpen
-	s.config.CloseToTray = newConfig.CloseToTray
-	s.config.AIProvider = newConfig.AIProvider
-	s.config.AIBaseURL = newConfig.AIBaseURL
-	s.config.AIAPIKey = newConfig.AIAPIKey
-	s.config.AIModel = newConfig.AIModel
-	s.config.AISystemPrompt = newConfig.AISystemPrompt
-	s.config.CloudBackupEnabled = newConfig.CloudBackupEnabled
-	s.config.CloudBackupProvider = newConfig.CloudBackupProvider
-	s.config.BackupPassword = newConfig.BackupPassword
-	s.config.BackupUserID = newConfig.BackupUserID
-	s.config.CloudSyncEnabled = newConfig.CloudSyncEnabled
-	s.config.AutoCloudSyncEnabled = newConfig.AutoCloudSyncEnabled
-	s.config.CloudSyncIntervalSec = newConfig.CloudSyncIntervalSec
-	s.config.LastCloudSyncTime = newConfig.LastCloudSyncTime
-	s.config.LastCloudSyncStatus = newConfig.LastCloudSyncStatus
-	s.config.LastCloudSyncError = newConfig.LastCloudSyncError
-	s.config.S3Endpoint = newConfig.S3Endpoint
-	s.config.S3Region = newConfig.S3Region
-	s.config.S3Bucket = newConfig.S3Bucket
-	s.config.S3AccessKey = newConfig.S3AccessKey
-	s.config.S3SecretKey = newConfig.S3SecretKey
-	s.config.CloudBackupRetention = newConfig.CloudBackupRetention
-	s.config.RecordActiveTimeOnly = newConfig.RecordActiveTimeOnly
-	// OneDrive OAuth
-	s.config.OneDriveClientID = newConfig.OneDriveClientID
-	s.config.OneDriveRefreshToken = newConfig.OneDriveRefreshToken
-	// 备份相关配置
-	s.config.AutoBackupDB = newConfig.AutoBackupDB
-	s.config.AutoBackupGameSave = newConfig.AutoBackupGameSave
-	s.config.AutoUploadToCloud = newConfig.AutoUploadToCloud
-	s.config.AutoUploadDBToCloud = newConfig.AutoUploadDBToCloud
-	s.config.AutoUploadSaveToCloud = newConfig.AutoUploadSaveToCloud
-	s.config.LocalBackupRetention = newConfig.LocalBackupRetention
-	s.config.LocalDBBackupRetention = newConfig.LocalDBBackupRetention
-	s.config.WindowZoomFactor = newConfig.WindowZoomFactor
-	s.config.LaunchAtLogin = newConfig.LaunchAtLogin
-	s.config.LastFullBackupTime = newConfig.LastFullBackupTime
-	s.config.PendingFullRestore = newConfig.PendingFullRestore
-	s.config.RecordActiveTimeOnly = newConfig.RecordActiveTimeOnly
-	s.config.CheckUpdateOnStartup = newConfig.CheckUpdateOnStartup
-	// 更新相关配置
-	s.config.UpdateCheckURL = newConfig.UpdateCheckURL
-	s.config.LastUpdateCheck = newConfig.LastUpdateCheck
-	s.config.SkipVersion = newConfig.SkipVersion
-	// 背景图配置
-	s.config.BackgroundImage = newConfig.BackgroundImage
-	s.config.BackgroundBlur = newConfig.BackgroundBlur
-	s.config.BackgroundOpacity = newConfig.BackgroundOpacity
-	s.config.BackgroundEnabled = newConfig.BackgroundEnabled
-	s.config.BackgroundHideGameCover = newConfig.BackgroundHideGameCover
-	s.config.BackgroundHideGameHeroCover = newConfig.BackgroundHideGameHeroCover
-	s.config.BackgroundIsLight = newConfig.BackgroundIsLight
-	// 游戏相关配置
-	s.config.LocaleEmulatorPath = newConfig.LocaleEmulatorPath
-	s.config.MagpiePath = newConfig.MagpiePath
-	s.config.AutoDetectGameProcess = newConfig.AutoDetectGameProcess
-	// 时区相关配置
-	s.config.TimeZone = newConfig.TimeZone
-	// 游戏库路径配置
-	s.config.GameLibraryPath = newConfig.GameLibraryPath
-	// 下载代理配置
-	s.config.DownloadProxyMode = newConfig.DownloadProxyMode
-	s.config.DownloadProxyURL = newConfig.DownloadProxyURL
-	s.config.AISpoilerLevel = newConfig.AISpoilerLevel
-	s.config.AIWebSearchEnabled = newConfig.AIWebSearchEnabled
-	s.config.AIContextWindowSize = newConfig.AIContextWindowSize
-	s.config.TavilyAPIKey = newConfig.TavilyAPIKey
-	s.config.ShowNSFWTags = newConfig.ShowNSFWTags
+	if s.config != nil {
+		*s.config = newConfig
+	}
+
+	if s.configUpdateHook != nil {
+		if err := s.configUpdateHook(newConfig); err != nil {
+			if saveErr := appconf.SaveConfig(&previousConfig); saveErr != nil {
+				applog.LogErrorf(s.ctx, "failed to rollback config file after update hook error: %v", saveErr)
+			}
+			if s.config != nil {
+				*s.config = previousConfig
+			}
+			if shouldSyncLaunchAtLogin {
+				if rollbackErr := autostart.Sync(previousLaunchAtLogin); rollbackErr != nil {
+					applog.LogErrorf(s.ctx, "failed to rollback launch-at-login after update hook error: %v", rollbackErr)
+				}
+			}
+			if rollbackHookErr := s.configUpdateHook(previousConfig); rollbackHookErr != nil {
+				applog.LogErrorf(s.ctx, "failed to rollback runtime config hook: %v", rollbackHookErr)
+			}
+			return err
+		}
+	}
+
 	return nil
 }
 
 // SetQuitHandler 设置安全退出回调
 func (s *ConfigService) SetQuitHandler(handler func()) {
 	s.quitHandler = handler
+}
+
+func (s *ConfigService) SetConfigUpdateHook(hook func(appconf.AppConfig) error) {
+	s.configUpdateHook = hook
 }
 
 // SafeQuit 安全退出应用（绕过托盘最小化逻辑）

@@ -806,7 +806,14 @@
       "webSearchLabel": "WebSearch 強化",
       "webSearchHint": "有効にすると AI が検索エンジンを呼び出してゲームの背景・タグ情報などを補完できます（モデルが Function Calling に対応している必要があります）。",
       "tavilyKeyLabel": "Tavily API Key",
-      "tavilyKeyHint": "任意。より高品質な検索結果に使用します。未入力の場合は DuckDuckGo にフォールバックします。"
+      "tavilyKeyHint": "任意。より高品質な検索結果に使用します。未入力の場合は DuckDuckGo にフォールバックします。",
+      "mcpSectionLabel": "MCP サービス",
+      "mcpEnableLabel": "ローカル MCP サービスを有効化",
+      "mcpEnableHint": "有効化すると、LunaBox GUIのプロセス内でMCPサービスが起動します",
+      "mcpPortLabel": "MCP ポート",
+      "mcpPortHint": "GUI 内蔵 MCP サービスが待ち受けるローカルポートを設定します。変更後は即時反映を試みます。",
+      "mcpEndpointHint": "現在のエンドポイント: {{endpoint}}",
+      "mcpLocalOnlyHint": "127.0.0.1 のみで待ち受け、LunaBox GUI を起動したままにする必要があります。"
     },
     "dbBackup": {
       "sectionTitle": "データベースバックアップ",

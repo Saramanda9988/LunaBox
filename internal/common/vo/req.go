@@ -1,11 +1,43 @@
 package vo
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	enums "lunabox/internal/common/enums"
 	"lunabox/internal/models"
 	"lunabox/internal/utils/metadata"
+	"strings"
 )
+
+type MCPGameID string
+
+func (id *MCPGameID) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		*id = ""
+		return nil
+	}
+
+	if trimmed[0] == '"' {
+		var value string
+		if err := json.Unmarshal(trimmed, &value); err != nil {
+			return err
+		}
+		*id = MCPGameID(strings.TrimSpace(value))
+		return nil
+	}
+
+	var number json.Number
+	dec := json.NewDecoder(bytes.NewReader(trimmed))
+	dec.UseNumber()
+	if err := dec.Decode(&number); err != nil {
+		return fmt.Errorf("game_id must be a string or number: %w", err)
+	}
+
+	*id = MCPGameID(number.String())
+	return nil
+}
 
 type AISummaryRequest struct {
 	Dimension    string `json:"dimension"`               // week, month, year
@@ -114,4 +146,38 @@ type InstallRequest struct {
 type ProtocolLaunchRequest struct {
 	GameID string `json:"game_id"`           // 游戏库中的稳定 ID（必填）
 	RawURL string `json:"raw_url,omitempty"` // 原始协议 URL（调试用途）
+}
+
+type MCPListGamesRequest struct {
+	Limit  int             `json:"limit"`
+	Offset int             `json:"offset"`
+	Meta   json.RawMessage `json:"_meta,omitempty"`
+}
+
+type MCPGetGameRequest struct {
+	GameID MCPGameID       `json:"game_id"`
+	Meta   json.RawMessage `json:"_meta,omitempty"`
+}
+
+type MCPStartGameRequest struct {
+	GameID MCPGameID       `json:"game_id"`
+	Meta   json.RawMessage `json:"_meta,omitempty"`
+}
+
+type MCPGetPlaySessionsRequest struct {
+	GameID MCPGameID       `json:"game_id"`
+	Limit  int             `json:"limit"`
+	Offset int             `json:"offset"`
+	Meta   json.RawMessage `json:"_meta,omitempty"`
+}
+
+type MCPMetadataSearchRequest struct {
+	Name  string          `json:"name"`
+	Limit int             `json:"limit"`
+	Meta  json.RawMessage `json:"_meta,omitempty"`
+}
+
+type MCPGameStatisticRequest struct {
+	Period string          `json:"period"`
+	Meta   json.RawMessage `json:"_meta,omitempty"`
 }

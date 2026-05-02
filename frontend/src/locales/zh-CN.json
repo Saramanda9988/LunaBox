@@ -806,7 +806,14 @@
       "webSearchLabel": "WebSearch 增强",
       "webSearchHint": "启用后 AI 可调用搜索引擎补充游戏背景、题材标签等信息（需要模型支持 Function Calling）。",
       "tavilyKeyLabel": "Tavily API Key",
-      "tavilyKeyHint": "可选，用于更高质量的搜索结果。未填写则自动降级为 DuckDuckGo。"
+      "tavilyKeyHint": "可选，用于更高质量的搜索结果。未填写则自动降级为 DuckDuckGo。",
+      "mcpSectionLabel": "MCP 服务",
+      "mcpEnableLabel": "启用本地 MCP 服务",
+      "mcpEnableHint": "启用后会在 LunaBox GUI 进程内启动 MCP 服务",
+      "mcpPortLabel": "MCP 端口",
+      "mcpPortHint": "可配置 GUI 内嵌 MCP 服务监听的本地端口，修改后会立即尝试切换。",
+      "mcpEndpointHint": "当前端点：{{endpoint}}",
+      "mcpLocalOnlyHint": "仅监听 127.0.0.1，必须保持 LunaBox GUI 运行。"
     },
     "dbBackup": {
       "sectionTitle": "数据库备份",

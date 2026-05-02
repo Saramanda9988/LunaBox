@@ -21,6 +21,7 @@ type AiService struct {
 	ctx       context.Context
 	db        *sql.DB
 	appConfig *appconf.AppConfig
+	stats     AIStatsProvider
 }
 
 func NewAiService() *AiService {
@@ -31,6 +32,10 @@ func (s *AiService) Init(ctx context.Context, db *sql.DB, appConfig *appconf.App
 	s.ctx = ctx
 	s.db = db
 	s.appConfig = appConfig
+
+	builder := NewAIStatsBuilder()
+	builder.Init(ctx, db, appConfig)
+	s.stats = builder
 }
 
 // AISummarize 生成AI锐评总结
@@ -45,9 +50,7 @@ func (s *AiService) AISummarize(req vo.AISummaryRequest) (vo.AISummaryResponse, 
 	if spoilerLevel == "" {
 		spoilerLevel = s.appConfig.AISpoilerLevel
 	}
-	if spoilerLevel == "" {
-		spoilerLevel = "none"
-	}
+	spoilerLevel = NormalizeSpoilerLevel(spoilerLevel)
 
 	// 获取统计数据
 	statsData, err := s.getStatsForAI(enums2.Period(req.Dimension))
@@ -86,190 +89,13 @@ func (s *AiService) AISummarize(req vo.AISummaryRequest) (vo.AISummaryResponse, 
 // DATA LAYER
 // ─────────────────────────────────────────
 
-// AIStatsData AI总结所需的统计数据
-type AIStatsData struct {
-	Dimension         string
-	DateRange         string // "YYYY-MM-DD 至 YYYY-MM-DD"
-	TotalPlayCount    int
-	TotalPlayDuration int
-	TopGames          []GamePlayInfo
-	RecentSessions    []SessionInfo
-}
-
-// GamePlayInfo 单款游戏的汇总信息（已扩展 metadata）
-type GamePlayInfo struct {
-	Name            string
-	Company         string
-	Duration        int      // 秒
-	Summary         string   // 截断至 300 字
-	Categories      []string // 分类标签
-	Status          string   // not_started / playing / completed / on_hold
-	SpoilerBoundary string   // 来自 game_progress 或全局配置
-	ProgressNote    string   // 玩家备注
-	Route           string   // 当前路线
-}
-
-// SessionInfo 近期 session 流水（用于作息分析）
-type SessionInfo struct {
-	GameName  string
-	StartTime time.Time
-	Duration  int
-	DayOfWeek int // 0=周日
-	Hour      int // 本地时间小时
-}
-
 func (s *AiService) getStatsForAI(dimension enums2.Period) (*AIStatsData, error) {
-	data := &AIStatsData{
-		Dimension: string(dimension),
+	if s.stats == nil {
+		builder := NewAIStatsBuilder()
+		builder.Init(s.ctx, s.db, s.appConfig)
+		s.stats = builder
 	}
-
-	// 解析用户时区
-	loc, _ := time.LoadLocation(s.appConfig.TimeZone)
-	if loc == nil {
-		loc = time.UTC
-	}
-	now := time.Now().In(loc)
-
-	var startDateExpr string
-	endDateExpr := "current_date"
-	var startDate time.Time
-	switch dimension {
-	case enums2.Day:
-		startDateExpr = "current_date - INTERVAL 6 DAY"
-		startDate = now.AddDate(0, 0, -6)
-	case enums2.Week:
-		startDateExpr = "current_date - INTERVAL 6 DAY"
-		startDate = now.AddDate(0, 0, -6)
-	case enums2.Month:
-		startDateExpr = "current_date - INTERVAL 29 DAY"
-		startDate = now.AddDate(0, 0, -29)
-	default:
-		startDateExpr = "current_date - INTERVAL 6 DAY"
-		startDate = now.AddDate(0, 0, -6)
-	}
-	data.DateRange = fmt.Sprintf("%s 至 %s", startDate.Format("2006-01-02"), now.Format("2006-01-02"))
-
-	// 总游玩次数和时长
-	queryTotal := fmt.Sprintf("SELECT COALESCE(COUNT(*), 0), COALESCE(SUM(duration), 0) FROM play_sessions WHERE start_time >= %s AND start_time <= %s + INTERVAL 1 DAY", startDateExpr, endDateExpr)
-	if err := s.db.QueryRowContext(s.ctx, queryTotal).Scan(&data.TotalPlayCount, &data.TotalPlayDuration); err != nil {
-		return nil, err
-	}
-
-	// 全局防剧透默认值
-	globalSpoiler := s.appConfig.AISpoilerLevel
-	if globalSpoiler == "" {
-		globalSpoiler = "none"
-	}
-
-	// Top 5 游戏（含 metadata + 分类 + progress）
-	queryLeaderboard := fmt.Sprintf(`
-		SELECT
-			COALESCE(g.name, '') AS name,
-			COALESCE(g.company, '') AS company,
-			COALESCE(SUM(ps.duration), 0) AS total_duration,
-			COALESCE(LEFT(g.summary, 300), '') AS summary,
-			COALESCE(g.status, 'not_started') AS status,
-			COALESCE(gp.spoiler_boundary, ?) AS spoiler_boundary,
-			COALESCE(gp.progress_note, '') AS progress_note,
-			COALESCE(gp.route, '') AS route
-		FROM play_sessions ps
-		JOIN games g ON ps.game_id = g.id
-		LEFT JOIN (
-			SELECT game_id, spoiler_boundary, progress_note, route
-			FROM (
-				SELECT
-					game_id,
-					spoiler_boundary,
-					progress_note,
-					route,
-					ROW_NUMBER() OVER (
-						PARTITION BY game_id
-						ORDER BY updated_at DESC, id DESC
-					) AS rn
-				FROM game_progress
-			) latest_progress
-			WHERE rn = 1
-		) gp ON g.id = gp.game_id
-		WHERE ps.start_time >= %s AND ps.start_time <= %s + INTERVAL 1 DAY
-		GROUP BY g.id, g.name, g.company, g.summary, g.status,
-		         gp.spoiler_boundary, gp.progress_note, gp.route
-		ORDER BY total_duration DESC
-		LIMIT 5
-	`, startDateExpr, endDateExpr)
-
-	rows, err := s.db.QueryContext(s.ctx, queryLeaderboard, globalSpoiler)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var info GamePlayInfo
-		if err := rows.Scan(&info.Name, &info.Company, &info.Duration,
-			&info.Summary, &info.Status,
-			&info.SpoilerBoundary, &info.ProgressNote, &info.Route); err != nil {
-			return nil, err
-		}
-		data.TopGames = append(data.TopGames, info)
-	}
-	rows.Close()
-
-	// 为每款 Top 游戏查询分类标签
-	for i, game := range data.TopGames {
-		catRows, err := s.db.QueryContext(s.ctx, `
-			SELECT COALESCE(c.name, '')
-			FROM game_categories gc
-			JOIN games g ON gc.game_id = g.id
-			JOIN categories c ON gc.category_id = c.id
-			WHERE g.name = ?
-		`, game.Name)
-		if err == nil {
-			var cats []string
-			for catRows.Next() {
-				var cat string
-				if err := catRows.Scan(&cat); err == nil && cat != "" {
-					cats = append(cats, cat)
-				}
-			}
-			catRows.Close()
-			data.TopGames[i].Categories = cats
-		}
-	}
-
-	// 近期 session 流水（最多 20 条，用于作息分析）
-	contextLimit := s.appConfig.AIContextWindowSize
-	if contextLimit <= 0 {
-		contextLimit = 20
-	}
-	tz := s.appConfig.TimeZone
-	if tz == "" {
-		tz = "UTC"
-	}
-	sessionQuery := fmt.Sprintf(`
-		SELECT
-			COALESCE(g.name, '') AS game_name,
-			ps.start_time,
-			COALESCE(ps.duration, 0) AS duration,
-			dayofweek(timezone(?, ps.start_time)) AS dow,
-			hour(timezone(?, ps.start_time)) AS hr
-		FROM play_sessions ps
-		JOIN games g ON ps.game_id = g.id
-		WHERE ps.start_time >= %s AND ps.start_time <= %s + INTERVAL 1 DAY
-		ORDER BY ps.start_time DESC
-		LIMIT ?
-	`, startDateExpr, endDateExpr)
-	sessRows, err := s.db.QueryContext(s.ctx, sessionQuery, tz, tz, contextLimit)
-	if err == nil {
-		defer sessRows.Close()
-		for sessRows.Next() {
-			var si SessionInfo
-			if err := sessRows.Scan(&si.GameName, &si.StartTime, &si.Duration, &si.DayOfWeek, &si.Hour); err == nil {
-				data.RecentSessions = append(data.RecentSessions, si)
-			}
-		}
-	}
-
-	return data, nil
+	return s.stats.Build(dimension)
 }
 
 // ─────────────────────────────────────────

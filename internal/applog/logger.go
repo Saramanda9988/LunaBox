@@ -3,7 +3,6 @@ package applog
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"sync"
 	"time"
@@ -63,7 +62,7 @@ func logToCLI(level, format string, args ...interface{}) {
 	message := fmt.Sprintf(format, args...)
 
 	var colorCode string
-	var output io.Writer = os.Stdout
+	var output = os.Stdout
 
 	modeMu.RLock()
 	color := colorEnabled

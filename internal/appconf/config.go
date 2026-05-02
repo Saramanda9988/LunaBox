@@ -27,6 +27,8 @@ var allowedMetadataSourceSet = map[string]struct{}{
 
 const legacyOneDriveDefaultClientID = "26fcab6e-41ea-49ff-8ec9-063983cae3ef"
 
+const DefaultMCPPort = 39200
+
 // AppConfig 应用配置结构体
 type AppConfig struct {
 	BangumiAccessToken string   `json:"access_token,omitempty"`
@@ -47,6 +49,8 @@ type AppConfig struct {
 	AIWebSearchEnabled  bool   `json:"ai_web_search"`               // 是否启用 WebSearch 工具调用
 	AIContextWindowSize int    `json:"ai_context_window,omitempty"` // 送入的历史 session 数量上限（0=默认10）
 	TavilyAPIKey        string `json:"tavily_api_key,omitempty"`    // Tavily Search API Key（WebSearch）
+	MCPEnabled          bool   `json:"mcp_enabled"`                 // 是否启用 GUI 内嵌 MCP HTTP 服务
+	MCPPort             int    `json:"mcp_port,omitempty"`          // MCP HTTP 服务监听端口（仅绑定 127.0.0.1）
 	// 云备份配置
 	CloudBackupEnabled   bool   `json:"cloud_backup_enabled"`             // 是否启用云备份
 	CloudBackupProvider  string `json:"cloud_backup_provider,omitempty"`  // 云备份提供商: s3, onedrive
@@ -140,6 +144,8 @@ func LoadConfig() (*AppConfig, error) {
 		AIAPIKey:               "",
 		AIModel:                "",
 		AISystemPrompt:         string(enums2.DefaultSystemPrompt),
+		MCPEnabled:             false,
+		MCPPort:                DefaultMCPPort,
 		CloudBackupEnabled:     false,
 		CloudBackupProvider:    "s3",
 		BackupPassword:         "",
@@ -227,6 +233,8 @@ func LoadConfig() (*AppConfig, error) {
 		config.CloudSyncIntervalSec = 60
 	}
 
+	config.MCPPort = NormalizeMCPPort(config.MCPPort)
+
 	shouldSaveSanitizedConfig := SanitizeOneDriveOAuthConfig(config)
 
 	// 备份口令只在初始化时使用，不应长期明文落盘。
@@ -254,6 +262,7 @@ func SaveConfig(config *AppConfig) error {
 	}
 	config.MetadataSources = normalizeMetadataSources(config.MetadataSources)
 	SanitizeOneDriveOAuthConfig(config)
+	config.MCPPort = NormalizeMCPPort(config.MCPPort)
 	configCopy := *config
 	configCopy.BackupPassword = ""
 	data, err := json.MarshalIndent(&configCopy, "", "  ")
@@ -301,6 +310,13 @@ func cloneStringSlice(values []string) []string {
 	cloned := make([]string, len(values))
 	copy(cloned, values)
 	return cloned
+}
+
+func NormalizeMCPPort(port int) int {
+	if port < 1 || port > 65535 {
+		return DefaultMCPPort
+	}
+	return port
 }
 
 func SanitizeOneDriveOAuthConfig(config *AppConfig) bool {

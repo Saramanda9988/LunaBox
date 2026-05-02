@@ -806,7 +806,14 @@
       "webSearchLabel": "WebSearch Enhancement",
       "webSearchHint": "Allows AI to search for game background, genre tags, and other info (requires model support for Function Calling).",
       "tavilyKeyLabel": "Tavily API Key",
-      "tavilyKeyHint": "Optional. Provides higher quality search results. Falls back to DuckDuckGo if not set."
+      "tavilyKeyHint": "Optional. Provides higher quality search results. Falls back to DuckDuckGo if not set.",
+      "mcpSectionLabel": "MCP Service",
+      "mcpEnableLabel": "Enable local MCP service",
+      "mcpEnableHint": "Starts a MCP service inside the LunaBox GUI process",
+      "mcpPortLabel": "MCP port",
+      "mcpPortHint": "Choose the local port used by the embedded MCP service. Changes are applied immediately when possible.",
+      "mcpEndpointHint": "Current endpoint: {{endpoint}}",
+      "mcpLocalOnlyHint": "Listens only on 127.0.0.1 and requires the LunaBox GUI to stay running."
     },
     "dbBackup": {
       "sectionTitle": "Database Backup",

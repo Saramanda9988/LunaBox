@@ -22,6 +22,8 @@ export function SelectBackgroundImage():Promise<string>;
 
 export function SelectDirectory(arg1:string):Promise<string>;
 
+export function SetConfigUpdateHook(arg1:any):Promise<void>;
+
 export function SetQuitHandler(arg1:any):Promise<void>;
 
 export function SetSuppressInitialWindowShow(arg1:boolean):Promise<void>;

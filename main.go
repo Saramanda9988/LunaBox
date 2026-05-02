@@ -334,6 +334,7 @@ func main() {
 
 	gameService := service.NewGameService()
 	aiService := service.NewAiService()
+	aiStatsBuilder := service.NewAIStatsBuilder()
 	backupService := service.NewBackupService()
 	cloudSyncService := service.NewCloudSyncService()
 	homeService := service.NewHomeService()
@@ -349,6 +350,8 @@ func main() {
 	downloadService := service.NewDownloadService()
 	gameProgressService := service.NewGameProgressService()
 	tagService := service.NewTagService()
+	mcpReadService := service.NewMCPReadService()
+	mcpServerService := service.NewMCPServerService()
 
 	bindServices := []interface{}{
 		gameService,
@@ -533,6 +536,7 @@ func main() {
 			gameService.Init(ctx, db, config)
 			tagService.Init(ctx, db, config)
 			aiService.Init(ctx, db, config)
+			aiStatsBuilder.Init(ctx, db, config)
 			backupService.Init(ctx, db, config)
 			cloudSyncService.Init(ctx, db, config)
 			service.ConfigureBackupServiceQuitSyncDBBackupHooks(
@@ -557,6 +561,8 @@ func main() {
 			templateService.Init(ctx, db, config)
 			updateService.Init(ctx, configService)
 			gameProgressService.Init(ctx, db, config)
+			mcpReadService.Init(ctx, db, config)
+			mcpServerService.Init(ctx)
 
 			startService.SetBackupService(backupService)
 			startService.SetGameService(gameService)
@@ -564,6 +570,19 @@ func main() {
 			downloadService.SetGameService(gameService)
 			gameService.SetTagService(tagService)
 			importService.SetSessionService(sessionService)
+			mcpReadService.SetGameService(gameService)
+			mcpReadService.SetStartService(startService)
+			mcpReadService.SetSessionService(sessionService)
+			mcpReadService.SetGameProgressService(gameProgressService)
+			mcpReadService.SetTagService(tagService)
+			mcpReadService.SetStatsProvider(aiStatsBuilder)
+			mcpServerService.SetReadService(mcpReadService)
+			configService.SetConfigUpdateHook(func(updatedConfig appconf.AppConfig) error {
+				return mcpServerService.ApplyConfig(updatedConfig)
+			})
+			if err := mcpServerService.ApplyConfig(*config); err != nil {
+				appLogger.Error("failed to apply MCP server config: " + err.Error())
+			}
 
 			if pendingLaunchReq != nil {
 				req := *pendingLaunchReq
@@ -624,6 +643,12 @@ func main() {
 				// 先关闭 IPC Server，避免退出过程中还有外部请求进入。
 				if err := ipcserver.ShutdownServer(ipcHTTPServer); err != nil {
 					appLogger.Error("failed to shutdown IPC server: " + err.Error())
+				}
+			})
+
+			logShutdownStep("shutdown MCP server", func() {
+				if err := mcpServerService.Shutdown(); err != nil {
+					appLogger.Error("failed to shutdown MCP server: " + err.Error())
 				}
 			})
 

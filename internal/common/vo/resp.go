@@ -166,3 +166,142 @@ type DBBackupStatus struct {
 type RenderTemplateResponse struct {
 	HTML string `json:"html"` // 渲染后的HTML
 }
+
+type SpoilerContext struct {
+	GlobalLevel string `json:"global_level"`
+}
+
+type MCPGameCatalogEntry struct {
+	GameID       string     `json:"game_id"`
+	Name         string     `json:"name"`
+	Company      string     `json:"company,omitempty"`
+	Status       string     `json:"status"`
+	SourceType   string     `json:"source_type"`
+	Rating       float64    `json:"rating"`
+	ReleaseDate  string     `json:"release_date,omitempty"`
+	LastPlayedAt *time.Time `json:"last_played_at,omitempty"`
+}
+
+type MCPListGamesResponse struct {
+	Games   []MCPGameCatalogEntry `json:"games"`
+	Limit   int                   `json:"limit"`
+	Offset  int                   `json:"offset"`
+	Total   int                   `json:"total"`
+	HasMore bool                  `json:"has_more"`
+}
+
+type MCPGameTag struct {
+	Name      string  `json:"name"`
+	Source    string  `json:"source"`
+	Weight    float64 `json:"weight"`
+	IsSpoiler bool    `json:"is_spoiler"`
+}
+
+type MCPGameProgressSnapshot struct {
+	Chapter         string    `json:"chapter,omitempty"`
+	Route           string    `json:"route,omitempty"`
+	ProgressNote    string    `json:"progress_note,omitempty"`
+	SpoilerBoundary string    `json:"spoiler_boundary"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+type MCPGameDetail struct {
+	GameID         string                   `json:"game_id"`
+	Name           string                   `json:"name"`
+	CoverURL       string                   `json:"cover_url,omitempty"`
+	Company        string                   `json:"company,omitempty"`
+	Summary        string                   `json:"summary,omitempty"`
+	Rating         float64                  `json:"rating"`
+	ReleaseDate    string                   `json:"release_date,omitempty"`
+	Status         string                   `json:"status"`
+	SourceType     string                   `json:"source_type"`
+	SourceID       string                   `json:"source_id,omitempty"`
+	LastPlayedAt   *time.Time               `json:"last_played_at,omitempty"`
+	Categories     []string                 `json:"categories,omitempty"`
+	Tags           []MCPGameTag             `json:"tags,omitempty"`
+	LatestProgress *MCPGameProgressSnapshot `json:"latest_progress,omitempty"`
+}
+
+type MCPGetGameResponse struct {
+	Game           MCPGameDetail  `json:"game"`
+	SpoilerContext SpoilerContext `json:"spoiler_context"`
+}
+
+type MCPStartGameResponse struct {
+	GameID  string `json:"game_id"`
+	Name    string `json:"name,omitempty"`
+	Started bool   `json:"started"`
+	Message string `json:"message,omitempty"`
+}
+
+type MCPPlaySession struct {
+	ID        string    `json:"id"`
+	GameID    string    `json:"game_id"`
+	StartTime time.Time `json:"start_time"`
+	EndTime   time.Time `json:"end_time"`
+	Duration  int       `json:"duration"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type MCPPlaySessionsResponse struct {
+	GameID   string           `json:"game_id"`
+	Sessions []MCPPlaySession `json:"sessions"`
+	Limit    int              `json:"limit"`
+	Offset   int              `json:"offset"`
+	Total    int              `json:"total"`
+	HasMore  bool             `json:"has_more"`
+}
+
+type MCPMetadataCandidate struct {
+	Source      string       `json:"source"`
+	SourceID    string       `json:"source_id"`
+	Name        string       `json:"name"`
+	CoverURL    string       `json:"cover_url,omitempty"`
+	Company     string       `json:"company,omitempty"`
+	Summary     string       `json:"summary,omitempty"`
+	Rating      float64      `json:"rating"`
+	ReleaseDate string       `json:"release_date,omitempty"`
+	Tags        []MCPGameTag `json:"tags,omitempty"`
+}
+
+type MCPMetadataSearchResponse struct {
+	Query          string                 `json:"query"`
+	Results        []MCPMetadataCandidate `json:"results"`
+	TotalResults   int                    `json:"total_results"`
+	Limit          int                    `json:"limit"`
+	SpoilerContext SpoilerContext         `json:"spoiler_context"`
+}
+
+type MCPGameStatisticTopGame struct {
+	GameID          string   `json:"game_id"`
+	Name            string   `json:"name"`
+	Company         string   `json:"company,omitempty"`
+	Duration        int      `json:"duration"`
+	Summary         string   `json:"summary,omitempty"`
+	Categories      []string `json:"categories,omitempty"`
+	Status          string   `json:"status"`
+	SpoilerBoundary string   `json:"spoiler_boundary"`
+	ProgressNote    string   `json:"progress_note,omitempty"`
+	Route           string   `json:"route,omitempty"`
+}
+
+type MCPGameStatisticSession struct {
+	GameID    string    `json:"game_id"`
+	GameName  string    `json:"game_name"`
+	StartTime time.Time `json:"start_time"`
+	Duration  int       `json:"duration"`
+	DayOfWeek int       `json:"day_of_week"`
+	Hour      int       `json:"hour"`
+}
+
+type MCPGameStatisticResponse struct {
+	Period            string                    `json:"period"`
+	StartDate         string                    `json:"start_date"`
+	EndDate           string                    `json:"end_date"`
+	DateRange         string                    `json:"date_range"`
+	TotalPlayCount    int                       `json:"total_play_count"`
+	TotalPlayDuration int                       `json:"total_play_duration"`
+	TopGames          []MCPGameStatisticTopGame `json:"top_games"`
+	RecentSessions    []MCPGameStatisticSession `json:"recent_sessions"`
+	SpoilerContext    SpoilerContext            `json:"spoiler_context"`
+}

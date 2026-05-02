@@ -38,6 +38,10 @@ export function SelectDirectory(arg1) {
   return window['go']['service']['ConfigService']['SelectDirectory'](arg1);
 }
 
+export function SetConfigUpdateHook(arg1) {
+  return window['go']['service']['ConfigService']['SetConfigUpdateHook'](arg1);
+}
+
 export function SetQuitHandler(arg1) {
   return window['go']['service']['ConfigService']['SetQuitHandler'](arg1);
 }
