@@ -22,6 +22,7 @@ export type QuitSyncRequest = {
 
 type UseAppRuntimeEffectsOptions = {
   config: appconf.AppConfig | null;
+  refreshHomeData: () => Promise<void>;
   setProcessSelectData: Dispatch<SetStateAction<ProcessSelectData>>;
   setInstallRequest: Dispatch<SetStateAction<vo.InstallRequest | null>>;
   setQuitSyncRequest: Dispatch<SetStateAction<QuitSyncRequest | null>>;
@@ -29,6 +30,7 @@ type UseAppRuntimeEffectsOptions = {
 
 export function useAppRuntimeEffects({
   config,
+  refreshHomeData,
   setProcessSelectData,
   setInstallRequest,
   setQuitSyncRequest,
@@ -131,4 +133,12 @@ export function useAppRuntimeEffects({
 
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = EventsOn("app:main-window-shown", () => {
+      void refreshHomeData();
+    });
+
+    return unsubscribe;
+  }, [refreshHomeData]);
 }

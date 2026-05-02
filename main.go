@@ -125,6 +125,7 @@ func (s *lifecycleState) ShowMainWindow() {
 
 	runtime.WindowUnminimise(ctx)
 	runtime.WindowShow(ctx)
+	runtime.EventsEmit(ctx, "app:main-window-shown")
 }
 
 func (s *lifecycleState) QuitApplication() {

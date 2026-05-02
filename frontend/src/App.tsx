@@ -50,6 +50,7 @@ declare module "@tanstack/react-router" {
 function App() {
   const config = useAppStore(state => state.config);
   const fetchConfig = useAppStore(state => state.fetchConfig);
+  const fetchHomeData = useAppStore(state => state.fetchHomeData);
   const patchLiveConfig = useAppStore(state => state.patchLiveConfig);
   const {
     updateInfo,
@@ -95,6 +96,7 @@ function App() {
   useAppZoom({ config, patchLiveConfig });
   useAppRuntimeEffects({
     config,
+    refreshHomeData: fetchHomeData,
     setProcessSelectData,
     setInstallRequest,
     setQuitSyncRequest,
