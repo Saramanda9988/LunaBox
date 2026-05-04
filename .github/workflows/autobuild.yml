@@ -85,18 +85,21 @@ jobs:
       - name: Build Portable Version
         if: matrix.mode == 'portable'
         run: |
-          $LDFLAGS = "-X 'lunabox/internal/version.Version=${{ steps.version_info.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.version_info.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.version_info.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=portable'"
+          $LDFLAGS = "-X 'lunabox/internal/version.Version=${{ steps.version_info.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.version_info.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.version_info.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=portable' -X 'lunabox/internal/version.BangumiOAuthClientID=$env:LUNABOX_BANGUMI_CLIENT_ID' -X 'lunabox/internal/version.BangumiOAuthClientSecret=$env:LUNABOX_BANGUMI_CLIENT_SECRET'"
           # Build GUI
           wails build -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -o LunaBox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.exe
           
           # Build CLI
           go build -ldflags "$LDFLAGS" -o build/bin/lunacli.exe ./cmd/lunacli
         shell: pwsh
+        env:
+          LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
+          LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
 
       - name: Build Installer Version
         if: matrix.mode == 'installer'
         run: |
-          $LDFLAGS = "-X 'lunabox/internal/version.Version=${{ steps.version_info.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.version_info.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.version_info.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=installer'"
+          $LDFLAGS = "-X 'lunabox/internal/version.Version=${{ steps.version_info.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.version_info.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.version_info.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=installer' -X 'lunabox/internal/version.BangumiOAuthClientID=$env:LUNABOX_BANGUMI_CLIENT_ID' -X 'lunabox/internal/version.BangumiOAuthClientSecret=$env:LUNABOX_BANGUMI_CLIENT_SECRET'"
           
           # Build CLI first (needed for installer)
           go build -ldflags "$LDFLAGS" -o build/bin/lunacli.exe ./cmd/lunacli
@@ -104,6 +107,9 @@ jobs:
           # Build GUI with NSIS
           wails build -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -nsis
         shell: pwsh
+        env:
+          LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
+          LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
 
       - name: Create portable ZIP
         if: matrix.mode == 'portable'
