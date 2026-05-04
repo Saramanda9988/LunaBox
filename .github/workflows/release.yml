@@ -172,8 +172,30 @@ jobs:
           # 检查是否存在 CHANGELOG.md
           if [ -f "CHANGELOG.md" ]; then
             # 提取当前版本的 changelog
-            # 匹配从 ## vVERSION 或 ## VERSION 到下一个 ## 之间的内容
-            awk "/^##[[:space:]]+v?${VERSION}/,/^##[[:space:]]+v/{print}" CHANGELOG.md | sed '$d' > release_notes.md
+            # 命中 ## VERSION / ## vVERSION 后，输出到下一个二级标题前为止
+            awk -v version="$VERSION" '
+              function normalize_heading(line, heading) {
+                heading = line
+                sub(/^##[[:space:]]+/, "", heading)
+                sub(/^v/, "", heading)
+                sub(/[[:space:]]+$/, "", heading)
+                return heading
+              }
+
+              /^##[[:space:]]+/ {
+                current = normalize_heading($0)
+                if (found && current != version) {
+                  exit
+                }
+                if (current == version) {
+                  found = 1
+                }
+              }
+
+              found {
+                print
+              }
+            ' CHANGELOG.md > release_notes.md
 
             # 如果没有找到对应版本的内容，文件会是空的
             if [ ! -s release_notes.md ]; then
