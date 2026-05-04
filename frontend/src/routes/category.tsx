@@ -1,6 +1,6 @@
 import type { models, vo } from "../../wailsjs/go/models";
 import { createRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import {
@@ -21,6 +21,63 @@ import { useTagGameFilter } from "../hooks/useTagGameFilter";
 import { compareNullableDateLike } from "../utils/sort";
 import { Route as rootRoute } from "./__root";
 
+type CategorySortBy
+  = | "name"
+    | "last_played_at"
+    | "created_at"
+    | "rating"
+    | "release_date";
+
+const CATEGORY_STORAGE_KEY = "category";
+const CATEGORY_SORT_BY_VALUES = new Set<CategorySortBy>([
+  "name",
+  "last_played_at",
+  "created_at",
+  "rating",
+  "release_date",
+]);
+const CATEGORY_STATUS_VALUES = new Set(
+  statusOptions.map(option => option.value),
+);
+
+function readStoredValue(key: string) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  return window.localStorage.getItem(key);
+}
+
+function readStoredCategorySortBy() {
+  const savedSortBy = readStoredValue(`${CATEGORY_STORAGE_KEY}_sortBy`);
+  if (
+    savedSortBy
+    && CATEGORY_SORT_BY_VALUES.has(savedSortBy as CategorySortBy)
+  ) {
+    return savedSortBy as CategorySortBy;
+  }
+  return "created_at";
+}
+
+function readStoredCategorySortOrder() {
+  const savedSortOrder = readStoredValue(`${CATEGORY_STORAGE_KEY}_sortOrder`);
+  return savedSortOrder === "asc" || savedSortOrder === "desc"
+    ? savedSortOrder
+    : "desc";
+}
+
+function readStoredCategorySearchQuery() {
+  return readStoredValue(`${CATEGORY_STORAGE_KEY}_searchQuery`) || "";
+}
+
+function readStoredCategoryStatusFilter() {
+  const savedStatusFilter = readStoredValue(
+    `${CATEGORY_STORAGE_KEY}_statusFilter`,
+  );
+  return savedStatusFilter && CATEGORY_STATUS_VALUES.has(savedStatusFilter)
+    ? savedStatusFilter
+    : "";
+}
+
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: "/categories/$categoryId",
@@ -37,12 +94,18 @@ function CategoryDetailPage() {
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
   const [allGames, setAllGames] = useState<models.Game[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<
-    "name" | "last_played_at" | "created_at" | "rating" | "release_date"
-  >("created_at");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState(() =>
+    readStoredCategorySearchQuery(),
+  );
+  const [sortBy, setSortBy] = useState<CategorySortBy>(() =>
+    readStoredCategorySortBy(),
+  );
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(() =>
+    readStoredCategorySortOrder(),
+  );
+  const [statusFilter, setStatusFilter] = useState<string>(() =>
+    readStoredCategoryStatusFilter(),
+  );
   const [batchMode, setBatchMode] = useState(false);
   const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
   const {
@@ -137,51 +200,58 @@ function CategoryDetailPage() {
     }
   };
 
-  const filteredGames = games
-    .filter((game) => {
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        const matchName = game.name.toLowerCase().includes(q);
-        const matchCompany = (game.company || "").toLowerCase().includes(q);
-        if (!matchName && !matchCompany)
+  const filteredGames = useMemo(() => {
+    return games
+      .filter((game) => {
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase();
+          const matchName = game.name.toLowerCase().includes(q);
+          const matchCompany = (game.company || "").toLowerCase().includes(q);
+          if (!matchName && !matchCompany)
+            return false;
+        }
+        if (statusFilter && game.status !== statusFilter) {
           return false;
-      }
-      if (statusFilter && game.status !== statusFilter) {
-        return false;
-      }
-      if (tagGameIds !== null && !tagGameIds.has(game.id)) {
-        return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      let comparison = 0;
-      switch (sortBy) {
-        case "name":
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case "last_played_at":
-          comparison = compareNullableDateLike(
-            a.last_played_at,
-            b.last_played_at,
-          );
-          break;
-        case "created_at":
-          comparison = String(a.created_at || "").localeCompare(
-            String(b.created_at || ""),
-          );
-          break;
-        case "rating":
-          comparison = (a.rating || 0) - (b.rating || 0);
-          break;
-        case "release_date":
-          comparison = String(a.release_date || "").localeCompare(
-            String(b.release_date || ""),
-          );
-          break;
-      }
-      return sortOrder === "asc" ? comparison : -comparison;
-    });
+        }
+        if (tagGameIds !== null && !tagGameIds.has(game.id)) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        let comparison = 0;
+        switch (sortBy) {
+          case "name":
+            comparison = a.name.localeCompare(b.name);
+            break;
+          case "last_played_at":
+            comparison = compareNullableDateLike(
+              a.last_played_at,
+              b.last_played_at,
+            );
+            break;
+          case "created_at":
+            comparison = String(a.created_at || "").localeCompare(
+              String(b.created_at || ""),
+            );
+            break;
+          case "rating":
+            comparison = (a.rating || 0) - (b.rating || 0);
+            break;
+          case "release_date":
+            comparison = String(a.release_date || "").localeCompare(
+              String(b.release_date || ""),
+            );
+            break;
+        }
+        return sortOrder === "asc" ? comparison : -comparison;
+      });
+  }, [games, searchQuery, sortBy, sortOrder, statusFilter, tagGameIds]);
+
+  const selectedGameIdSet = useMemo(
+    () => new Set(selectedGameIds),
+    [selectedGameIds],
+  );
 
   const handleBatchModeChange = (enabled: boolean) => {
     setBatchMode(enabled);
@@ -310,15 +380,7 @@ function CategoryDetailPage() {
           onSearchChange={setSearchQuery}
           searchPlaceholder={t("library.searchPlaceholder")}
           sortBy={sortBy}
-          onSortByChange={val =>
-            setSortBy(
-              val as
-              | "name"
-              | "last_played_at"
-              | "created_at"
-              | "rating"
-              | "release_date",
-            )}
+          onSortByChange={val => setSortBy(val as CategorySortBy)}
           sortOptions={sortOptions.map(opt => ({
             ...opt,
             label: t(opt.label),
@@ -386,7 +448,7 @@ function CategoryDetailPage() {
                     game={game}
                     searchQuery={searchQuery}
                     selectionMode={batchMode}
-                    selected={selectedGameIds.includes(game.id)}
+                    selected={selectedGameIdSet.has(game.id)}
                     onSelectChange={selected =>
                       setGameSelection(game.id, selected)}
                   />

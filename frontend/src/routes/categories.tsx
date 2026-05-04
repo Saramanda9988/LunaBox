@@ -1,6 +1,6 @@
 import type { vo } from "../../wailsjs/go/models";
 import { createRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import {
@@ -17,6 +17,45 @@ import { ConfirmModal } from "../components/modal/ConfirmModal";
 import { CategoriesSkeleton } from "../components/skeleton/CategoriesSkeleton";
 import { Route as rootRoute } from "./__root";
 
+type CategoriesSortBy = "name" | "game_count" | "created_at" | "updated_at";
+
+const CATEGORIES_STORAGE_KEY = "categories";
+const CATEGORIES_SORT_BY_VALUES = new Set<CategoriesSortBy>([
+  "name",
+  "game_count",
+  "created_at",
+  "updated_at",
+]);
+
+function readStoredValue(key: string) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  return window.localStorage.getItem(key);
+}
+
+function readStoredCategoriesSortBy() {
+  const savedSortBy = readStoredValue(`${CATEGORIES_STORAGE_KEY}_sortBy`);
+  if (
+    savedSortBy
+    && CATEGORIES_SORT_BY_VALUES.has(savedSortBy as CategoriesSortBy)
+  ) {
+    return savedSortBy as CategoriesSortBy;
+  }
+  return "name";
+}
+
+function readStoredCategoriesSortOrder() {
+  const savedSortOrder = readStoredValue(`${CATEGORIES_STORAGE_KEY}_sortOrder`);
+  return savedSortOrder === "asc" || savedSortOrder === "desc"
+    ? savedSortOrder
+    : "asc";
+}
+
+function readStoredCategoriesSearchQuery() {
+  return readStoredValue(`${CATEGORIES_STORAGE_KEY}_searchQuery`) || "";
+}
+
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: "/categories",
@@ -31,11 +70,19 @@ function CategoriesPage() {
   const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
   const [isEditCategoryModalOpen, setIsEditCategoryModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [editingCategory, setEditingCategory] = useState<vo.CategoryVO | null>(null);
+  const [editingCategory, setEditingCategory] = useState<vo.CategoryVO | null>(
+    null,
+  );
   const [editCategoryName, setEditCategoryName] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"name" | "game_count" | "created_at" | "updated_at">("name");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [searchQuery, setSearchQuery] = useState(() =>
+    readStoredCategoriesSearchQuery(),
+  );
+  const [sortBy, setSortBy] = useState<CategoriesSortBy>(() =>
+    readStoredCategoriesSortBy(),
+  );
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(() =>
+    readStoredCategoriesSortOrder(),
+  );
   const [batchMode, setBatchMode] = useState(false);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
 
@@ -51,7 +98,7 @@ function CategoriesPage() {
     title: "",
     message: "",
     type: "info",
-    onConfirm: () => { },
+    onConfirm: () => {},
   });
 
   const loadCategories = async () => {
@@ -95,7 +142,11 @@ function CategoriesPage() {
     if (!editCategoryName.trim() || !editingCategory)
       return;
     try {
-      await UpdateCategory(editingCategory.id, editCategoryName, editingCategory.emoji || "");
+      await UpdateCategory(
+        editingCategory.id,
+        editCategoryName,
+        editingCategory.emoji || "",
+      );
       setEditCategoryName("");
       setEditingCategory(null);
       setIsEditCategoryModalOpen(false);
@@ -108,7 +159,10 @@ function CategoriesPage() {
     }
   };
 
-  const handleDeleteCategory = async (e: React.MouseEvent, category: vo.CategoryVO) => {
+  const handleDeleteCategory = async (
+    e: React.MouseEvent,
+    category: vo.CategoryVO,
+  ) => {
     e.stopPropagation();
     setConfirmConfig({
       isOpen: true,
@@ -129,30 +183,41 @@ function CategoriesPage() {
     });
   };
 
-  const filteredCategories = categories
-    .filter((category) => {
-      if (!searchQuery)
-        return true;
-      return category.name.toLowerCase().includes(searchQuery.toLowerCase());
-    })
-    .sort((a, b) => {
-      let comparison = 0;
-      switch (sortBy) {
-        case "name":
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case "game_count":
-          comparison = (a.game_count || 0) - (b.game_count || 0);
-          break;
-        case "created_at":
-          comparison = (a.created_at || "").toString().localeCompare((b.created_at || "").toString());
-          break;
-        case "updated_at":
-          comparison = (a.updated_at || "").toString().localeCompare((b.updated_at || "").toString());
-          break;
-      }
-      return sortOrder === "asc" ? comparison : -comparison;
-    });
+  const filteredCategories = useMemo(() => {
+    return categories
+      .filter((category) => {
+        if (!searchQuery)
+          return true;
+        return category.name.toLowerCase().includes(searchQuery.toLowerCase());
+      })
+      .sort((a, b) => {
+        let comparison = 0;
+        switch (sortBy) {
+          case "name":
+            comparison = a.name.localeCompare(b.name);
+            break;
+          case "game_count":
+            comparison = (a.game_count || 0) - (b.game_count || 0);
+            break;
+          case "created_at":
+            comparison = (a.created_at || "")
+              .toString()
+              .localeCompare((b.created_at || "").toString());
+            break;
+          case "updated_at":
+            comparison = (a.updated_at || "")
+              .toString()
+              .localeCompare((b.updated_at || "").toString());
+            break;
+        }
+        return sortOrder === "asc" ? comparison : -comparison;
+      });
+  }, [categories, searchQuery, sortBy, sortOrder]);
+
+  const selectedCategoryIdSet = useMemo(
+    () => new Set(selectedCategoryIds),
+    [selectedCategoryIds],
+  );
 
   const handleBatchModeChange = (enabled: boolean) => {
     setBatchMode(enabled);
@@ -194,7 +259,9 @@ function CategoriesPage() {
     setConfirmConfig({
       isOpen: true,
       title: t("categories.toast.batchDeleteTitle"),
-      message: t("categories.toast.batchDeleteMsg", { count: selectedCategoryIds.length }),
+      message: t("categories.toast.batchDeleteMsg", {
+        count: selectedCategoryIds.length,
+      }),
       type: "danger",
       onConfirm: async () => {
         try {
@@ -212,7 +279,10 @@ function CategoriesPage() {
     });
   };
 
-  const handleUpdateCategoryEmoji = async (category: vo.CategoryVO, emoji: string) => {
+  const handleUpdateCategoryEmoji = async (
+    category: vo.CategoryVO,
+    emoji: string,
+  ) => {
     try {
       await UpdateCategory(category.id, category.name, emoji);
       await loadCategories();
@@ -250,9 +320,13 @@ function CategoriesPage() {
   }
 
   return (
-    <div className={`h-full w-full overflow-y-auto p-8 transition-opacity duration-300 ${isLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
+    <div
+      className={`h-full w-full overflow-y-auto p-8 transition-opacity duration-300 ${isLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}
+    >
       <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-bold text-brand-900 dark:text-white">{t("categories.title")}</h1>
+        <h1 className="text-4xl font-bold text-brand-900 dark:text-white">
+          {t("categories.title")}
+        </h1>
       </div>
 
       <FilterBar
@@ -260,7 +334,7 @@ function CategoriesPage() {
         onSearchChange={setSearchQuery}
         searchPlaceholder={t("categories.searchPlaceholder")}
         sortBy={sortBy}
-        onSortByChange={val => setSortBy(val as any)}
+        onSortByChange={val => setSortBy(val as CategoriesSortBy)}
         sortOptions={[
           { label: t("categories.sortOptions.name"), value: "name" },
           { label: t("categories.sortOptions.gameCount"), value: "game_count" },
@@ -274,6 +348,7 @@ function CategoriesPage() {
         selectedCount={selectedCategoryIds.length}
         onSelectAll={handleSelectAll}
         onClearSelection={handleClearSelection}
+        storageKey="categories"
         batchActions={(
           <button
             type="button"
@@ -306,10 +381,12 @@ function CategoriesPage() {
             onEdit={e => handleEditCategory(e, category)}
             onDelete={e => handleDeleteCategory(e, category)}
             selectionMode={batchMode}
-            selected={selectedCategoryIds.includes(category.id)}
+            selected={selectedCategoryIdSet.has(category.id)}
             selectionDisabled={category.is_system}
-            onSelectChange={selected => setCategorySelection(category, selected)}
-            onEmojiChange={emoji => handleUpdateCategoryEmoji(category, emoji)}
+            onSelectChange={selected =>
+              setCategorySelection(category, selected)}
+            onEmojiChange={emoji =>
+              handleUpdateCategoryEmoji(category, emoji)}
           />
         ))}
       </div>

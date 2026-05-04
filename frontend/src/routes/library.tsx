@@ -1,7 +1,7 @@
 import type { vo } from "../../wailsjs/go/models";
 import type { ImportSource } from "../components/modal/GameImportModal";
 import { createRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { enums } from "../../wailsjs/go/models";
@@ -34,6 +34,60 @@ interface LibrarySearch {
   searchQuery?: string;
 }
 
+type LibrarySortBy
+  = | "name"
+    | "last_played_at"
+    | "created_at"
+    | "rating"
+    | "release_date";
+
+const LIBRARY_STORAGE_KEY = "library";
+const LIBRARY_SORT_BY_VALUES = new Set<LibrarySortBy>([
+  "name",
+  "last_played_at",
+  "created_at",
+  "rating",
+  "release_date",
+]);
+const LIBRARY_STATUS_VALUES = new Set(
+  statusOptions.map(option => option.value),
+);
+
+function readStoredValue(key: string) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  return window.localStorage.getItem(key);
+}
+
+function readStoredLibrarySortBy() {
+  const savedSortBy = readStoredValue(`${LIBRARY_STORAGE_KEY}_sortBy`);
+  if (savedSortBy && LIBRARY_SORT_BY_VALUES.has(savedSortBy as LibrarySortBy)) {
+    return savedSortBy as LibrarySortBy;
+  }
+  return "created_at";
+}
+
+function readStoredLibrarySortOrder() {
+  const savedSortOrder = readStoredValue(`${LIBRARY_STORAGE_KEY}_sortOrder`);
+  return savedSortOrder === "asc" || savedSortOrder === "desc"
+    ? savedSortOrder
+    : "desc";
+}
+
+function readStoredLibrarySearchQuery() {
+  return readStoredValue(`${LIBRARY_STORAGE_KEY}_searchQuery`) || "";
+}
+
+function readStoredLibraryStatusFilter() {
+  const savedStatusFilter = readStoredValue(
+    `${LIBRARY_STORAGE_KEY}_statusFilter`,
+  );
+  return savedStatusFilter && LIBRARY_STATUS_VALUES.has(savedStatusFilter)
+    ? savedStatusFilter
+    : "";
+}
+
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: "/library",
@@ -59,13 +113,17 @@ function LibraryPage() {
   const [isBatchImportOpen, setIsBatchImportOpen] = useState(false);
   const [importSource, setImportSource] = useState<ImportSource | null>(null);
   const [searchQuery, setSearchQuery] = useState(
-    () => routeSearchQuery?.trim() || "",
+    () => routeSearchQuery?.trim() || readStoredLibrarySearchQuery(),
   );
-  const [sortBy, setSortBy] = useState<
-    "name" | "last_played_at" | "created_at" | "rating" | "release_date"
-  >("created_at");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [sortBy, setSortBy] = useState<LibrarySortBy>(() =>
+    readStoredLibrarySortBy(),
+  );
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(() =>
+    readStoredLibrarySortOrder(),
+  );
+  const [statusFilter, setStatusFilter] = useState<string>(() =>
+    readStoredLibraryStatusFilter(),
+  );
   const [batchMode, setBatchMode] = useState(false);
   const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
   const [allCategories, setAllCategories] = useState<vo.CategoryVO[]>([]);
@@ -159,52 +217,59 @@ function LibraryPage() {
     setSearchQuery(incomingSearchQuery);
   }, [routeSearchQuery]);
 
-  const filteredGames = games
-    .filter((game) => {
-      // 搜索过滤：同时匹配游戏名和开发商/公司
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        const matchName = game.name.toLowerCase().includes(q);
-        const matchCompany = (game.company || "").toLowerCase().includes(q);
-        if (!matchName && !matchCompany)
+  const filteredGames = useMemo(() => {
+    return games
+      .filter((game) => {
+        // 搜索过滤：同时匹配游戏名和开发商/公司
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase();
+          const matchName = game.name.toLowerCase().includes(q);
+          const matchCompany = (game.company || "").toLowerCase().includes(q);
+          if (!matchName && !matchCompany)
+            return false;
+        }
+        // 状态过滤
+        if (statusFilter && game.status !== statusFilter)
           return false;
-      }
-      // 状态过滤
-      if (statusFilter && game.status !== statusFilter)
-        return false;
-      // tag 过滤
-      if (tagGameIds !== null && !tagGameIds.has(game.id))
-        return false;
-      return true;
-    })
-    .sort((a, b) => {
-      let comparison = 0;
-      switch (sortBy) {
-        case "name":
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case "last_played_at":
-          comparison = compareNullableDateLike(
-            a.last_played_at,
-            b.last_played_at,
-          );
-          break;
-        case "created_at":
-          comparison = String(a.created_at || "").localeCompare(
-            String(b.created_at || ""),
-          );
-          break;
-        case "rating":
-          comparison = (a.rating || 0) - (b.rating || 0);
-          break;
-        case "release_date":
-          comparison = String(a.release_date || "").localeCompare(
-            String(b.release_date || ""),
-          );
-          break;
-      }
-      return sortOrder === "asc" ? comparison : -comparison;
-    });
+        // tag 过滤
+        if (tagGameIds !== null && !tagGameIds.has(game.id))
+          return false;
+        return true;
+      })
+      .sort((a, b) => {
+        let comparison = 0;
+        switch (sortBy) {
+          case "name":
+            comparison = a.name.localeCompare(b.name);
+            break;
+          case "last_played_at":
+            comparison = compareNullableDateLike(
+              a.last_played_at,
+              b.last_played_at,
+            );
+            break;
+          case "created_at":
+            comparison = String(a.created_at || "").localeCompare(
+              String(b.created_at || ""),
+            );
+            break;
+          case "rating":
+            comparison = (a.rating || 0) - (b.rating || 0);
+            break;
+          case "release_date":
+            comparison = String(a.release_date || "").localeCompare(
+              String(b.release_date || ""),
+            );
+            break;
+        }
+        return sortOrder === "asc" ? comparison : -comparison;
+      });
+  }, [games, searchQuery, sortBy, sortOrder, statusFilter, tagGameIds]);
+
+  const selectedGameIdSet = useMemo(
+    () => new Set(selectedGameIds),
+    [selectedGameIds],
+  );
 
   const handleBatchModeChange = (enabled: boolean) => {
     setBatchMode(enabled);
@@ -372,15 +437,7 @@ function LibraryPage() {
         searchPlaceholder={t("library.searchPlaceholder")}
         disableStoredSearchQuery={Boolean(routeSearchQuery?.trim())}
         sortBy={sortBy}
-        onSortByChange={val =>
-          setSortBy(
-            val as
-            | "name"
-            | "last_played_at"
-            | "created_at"
-            | "rating"
-            | "release_date",
-          )}
+        onSortByChange={val => setSortBy(val as LibrarySortBy)}
         sortOptions={sortOptions.map(opt => ({
           ...opt,
           label: t(opt.label),
@@ -571,7 +628,7 @@ function LibraryPage() {
               game={game}
               searchQuery={searchQuery}
               selectionMode={batchMode}
-              selected={selectedGameIds.includes(game.id)}
+              selected={selectedGameIdSet.has(game.id)}
               onSelectChange={selected => setGameSelection(game.id, selected)}
             />
           ))}
