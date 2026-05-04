@@ -218,6 +218,9 @@ func (s *StartService) startGame(gameID string, options LaunchOptions) (bool, er
 	// 启动进程检测和监控 goroutine
 	go s.detectAndMonitorProcess(cmd, sessionID, gameID, startTime, launcherPID, launcherExeName, processName, useLE)
 
+	// pending session 已创建，Home 数据已发生变化，立即通知前端刷新
+	s.requestHomeRefresh()
+
 	// 启动成功，返回 true 给前端
 	return true, nil
 }
