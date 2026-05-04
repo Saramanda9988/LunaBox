@@ -3,6 +3,7 @@ import type { appconf, vo } from "../../wailsjs/go/models";
 import {
   Disconnect,
   GetAuthStatus,
+  GetProfile,
   StartAuth,
 } from "../../wailsjs/go/service/BangumiService";
 
@@ -84,6 +85,10 @@ export function mergeBangumiAuthStatus(
 
 export function fetchBangumiAuthStatus(): Promise<vo.BangumiAuthStatus> {
   return GetAuthStatus();
+}
+
+export function fetchBangumiProfile(): Promise<vo.BangumiProfile> {
+  return GetProfile();
 }
 
 export function startBangumiAuthorization(): Promise<vo.BangumiAuthStatus> {

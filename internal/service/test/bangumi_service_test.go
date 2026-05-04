@@ -209,6 +209,46 @@ func TestBangumiService_RefreshExpiredTokenAndPushMappedStatus(t *testing.T) {
 	}
 }
 
+func TestBangumiService_GetProfileReturnsNicknameAndAvatar(t *testing.T) {
+	applog.SetMode(applog.ModeCLI)
+
+	var requestCount int32
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v0/me" {
+			t.Fatalf("未预期的请求路径: %s", r.URL.Path)
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer access-token" {
+			t.Fatalf("期望 access token 为 %q，实际为 %q", "access-token", got)
+		}
+		atomic.AddInt32(&requestCount, 1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"id":1,"username":"sai","nickname":"Sai","avatar":{"large":"https://lain.bgm.tv/pic/user/l/000/00/00/1.jpg","medium":"https://lain.bgm.tv/pic/user/m/000/00/00/1.jpg","small":"https://lain.bgm.tv/pic/user/s/000/00/00/1.jpg"}}`)
+	}))
+	defer testServer.Close()
+
+	bangumiSvc := service.NewBangumiService()
+	bangumiSvc.SetHTTPClient(newBangumiHTTPClient(t, testServer.URL))
+	bangumiSvc.SetOAuthClientCredentials("client-id", "client-secret")
+	bangumiSvc.SetEventEmitter(func(context.Context, string, ...interface{}) {})
+	bangumiSvc.Init(context.Background(), nil, &appconf.AppConfig{
+		BangumiAccessToken: "access-token",
+	})
+
+	profile, err := bangumiSvc.GetProfile()
+	if err != nil {
+		t.Fatalf("获取 Bangumi profile 失败: %v", err)
+	}
+	if profile.UserID != "1" || profile.Username != "sai" || profile.Nickname != "Sai" {
+		t.Fatalf("返回的 profile 信息不符合预期: %+v", profile)
+	}
+	if profile.AvatarLarge == "" || profile.AvatarMedium == "" || profile.AvatarSmall == "" {
+		t.Fatalf("期望返回完整头像地址，实际为 %+v", profile)
+	}
+	if atomic.LoadInt32(&requestCount) != 1 {
+		t.Fatalf("期望只请求一次 /v0/me，实际为 %d", requestCount)
+	}
+}
+
 func TestGameService_SkipsBangumiPushForIneligibleGames(t *testing.T) {
 	applog.SetMode(applog.ModeCLI)
 

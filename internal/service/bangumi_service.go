@@ -78,6 +78,11 @@ type bangumiCurrentUser struct {
 	ID       int    `json:"id"`
 	Username string `json:"username"`
 	Nickname string `json:"nickname"`
+	Avatar   struct {
+		Large  string `json:"large"`
+		Medium string `json:"medium"`
+		Small  string `json:"small"`
+	} `json:"avatar"`
 }
 
 type BangumiService struct {
@@ -157,6 +162,33 @@ func (s *BangumiService) GetAuthStatus() (vo.BangumiAuthStatus, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.buildAuthStatusLocked(), nil
+}
+
+func (s *BangumiService) GetProfile() (vo.BangumiProfile, error) {
+	token, err := s.getValidAccessToken(s.ctx)
+	if err != nil {
+		return vo.BangumiProfile{}, err
+	}
+
+	user, err := s.fetchCurrentUser(s.ctx, token)
+	if err == nil {
+		return buildBangumiProfile(user), nil
+	}
+	if !errors.Is(err, errBangumiUnauthorized) {
+		return vo.BangumiProfile{}, err
+	}
+
+	refreshedToken, refreshErr := s.refreshAccessToken(s.ctx)
+	if refreshErr != nil {
+		return vo.BangumiProfile{}, refreshErr
+	}
+
+	user, err = s.fetchCurrentUser(s.ctx, refreshedToken)
+	if err != nil {
+		return vo.BangumiProfile{}, err
+	}
+
+	return buildBangumiProfile(user), nil
 }
 
 func (s *BangumiService) StartAuth() (vo.BangumiAuthStatus, error) {
@@ -571,6 +603,9 @@ func (s *BangumiService) fetchCurrentUser(ctx context.Context, accessToken strin
 	if err != nil {
 		return nil, fmt.Errorf("读取 Bangumi 当前用户响应失败: %w", err)
 	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, fmt.Errorf("%w: %s", errBangumiUnauthorized, strings.TrimSpace(string(body)))
+	}
 	if resp.StatusCode >= http.StatusBadRequest {
 		return nil, fmt.Errorf("Bangumi 当前用户请求失败，HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
@@ -583,6 +618,21 @@ func (s *BangumiService) fetchCurrentUser(ctx context.Context, accessToken strin
 		return nil, fmt.Errorf("Bangumi 当前用户响应缺少 username")
 	}
 	return &user, nil
+}
+
+func buildBangumiProfile(user *bangumiCurrentUser) vo.BangumiProfile {
+	if user == nil {
+		return vo.BangumiProfile{}
+	}
+
+	return vo.BangumiProfile{
+		UserID:       strconv.Itoa(user.ID),
+		Username:     strings.TrimSpace(user.Username),
+		Nickname:     strings.TrimSpace(user.Nickname),
+		AvatarLarge:  strings.TrimSpace(user.Avatar.Large),
+		AvatarMedium: strings.TrimSpace(user.Avatar.Medium),
+		AvatarSmall:  strings.TrimSpace(user.Avatar.Small),
+	}
 }
 
 func (s *BangumiService) postSubjectCollection(ctx context.Context, subjectID, accessToken string, collectionType int) error {

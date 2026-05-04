@@ -10,6 +10,10 @@ export function GetAuthStatus() {
   return window['go']['service']['BangumiService']['GetAuthStatus']();
 }
 
+export function GetProfile() {
+  return window['go']['service']['BangumiService']['GetProfile']();
+}
+
 export function Init(arg1, arg2, arg3) {
   return window['go']['service']['BangumiService']['Init'](arg1, arg2, arg3);
 }

@@ -837,6 +837,28 @@ export namespace vo {
 	        this.last_error = source["last_error"];
 	    }
 	}
+	export class BangumiProfile {
+	    user_id: string;
+	    username: string;
+	    nickname: string;
+	    avatar_large: string;
+	    avatar_medium: string;
+	    avatar_small: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BangumiProfile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.user_id = source["user_id"];
+	        this.username = source["username"];
+	        this.nickname = source["nickname"];
+	        this.avatar_large = source["avatar_large"];
+	        this.avatar_medium = source["avatar_medium"];
+	        this.avatar_small = source["avatar_small"];
+	    }
+	}
 	export class BatchImportCandidate {
 	    folder_path: string;
 	    folder_name: string;

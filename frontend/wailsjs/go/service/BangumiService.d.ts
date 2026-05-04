@@ -10,6 +10,8 @@ export function Disconnect():Promise<vo.BangumiAuthStatus>;
 
 export function GetAuthStatus():Promise<vo.BangumiAuthStatus>;
 
+export function GetProfile():Promise<vo.BangumiProfile>;
+
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;
 
 export function SetEventEmitter(arg1:any):Promise<void>;

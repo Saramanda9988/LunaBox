@@ -40,6 +40,15 @@ type BangumiAuthStatus struct {
 	LastError            string `json:"last_error"`
 }
 
+type BangumiProfile struct {
+	UserID       string `json:"user_id"`
+	Username     string `json:"username"`
+	Nickname     string `json:"nickname"`
+	AvatarLarge  string `json:"avatar_large"`
+	AvatarMedium string `json:"avatar_medium"`
+	AvatarSmall  string `json:"avatar_small"`
+}
+
 type BangumiStatusPushFailureEvent struct {
 	GameID      string `json:"game_id"`
 	GameName    string `json:"game_name"`
