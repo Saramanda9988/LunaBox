@@ -36,6 +36,7 @@ type BangumiAuthStatus struct {
 	LegacyToken          bool   `json:"legacy_token"`
 	UserID               string `json:"user_id"`
 	Username             string `json:"username"`
+	AvatarURL            string `json:"avatar_url"`
 	AccessTokenExpiresAt string `json:"access_token_expires_at"`
 	LastError            string `json:"last_error"`
 }
@@ -44,6 +45,7 @@ type BangumiProfile struct {
 	UserID       string `json:"user_id"`
 	Username     string `json:"username"`
 	Nickname     string `json:"nickname"`
+	AvatarURL    string `json:"avatar_url"`
 	AvatarLarge  string `json:"avatar_large"`
 	AvatarMedium string `json:"avatar_medium"`
 	AvatarSmall  string `json:"avatar_small"`

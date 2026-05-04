@@ -15,6 +15,7 @@ export type BangumiAuthViewState
 export type BangumiAuthStatus = {
   state: BangumiAuthViewState;
   identity: string;
+  avatarUrl?: string;
   expiresAt?: string;
   lastError?: string;
 };
@@ -45,6 +46,7 @@ function getStatusFromConfig(config: appconf.AppConfig): BangumiAuthStatus {
   const refreshToken = readString(config.bangumi_refresh_token);
   const username = readString(config.bangumi_authorized_username);
   const userID = readString(config.bangumi_authorized_user_id);
+  const avatarUrl = readString(config.bangumi_authorized_avatar_url);
   const expiresAt = readString(config.bangumi_token_expires_at);
   const lastError = readString(config.bangumi_auth_error);
 
@@ -54,6 +56,7 @@ function getStatusFromConfig(config: appconf.AppConfig): BangumiAuthStatus {
       Boolean(lastError),
     ),
     identity: getIdentity(username, userID),
+    avatarUrl: avatarUrl || undefined,
     expiresAt: expiresAt || undefined,
     lastError: lastError || undefined,
   };
@@ -68,6 +71,7 @@ function getStatusFromSnapshot(
       Boolean(snapshot.needs_reauthorization),
     ),
     identity: getIdentity(snapshot.username, snapshot.user_id),
+    avatarUrl: readString(snapshot.avatar_url) || undefined,
     expiresAt: readString(snapshot.access_token_expires_at) || undefined,
     lastError: readString(snapshot.last_error) || undefined,
   };

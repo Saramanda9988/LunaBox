@@ -80,7 +80,9 @@ export function BasicSettingsPanel({
       || bangumiAuth.identity;
   const bangumiUsername = bangumiProfile?.username?.trim() || "";
   const bangumiAvatarUrl
-    = bangumiProfile?.avatar_large?.trim()
+    = bangumiProfile?.avatar_url?.trim()
+      || bangumiAuth.avatarUrl?.trim()
+      || bangumiProfile?.avatar_large?.trim()
       || bangumiProfile?.avatar_medium?.trim()
       || bangumiProfile?.avatar_small?.trim()
       || "";

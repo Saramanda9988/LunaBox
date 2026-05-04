@@ -6,6 +6,7 @@ export namespace appconf {
 	    bangumi_token_expires_at?: string;
 	    bangumi_authorized_user_id?: string;
 	    bangumi_authorized_username?: string;
+	    bangumi_authorized_avatar_url?: string;
 	    bangumi_auth_error?: string;
 	    bangumi_status_push_enabled?: boolean;
 	    vndb_access_token?: string;
@@ -90,6 +91,7 @@ export namespace appconf {
 	        this.bangumi_token_expires_at = source["bangumi_token_expires_at"];
 	        this.bangumi_authorized_user_id = source["bangumi_authorized_user_id"];
 	        this.bangumi_authorized_username = source["bangumi_authorized_username"];
+	        this.bangumi_authorized_avatar_url = source["bangumi_authorized_avatar_url"];
 	        this.bangumi_auth_error = source["bangumi_auth_error"];
 	        this.bangumi_status_push_enabled = source["bangumi_status_push_enabled"];
 	        this.vndb_access_token = source["vndb_access_token"];
@@ -819,6 +821,7 @@ export namespace vo {
 	    legacy_token: boolean;
 	    user_id: string;
 	    username: string;
+	    avatar_url: string;
 	    access_token_expires_at: string;
 	    last_error: string;
 	
@@ -833,6 +836,7 @@ export namespace vo {
 	        this.legacy_token = source["legacy_token"];
 	        this.user_id = source["user_id"];
 	        this.username = source["username"];
+	        this.avatar_url = source["avatar_url"];
 	        this.access_token_expires_at = source["access_token_expires_at"];
 	        this.last_error = source["last_error"];
 	    }
@@ -841,6 +845,7 @@ export namespace vo {
 	    user_id: string;
 	    username: string;
 	    nickname: string;
+	    avatar_url: string;
 	    avatar_large: string;
 	    avatar_medium: string;
 	    avatar_small: string;
@@ -854,6 +859,7 @@ export namespace vo {
 	        this.user_id = source["user_id"];
 	        this.username = source["username"];
 	        this.nickname = source["nickname"];
+	        this.avatar_url = source["avatar_url"];
 	        this.avatar_large = source["avatar_large"];
 	        this.avatar_medium = source["avatar_medium"];
 	        this.avatar_small = source["avatar_small"];

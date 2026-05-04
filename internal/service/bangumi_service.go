@@ -16,6 +16,7 @@ import (
 	"lunabox/internal/common/enums"
 	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
+	"lunabox/internal/utils/imageutils"
 	"lunabox/internal/utils/metadata"
 	"net"
 	"net/http"
@@ -172,7 +173,7 @@ func (s *BangumiService) GetProfile() (vo.BangumiProfile, error) {
 
 	user, err := s.fetchCurrentUser(s.ctx, token)
 	if err == nil {
-		return buildBangumiProfile(user), nil
+		return s.buildBangumiProfileAndCache(user), nil
 	}
 	if !errors.Is(err, errBangumiUnauthorized) {
 		return vo.BangumiProfile{}, err
@@ -188,7 +189,7 @@ func (s *BangumiService) GetProfile() (vo.BangumiProfile, error) {
 		return vo.BangumiProfile{}, err
 	}
 
-	return buildBangumiProfile(user), nil
+	return s.buildBangumiProfileAndCache(user), nil
 }
 
 func (s *BangumiService) StartAuth() (vo.BangumiAuthStatus, error) {
@@ -488,6 +489,7 @@ func (s *BangumiService) buildAuthStatusLocked() vo.BangumiAuthStatus {
 		LegacyToken:          accessToken != "" && refreshToken == "",
 		UserID:               strings.TrimSpace(s.config.BangumiAuthorizedUserID),
 		Username:             strings.TrimSpace(s.config.BangumiAuthorizedUsername),
+		AvatarURL:            strings.TrimSpace(s.config.BangumiAuthorizedAvatarURL),
 		AccessTokenExpiresAt: strings.TrimSpace(s.config.BangumiTokenExpiresAt),
 		LastError:            authError,
 	}
@@ -498,14 +500,20 @@ func (s *BangumiService) persistAuthorizedStateLocked(tokenResp *bangumiTokenRes
 		return vo.BangumiAuthStatus{}, fmt.Errorf("Bangumi 配置未初始化")
 	}
 
+	previousUserID := strings.TrimSpace(s.config.BangumiAuthorizedUserID)
 	expiresAt := s.now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
 	s.config.BangumiAccessToken = strings.TrimSpace(tokenResp.AccessToken)
 	s.config.BangumiRefreshToken = strings.TrimSpace(tokenResp.RefreshToken)
 	s.config.BangumiTokenExpiresAt = expiresAt.Format(time.RFC3339)
 	s.config.BangumiAuthorizedUserID = strconv.Itoa(user.ID)
 	s.config.BangumiAuthorizedUsername = strings.TrimSpace(user.Username)
+	s.config.BangumiAuthorizedAvatarURL = s.resolveCachedBangumiAvatarURL(user)
 	s.config.BangumiAuthError = ""
 	appconf.SanitizeBangumiOAuthConfig(s.config)
+
+	if previousUserID != "" && previousUserID != s.config.BangumiAuthorizedUserID {
+		_ = imageutils.RemoveManagedAvatar("bangumi", previousUserID)
+	}
 
 	if err := appconf.SaveConfig(s.config); err != nil {
 		return vo.BangumiAuthStatus{}, fmt.Errorf("保存 Bangumi 授权配置失败: %w", err)
@@ -519,6 +527,7 @@ func (s *BangumiService) clearAuthorizationLocked(clearIdentity bool, reason str
 		return vo.BangumiAuthStatus{}, fmt.Errorf("Bangumi 配置未初始化")
 	}
 
+	previousUserID := strings.TrimSpace(s.config.BangumiAuthorizedUserID)
 	s.config.BangumiAccessToken = ""
 	s.config.BangumiRefreshToken = ""
 	s.config.BangumiTokenExpiresAt = ""
@@ -526,8 +535,13 @@ func (s *BangumiService) clearAuthorizationLocked(clearIdentity bool, reason str
 	if clearIdentity {
 		s.config.BangumiAuthorizedUserID = ""
 		s.config.BangumiAuthorizedUsername = ""
+		s.config.BangumiAuthorizedAvatarURL = ""
 	}
 	appconf.SanitizeBangumiOAuthConfig(s.config)
+
+	if clearIdentity && previousUserID != "" {
+		_ = imageutils.RemoveManagedAvatar("bangumi", previousUserID)
+	}
 
 	if err := appconf.SaveConfig(s.config); err != nil {
 		return vo.BangumiAuthStatus{}, fmt.Errorf("保存 Bangumi 配置失败: %w", err)
@@ -633,6 +647,78 @@ func buildBangumiProfile(user *bangumiCurrentUser) vo.BangumiProfile {
 		AvatarMedium: strings.TrimSpace(user.Avatar.Medium),
 		AvatarSmall:  strings.TrimSpace(user.Avatar.Small),
 	}
+}
+
+func (s *BangumiService) buildBangumiProfileAndCache(user *bangumiCurrentUser) vo.BangumiProfile {
+	profile := buildBangumiProfile(user)
+	if user == nil {
+		return profile
+	}
+
+	avatarURL := s.resolveCachedBangumiAvatarURL(user)
+	profile.AvatarURL = avatarURL
+	if avatarURL != "" {
+		profile.AvatarLarge = avatarURL
+		profile.AvatarMedium = avatarURL
+		profile.AvatarSmall = avatarURL
+	}
+
+	s.mu.Lock()
+	if s.config != nil && strings.TrimSpace(s.config.BangumiAuthorizedAvatarURL) != avatarURL {
+		s.config.BangumiAuthorizedAvatarURL = avatarURL
+		appconf.SanitizeBangumiOAuthConfig(s.config)
+		if err := appconf.SaveConfig(s.config); err != nil {
+			applog.LogWarningf(s.ctx, "failed to save cached Bangumi avatar URL: %v", err)
+		}
+	}
+	s.mu.Unlock()
+
+	return profile
+}
+
+func (s *BangumiService) resolveCachedBangumiAvatarURL(user *bangumiCurrentUser) string {
+	if user == nil {
+		return ""
+	}
+
+	userID := strconv.Itoa(user.ID)
+	if userID == "" || userID == "0" {
+		return ""
+	}
+
+	_, cachedURL, err := imageutils.FindManagedAvatarFile("bangumi", userID)
+	if err == nil && cachedURL != "" {
+		return cachedURL
+	}
+
+	sourceURL := firstNonEmptyString(
+		strings.TrimSpace(user.Avatar.Large),
+		strings.TrimSpace(user.Avatar.Medium),
+		strings.TrimSpace(user.Avatar.Small),
+	)
+	if sourceURL == "" {
+		return ""
+	}
+
+	localURL, err := imageutils.DownloadAndSaveAvatarImageWithClient(s.httpClient, sourceURL, "bangumi", userID)
+	if err != nil {
+		applog.LogWarningf(s.ctx, "failed to cache Bangumi avatar for user %s: %v", userID, err)
+		if s.config != nil {
+			return strings.TrimSpace(s.config.BangumiAuthorizedAvatarURL)
+		}
+		return ""
+	}
+
+	return localURL
+}
+
+func firstNonEmptyString(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
 }
 
 func (s *BangumiService) postSubjectCollection(ctx context.Context, subjectID, accessToken string, collectionType int) error {

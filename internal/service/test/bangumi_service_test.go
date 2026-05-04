@@ -9,9 +9,11 @@ import (
 	"lunabox/internal/applog"
 	"lunabox/internal/common/enums"
 	"lunabox/internal/service"
+	"lunabox/internal/utils/imageutils"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -214,17 +216,26 @@ func TestBangumiService_GetProfileReturnsNicknameAndAvatar(t *testing.T) {
 
 	var requestCount int32
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v0/me" {
+		switch r.URL.Path {
+		case "/v0/me":
+			if got := r.Header.Get("Authorization"); got != "Bearer access-token" {
+				t.Fatalf("期望 access token 为 %q，实际为 %q", "access-token", got)
+			}
+			atomic.AddInt32(&requestCount, 1)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"id":1,"username":"sai","nickname":"Sai","avatar":{"large":"https://lain.bgm.tv/pic/user/l/000/00/00/1.jpg","medium":"https://lain.bgm.tv/pic/user/m/000/00/00/1.jpg","small":"https://lain.bgm.tv/pic/user/s/000/00/00/1.jpg"}}`)
+		case "/pic/user/l/000/00/00/1.jpg":
+			atomic.AddInt32(&requestCount, 1)
+			w.Header().Set("Content-Type", "image/jpeg")
+			_, _ = w.Write([]byte("fake-image"))
+		default:
 			t.Fatalf("未预期的请求路径: %s", r.URL.Path)
 		}
-		if got := r.Header.Get("Authorization"); got != "Bearer access-token" {
-			t.Fatalf("期望 access token 为 %q，实际为 %q", "access-token", got)
-		}
-		atomic.AddInt32(&requestCount, 1)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `{"id":1,"username":"sai","nickname":"Sai","avatar":{"large":"https://lain.bgm.tv/pic/user/l/000/00/00/1.jpg","medium":"https://lain.bgm.tv/pic/user/m/000/00/00/1.jpg","small":"https://lain.bgm.tv/pic/user/s/000/00/00/1.jpg"}}`)
 	}))
 	defer testServer.Close()
+	defer func() {
+		_ = imageutils.RemoveManagedAvatar("bangumi", "1")
+	}()
 
 	bangumiSvc := service.NewBangumiService()
 	bangumiSvc.SetHTTPClient(newBangumiHTTPClient(t, testServer.URL))
@@ -241,11 +252,24 @@ func TestBangumiService_GetProfileReturnsNicknameAndAvatar(t *testing.T) {
 	if profile.UserID != "1" || profile.Username != "sai" || profile.Nickname != "Sai" {
 		t.Fatalf("返回的 profile 信息不符合预期: %+v", profile)
 	}
-	if profile.AvatarLarge == "" || profile.AvatarMedium == "" || profile.AvatarSmall == "" {
+	if profile.AvatarURL == "" || profile.AvatarLarge == "" || profile.AvatarMedium == "" || profile.AvatarSmall == "" {
 		t.Fatalf("期望返回完整头像地址，实际为 %+v", profile)
 	}
-	if atomic.LoadInt32(&requestCount) != 1 {
-		t.Fatalf("期望只请求一次 /v0/me，实际为 %d", requestCount)
+	if !strings.HasPrefix(profile.AvatarURL, "/local/avatars/bangumi_1.") {
+		t.Fatalf("期望返回本地缓存头像地址，实际为 %q", profile.AvatarURL)
+	}
+	avatarPath, _, err := imageutils.FindManagedAvatarFile("bangumi", "1")
+	if err != nil {
+		t.Fatalf("查找缓存头像失败: %v", err)
+	}
+	if avatarPath == "" {
+		t.Fatalf("期望能找到本地缓存头像文件")
+	}
+	if _, statErr := os.Stat(avatarPath); statErr != nil {
+		t.Fatalf("期望缓存头像文件存在，实际错误: %v", statErr)
+	}
+	if atomic.LoadInt32(&requestCount) != 2 {
+		t.Fatalf("期望请求 /v0/me 和头像图片各一次，实际为 %d", requestCount)
 	}
 }
 
