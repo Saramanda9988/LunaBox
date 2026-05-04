@@ -155,7 +155,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
             const label = context.dataset.label
               ? `${context.dataset.label}: `
               : "";
-            return `${label}${formatDurationChart(Number(context.parsed.y || 0), t)}`;
+            return `${label}${formatDuration(Number(context.parsed.y || 0), t)}`;
           },
         },
       },

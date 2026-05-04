@@ -19,19 +19,6 @@ export function formatDuration(seconds: number, t?: TFunc): string {
 }
 
 /**
- * 将秒数格式化为简短时间字符串
- * @param seconds - 秒数
- * @param t - 可选的 i18n t 函数；不传时输出英文缩写 "Xh Ym"（向后兼容）
- */
-export function formatDurationShort(seconds: number, t?: TFunc): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const h = t ? t("common.duration.hoursShort") : "h";
-  const m = t ? t("common.duration.minutesShort") : "m";
-  return `${hours}${h} ${minutes}${m}`;
-}
-
-/**
  * 将秒数格式化为适合图表展示的精简时长字符串（最小粒度为分钟）
  * @param seconds - 秒数
  * @param t - 可选的 i18n t 函数；不传时输出英文缩写
@@ -50,13 +37,6 @@ export function formatDurationChart(seconds: number, t?: TFunc): string {
   parts.push(`${minutes}${m}`);
 
   return parts.join(" ");
-}
-
-/**
- * 将秒数转换为小时数（保留1位小数）
- */
-export function formatDurationHours(seconds: number): number {
-  return Number((seconds / 3600).toFixed(1));
 }
 
 /**
@@ -118,12 +98,6 @@ export function parseTime(timeValue: any): Date {
 }
 
 /**
- * @deprecated 使用 parseTime 替代
- * 保留此函数以兼容旧代码
- */
-export const parseUTCTime = parseTime;
-
-/**
  * 格式化时间为本地日期字符串
  * @param timeString - 时间（支持 string、Date）
  * @param timezone - IANA 时区名称（如 "Asia/Shanghai"），可选，不提供时使用系统时区
@@ -166,22 +140,6 @@ export function formatLocalDateTime(
     hour12: false,
     ...(timezone && { timeZone: timezone }),
     ...options,
-  });
-}
-
-/**
- * 格式化时间为本地时间字符串（仅时分秒）
- * @param timeString - 时间（支持 string、Date）
- * @param timezone - IANA 时区名称（如 "Asia/Shanghai"），可选，不提供时使用系统时区
- */
-export function formatLocalTime(timeString: any, timezone?: string): string {
-  const date = parseTime(timeString);
-  return date.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-    ...(timezone && { timeZone: timezone }),
   });
 }
 

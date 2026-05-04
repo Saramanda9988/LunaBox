@@ -26,8 +26,8 @@ import { useChartTheme } from "../hooks/useChartTheme";
 import { useAppStore } from "../store";
 import {
   formatDateToYYYYMMDD,
+  formatDuration,
   formatDurationChart,
-  formatDurationShort,
 } from "../utils/time";
 import { Route as rootRoute } from "./__root";
 
@@ -219,7 +219,7 @@ function StatsPage() {
             const label = context.dataset.label
               ? `${context.dataset.label}: `
               : "";
-            return `${label}${formatDurationChart(Number(context.parsed.y || 0), t)}`;
+            return `${label}${formatDuration(Number(context.parsed.y || 0), t)}`;
           },
         },
       },
@@ -387,7 +387,7 @@ function StatsPage() {
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-brand-900 dark:text-white">
-              {formatDurationShort(stats.all_sessions_duration, t)}
+              {formatDuration(stats.all_sessions_duration, t)}
             </p>
             <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">
               {t("stats.library.totalDuration")}
@@ -419,7 +419,7 @@ function StatsPage() {
             {t("stats.summary.totalPlayDuration")}
           </h3>
           <p className="text-3xl font-bold text-brand-900 dark:text-white">
-            {formatDurationShort(stats.total_play_duration, t)}
+            {formatDuration(stats.total_play_duration, t)}
           </p>
         </div>
         <div className="flex-1 min-w-[150px] glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
@@ -463,10 +463,7 @@ function StatsPage() {
               {stats.play_time_leaderboard[0].game_name}
             </h3>
             <p className="text-2xl font-mono font-semibold text-neutral-600 dark:text-neutral-400">
-              {formatDurationShort(
-                stats.play_time_leaderboard[0].total_duration,
-                t,
-              )}
+              {formatDuration(stats.play_time_leaderboard[0].total_duration, t)}
             </p>
           </div>
         )}
@@ -523,7 +520,7 @@ function StatsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-brand-900 dark:text-white text-right font-mono">
-                      {formatDurationShort(game.total_duration, t)}
+                      {formatDuration(game.total_duration, t)}
                     </td>
                   </tr>
                 ))}
