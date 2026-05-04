@@ -32,9 +32,10 @@
 - **Playtime tracking** - Automatically track session time when launching games
 - **Small binary footprint** - Built with Wails, no full browser runtime bundled
 - **Multi-dimensional statistics** - View play data by day/week/month/year and export shareable stat cards
-- **AI insights** - Generate personalized and fun reports based on your gameplay data
+- **AI insights** - Analyze gameplay data to generate personalized, playful reports, with MCP exposure and CLI skill support for broader data-use scenarios
 - **Convenient data import** - Import from PotatoVN, Playnite, and Vnite; supports folder batch import and drag-and-drop
 - **Multi-channel backup** - Local backup, AWS S3, Qiniu, Alibaba Cloud OSS (S3-compatible), and OneDrive backup
+- **Cloud sync (beta)** - Sync data across devices and access your library and play statistics anytime, anywhere
 - **CLI Mode** - Support for managing, launching, and backing up games, and modifying program data via command line
 - **Privacy and security** - All sensitive data is stored locally
 
@@ -132,18 +133,18 @@ Issues and Pull Requests are welcome.
 
 ## 🗺️ Roadmap
 
-- [ ] Improve logging system
+- [x] Improve logging system
 - [ ] Support importing data from ReinaManager
 - [ ] Self-hosted Docker server
 - [ ] IM platform bot plugin
-- [ ] Multi-device synchronization
+- [x] Multi-device synchronization
 - [ ] Gallery feature
-- [ ] Expose MCP and provide link-based game launch capability for AI
+- [x] Expose MCP and provide link-based game launch capability for AI
 - [ ] "What to play next" recommendation feature
 - [ ] Support Linux/macOS platform
 - [ ] Support Korean/Traditional Chinese and other languages
 
-## 😀 Open Source Inspired by Open Source
+## 😀 From Open Source to Open Source
 
 Inspiration:
 
