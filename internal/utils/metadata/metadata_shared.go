@@ -30,7 +30,7 @@ type Getter interface {
 	FetchMetadataByName(name string, token string) (MetadataResult, error)
 }
 
-const metadataUserAgent = "Saramanda9988/LunaBox/1.6.0 (desktop) (https://github.com/Saramanda9988/LunaBox)"
+const metadataUserAgent = "Saramanda9988/LunaBox/1.6.2 (desktop) (https://github.com/Saramanda9988/LunaBox)"
 
 func newMetadataClient() *http.Client {
 	return &http.Client{Timeout: 10 * time.Second}
