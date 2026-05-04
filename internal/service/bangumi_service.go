@@ -16,6 +16,7 @@ import (
 	"lunabox/internal/common/enums"
 	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
+	"lunabox/internal/utils/metadata"
 	"net"
 	"net/http"
 	"net/url"
@@ -49,13 +50,6 @@ const (
 )
 
 var errBangumiUnauthorized = errors.New("bangumi unauthorized")
-
-type bangumiAPI interface {
-	getValidAccessToken(ctx context.Context) (string, error)
-	refreshAccessToken(ctx context.Context) (string, error)
-	upsertSubjectCollectionStatus(ctx context.Context, subjectID string, status enums.GameStatus) error
-	isGameEligibleForStatusPush(game models.Game) bool
-}
 
 type bangumiAuthSession struct {
 	resultChan  chan bangumiAuthResult
@@ -253,6 +247,56 @@ func (s *BangumiService) refreshAccessToken(ctx context.Context) (string, error)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.refreshAccessTokenLocked(ctx)
+}
+
+func (s *BangumiService) fetchMetadataByID(ctx context.Context, sourceID string) (metadata.MetadataResult, error) {
+	getter := metadata.NewBangumiInfoGetter()
+
+	token, err := s.getValidAccessToken(ctx)
+	if err != nil {
+		return metadata.MetadataResult{}, err
+	}
+
+	result, err := getter.FetchMetadata(sourceID, token)
+	if err == nil || !metadata.IsBangumiUnauthorizedError(err) {
+		return result, err
+	}
+
+	refreshedToken, refreshErr := s.refreshAccessToken(ctx)
+	if refreshErr != nil {
+		return metadata.MetadataResult{}, refreshErr
+	}
+
+	return getter.FetchMetadata(sourceID, refreshedToken)
+}
+
+func (s *BangumiService) fetchMetadataByName(ctx context.Context, name string) (metadata.MetadataResult, error) {
+	getter := metadata.NewBangumiInfoGetter()
+
+	token, err := s.getValidAccessToken(ctx)
+	if err != nil {
+		return metadata.MetadataResult{}, err
+	}
+
+	result, err := getter.FetchMetadataByName(name, token)
+	if err == nil || !metadata.IsBangumiUnauthorizedError(err) {
+		return result, err
+	}
+
+	refreshedToken, refreshErr := s.refreshAccessToken(ctx)
+	if refreshErr != nil {
+		return metadata.MetadataResult{}, refreshErr
+	}
+
+	return getter.FetchMetadataByName(name, refreshedToken)
+}
+
+func (s *BangumiService) syncGameStatus(ctx context.Context, game models.Game) error {
+	if !s.isGameEligibleForStatusPush(game) {
+		return nil
+	}
+
+	return s.upsertSubjectCollectionStatus(ctx, strings.TrimSpace(game.SourceID), game.Status)
 }
 
 func (s *BangumiService) upsertSubjectCollectionStatus(ctx context.Context, subjectID string, status enums.GameStatus) error {

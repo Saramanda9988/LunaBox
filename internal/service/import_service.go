@@ -44,7 +44,7 @@ type ImportService struct {
 	db             *sql.DB
 	config         *appconf.AppConfig
 	gameService    *GameService
-	bangumiService bangumiAPI
+	bangumiService *BangumiService
 	sessionService *SessionService
 }
 
@@ -64,7 +64,7 @@ func (s *ImportService) SetSessionService(sessionService *SessionService) {
 	s.sessionService = sessionService
 }
 
-func (s *ImportService) SetBangumiService(bangumiService bangumiAPI) {
+func (s *ImportService) SetBangumiService(bangumiService *BangumiService) {
 	s.bangumiService = bangumiService
 }
 
@@ -1129,7 +1129,6 @@ func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchIm
 		source      enums.SourceType
 		fetchByName func(string) (metadata.MetadataResult, error)
 	}{
-		{enums.Bangumi, s.gameService.fetchBangumiMetadataByName},
 		{
 			enums.VNDB,
 			func(name string) (metadata.MetadataResult, error) {
@@ -1148,6 +1147,20 @@ func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchIm
 				return metadata.NewYmgalInfoGetter().FetchMetadataByName(name, "")
 			},
 		},
+	}
+
+	if s.bangumiService != nil {
+		sources = append([]struct {
+			source      enums.SourceType
+			fetchByName func(string) (metadata.MetadataResult, error)
+		}{
+			{
+				enums.Bangumi,
+				func(name string) (metadata.MetadataResult, error) {
+					return s.bangumiService.fetchMetadataByName(s.ctx, name)
+				},
+			},
+		}, sources...)
 	}
 
 	for _, src := range sources {
