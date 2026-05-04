@@ -585,7 +585,7 @@
     },
     "basic": {
       "bangumiSectionLabel": "Bangumi 授权",
-      "bangumiAuthHint": "通过 OAuth 将 LunaBox 与 Bangumi 账号连接起来，以继续使用 Bangumi 元数据并推送游戏状态。",
+      "bangumiAuthHint": "登录 Bangumi 账号以启用元数据刷新和游戏状态同步功能。",
       "bangumiAuthAuthorized": "已授权",
       "bangumiAuthNeedsReauth": "需要重新连接",
       "bangumiAuthUnauthorized": "未连接",
@@ -596,7 +596,7 @@
       "bangumiStatusPushHint": "开启后会在本地修改游戏状态时，自动将 Bangumi 条目状态同步到远端。",
       "bangumiAuthorize": "去授权",
       "bangumiReauthorize": "重新授权",
-      "bangumiDisconnect": "断开连接",
+      "bangumiDisconnect": "断开",
       "bangumiAuthReconnectHint": "如果授权或刷新失败，可以随时在这里重新执行授权。",
       "bangumiDisconnectConfirmTitle": "断开 Bangumi 连接？",
       "bangumiDisconnectConfirmMsg": "这会清除 LunaBox 本地保存的 Bangumi OAuth 凭据。在您重新授权之前，Bangumi 元数据刷新和状态推送都会停止。",

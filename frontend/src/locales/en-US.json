@@ -585,7 +585,7 @@
     },
     "basic": {
       "bangumiSectionLabel": "Bangumi Authorization",
-      "bangumiAuthHint": "Authorize LunaBox with your Bangumi account to keep metadata access and status push connected through OAuth.",
+      "bangumiAuthHint": "Login to your Bangumi account to enable metadata refresh and game status synchronization.",
       "bangumiAuthAuthorized": "Authorized",
       "bangumiAuthNeedsReauth": "Reconnect required",
       "bangumiAuthUnauthorized": "Not connected",

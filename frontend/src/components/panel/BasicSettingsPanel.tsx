@@ -192,127 +192,134 @@ export function BasicSettingsPanel({
   return (
     <>
       <div className="space-y-2">
-        <div className="block text-sm font-semibold text-brand-700 dark:text-brand-300">
+        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
           {t("settings.basic.bangumiSectionLabel")}
-        </div>
-        <div className="glass-panel flex items-center justify-between gap-4 rounded-2xl border border-brand-200/80 bg-white/55 p-4 dark:border-brand-700/80 dark:bg-brand-900/25">
-          <div className="min-w-0 flex flex-1 items-center gap-3">
-            {shouldShowBangumiProfile ? (
-              bangumiAvatarUrl ? (
-                <img
-                  src={bangumiAvatarUrl}
-                  alt=""
-                  width={48}
-                  height={48}
-                  className="h-12 w-12 shrink-0 rounded-2xl border border-brand-200/70 object-cover shadow-sm dark:border-brand-700/70"
-                />
-              ) : (
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-200/80 text-sm font-semibold text-brand-700 dark:bg-brand-700/80 dark:text-brand-200">
-                  {bangumiAvatarFallback}
-                </div>
-              )
-            ) : (
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-brand-200/80 bg-white/70 dark:border-brand-700/80 dark:bg-brand-800/70">
-                <img
-                  src="/bangumi-logo.png"
-                  alt=""
-                  width={28}
-                  height={28}
-                  className="h-7 w-7 object-contain opacity-90"
-                />
-              </div>
-            )}
-
-            <div className="min-w-0 space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="truncate text-sm font-semibold text-brand-800 dark:text-brand-100">
-                  {shouldShowBangumiProfile ? bangumiDisplayName : "Bangumi"}
-                </div>
-                {(isBangumiStatusLoading || isBangumiProfileLoading) && (
-                  <span
-                    aria-hidden="true"
-                    className="i-mdi-loading animate-spin text-brand-400"
-                  />
-                )}
-                {bangumiAuth.state === "needs_reauth" && (
-                  <span className="rounded-full bg-warning-100 px-2 py-0.5 text-[11px] font-semibold text-warning-700 dark:bg-warning-900/30 dark:text-warning-300">
-                    {t("settings.basic.bangumiAuthNeedsReauth")}
-                  </span>
-                )}
-              </div>
-
+        </label>
+        <div className="glass-panel flex flex-col gap-4 rounded-2xl border border-brand-200/80 bg-white/55 p-4 dark:border-brand-700/80 dark:bg-brand-900/25">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0 flex flex-1 items-center gap-3">
               {shouldShowBangumiProfile ? (
-                <>
-                  {bangumiUsername
-                    && bangumiUsername !== bangumiDisplayName && (
-                    <p className="truncate text-xs text-brand-500 dark:text-brand-400">
-                      @
-                      {bangumiUsername}
-                    </p>
-                  )}
-                  <p className="text-xs text-brand-500 dark:text-brand-400">
-                    {t("settings.basic.bangumiAuthAuthorized")}
-                  </p>
-                </>
+                bangumiAvatarUrl ? (
+                  <img
+                    src={bangumiAvatarUrl}
+                    alt=""
+                    width={48}
+                    height={48}
+                    className="h-12 w-12 shrink-0 rounded-2xl border border-brand-200/70 object-cover shadow-sm dark:border-brand-700/70"
+                  />
+                ) : (
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-200/80 text-sm font-semibold text-brand-700 dark:bg-brand-700/80 dark:text-brand-200">
+                    {bangumiAvatarFallback}
+                  </div>
+                )
               ) : (
-                <p className="text-xs text-brand-500 dark:text-brand-400">
-                  {bangumiAuth.state === "needs_reauth"
-                    ? t("settings.basic.bangumiAuthReconnectHint")
-                    : t("settings.basic.bangumiAuthHint")}
-                </p>
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-brand-200/80 bg-white/70 dark:border-brand-700/80 dark:bg-brand-800/70">
+                  <img
+                    src="/bangumi-logo.png"
+                    alt=""
+                    width={28}
+                    height={28}
+                    className="h-7 w-7 object-contain opacity-90"
+                  />
+                </div>
               )}
 
-              {bangumiAuth.lastError && (
-                <p className="text-xs text-warning-700 dark:text-warning-300">
-                  {t("settings.basic.bangumiAuthLastErrorLabel")}
-                  {": "}
-                  {bangumiAuth.lastError}
-                </p>
-              )}
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="truncate text-sm font-semibold text-brand-800 dark:text-brand-100">
+                    {shouldShowBangumiProfile ? bangumiDisplayName : "Bangumi"}
+                  </div>
+                  {(isBangumiStatusLoading || isBangumiProfileLoading) && (
+                    <span
+                      aria-hidden="true"
+                      className="i-mdi-loading animate-spin text-brand-400"
+                    />
+                  )}
+                  {bangumiAuth.state === "needs_reauth" && (
+                    <span className="rounded-full bg-warning-100 px-2 py-0.5 text-[11px] font-semibold text-warning-700 dark:bg-warning-900/30 dark:text-warning-300">
+                      {t("settings.basic.bangumiAuthNeedsReauth")}
+                    </span>
+                  )}
+                </div>
+
+                {shouldShowBangumiProfile ? (
+                  <>
+                    {bangumiUsername
+                      && bangumiUsername !== bangumiDisplayName && (
+                      <p className="truncate text-xs text-brand-500 dark:text-brand-400">
+                        @
+                        {bangumiUsername}
+                      </p>
+                    )}
+                    <p className="text-xs text-brand-500 dark:text-brand-400">
+                      {t("settings.basic.bangumiAuthAuthorized")}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs text-brand-500 dark:text-brand-400">
+                    {bangumiAuth.state === "needs_reauth"
+                      ? t("settings.basic.bangumiAuthReconnectHint")
+                      : t("settings.basic.bangumiAuthHint")}
+                  </p>
+                )}
+
+                {bangumiAuth.lastError && (
+                  <p className="text-xs text-warning-700 dark:text-warning-300">
+                    {t("settings.basic.bangumiAuthLastErrorLabel")}
+                    {": "}
+                    {bangumiAuth.lastError}
+                  </p>
+                )}
+              </div>
             </div>
+
+            {isBangumiAuthorized ? (
+              <BetterButton
+                variant="secondary"
+                icon="i-mdi-link-off"
+                isLoading={isBangumiDisconnecting}
+                onClick={() => setShowBangumiDisconnectConfirm(true)}
+              >
+                {t("settings.basic.bangumiDisconnect")}
+              </BetterButton>
+            ) : (
+              <BetterButton
+                variant="primary"
+                icon="i-mdi-account-key-outline"
+                isLoading={isBangumiAuthorizing}
+                onClick={handleBangumiAuthorize}
+              >
+                {bangumiAuth.state === "needs_reauth"
+                  ? t("settings.basic.bangumiReauthorize")
+                  : t("settings.basic.bangumiAuthorize")}
+              </BetterButton>
+            )}
           </div>
 
-          {isBangumiAuthorized ? (
-            <BetterButton
-              variant="danger"
-              icon="i-mdi-link-off"
-              isLoading={isBangumiDisconnecting}
-              onClick={() => setShowBangumiDisconnectConfirm(true)}
-            >
-              {t("settings.basic.bangumiDisconnect")}
-            </BetterButton>
-          ) : (
-            <BetterButton
-              variant="primary"
-              icon="i-mdi-account-key-outline"
-              isLoading={isBangumiAuthorizing}
-              onClick={handleBangumiAuthorize}
-            >
-              {bangumiAuth.state === "needs_reauth"
-                ? t("settings.basic.bangumiReauthorize")
-                : t("settings.basic.bangumiAuthorize")}
-            </BetterButton>
+          {isBangumiAuthorized && (
+            <>
+              <div className="h-px w-full bg-brand-200/50 dark:bg-brand-700/50" />
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1 space-y-1">
+                  <div className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                    {t("settings.basic.bangumiStatusPushLabel")}
+                  </div>
+                  <p className="text-xs text-brand-500 dark:text-brand-400">
+                    {t("settings.basic.bangumiStatusPushHint")}
+                  </p>
+                </div>
+                <BetterSwitch
+                  id="bangumi_status_push_enabled"
+                  checked={bangumiConfig.bangumi_status_push_enabled ?? true}
+                  onCheckedChange={checked =>
+                    onChange({
+                      ...formData,
+                      bangumi_status_push_enabled: checked,
+                    } as appconf.AppConfig)}
+                />
+              </div>
+            </>
           )}
-        </div>
-
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-brand-200 bg-white/60 p-3 dark:border-brand-700 dark:bg-brand-900/20">
-          <div className="flex-1 space-y-2">
-            <div className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-              {t("settings.basic.bangumiStatusPushLabel")}
-            </div>
-            <p className="text-xs text-brand-500 dark:text-brand-400">
-              {t("settings.basic.bangumiStatusPushHint")}
-            </p>
-          </div>
-          <BetterSwitch
-            id="bangumi_status_push_enabled"
-            checked={bangumiConfig.bangumi_status_push_enabled ?? true}
-            onCheckedChange={checked =>
-              onChange({
-                ...formData,
-                bangumi_status_push_enabled: checked,
-              } as appconf.AppConfig)}
-          />
         </div>
       </div>
 

@@ -585,7 +585,7 @@
     },
     "basic": {
       "bangumiSectionLabel": "Bangumi 認証",
-      "bangumiAuthHint": "Bangumi アカウントを OAuth で接続すると、メタデータ取得とプレイ状態の Push を継続できます。",
+      "bangumiAuthHint": "Bangumiアカウントにログインしてメタデータの更新やその他の機能を有効にしてください。",
       "bangumiAuthAuthorized": "認証済み",
       "bangumiAuthNeedsReauth": "再接続が必要",
       "bangumiAuthUnauthorized": "未接続",
