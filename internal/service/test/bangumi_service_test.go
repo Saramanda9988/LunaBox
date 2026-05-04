@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"io"
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
@@ -45,6 +46,11 @@ func newBangumiHTTPClient(t *testing.T, serverURL string) *http.Client {
 		},
 		Timeout: 30 * time.Second,
 	}
+}
+
+func boolPtr(value bool) *bool {
+	v := value
+	return &v
 }
 
 func insertBangumiGame(
@@ -111,12 +117,12 @@ func TestBangumiService_RefreshExpiredTokenAndPushMappedStatus(t *testing.T) {
 		name         string
 		initial      enums.GameStatus
 		status       enums.GameStatus
-		expectedType string
+		expectedType int
 	}{
-		{name: "not started", initial: enums.StatusPlaying, status: enums.StatusNotStarted, expectedType: "wish"},
-		{name: "playing", initial: enums.StatusNotStarted, status: enums.StatusPlaying, expectedType: "doing"},
-		{name: "completed", initial: enums.StatusNotStarted, status: enums.StatusCompleted, expectedType: "done"},
-		{name: "on hold", initial: enums.StatusNotStarted, status: enums.StatusOnHold, expectedType: "on_hold"},
+		{name: "not started", initial: enums.StatusPlaying, status: enums.StatusNotStarted, expectedType: 1},
+		{name: "playing", initial: enums.StatusNotStarted, status: enums.StatusPlaying, expectedType: 3},
+		{name: "completed", initial: enums.StatusNotStarted, status: enums.StatusCompleted, expectedType: 2},
+		{name: "on hold", initial: enums.StatusNotStarted, status: enums.StatusOnHold, expectedType: 4},
 	}
 
 	for _, tc := range cases {
@@ -124,7 +130,7 @@ func TestBangumiService_RefreshExpiredTokenAndPushMappedStatus(t *testing.T) {
 			db, cleanup := setupTestDB(t)
 			defer cleanup()
 
-			insertBangumiGame(t, db, "bangumi-"+tc.expectedType, tc.initial, enums.Bangumi, "42")
+			insertBangumiGame(t, db, fmt.Sprintf("bangumi-%d", tc.expectedType), tc.initial, enums.Bangumi, "42")
 
 			var gotCollectionType string
 			var tokenRefreshCalls int32
@@ -152,10 +158,10 @@ func TestBangumiService_RefreshExpiredTokenAndPushMappedStatus(t *testing.T) {
 					if err != nil {
 						t.Fatalf("读取收藏请求体失败: %v", err)
 					}
-					if !strings.Contains(string(body), `"`+"type"+`":"`+tc.expectedType+`"`) {
+					if !strings.Contains(string(body), fmt.Sprintf(`"type":%d`, tc.expectedType)) {
 						t.Fatalf("期望收藏 type 为 %q，实际请求体 %s", tc.expectedType, string(body))
 					}
-					gotCollectionType = tc.expectedType
+					gotCollectionType = fmt.Sprintf("%d", tc.expectedType)
 					w.WriteHeader(http.StatusNoContent)
 				default:
 					t.Fatalf("未预期的请求路径: %s", r.URL.Path)
@@ -180,7 +186,7 @@ func TestBangumiService_RefreshExpiredTokenAndPushMappedStatus(t *testing.T) {
 			gameSvc.Init(context.Background(), db, &appconf.AppConfig{})
 			gameSvc.SetBangumiService(bangumiSvc)
 
-			game, err := gameSvc.GetGameByID("bangumi-" + tc.expectedType)
+			game, err := gameSvc.GetGameByID(fmt.Sprintf("bangumi-%d", tc.expectedType))
 			if err != nil {
 				t.Fatalf("读取测试游戏失败: %v", err)
 			}
@@ -190,8 +196,8 @@ func TestBangumiService_RefreshExpiredTokenAndPushMappedStatus(t *testing.T) {
 				t.Fatalf("更新游戏状态失败: %v", err)
 			}
 
-			if gotCollectionType != tc.expectedType {
-				t.Fatalf("期望推送的收藏状态为 %q，实际为 %q", tc.expectedType, gotCollectionType)
+			if gotCollectionType != fmt.Sprintf("%d", tc.expectedType) {
+				t.Fatalf("期望推送的收藏状态为 %d，实际为 %q", tc.expectedType, gotCollectionType)
 			}
 			if atomic.LoadInt32(&tokenRefreshCalls) != 1 {
 				t.Fatalf("期望触发 1 次 token refresh，实际为 %d", tokenRefreshCalls)
@@ -258,6 +264,49 @@ func TestGameService_SkipsBangumiPushForIneligibleGames(t *testing.T) {
 	}
 }
 
+func TestGameService_SkipsBangumiPushWhenDisabled(t *testing.T) {
+	applog.SetMode(applog.ModeCLI)
+
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	insertBangumiGame(t, db, "bangumi-push-disabled", enums.StatusNotStarted, enums.Bangumi, "42")
+
+	var requestCount int32
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requestCount, 1)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer testServer.Close()
+
+	bangumiSvc := service.NewBangumiService()
+	bangumiSvc.SetHTTPClient(newBangumiHTTPClient(t, testServer.URL))
+	bangumiSvc.SetOAuthClientCredentials("client-id", "client-secret")
+	bangumiSvc.SetEventEmitter(func(context.Context, string, ...interface{}) {})
+	bangumiSvc.Init(context.Background(), nil, &appconf.AppConfig{
+		BangumiAccessToken:       "access-token",
+		BangumiStatusPushEnabled: boolPtr(false),
+	})
+
+	gameSvc := service.NewGameService()
+	gameSvc.SetEventEmitter(func(context.Context, string, ...interface{}) {})
+	gameSvc.Init(context.Background(), db, &appconf.AppConfig{})
+	gameSvc.SetBangumiService(bangumiSvc)
+
+	game, err := gameSvc.GetGameByID("bangumi-push-disabled")
+	if err != nil {
+		t.Fatalf("读取测试游戏失败: %v", err)
+	}
+	game.Status = enums.StatusCompleted
+
+	if err := gameSvc.UpdateGame(game); err != nil {
+		t.Fatalf("关闭 Bangumi 状态推送后，本地更新不应失败: %v", err)
+	}
+	if atomic.LoadInt32(&requestCount) != 0 {
+		t.Fatalf("关闭 Bangumi 状态推送后不应发生请求，实际请求次数为 %d", requestCount)
+	}
+}
+
 func TestGameService_PushFailureDoesNotRollbackLocalStatus(t *testing.T) {
 	applog.SetMode(applog.ModeCLI)
 
@@ -301,5 +350,42 @@ func TestGameService_PushFailureDoesNotRollbackLocalStatus(t *testing.T) {
 	}
 	if savedGame.Status != enums.StatusCompleted {
 		t.Fatalf("期望本地状态保留为 completed，实际为 %s", savedGame.Status)
+	}
+}
+
+func TestGameService_AcceptsBangumi202Response(t *testing.T) {
+	applog.SetMode(applog.ModeCLI)
+
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	insertBangumiGame(t, db, "bangumi-accepted", enums.StatusNotStarted, enums.Bangumi, "42")
+
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	defer testServer.Close()
+
+	bangumiSvc := service.NewBangumiService()
+	bangumiSvc.SetHTTPClient(newBangumiHTTPClient(t, testServer.URL))
+	bangumiSvc.SetOAuthClientCredentials("client-id", "client-secret")
+	bangumiSvc.SetEventEmitter(func(context.Context, string, ...interface{}) {})
+	bangumiSvc.Init(context.Background(), nil, &appconf.AppConfig{
+		BangumiAccessToken: "access-token",
+	})
+
+	gameSvc := service.NewGameService()
+	gameSvc.SetEventEmitter(func(context.Context, string, ...interface{}) {})
+	gameSvc.Init(context.Background(), db, &appconf.AppConfig{})
+	gameSvc.SetBangumiService(bangumiSvc)
+
+	game, err := gameSvc.GetGameByID("bangumi-accepted")
+	if err != nil {
+		t.Fatalf("读取测试游戏失败: %v", err)
+	}
+	game.Status = enums.StatusCompleted
+
+	if err := gameSvc.UpdateGame(game); err != nil {
+		t.Fatalf("Bangumi 返回 202 时不应报错: %v", err)
 	}
 }

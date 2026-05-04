@@ -36,6 +36,6 @@ export function SelectVniteDirectory():Promise<string>;
 
 export function SelectZipFile():Promise<string>;
 
-export function SetBangumiService(arg1:service.bangumiAPI):Promise<void>;
+export function SetBangumiService(arg1:service.BangumiService):Promise<void>;
 
 export function SetSessionService(arg1:service.SessionService):Promise<void>;

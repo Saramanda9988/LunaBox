@@ -14,6 +14,26 @@ export function Init(arg1, arg2, arg3) {
   return window['go']['service']['BangumiService']['Init'](arg1, arg2, arg3);
 }
 
+export function SetEventEmitter(arg1) {
+  return window['go']['service']['BangumiService']['SetEventEmitter'](arg1);
+}
+
+export function SetHTTPClient(arg1) {
+  return window['go']['service']['BangumiService']['SetHTTPClient'](arg1);
+}
+
+export function SetNowFunc(arg1) {
+  return window['go']['service']['BangumiService']['SetNowFunc'](arg1);
+}
+
+export function SetOAuthClientCredentials(arg1, arg2) {
+  return window['go']['service']['BangumiService']['SetOAuthClientCredentials'](arg1, arg2);
+}
+
+export function SetOpenURLFunc(arg1) {
+  return window['go']['service']['BangumiService']['SetOpenURLFunc'](arg1);
+}
+
 export function StartAuth() {
   return window['go']['service']['BangumiService']['StartAuth']();
 }

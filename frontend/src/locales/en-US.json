@@ -592,6 +592,8 @@
       "bangumiAuthIdentityLabel": "Connected account",
       "bangumiAuthExpiresLabel": "Access token expires",
       "bangumiAuthLastErrorLabel": "Last error",
+      "bangumiStatusPushLabel": "Sync game status to Bangumi",
+      "bangumiStatusPushHint": "When enabled, LunaBox will automatically push local game status changes to the linked Bangumi entry.",
       "bangumiAuthorize": "Authorize",
       "bangumiReauthorize": "Reauthorize",
       "bangumiDisconnect": "Disconnect",

@@ -4,11 +4,22 @@ import {vo} from '../models';
 import {context} from '../models';
 import {sql} from '../models';
 import {appconf} from '../models';
+import {http} from '../models';
 
 export function Disconnect():Promise<vo.BangumiAuthStatus>;
 
 export function GetAuthStatus():Promise<vo.BangumiAuthStatus>;
 
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;
+
+export function SetEventEmitter(arg1:any):Promise<void>;
+
+export function SetHTTPClient(arg1:http.Client):Promise<void>;
+
+export function SetNowFunc(arg1:any):Promise<void>;
+
+export function SetOAuthClientCredentials(arg1:string,arg2:string):Promise<void>;
+
+export function SetOpenURLFunc(arg1:any):Promise<void>;
 
 export function StartAuth():Promise<vo.BangumiAuthStatus>;

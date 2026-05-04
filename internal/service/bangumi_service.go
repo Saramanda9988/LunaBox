@@ -324,7 +324,9 @@ func (s *BangumiService) upsertSubjectCollectionStatus(ctx context.Context, subj
 }
 
 func (s *BangumiService) isGameEligibleForStatusPush(game models.Game) bool {
-	return game.SourceType == enums.Bangumi && strings.TrimSpace(game.SourceID) != ""
+	return appconf.IsBangumiStatusPushEnabled(s.config) &&
+		game.SourceType == enums.Bangumi &&
+		strings.TrimSpace(game.SourceID) != ""
 }
 
 func (s *BangumiService) shouldRefreshTokenLocked() bool {
@@ -583,8 +585,8 @@ func (s *BangumiService) fetchCurrentUser(ctx context.Context, accessToken strin
 	return &user, nil
 }
 
-func (s *BangumiService) postSubjectCollection(ctx context.Context, subjectID, accessToken, collectionType string) error {
-	payloadBytes, err := json.Marshal(map[string]string{
+func (s *BangumiService) postSubjectCollection(ctx context.Context, subjectID, accessToken string, collectionType int) error {
+	payloadBytes, err := json.Marshal(map[string]interface{}{
 		"type": collectionType,
 	})
 	if err != nil {
@@ -615,7 +617,9 @@ func (s *BangumiService) postSubjectCollection(ctx context.Context, subjectID, a
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("%w: %s", errBangumiUnauthorized, strings.TrimSpace(string(body)))
 	}
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusNoContent &&
+		resp.StatusCode != http.StatusOK &&
+		resp.StatusCode != http.StatusAccepted {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("Bangumi 收藏接口返回 HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
@@ -640,18 +644,18 @@ func (s *BangumiService) resolveContext(ctx context.Context) context.Context {
 	return context.Background()
 }
 
-func mapGameStatusToBangumiCollectionType(status enums.GameStatus) (string, bool) {
+func mapGameStatusToBangumiCollectionType(status enums.GameStatus) (int, bool) {
 	switch status {
 	case enums.StatusNotStarted:
-		return "wish", true
-	case enums.StatusPlaying:
-		return "doing", true
+		return 1, true
 	case enums.StatusCompleted:
-		return "done", true
+		return 2, true
+	case enums.StatusPlaying:
+		return 3, true
 	case enums.StatusOnHold:
-		return "on_hold", true
+		return 4, true
 	default:
-		return "", false
+		return 0, false
 	}
 }
 

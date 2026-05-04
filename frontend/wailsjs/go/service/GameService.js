@@ -86,6 +86,10 @@ export function SetBangumiService(arg1) {
   return window['go']['service']['GameService']['SetBangumiService'](arg1);
 }
 
+export function SetEventEmitter(arg1) {
+  return window['go']['service']['GameService']['SetEventEmitter'](arg1);
+}
+
 export function SetTagService(arg1) {
   return window['go']['service']['GameService']['SetTagService'](arg1);
 }

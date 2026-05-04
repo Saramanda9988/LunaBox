@@ -20,6 +20,10 @@ interface BetterSelectOption {
   label: string;
 }
 
+type BangumiStatusPushConfig = appconf.AppConfig & {
+  bangumi_status_push_enabled?: boolean;
+};
+
 interface BasicSettingsProps {
   formData: appconf.AppConfig;
   onChange: (data: appconf.AppConfig) => void;
@@ -66,6 +70,7 @@ export function BasicSettingsPanel({
   ];
 
   const bangumiAuth = mergeBangumiAuthStatus(formData, bangumiSnapshot);
+  const bangumiConfig = formData as BangumiStatusPushConfig;
   const bangumiIdentity
     = bangumiAuth.state === "unauthorized" && bangumiAuth.identity === "Bangumi"
       ? t("settings.basic.bangumiAuthUnauthorized")
@@ -205,6 +210,26 @@ export function BasicSettingsPanel({
                 {bangumiAuth.lastError}
               </div>
             )}
+          </div>
+
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-brand-200 bg-white/60 p-3 dark:border-brand-700 dark:bg-brand-900/20">
+            <div className="flex-1 space-y-2">
+              <div className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                {t("settings.basic.bangumiStatusPushLabel")}
+              </div>
+              <p className="text-xs text-brand-500 dark:text-brand-400">
+                {t("settings.basic.bangumiStatusPushHint")}
+              </p>
+            </div>
+            <BetterSwitch
+              id="bangumi_status_push_enabled"
+              checked={bangumiConfig.bangumi_status_push_enabled ?? true}
+              onCheckedChange={checked =>
+                onChange({
+                  ...formData,
+                  bangumi_status_push_enabled: checked,
+                } as appconf.AppConfig)}
+            />
           </div>
 
           <div className="flex flex-wrap gap-3">

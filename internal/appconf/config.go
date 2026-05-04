@@ -37,6 +37,7 @@ type AppConfig struct {
 	BangumiAuthorizedUserID   string   `json:"bangumi_authorized_user_id,omitempty"`
 	BangumiAuthorizedUsername string   `json:"bangumi_authorized_username,omitempty"`
 	BangumiAuthError          string   `json:"bangumi_auth_error,omitempty"`
+	BangumiStatusPushEnabled  *bool    `json:"bangumi_status_push_enabled,omitempty"`
 	VNDBAccessToken           string   `json:"vndb_access_token,omitempty"`
 	MetadataSources           []string `json:"metadata_sources,omitempty"` // 元数据拉取来源列表（bangumi/vndb/ymgal/steam）
 	Theme                     string   `json:"theme"`                      // light or dark
@@ -143,6 +144,7 @@ func LoadConfig() (*AppConfig, error) {
 		BangumiAuthorizedUserID:   "",
 		BangumiAuthorizedUsername: "",
 		BangumiAuthError:          "",
+		BangumiStatusPushEnabled:  boolPtr(true),
 		VNDBAccessToken:           "",
 		MetadataSources:           cloneStringSlice(defaultMetadataSources),
 		Theme:                     "light",
@@ -326,6 +328,11 @@ func cloneStringSlice(values []string) []string {
 	return cloned
 }
 
+func boolPtr(value bool) *bool {
+	v := value
+	return &v
+}
+
 func NormalizeMCPPort(port int) int {
 	if port < 1 || port > 65535 {
 		return DefaultMCPPort
@@ -378,6 +385,10 @@ func SanitizeBangumiOAuthConfig(config *AppConfig) bool {
 	config.BangumiAuthorizedUserID = trimmedUserID
 	config.BangumiAuthorizedUsername = trimmedUsername
 	config.BangumiAuthError = trimmedAuthError
+	if config.BangumiStatusPushEnabled == nil {
+		config.BangumiStatusPushEnabled = boolPtr(true)
+		changed = true
+	}
 
 	if config.BangumiAccessToken == "" && config.BangumiTokenExpiresAt != "" {
 		config.BangumiTokenExpiresAt = ""
@@ -385,4 +396,12 @@ func SanitizeBangumiOAuthConfig(config *AppConfig) bool {
 	}
 
 	return changed
+}
+
+func IsBangumiStatusPushEnabled(config *AppConfig) bool {
+	if config == nil || config.BangumiStatusPushEnabled == nil {
+		return true
+	}
+
+	return *config.BangumiStatusPushEnabled
 }

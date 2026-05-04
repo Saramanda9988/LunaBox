@@ -592,6 +592,8 @@
       "bangumiAuthIdentityLabel": "接続中のアカウント",
       "bangumiAuthExpiresLabel": "アクセストークン有効期限",
       "bangumiAuthLastErrorLabel": "直近のエラー",
+      "bangumiStatusPushLabel": "ゲーム状態を Bangumi に同期",
+      "bangumiStatusPushHint": "有効にすると、LunaBox はローカルのゲーム状態変更を自動的に Bangumi のコレクション状態へ反映します。",
       "bangumiAuthorize": "認証する",
       "bangumiReauthorize": "再認証",
       "bangumiDisconnect": "切断",

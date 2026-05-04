@@ -7,6 +7,7 @@ export namespace appconf {
 	    bangumi_authorized_user_id?: string;
 	    bangumi_authorized_username?: string;
 	    bangumi_auth_error?: string;
+	    bangumi_status_push_enabled?: boolean;
 	    vndb_access_token?: string;
 	    metadata_sources?: string[];
 	    theme: string;
@@ -90,6 +91,7 @@ export namespace appconf {
 	        this.bangumi_authorized_user_id = source["bangumi_authorized_user_id"];
 	        this.bangumi_authorized_username = source["bangumi_authorized_username"];
 	        this.bangumi_auth_error = source["bangumi_auth_error"];
+	        this.bangumi_status_push_enabled = source["bangumi_status_push_enabled"];
 	        this.vndb_access_token = source["vndb_access_token"];
 	        this.metadata_sources = source["metadata_sources"];
 	        this.theme = source["theme"];
@@ -190,6 +192,27 @@ export namespace enums {
 	    PLAYING = "playing",
 	    COMPLETED = "completed",
 	    ON_HOLD = "on_hold",
+	}
+
+}
+
+export namespace http {
+	
+	export class Client {
+	    Transport: any;
+	    Jar: any;
+	    Timeout: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Client(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Transport = source["Transport"];
+	        this.Jar = source["Jar"];
+	        this.Timeout = source["Timeout"];
+	    }
 	}
 
 }
@@ -512,6 +535,18 @@ export namespace service {
 	
 	    static createFrom(source: any = {}) {
 	        return new BackupService(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+	export class BangumiService {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new BangumiService(source);
 	    }
 	
 	    constructor(source: any = {}) {

@@ -48,7 +48,9 @@ export function SelectSaveDirectory():Promise<string>;
 
 export function SelectSaveFile():Promise<string>;
 
-export function SetBangumiService(arg1:service.bangumiAPI):Promise<void>;
+export function SetBangumiService(arg1:service.BangumiService):Promise<void>;
+
+export function SetEventEmitter(arg1:any):Promise<void>;
 
 export function SetTagService(arg1:service.TagService):Promise<void>;
 
