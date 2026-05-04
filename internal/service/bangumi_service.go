@@ -18,10 +18,10 @@ import (
 	"lunabox/internal/models"
 	"lunabox/internal/utils/imageutils"
 	"lunabox/internal/utils/metadata"
+	"lunabox/internal/version"
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -101,13 +101,11 @@ type BangumiService struct {
 
 func NewBangumiService() *BangumiService {
 	return &BangumiService{
-		httpClient: &http.Client{Timeout: bangumiHTTPTimeout},
-		emitEvent:  runtime.EventsEmit,
-		now:        time.Now,
-		clientID:   strings.TrimSpace(os.Getenv(bangumiOAuthClientIDEnv)),
-		clientSecret: strings.TrimSpace(
-			os.Getenv(bangumiOAuthClientSecretEnv),
-		),
+		httpClient:   &http.Client{Timeout: bangumiHTTPTimeout},
+		emitEvent:    runtime.EventsEmit,
+		now:          time.Now,
+		clientID:     strings.TrimSpace(version.BangumiOAuthClientID),
+		clientSecret: strings.TrimSpace(version.BangumiOAuthClientSecret),
 	}
 }
 
@@ -194,7 +192,7 @@ func (s *BangumiService) GetProfile() (vo.BangumiProfile, error) {
 
 func (s *BangumiService) StartAuth() (vo.BangumiAuthStatus, error) {
 	if strings.TrimSpace(s.clientID) == "" || strings.TrimSpace(s.clientSecret) == "" {
-		return vo.BangumiAuthStatus{}, fmt.Errorf("Bangumi OAuth 未配置，请设置 %s 和 %s", bangumiOAuthClientIDEnv, bangumiOAuthClientSecretEnv)
+		return vo.BangumiAuthStatus{}, fmt.Errorf("Bangumi OAuth 未配置，请在构建时通过 %s 和 %s 注入", bangumiOAuthClientIDEnv, bangumiOAuthClientSecretEnv)
 	}
 
 	session, err := newBangumiAuthSession()
@@ -396,7 +394,7 @@ func (s *BangumiService) refreshAccessTokenLocked(ctx context.Context) (string, 
 		return "", fmt.Errorf("Bangumi 未授权")
 	}
 	if strings.TrimSpace(s.clientID) == "" || strings.TrimSpace(s.clientSecret) == "" {
-		return "", fmt.Errorf("Bangumi OAuth 未配置，请设置 %s 和 %s", bangumiOAuthClientIDEnv, bangumiOAuthClientSecretEnv)
+		return "", fmt.Errorf("Bangumi OAuth 未配置，请在构建时通过 %s 和 %s 注入", bangumiOAuthClientIDEnv, bangumiOAuthClientSecretEnv)
 	}
 
 	form := url.Values{

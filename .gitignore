@@ -19,5 +19,7 @@ lunabox-docs
 .codex
 .agent
 .agents
+.env
+.env.build
 openspec
 .windsurf/

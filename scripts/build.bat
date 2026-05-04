@@ -4,6 +4,20 @@ REM Usage: build.bat [portable|installer|all] [version]
 
 setlocal enabledelayedexpansion
 
+set "BUILD_ENV_FILE="
+if exist ".env.build" set "BUILD_ENV_FILE=.env.build"
+if not defined BUILD_ENV_FILE if exist ".env" set "BUILD_ENV_FILE=.env"
+
+if defined BUILD_ENV_FILE (
+    for /f "usebackq tokens=1,* delims==" %%A in ("%BUILD_ENV_FILE%") do (
+        if /i "%%A"=="LUNABOX_BANGUMI_CLIENT_ID" if not defined LUNABOX_BANGUMI_CLIENT_ID set "LUNABOX_BANGUMI_CLIENT_ID=%%B"
+        if /i "%%A"=="LUNABOX_BANGUMI_CLIENT_SECRET" if not defined LUNABOX_BANGUMI_CLIENT_SECRET set "LUNABOX_BANGUMI_CLIENT_SECRET=%%B"
+    )
+)
+
+set "BANGUMI_CLIENT_ID_RAW=%LUNABOX_BANGUMI_CLIENT_ID%"
+set "BANGUMI_CLIENT_SECRET_RAW=%LUNABOX_BANGUMI_CLIENT_SECRET%"
+
 set "BUILD_MODE=%~1"
 if "%BUILD_MODE%"=="" set "BUILD_MODE=all"
 
@@ -26,11 +40,28 @@ for /f "delims=" %%i in ('git rev-parse --short HEAD 2^>nul') do set "GIT_COMMIT
 if not defined GIT_COMMIT set "GIT_COMMIT=unknown"
 
 REM Get build time
-for /f "tokens=*" %%i in ('powershell -command "Get-Date -Format 'yyyy-MM-dd HH:mm:ss'"') do set "BUILD_TIME=%%i"
+for /f "tokens=*" %%i in ('powershell -NoProfile -command "Get-Date -Format 'yyyy-MM-dd HH:mm:ss'"') do set "BUILD_TIME=%%i"
+
+set "LDFLAGS_BANGUMI="
+set "BANGUMI_OAUTH_STATUS=disabled"
+if defined BANGUMI_CLIENT_ID_RAW (
+    if not defined BANGUMI_CLIENT_SECRET_RAW (
+        echo ERROR: LUNABOX_BANGUMI_CLIENT_SECRET is missing.
+        exit /b 1
+    )
+    set "LDFLAGS_BANGUMI= -X 'lunabox/internal/version.BangumiOAuthClientID=!BANGUMI_CLIENT_ID_RAW!' -X 'lunabox/internal/version.BangumiOAuthClientSecret=!BANGUMI_CLIENT_SECRET_RAW!'"
+    set "BANGUMI_OAUTH_STATUS=enabled"
+)
+if not defined BANGUMI_CLIENT_ID_RAW (
+    if defined BANGUMI_CLIENT_SECRET_RAW (
+        echo ERROR: LUNABOX_BANGUMI_CLIENT_ID is missing.
+        exit /b 1
+    )
+)
 
 REM ldflags for build info injection
 REM -s: strip symbol table, -w: strip DWARF debug info (reduces binary size ~20-30%)
-set "LDFLAGS_BASE=-s -w -X 'lunabox/internal/version.Version=%VERSION%' -X 'lunabox/internal/version.GitCommit=%GIT_COMMIT%' -X 'lunabox/internal/version.BuildTime=%BUILD_TIME%'"
+set "LDFLAGS_BASE=-s -w -X 'lunabox/internal/version.Version=%VERSION%' -X 'lunabox/internal/version.GitCommit=%GIT_COMMIT%' -X 'lunabox/internal/version.BuildTime=%BUILD_TIME%'!LDFLAGS_BANGUMI!"
 set "LDFLAGS_PORTABLE=%LDFLAGS_BASE% -X 'lunabox/internal/version.BuildMode=portable'"
 set "LDFLAGS_INSTALLER=%LDFLAGS_BASE% -X 'lunabox/internal/version.BuildMode=installer'"
 
@@ -39,6 +70,8 @@ echo LunaBox Build Script
 echo Build Mode: %BUILD_MODE%
 echo Version: %VERSION%
 echo Commit: %GIT_COMMIT%
+if defined BUILD_ENV_FILE echo Build Env File: %BUILD_ENV_FILE%
+echo Bangumi OAuth Injection: !BANGUMI_OAUTH_STATUS!
 echo ========================================
 echo.
 
@@ -112,7 +145,7 @@ if exist "build\bin\lunabox-portable.exe" (
     echo   lunacli help >> "!TEMP_PKG_DIR!\README.txt"
     
     if exist "build\bin\LunaBox-Portable-%VERSION%.zip" del "build\bin\LunaBox-Portable-%VERSION%.zip"
-    powershell -Command "Compress-Archive -Path '!TEMP_PKG_DIR!' -DestinationPath 'build\bin\LunaBox-Portable-%VERSION%.zip'"
+    powershell -NoProfile -Command "Compress-Archive -Path '!TEMP_PKG_DIR!' -DestinationPath 'build\bin\LunaBox-Portable-%VERSION%.zip'"
     
     REM Clean up temp directory
     rd /s /q "!TEMP_PKG_DIR!"
