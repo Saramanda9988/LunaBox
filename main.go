@@ -333,6 +333,7 @@ func main() {
 	appLogger := applog.NewFileLogger(filepath.Join(logDir, "app.log"))
 
 	gameService := service.NewGameService()
+	bangumiService := service.NewBangumiService()
 	aiService := service.NewAiService()
 	aiStatsBuilder := service.NewAIStatsBuilder()
 	backupService := service.NewBackupService()
@@ -355,6 +356,7 @@ func main() {
 
 	bindServices := []interface{}{
 		gameService,
+		bangumiService,
 		aiService,
 		backupService,
 		cloudSyncService,
@@ -534,6 +536,7 @@ func main() {
 
 			downloadService.Init(ctx, db, config)
 			gameService.Init(ctx, db, config)
+			bangumiService.Init(ctx, db, config)
 			tagService.Init(ctx, db, config)
 			aiService.Init(ctx, db, config)
 			aiStatsBuilder.Init(ctx, db, config)
@@ -569,6 +572,8 @@ func main() {
 			startService.SetSessionService(sessionService)
 			downloadService.SetGameService(gameService)
 			gameService.SetTagService(tagService)
+			gameService.SetBangumiService(bangumiService)
+			importService.SetBangumiService(bangumiService)
 			importService.SetSessionService(sessionService)
 			mcpReadService.SetGameService(gameService)
 			mcpReadService.SetStartService(startService)

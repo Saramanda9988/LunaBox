@@ -28,16 +28,16 @@ import (
 )
 
 type GameService struct {
-	ctx        context.Context
-	db         *sql.DB
-	config     *appconf.AppConfig
-	tagService *TagService
+	ctx            context.Context
+	db             *sql.DB
+	config         *appconf.AppConfig
+	tagService     *TagService
+	bangumiService bangumiAPI
 }
 
 type metadataSearchSource struct {
-	getter metadata.Getter
-	source enums2.SourceType
-	token  string
+	source      enums2.SourceType
+	fetchByName func(string) (metadata.MetadataResult, error)
 }
 
 const metadataRefreshInterval = 300 * time.Millisecond
@@ -54,6 +54,10 @@ func (s *GameService) Init(ctx context.Context, db *sql.DB, config *appconf.AppC
 
 func (s *GameService) SetTagService(ts *TagService) {
 	s.tagService = ts
+}
+
+func (s *GameService) SetBangumiService(bangumiService bangumiAPI) {
+	s.bangumiService = bangumiService
 }
 
 func (s *GameService) SelectGameExecutable() (string, error) {
@@ -474,6 +478,11 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 }
 
 func (s *GameService) UpdateGame(game models.Game) error {
+	previousGame, err := s.getGameStatusSyncSnapshot(game.ID)
+	if err != nil {
+		return err
+	}
+
 	game.UpdatedAt = time.Now()
 
 	query := `UPDATE games SET 
@@ -534,6 +543,8 @@ func (s *GameService) UpdateGame(game models.Game) error {
 	if err := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityGame, game.ID); err != nil {
 		applog.LogWarningf(s.ctx, "UpdateGame: failed to clear game tombstone for %s: %v", game.ID, err)
 	}
+
+	s.pushBangumiStatusAfterLocalSave(previousGame, game)
 	return nil
 }
 
@@ -815,7 +826,7 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 		src := searchSource
 		go func() {
 			defer wg.Done()
-			result, _ := src.getter.FetchMetadataByName(name, src.token)
+			result, _ := src.fetchByName(name)
 			if result.Game != (models.Game{}) {
 				mu.Lock()
 				games = append(games, vo.GameMetadataFromWebVO{Source: src.source, Game: result.Game, Tags: result.Tags})
@@ -882,8 +893,7 @@ func (s *GameService) fetchMetadataResultByRequest(req vo.MetadataRequest) (meta
 func (s *GameService) fetchMetadataResultBySource(source enums2.SourceType, sourceID string) (metadata.MetadataResult, error) {
 	switch source {
 	case enums2.Bangumi:
-		getter := metadata.NewBangumiInfoGetter()
-		return getter.FetchMetadata(sourceID, s.config.BangumiAccessToken)
+		return s.fetchBangumiMetadataByID(sourceID)
 	case enums2.VNDB:
 		getter := metadata.NewVNDBInfoGetterWithLanguage(s.config.Language)
 		return getter.FetchMetadata(sourceID, s.config.VNDBAccessToken)
@@ -1092,7 +1102,207 @@ func (s *GameService) BatchUpdateStatus(ids []string, status string) error {
 	}
 	applog.LogInfof(s.ctx, "BatchUpdateStatus: updated %d games to status %s", rowsAffected, status)
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	s.pushBangumiStatusAfterBatch(ids, enums2.GameStatus(status))
+	return nil
+}
+
+func (s *GameService) getBangumiAccessToken() (string, error) {
+	if s.bangumiService != nil {
+		return s.bangumiService.getValidAccessToken(s.ctx)
+	}
+	if s.config == nil {
+		return "", fmt.Errorf("Bangumi 配置未初始化")
+	}
+
+	token := strings.TrimSpace(s.config.BangumiAccessToken)
+	if token == "" {
+		return "", fmt.Errorf("Bangumi 未授权")
+	}
+	return token, nil
+}
+
+func (s *GameService) refreshBangumiAccessToken() (string, error) {
+	if s.bangumiService == nil {
+		return "", fmt.Errorf("Bangumi 服务未初始化")
+	}
+	return s.bangumiService.refreshAccessToken(s.ctx)
+}
+
+func (s *GameService) fetchBangumiMetadataByID(sourceID string) (metadata.MetadataResult, error) {
+	getter := metadata.NewBangumiInfoGetter()
+
+	token, err := s.getBangumiAccessToken()
+	if err != nil {
+		return metadata.MetadataResult{}, err
+	}
+
+	result, err := getter.FetchMetadata(sourceID, token)
+	if err == nil || !metadata.IsBangumiUnauthorizedError(err) || s.bangumiService == nil {
+		return result, err
+	}
+
+	refreshedToken, refreshErr := s.refreshBangumiAccessToken()
+	if refreshErr != nil {
+		return metadata.MetadataResult{}, refreshErr
+	}
+
+	return getter.FetchMetadata(sourceID, refreshedToken)
+}
+
+func (s *GameService) fetchBangumiMetadataByName(name string) (metadata.MetadataResult, error) {
+	getter := metadata.NewBangumiInfoGetter()
+
+	token, err := s.getBangumiAccessToken()
+	if err != nil {
+		return metadata.MetadataResult{}, err
+	}
+
+	result, err := getter.FetchMetadataByName(name, token)
+	if err == nil || !metadata.IsBangumiUnauthorizedError(err) || s.bangumiService == nil {
+		return result, err
+	}
+
+	refreshedToken, refreshErr := s.refreshBangumiAccessToken()
+	if refreshErr != nil {
+		return metadata.MetadataResult{}, refreshErr
+	}
+
+	return getter.FetchMetadataByName(name, refreshedToken)
+}
+
+func (s *GameService) getGameStatusSyncSnapshot(gameID string) (models.Game, error) {
+	var snapshot models.Game
+	var sourceType string
+	var status string
+
+	err := s.db.QueryRowContext(s.ctx, `
+		SELECT id, name, COALESCE(status, 'not_started'), COALESCE(source_type, ''), COALESCE(source_id, '')
+		FROM games
+		WHERE id = ?
+	`, gameID).Scan(
+		&snapshot.ID,
+		&snapshot.Name,
+		&status,
+		&sourceType,
+		&snapshot.SourceID,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return models.Game{}, fmt.Errorf("game not found with id: %s", gameID)
+	}
+	if err != nil {
+		return models.Game{}, fmt.Errorf("failed to load game status snapshot: %w", err)
+	}
+
+	snapshot.Status = enums2.GameStatus(status)
+	snapshot.SourceType = enums2.SourceType(sourceType)
+	return snapshot, nil
+}
+
+func (s *GameService) listGamesForBangumiStatusPush(ids []string) ([]models.Game, error) {
+	ids = utils.UniqueNonEmptyStrings(ids)
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	placeholders := utils.BuildPlaceholders(len(ids))
+	args := make([]interface{}, 0, len(ids))
+	for _, id := range ids {
+		args = append(args, id)
+	}
+
+	rows, err := s.db.QueryContext(s.ctx, fmt.Sprintf(`
+		SELECT id, name, COALESCE(status, 'not_started'), COALESCE(source_type, ''), COALESCE(source_id, '')
+		FROM games
+		WHERE id IN (%s)
+	`, placeholders), args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list games for Bangumi status push: %w", err)
+	}
+	defer rows.Close()
+
+	games := make([]models.Game, 0, len(ids))
+	for rows.Next() {
+		var game models.Game
+		var sourceType string
+		var status string
+		if err := rows.Scan(&game.ID, &game.Name, &status, &sourceType, &game.SourceID); err != nil {
+			return nil, fmt.Errorf("failed to scan Bangumi status push game: %w", err)
+		}
+		game.Status = enums2.GameStatus(status)
+		game.SourceType = enums2.SourceType(sourceType)
+		games = append(games, game)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate Bangumi status push games: %w", err)
+	}
+
+	return games, nil
+}
+
+func (s *GameService) pushBangumiStatusAfterLocalSave(previousGame models.Game, updatedGame models.Game) {
+	if previousGame.Status == updatedGame.Status {
+		return
+	}
+	if s.bangumiService == nil {
+		return
+	}
+	if !s.bangumiService.isGameEligibleForStatusPush(updatedGame) {
+		return
+	}
+
+	if err := s.bangumiService.upsertSubjectCollectionStatus(s.ctx, strings.TrimSpace(updatedGame.SourceID), updatedGame.Status); err != nil {
+		s.handleBangumiStatusPushFailure(updatedGame, err)
+	}
+}
+
+func (s *GameService) pushBangumiStatusAfterBatch(ids []string, status enums2.GameStatus) {
+	if s.bangumiService == nil {
+		return
+	}
+
+	games, err := s.listGamesForBangumiStatusPush(ids)
+	if err != nil {
+		applog.LogWarningf(s.ctx, "pushBangumiStatusAfterBatch: failed to load games: %v", err)
+		return
+	}
+
+	for _, game := range games {
+		if !s.bangumiService.isGameEligibleForStatusPush(game) {
+			continue
+		}
+		if err := s.bangumiService.upsertSubjectCollectionStatus(s.ctx, strings.TrimSpace(game.SourceID), status); err != nil {
+			game.Status = status
+			s.handleBangumiStatusPushFailure(game, err)
+		}
+	}
+}
+
+func (s *GameService) handleBangumiStatusPushFailure(game models.Game, err error) {
+	applog.LogWarningf(
+		s.ctx,
+		"Bangumi status push failed for game %s (%s -> %s): %v",
+		game.Name,
+		game.SourceID,
+		game.Status,
+		err,
+	)
+
+	if s.ctx == nil {
+		return
+	}
+
+	emitRuntimeEvent(s.ctx, "bangumi:status-push-failed", vo.BangumiStatusPushFailureEvent{
+		GameID:      game.ID,
+		GameName:    game.Name,
+		SubjectID:   strings.TrimSpace(game.SourceID),
+		LocalStatus: string(game.Status),
+		Error:       err.Error(),
+	})
 }
 
 func (s *GameService) findGameIDBySource(source enums2.SourceType, sourceID string) (string, bool) {
@@ -1136,11 +1346,9 @@ func (s *GameService) findGameIDByPath(path string) (string, bool) {
 }
 
 func (s *GameService) getConfiguredMetadataSearchSources() []metadataSearchSource {
-	bangumiToken := ""
 	vndbToken := ""
 	language := ""
 	if s.config != nil {
-		bangumiToken = s.config.BangumiAccessToken
 		vndbToken = s.config.VNDBAccessToken
 		language = s.config.Language
 	}
@@ -1150,27 +1358,29 @@ func (s *GameService) getConfiguredMetadataSearchSources() []metadataSearchSourc
 		switch source {
 		case enums2.Bangumi:
 			sources = append(sources, metadataSearchSource{
-				getter: metadata.NewBangumiInfoGetter(),
-				source: enums2.Bangumi,
-				token:  bangumiToken,
+				source:      enums2.Bangumi,
+				fetchByName: s.fetchBangumiMetadataByName,
 			})
 		case enums2.VNDB:
 			sources = append(sources, metadataSearchSource{
-				getter: metadata.NewVNDBInfoGetterWithLanguage(language),
 				source: enums2.VNDB,
-				token:  vndbToken,
+				fetchByName: func(name string) (metadata.MetadataResult, error) {
+					return metadata.NewVNDBInfoGetterWithLanguage(language).FetchMetadataByName(name, vndbToken)
+				},
 			})
 		case enums2.Ymgal:
 			sources = append(sources, metadataSearchSource{
-				getter: metadata.NewYmgalInfoGetter(),
 				source: enums2.Ymgal,
-				token:  "",
+				fetchByName: func(name string) (metadata.MetadataResult, error) {
+					return metadata.NewYmgalInfoGetter().FetchMetadataByName(name, "")
+				},
 			})
 		case enums2.Steam:
 			sources = append(sources, metadataSearchSource{
-				getter: metadata.NewSteamInfoGetterWithLanguage(language),
 				source: enums2.Steam,
-				token:  "",
+				fetchByName: func(name string) (metadata.MetadataResult, error) {
+					return metadata.NewSteamInfoGetterWithLanguage(language).FetchMetadataByName(name, "")
+				},
 			})
 		}
 	}

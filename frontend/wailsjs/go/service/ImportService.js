@@ -62,6 +62,10 @@ export function SelectZipFile() {
   return window['go']['service']['ImportService']['SelectZipFile']();
 }
 
+export function SetBangumiService(arg1) {
+  return window['go']['service']['ImportService']['SetBangumiService'](arg1);
+}
+
 export function SetSessionService(arg1) {
   return window['go']['service']['ImportService']['SetSessionService'](arg1);
 }

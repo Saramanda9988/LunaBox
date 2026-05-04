@@ -96,6 +96,7 @@ function App() {
   useAppZoom({ config, patchLiveConfig });
   useAppRuntimeEffects({
     config,
+    refreshConfig: fetchConfig,
     refreshHomeData: fetchHomeData,
     setProcessSelectData,
     setInstallRequest,

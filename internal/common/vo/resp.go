@@ -30,6 +30,24 @@ type MetadataRefreshResult struct {
 	FailedGames  int `json:"failed_games"`
 }
 
+type BangumiAuthStatus struct {
+	Authorized           bool   `json:"authorized"`
+	NeedsReauthorization bool   `json:"needs_reauthorization"`
+	LegacyToken          bool   `json:"legacy_token"`
+	UserID               string `json:"user_id"`
+	Username             string `json:"username"`
+	AccessTokenExpiresAt string `json:"access_token_expires_at"`
+	LastError            string `json:"last_error"`
+}
+
+type BangumiStatusPushFailureEvent struct {
+	GameID      string `json:"game_id"`
+	GameName    string `json:"game_name"`
+	SubjectID   string `json:"subject_id"`
+	LocalStatus string `json:"local_status"`
+	Error       string `json:"error"`
+}
+
 // LastPlayedGame 上次游玩的游戏信息
 type LastPlayedGame struct {
 	Game           models.Game `json:"game"`

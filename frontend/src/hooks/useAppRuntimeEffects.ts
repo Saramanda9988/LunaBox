@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 
 import { useEffect } from "react";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 
 import type { appconf, vo } from "../../wailsjs/go/models";
 
@@ -20,8 +21,17 @@ export type QuitSyncRequest = {
   requestedAt: number;
 };
 
+type BangumiStatusPushFailureEvent = {
+  game_id?: string;
+  game_name?: string;
+  subject_id?: string;
+  local_status?: string;
+  error?: string;
+};
+
 type UseAppRuntimeEffectsOptions = {
   config: appconf.AppConfig | null;
+  refreshConfig: () => Promise<void>;
   refreshHomeData: () => Promise<void>;
   setProcessSelectData: Dispatch<SetStateAction<ProcessSelectData>>;
   setInstallRequest: Dispatch<SetStateAction<vo.InstallRequest | null>>;
@@ -30,11 +40,14 @@ type UseAppRuntimeEffectsOptions = {
 
 export function useAppRuntimeEffects({
   config,
+  refreshConfig,
   refreshHomeData,
   setProcessSelectData,
   setInstallRequest,
   setQuitSyncRequest,
 }: UseAppRuntimeEffectsOptions) {
+  const { t } = useTranslation();
+
   useEffect(() => {
     const unsubscribe = EventsOn(
       "process-select-required",
@@ -133,6 +146,39 @@ export function useAppRuntimeEffects({
 
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = EventsOn("bangumi:auth-status-changed", () => {
+      void refreshConfig();
+    });
+
+    return unsubscribe;
+  }, [refreshConfig]);
+
+  useEffect(() => {
+    const unsubscribe = EventsOn(
+      "bangumi:status-push-failed",
+      (payload?: BangumiStatusPushFailureEvent) => {
+        const gameName
+          = payload?.game_name?.trim()
+            || t("settings.basic.bangumiStatusPushFailedUnknownGame");
+        const error
+          = payload?.error?.trim()
+            || t("settings.basic.bangumiStatusPushFailedUnknownReason");
+        toast.error(
+          t("settings.basic.bangumiStatusPushFailed", {
+            game: gameName,
+            error,
+          }),
+          {
+            id: `bangumi-status-push-failed-${payload?.game_id || "unknown"}`,
+          },
+        );
+      },
+    );
+
+    return unsubscribe;
+  }, [t]);
 
   useEffect(() => {
     const unsubscribe = EventsOn("app:main-window-shown", () => {

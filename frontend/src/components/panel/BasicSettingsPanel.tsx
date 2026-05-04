@@ -1,6 +1,17 @@
-import type { appconf } from "../../../wailsjs/go/models";
+import type { appconf, vo } from "../../../wailsjs/go/models";
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { appZoomOptions } from "../../consts/options";
+import {
+  disconnectBangumiAuthorization,
+  fetchBangumiAuthStatus,
+  mergeBangumiAuthStatus,
+  startBangumiAuthorization,
+} from "../../utils/bangumiAuth";
+import { formatLocalDateTime } from "../../utils/time";
+import { ConfirmModal } from "../modal/ConfirmModal";
+import { BetterButton } from "../ui/better/BetterButton";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 
@@ -13,14 +24,23 @@ interface BasicSettingsProps {
   formData: appconf.AppConfig;
   onChange: (data: appconf.AppConfig) => void;
   onZoomChange: (zoomFactor: number) => void;
+  onConfigRefresh: () => Promise<void>;
 }
 
 export function BasicSettingsPanel({
   formData,
   onChange,
   onZoomChange,
+  onConfigRefresh,
 }: BasicSettingsProps) {
   const { t } = useTranslation();
+  const [bangumiSnapshot, setBangumiSnapshot]
+    = useState<vo.BangumiAuthStatus | null>(null);
+  const [isBangumiStatusLoading, setIsBangumiStatusLoading] = useState(false);
+  const [isBangumiAuthorizing, setIsBangumiAuthorizing] = useState(false);
+  const [isBangumiDisconnecting, setIsBangumiDisconnecting] = useState(false);
+  const [showBangumiDisconnectConfirm, setShowBangumiDisconnectConfirm]
+    = useState(false);
 
   const COMMON_TIMEZONES: BetterSelectOption[] = [
     { value: "Asia/Shanghai", label: "China Standard Time (UTC+8)" },
@@ -45,6 +65,35 @@ export function BasicSettingsPanel({
     { value: "UTC", label: "Coordinated Universal Time (UTC)" },
   ];
 
+  const bangumiAuth = mergeBangumiAuthStatus(formData, bangumiSnapshot);
+  const bangumiIdentity
+    = bangumiAuth.state === "unauthorized" && bangumiAuth.identity === "Bangumi"
+      ? t("settings.basic.bangumiAuthUnauthorized")
+      : bangumiAuth.identity;
+
+  const refreshBangumiStatus = async () => {
+    setIsBangumiStatusLoading(true);
+    try {
+      const nextSnapshot = await fetchBangumiAuthStatus();
+      setBangumiSnapshot(nextSnapshot);
+    }
+    catch (err) {
+      console.error("Failed to fetch Bangumi auth status:", err);
+      setBangumiSnapshot(null);
+    }
+    finally {
+      setIsBangumiStatusLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const loadBangumiStatus = async () => {
+      await refreshBangumiStatus();
+    };
+
+    void loadBangumiStatus();
+  }, []);
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
@@ -54,22 +103,137 @@ export function BasicSettingsPanel({
     onChange({ ...formData, [name]: newValue } as appconf.AppConfig);
   };
 
+  const handleBangumiAuthorize = async () => {
+    setIsBangumiAuthorizing(true);
+    try {
+      await startBangumiAuthorization();
+      await onConfigRefresh();
+      await refreshBangumiStatus();
+      toast.success(t("settings.basic.bangumiAuthSuccess"));
+    }
+    catch (err) {
+      toast.error(
+        t("settings.basic.bangumiAuthActionFailed", {
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+      await refreshBangumiStatus();
+    }
+    finally {
+      setIsBangumiAuthorizing(false);
+    }
+  };
+
+  const handleBangumiDisconnect = async () => {
+    setIsBangumiDisconnecting(true);
+    try {
+      await disconnectBangumiAuthorization();
+      await onConfigRefresh();
+      await refreshBangumiStatus();
+      toast.success(t("settings.basic.bangumiDisconnectSuccess"));
+    }
+    catch (err) {
+      toast.error(
+        t("settings.basic.bangumiAuthActionFailed", {
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
+    finally {
+      setIsBangumiDisconnecting(false);
+    }
+  };
+
   return (
     <>
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-          Bangumi Access Token
-        </label>
-        <input
-          type="text"
-          name="access_token"
-          value={formData.access_token || ""}
-          onChange={handleChange}
-          className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
-        />
-        <p className="text-xs text-brand-500 dark:text-brand-400">
-          {t("settings.basic.bangumiTokenHint")}
-        </p>
+        <div className="block text-sm font-semibold text-brand-700 dark:text-brand-300">
+          {t("settings.basic.bangumiSectionLabel")}
+        </div>
+        <div className="glass-panel space-y-4 rounded-xl border border-brand-200 bg-brand-100/70 p-4 dark:border-brand-700 dark:bg-brand-800/70">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="i-mdi-brightness-7 text-lg text-brand-500 dark:text-brand-400" />
+                <div className="text-sm font-medium text-brand-700 dark:text-brand-300">
+                  Bangumi
+                </div>
+                <span
+                  className={[
+                    "rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide",
+                    bangumiAuth.state === "authorized"
+                      ? "bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-300"
+                      : bangumiAuth.state === "needs_reauth"
+                        ? "bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-300"
+                        : "bg-brand-200 text-brand-700 dark:bg-brand-700 dark:text-brand-300",
+                  ].join(" ")}
+                >
+                  {bangumiAuth.state === "authorized"
+                    ? t("settings.basic.bangumiAuthAuthorized")
+                    : bangumiAuth.state === "needs_reauth"
+                      ? t("settings.basic.bangumiAuthNeedsReauth")
+                      : t("settings.basic.bangumiAuthUnauthorized")}
+                </span>
+                {isBangumiStatusLoading && (
+                  <span className="i-mdi-loading animate-spin text-brand-400" />
+                )}
+              </div>
+              <p className="text-xs text-brand-500 dark:text-brand-400">
+                {t("settings.basic.bangumiAuthHint")}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2 rounded-lg border border-brand-200 bg-white/60 p-3 dark:border-brand-700 dark:bg-brand-900/20">
+            <div className="text-xs text-brand-500 dark:text-brand-400">
+              {t("settings.basic.bangumiAuthIdentityLabel")}
+            </div>
+            <div className="text-sm font-medium text-brand-800 dark:text-brand-200">
+              {bangumiIdentity}
+            </div>
+            {bangumiAuth.expiresAt && (
+              <div className="text-xs text-brand-500 dark:text-brand-400">
+                {t("settings.basic.bangumiAuthExpiresLabel")}
+                {": "}
+                {formatLocalDateTime(bangumiAuth.expiresAt)}
+              </div>
+            )}
+            {bangumiAuth.lastError && (
+              <div className="rounded-md border border-error-200 bg-error-50 px-3 py-2 text-xs text-error-700 dark:border-error-800 dark:bg-error-950/30 dark:text-error-300">
+                {t("settings.basic.bangumiAuthLastErrorLabel")}
+                {": "}
+                {bangumiAuth.lastError}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <BetterButton
+              variant="primary"
+              icon="i-mdi-account-key-outline"
+              isLoading={isBangumiAuthorizing}
+              onClick={handleBangumiAuthorize}
+            >
+              {bangumiAuth.state === "authorized"
+                ? t("settings.basic.bangumiReauthorize")
+                : t("settings.basic.bangumiAuthorize")}
+            </BetterButton>
+            {bangumiAuth.state !== "unauthorized" && (
+              <BetterButton
+                variant="danger"
+                icon="i-mdi-link-off"
+                isLoading={isBangumiDisconnecting}
+                onClick={() => setShowBangumiDisconnectConfirm(true)}
+              >
+                {t("settings.basic.bangumiDisconnect")}
+              </BetterButton>
+            )}
+          </div>
+
+          <p className="text-xs text-brand-500 dark:text-brand-400">
+            {t("settings.basic.bangumiAuthReconnectHint")}
+          </p>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -187,6 +351,18 @@ export function BasicSettingsPanel({
           />
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showBangumiDisconnectConfirm}
+        title={t("settings.basic.bangumiDisconnectConfirmTitle")}
+        message={t("settings.basic.bangumiDisconnectConfirmMsg")}
+        confirmText={t("settings.basic.bangumiDisconnect")}
+        type="danger"
+        onClose={() => setShowBangumiDisconnectConfirm(false)}
+        onConfirm={() => {
+          void handleBangumiDisconnect();
+        }}
+      />
     </>
   );
 }

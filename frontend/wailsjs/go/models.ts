@@ -2,6 +2,11 @@ export namespace appconf {
 	
 	export class AppConfig {
 	    access_token?: string;
+	    bangumi_refresh_token?: string;
+	    bangumi_token_expires_at?: string;
+	    bangumi_authorized_user_id?: string;
+	    bangumi_authorized_username?: string;
+	    bangumi_auth_error?: string;
 	    vndb_access_token?: string;
 	    metadata_sources?: string[];
 	    theme: string;
@@ -80,6 +85,11 @@ export namespace appconf {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.access_token = source["access_token"];
+	        this.bangumi_refresh_token = source["bangumi_refresh_token"];
+	        this.bangumi_token_expires_at = source["bangumi_token_expires_at"];
+	        this.bangumi_authorized_user_id = source["bangumi_authorized_user_id"];
+	        this.bangumi_authorized_username = source["bangumi_authorized_username"];
+	        this.bangumi_auth_error = source["bangumi_auth_error"];
 	        this.vndb_access_token = source["vndb_access_token"];
 	        this.metadata_sources = source["metadata_sources"];
 	        this.theme = source["theme"];
@@ -157,6 +167,13 @@ export namespace appconf {
 
 export namespace enums {
 	
+	export enum SourceType {
+	    LOCAL = "local",
+	    BANGUMI = "bangumi",
+	    VNDB = "vndb",
+	    YMGAL = "ymgal",
+	    STEAM = "steam",
+	}
 	export enum Period {
 	    DAY = "day",
 	    WEEK = "week",
@@ -173,13 +190,6 @@ export namespace enums {
 	    PLAYING = "playing",
 	    COMPLETED = "completed",
 	    ON_HOLD = "on_hold",
-	}
-	export enum SourceType {
-	    LOCAL = "local",
-	    BANGUMI = "bangumi",
-	    VNDB = "vndb",
-	    YMGAL = "ymgal",
-	    STEAM = "steam",
 	}
 
 }
@@ -766,6 +776,30 @@ export namespace vo {
 	        this.summary = source["summary"];
 	        this.dimension = source["dimension"];
 	        this.web_search_used = source["web_search_used"];
+	    }
+	}
+	export class BangumiAuthStatus {
+	    authorized: boolean;
+	    needs_reauthorization: boolean;
+	    legacy_token: boolean;
+	    user_id: string;
+	    username: string;
+	    access_token_expires_at: string;
+	    last_error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BangumiAuthStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.authorized = source["authorized"];
+	        this.needs_reauthorization = source["needs_reauthorization"];
+	        this.legacy_token = source["legacy_token"];
+	        this.user_id = source["user_id"];
+	        this.username = source["username"];
+	        this.access_token_expires_at = source["access_token_expires_at"];
+	        this.last_error = source["last_error"];
 	    }
 	}
 	export class BatchImportCandidate {

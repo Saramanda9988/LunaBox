@@ -1,0 +1,704 @@
+package service
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/subtle"
+	"database/sql"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"html"
+	"io"
+	"lunabox/internal/appconf"
+	"lunabox/internal/applog"
+	"lunabox/internal/common/enums"
+	"lunabox/internal/common/vo"
+	"lunabox/internal/models"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+)
+
+const (
+	bangumiOAuthAuthorizeURL   = "https://bgm.tv/oauth/authorize"
+	bangumiOAuthTokenURL       = "https://bgm.tv/oauth/access_token"
+	bangumiCurrentUserURL      = "https://api.bgm.tv/v0/me"
+	bangumiCollectionAPIFormat = "https://api.bgm.tv/v0/users/-/collections/%s"
+	bangumiUserAgent           = "LunaBox/1.0"
+
+	bangumiOAuthClientIDEnv     = "LUNABOX_BANGUMI_CLIENT_ID"
+	bangumiOAuthClientSecretEnv = "LUNABOX_BANGUMI_CLIENT_SECRET"
+
+	bangumiOAuthCallbackPort = 23679
+	bangumiOAuthCallbackPath = "/callback"
+	bangumiOAuthRedirectURI  = "http://127.0.0.1:23679/callback"
+
+	bangumiAuthTimeout       = 5 * time.Minute
+	bangumiTokenRefreshSkew  = 1 * time.Minute
+	bangumiHTTPTimeout       = 30 * time.Second
+	bangumiMetadataEventName = "bangumi:auth-status-changed"
+)
+
+var errBangumiUnauthorized = errors.New("bangumi unauthorized")
+
+type bangumiAPI interface {
+	getValidAccessToken(ctx context.Context) (string, error)
+	refreshAccessToken(ctx context.Context) (string, error)
+	upsertSubjectCollectionStatus(ctx context.Context, subjectID string, status enums.GameStatus) error
+	isGameEligibleForStatusPush(game models.Game) bool
+}
+
+type bangumiAuthSession struct {
+	resultChan  chan bangumiAuthResult
+	server      *http.Server
+	listener    net.Listener
+	state       string
+	redirectURI string
+}
+
+type bangumiAuthResult struct {
+	Code  string
+	Error string
+}
+
+type bangumiTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int    `json:"expires_in"`
+	TokenType    string `json:"token_type"`
+	UserID       int    `json:"user_id"`
+	Error        string `json:"error,omitempty"`
+	ErrorDesc    string `json:"error_description,omitempty"`
+}
+
+type bangumiCurrentUser struct {
+	ID       int    `json:"id"`
+	Username string `json:"username"`
+	Nickname string `json:"nickname"`
+}
+
+type BangumiService struct {
+	ctx          context.Context
+	db           *sql.DB
+	config       *appconf.AppConfig
+	httpClient   *http.Client
+	openURL      func(context.Context, string) error
+	now          func() time.Time
+	clientID     string
+	clientSecret string
+	mu           sync.Mutex
+}
+
+func NewBangumiService() *BangumiService {
+	return &BangumiService{
+		httpClient: &http.Client{Timeout: bangumiHTTPTimeout},
+		now:        time.Now,
+		clientID:   strings.TrimSpace(os.Getenv(bangumiOAuthClientIDEnv)),
+		clientSecret: strings.TrimSpace(
+			os.Getenv(bangumiOAuthClientSecretEnv),
+		),
+	}
+}
+
+func (s *BangumiService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
+	s.ctx = ctx
+	s.db = db
+	s.config = config
+	if s.httpClient == nil {
+		s.httpClient = &http.Client{Timeout: bangumiHTTPTimeout}
+	}
+	if s.now == nil {
+		s.now = time.Now
+	}
+	if s.openURL == nil {
+		s.openURL = func(browserCtx context.Context, targetURL string) error {
+			runtime.BrowserOpenURL(browserCtx, targetURL)
+			return nil
+		}
+	}
+}
+
+func (s *BangumiService) GetAuthStatus() (vo.BangumiAuthStatus, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.buildAuthStatusLocked(), nil
+}
+
+func (s *BangumiService) StartAuth() (vo.BangumiAuthStatus, error) {
+	if strings.TrimSpace(s.clientID) == "" || strings.TrimSpace(s.clientSecret) == "" {
+		return vo.BangumiAuthStatus{}, fmt.Errorf("Bangumi OAuth 未配置，请设置 %s 和 %s", bangumiOAuthClientIDEnv, bangumiOAuthClientSecretEnv)
+	}
+
+	session, err := newBangumiAuthSession()
+	if err != nil {
+		return vo.BangumiAuthStatus{}, err
+	}
+	defer session.shutdown()
+
+	authURL := buildBangumiAuthURL(s.clientID, session.redirectURI, session.state)
+	if err := s.openURL(s.ctx, authURL); err != nil {
+		return vo.BangumiAuthStatus{}, fmt.Errorf("打开 Bangumi 授权页面失败: %w", err)
+	}
+
+	timer := time.NewTimer(bangumiAuthTimeout)
+	defer timer.Stop()
+
+	select {
+	case result := <-session.resultChan:
+		if result.Error != "" {
+			return vo.BangumiAuthStatus{}, fmt.Errorf("Bangumi 授权失败: %s", result.Error)
+		}
+
+		tokenResp, err := s.exchangeAuthorizationCode(s.ctx, result.Code, session.redirectURI, session.state)
+		if err != nil {
+			return vo.BangumiAuthStatus{}, err
+		}
+		user, err := s.fetchCurrentUser(s.ctx, tokenResp.AccessToken)
+		if err != nil {
+			return vo.BangumiAuthStatus{}, fmt.Errorf("获取 Bangumi 当前用户信息失败: %w", err)
+		}
+
+		s.mu.Lock()
+		status, persistErr := s.persistAuthorizedStateLocked(tokenResp, user)
+		s.mu.Unlock()
+		if persistErr != nil {
+			return vo.BangumiAuthStatus{}, persistErr
+		}
+
+		s.emitAuthStatusChanged(status)
+		applog.LogInfof(s.ctx, "Bangumi OAuth authorized for user %s (%d)", user.Username, user.ID)
+		return status, nil
+	case <-timer.C:
+		return vo.BangumiAuthStatus{}, fmt.Errorf("Bangumi 授权超时")
+	case <-s.resolveContext(s.ctx).Done():
+		return vo.BangumiAuthStatus{}, s.resolveContext(s.ctx).Err()
+	}
+}
+
+func (s *BangumiService) Disconnect() (vo.BangumiAuthStatus, error) {
+	s.mu.Lock()
+	status, err := s.clearAuthorizationLocked(true, "")
+	s.mu.Unlock()
+	if err != nil {
+		return vo.BangumiAuthStatus{}, err
+	}
+
+	s.emitAuthStatusChanged(status)
+	applog.LogInfof(s.ctx, "Bangumi OAuth disconnected locally")
+	return status, nil
+}
+
+func (s *BangumiService) getValidAccessToken(ctx context.Context) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.config == nil {
+		return "", fmt.Errorf("Bangumi 配置未初始化")
+	}
+
+	accessToken := strings.TrimSpace(s.config.BangumiAccessToken)
+	refreshToken := strings.TrimSpace(s.config.BangumiRefreshToken)
+	if accessToken != "" && (refreshToken == "" || !s.shouldRefreshTokenLocked()) {
+		return accessToken, nil
+	}
+	if refreshToken == "" {
+		return "", fmt.Errorf("Bangumi 未授权")
+	}
+
+	return s.refreshAccessTokenLocked(ctx)
+}
+
+func (s *BangumiService) refreshAccessToken(ctx context.Context) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.refreshAccessTokenLocked(ctx)
+}
+
+func (s *BangumiService) upsertSubjectCollectionStatus(ctx context.Context, subjectID string, status enums.GameStatus) error {
+	collectionType, ok := mapGameStatusToBangumiCollectionType(status)
+	if !ok {
+		return fmt.Errorf("不支持同步的 Bangumi 状态: %s", status)
+	}
+
+	token, err := s.getValidAccessToken(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = s.postSubjectCollection(ctx, subjectID, token, collectionType)
+	if !errors.Is(err, errBangumiUnauthorized) {
+		return err
+	}
+
+	refreshedToken, refreshErr := s.refreshAccessToken(ctx)
+	if refreshErr != nil {
+		return refreshErr
+	}
+
+	return s.postSubjectCollection(ctx, subjectID, refreshedToken, collectionType)
+}
+
+func (s *BangumiService) isGameEligibleForStatusPush(game models.Game) bool {
+	return game.SourceType == enums.Bangumi && strings.TrimSpace(game.SourceID) != ""
+}
+
+func (s *BangumiService) shouldRefreshTokenLocked() bool {
+	if s.config == nil {
+		return false
+	}
+
+	expiresAtRaw := strings.TrimSpace(s.config.BangumiTokenExpiresAt)
+	if expiresAtRaw == "" {
+		return strings.TrimSpace(s.config.BangumiRefreshToken) != ""
+	}
+
+	expiresAt, err := time.Parse(time.RFC3339, expiresAtRaw)
+	if err != nil {
+		return strings.TrimSpace(s.config.BangumiRefreshToken) != ""
+	}
+
+	return !s.now().Add(bangumiTokenRefreshSkew).Before(expiresAt)
+}
+
+func (s *BangumiService) refreshAccessTokenLocked(ctx context.Context) (string, error) {
+	if s.config == nil {
+		return "", fmt.Errorf("Bangumi 配置未初始化")
+	}
+
+	refreshToken := strings.TrimSpace(s.config.BangumiRefreshToken)
+	if refreshToken == "" {
+		if strings.TrimSpace(s.config.BangumiAccessToken) != "" {
+			status, clearErr := s.clearAuthorizationLocked(false, "Bangumi 授权已失效，请重新授权")
+			if clearErr == nil {
+				s.emitAuthStatusChanged(status)
+			}
+		}
+		return "", fmt.Errorf("Bangumi 未授权")
+	}
+	if strings.TrimSpace(s.clientID) == "" || strings.TrimSpace(s.clientSecret) == "" {
+		return "", fmt.Errorf("Bangumi OAuth 未配置，请设置 %s 和 %s", bangumiOAuthClientIDEnv, bangumiOAuthClientSecretEnv)
+	}
+
+	form := url.Values{
+		"grant_type":    {"refresh_token"},
+		"client_id":     {s.clientID},
+		"client_secret": {s.clientSecret},
+		"refresh_token": {refreshToken},
+		"redirect_uri":  {bangumiOAuthRedirectURI},
+	}
+
+	req, err := http.NewRequestWithContext(s.resolveContext(ctx), http.MethodPost, bangumiOAuthTokenURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", fmt.Errorf("创建 Bangumi refresh 请求失败: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", bangumiUserAgent)
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("刷新 Bangumi access token 失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("读取 Bangumi refresh 响应失败: %w", err)
+	}
+
+	var tokenResp bangumiTokenResponse
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return "", fmt.Errorf("解析 Bangumi refresh 响应失败: %w", err)
+	}
+
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusBadRequest || tokenResp.Error != "" {
+		message := "Bangumi 授权已失效，请重新授权"
+		if tokenResp.ErrorDesc != "" {
+			message = tokenResp.ErrorDesc
+		} else if tokenResp.Error != "" {
+			message = tokenResp.Error
+		}
+		status, clearErr := s.clearAuthorizationLocked(false, message)
+		if clearErr == nil {
+			s.emitAuthStatusChanged(status)
+		}
+		if tokenResp.Error != "" {
+			return "", fmt.Errorf("Bangumi refresh token 无效: %s", tokenResp.ErrorDesc)
+		}
+		return "", fmt.Errorf("Bangumi refresh token 无效，HTTP %d", resp.StatusCode)
+	}
+
+	if resp.StatusCode >= http.StatusBadRequest {
+		return "", fmt.Errorf("Bangumi refresh 请求失败，HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	if strings.TrimSpace(tokenResp.AccessToken) == "" {
+		return "", fmt.Errorf("Bangumi refresh 未返回 access token")
+	}
+
+	expiresAt := s.now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+	s.config.BangumiAccessToken = strings.TrimSpace(tokenResp.AccessToken)
+	if strings.TrimSpace(tokenResp.RefreshToken) != "" {
+		s.config.BangumiRefreshToken = strings.TrimSpace(tokenResp.RefreshToken)
+	}
+	s.config.BangumiTokenExpiresAt = expiresAt.Format(time.RFC3339)
+	s.config.BangumiAuthError = ""
+	appconf.SanitizeBangumiOAuthConfig(s.config)
+
+	if err := appconf.SaveConfig(s.config); err != nil {
+		return "", fmt.Errorf("保存 Bangumi 刷新后配置失败: %w", err)
+	}
+
+	status := s.buildAuthStatusLocked()
+	s.emitAuthStatusChanged(status)
+	applog.LogInfof(s.ctx, "Bangumi access token refreshed successfully")
+	return s.config.BangumiAccessToken, nil
+}
+
+func (s *BangumiService) buildAuthStatusLocked() vo.BangumiAuthStatus {
+	if s.config == nil {
+		return vo.BangumiAuthStatus{}
+	}
+
+	accessToken := strings.TrimSpace(s.config.BangumiAccessToken)
+	refreshToken := strings.TrimSpace(s.config.BangumiRefreshToken)
+	authError := strings.TrimSpace(s.config.BangumiAuthError)
+
+	return vo.BangumiAuthStatus{
+		Authorized:           accessToken != "" || refreshToken != "",
+		NeedsReauthorization: authError != "",
+		LegacyToken:          accessToken != "" && refreshToken == "",
+		UserID:               strings.TrimSpace(s.config.BangumiAuthorizedUserID),
+		Username:             strings.TrimSpace(s.config.BangumiAuthorizedUsername),
+		AccessTokenExpiresAt: strings.TrimSpace(s.config.BangumiTokenExpiresAt),
+		LastError:            authError,
+	}
+}
+
+func (s *BangumiService) persistAuthorizedStateLocked(tokenResp *bangumiTokenResponse, user *bangumiCurrentUser) (vo.BangumiAuthStatus, error) {
+	if s.config == nil {
+		return vo.BangumiAuthStatus{}, fmt.Errorf("Bangumi 配置未初始化")
+	}
+
+	expiresAt := s.now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+	s.config.BangumiAccessToken = strings.TrimSpace(tokenResp.AccessToken)
+	s.config.BangumiRefreshToken = strings.TrimSpace(tokenResp.RefreshToken)
+	s.config.BangumiTokenExpiresAt = expiresAt.Format(time.RFC3339)
+	s.config.BangumiAuthorizedUserID = strconv.Itoa(user.ID)
+	s.config.BangumiAuthorizedUsername = strings.TrimSpace(user.Username)
+	s.config.BangumiAuthError = ""
+	appconf.SanitizeBangumiOAuthConfig(s.config)
+
+	if err := appconf.SaveConfig(s.config); err != nil {
+		return vo.BangumiAuthStatus{}, fmt.Errorf("保存 Bangumi 授权配置失败: %w", err)
+	}
+
+	return s.buildAuthStatusLocked(), nil
+}
+
+func (s *BangumiService) clearAuthorizationLocked(clearIdentity bool, reason string) (vo.BangumiAuthStatus, error) {
+	if s.config == nil {
+		return vo.BangumiAuthStatus{}, fmt.Errorf("Bangumi 配置未初始化")
+	}
+
+	s.config.BangumiAccessToken = ""
+	s.config.BangumiRefreshToken = ""
+	s.config.BangumiTokenExpiresAt = ""
+	s.config.BangumiAuthError = strings.TrimSpace(reason)
+	if clearIdentity {
+		s.config.BangumiAuthorizedUserID = ""
+		s.config.BangumiAuthorizedUsername = ""
+	}
+	appconf.SanitizeBangumiOAuthConfig(s.config)
+
+	if err := appconf.SaveConfig(s.config); err != nil {
+		return vo.BangumiAuthStatus{}, fmt.Errorf("保存 Bangumi 配置失败: %w", err)
+	}
+
+	return s.buildAuthStatusLocked(), nil
+}
+
+func (s *BangumiService) exchangeAuthorizationCode(ctx context.Context, code, redirectURI, state string) (*bangumiTokenResponse, error) {
+	form := url.Values{
+		"grant_type":    {"authorization_code"},
+		"client_id":     {s.clientID},
+		"client_secret": {s.clientSecret},
+		"code":          {code},
+		"redirect_uri":  {redirectURI},
+	}
+	if state != "" {
+		form.Set("state", state)
+	}
+
+	req, err := http.NewRequestWithContext(s.resolveContext(ctx), http.MethodPost, bangumiOAuthTokenURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("创建 Bangumi token 请求失败: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", bangumiUserAgent)
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Bangumi token 交换失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("读取 Bangumi token 响应失败: %w", err)
+	}
+
+	var tokenResp bangumiTokenResponse
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return nil, fmt.Errorf("解析 Bangumi token 响应失败: %w", err)
+	}
+	if tokenResp.Error != "" {
+		return nil, fmt.Errorf("Bangumi OAuth 错误 %s: %s", tokenResp.Error, tokenResp.ErrorDesc)
+	}
+	if resp.StatusCode >= http.StatusBadRequest {
+		return nil, fmt.Errorf("Bangumi token 交换失败，HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	if strings.TrimSpace(tokenResp.AccessToken) == "" || strings.TrimSpace(tokenResp.RefreshToken) == "" {
+		return nil, fmt.Errorf("Bangumi token 响应缺少必要字段")
+	}
+
+	return &tokenResp, nil
+}
+
+func (s *BangumiService) fetchCurrentUser(ctx context.Context, accessToken string) (*bangumiCurrentUser, error) {
+	req, err := http.NewRequestWithContext(s.resolveContext(ctx), http.MethodGet, bangumiCurrentUserURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("创建 Bangumi 当前用户请求失败: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("User-Agent", bangumiUserAgent)
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("请求 Bangumi 当前用户信息失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("读取 Bangumi 当前用户响应失败: %w", err)
+	}
+	if resp.StatusCode >= http.StatusBadRequest {
+		return nil, fmt.Errorf("Bangumi 当前用户请求失败，HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	var user bangumiCurrentUser
+	if err := json.Unmarshal(body, &user); err != nil {
+		return nil, fmt.Errorf("解析 Bangumi 当前用户响应失败: %w", err)
+	}
+	if strings.TrimSpace(user.Username) == "" {
+		return nil, fmt.Errorf("Bangumi 当前用户响应缺少 username")
+	}
+	return &user, nil
+}
+
+func (s *BangumiService) postSubjectCollection(ctx context.Context, subjectID, accessToken, collectionType string) error {
+	payloadBytes, err := json.Marshal(map[string]string{
+		"type": collectionType,
+	})
+	if err != nil {
+		return fmt.Errorf("编码 Bangumi 收藏请求失败: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(
+		s.resolveContext(ctx),
+		http.MethodPost,
+		fmt.Sprintf(bangumiCollectionAPIFormat, subjectID),
+		strings.NewReader(string(payloadBytes)),
+	)
+	if err != nil {
+		return fmt.Errorf("创建 Bangumi 收藏请求失败: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("User-Agent", bangumiUserAgent)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("请求 Bangumi 收藏接口失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("%w: %s", errBangumiUnauthorized, strings.TrimSpace(string(body)))
+	}
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("Bangumi 收藏接口返回 HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	return nil
+}
+
+func (s *BangumiService) emitAuthStatusChanged(status vo.BangumiAuthStatus) {
+	if s.ctx == nil {
+		return
+	}
+	emitRuntimeEvent(s.ctx, bangumiMetadataEventName, status)
+}
+
+func (s *BangumiService) resolveContext(ctx context.Context) context.Context {
+	if ctx != nil {
+		return ctx
+	}
+	if s.ctx != nil {
+		return s.ctx
+	}
+	return context.Background()
+}
+
+func mapGameStatusToBangumiCollectionType(status enums.GameStatus) (string, bool) {
+	switch status {
+	case enums.StatusNotStarted:
+		return "wish", true
+	case enums.StatusPlaying:
+		return "doing", true
+	case enums.StatusCompleted:
+		return "done", true
+	case enums.StatusOnHold:
+		return "on_hold", true
+	default:
+		return "", false
+	}
+}
+
+func buildBangumiAuthURL(clientID, redirectURI, state string) string {
+	params := url.Values{
+		"client_id":     {clientID},
+		"response_type": {"code"},
+		"redirect_uri":  {redirectURI},
+	}
+	if state != "" {
+		params.Set("state", state)
+	}
+
+	return bangumiOAuthAuthorizeURL + "?" + params.Encode()
+}
+
+func newBangumiAuthSession() (*bangumiAuthSession, error) {
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", bangumiOAuthCallbackPort))
+	if err != nil {
+		return nil, fmt.Errorf("无法启动 Bangumi 本地回调服务: %w", err)
+	}
+
+	state, err := generateBangumiOAuthState()
+	if err != nil {
+		_ = listener.Close()
+		return nil, fmt.Errorf("生成 Bangumi OAuth state 失败: %w", err)
+	}
+
+	session := &bangumiAuthSession{
+		resultChan:  make(chan bangumiAuthResult, 1),
+		listener:    listener,
+		state:       state,
+		redirectURI: bangumiOAuthRedirectURI,
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc(bangumiOAuthCallbackPath, session.handleOAuthCallback)
+	session.server = &http.Server{
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
+	go func() {
+		if serveErr := session.server.Serve(listener); serveErr != nil && serveErr != http.ErrServerClosed {
+			session.trySendResult(bangumiAuthResult{Error: serveErr.Error()})
+		}
+	}()
+
+	return session, nil
+}
+
+func generateBangumiOAuthState() (string, error) {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(buf), nil
+}
+
+func (s *bangumiAuthSession) shutdown() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_ = s.server.Shutdown(ctx)
+	_ = s.listener.Close()
+}
+
+func (s *bangumiAuthSession) trySendResult(result bangumiAuthResult) {
+	select {
+	case s.resultChan <- result:
+	default:
+	}
+}
+
+func (s *bangumiAuthSession) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprint(w, `<!DOCTYPE html><html><head><title>授权失败</title></head><body><h1>授权失败</h1><p>请求方法无效</p><p>您可以关闭此窗口。</p></body></html>`)
+		return
+	}
+
+	if !isLoopbackRequest(r.RemoteAddr) {
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprint(w, `<!DOCTYPE html><html><head><title>授权失败</title></head><body><h1>授权失败</h1><p>回调来源无效</p><p>请返回应用后重试。</p></body></html>`)
+		return
+	}
+
+	state := r.URL.Query().Get("state")
+	code := r.URL.Query().Get("code")
+	errorMsg := r.URL.Query().Get("error")
+	errorDesc := r.URL.Query().Get("error_description")
+
+	if subtle.ConstantTimeCompare([]byte(state), []byte(s.state)) != 1 {
+		s.trySendResult(bangumiAuthResult{Error: "授权状态校验失败"})
+		fmt.Fprint(w, `<!DOCTYPE html><html><head><title>授权失败</title></head><body><h1>授权失败</h1><p>授权状态校验失败</p><p>请返回应用后重试。</p></body></html>`)
+		return
+	}
+
+	if errorMsg != "" {
+		errorMsg = html.EscapeString(errorMsg)
+		errorDesc = html.EscapeString(errorDesc)
+		s.trySendResult(bangumiAuthResult{Error: fmt.Sprintf("%s: %s", errorMsg, errorDesc)})
+		fmt.Fprintf(w, `<!DOCTYPE html><html><head><title>授权失败</title></head><body><h1>授权失败</h1><p>%s: %s</p><p>您可以关闭此窗口。</p></body></html>`, errorMsg, errorDesc)
+		return
+	}
+
+	if code == "" {
+		s.trySendResult(bangumiAuthResult{Error: "未收到授权码"})
+		fmt.Fprint(w, `<!DOCTYPE html><html><head><title>授权失败</title></head><body><h1>授权失败</h1><p>未收到授权码</p><p>您可以关闭此窗口。</p></body></html>`)
+		return
+	}
+
+	s.trySendResult(bangumiAuthResult{Code: code})
+	fmt.Fprint(w, `<!DOCTYPE html><html><head><title>授权成功</title></head><body><h1>授权成功！</h1><p>您可以关闭此窗口并返回应用。</p><script>window.close();</script></body></html>`)
+}
+
+func isLoopbackRequest(remoteAddr string) bool {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		return false
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}

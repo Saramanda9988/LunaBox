@@ -82,6 +82,10 @@ export function SelectSaveFile() {
   return window['go']['service']['GameService']['SelectSaveFile']();
 }
 
+export function SetBangumiService(arg1) {
+  return window['go']['service']['GameService']['SetBangumiService'](arg1);
+}
+
 export function SetTagService(arg1) {
   return window['go']['service']['GameService']['SetTagService'](arg1);
 }

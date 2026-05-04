@@ -44,6 +44,7 @@ type ImportService struct {
 	db             *sql.DB
 	config         *appconf.AppConfig
 	gameService    *GameService
+	bangumiService bangumiAPI
 	sessionService *SessionService
 }
 
@@ -61,6 +62,10 @@ func (s *ImportService) Init(ctx context.Context, db *sql.DB, config *appconf.Ap
 // SetSessionService SetStartService 设置 SessionService（用于导入游玩记录）
 func (s *ImportService) SetSessionService(sessionService *SessionService) {
 	s.sessionService = sessionService
+}
+
+func (s *ImportService) SetBangumiService(bangumiService bangumiAPI) {
+	s.bangumiService = bangumiService
 }
 
 // =================== PotatoVN 导入功能 ====================
@@ -1121,18 +1126,32 @@ func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchIm
 
 	// 优先级顺序：Bangumi > VNDB > Steam > Ymgal
 	sources := []struct {
-		getter metadata.Getter
-		source enums.SourceType
-		token  string
+		source      enums.SourceType
+		fetchByName func(string) (metadata.MetadataResult, error)
 	}{
-		{metadata.NewBangumiInfoGetter(), enums.Bangumi, s.config.BangumiAccessToken},
-		{metadata.NewVNDBInfoGetterWithLanguage(s.config.Language), enums.VNDB, s.config.VNDBAccessToken},
-		{metadata.NewSteamInfoGetterWithLanguage(s.config.Language), enums.Steam, ""},
-		{metadata.NewYmgalInfoGetter(), enums.Ymgal, ""},
+		{enums.Bangumi, s.gameService.fetchBangumiMetadataByName},
+		{
+			enums.VNDB,
+			func(name string) (metadata.MetadataResult, error) {
+				return metadata.NewVNDBInfoGetterWithLanguage(s.config.Language).FetchMetadataByName(name, s.config.VNDBAccessToken)
+			},
+		},
+		{
+			enums.Steam,
+			func(name string) (metadata.MetadataResult, error) {
+				return metadata.NewSteamInfoGetterWithLanguage(s.config.Language).FetchMetadataByName(name, "")
+			},
+		},
+		{
+			enums.Ymgal,
+			func(name string) (metadata.MetadataResult, error) {
+				return metadata.NewYmgalInfoGetter().FetchMetadataByName(name, "")
+			},
+		},
 	}
 
 	for _, src := range sources {
-		metaResult, err := src.getter.FetchMetadataByName(searchName, src.token)
+		metaResult, err := src.fetchByName(searchName)
 		if err == nil && metaResult.Game.Name != "" {
 			game := metaResult.Game
 			result.MatchedGame = &game

@@ -31,13 +31,18 @@ const DefaultMCPPort = 39200
 
 // AppConfig 应用配置结构体
 type AppConfig struct {
-	BangumiAccessToken string   `json:"access_token,omitempty"`
-	VNDBAccessToken    string   `json:"vndb_access_token,omitempty"`
-	MetadataSources    []string `json:"metadata_sources,omitempty"` // 元数据拉取来源列表（bangumi/vndb/ymgal/steam）
-	Theme              string   `json:"theme"`                      // light or dark
-	Language           string   `json:"language"`                   // zh, en, etc.
-	SidebarOpen        bool     `json:"sidebar_open"`               // 侧边栏是否展开
-	CloseToTray        bool     `json:"close_to_tray"`              // 关闭时最小化到托盘
+	BangumiAccessToken        string   `json:"access_token,omitempty"`
+	BangumiRefreshToken       string   `json:"bangumi_refresh_token,omitempty"`
+	BangumiTokenExpiresAt     string   `json:"bangumi_token_expires_at,omitempty"`
+	BangumiAuthorizedUserID   string   `json:"bangumi_authorized_user_id,omitempty"`
+	BangumiAuthorizedUsername string   `json:"bangumi_authorized_username,omitempty"`
+	BangumiAuthError          string   `json:"bangumi_auth_error,omitempty"`
+	VNDBAccessToken           string   `json:"vndb_access_token,omitempty"`
+	MetadataSources           []string `json:"metadata_sources,omitempty"` // 元数据拉取来源列表（bangumi/vndb/ymgal/steam）
+	Theme                     string   `json:"theme"`                      // light or dark
+	Language                  string   `json:"language"`                   // zh, en, etc.
+	SidebarOpen               bool     `json:"sidebar_open"`               // 侧边栏是否展开
+	CloseToTray               bool     `json:"close_to_tray"`              // 关闭时最小化到托盘
 	// AI 配置
 	AIProvider     string `json:"ai_provider,omitempty"`      // openai, deepseek, etc.
 	AIBaseURL      string `json:"ai_base_url,omitempty"`      // API base URL
@@ -132,57 +137,62 @@ func getConfigPath() (string, error) {
 
 func LoadConfig() (*AppConfig, error) {
 	config := &AppConfig{
-		BangumiAccessToken:     "",
-		VNDBAccessToken:        "",
-		MetadataSources:        cloneStringSlice(defaultMetadataSources),
-		Theme:                  "light",
-		Language:               "zh-CN",
-		SidebarOpen:            true,
-		CloseToTray:            false,
-		AIProvider:             "",
-		AIBaseURL:              "",
-		AIAPIKey:               "",
-		AIModel:                "",
-		AISystemPrompt:         string(enums2.DefaultSystemPrompt),
-		MCPEnabled:             false,
-		MCPPort:                DefaultMCPPort,
-		CloudBackupEnabled:     false,
-		CloudBackupProvider:    "s3",
-		BackupPassword:         "",
-		BackupUserID:           "",
-		CloudSyncEnabled:       false,
-		AutoCloudSyncEnabled:   false,
-		CloudSyncIntervalSec:   60,
-		LastCloudSyncTime:      "",
-		LastCloudSyncStatus:    "idle",
-		LastCloudSyncError:     "",
-		S3Endpoint:             "",
-		TimeZone:               "",
-		S3Region:               "",
-		S3Bucket:               "",
-		S3AccessKey:            "",
-		S3SecretKey:            "",
-		CloudBackupRetention:   5,
-		OneDriveClientID:       "",
-		OneDriveRefreshToken:   "",
-		LastDBBackupTime:       "",
-		PendingDBRestore:       "",
-		LastFullBackupTime:     "",
-		PendingFullRestore:     "",
-		AutoBackupDB:           false,
-		AutoBackupGameSave:     false,
-		AutoUploadToCloud:      false,
-		LocalBackupRetention:   10,
-		LocalDBBackupRetention: 5,
-		WindowWidth:            1230,
-		WindowHeight:           800,
-		WindowZoomFactor:       1.0,
-		LaunchAtLogin:          false,
-		RecordActiveTimeOnly:   false, // 默认关闭，向后兼容
-		CheckUpdateOnStartup:   true,  // 默认开启启动时检查更新
-		UpdateCheckURL:         "",
-		LastUpdateCheck:        "",
-		SkipVersion:            "",
+		BangumiAccessToken:        "",
+		BangumiRefreshToken:       "",
+		BangumiTokenExpiresAt:     "",
+		BangumiAuthorizedUserID:   "",
+		BangumiAuthorizedUsername: "",
+		BangumiAuthError:          "",
+		VNDBAccessToken:           "",
+		MetadataSources:           cloneStringSlice(defaultMetadataSources),
+		Theme:                     "light",
+		Language:                  "zh-CN",
+		SidebarOpen:               true,
+		CloseToTray:               false,
+		AIProvider:                "",
+		AIBaseURL:                 "",
+		AIAPIKey:                  "",
+		AIModel:                   "",
+		AISystemPrompt:            string(enums2.DefaultSystemPrompt),
+		MCPEnabled:                false,
+		MCPPort:                   DefaultMCPPort,
+		CloudBackupEnabled:        false,
+		CloudBackupProvider:       "s3",
+		BackupPassword:            "",
+		BackupUserID:              "",
+		CloudSyncEnabled:          false,
+		AutoCloudSyncEnabled:      false,
+		CloudSyncIntervalSec:      60,
+		LastCloudSyncTime:         "",
+		LastCloudSyncStatus:       "idle",
+		LastCloudSyncError:        "",
+		S3Endpoint:                "",
+		TimeZone:                  "",
+		S3Region:                  "",
+		S3Bucket:                  "",
+		S3AccessKey:               "",
+		S3SecretKey:               "",
+		CloudBackupRetention:      5,
+		OneDriveClientID:          "",
+		OneDriveRefreshToken:      "",
+		LastDBBackupTime:          "",
+		PendingDBRestore:          "",
+		LastFullBackupTime:        "",
+		PendingFullRestore:        "",
+		AutoBackupDB:              false,
+		AutoBackupGameSave:        false,
+		AutoUploadToCloud:         false,
+		LocalBackupRetention:      10,
+		LocalDBBackupRetention:    5,
+		WindowWidth:               1230,
+		WindowHeight:              800,
+		WindowZoomFactor:          1.0,
+		LaunchAtLogin:             false,
+		RecordActiveTimeOnly:      false, // 默认关闭，向后兼容
+		CheckUpdateOnStartup:      true,  // 默认开启启动时检查更新
+		UpdateCheckURL:            "",
+		LastUpdateCheck:           "",
+		SkipVersion:               "",
 		// 背景图配置默认值
 		BackgroundImage:             "",
 		BackgroundBlur:              10,   // 默认模糊度
@@ -235,7 +245,10 @@ func LoadConfig() (*AppConfig, error) {
 
 	config.MCPPort = NormalizeMCPPort(config.MCPPort)
 
-	shouldSaveSanitizedConfig := SanitizeOneDriveOAuthConfig(config)
+	shouldSaveSanitizedConfig := SanitizeBangumiOAuthConfig(config)
+	if SanitizeOneDriveOAuthConfig(config) {
+		shouldSaveSanitizedConfig = true
+	}
 
 	// 备份口令只在初始化时使用，不应长期明文落盘。
 	if config.BackupPassword != "" {
@@ -261,6 +274,7 @@ func SaveConfig(config *AppConfig) error {
 		return err
 	}
 	config.MetadataSources = normalizeMetadataSources(config.MetadataSources)
+	SanitizeBangumiOAuthConfig(config)
 	SanitizeOneDriveOAuthConfig(config)
 	config.MCPPort = NormalizeMCPPort(config.MCPPort)
 	configCopy := *config
@@ -334,6 +348,40 @@ func SanitizeOneDriveOAuthConfig(config *AppConfig) bool {
 		if config.OneDriveRefreshToken != "" {
 			config.OneDriveRefreshToken = ""
 		}
+	}
+
+	return changed
+}
+
+func SanitizeBangumiOAuthConfig(config *AppConfig) bool {
+	if config == nil {
+		return false
+	}
+
+	trimmedAccessToken := strings.TrimSpace(config.BangumiAccessToken)
+	trimmedRefreshToken := strings.TrimSpace(config.BangumiRefreshToken)
+	trimmedExpiresAt := strings.TrimSpace(config.BangumiTokenExpiresAt)
+	trimmedUserID := strings.TrimSpace(config.BangumiAuthorizedUserID)
+	trimmedUsername := strings.TrimSpace(config.BangumiAuthorizedUsername)
+	trimmedAuthError := strings.TrimSpace(config.BangumiAuthError)
+
+	changed := config.BangumiAccessToken != trimmedAccessToken ||
+		config.BangumiRefreshToken != trimmedRefreshToken ||
+		config.BangumiTokenExpiresAt != trimmedExpiresAt ||
+		config.BangumiAuthorizedUserID != trimmedUserID ||
+		config.BangumiAuthorizedUsername != trimmedUsername ||
+		config.BangumiAuthError != trimmedAuthError
+
+	config.BangumiAccessToken = trimmedAccessToken
+	config.BangumiRefreshToken = trimmedRefreshToken
+	config.BangumiTokenExpiresAt = trimmedExpiresAt
+	config.BangumiAuthorizedUserID = trimmedUserID
+	config.BangumiAuthorizedUsername = trimmedUsername
+	config.BangumiAuthError = trimmedAuthError
+
+	if config.BangumiAccessToken == "" && config.BangumiTokenExpiresAt != "" {
+		config.BangumiTokenExpiresAt = ""
+		changed = true
 	}
 
 	return changed

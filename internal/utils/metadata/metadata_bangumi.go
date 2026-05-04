@@ -27,6 +27,12 @@ var _ Getter = (*BangumiInfoGetter)(nil)
 
 const bangumiIDQueryAPIURL = "https://api.bgm.tv/v0/subjects"
 
+var ErrBangumiUnauthorized = errors.New("bangumi unauthorized")
+
+func IsBangumiUnauthorizedError(err error) bool {
+	return errors.Is(err, ErrBangumiUnauthorized)
+}
+
 type bangumiImages struct {
 	Large  string `json:"large"`
 	Common string `json:"common"`
@@ -104,6 +110,9 @@ func (b BangumiInfoGetter) FetchMetadata(id string, token string) (MetadataResul
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusUnauthorized {
+			return MetadataResult{}, fmt.Errorf("%w: %s", ErrBangumiUnauthorized, strings.TrimSpace(string(bodyBytes)))
+		}
 		return MetadataResult{}, fmt.Errorf("bangumi API returned status: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
@@ -188,6 +197,9 @@ func (b BangumiInfoGetter) FetchMetadataByName(name string, token string) (Metad
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusUnauthorized {
+			return MetadataResult{}, fmt.Errorf("%w: %s", ErrBangumiUnauthorized, strings.TrimSpace(string(bodyBytes)))
+		}
 		return MetadataResult{}, fmt.Errorf("bangumi search API returned status: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 

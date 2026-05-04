@@ -144,6 +144,7 @@ function SettingsPage() {
             formData={draftConfig}
             onChange={handleDraftChange}
             onZoomChange={handleZoomChange}
+            onConfigRefresh={fetchConfig}
           />
         </CollapsibleSection>
 
