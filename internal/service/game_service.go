@@ -33,6 +33,7 @@ type GameService struct {
 	config         *appconf.AppConfig
 	tagService     *TagService
 	bangumiService bangumiAPI
+	emitEvent      func(context.Context, string, ...interface{})
 }
 
 type metadataSearchSource struct {
@@ -43,13 +44,18 @@ type metadataSearchSource struct {
 const metadataRefreshInterval = 300 * time.Millisecond
 
 func NewGameService() *GameService {
-	return &GameService{}
+	return &GameService{
+		emitEvent: runtime.EventsEmit,
+	}
 }
 
 func (s *GameService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
 	s.db = db
 	s.config = config
+	if s.emitEvent == nil {
+		s.emitEvent = runtime.EventsEmit
+	}
 }
 
 func (s *GameService) SetTagService(ts *TagService) {
@@ -58,6 +64,10 @@ func (s *GameService) SetTagService(ts *TagService) {
 
 func (s *GameService) SetBangumiService(bangumiService bangumiAPI) {
 	s.bangumiService = bangumiService
+}
+
+func (s *GameService) SetEventEmitter(emit func(context.Context, string, ...interface{})) {
+	s.emitEvent = emit
 }
 
 func (s *GameService) SelectGameExecutable() (string, error) {
@@ -1296,13 +1306,15 @@ func (s *GameService) handleBangumiStatusPushFailure(game models.Game, err error
 		return
 	}
 
-	emitRuntimeEvent(s.ctx, "bangumi:status-push-failed", vo.BangumiStatusPushFailureEvent{
-		GameID:      game.ID,
-		GameName:    game.Name,
-		SubjectID:   strings.TrimSpace(game.SourceID),
-		LocalStatus: string(game.Status),
-		Error:       err.Error(),
-	})
+	if s.ctx != nil && s.emitEvent != nil {
+		s.emitEvent(s.ctx, "bangumi:status-push-failed", vo.BangumiStatusPushFailureEvent{
+			GameID:      game.ID,
+			GameName:    game.Name,
+			SubjectID:   strings.TrimSpace(game.SourceID),
+			LocalStatus: string(game.Status),
+			Error:       err.Error(),
+		})
+	}
 }
 
 func (s *GameService) findGameIDBySource(source enums2.SourceType, sourceID string) (string, bool) {

@@ -92,6 +92,7 @@ type BangumiService struct {
 	config       *appconf.AppConfig
 	httpClient   *http.Client
 	openURL      func(context.Context, string) error
+	emitEvent    func(context.Context, string, ...interface{})
 	now          func() time.Time
 	clientID     string
 	clientSecret string
@@ -101,6 +102,7 @@ type BangumiService struct {
 func NewBangumiService() *BangumiService {
 	return &BangumiService{
 		httpClient: &http.Client{Timeout: bangumiHTTPTimeout},
+		emitEvent:  runtime.EventsEmit,
 		now:        time.Now,
 		clientID:   strings.TrimSpace(os.Getenv(bangumiOAuthClientIDEnv)),
 		clientSecret: strings.TrimSpace(
@@ -119,12 +121,42 @@ func (s *BangumiService) Init(ctx context.Context, db *sql.DB, config *appconf.A
 	if s.now == nil {
 		s.now = time.Now
 	}
+	if s.emitEvent == nil {
+		s.emitEvent = runtime.EventsEmit
+	}
 	if s.openURL == nil {
 		s.openURL = func(browserCtx context.Context, targetURL string) error {
 			runtime.BrowserOpenURL(browserCtx, targetURL)
 			return nil
 		}
 	}
+}
+
+func (s *BangumiService) SetHTTPClient(client *http.Client) {
+	if client != nil {
+		s.httpClient = client
+	}
+}
+
+func (s *BangumiService) SetOpenURLFunc(openURL func(context.Context, string) error) {
+	if openURL != nil {
+		s.openURL = openURL
+	}
+}
+
+func (s *BangumiService) SetNowFunc(now func() time.Time) {
+	if now != nil {
+		s.now = now
+	}
+}
+
+func (s *BangumiService) SetOAuthClientCredentials(clientID, clientSecret string) {
+	s.clientID = strings.TrimSpace(clientID)
+	s.clientSecret = strings.TrimSpace(clientSecret)
+}
+
+func (s *BangumiService) SetEventEmitter(emit func(context.Context, string, ...interface{})) {
+	s.emitEvent = emit
 }
 
 func (s *BangumiService) GetAuthStatus() (vo.BangumiAuthStatus, error) {
@@ -548,10 +580,10 @@ func (s *BangumiService) postSubjectCollection(ctx context.Context, subjectID, a
 }
 
 func (s *BangumiService) emitAuthStatusChanged(status vo.BangumiAuthStatus) {
-	if s.ctx == nil {
+	if s.ctx == nil || s.emitEvent == nil {
 		return
 	}
-	emitRuntimeEvent(s.ctx, bangumiMetadataEventName, status)
+	s.emitEvent(s.ctx, bangumiMetadataEventName, status)
 }
 
 func (s *BangumiService) resolveContext(ctx context.Context) context.Context {
