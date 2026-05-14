@@ -370,7 +370,7 @@ function CategoryDetailPage() {
               )}
             </h1>
             <p className="text-brand-500 dark:text-brand-400 mt-2">
-              {t("category.gameCount", { count: games.length })}
+              {t("category.gameCount", { count: filteredGames.length })}
             </p>
           </div>
         </div>

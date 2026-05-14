@@ -425,10 +425,13 @@ function LibraryPage() {
     <div
       className={`space-y-6 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${gamesLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-left justify-between">
         <h1 className="text-4xl font-bold text-brand-900 dark:text-white">
           {t("library.title")}
         </h1>
+        <p className="text-brand-500 dark:text-brand-400 mt-2">
+          {t("category.gameCount", { count: filteredGames.length })}
+        </p>
       </div>
 
       <FilterBar
