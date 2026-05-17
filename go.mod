@@ -1,6 +1,6 @@
 module lunabox
 
-go 1.24.0
+go 1.25.7
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.41.0
@@ -20,6 +20,8 @@ require (
 	golang.org/x/sys v0.41.0
 	golift.io/xtractr v0.3.0
 )
+
+require github.com/Umbrae-Labs/umbra-core/sdk/umbra-go v0.0.0-20260515165027-d27eda48b73b
 
 require (
 	github.com/andybalholm/brotli v1.2.0 // indirect

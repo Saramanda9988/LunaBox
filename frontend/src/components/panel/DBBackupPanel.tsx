@@ -50,6 +50,9 @@ export function DBBackupPanel() {
     if (!config?.cloud_backup_enabled) {
       return false;
     }
+    if (cloudProvider === "umbra") {
+      return !!config?.umbra_refresh_token;
+    }
     if (cloudProvider === "onedrive") {
       return !!config?.onedrive_refresh_token;
     }

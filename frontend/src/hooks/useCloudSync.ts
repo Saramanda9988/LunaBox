@@ -64,7 +64,6 @@ export function useCloudSync({ config }: UseCloudSyncOptions) {
 
     void refreshSyncStatus();
   }, [
-    config?.backup_user_id,
     config?.cloud_backup_enabled,
     config?.cloud_backup_provider,
     config?.cloud_sync_enabled,
@@ -73,6 +72,9 @@ export function useCloudSync({ config }: UseCloudSyncOptions) {
     config?.last_cloud_sync_status,
     config?.last_cloud_sync_time,
     config?.onedrive_refresh_token,
+    config?.umbra_refresh_token,
+    config?.umbra_base_url,
+    config?.umbra_client_id,
     config?.s3_access_key,
     config?.s3_endpoint,
     config?.time_zone,

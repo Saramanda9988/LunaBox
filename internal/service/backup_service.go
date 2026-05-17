@@ -53,6 +53,27 @@ func (s *BackupService) getCloudProvider() (cloudprovider.CloudStorageProvider, 
 	return cloudprovider.NewCloudProvider(s.ctx, s.config)
 }
 
+func (s *BackupService) cloudNamespace() string {
+	if cloudprovider.ProviderType(s.config.CloudBackupProvider) == cloudprovider.ProviderUmbra {
+		return ""
+	}
+	return s.config.BackupUserID
+}
+
+func (s *BackupService) requiresBackupUserID() bool {
+	return cloudprovider.ProviderType(s.config.CloudBackupProvider) != cloudprovider.ProviderUmbra
+}
+
+func (s *BackupService) isCloudBackupReady() bool {
+	if !s.config.CloudBackupEnabled {
+		return false
+	}
+	if s.requiresBackupUserID() {
+		return s.config.BackupUserID != ""
+	}
+	return cloudprovider.IsConfigured(s.config)
+}
+
 func isPathWithinBase(basePath, targetPath string) bool {
 	absBase, err := filepath.Abs(basePath)
 	if err != nil {
@@ -94,7 +115,7 @@ func (s *BackupService) validateGameCloudKey(provider cloudprovider.CloudStorage
 		return fmt.Errorf("无效的云端备份 key")
 	}
 
-	expectedPrefix := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s/", gameID))
+	expectedPrefix := provider.GetCloudPath(s.cloudNamespace(), fmt.Sprintf("saves/%s/", gameID))
 	if !strings.HasPrefix(cloudKey, expectedPrefix) {
 		return fmt.Errorf("云端备份 key 不属于当前游戏")
 	}
@@ -107,7 +128,7 @@ func (s *BackupService) validateDBCloudKey(provider cloudprovider.CloudStoragePr
 		return fmt.Errorf("无效的云端数据库备份 key")
 	}
 
-	expectedPrefix := provider.GetCloudPath(s.config.BackupUserID, "database/")
+	expectedPrefix := provider.GetCloudPath(s.cloudNamespace(), "database/")
 	if !strings.HasPrefix(cloudKey, expectedPrefix) {
 		return fmt.Errorf("云端数据库备份 key 不属于当前用户")
 	}
@@ -497,7 +518,7 @@ func (s *BackupService) DeleteBackup(backupPath string) error {
 
 // UploadGameBackupToCloud 上传游戏存档到云端（参数改为 backupPath）
 func (s *BackupService) UploadGameBackupToCloud(gameID string, backupPath string) error {
-	if s.config.BackupUserID == "" {
+	if s.requiresBackupUserID() && s.config.BackupUserID == "" {
 		return fmt.Errorf("备份用户 ID 未设置")
 	}
 	if !isValidCloudPathSegment(gameID) {
@@ -515,10 +536,11 @@ func (s *BackupService) UploadGameBackupToCloud(gameID string, backupPath string
 	}
 
 	timestamp := time.Now().Format("2006-01-02T15-04-05")
-	cloudPath := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s/%s.zip", gameID, timestamp))
+	namespace := s.cloudNamespace()
+	cloudPath := provider.GetCloudPath(namespace, fmt.Sprintf("saves/%s/%s.zip", gameID, timestamp))
 
 	// 确保文件夹存在 (OneDrive 需要)
-	folderPath := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s", gameID))
+	folderPath := provider.GetCloudPath(namespace, fmt.Sprintf("saves/%s", gameID))
 	if err := provider.EnsureDir(s.ctx, folderPath); err != nil {
 		return fmt.Errorf("创建云端目录失败: %w", err)
 	}
@@ -528,7 +550,7 @@ func (s *BackupService) UploadGameBackupToCloud(gameID string, backupPath string
 	}
 
 	// 更新 latest
-	latestPath := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s/latest.zip", gameID))
+	latestPath := provider.GetCloudPath(namespace, fmt.Sprintf("saves/%s/latest.zip", gameID))
 	if err := provider.UploadFile(s.ctx, latestPath, backupPath); err != nil {
 		return fmt.Errorf("更新 latest 备份失败: %w", err)
 	}
@@ -539,7 +561,7 @@ func (s *BackupService) UploadGameBackupToCloud(gameID string, backupPath string
 
 // GetCloudGameBackups 获取云端游戏备份列表
 func (s *BackupService) GetCloudGameBackups(gameID string) ([]vo.CloudBackupItem, error) {
-	if s.config.BackupUserID == "" {
+	if s.requiresBackupUserID() && s.config.BackupUserID == "" {
 		return nil, fmt.Errorf("备份用户 ID 未设置")
 	}
 	if !isValidCloudPathSegment(gameID) {
@@ -551,7 +573,7 @@ func (s *BackupService) GetCloudGameBackups(gameID string) ([]vo.CloudBackupItem
 		return nil, err
 	}
 
-	listPath := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s/", gameID))
+	listPath := provider.GetCloudPath(s.cloudNamespace(), fmt.Sprintf("saves/%s/", gameID))
 	keys, err := provider.ListObjects(s.ctx, listPath)
 	if err != nil {
 		return nil, err
@@ -930,7 +952,7 @@ func (s *BackupService) ScheduleFullDataRestore(backupPath string) error {
 
 // UploadDBBackupToCloud 上传数据库备份到云端
 func (s *BackupService) UploadDBBackupToCloud(backupPath string) error {
-	if s.config.BackupUserID == "" {
+	if s.requiresBackupUserID() && s.config.BackupUserID == "" {
 		return fmt.Errorf("备份用户 ID 未设置")
 	}
 
@@ -944,9 +966,10 @@ func (s *BackupService) UploadDBBackupToCloud(backupPath string) error {
 	}
 
 	fileName := filepath.Base(backupPath)
-	cloudKey := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("database/%s", fileName))
+	namespace := s.cloudNamespace()
+	cloudKey := provider.GetCloudPath(namespace, fmt.Sprintf("database/%s", fileName))
 
-	folderPath := provider.GetCloudPath(s.config.BackupUserID, "database")
+	folderPath := provider.GetCloudPath(namespace, "database")
 	if err := provider.EnsureDir(s.ctx, folderPath); err != nil {
 		return fmt.Errorf("创建云端目录失败: %w", err)
 	}
@@ -955,7 +978,7 @@ func (s *BackupService) UploadDBBackupToCloud(backupPath string) error {
 		return fmt.Errorf("上传失败: %w", err)
 	}
 
-	latestKey := provider.GetCloudPath(s.config.BackupUserID, "database/latest.zip")
+	latestKey := provider.GetCloudPath(namespace, "database/latest.zip")
 	if err := provider.UploadFile(s.ctx, latestKey, backupPath); err != nil {
 		return fmt.Errorf("更新 latest 数据库备份失败: %w", err)
 	}
@@ -966,7 +989,7 @@ func (s *BackupService) UploadDBBackupToCloud(backupPath string) error {
 
 // GetCloudDBBackups 获取云端数据库备份列表
 func (s *BackupService) GetCloudDBBackups() ([]vo.CloudBackupItem, error) {
-	if s.config.BackupUserID == "" {
+	if s.requiresBackupUserID() && s.config.BackupUserID == "" {
 		return nil, fmt.Errorf("备份用户 ID 未设置")
 	}
 
@@ -975,7 +998,7 @@ func (s *BackupService) GetCloudDBBackups() ([]vo.CloudBackupItem, error) {
 		return nil, err
 	}
 
-	prefix := provider.GetCloudPath(s.config.BackupUserID, "database/")
+	prefix := provider.GetCloudPath(s.cloudNamespace(), "database/")
 	keys, err := provider.ListObjects(s.ctx, prefix)
 	if err != nil {
 		return nil, err
@@ -1069,12 +1092,65 @@ func (s *BackupService) createAndUploadDBBackup(trackQuitSync bool) (*vo.DBBacku
 	}
 
 	// 只有在启用云备份、配置完整且开启数据库自动上传时才上传
-	if s.config.CloudBackupEnabled && s.config.BackupUserID != "" && s.config.AutoUploadDBToCloud {
+	if s.isCloudBackupReady() && s.config.AutoUploadDBToCloud {
 		if err := s.UploadDBBackupToCloud(backup.Path); err != nil {
 			return backup, fmt.Errorf("本地备份成功，但云端上传失败: %w", err)
 		}
 	}
 	return backup, nil
+}
+
+func (s *BackupService) TestUmbraConnection(config appconf.AppConfig) error {
+	return cloudprovider.TestConnection(s.ctx, cloudprovider.ProviderUmbra, &config)
+}
+
+func (s *BackupService) StartUmbraAuth(config appconf.AppConfig) error {
+	s.config.UmbraBaseURL = config.UmbraBaseURL
+	s.config.UmbraAPIBaseURL = config.UmbraAPIBaseURL
+	s.config.UmbraAuthorizationEndpoint = config.UmbraAuthorizationEndpoint
+	s.config.UmbraTokenEndpoint = config.UmbraTokenEndpoint
+	s.config.UmbraRevocationEndpoint = config.UmbraRevocationEndpoint
+	s.config.UmbraClientID = config.UmbraClientID
+	s.config.UmbraRedirectURI = config.UmbraRedirectURI
+	s.config.UmbraScope = config.UmbraScope
+
+	provider, err := cloudprovider.NewUmbraProviderFromConfig(s.config, func(url string) error {
+		runtime.BrowserOpenURL(s.ctx, url)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	session, err := provider.Login(s.ctx)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "StartUmbraAuth: login failed: %v", err)
+		return err
+	}
+	if session == nil || session.Token == nil {
+		return fmt.Errorf("Umbra 授权失败: 未获取到 token")
+	}
+	if err := appconf.SaveConfig(s.config); err != nil {
+		return fmt.Errorf("保存 Umbra 配置失败: %w", err)
+	}
+
+	return nil
+}
+
+func (s *BackupService) LogoutUmbra() error {
+	provider, err := cloudprovider.NewUmbraProviderFromConfig(s.config, func(string) error { return nil })
+	if err != nil {
+		return err
+	}
+
+	if err := provider.Logout(s.ctx); err != nil {
+		applog.LogErrorf(s.ctx, "LogoutUmbra: logout failed: %v", err)
+		return err
+	}
+	if err := appconf.SaveConfig(s.config); err != nil {
+		return fmt.Errorf("保存 Umbra 配置失败: %w", err)
+	}
+	return nil
 }
 
 // ========== 辅助方法 ==========

@@ -99,14 +99,15 @@ func (h *Helper) BuildLocalState() (LocalState, error) {
 
 func (h *Helper) LoadRemoteSnapshot(provider cloudprovider.CloudStorageProvider) (Snapshot, bool, error) {
 	var snapshot Snapshot
+	namespace := h.cloudNamespace(provider)
 
-	prefix := provider.GetCloudPath(h.config.BackupUserID, LibraryDir+"/")
+	prefix := provider.GetCloudPath(namespace, LibraryDir+"/")
 	keys, err := provider.ListObjects(h.ctx, prefix)
 	if err != nil {
 		return snapshot, false, fmt.Errorf("list cloud sync snapshots: %w", err)
 	}
 
-	latestKey := provider.GetCloudPath(h.config.BackupUserID, SnapshotKey)
+	latestKey := provider.GetCloudPath(namespace, SnapshotKey)
 	found := false
 	for _, key := range keys {
 		if key == latestKey || strings.HasSuffix(key, "/latest.json") {
@@ -147,8 +148,9 @@ func (h *Helper) SaveRemoteSnapshot(provider cloudprovider.CloudStorageProvider,
 	if err != nil {
 		return fmt.Errorf("marshal cloud sync snapshot: %w", err)
 	}
+	namespace := h.cloudNamespace(provider)
 
-	folderPath := provider.GetCloudPath(h.config.BackupUserID, LibraryDir)
+	folderPath := provider.GetCloudPath(namespace, LibraryDir)
 	if err := provider.EnsureDir(h.ctx, folderPath); err != nil {
 		return fmt.Errorf("ensure cloud sync dir: %w", err)
 	}
@@ -166,7 +168,7 @@ func (h *Helper) SaveRemoteSnapshot(provider cloudprovider.CloudStorageProvider,
 	tempFile.Close()
 	defer os.Remove(tempPath)
 
-	latestKey := provider.GetCloudPath(h.config.BackupUserID, SnapshotKey)
+	latestKey := provider.GetCloudPath(namespace, SnapshotKey)
 	if err := provider.UploadFile(h.ctx, latestKey, tempPath); err != nil {
 		return fmt.Errorf("upload cloud sync snapshot: %w", err)
 	}
@@ -179,8 +181,9 @@ func (h *Helper) ReconcileCoverAssets(provider cloudprovider.CloudStorageProvide
 	localAssets := local.Covers
 	remoteAssets := mapCoverAssets(remote.Covers)
 	mergedAssets := mapCoverAssets(merged.Covers)
+	namespace := h.cloudNamespace(provider)
 
-	folderPath := provider.GetCloudPath(h.config.BackupUserID, CoverDir)
+	folderPath := provider.GetCloudPath(namespace, CoverDir)
 	if err := provider.EnsureDir(h.ctx, folderPath); err != nil {
 		return coverURLs, fmt.Errorf("ensure cloud cover dir: %w", err)
 	}
@@ -559,7 +562,18 @@ func (h *Helper) insertTombstone(tx *sql.Tx, tombstone models.SyncTombstone) err
 }
 
 func (h *Helper) coverCloudKey(provider cloudprovider.CloudStorageProvider, asset CoverAsset) string {
-	return provider.GetCloudPath(h.config.BackupUserID, filepath.ToSlash(filepath.Join(CoverDir, asset.GameID+asset.Ext)))
+	return provider.GetCloudPath(h.cloudNamespace(provider), filepath.ToSlash(filepath.Join(CoverDir, asset.GameID+asset.Ext)))
+}
+
+func (h *Helper) cloudNamespace(provider cloudprovider.CloudStorageProvider) string {
+	_ = provider
+	if h.config == nil {
+		return ""
+	}
+	if cloudprovider.ProviderType(h.config.CloudBackupProvider) == cloudprovider.ProviderUmbra {
+		return ""
+	}
+	return h.config.BackupUserID
 }
 
 func (h *Helper) currentDeviceID() string {

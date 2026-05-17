@@ -636,7 +636,7 @@ func (s *StartService) autoBackupGameSave(gameID string) {
 	}
 
 	// 如果启用了游戏存档自动上传到云端
-	if s.config.AutoUploadSaveToCloud && s.config.CloudBackupEnabled && s.config.BackupUserID != "" {
+	if s.config.AutoUploadSaveToCloud && s.backupService != nil && s.backupService.isCloudBackupReady() {
 		applog.LogInfof(s.ctx, "Auto uploading backup to cloud: %s", backup.Path)
 		err = s.backupService.UploadGameBackupToCloud(gameID, backup.Path)
 		if err != nil {

@@ -46,6 +46,8 @@ export function GetOneDriveAuthURL():Promise<string>;
 
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig):Promise<void>;
 
+export function LogoutUmbra():Promise<void>;
+
 export function OpenBackupFolder(arg1:string):Promise<void>;
 
 export function RestoreBackup(arg1:string):Promise<void>;
@@ -66,9 +68,13 @@ export function SetupCloudBackup(arg1:string):Promise<string>;
 
 export function StartOneDriveAuth(arg1:string):Promise<string>;
 
+export function StartUmbraAuth(arg1:appconf.AppConfig):Promise<void>;
+
 export function TestOneDriveConnection(arg1:appconf.AppConfig):Promise<void>;
 
 export function TestS3Connection(arg1:appconf.AppConfig):Promise<void>;
+
+export function TestUmbraConnection(arg1:appconf.AppConfig):Promise<void>;
 
 export function UploadDBBackupToCloud(arg1:string):Promise<void>;
 

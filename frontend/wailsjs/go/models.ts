@@ -44,6 +44,19 @@ export namespace appconf {
 	    cloud_backup_retention?: number;
 	    onedrive_client_id?: string;
 	    onedrive_refresh_token?: string;
+	    umbra_base_url?: string;
+	    umbra_api_base_url?: string;
+	    umbra_authorization_endpoint?: string;
+	    umbra_token_endpoint?: string;
+	    umbra_revocation_endpoint?: string;
+	    umbra_client_id?: string;
+	    umbra_redirect_uri?: string;
+	    umbra_scope?: string;
+	    umbra_access_token?: string;
+	    umbra_refresh_token?: string;
+	    umbra_token_type?: string;
+	    umbra_token_scope?: string;
+	    umbra_token_expires_at?: string;
 	    last_db_backup_time?: string;
 	    pending_db_restore?: string;
 	    last_full_backup_time?: string;
@@ -129,6 +142,19 @@ export namespace appconf {
 	        this.cloud_backup_retention = source["cloud_backup_retention"];
 	        this.onedrive_client_id = source["onedrive_client_id"];
 	        this.onedrive_refresh_token = source["onedrive_refresh_token"];
+	        this.umbra_base_url = source["umbra_base_url"];
+	        this.umbra_api_base_url = source["umbra_api_base_url"];
+	        this.umbra_authorization_endpoint = source["umbra_authorization_endpoint"];
+	        this.umbra_token_endpoint = source["umbra_token_endpoint"];
+	        this.umbra_revocation_endpoint = source["umbra_revocation_endpoint"];
+	        this.umbra_client_id = source["umbra_client_id"];
+	        this.umbra_redirect_uri = source["umbra_redirect_uri"];
+	        this.umbra_scope = source["umbra_scope"];
+	        this.umbra_access_token = source["umbra_access_token"];
+	        this.umbra_refresh_token = source["umbra_refresh_token"];
+	        this.umbra_token_type = source["umbra_token_type"];
+	        this.umbra_token_scope = source["umbra_token_scope"];
+	        this.umbra_token_expires_at = source["umbra_token_expires_at"];
 	        this.last_db_backup_time = source["last_db_backup_time"];
 	        this.pending_db_restore = source["pending_db_restore"];
 	        this.last_full_backup_time = source["last_full_backup_time"];
@@ -171,13 +197,6 @@ export namespace appconf {
 
 export namespace enums {
 	
-	export enum SourceType {
-	    LOCAL = "local",
-	    BANGUMI = "bangumi",
-	    VNDB = "vndb",
-	    YMGAL = "ymgal",
-	    STEAM = "steam",
-	}
 	export enum Period {
 	    DAY = "day",
 	    WEEK = "week",
@@ -194,6 +213,13 @@ export namespace enums {
 	    PLAYING = "playing",
 	    COMPLETED = "completed",
 	    ON_HOLD = "on_hold",
+	}
+	export enum SourceType {
+	    LOCAL = "local",
+	    BANGUMI = "bangumi",
+	    VNDB = "vndb",
+	    YMGAL = "ymgal",
+	    STEAM = "steam",
 	}
 
 }
