@@ -33,10 +33,12 @@ func NewVNDBInfoGetterWithLanguage(language string) *VNDBInfoGetter {
 var _ Getter = (*VNDBInfoGetter)(nil)
 
 const vndbAPIURL = "https://api.vndb.org/kana/vn"
+const vndbSearchSort = "searchrank"
 
 type vndbRequest struct {
 	Filters []interface{} `json:"filters"`
 	Fields  string        `json:"fields"`
+	Sort    string        `json:"sort,omitempty"`
 }
 
 type vndbImage struct {
@@ -78,17 +80,18 @@ type vndbResponse struct {
 }
 
 func (v VNDBInfoGetter) FetchMetadata(id string, token string) (MetadataResult, error) {
-	return v.queryVNDB([]interface{}{"id", "=", id})
+	return v.queryVNDB([]interface{}{"id", "=", id}, "")
 }
 
 func (v VNDBInfoGetter) FetchMetadataByName(name string, token string) (MetadataResult, error) {
-	return v.queryVNDB([]interface{}{"search", "=", name})
+	return v.queryVNDB([]interface{}{"search", "=", name}, vndbSearchSort)
 }
 
-func (v VNDBInfoGetter) queryVNDB(filters []interface{}) (MetadataResult, error) {
+func (v VNDBInfoGetter) queryVNDB(filters []interface{}, sort string) (MetadataResult, error) {
 	reqBody := vndbRequest{
 		Filters: filters,
 		Fields:  "id, title, titles.lang, titles.title, titles.latin, titles.official, titles.main, image.url, description, rating, released, developers.name, tags.name, tags.rating, tags.spoiler",
+		Sort:    sort,
 	}
 
 	jsonData, err := json.Marshal(reqBody)
