@@ -60,7 +60,7 @@ type AppConfig struct {
 	MCPPort             int    `json:"mcp_port,omitempty"`          // MCP HTTP 服务监听端口（仅绑定 127.0.0.1）
 	// 云备份配置
 	CloudBackupEnabled   bool   `json:"cloud_backup_enabled"`             // 是否启用云备份
-	CloudBackupProvider  string `json:"cloud_backup_provider,omitempty"`  // 云备份提供商: s3, onedrive
+	CloudBackupProvider  string `json:"cloud_backup_provider,omitempty"`  // 云备份提供商: s3, onedrive, umbra
 	BackupPassword       string `json:"backup_password,omitempty"`        // 备份密码（用于生成 user-id 和加密）
 	BackupUserID         string `json:"backup_user_id,omitempty"`         // 云端用户标识（由备份密码 hash 生成）
 	CloudSyncEnabled     bool   `json:"cloud_sync_enabled"`               // 是否启用云同步
@@ -78,6 +78,20 @@ type AppConfig struct {
 	// OneDrive OAuth 配置
 	OneDriveClientID     string `json:"onedrive_client_id,omitempty"`     // OneDrive Client ID
 	OneDriveRefreshToken string `json:"onedrive_refresh_token,omitempty"` // OneDrive Refresh Token（OAuth 授权后获得）
+	// Umbra OAuth 配置
+	UmbraBaseURL               string `json:"umbra_base_url,omitempty"`               // Umbra 公共基地址
+	UmbraAPIBaseURL            string `json:"umbra_api_base_url,omitempty"`           // Umbra API 基地址（可选覆盖）
+	UmbraAuthorizationEndpoint string `json:"umbra_authorization_endpoint,omitempty"` // OAuth 授权端点（可选覆盖）
+	UmbraTokenEndpoint         string `json:"umbra_token_endpoint,omitempty"`         // OAuth token 端点（可选覆盖）
+	UmbraRevocationEndpoint    string `json:"umbra_revocation_endpoint,omitempty"`    // OAuth revoke 端点（可选覆盖）
+	UmbraClientID              string `json:"umbra_client_id,omitempty"`              // Umbra OAuth Client ID
+	UmbraRedirectURI           string `json:"umbra_redirect_uri,omitempty"`           // OAuth loopback 回调地址
+	UmbraScope                 string `json:"umbra_scope,omitempty"`                  // OAuth scope
+	UmbraAccessToken           string `json:"umbra_access_token,omitempty"`           // Umbra Access Token
+	UmbraRefreshToken          string `json:"umbra_refresh_token,omitempty"`          // Umbra Refresh Token
+	UmbraTokenType             string `json:"umbra_token_type,omitempty"`             // Umbra Token Type
+	UmbraTokenScope            string `json:"umbra_token_scope,omitempty"`            // Umbra token 响应 scope
+	UmbraTokenExpiresAt        string `json:"umbra_token_expires_at,omitempty"`       // Umbra access token 过期时间
 	// 数据库备份
 	LastDBBackupTime   string `json:"last_db_backup_time,omitempty"`   // 上次数据库备份时间
 	PendingDBRestore   string `json:"pending_db_restore,omitempty"`    // 待恢复的数据库备份路径（重启后执行）
@@ -179,6 +193,19 @@ func LoadConfig() (*AppConfig, error) {
 		CloudBackupRetention:       5,
 		OneDriveClientID:           "",
 		OneDriveRefreshToken:       "",
+		UmbraBaseURL:               "",
+		UmbraAPIBaseURL:            "",
+		UmbraAuthorizationEndpoint: "",
+		UmbraTokenEndpoint:         "",
+		UmbraRevocationEndpoint:    "",
+		UmbraClientID:              "",
+		UmbraRedirectURI:           "",
+		UmbraScope:                 "",
+		UmbraAccessToken:           "",
+		UmbraRefreshToken:          "",
+		UmbraTokenType:             "",
+		UmbraTokenScope:            "",
+		UmbraTokenExpiresAt:        "",
 		LastDBBackupTime:           "",
 		PendingDBRestore:           "",
 		LastFullBackupTime:         "",
@@ -253,6 +280,9 @@ func LoadConfig() (*AppConfig, error) {
 	if SanitizeOneDriveOAuthConfig(config) {
 		shouldSaveSanitizedConfig = true
 	}
+	if SanitizeUmbraOAuthConfig(config) {
+		shouldSaveSanitizedConfig = true
+	}
 
 	// 备份口令只在初始化时使用，不应长期明文落盘。
 	if config.BackupPassword != "" {
@@ -280,6 +310,7 @@ func SaveConfig(config *AppConfig) error {
 	config.MetadataSources = normalizeMetadataSources(config.MetadataSources)
 	SanitizeBangumiOAuthConfig(config)
 	SanitizeOneDriveOAuthConfig(config)
+	SanitizeUmbraOAuthConfig(config)
 	config.MCPPort = NormalizeMCPPort(config.MCPPort)
 	configCopy := *config
 	configCopy.BackupPassword = ""
@@ -357,6 +388,65 @@ func SanitizeOneDriveOAuthConfig(config *AppConfig) bool {
 		if config.OneDriveRefreshToken != "" {
 			config.OneDriveRefreshToken = ""
 		}
+	}
+
+	return changed
+}
+
+func SanitizeUmbraOAuthConfig(config *AppConfig) bool {
+	if config == nil {
+		return false
+	}
+
+	trimmedBaseURL := strings.TrimSpace(config.UmbraBaseURL)
+	trimmedAPIBaseURL := strings.TrimSpace(config.UmbraAPIBaseURL)
+	trimmedAuthorizationEndpoint := strings.TrimSpace(config.UmbraAuthorizationEndpoint)
+	trimmedTokenEndpoint := strings.TrimSpace(config.UmbraTokenEndpoint)
+	trimmedRevocationEndpoint := strings.TrimSpace(config.UmbraRevocationEndpoint)
+	trimmedClientID := strings.TrimSpace(config.UmbraClientID)
+	trimmedRedirectURI := strings.TrimSpace(config.UmbraRedirectURI)
+	trimmedScope := strings.TrimSpace(config.UmbraScope)
+	trimmedAccessToken := strings.TrimSpace(config.UmbraAccessToken)
+	trimmedRefreshToken := strings.TrimSpace(config.UmbraRefreshToken)
+	trimmedTokenType := strings.TrimSpace(config.UmbraTokenType)
+	trimmedTokenScope := strings.TrimSpace(config.UmbraTokenScope)
+	trimmedTokenExpiresAt := strings.TrimSpace(config.UmbraTokenExpiresAt)
+
+	changed := config.UmbraBaseURL != trimmedBaseURL ||
+		config.UmbraAPIBaseURL != trimmedAPIBaseURL ||
+		config.UmbraAuthorizationEndpoint != trimmedAuthorizationEndpoint ||
+		config.UmbraTokenEndpoint != trimmedTokenEndpoint ||
+		config.UmbraRevocationEndpoint != trimmedRevocationEndpoint ||
+		config.UmbraClientID != trimmedClientID ||
+		config.UmbraRedirectURI != trimmedRedirectURI ||
+		config.UmbraScope != trimmedScope ||
+		config.UmbraAccessToken != trimmedAccessToken ||
+		config.UmbraRefreshToken != trimmedRefreshToken ||
+		config.UmbraTokenType != trimmedTokenType ||
+		config.UmbraTokenScope != trimmedTokenScope ||
+		config.UmbraTokenExpiresAt != trimmedTokenExpiresAt
+
+	config.UmbraBaseURL = trimmedBaseURL
+	config.UmbraAPIBaseURL = trimmedAPIBaseURL
+	config.UmbraAuthorizationEndpoint = trimmedAuthorizationEndpoint
+	config.UmbraTokenEndpoint = trimmedTokenEndpoint
+	config.UmbraRevocationEndpoint = trimmedRevocationEndpoint
+	config.UmbraClientID = trimmedClientID
+	config.UmbraRedirectURI = trimmedRedirectURI
+	config.UmbraScope = trimmedScope
+	config.UmbraAccessToken = trimmedAccessToken
+	config.UmbraRefreshToken = trimmedRefreshToken
+	config.UmbraTokenType = trimmedTokenType
+	config.UmbraTokenScope = trimmedTokenScope
+	config.UmbraTokenExpiresAt = trimmedTokenExpiresAt
+
+	if config.UmbraAccessToken == "" && config.UmbraRefreshToken == "" {
+		if config.UmbraTokenType != "" || config.UmbraTokenScope != "" || config.UmbraTokenExpiresAt != "" {
+			changed = true
+		}
+		config.UmbraTokenType = ""
+		config.UmbraTokenScope = ""
+		config.UmbraTokenExpiresAt = ""
 	}
 
 	return changed

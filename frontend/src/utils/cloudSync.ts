@@ -5,7 +5,19 @@ import type { appconf, vo } from "../../wailsjs/go/models";
 import { formatLocalDateTime } from "./time";
 
 export function isCloudProviderConfigured(config?: appconf.AppConfig | null) {
-  if (!config?.cloud_backup_enabled || !config.backup_user_id) {
+  if (!config?.cloud_backup_enabled) {
+    return false;
+  }
+
+  if (config.cloud_backup_provider === "umbra") {
+    return Boolean(
+      config.umbra_base_url
+      && config.umbra_client_id
+      && (config.umbra_access_token || config.umbra_refresh_token),
+    );
+  }
+
+  if (!config.backup_user_id) {
     return false;
   }
 

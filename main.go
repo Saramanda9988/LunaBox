@@ -28,6 +28,7 @@ import (
 	"lunabox/internal/appconf"
 	"lunabox/internal/migrations"
 	"lunabox/internal/service"
+	"lunabox/internal/service/cloudprovider"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/logger"
@@ -245,9 +246,19 @@ func shouldRunFrontendQuitSync(config *appconf.AppConfig) bool {
 		return false
 	}
 
+	providerReady := false
+	switch config.CloudBackupProvider {
+	case string(cloudprovider.ProviderUmbra):
+		providerReady = config.UmbraBaseURL != "" && config.UmbraClientID != "" && config.UmbraRefreshToken != ""
+	case string(cloudprovider.ProviderOneDrive):
+		providerReady = config.OneDriveClientID != "" && config.OneDriveRefreshToken != "" && config.BackupUserID != ""
+	case string(cloudprovider.ProviderS3):
+		providerReady = config.S3Endpoint != "" && config.S3AccessKey != "" && config.BackupUserID != ""
+	}
+
 	return config.AutoBackupDB &&
 		config.CloudBackupEnabled &&
-		config.BackupUserID != "" &&
+		providerReady &&
 		config.AutoUploadDBToCloud
 }
 

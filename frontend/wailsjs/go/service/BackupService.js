@@ -78,8 +78,16 @@ export function GetOneDriveAuthURL() {
   return window['go']['service']['BackupService']['GetOneDriveAuthURL']();
 }
 
+export function GetUmbraProfile(arg1) {
+  return window['go']['service']['BackupService']['GetUmbraProfile'](arg1);
+}
+
 export function Init(arg1, arg2, arg3) {
   return window['go']['service']['BackupService']['Init'](arg1, arg2, arg3);
+}
+
+export function LogoutUmbra() {
+  return window['go']['service']['BackupService']['LogoutUmbra']();
 }
 
 export function OpenBackupFolder(arg1) {
@@ -122,12 +130,20 @@ export function StartOneDriveAuth(arg1) {
   return window['go']['service']['BackupService']['StartOneDriveAuth'](arg1);
 }
 
+export function StartUmbraAuth(arg1) {
+  return window['go']['service']['BackupService']['StartUmbraAuth'](arg1);
+}
+
 export function TestOneDriveConnection(arg1) {
   return window['go']['service']['BackupService']['TestOneDriveConnection'](arg1);
 }
 
 export function TestS3Connection(arg1) {
   return window['go']['service']['BackupService']['TestS3Connection'](arg1);
+}
+
+export function TestUmbraConnection(arg1) {
+  return window['go']['service']['BackupService']['TestUmbraConnection'](arg1);
 }
 
 export function UploadDBBackupToCloud(arg1) {

@@ -6,6 +6,7 @@ import (
 	"lunabox/internal/appconf"
 	"lunabox/internal/service/cloudprovider/onedrive"
 	"lunabox/internal/service/cloudprovider/s3"
+	"lunabox/internal/service/cloudprovider/umbra"
 )
 
 // ProviderType 云存储提供商类型
@@ -14,6 +15,7 @@ type ProviderType string
 const (
 	ProviderS3       ProviderType = "s3"
 	ProviderOneDrive ProviderType = "onedrive"
+	ProviderUmbra    ProviderType = "umbra"
 )
 
 // NewCloudProvider 根据配置创建云存储提供商
@@ -23,6 +25,8 @@ func NewCloudProvider(ctx context.Context, config *appconf.AppConfig) (CloudStor
 	}
 
 	switch ProviderType(config.CloudBackupProvider) {
+	case ProviderUmbra:
+		return NewUmbraProviderFromConfig(config, nil)
 	case ProviderOneDrive:
 		return newOneDriveProviderFromConfig(config)
 	case ProviderS3:
@@ -51,9 +55,32 @@ func newOneDriveProviderFromConfig(config *appconf.AppConfig) (*onedrive.OneDriv
 	})
 }
 
+func NewUmbraProviderFromConfig(config *appconf.AppConfig, openURL func(string) error) (*umbra.UmbraProvider, error) {
+	if openURL == nil {
+		openURL = func(string) error { return nil }
+	}
+
+	return umbra.NewUmbraProvider(umbra.UmbraConfig{
+		BaseURL:               config.UmbraBaseURL,
+		APIBaseURL:            config.UmbraAPIBaseURL,
+		AuthorizationEndpoint: config.UmbraAuthorizationEndpoint,
+		TokenEndpoint:         config.UmbraTokenEndpoint,
+		RevocationEndpoint:    config.UmbraRevocationEndpoint,
+		ClientID:              config.UmbraClientID,
+		RedirectURI:           config.UmbraRedirectURI,
+		Scope:                 config.UmbraScope,
+	}, config, openURL)
+}
+
 // TestConnection 测试云存储连接
 func TestConnection(ctx context.Context, providerType ProviderType, config *appconf.AppConfig) error {
 	switch providerType {
+	case ProviderUmbra:
+		provider, err := NewUmbraProviderFromConfig(config, nil)
+		if err != nil {
+			return err
+		}
+		return provider.TestConnection(ctx)
 	case ProviderS3:
 		provider, err := newS3ProviderFromConfig(config)
 		if err != nil {
@@ -77,6 +104,8 @@ func IsConfigured(config *appconf.AppConfig) bool {
 		return false
 	}
 	switch ProviderType(config.CloudBackupProvider) {
+	case ProviderUmbra:
+		return config.UmbraBaseURL != "" && config.UmbraClientID != "" && (config.UmbraAccessToken != "" || config.UmbraRefreshToken != "")
 	case ProviderOneDrive:
 		return config.OneDriveClientID != "" && config.OneDriveRefreshToken != "" && config.BackupUserID != ""
 	case ProviderS3:

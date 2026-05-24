@@ -13,6 +13,7 @@ import {
 } from "../../../wailsjs/go/service/BackupService";
 import { SafeQuit } from "../../../wailsjs/go/service/ConfigService";
 import { useAppStore } from "../../store";
+import { isCloudProviderConfigured } from "../../utils/cloudSync";
 import { formatFileSize } from "../../utils/size";
 import { formatLocalDateTime } from "../../utils/time";
 import { ConfirmModal } from "../modal/ConfirmModal";
@@ -46,18 +47,7 @@ export function DBBackupPanel() {
 
   const cloudProvider = config?.cloud_backup_provider;
 
-  const cloudEnabled = (() => {
-    if (!config?.cloud_backup_enabled) {
-      return false;
-    }
-    if (cloudProvider === "onedrive") {
-      return !!config?.onedrive_refresh_token;
-    }
-    if (cloudProvider === "s3") {
-      return !!config?.backup_user_id;
-    }
-    return false;
-  })();
+  const cloudEnabled = isCloudProviderConfigured(config);
 
   const loadDBBackups = async () => {
     setLoadingLocal(true);

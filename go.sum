@@ -1,3 +1,5 @@
+github.com/Umbrae-Labs/umbra-core/sdk/umbra-go v0.0.0-20260515165027-d27eda48b73b h1:Cg08y+eTP8ZU6TAJL5syfJ7XObboN2Qqlofb9ggf+MA=
+github.com/Umbrae-Labs/umbra-core/sdk/umbra-go v0.0.0-20260515165027-d27eda48b73b/go.mod h1:de5Dy1o1uAb3Kbaix3G40wmuFGiUJPBio+4OW3ny0qM=
 github.com/andybalholm/brotli v1.2.0 h1:ukwgCxwYrmACq68yiUqwIWnGY0cTPox/M94sVwToPjQ=
 github.com/andybalholm/brotli v1.2.0/go.mod h1:rzTDkvFWvIrjDXZHkuS16NPggd91W3kUSvPlQ1pLaKY=
 github.com/apache/arrow-go/v18 v18.4.1 h1:q/jVkBWCJOB9reDgaIZIdruLQUb1kbkvOnOFezVH1C4=

@@ -159,6 +159,15 @@ type CloudBackupStatus struct {
 	Provider   string `json:"provider"`   // 云备份提供商: s3, onedrive
 }
 
+type UmbraProfile struct {
+	ID             uint64  `json:"id"`
+	Username       string  `json:"username"`
+	QuotaBytes     uint64  `json:"quota_bytes"`
+	UsedBytes      uint64  `json:"used_bytes"`
+	AvailableBytes uint64  `json:"available_bytes"`
+	StorageEndID   *uint64 `json:"storage_end_id,omitempty"`
+}
+
 // CloudSyncStatus 云同步状态
 type CloudSyncStatus struct {
 	Enabled        bool   `json:"enabled"`
