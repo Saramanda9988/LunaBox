@@ -329,88 +329,33 @@ func (s *GameService) DeleteGames(ids []string) error {
 	return nil
 }
 
-func (s *GameService) GetGames() ([]models.Game, error) {
-	// FIXME: 这里对于上次游玩时间查询使用了一个子查询，可能存在性能问题，后续可以考虑优化或者在 game 中增加一个 last_played_at 字段来直接存储每个游戏的最近游玩时间
-	query := `SELECT 
-		g.id, g.name, 
-		COALESCE(g.cover_url, '') as cover_url, 
-		COALESCE(g.company, '') as company, 
-		COALESCE(g.summary, '') as summary, 
-		COALESCE(g.rating, 0) as rating,
-		COALESCE(g.release_date, '') as release_date,
-		COALESCE(g.path, '') as path, 
-		COALESCE(g.save_path, '') as save_path,
-		COALESCE(g.status, 'not_started') as status,
-		COALESCE(g.source_type, '') as source_type, 
-		g.cached_at, 
-		COALESCE(g.source_id, '') as source_id, 
-		g.created_at,
-		COALESCE(g.updated_at, g.created_at, g.cached_at) as updated_at,
-		latest.last_played_at,
-		COALESCE(g.use_locale_emulator, FALSE) as use_locale_emulator,
-		COALESCE(g.use_magpie, FALSE) as use_magpie
-	FROM games g
-	LEFT JOIN (
-		SELECT game_id, MAX(start_time) as last_played_at
-		FROM play_sessions
-		GROUP BY game_id
-	) latest ON latest.game_id = g.id
-	ORDER BY g.created_at DESC`
-
-	rows, err := s.db.QueryContext(s.ctx, query)
+func (s *GameService) GetGames(req vo.GameListRequest) (vo.GameListResponse, error) {
+	resp, err := queryGameList(s.ctx, s.db, req, gameListScope{})
 	if err != nil {
-		applog.LogErrorf(s.ctx, "GetGames: failed to query games: %v", err)
-		return nil, fmt.Errorf("failed to query games: %w", err)
+		applog.LogErrorf(s.ctx, "GetGames: failed to query game list: %v", err)
+		return resp, err
 	}
-	defer rows.Close()
+	return resp, nil
+}
 
-	var games []models.Game
-	for rows.Next() {
-		var game models.Game
-		var sourceType string
-		var status string
-		var lastPlayedAt sql.NullTime
-
-		err := rows.Scan(
-			&game.ID,
-			&game.Name,
-			&game.CoverURL,
-			&game.Company,
-			&game.Summary,
-			&game.Rating,
-			&game.ReleaseDate,
-			&game.Path,
-			&game.SavePath,
-			&status,
-			&sourceType,
-			&game.CachedAt,
-			&game.SourceID,
-			&game.CreatedAt,
-			&game.UpdatedAt,
-			&lastPlayedAt,
-			&game.UseLocaleEmulator,
-			&game.UseMagpie,
-		)
+func (s *GameService) listAllGamesInternal() ([]models.Game, error) {
+	var all []models.Game
+	req := vo.GameListRequest{
+		Limit:     maxGameListLimit,
+		SortBy:    "created_at",
+		SortOrder: "desc",
+	}
+	for {
+		resp, err := queryGameList(s.ctx, s.db, req, gameListScope{})
 		if err != nil {
-			applog.LogErrorf(s.ctx, "GetGames: failed to scan game row: %v", err)
-			return nil, fmt.Errorf("failed to scan game: %w", err)
+			return nil, err
 		}
-
-		game.SourceType = enums2.SourceType(sourceType)
-		game.Status = enums2.GameStatus(status)
-		if lastPlayedAt.Valid {
-			lastPlayed := lastPlayedAt.Time
-			game.LastPlayedAt = &lastPlayed
+		all = append(all, resp.Games...)
+		if !resp.HasMore {
+			return all, nil
 		}
-		games = append(games, game)
+		req.Offset += resp.Limit
 	}
-
-	if err = rows.Err(); err != nil {
-		applog.LogErrorf(s.ctx, "GetGames: error iterating games: %v", err)
-		return nil, fmt.Errorf("error iterating games: %w", err)
-	}
-
-	return games, nil
 }
 
 func (s *GameService) GetGameByID(id string) (models.Game, error) {
@@ -1003,7 +948,7 @@ func (s *GameService) UpdateGameFromRemote(gameID string) error {
 func (s *GameService) RefreshAllGamesMetadata() (vo.MetadataRefreshResult, error) {
 	result := vo.MetadataRefreshResult{}
 
-	games, err := s.GetGames()
+	games, err := s.listAllGamesInternal()
 	if err != nil {
 		return result, fmt.Errorf("failed to get games: %w", err)
 	}

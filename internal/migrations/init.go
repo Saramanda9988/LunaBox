@@ -92,6 +92,14 @@ func InitSchema(db *sql.DB) error {
 			UNIQUE (game_id, name, source)
 		)
 		`,
+		`CREATE INDEX IF NOT EXISTS idx_games_status ON games(status)`,
+		`CREATE INDEX IF NOT EXISTS idx_games_created_at ON games(created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_games_rating ON games(rating)`,
+		`CREATE INDEX IF NOT EXISTS idx_games_release_date ON games(release_date)`,
+		`CREATE INDEX IF NOT EXISTS idx_play_sessions_game_start ON play_sessions(game_id, start_time)`,
+		`CREATE INDEX IF NOT EXISTS idx_game_tags_game_id ON game_tags(game_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_game_tags_name ON game_tags(name)`,
+		`CREATE INDEX IF NOT EXISTS idx_game_tags_name_game ON game_tags(name, game_id)`,
 	}
 
 	for _, query := range queries {

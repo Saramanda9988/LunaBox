@@ -431,6 +431,28 @@ func migration158(tx *sql.Tx) error {
 	return nil
 }
 
+// migration159 adds indexes used by paginated library and category list queries.
+func migration159(tx *sql.Tx) error {
+	indexes := []struct {
+		name  string
+		query string
+	}{
+		{"idx_games_status", `CREATE INDEX IF NOT EXISTS idx_games_status ON games(status)`},
+		{"idx_games_created_at", `CREATE INDEX IF NOT EXISTS idx_games_created_at ON games(created_at)`},
+		{"idx_games_rating", `CREATE INDEX IF NOT EXISTS idx_games_rating ON games(rating)`},
+		{"idx_games_release_date", `CREATE INDEX IF NOT EXISTS idx_games_release_date ON games(release_date)`},
+		{"idx_play_sessions_game_start", `CREATE INDEX IF NOT EXISTS idx_play_sessions_game_start ON play_sessions(game_id, start_time)`},
+		{"idx_game_tags_name_game", `CREATE INDEX IF NOT EXISTS idx_game_tags_name_game ON game_tags(name, game_id)`},
+	}
+
+	for _, index := range indexes {
+		if _, err := tx.Exec(index.query); err != nil {
+			return fmt.Errorf("failed to create %s: %w", index.name, err)
+		}
+	}
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
@@ -482,6 +504,11 @@ var migrations = []Migration{
 		Version:     158,
 		Description: "Add updated_at to game_tags for cloud sync conflict resolution",
 		Up:          migration158,
+	},
+	{
+		Version:     159,
+		Description: "Add library list performance indexes",
+		Up:          migration159,
 	},
 	// {
 	// 	Version:     114,

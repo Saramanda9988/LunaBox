@@ -2,8 +2,10 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"lunabox/internal/appconf"
 	"lunabox/internal/common/enums"
+	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
 	"lunabox/internal/service"
 	"testing"
@@ -68,12 +70,12 @@ func TestGameService_AddGame(t *testing.T) {
 		}
 
 		// 验证至少有一个游戏被添加（由于ID是自动生成的，无法直接验证）
-		games, err := gameService.GetGames()
+		resp, err := gameService.GetGames(vo.GameListRequest{})
 		if err != nil {
 			t.Fatalf("获取游戏列表失败: %v", err)
 		}
 
-		if len(games) < 1 {
+		if len(resp.Games) < 1 {
 			t.Error("未找到添加的游戏")
 		}
 	})
@@ -137,13 +139,16 @@ func TestGameService_GetGames(t *testing.T) {
 			}
 		}
 
-		games, err := gameService.GetGames()
+		resp, err := gameService.GetGames(vo.GameListRequest{})
 		if err != nil {
 			t.Fatalf("获取游戏列表失败: %v", err)
 		}
 
-		if len(games) != 3 {
-			t.Errorf("期望获取 3 个游戏, 实际获取 %d 个", len(games))
+		if len(resp.Games) != 3 {
+			t.Errorf("期望获取 3 个游戏, 实际获取 %d 个", len(resp.Games))
+		}
+		if resp.Total != 3 {
+			t.Errorf("期望 total 为 3, 实际为 %d", resp.Total)
 		}
 	})
 
@@ -155,13 +160,13 @@ func TestGameService_GetGames(t *testing.T) {
 		newService := service.NewGameService()
 		newService.Init(context.Background(), newDB, &appconf.AppConfig{})
 
-		games, err := newService.GetGames()
+		resp, err := newService.GetGames(vo.GameListRequest{})
 		if err != nil {
 			t.Fatalf("获取游戏列表失败: %v", err)
 		}
 
-		if len(games) != 0 {
-			t.Errorf("期望空列表, 实际获取 %d 个游戏", len(games))
+		if len(resp.Games) != 0 {
+			t.Errorf("期望空列表, 实际获取 %d 个游戏", len(resp.Games))
 		}
 	})
 
@@ -201,19 +206,59 @@ func TestGameService_GetGames(t *testing.T) {
 			t.Fatalf("插入新游玩记录失败: %v", err)
 		}
 
-		games, err := newService.GetGames()
+		resp, err := newService.GetGames(vo.GameListRequest{})
 		if err != nil {
 			t.Fatalf("获取游戏列表失败: %v", err)
 		}
 
-		if len(games) != 1 {
-			t.Fatalf("期望获取 1 个游戏, 实际获取 %d 个", len(games))
+		if len(resp.Games) != 1 {
+			t.Fatalf("期望获取 1 个游戏, 实际获取 %d 个", len(resp.Games))
 		}
-		if games[0].LastPlayedAt == nil {
+		if resp.Games[0].LastPlayedAt == nil {
 			t.Fatal("期望返回最近游玩时间，但得到 nil")
 		}
-		if !games[0].LastPlayedAt.Equal(newerStart) {
-			t.Errorf("最近游玩时间不正确: 期望 %v, 得到 %v", newerStart, *games[0].LastPlayedAt)
+		if resp.Games[0].LastPlayedAt.Sub(newerStart).Abs() > time.Millisecond {
+			t.Errorf("最近游玩时间不正确: 期望 %v, 得到 %v", newerStart, *resp.Games[0].LastPlayedAt)
+		}
+	})
+
+	t.Run("分页搜索和 has_more", func(t *testing.T) {
+		newDB, newCleanup := setupTestDB(t)
+		defer newCleanup()
+
+		newService := service.NewGameService()
+		newService.Init(context.Background(), newDB, &appconf.AppConfig{})
+
+		for i, name := range []string{"Alpha One", "Alpha Two", "Beta"} {
+			game := createTestGame()
+			game.ID = fmt.Sprintf("paged-%d", i)
+			game.Name = name
+			game.Company = "Studio"
+			if err := addGameViaMetadata(newService, game); err != nil {
+				t.Fatalf("添加游戏失败: %v", err)
+			}
+		}
+
+		resp, err := newService.GetGames(vo.GameListRequest{
+			Limit:       1,
+			SearchQuery: "alpha",
+			SortBy:      "name",
+			SortOrder:   "asc",
+		})
+		if err != nil {
+			t.Fatalf("分页查询失败: %v", err)
+		}
+		if len(resp.Games) != 1 {
+			t.Fatalf("期望返回 1 个游戏, 实际 %d", len(resp.Games))
+		}
+		if resp.Total != 2 {
+			t.Fatalf("期望 total 为 2, 实际 %d", resp.Total)
+		}
+		if !resp.HasMore {
+			t.Fatal("期望 has_more 为 true")
+		}
+		if resp.Games[0].Name != "Alpha One" {
+			t.Fatalf("期望按名称升序返回 Alpha One, 实际 %s", resp.Games[0].Name)
 		}
 	})
 }
@@ -435,11 +480,11 @@ func TestGameService_CompleteWorkflow(t *testing.T) {
 		}
 
 		// 3. 获取所有游戏
-		games, err := gameService.GetGames()
+		resp, err := gameService.GetGames(vo.GameListRequest{})
 		if err != nil {
 			t.Fatalf("获取游戏列表失败: %v", err)
 		}
-		if len(games) == 0 {
+		if len(resp.Games) == 0 {
 			t.Error("游戏列表为空")
 		}
 

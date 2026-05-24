@@ -23,6 +23,19 @@ type GameMetadataFromWebVO struct {
 	Tags   []metadata.TagItem
 }
 
+type GameListResponse struct {
+	Games   []models.Game `json:"games"`
+	Limit   int           `json:"limit"`
+	Offset  int           `json:"offset"`
+	Total   int           `json:"total"`
+	HasMore bool          `json:"has_more"`
+}
+
+type DownloadImportState struct {
+	TaskID   string `json:"task_id"`
+	Imported bool   `json:"imported"`
+}
+
 type MetadataRefreshResult struct {
 	TotalGames   int `json:"total_games"`
 	UpdatedGames int `json:"updated_games"`

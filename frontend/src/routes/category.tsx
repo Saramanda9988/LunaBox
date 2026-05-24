@@ -1,24 +1,24 @@
 import type { models, vo } from "../../wailsjs/go/models";
 import { createRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import {
   AddGameToCategory,
   GetCategoryByID,
-  GetGamesByCategory,
+  GetCategoryGames,
   RemoveGameFromCategory,
   RemoveGamesFromCategory,
+  SearchCategoryGameCandidates,
 } from "../../wailsjs/go/service/CategoryService";
-import { GetGames } from "../../wailsjs/go/service/GameService";
 import { FilterBar } from "../components/bar/FilterBar";
 import { TagFilterMenu } from "../components/bar/TagFilterMenu";
-import { GameCard } from "../components/card/GameCard";
+import { VirtualGameGrid } from "../components/grid/VirtualGameGrid";
 import { AddGameToCategoryModal } from "../components/modal/AddGameToCategoryModal";
 import { CategorySkeleton } from "../components/skeleton/CategorySkeleton";
 import { sortOptions, statusOptions } from "../consts/options";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useTagGameFilter } from "../hooks/useTagGameFilter";
-import { compareNullableDateLike } from "../utils/sort";
 import { Route as rootRoute } from "./__root";
 
 type CategorySortBy
@@ -29,6 +29,8 @@ type CategorySortBy
     | "release_date";
 
 const CATEGORY_STORAGE_KEY = "category";
+const PAGE_SIZE = 120;
+const CANDIDATE_PAGE_SIZE = 80;
 const CATEGORY_SORT_BY_VALUES = new Set<CategorySortBy>([
   "name",
   "last_played_at",
@@ -90,10 +92,18 @@ function CategoryDetailPage() {
   const { t } = useTranslation();
   const [category, setCategory] = useState<vo.CategoryVO | null>(null);
   const [games, setGames] = useState<models.Game[]>([]);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const requestIdRef = useRef(0);
   const [loading, setLoading] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
   const [allGames, setAllGames] = useState<models.Game[]>([]);
+  const [candidateSearchQuery, setCandidateSearchQuery] = useState("");
+  const [candidateHasMore, setCandidateHasMore] = useState(false);
+  const [candidateLoading, setCandidateLoading] = useState(false);
+  const candidateRequestIdRef = useRef(0);
   const [searchQuery, setSearchQuery] = useState(() =>
     readStoredCategorySearchQuery(),
   );
@@ -106,6 +116,11 @@ function CategoryDetailPage() {
   const [statusFilter, setStatusFilter] = useState<string>(() =>
     readStoredCategoryStatusFilter(),
   );
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 250);
+  const debouncedCandidateSearchQuery = useDebouncedValue(
+    candidateSearchQuery,
+    250,
+  );
   const [batchMode, setBatchMode] = useState(false);
   const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
   const {
@@ -113,7 +128,6 @@ function CategoryDetailPage() {
     tagInput,
     setTagInput,
     tagSuggestions,
-    tagGameIds,
     selectTag,
     removeTag,
     clearTagFilter,
@@ -143,16 +157,68 @@ function CategoryDetailPage() {
     }
   };
 
-  const loadGames = async (id: string) => {
-    try {
-      const result = await GetGamesByCategory(id);
-      setGames(result || []);
+  const queryParams = useMemo(
+    () => ({
+      search_query: debouncedSearchQuery.trim(),
+      status: statusFilter,
+      tags: selectedTags,
+      sort_by: sortBy,
+      sort_order: sortOrder,
+    }),
+    [debouncedSearchQuery, selectedTags, sortBy, sortOrder, statusFilter],
+  );
+
+  const loadGames = useCallback(
+    async (id: string, offset = 0, mode: "replace" | "append" = "replace") => {
+      const requestId = ++requestIdRef.current;
+      if (mode === "replace") {
+        setLoading(true);
+        setGames([]);
+        setHasMore(false);
+      }
+      else {
+        setLoadingMore(true);
+      }
+      try {
+        const result = await GetCategoryGames({
+          category_id: id,
+          limit: PAGE_SIZE,
+          offset,
+          ...queryParams,
+        });
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+        setTotal(result.total || 0);
+        setHasMore(Boolean(result.has_more));
+        setGames(previous =>
+          mode === "append"
+            ? [...previous, ...(result.games || [])]
+            : result.games || [],
+        );
+      }
+      catch (error) {
+        if (requestId === requestIdRef.current) {
+          console.error("Failed to load games for category:", error);
+          toast.error(t("category.toast.loadGamesFailed"));
+        }
+      }
+      finally {
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
+      }
+    },
+    [queryParams, t],
+  );
+
+  const loadNextGames = useCallback(() => {
+    if (!category || !hasMore || loading || loadingMore) {
+      return;
     }
-    catch (error) {
-      console.error("Failed to load games for category:", error);
-      toast.error(t("category.toast.loadGamesFailed"));
-    }
-  };
+    void loadGames(category.id, games.length, "append");
+  }, [category, games.length, hasMore, loadGames, loading, loadingMore]);
 
   const onBack = () => {
     navigate({ to: "/categories" });
@@ -173,17 +239,50 @@ function CategoryDetailPage() {
   };
 
   const openAddGameModal = async () => {
-    try {
-      const result = await GetGames();
-      const currentGameIds = new Set(games.map(g => g.id));
-      setAllGames(result.filter(g => !currentGameIds.has(g.id)) || []);
-      setIsAddGameModalOpen(true);
-    }
-    catch (error) {
-      console.error("Failed to load all games:", error);
-      toast.error(t("category.toast.loadAllGamesFailed"));
-    }
+    setAllGames([]);
+    setCandidateSearchQuery("");
+    setCandidateHasMore(false);
+    setIsAddGameModalOpen(true);
   };
+
+  const loadCandidates = useCallback(
+    async (offset = 0, mode: "replace" | "append" = "replace") => {
+      if (!category) {
+        return;
+      }
+      const requestId = ++candidateRequestIdRef.current;
+      setCandidateLoading(true);
+      try {
+        const result = await SearchCategoryGameCandidates({
+          category_id: category.id,
+          limit: CANDIDATE_PAGE_SIZE,
+          offset,
+          search_query: debouncedCandidateSearchQuery.trim(),
+        });
+        if (requestId !== candidateRequestIdRef.current) {
+          return;
+        }
+        setCandidateHasMore(Boolean(result.has_more));
+        setAllGames(previous =>
+          mode === "append"
+            ? [...previous, ...(result.games || [])]
+            : result.games || [],
+        );
+      }
+      catch (error) {
+        if (requestId === candidateRequestIdRef.current) {
+          console.error("Failed to load candidate games:", error);
+          toast.error(t("category.toast.loadAllGamesFailed"));
+        }
+      }
+      finally {
+        if (requestId === candidateRequestIdRef.current) {
+          setCandidateLoading(false);
+        }
+      }
+    },
+    [category, debouncedCandidateSearchQuery, t],
+  );
 
   const handleAddGameToCategory = async (gameId: string) => {
     if (!category)
@@ -200,54 +299,6 @@ function CategoryDetailPage() {
     }
   };
 
-  const filteredGames = useMemo(() => {
-    return games
-      .filter((game) => {
-        if (searchQuery) {
-          const q = searchQuery.toLowerCase();
-          const matchName = game.name.toLowerCase().includes(q);
-          const matchCompany = (game.company || "").toLowerCase().includes(q);
-          if (!matchName && !matchCompany)
-            return false;
-        }
-        if (statusFilter && game.status !== statusFilter) {
-          return false;
-        }
-        if (tagGameIds !== null && !tagGameIds.has(game.id)) {
-          return false;
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        let comparison = 0;
-        switch (sortBy) {
-          case "name":
-            comparison = a.name.localeCompare(b.name);
-            break;
-          case "last_played_at":
-            comparison = compareNullableDateLike(
-              a.last_played_at,
-              b.last_played_at,
-            );
-            break;
-          case "created_at":
-            comparison = String(a.created_at || "").localeCompare(
-              String(b.created_at || ""),
-            );
-            break;
-          case "rating":
-            comparison = (a.rating || 0) - (b.rating || 0);
-            break;
-          case "release_date":
-            comparison = String(a.release_date || "").localeCompare(
-              String(b.release_date || ""),
-            );
-            break;
-        }
-        return sortOrder === "asc" ? comparison : -comparison;
-      });
-  }, [games, searchQuery, sortBy, sortOrder, statusFilter, tagGameIds]);
-
   const statusFilterLabel = statusFilter
     ? t(
         statusOptions.find(option => option.value === statusFilter)?.label
@@ -256,10 +307,10 @@ function CategoryDetailPage() {
     : "";
   const gameCountText = statusFilterLabel
     ? t("category.filteredGameCount", {
-        count: filteredGames.length,
+        count: total,
         status: statusFilterLabel,
       })
-    : t("category.gameCount", { count: filteredGames.length });
+    : t("category.gameCount", { count: total });
 
   const selectedGameIdSet = useMemo(
     () => new Set(selectedGameIds),
@@ -285,7 +336,7 @@ function CategoryDetailPage() {
   const handleSelectAll = () => {
     setSelectedGameIds((prev) => {
       const next = new Set(prev);
-      filteredGames.forEach((game) => {
+      games.forEach((game) => {
         if (game.id) {
           next.add(game.id);
         }
@@ -321,15 +372,19 @@ function CategoryDetailPage() {
   useEffect(() => {
     if (categoryId) {
       const init = async () => {
-        setLoading(true);
         setBatchMode(false);
         setSelectedGameIds([]);
         await Promise.all([loadCategory(categoryId), loadGames(categoryId)]);
-        setLoading(false);
       };
       init();
     }
-  }, [categoryId]);
+  }, [categoryId, loadGames]);
+
+  useEffect(() => {
+    if (isAddGameModalOpen) {
+      void loadCandidates(0, "replace");
+    }
+  }, [isAddGameModalOpen, loadCandidates]);
 
   if (loading && !category) {
     if (!showSkeleton) {
@@ -453,40 +508,41 @@ function CategoryDetailPage() {
 
       <div className="mt-6">
         {games.length > 0 ? (
-          filteredGames.length > 0 ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(8.75rem,1fr))] gap-3">
-              {filteredGames.map(game => (
-                <div key={game.id} className="relative group">
-                  <GameCard
-                    game={game}
-                    searchQuery={searchQuery}
-                    selectionMode={batchMode}
-                    selected={selectedGameIdSet.has(game.id)}
-                    onSelectChange={selected =>
-                      setGameSelection(game.id, selected)}
-                  />
-                  {!batchMode && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveGame(game.id);
-                      }}
-                      className="absolute top-2 right-2 p-1 bg-error-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-error-600"
-                      title={t("category.removeFromCategory")}
-                    >
-                      <div className="i-mdi-close text-sm" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-64 text-brand-500 dark:text-brand-400">
-              <div className="i-mdi-magnify text-6xl mb-4" />
-              <p className="text-lg">{t("category.noMatchingGames")}</p>
-            </div>
-          )
+          <>
+            <VirtualGameGrid
+              games={games}
+              searchQuery={debouncedSearchQuery}
+              selectionMode={batchMode}
+              selectedGameIds={selectedGameIdSet}
+              onSelectChange={setGameSelection}
+              onNearEnd={loadNextGames}
+              renderOverlay={game =>
+                !batchMode && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveGame(game.id);
+                    }}
+                    className="absolute top-2 right-2 p-1 bg-error-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-error-600"
+                    title={t("category.removeFromCategory")}
+                  >
+                    <div className="i-mdi-close text-sm" />
+                  </button>
+                )}
+            />
+            {loadingMore && (
+              <div className="flex justify-center py-3 text-sm text-brand-500 dark:text-brand-400">
+                <div className="i-mdi-loading animate-spin mr-2" />
+                {t("common.loading", "加载中...")}
+              </div>
+            )}
+          </>
+        ) : total > 0 ? (
+          <div className="flex flex-col items-center justify-center h-64 text-brand-500 dark:text-brand-400">
+            <div className="i-mdi-magnify text-6xl mb-4" />
+            <p className="text-lg">{t("category.noMatchingGames")}</p>
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-64 text-brand-500 dark:text-brand-400">
             <div className="i-mdi-gamepad-variant-outline text-6xl mb-4" />
@@ -505,6 +561,10 @@ function CategoryDetailPage() {
       <AddGameToCategoryModal
         isOpen={isAddGameModalOpen}
         allGames={allGames}
+        loading={candidateLoading}
+        hasMore={candidateHasMore}
+        onSearchChange={setCandidateSearchQuery}
+        onLoadMore={() => loadCandidates(allGames.length, "append")}
         onClose={() => setIsAddGameModalOpen(false)}
         onAddGame={handleAddGameToCategory}
       />

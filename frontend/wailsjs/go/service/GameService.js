@@ -38,8 +38,8 @@ export function GetGameByID(arg1) {
   return window['go']['service']['GameService']['GetGameByID'](arg1);
 }
 
-export function GetGames() {
-  return window['go']['service']['GameService']['GetGames']();
+export function GetGames(arg1) {
+  return window['go']['service']['GameService']['GetGames'](arg1);
 }
 
 export function GetRunningProcesses() {

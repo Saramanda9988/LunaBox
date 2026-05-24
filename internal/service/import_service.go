@@ -128,7 +128,7 @@ func (s *ImportService) ImportFromPotatoVN(zipPath string, skipNoPath bool) (Imp
 	}
 
 	// 获取现有游戏列表，用于去重检查
-	existingGames, err := s.gameService.GetGames()
+	existingGames, err := s.gameService.listAllGamesInternal()
 	if err != nil {
 		applog.LogErrorf(s.ctx, "failed to get existing games: %v", err)
 		return result, fmt.Errorf("获取现有游戏列表失败: %w", err)
@@ -386,7 +386,7 @@ func (s *ImportService) PreviewImport(zipPath string) ([]PreviewGame, error) {
 	}
 
 	// 获取现有游戏列表，用于去重检查
-	existingGames, err := s.gameService.GetGames()
+	existingGames, err := s.gameService.listAllGamesInternal()
 	if err != nil {
 		applog.LogErrorf(s.ctx, "PreviewImport: failed to get existing games: %v", err)
 		return nil, fmt.Errorf("获取现有游戏列表失败: %w", err)
@@ -460,7 +460,7 @@ func (s *ImportService) PreviewPlayniteImport(jsonPath string) ([]PreviewGame, e
 	}
 
 	// 获取现有游戏列表，用于去重检查
-	existingGames, err := s.gameService.GetGames()
+	existingGames, err := s.gameService.listAllGamesInternal()
 	if err != nil {
 		applog.LogErrorf(s.ctx, "PreviewPlayniteImport: failed to get existing games: %v", err)
 		return nil, fmt.Errorf("获取现有游戏列表失败: %w", err)
@@ -512,7 +512,7 @@ func (s *ImportService) ImportFromPlaynite(jsonPath string, skipNoPath bool) (Im
 	}
 
 	// 获取现有游戏列表，用于去重检查
-	existingGames, err := s.gameService.GetGames()
+	existingGames, err := s.gameService.listAllGamesInternal()
 	if err != nil {
 		applog.LogErrorf(s.ctx, "ImportFromPlaynite: failed to get existing games: %v", err)
 		return result, fmt.Errorf("获取现有游戏列表失败: %w", err)
@@ -660,7 +660,7 @@ func (s *ImportService) PreviewVniteImport(vniteDir string) ([]PreviewGame, erro
 		return nil, fmt.Errorf("读取 Vnite 导出目录失败: %w", err)
 	}
 
-	existingGames, err := s.gameService.GetGames()
+	existingGames, err := s.gameService.listAllGamesInternal()
 	if err != nil {
 		applog.LogErrorf(s.ctx, "PreviewVniteImport: failed to get existing games: %v", err)
 		return nil, fmt.Errorf("获取现有游戏列表失败: %w", err)
@@ -719,7 +719,7 @@ func (s *ImportService) ImportFromVnite(vniteDir string, skipNoPath bool) (Impor
 		return result, fmt.Errorf("读取 Vnite 导出目录失败: %w", err)
 	}
 
-	existingGames, err := s.gameService.GetGames()
+	existingGames, err := s.gameService.listAllGamesInternal()
 	if err != nil {
 		applog.LogErrorf(s.ctx, "ImportFromVnite: failed to get existing games: %v", err)
 		return result, fmt.Errorf("获取现有游戏列表失败: %w", err)
@@ -1192,7 +1192,7 @@ func (s *ImportService) BatchImportGames(candidates []vo.BatchImportCandidate) (
 	}
 
 	// 获取现有游戏列表用于去重
-	existingGames, err := s.gameService.GetGames()
+	existingGames, err := s.gameService.listAllGamesInternal()
 	if err != nil {
 		applog.LogErrorf(s.ctx, "BatchImportGames: failed to get existing games: %v", err)
 		return result, fmt.Errorf("获取现有游戏列表失败: %w", err)

@@ -34,6 +34,10 @@ export function GetCategoryByID(arg1) {
   return window['go']['service']['CategoryService']['GetCategoryByID'](arg1);
 }
 
+export function GetCategoryGames(arg1) {
+  return window['go']['service']['CategoryService']['GetCategoryGames'](arg1);
+}
+
 export function GetGamesByCategory(arg1) {
   return window['go']['service']['CategoryService']['GetGamesByCategory'](arg1);
 }
@@ -48,6 +52,10 @@ export function RemoveGameFromCategory(arg1, arg2) {
 
 export function RemoveGamesFromCategory(arg1, arg2) {
   return window['go']['service']['CategoryService']['RemoveGamesFromCategory'](arg1, arg2);
+}
+
+export function SearchCategoryGameCandidates(arg1) {
+  return window['go']['service']['CategoryService']['SearchCategoryGameCandidates'](arg1);
 }
 
 export function UpdateCategory(arg1, arg2, arg3) {

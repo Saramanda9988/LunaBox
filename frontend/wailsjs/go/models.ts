@@ -171,12 +171,6 @@ export namespace appconf {
 
 export namespace enums {
 	
-	export enum GameStatus {
-	    NOT_STARTED = "not_started",
-	    PLAYING = "playing",
-	    COMPLETED = "completed",
-	    ON_HOLD = "on_hold",
-	}
 	export enum SourceType {
 	    LOCAL = "local",
 	    BANGUMI = "bangumi",
@@ -194,6 +188,12 @@ export namespace enums {
 	    DEFAULT_SYSTEM = "你是一个幽默风趣的游戏评论员，擅长用轻松的语气点评玩家的游戏习惯。\n请用轻松幽默的方式点评这位玩家的游戏习惯，可以适当调侃但不要太过分。",
 	    MEOW_ZAKO = "你是一个雌小鬼猫娘，根据用户的游戏统计数据对用户进行锐评，语气可爱活泼，不要给用户留脸面偶（=w=）适当加入猫咪的拟声词（如“喵”）和雌小鬼的口癖（如“杂鱼~杂鱼~”），要是能再用上颜文字主人就更高兴了喵。\n\n",
 	    STRICT_TUTOR = "你是用户的严厉导师，根据用户的游戏统计数据对用户进行锐评，语气严肃认真，不允许任何调侃和幽默。\n\n",
+	}
+	export enum GameStatus {
+	    NOT_STARTED = "not_started",
+	    PLAYING = "playing",
+	    COMPLETED = "completed",
+	    ON_HOLD = "on_hold",
 	}
 
 }
@@ -913,6 +913,50 @@ export namespace vo {
 		    return a;
 		}
 	}
+	export class CategoryGameCandidateRequest {
+	    category_id: string;
+	    limit: number;
+	    offset: number;
+	    search_query: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CategoryGameCandidateRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category_id = source["category_id"];
+	        this.limit = source["limit"];
+	        this.offset = source["offset"];
+	        this.search_query = source["search_query"];
+	    }
+	}
+	export class CategoryGameListRequest {
+	    category_id: string;
+	    limit: number;
+	    offset: number;
+	    search_query: string;
+	    status: string;
+	    tags: string[];
+	    sort_by: string;
+	    sort_order: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CategoryGameListRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.category_id = source["category_id"];
+	        this.limit = source["limit"];
+	        this.offset = source["offset"];
+	        this.search_query = source["search_query"];
+	        this.status = source["status"];
+	        this.tags = source["tags"];
+	        this.sort_by = source["sort_by"];
+	        this.sort_order = source["sort_order"];
+	    }
+	}
 	export class CategoryVO {
 	    id: string;
 	    name: string;
@@ -1113,6 +1157,38 @@ export namespace vo {
 	        this.duration = source["duration"];
 	    }
 	}
+	export class DownloadImportState {
+	    task_id: string;
+	    imported: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new DownloadImportState(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.task_id = source["task_id"];
+	        this.imported = source["imported"];
+	    }
+	}
+	export class DownloadImportStateRequest {
+	    task_id: string;
+	    file_path: string;
+	    meta_source: string;
+	    meta_id: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DownloadImportStateRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.task_id = source["task_id"];
+	        this.file_path = source["file_path"];
+	        this.meta_source = source["meta_source"];
+	        this.meta_id = source["meta_id"];
+	    }
+	}
 	export class GameDetailStats {
 	    dimension: string;
 	    start_date: string;
@@ -1135,6 +1211,68 @@ export namespace vo {
 	        this.total_play_time = source["total_play_time"];
 	        this.today_play_time = source["today_play_time"];
 	        this.recent_play_history = this.convertValues(source["recent_play_history"], DailyPlayTime);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class GameListRequest {
+	    limit: number;
+	    offset: number;
+	    search_query: string;
+	    status: string;
+	    tags: string[];
+	    sort_by: string;
+	    sort_order: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new GameListRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.limit = source["limit"];
+	        this.offset = source["offset"];
+	        this.search_query = source["search_query"];
+	        this.status = source["status"];
+	        this.tags = source["tags"];
+	        this.sort_by = source["sort_by"];
+	        this.sort_order = source["sort_order"];
+	    }
+	}
+	export class GameListResponse {
+	    games: models.Game[];
+	    limit: number;
+	    offset: number;
+	    total: number;
+	    has_more: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new GameListResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.games = this.convertValues(source["games"], models.Game);
+	        this.limit = source["limit"];
+	        this.offset = source["offset"];
+	        this.total = source["total"];
+	        this.has_more = source["has_more"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

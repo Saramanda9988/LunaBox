@@ -9,6 +9,7 @@ import (
 	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
 	"lunabox/internal/utils"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -451,57 +452,57 @@ func (s *CategoryService) DeleteCategories(ids []string) error {
 }
 
 func (s *CategoryService) GetGamesByCategory(categoryID string) ([]models.Game, error) {
-	// FIXME: 这里对于上次游玩时间查询使用了一个子查询，可能存在性能问题，后续可以考虑优化或者在 game 中增加一个 last_played_at 字段来直接存储每个游戏的最近游玩时间
-	query := `
-		SELECT g.id, g.name,
-			COALESCE(g.cover_url, '') as cover_url,
-			COALESCE(g.company, '') as company,
-			COALESCE(g.summary, '') as summary,
-			COALESCE(g.rating, 0) as rating,
-			COALESCE(g.release_date, '') as release_date,
-			COALESCE(g.path, '') as path,
-			COALESCE(g.save_path, '') as save_path,
-			COALESCE(g.process_name, '') as process_name,
-			COALESCE(g.status, '') as status,
-			COALESCE(g.source_type, '') as source_type,
-			g.cached_at,
-			COALESCE(g.source_id, '') as source_id,
-			g.created_at,
-			latest.last_played_at,
-			COALESCE(g.use_locale_emulator, FALSE) as use_locale_emulator,
-			COALESCE(g.use_magpie, FALSE) as use_magpie
-		FROM games g
-		JOIN game_categories gc ON g.id = gc.game_id
-		LEFT JOIN (
-			SELECT game_id, MAX(start_time) as last_played_at
-			FROM play_sessions
-			GROUP BY game_id
-		) latest ON latest.game_id = g.id
-		WHERE gc.category_id = ?
-		ORDER BY g.created_at DESC
-	`
-	rows, err := s.db.Query(query, categoryID)
+	resp, err := s.GetCategoryGames(vo.CategoryGameListRequest{
+		CategoryID: categoryID,
+		GameListRequest: vo.GameListRequest{
+			Limit: maxGameListLimit,
+		},
+	})
 	if err != nil {
-		applog.LogErrorf(s.ctx, "GetGamesByCategory: failed to query games for category %s: %v", categoryID, err)
 		return nil, err
 	}
-	defer rows.Close()
+	return resp.Games, nil
+}
 
-	var games []models.Game
-	for rows.Next() {
-		var g models.Game
-		var lastPlayedAt sql.NullTime
-		if err := rows.Scan(&g.ID, &g.Name, &g.CoverURL, &g.Company, &g.Summary, &g.Rating, &g.ReleaseDate, &g.Path, &g.SavePath, &g.ProcessName, &g.Status, &g.SourceType, &g.CachedAt, &g.SourceID, &g.CreatedAt, &lastPlayedAt, &g.UseLocaleEmulator, &g.UseMagpie); err != nil {
-			applog.LogErrorf(s.ctx, "GetGamesByCategory: failed to scan row for category %s: %v", categoryID, err)
-			return nil, err
-		}
-		if lastPlayedAt.Valid {
-			lastPlayed := lastPlayedAt.Time
-			g.LastPlayedAt = &lastPlayed
-		}
-		games = append(games, g)
+func (s *CategoryService) GetCategoryGames(req vo.CategoryGameListRequest) (vo.GameListResponse, error) {
+	if strings.TrimSpace(req.CategoryID) == "" {
+		return vo.GameListResponse{}, fmt.Errorf("category id is required")
 	}
-	return games, nil
+	resp, err := queryGameList(s.ctx, s.db, req.GameListRequest, gameListScope{
+		joinClause:  "JOIN game_categories gc ON g.id = gc.game_id",
+		whereClause: "gc.category_id = ?",
+		args:        []interface{}{req.CategoryID},
+	})
+	if err != nil {
+		applog.LogErrorf(s.ctx, "GetCategoryGames: failed to query games for category %s: %v", req.CategoryID, err)
+		return resp, err
+	}
+	return resp, nil
+}
+
+func (s *CategoryService) SearchCategoryGameCandidates(req vo.CategoryGameCandidateRequest) (vo.GameListResponse, error) {
+	if strings.TrimSpace(req.CategoryID) == "" {
+		return vo.GameListResponse{}, fmt.Errorf("category id is required")
+	}
+	resp, err := queryGameList(s.ctx, s.db, vo.GameListRequest{
+		Limit:       req.Limit,
+		Offset:      req.Offset,
+		SearchQuery: req.SearchQuery,
+		SortBy:      "name",
+		SortOrder:   "asc",
+	}, gameListScope{
+		whereClause: `NOT EXISTS (
+			SELECT 1
+			FROM game_categories gc
+			WHERE gc.game_id = g.id AND gc.category_id = ?
+		)`,
+		args: []interface{}{req.CategoryID},
+	})
+	if err != nil {
+		applog.LogErrorf(s.ctx, "SearchCategoryGameCandidates: failed to query candidates for category %s: %v", req.CategoryID, err)
+		return resp, err
+	}
+	return resp, nil
 }
 
 func (s *CategoryService) GetCategoriesByGame(gameID string) ([]vo.CategoryVO, error) {

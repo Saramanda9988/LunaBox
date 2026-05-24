@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"lunabox/internal/applog"
+	"lunabox/internal/common/vo"
 	"strings"
 
 	"github.com/mattn/go-runewidth"
@@ -17,12 +18,16 @@ func newListCmd(app *CoreApp) *cobra.Command {
 			w := cmd.OutOrStdout()
 
 			applog.LogInfof(app.Ctx, "Getting games from database...")
-			// 获取所有游戏
-			games, err := app.GameService.GetGames()
+			resp, err := app.GameService.GetGames(vo.GameListRequest{
+				Limit:     240,
+				SortBy:    "created_at",
+				SortOrder: "desc",
+			})
 			if err != nil {
 				applog.LogErrorf(app.Ctx, "Failed to get games: %v", err)
 				return err
 			}
+			games := resp.Games
 
 			applog.LogInfof(app.Ctx, "Retrieved %d games", len(games))
 
@@ -38,7 +43,7 @@ func newListCmd(app *CoreApp) *cobra.Command {
 			midLine := "├" + strings.Repeat("─", 70) + "┤"
 			bottomLine := "└" + strings.Repeat("─", 70) + "┘"
 
-			fmt.Fprintf(w, "\nYour Game Library (%d games):\n\n", len(games))
+			fmt.Fprintf(w, "\nYour Game Library (%d games):\n\n", resp.Total)
 			fmt.Fprintln(w, line)
 			fmt.Fprintf(w, "│ %-12s │ %-53s │\n", "Short ID", "Name")
 			fmt.Fprintln(w, midLine)
@@ -87,6 +92,9 @@ func newListCmd(app *CoreApp) *cobra.Command {
 			}
 
 			fmt.Fprintln(w, bottomLine)
+			if resp.HasMore {
+				fmt.Fprintf(w, "Showing first %d games. Refine search in the GUI for more.\n", len(games))
+			}
 			fmt.Fprintln(w)
 			fmt.Fprintln(w, "Status Icons: · Not Started  ▶ Playing  ✓ Completed  ○ On Hold  ✗ Dropped")
 			fmt.Fprintln(w)

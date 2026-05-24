@@ -1,4 +1,4 @@
-import type { models, service } from "../../wailsjs/go/models";
+import type { service, vo } from "../../wailsjs/go/models";
 import { createRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import {
   CancelDownload,
+  CheckDownloadImportStates,
   DeleteDownloadTask,
   GetDownloadTasks,
   ImportDownloadTaskAsGame,
@@ -14,7 +15,6 @@ import {
   ResumeDownload,
   RetryDownload,
 } from "../../wailsjs/go/service/DownloadService";
-import { GetGames } from "../../wailsjs/go/service/GameService";
 import { ClipboardSetText, EventsOn } from "../../wailsjs/runtime/runtime";
 import { DownloadCard } from "../components/card/DownloadCard";
 import { Route as rootRoute } from "./__root";
@@ -51,39 +51,25 @@ function DownloadsPage() {
     Record<string, boolean>
   >({});
 
-  const normalizeSource = useCallback(
-    (source: string) => source.trim().toLowerCase(),
-    [],
-  );
-
   const markImportedTasks = useCallback(
     async (targetTasks: DownloadTaskVM[]) => {
-      const games = await GetGames();
-      const gameList = (games as models.Game[]) ?? [];
-
-      const nextImported: Record<string, boolean> = {};
-      for (const task of targetTasks) {
-        const taskSource = normalizeSource(task.request.meta_source || "");
-        const taskSourceID = (task.request.meta_id || "").trim();
-
-        const imported = gameList.some((game) => {
-          const byPath = !!task.file_path && game.path === task.file_path;
-          const bySource
-            = taskSource !== ""
-              && taskSourceID !== ""
-              && normalizeSource(game.source_type || "") === taskSource
-              && (game.source_id || "").trim() === taskSourceID;
-          return byPath || bySource;
-        });
-
-        if (imported) {
-          nextImported[task.id] = true;
-        }
-      }
-
+      const requests: vo.DownloadImportStateRequest[] = targetTasks.map(
+        task => ({
+          task_id: task.id,
+          file_path: task.file_path || "",
+          meta_source: task.request.meta_source || "",
+          meta_id: task.request.meta_id || "",
+        }),
+      );
+      const states = await CheckDownloadImportStates(requests);
+      const nextImported = Object.fromEntries(
+        (states || [])
+          .filter(state => state.imported)
+          .map(state => [state.task_id, true]),
+      );
       setImportedTaskIds(nextImported);
     },
-    [normalizeSource],
+    [],
   );
 
   // 加载已有任务

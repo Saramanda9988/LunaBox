@@ -6,6 +6,10 @@ export function CancelDownload(arg1) {
   return window['go']['service']['DownloadService']['CancelDownload'](arg1);
 }
 
+export function CheckDownloadImportStates(arg1) {
+  return window['go']['service']['DownloadService']['CheckDownloadImportStates'](arg1);
+}
+
 export function DeleteDownloadTask(arg1) {
   return window['go']['service']['DownloadService']['DeleteDownloadTask'](arg1);
 }

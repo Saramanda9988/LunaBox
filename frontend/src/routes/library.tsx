@@ -1,7 +1,7 @@
-import type { vo } from "../../wailsjs/go/models";
+import type { models, vo } from "../../wailsjs/go/models";
 import type { ImportSource } from "../components/modal/GameImportModal";
 import { createRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { enums } from "../../wailsjs/go/models";
@@ -12,10 +12,11 @@ import {
 import {
   BatchUpdateStatus,
   DeleteGames,
+  GetGames,
 } from "../../wailsjs/go/service/GameService";
 import { FilterBar } from "../components/bar/FilterBar";
 import { TagFilterMenu } from "../components/bar/TagFilterMenu";
-import { GameCard } from "../components/card/GameCard";
+import { VirtualGameGrid } from "../components/grid/VirtualGameGrid";
 import { AddGameModal } from "../components/modal/AddGameModal";
 import { AddToCategoryModal } from "../components/modal/AddToCategoryModal";
 import { BatchImportModal } from "../components/modal/BatchImportModal";
@@ -24,9 +25,8 @@ import { GameImportModal } from "../components/modal/GameImportModal";
 import { LibrarySkeleton } from "../components/skeleton/LibrarySkeleton";
 import { BetterDropdownMenu } from "../components/ui/better/BetterDropdownMenu";
 import { sortOptions, statusOptions } from "../consts/options";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useTagGameFilter } from "../hooks/useTagGameFilter";
-import { useAppStore } from "../store";
-import { compareNullableDateLike } from "../utils/sort";
 import { Route as rootRoute } from "./__root";
 
 interface LibrarySearch {
@@ -42,6 +42,7 @@ type LibrarySortBy
     | "release_date";
 
 const LIBRARY_STORAGE_KEY = "library";
+const PAGE_SIZE = 120;
 const LIBRARY_SORT_BY_VALUES = new Set<LibrarySortBy>([
   "name",
   "last_played_at",
@@ -104,11 +105,14 @@ function LibraryPage() {
   const navigate = useNavigate();
   const { tagFilter: routeTagFilter, searchQuery: routeSearchQuery }
     = Route.useSearch();
-  const games = useAppStore(state => state.games);
-  const gamesLoading = useAppStore(state => state.gamesLoading);
-  const fetchGames = useAppStore(state => state.fetchGames);
   const { t } = useTranslation();
   const [showSkeleton, setShowSkeleton] = useState(false);
+  const [games, setGames] = useState<models.Game[]>([]);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const requestIdRef = useRef(0);
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
   const [isBatchImportOpen, setIsBatchImportOpen] = useState(false);
   const [importSource, setImportSource] = useState<ImportSource | null>(null);
@@ -124,6 +128,7 @@ function LibraryPage() {
   const [statusFilter, setStatusFilter] = useState<string>(() =>
     readStoredLibraryStatusFilter(),
   );
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 250);
   const [batchMode, setBatchMode] = useState(false);
   const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
   const [allCategories, setAllCategories] = useState<vo.CategoryVO[]>([]);
@@ -146,7 +151,7 @@ function LibraryPage() {
   // 延迟显示骨架屏
   useEffect(() => {
     let timer: number;
-    if (gamesLoading) {
+    if (loading) {
       timer = window.setTimeout(() => {
         setShowSkeleton(true);
       }, 300);
@@ -155,7 +160,7 @@ function LibraryPage() {
       setShowSkeleton(false);
     }
     return () => clearTimeout(timer);
-  }, [gamesLoading]);
+  }, [loading]);
 
   const clearRouteTagFilter = useCallback(() => {
     if (!routeTagFilter) {
@@ -194,7 +199,6 @@ function LibraryPage() {
     tagInput,
     setTagInput,
     tagSuggestions,
-    tagGameIds,
     selectTag,
     removeTag,
     clearTagFilter,
@@ -217,54 +221,71 @@ function LibraryPage() {
     setSearchQuery(incomingSearchQuery);
   }, [routeSearchQuery]);
 
-  const filteredGames = useMemo(() => {
-    return games
-      .filter((game) => {
-        // 搜索过滤：同时匹配游戏名和开发商/公司
-        if (searchQuery) {
-          const q = searchQuery.toLowerCase();
-          const matchName = game.name.toLowerCase().includes(q);
-          const matchCompany = (game.company || "").toLowerCase().includes(q);
-          if (!matchName && !matchCompany)
-            return false;
+  const queryParams = useMemo(
+    () => ({
+      search_query: debouncedSearchQuery.trim(),
+      status: statusFilter,
+      tags: selectedTags,
+      sort_by: sortBy,
+      sort_order: sortOrder,
+    }),
+    [debouncedSearchQuery, selectedTags, sortBy, sortOrder, statusFilter],
+  );
+
+  const loadGamesPage = useCallback(
+    async (offset: number, mode: "replace" | "append") => {
+      const requestId = ++requestIdRef.current;
+      if (mode === "replace") {
+        setLoading(true);
+        setGames([]);
+        setHasMore(false);
+      }
+      else {
+        setLoadingMore(true);
+      }
+      try {
+        const response = await GetGames({
+          limit: PAGE_SIZE,
+          offset,
+          ...queryParams,
+        });
+        if (requestId !== requestIdRef.current) {
+          return;
         }
-        // 状态过滤
-        if (statusFilter && game.status !== statusFilter)
-          return false;
-        // tag 过滤
-        if (tagGameIds !== null && !tagGameIds.has(game.id))
-          return false;
-        return true;
-      })
-      .sort((a, b) => {
-        let comparison = 0;
-        switch (sortBy) {
-          case "name":
-            comparison = a.name.localeCompare(b.name);
-            break;
-          case "last_played_at":
-            comparison = compareNullableDateLike(
-              a.last_played_at,
-              b.last_played_at,
-            );
-            break;
-          case "created_at":
-            comparison = String(a.created_at || "").localeCompare(
-              String(b.created_at || ""),
-            );
-            break;
-          case "rating":
-            comparison = (a.rating || 0) - (b.rating || 0);
-            break;
-          case "release_date":
-            comparison = String(a.release_date || "").localeCompare(
-              String(b.release_date || ""),
-            );
-            break;
+        setTotal(response.total || 0);
+        setHasMore(Boolean(response.has_more));
+        setGames(previous =>
+          mode === "append"
+            ? [...previous, ...(response.games || [])]
+            : response.games || [],
+        );
+      }
+      catch (error) {
+        if (requestId === requestIdRef.current) {
+          console.error("Failed to fetch games:", error);
+          toast.error(t("library.toast.loadGamesFailed", "加载游戏失败"));
         }
-        return sortOrder === "asc" ? comparison : -comparison;
-      });
-  }, [games, searchQuery, sortBy, sortOrder, statusFilter, tagGameIds]);
+      }
+      finally {
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
+      }
+    },
+    [queryParams, t],
+  );
+
+  const fetchFirstPage = useCallback(() => {
+    void loadGamesPage(0, "replace");
+  }, [loadGamesPage]);
+
+  const fetchNextPage = useCallback(() => {
+    if (!hasMore || loadingMore || loading) {
+      return;
+    }
+    void loadGamesPage(games.length, "append");
+  }, [games.length, hasMore, loadGamesPage, loading, loadingMore]);
 
   const statusFilterLabel = statusFilter
     ? t(
@@ -274,10 +295,10 @@ function LibraryPage() {
     : "";
   const gameCountText = statusFilterLabel
     ? t("category.filteredGameCount", {
-        count: filteredGames.length,
+        count: total,
         status: statusFilterLabel,
       })
-    : t("category.gameCount", { count: filteredGames.length });
+    : t("category.gameCount", { count: total });
 
   const selectedGameIdSet = useMemo(
     () => new Set(selectedGameIds),
@@ -303,7 +324,7 @@ function LibraryPage() {
   const handleSelectAll = () => {
     setSelectedGameIds((prev) => {
       const next = new Set(prev);
-      filteredGames.forEach((game) => {
+      games.forEach((game) => {
         if (game.id) {
           next.add(game.id);
         }
@@ -347,7 +368,7 @@ function LibraryPage() {
       return;
     try {
       await BatchUpdateStatus(selectedGameIds, newStatus);
-      await fetchGames();
+      fetchFirstPage();
       const label
         = statusConfig[newStatus as keyof typeof statusConfig]?.label
           ?? newStatus;
@@ -410,7 +431,7 @@ function LibraryPage() {
       onConfirm: async () => {
         try {
           await DeleteGames(selectedGameIds);
-          await fetchGames();
+          fetchFirstPage();
           setSelectedGameIds([]);
           setBatchMode(false);
           toast.success(t("library.toast.batchDeleteSuccess"));
@@ -424,10 +445,11 @@ function LibraryPage() {
   };
 
   useEffect(() => {
-    fetchGames();
-  }, [fetchGames]);
+    fetchFirstPage();
+    setSelectedGameIds([]);
+  }, [fetchFirstPage]);
 
-  if (gamesLoading && games.length === 0) {
+  if (loading && games.length === 0) {
     if (!showSkeleton) {
       return null;
     }
@@ -436,7 +458,7 @@ function LibraryPage() {
 
   return (
     <div
-      className={`space-y-6 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${gamesLoading ? "opacity-50 pointer-events-none" : "opacity-100"}`}
+      className={`space-y-6 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${loading && games.length > 0 ? "opacity-50 pointer-events-none" : "opacity-100"}`}
     >
       <div className="flex flex-col items-left justify-between">
         <h1 className="text-4xl font-bold text-brand-900 dark:text-white">
@@ -629,7 +651,7 @@ function LibraryPage() {
             </div>
           </div>
         </div>
-      ) : filteredGames.length === 0 ? (
+      ) : games.length === 0 ? (
         <div className="flex-1 flex items-center justify-center w-full text-brand-500 dark:text-brand-400">
           <div className="flex flex-col items-center">
             <div className="i-mdi-magnify text-4xl mb-2" />
@@ -637,37 +659,41 @@ function LibraryPage() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(8.75rem,1fr))] gap-3">
-          {filteredGames.map(game => (
-            <GameCard
-              key={game.id}
-              game={game}
-              searchQuery={searchQuery}
-              selectionMode={batchMode}
-              selected={selectedGameIdSet.has(game.id)}
-              onSelectChange={selected => setGameSelection(game.id, selected)}
-            />
-          ))}
-        </div>
+        <>
+          <VirtualGameGrid
+            games={games}
+            searchQuery={debouncedSearchQuery}
+            selectionMode={batchMode}
+            selectedGameIds={selectedGameIdSet}
+            onSelectChange={setGameSelection}
+            onNearEnd={fetchNextPage}
+          />
+          {loadingMore && (
+            <div className="flex justify-center py-3 text-sm text-brand-500 dark:text-brand-400">
+              <div className="i-mdi-loading animate-spin mr-2" />
+              {t("common.loading", "加载中...")}
+            </div>
+          )}
+        </>
       )}
 
       <AddGameModal
         isOpen={isAddGameModalOpen}
         onClose={() => setIsAddGameModalOpen(false)}
-        onGameAdded={fetchGames}
+        onGameAdded={fetchFirstPage}
       />
 
       <GameImportModal
         isOpen={importSource !== null}
         source={importSource || "potatovn"}
         onClose={() => setImportSource(null)}
-        onImportComplete={fetchGames}
+        onImportComplete={fetchFirstPage}
       />
 
       <BatchImportModal
         isOpen={isBatchImportOpen}
         onClose={() => setIsBatchImportOpen(false)}
-        onImportComplete={fetchGames}
+        onImportComplete={fetchFirstPage}
       />
 
       <AddToCategoryModal

@@ -49,6 +49,35 @@ type MetadataRequest struct {
 	ID     string           `json:"id"`
 }
 
+type GameListRequest struct {
+	Limit       int      `json:"limit"`
+	Offset      int      `json:"offset"`
+	SearchQuery string   `json:"search_query"`
+	Status      string   `json:"status"`
+	Tags        []string `json:"tags"`
+	SortBy      string   `json:"sort_by"`
+	SortOrder   string   `json:"sort_order"`
+}
+
+type CategoryGameListRequest struct {
+	CategoryID string `json:"category_id"`
+	GameListRequest
+}
+
+type CategoryGameCandidateRequest struct {
+	CategoryID  string `json:"category_id"`
+	Limit       int    `json:"limit"`
+	Offset      int    `json:"offset"`
+	SearchQuery string `json:"search_query"`
+}
+
+type DownloadImportStateRequest struct {
+	TaskID     string `json:"task_id"`
+	FilePath   string `json:"file_path"`
+	MetaSource string `json:"meta_source"`
+	MetaID     string `json:"meta_id"`
+}
+
 // BatchImportCandidate 批量导入候选项
 type BatchImportCandidate struct {
 	FolderPath  string             `json:"folder_path"`            // 文件夹路径

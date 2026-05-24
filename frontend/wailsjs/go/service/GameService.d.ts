@@ -26,7 +26,7 @@ export function FetchMetadataFromWeb(arg1:vo.MetadataRequest):Promise<vo.GameMet
 
 export function GetGameByID(arg1:string):Promise<models.Game>;
 
-export function GetGames():Promise<Array<models.Game>>;
+export function GetGames(arg1:vo.GameListRequest):Promise<vo.GameListResponse>;
 
 export function GetRunningProcesses():Promise<Array<processutils.ProcessInfo>>;
 

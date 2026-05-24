@@ -258,6 +258,52 @@ func (s *DownloadService) GetDownloadTasks() []DownloadTask {
 	return result
 }
 
+func (s *DownloadService) CheckDownloadImportStates(requests []vo.DownloadImportStateRequest) ([]vo.DownloadImportState, error) {
+	states := make([]vo.DownloadImportState, 0, len(requests))
+	if len(requests) == 0 {
+		return states, nil
+	}
+
+	for _, req := range requests {
+		imported, err := s.isDownloadImportRequestImported(req)
+		if err != nil {
+			return nil, err
+		}
+		states = append(states, vo.DownloadImportState{
+			TaskID:   req.TaskID,
+			Imported: imported,
+		})
+	}
+	return states, nil
+}
+
+func (s *DownloadService) isDownloadImportRequestImported(req vo.DownloadImportStateRequest) (bool, error) {
+	filePath := strings.TrimSpace(req.FilePath)
+	metaSource := strings.TrimSpace(req.MetaSource)
+	metaID := strings.TrimSpace(req.MetaID)
+	if filePath == "" && (metaSource == "" || metaID == "") {
+		return false, nil
+	}
+
+	whereParts := make([]string, 0, 2)
+	args := make([]interface{}, 0, 4)
+	if filePath != "" {
+		whereParts = append(whereParts, "path = ?")
+		args = append(args, filePath)
+	}
+	if metaSource != "" && metaID != "" {
+		whereParts = append(whereParts, "(LOWER(COALESCE(source_type, '')) = ? AND COALESCE(source_id, '') = ?)")
+		args = append(args, strings.ToLower(metaSource), metaID)
+	}
+
+	query := fmt.Sprintf("SELECT COUNT(*) FROM games WHERE %s", strings.Join(whereParts, " OR "))
+	var count int
+	if err := s.db.QueryRowContext(s.ctx, query, args...).Scan(&count); err != nil {
+		return false, fmt.Errorf("check download import state: %w", err)
+	}
+	return count > 0, nil
+}
+
 // DeleteDownloadTask 删除已结束的下载任务记录
 func (s *DownloadService) DeleteDownloadTask(taskID string) error {
 	s.mu.Lock()

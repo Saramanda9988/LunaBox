@@ -1,5 +1,6 @@
 import type { models } from "../../../wailsjs/go/models";
 import { useNavigate } from "@tanstack/react-router";
+import { memo, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { enums } from "../../../wailsjs/go/models";
@@ -36,7 +37,7 @@ interface GameCardProps {
   searchQuery?: string;
 }
 
-export function GameCard({
+function GameCardComponent({
   game,
   selectionMode = false,
   selected = false,
@@ -46,33 +47,41 @@ export function GameCard({
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const handleToggleSelect = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onSelectChange?.(!selected);
-  };
+  const handleToggleSelect = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onSelectChange?.(!selected);
+    },
+    [onSelectChange, selected],
+  );
 
-  const handleStartGame = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (game.id) {
-      try {
-        const started = await StartGameWithTracking(game.id);
-        if (started) {
-          toast.success(t("gameCard.startSuccess", { name: game.name }));
+  const handleStartGame = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (game.id) {
+        try {
+          const started = await StartGameWithTracking(game.id);
+          if (started) {
+            toast.success(t("gameCard.startSuccess", { name: game.name }));
+          }
+          else {
+            toast.error(
+              t("gameCard.startFailedNotLaunched", { name: game.name }),
+            );
+          }
         }
-        else {
-          toast.error(t("gameCard.startFailedNotLaunched", { name: game.name }));
+        catch (error) {
+          console.error("Failed to start game:", error);
+          toast.error(t("gameCard.startFailedLog", { name: game.name }));
         }
       }
-      catch (error) {
-        console.error("Failed to start game:", error);
-        toast.error(t("gameCard.startFailedLog", { name: game.name }));
-      }
-    }
-  };
+    },
+    [game.id, game.name, t],
+  );
 
-  const handleViewDetails = () => {
+  const handleViewDetails = useCallback(() => {
     navigate({ to: `/game/${game.id}` });
-  };
+  }, [game.id, navigate]);
 
   const isCompleted = game.status === enums.GameStatus.COMPLETED;
   const companyDisplay = game.company || t("common.unknownDeveloper");
@@ -87,9 +96,11 @@ export function GameCard({
           type="button"
           onClick={handleToggleSelect}
           className={`absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full border
-                      ${selected
+                      ${
+        selected
           ? "bg-neutral-600 text-white border-neutral-600"
-          : "bg-white/90 text-transparent border-brand-300 dark:bg-brand-800/90 dark:border-brand-600"}
+          : "bg-white/90 text-transparent border-brand-300 dark:bg-brand-800/90 dark:border-brand-600"
+        }
                       shadow-sm`}
           title={selected ? t("gameCard.deselect") : t("gameCard.select")}
         >
@@ -97,22 +108,20 @@ export function GameCard({
         </button>
       )}
       <div className="relative aspect-[3/3.6] w-full overflow-hidden bg-brand-200 dark:bg-brand-700">
-        {game.cover_url
-          ? (
-              <img
-                src={game.cover_url}
-                alt={game.name}
-                referrerPolicy="no-referrer"
-                className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
-                draggable="false"
-                onDragStart={e => e.preventDefault()}
-              />
-            )
-          : (
-              <div className="flex h-full items-center justify-center text-brand-400">
-                <div className="i-mdi-image-off text-4xl" />
-              </div>
-            )}
+        {game.cover_url ? (
+          <img
+            src={game.cover_url}
+            alt={game.name}
+            referrerPolicy="no-referrer"
+            className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
+            draggable="false"
+            onDragStart={e => e.preventDefault()}
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-brand-400">
+            <div className="i-mdi-image-off text-4xl" />
+          </div>
+        )}
 
         {/* 已通关奖杯标识 */}
         {isCompleted && (
@@ -142,13 +151,21 @@ export function GameCard({
       </div>
 
       <div className="px-2 pt-1 pb-2">
-        <h3 className="truncate text-sm font-bold text-brand-900 dark:text-white leading-tight" title={game.name}>
+        <h3
+          className="truncate text-sm font-bold text-brand-900 dark:text-white leading-tight"
+          title={game.name}
+        >
           <HighlightText text={game.name} query={searchQuery} />
         </h3>
-        <p className="truncate text-xs text-brand-500 dark:text-brand-400 leading-tight" title={companyDisplay}>
+        <p
+          className="truncate text-xs text-brand-500 dark:text-brand-400 leading-tight"
+          title={companyDisplay}
+        >
           <HighlightText text={companyDisplay} query={searchQuery} />
         </p>
       </div>
     </div>
   );
 }
+
+export const GameCard = memo(GameCardComponent);

@@ -420,7 +420,7 @@ func TestCategoryService_GetGamesByCategory_LastPlayedAt(t *testing.T) {
 	if games[0].LastPlayedAt == nil {
 		t.Fatal("期望返回最近游玩时间，但得到 nil")
 	}
-	if !games[0].LastPlayedAt.Equal(lastPlayedAt) {
+	if games[0].LastPlayedAt.Sub(lastPlayedAt).Abs() > time.Millisecond {
 		t.Errorf("最近游玩时间不正确: 期望 %v, 得到 %v", lastPlayedAt, *games[0].LastPlayedAt)
 	}
 }

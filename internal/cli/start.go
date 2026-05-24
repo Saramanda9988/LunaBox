@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"lunabox/internal/applog"
+	"lunabox/internal/common/vo"
 	"lunabox/internal/service"
 	"strings"
 
@@ -96,11 +97,16 @@ func resolveGame(w io.Writer, app *CoreApp, query string) (gameID string, gameNa
 		return game.ID, game.Name, nil
 	}
 
-	// 2. 获取所有游戏用于后续匹配
-	games, err := app.GameService.GetGames()
+	resp, err := app.GameService.GetGames(vo.GameListRequest{
+		Limit:       50,
+		SearchQuery: query,
+		SortBy:      "name",
+		SortOrder:   "asc",
+	})
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get games: %w", err)
 	}
+	games := resp.Games
 
 	queryLower := strings.ToLower(query)
 

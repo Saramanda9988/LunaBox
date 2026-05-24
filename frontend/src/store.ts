@@ -38,7 +38,9 @@ type AppState = {
   // 游戏列表全局状态
   games: models.Game[];
   gamesLoading: boolean;
-  fetchGames: () => Promise<void>;
+  fetchGames: (
+    request?: Partial<vo.GameListRequest>,
+  ) => Promise<vo.GameListResponse | null>;
   // AI Summary 缓存
   aiSummaryCache: AISummaryCache;
   setAISummary: (dimension: string, summary: string) => void;
@@ -191,14 +193,25 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   // 游戏列表管理
-  fetchGames: async () => {
+  fetchGames: async (request = {}) => {
     set({ gamesLoading: true });
     try {
-      const result = await GetGames();
-      set({ games: result || [] });
+      const result = await GetGames({
+        limit: 120,
+        offset: 0,
+        search_query: "",
+        status: "",
+        tags: [],
+        sort_by: "created_at",
+        sort_order: "desc",
+        ...request,
+      });
+      set({ games: result?.games || [] });
+      return result;
     }
     catch (error) {
       console.error("Failed to fetch games:", error);
+      return null;
     }
     finally {
       set({ gamesLoading: false });
