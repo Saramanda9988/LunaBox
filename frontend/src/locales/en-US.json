@@ -1002,8 +1002,8 @@
       "completedGames": "Games Completed"
     },
     "summary": {
-      "totalPlayCount": "Total Play Sessions",
-      "totalPlayDuration": "Total Play Duration",
+      "totalPlayCount": "Play Sessions",
+      "totalPlayDuration": "Play Duration",
       "gamesPlayed": "Games Played",
       "completedGames": "Completed Games"
     },

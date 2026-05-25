@@ -1002,10 +1002,10 @@
       "completedGames": "通关游戏数"
     },
     "summary": {
-      "totalPlayCount": "总游玩次数",
-      "totalPlayDuration": "总游玩时长",
-      "gamesPlayed": "游玩游戏数量",
-      "completedGames": "通关游戏"
+      "totalPlayCount": "游玩次数",
+      "totalPlayDuration": "游玩时长",
+      "gamesPlayed": "游玩游戏数",
+      "completedGames": "通关游戏数"
     },
     "leaderboard": {
       "title": "排行榜",

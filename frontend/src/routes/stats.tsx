@@ -269,6 +269,45 @@ function StatsPage() {
     },
   });
 
+  const libraryOverviewItems = [
+    {
+      value: stats.all_sessions_count,
+      label: t("stats.library.totalSessions"),
+    },
+    {
+      value: formatDuration(stats.all_sessions_duration, t),
+      label: t("stats.library.totalDuration"),
+    },
+    {
+      value: stats.library_games_count,
+      label: t("stats.library.totalGames"),
+    },
+    {
+      value: stats.all_completed_games_count,
+      label: t("stats.library.completedGames"),
+    },
+  ];
+
+  const summaryItems = [
+    {
+      value: stats.total_play_count,
+      label: t("stats.summary.totalPlayCount"),
+    },
+    {
+      value: formatDurationCompact(stats.total_play_duration, t),
+      label: t("stats.summary.totalPlayDuration"),
+      valueClassName: "whitespace-nowrap",
+    },
+    {
+      value: stats.total_games_count,
+      label: t("stats.summary.gamesPlayed"),
+    },
+    {
+      value: stats.completed_games_count,
+      label: t("stats.summary.completedGames"),
+    },
+  ];
+
   return (
     <div
       id="stats-container"
@@ -387,75 +426,36 @@ function StatsPage() {
         defaultOpen={false}
       >
         <div className="flex items-center justify-between">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-brand-900 dark:text-white">
-              {stats.library_games_count}
-            </p>
-            <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">
-              {t("stats.library.totalGames")}
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-brand-900 dark:text-white">
-              {stats.all_sessions_count}
-            </p>
-            <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">
-              {t("stats.library.totalSessions")}
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-brand-900 dark:text-white">
-              {formatDuration(stats.all_sessions_duration, t)}
-            </p>
-            <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">
-              {t("stats.library.totalDuration")}
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-brand-900 dark:text-white">
-              {stats.all_completed_games_count}
-            </p>
-            <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">
-              {t("stats.library.completedGames")}
-            </p>
-          </div>
+          {libraryOverviewItems.map(item => (
+            <div key={item.label} className="text-center">
+              <p className="text-2xl font-bold text-brand-900 dark:text-white">
+                {item.value}
+              </p>
+              <p className="text-sm text-brand-500 dark:text-brand-400 mt-1">
+                {item.label}
+              </p>
+            </div>
+          ))}
         </div>
       </CollapsibleSection>
 
       {/* Summary Cards */}
       <div className="flex flex-wrap gap-6">
-        <div className="flex-1 min-w-[150px] glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
-          <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">
-            {t("stats.summary.totalPlayCount")}
-          </h3>
-          <p className="text-3xl font-bold text-brand-900 dark:text-white">
-            {stats.total_play_count}
-          </p>
-        </div>
-        <div className="flex-1 min-w-[150px] glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
-          <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">
-            {t("stats.summary.totalPlayDuration")}
-          </h3>
-          <p className="text-3xl font-bold text-brand-900 dark:text-white whitespace-nowrap">
-            {formatDurationCompact(stats.total_play_duration, t)}
-          </p>
-        </div>
-        <div className="flex-1 min-w-[150px] glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
-          <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">
-            {t("stats.summary.gamesPlayed")}
-          </h3>
-          <p className="text-3xl font-bold text-brand-900 dark:text-white">
-            {stats.total_games_count}
-          </p>
-        </div>
-        <div className="flex-1 min-w-[150px] glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
-          <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">
-            {t("stats.summary.completedGames")}
-          </h3>
-          <p className="text-3xl font-bold text-brand-900 dark:text-white">
-            {stats.completed_games_count}
-          </p>
-        </div>
+        {summaryItems.map(item => (
+          <div
+            key={item.label}
+            className="flex-1 min-w-[150px] glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700"
+          >
+            <h3 className="text-sm font-medium text-brand-500 dark:text-brand-400 mb-2">
+              {item.label}
+            </h3>
+            <p
+              className={`text-3xl font-bold text-brand-900 dark:text-white ${item.valueClassName ?? ""}`}
+            >
+              {item.value}
+            </p>
+          </div>
+        ))}
       </div>
 
       {/* Leaderboard */}

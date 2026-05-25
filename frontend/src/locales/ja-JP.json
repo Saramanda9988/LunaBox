@@ -1002,8 +1002,8 @@
       "completedGames": "クリア済みゲーム数"
     },
     "summary": {
-      "totalPlayCount": "総プレイ回数",
-      "totalPlayDuration": "総プレイ時間",
+      "totalPlayCount": "プレイ回数",
+      "totalPlayDuration": "プレイ時間",
       "gamesPlayed": "プレイしたゲーム数",
       "completedGames": "クリアしたゲーム"
     },
