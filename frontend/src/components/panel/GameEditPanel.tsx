@@ -38,7 +38,8 @@ export function GameEditPanel({
           <input
             type="text"
             value={game.name}
-            onChange={e => onGameChange({ ...game, name: e.target.value } as models.Game)}
+            onChange={e =>
+              onGameChange({ ...game, name: e.target.value } as models.Game)}
             className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
           />
         </div>
@@ -51,13 +52,23 @@ export function GameEditPanel({
             <input
               type="text"
               value={game.cover_url}
-              onChange={e => onGameChange({ ...game, cover_url: e.target.value } as models.Game)}
+              onChange={e =>
+                onGameChange({
+                  ...game,
+                  cover_url: e.target.value,
+                } as models.Game)}
               placeholder={t("gameEdit.coverPlaceholder")}
               className="glass-input flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             />
-            <BetterButton onClick={onSelectCoverImage} icon="i-mdi-image" title={t("gameEdit.selectImage")} />
+            <BetterButton
+              onClick={onSelectCoverImage}
+              icon="i-mdi-image"
+              title={t("gameEdit.selectImage")}
+            />
           </div>
-          <p className="mt-1 text-xs text-brand-500">{t("gameEdit.coverHint")}</p>
+          <p className="mt-1 text-xs text-brand-500">
+            {t("gameEdit.coverHint")}
+          </p>
         </div>
 
         <div>
@@ -67,7 +78,8 @@ export function GameEditPanel({
           <input
             type="text"
             value={game.company}
-            onChange={e => onGameChange({ ...game, company: e.target.value } as models.Game)}
+            onChange={e =>
+              onGameChange({ ...game, company: e.target.value } as models.Game)}
             className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
           />
         </div>
@@ -80,11 +92,16 @@ export function GameEditPanel({
             <input
               type="text"
               value={game.path}
-              onChange={e => onGameChange({ ...game, path: e.target.value } as models.Game)}
+              onChange={e =>
+                onGameChange({ ...game, path: e.target.value } as models.Game)}
               className="glass-input flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             />
             <div className="flex items-center gap-1">
-              <BetterButton onClick={onSelectExecutable} icon="i-mdi-file" title={t("gameEdit.selectFile")} />
+              <BetterButton
+                onClick={onSelectExecutable}
+                icon="i-mdi-file"
+                title={t("gameEdit.selectFile")}
+              />
               <BetterButton
                 onClick={async () => {
                   try {
@@ -110,13 +127,25 @@ export function GameEditPanel({
             <input
               type="text"
               value={game.save_path || ""}
-              onChange={e => onGameChange({ ...game, save_path: e.target.value } as models.Game)}
+              onChange={e =>
+                onGameChange({
+                  ...game,
+                  save_path: e.target.value,
+                } as models.Game)}
               placeholder={t("gameEdit.savePathPlaceholder")}
               className="glass-input flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             />
             <div className="flex items-center gap-1">
-              <BetterButton onClick={onSelectSaveDirectory} icon="i-mdi-folder" title={t("gameEdit.selectFolder")} />
-              <BetterButton onClick={onSelectSaveFile} icon="i-mdi-file" title={t("gameEdit.selectFile")} />
+              <BetterButton
+                onClick={onSelectSaveDirectory}
+                icon="i-mdi-folder"
+                title={t("gameEdit.selectFolder")}
+              />
+              <BetterButton
+                onClick={onSelectSaveFile}
+                icon="i-mdi-file"
+                title={t("gameEdit.selectFile")}
+              />
               <BetterButton
                 onClick={async () => {
                   if (!game.save_path)
@@ -134,7 +163,9 @@ export function GameEditPanel({
               />
             </div>
           </div>
-          <p className="mt-1 text-xs text-brand-500">{t("gameEdit.savePathHint")}</p>
+          <p className="mt-1 text-xs text-brand-500">
+            {t("gameEdit.savePathHint")}
+          </p>
         </div>
 
         <div>
@@ -143,7 +174,8 @@ export function GameEditPanel({
           </label>
           <textarea
             value={game.summary}
-            onChange={e => onGameChange({ ...game, summary: e.target.value } as models.Game)}
+            onChange={e =>
+              onGameChange({ ...game, summary: e.target.value } as models.Game)}
             rows={6}
             className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none resize-none"
           />
@@ -156,13 +188,20 @@ export function GameEditPanel({
             </label>
             <BetterSelect
               value={game.source_type || ""}
-              onChange={value => onGameChange({ ...game, source_type: value } as models.Game)}
+              onChange={value =>
+                onGameChange({ ...game, source_type: value } as models.Game)}
               options={[
                 { value: "", label: t("gameEdit.sourceNone") },
                 { value: "local", label: t("gameEdit.sourceLocal") },
                 { value: "bangumi", label: "Bangumi" },
                 { value: "vndb", label: "VNDB" },
                 { value: "ymgal", label: t("gameEdit.sourceYmgal") },
+                { value: "steam", label: "Steam" },
+                { value: "dlsite", label: t("gameEdit.sourceDlsite") },
+                {
+                  value: "erogamescape",
+                  label: t("gameEdit.sourceErogameScape"),
+                },
               ]}
             />
           </div>
@@ -173,7 +212,11 @@ export function GameEditPanel({
             <input
               type="text"
               value={game.source_id || ""}
-              onChange={e => onGameChange({ ...game, source_id: e.target.value } as models.Game)}
+              onChange={e =>
+                onGameChange({
+                  ...game,
+                  source_id: e.target.value,
+                } as models.Game)}
               placeholder={t("gameEdit.sourceIdPlaceholder")}
               className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             />

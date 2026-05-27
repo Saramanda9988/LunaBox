@@ -179,6 +179,9 @@ export function BatchImportModal({
             enums.SourceType.BANGUMI,
             enums.SourceType.VNDB,
             enums.SourceType.YMGAL,
+            enums.SourceType.DLSITE,
+            enums.SourceType.EROGAMESCAPE,
+            enums.SourceType.STEAM,
           ];
           let bestMatch: vo.GameMetadataFromWebVO | null = null;
 
@@ -591,6 +594,11 @@ export function BatchImportModal({
           { value: enums.SourceType.BANGUMI, label: "Bangumi" },
           { value: enums.SourceType.VNDB, label: "VNDB" },
           { value: enums.SourceType.YMGAL, label: t("gameEdit.sourceYmgal") },
+          { value: enums.SourceType.DLSITE, label: t("gameEdit.sourceDlsite") },
+          {
+            value: enums.SourceType.EROGAMESCAPE,
+            label: t("gameEdit.sourceErogameScape"),
+          },
         ]}
         idPlaceholder={t("batchImportModal.inputId")}
         theme={{

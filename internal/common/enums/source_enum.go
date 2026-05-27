@@ -8,6 +8,9 @@ const (
 	VNDB    SourceType = "vndb"
 	Ymgal   SourceType = "ymgal"
 	Steam   SourceType = "steam"
+	DLsite  SourceType = "dlsite"
+
+	ErogameScape SourceType = "erogamescape"
 )
 
 var AllSourceTypes = []struct {
@@ -19,4 +22,6 @@ var AllSourceTypes = []struct {
 	{VNDB, "VNDB"},
 	{Ymgal, "YMGAL"},
 	{Steam, "STEAM"},
+	{DLsite, "DLSITE"},
+	{ErogameScape, "EROGAMESCAPE"},
 }

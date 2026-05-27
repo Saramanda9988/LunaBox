@@ -465,6 +465,8 @@
     "sourceNone": "None",
     "sourceLocal": "Local",
     "sourceYmgal": "Ymgal",
+    "sourceDlsite": "DLsite",
+    "sourceErogameScape": "ErogameScape",
     "sourceId": "Data Source ID",
     "sourceIdPlaceholder": "Enter the game ID corresponding to the platform",
     "updateFromRemote": "Update info from remote"
@@ -692,7 +694,9 @@
         "bangumi": "Focuses on anime, music, and games",
         "vndb": "A comprehensive database of visual novel information",
         "ymgal": "Please experience this wonderful literary genre",
-        "steam": "Suitable for game information released on the Steam platform"
+        "steam": "Suitable for game information released on the Steam platform",
+        "dlsite": "Suitable for works listed on DLsite, with RJ/RE/VJ work ID support",
+        "erogamescape": "Suitable for Japanese Galgame entries, including brand, release date, rating, and tags"
       },
       "allowDuplicateMetadataImport": "Allow games with the same metadata ID",
       "allowDuplicateMetadataImportHint": "When enabled, batch and external imports will not skip games only because source_type + source_id already exists. Path duplicates are still blocked.",

@@ -842,6 +842,18 @@ func (s *GameService) fetchMetadataResultByRequest(req vo.MetadataRequest) (meta
 			return metadata.MetadataResult{}, fmt.Errorf("invalid Steam app ID format: %s", req.ID)
 		}
 		return s.fetchMetadataResultBySource(req.Source, sourceID)
+	case enums2.DLsite:
+		normalizedID, ok := metadata.NormalizeDLsiteID(sourceID)
+		if !ok {
+			return metadata.MetadataResult{}, fmt.Errorf("invalid DLsite ID format: %s", req.ID)
+		}
+		return s.fetchMetadataResultBySource(req.Source, normalizedID)
+	case enums2.ErogameScape:
+		normalizedID, ok := metadata.NormalizeErogameScapeID(sourceID)
+		if !ok {
+			return metadata.MetadataResult{}, fmt.Errorf("invalid ErogameScape ID format: %s", req.ID)
+		}
+		return s.fetchMetadataResultBySource(req.Source, normalizedID)
 	default:
 		return metadata.MetadataResult{}, fmt.Errorf("unsupported source type: %s", req.Source)
 	}
@@ -862,6 +874,12 @@ func (s *GameService) fetchMetadataResultBySource(source enums2.SourceType, sour
 		return getter.FetchMetadata(sourceID, "")
 	case enums2.Steam:
 		getter := metadata.NewSteamInfoGetterWithLanguage(s.config.Language)
+		return getter.FetchMetadata(sourceID, "")
+	case enums2.DLsite:
+		getter := metadata.NewDLsiteInfoGetter()
+		return getter.FetchMetadata(sourceID, "")
+	case enums2.ErogameScape:
+		getter := metadata.NewErogameScapeInfoGetter()
 		return getter.FetchMetadata(sourceID, "")
 	default:
 		return metadata.MetadataResult{}, fmt.Errorf("unsupported source type: %s", source)
@@ -1286,6 +1304,20 @@ func (s *GameService) getConfiguredMetadataSearchSources() []metadataSearchSourc
 					return metadata.NewSteamInfoGetterWithLanguage(language).FetchMetadataByName(name, "")
 				},
 			})
+		case enums2.DLsite:
+			sources = append(sources, metadataSearchSource{
+				source: enums2.DLsite,
+				fetchByName: func(name string) (metadata.MetadataResult, error) {
+					return metadata.NewDLsiteInfoGetter().FetchMetadataByName(name, "")
+				},
+			})
+		case enums2.ErogameScape:
+			sources = append(sources, metadataSearchSource{
+				source: enums2.ErogameScape,
+				fetchByName: func(name string) (metadata.MetadataResult, error) {
+					return metadata.NewErogameScapeInfoGetter().FetchMetadataByName(name, "")
+				},
+			})
 		}
 	}
 	return sources
@@ -1328,12 +1360,12 @@ func (s *GameService) getConfiguredMetadataSources() []enums2.SourceType {
 		return defaultSources
 	}
 
-	result := make([]enums2.SourceType, 0, len(defaultSources))
-	seen := make(map[enums2.SourceType]struct{}, len(defaultSources))
+	result := make([]enums2.SourceType, 0, len(s.config.MetadataSources))
+	seen := make(map[enums2.SourceType]struct{}, len(s.config.MetadataSources))
 	for _, source := range s.config.MetadataSources {
 		normalized := enums2.SourceType(strings.ToLower(strings.TrimSpace(source)))
 		switch normalized {
-		case enums2.Bangumi, enums2.VNDB, enums2.Ymgal, enums2.Steam:
+		case enums2.Bangumi, enums2.VNDB, enums2.Ymgal, enums2.Steam, enums2.DLsite, enums2.ErogameScape:
 			if _, exists := seen[normalized]; exists {
 				continue
 			}

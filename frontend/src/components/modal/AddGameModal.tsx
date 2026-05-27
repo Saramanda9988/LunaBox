@@ -344,7 +344,18 @@ export function AddGameModal({
                   options={[
                     { value: enums.SourceType.BANGUMI, label: "Bangumi" },
                     { value: enums.SourceType.VNDB, label: "VNDB" },
-                    { value: enums.SourceType.YMGAL, label: "月幕gal" },
+                    {
+                      value: enums.SourceType.YMGAL,
+                      label: t("gameEdit.sourceYmgal"),
+                    },
+                    {
+                      value: enums.SourceType.DLSITE,
+                      label: t("gameEdit.sourceDlsite"),
+                    },
+                    {
+                      value: enums.SourceType.EROGAMESCAPE,
+                      label: t("gameEdit.sourceErogameScape"),
+                    },
                   ]}
                 />
               </div>

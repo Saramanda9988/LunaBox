@@ -196,6 +196,8 @@ export namespace enums {
 	    VNDB = "vndb",
 	    YMGAL = "ymgal",
 	    STEAM = "steam",
+	    DLSITE = "dlsite",
+	    EROGAMESCAPE = "erogamescape",
 	}
 	export enum Period {
 	    DAY = "day",

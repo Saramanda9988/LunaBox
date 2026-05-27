@@ -465,6 +465,8 @@
     "sourceNone": "なし",
     "sourceLocal": "ローカル",
     "sourceYmgal": "月幕gal",
+    "sourceDlsite": "DLsite",
+    "sourceErogameScape": "ErogameScape",
     "sourceId": "データソース ID",
     "sourceIdPlaceholder": "プラットフォーム対応のゲームIDを入力",
     "updateFromRemote": "リモートから情報を更新"
@@ -692,7 +694,9 @@
         "bangumi": "アニメ、音楽、ゲーム分野に特化しています",
         "vndb": "ビジュアルノベル情報の総合データベース",
         "ymgal": "この素晴らしい文芸ジャンルを感じてください",
-        "steam": "Steam プラットフォームでリリースされたゲーム情報に適しています"
+        "steam": "Steam プラットフォームでリリースされたゲーム情報に適しています",
+        "dlsite": "DLsite 掲載作品向け。RJ/RE/VJ 作品 ID に対応します",
+        "erogamescape": "日本語 Galgame 条目向け。ブランド、発売日、評価、タグを取得できます"
       },
       "allowDuplicateMetadataImport": "同じメタデータ ID のゲームを許可",
       "allowDuplicateMetadataImportHint": "有効にすると、一括インポートと外部インポートで source_type + source_id の重複だけではスキップしません。パス重複は引き続きブロックされます。",

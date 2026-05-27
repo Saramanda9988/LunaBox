@@ -13,9 +13,14 @@ interface MetadataSettingsPanelProps {
 }
 
 const DEFAULT_METADATA_SOURCES = ["bangumi", "vndb", "ymgal", "steam"];
+const VALID_METADATA_SOURCES = [
+  ...DEFAULT_METADATA_SOURCES,
+  "dlsite",
+  "erogamescape",
+];
 
 function normalizeMetadataSources(sources?: string[]): string[] {
-  const validSourceSet = new Set(DEFAULT_METADATA_SOURCES);
+  const validSourceSet = new Set(VALID_METADATA_SOURCES);
   const normalized: string[] = [];
 
   for (const source of sources || []) {
@@ -80,6 +85,18 @@ export function MetadataSettingsPanel({
       label: "Steam",
       hint: t("settings.metadata.sourceHints.steam"),
       icon: "/steam-logo.png",
+    },
+    {
+      value: "dlsite",
+      label: "DLsite",
+      hint: t("settings.metadata.sourceHints.dlsite"),
+      icon: "/dlsite-logo.png",
+    },
+    {
+      value: "erogamescape",
+      label: "ErogameScape",
+      hint: t("settings.metadata.sourceHints.erogamescape"),
+      icon: "/erogamescape-logo.png",
     },
   ];
 
@@ -157,11 +174,13 @@ export function MetadataSettingsPanel({
             >
               <div className="flex-1 space-y-2">
                 <div className="flex items-center gap-2 select-none">
-                  <img
-                    src={item.icon}
-                    alt={item.label}
-                    className="h-[22px] w-auto object-contain brightness-0 opacity-80 transition-all dark:invert dark:opacity-90"
-                  />
+                  {item.icon && (
+                    <img
+                      src={item.icon}
+                      alt={item.label}
+                      className="h-[22px] w-auto object-contain brightness-0 opacity-80 transition-all dark:invert dark:opacity-90"
+                    />
+                  )}
                   <label
                     htmlFor={`metadata-source-${item.value}`}
                     className="block text-sm font-medium text-brand-700 dark:text-brand-300"

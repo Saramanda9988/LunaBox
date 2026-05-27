@@ -298,15 +298,27 @@ func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchIm
 			},
 		},
 		{
-			enums.Steam,
-			func(name string) (metadata.MetadataResult, error) {
-				return metadata.NewSteamInfoGetterWithLanguage(s.config.Language).FetchMetadataByName(name, "")
-			},
-		},
-		{
 			enums.Ymgal,
 			func(name string) (metadata.MetadataResult, error) {
 				return metadata.NewYmgalInfoGetter().FetchMetadataByName(name, "")
+			},
+		},
+		{
+			enums.DLsite,
+			func(name string) (metadata.MetadataResult, error) {
+				return metadata.NewDLsiteInfoGetter().FetchMetadataByName(name, "")
+			},
+		},
+		{
+			enums.ErogameScape,
+			func(name string) (metadata.MetadataResult, error) {
+				return metadata.NewErogameScapeInfoGetter().FetchMetadataByName(name, "")
+			},
+		},
+		{
+			enums.Steam,
+			func(name string) (metadata.MetadataResult, error) {
+				return metadata.NewSteamInfoGetterWithLanguage(s.config.Language).FetchMetadataByName(name, "")
 			},
 		},
 	}

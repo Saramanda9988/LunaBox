@@ -465,6 +465,8 @@
     "sourceNone": "无",
     "sourceLocal": "本地",
     "sourceYmgal": "月幕gal",
+    "sourceDlsite": "DLsite",
+    "sourceErogameScape": "ErogameScape",
     "sourceId": "数据源 ID",
     "sourceIdPlaceholder": "输入平台对应的游戏ID",
     "updateFromRemote": "从远端更新信息"
@@ -692,7 +694,9 @@
         "bangumi": "专注于动漫、音乐、游戏领域",
         "vndb": "视觉小说信息的综合数据库",
         "ymgal": "请感受这绝妙的文艺体裁",
-        "steam": "适合 Steam 平台发行的游戏信息"
+        "steam": "适合 Steam 平台发行的游戏信息",
+        "dlsite": "适合 DLsite 上架作品，支持 RJ/RE/VJ 作品 ID",
+        "erogamescape": "适合日文 Galgame 条目，可提供品牌、发售日、评分和标签"
       },
       "allowDuplicateMetadataImport": "允许导入相同元数据 ID 的游戏",
       "allowDuplicateMetadataImportHint": "开启后，批量导入和外部导入不会因为 source_type + source_id 相同而跳过，仅保留路径重复拦截。",
