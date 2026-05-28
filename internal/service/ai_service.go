@@ -191,9 +191,10 @@ func (s *AiService) buildContextPrompt(data *AIStatsData) string {
 			}
 			if g.Status != "" && g.Status != "not_started" {
 				statusLabel := map[string]string{
-					"playing":   "游玩中",
-					"completed": "已通关",
-					"on_hold":   "搁置中",
+					"want_to_play": "想玩",
+					"playing":      "游玩中",
+					"completed":    "已通关",
+					"on_hold":      "搁置中",
 				}[g.Status]
 				if statusLabel != "" {
 					if g.Status == "completed" {

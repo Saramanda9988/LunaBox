@@ -780,7 +780,7 @@ func (s *BangumiService) resolveContext(ctx context.Context) context.Context {
 
 func mapGameStatusToBangumiCollectionType(status enums.GameStatus) (int, bool) {
 	switch status {
-	case enums.StatusNotStarted:
+	case enums.StatusNotStarted, enums.StatusWantToPlay:
 		return 1, true
 	case enums.StatusCompleted:
 		return 2, true

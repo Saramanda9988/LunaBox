@@ -6,6 +6,7 @@ export const statusOptions: Array<{ label: string; value: GameStatusFilter }>
   = [
     { label: "common.allStatus", value: "" },
     { label: "common.notStarted", value: enums.GameStatus.NOT_STARTED },
+    { label: "common.wantToPlay", value: enums.GameStatus.WANT_TO_PLAY },
     { label: "common.playing", value: enums.GameStatus.PLAYING },
     { label: "common.completed", value: enums.GameStatus.COMPLETED },
     { label: "common.onHold", value: enums.GameStatus.ON_HOLD },

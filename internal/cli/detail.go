@@ -57,6 +57,8 @@ func formatGameStatus(status string) string {
 	switch status {
 	case "not_started":
 		return "Not Started"
+	case "want_to_play":
+		return "Want to Play"
 	case "playing":
 		return "Playing"
 	case "completed":

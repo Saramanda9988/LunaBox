@@ -122,6 +122,7 @@ func TestBangumiService_RefreshExpiredTokenAndPushMappedStatus(t *testing.T) {
 		expectedType int
 	}{
 		{name: "not started", initial: enums.StatusPlaying, status: enums.StatusNotStarted, expectedType: 1},
+		{name: "want to play", initial: enums.StatusPlaying, status: enums.StatusWantToPlay, expectedType: 1},
 		{name: "playing", initial: enums.StatusNotStarted, status: enums.StatusPlaying, expectedType: 3},
 		{name: "completed", initial: enums.StatusNotStarted, status: enums.StatusCompleted, expectedType: 2},
 		{name: "on hold", initial: enums.StatusNotStarted, status: enums.StatusOnHold, expectedType: 4},

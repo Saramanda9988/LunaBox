@@ -45,7 +45,7 @@ func normalizeGameListStatus(status *enums2.GameStatus) *enums2.GameStatus {
 		return nil
 	}
 	switch *status {
-	case enums2.StatusNotStarted, enums2.StatusPlaying, enums2.StatusCompleted, enums2.StatusOnHold:
+	case enums2.StatusNotStarted, enums2.StatusWantToPlay, enums2.StatusPlaying, enums2.StatusCompleted, enums2.StatusOnHold:
 		return status
 	default:
 		return nil

@@ -18,15 +18,16 @@ interface AddGameModalProps {
   onGameAdded: () => void;
 }
 
-// step: 1=选择程序, 2=搜索结果, 3=按ID搜索, 4=手动填写
-type StepType = 1 | 2 | 3 | 4;
+type StepType = "type" | "local" | "results" | "id" | "remote" | "manual";
+type ImportMode = "local" | "remote";
 
 export function AddGameModal({
   isOpen,
   onClose,
   onGameAdded,
 }: AddGameModalProps) {
-  const [step, setStep] = useState<StepType>(1);
+  const [step, setStep] = useState<StepType>("type");
+  const [importMode, setImportMode] = useState<ImportMode>("local");
   const [executablePath, setExecutablePath] = useState("");
   const [gameName, setGameName] = useState("");
   const [metadataResults, setMetadataResults] = useState<
@@ -39,7 +40,6 @@ export function AddGameModal({
     enums.SourceType.BANGUMI,
   );
 
-  // 手动添加表单字段
   const [manualCoverUrl, setManualCoverUrl] = useState("");
   const [manualCompany, setManualCompany] = useState("");
   const [manualSummary, setManualSummary] = useState("");
@@ -47,8 +47,30 @@ export function AddGameModal({
   if (!isOpen)
     return null;
 
+  const sourceOptions = [
+    { value: enums.SourceType.BANGUMI, label: "Bangumi" },
+    { value: enums.SourceType.VNDB, label: "VNDB" },
+    {
+      value: enums.SourceType.YMGAL,
+      label: t("gameEdit.sourceYmgal"),
+    },
+    {
+      value: enums.SourceType.DLSITE,
+      label: t("gameEdit.sourceDlsite"),
+    },
+    {
+      value: enums.SourceType.EROGAMESCAPE,
+      label: t("gameEdit.sourceErogameScape"),
+    },
+    { value: enums.SourceType.STEAM, label: "Steam" },
+  ];
+
+  const isRemoteImport = importMode === "remote";
+  const entryStep: StepType = isRemoteImport ? "remote" : "local";
+
   const resetAndClose = () => {
-    setStep(1);
+    setStep("type");
+    setImportMode("local");
     setExecutablePath("");
     setGameName("");
     setMetadataResults([]);
@@ -59,17 +81,28 @@ export function AddGameModal({
     onClose();
   };
 
+  const startLocalImport = () => {
+    setImportMode("local");
+    setManualId("");
+    setMetadataResults([]);
+    setStep("local");
+  };
+
+  const startRemoteImport = () => {
+    setImportMode("remote");
+    setExecutablePath("");
+    setManualId("");
+    setMetadataResults([]);
+    setStep("remote");
+  };
+
   const handleSelectExecutable = async () => {
     try {
       const path = await SelectGameExecutable();
       if (path) {
         setExecutablePath(path);
-        // Extract parent folder name
-        // Windows path usually uses backslash, but Wails might return forward slash or mixed.
-        // Let's handle both.
         const normalizedPath = path.replace(/\\/g, "/");
         const parts = normalizedPath.split("/");
-        // If it's a file, the last part is filename, the one before is parent folder
         if (parts.length > 1) {
           setGameName(parts[parts.length - 2]);
         }
@@ -88,7 +121,7 @@ export function AddGameModal({
     try {
       const results = await FetchMetadataByName(gameName);
       setMetadataResults(results || []);
-      setStep(2);
+      setStep("results");
     }
     catch (error) {
       console.error("Failed to fetch metadata:", error);
@@ -99,6 +132,13 @@ export function AddGameModal({
     }
   };
 
+  const applyImportFields = (game: models.Game) => {
+    game.path = isRemoteImport ? "" : executablePath;
+    game.status = isRemoteImport
+      ? enums.GameStatus.WANT_TO_PLAY
+      : game.status || enums.GameStatus.NOT_STARTED;
+  };
+
   const saveGameFromWebMetadata = async (meta: vo.GameMetadataFromWebVO) => {
     try {
       const gameMeta = vo.GameMetadataFromWebVO.createFrom(meta);
@@ -106,7 +146,7 @@ export function AddGameModal({
         toast.error(t("addGameModal.toast.saveGameFailed"));
         return;
       }
-      gameMeta.Game.path = executablePath;
+      applyImportFields(gameMeta.Game);
       await AddGameFromWebMetadata(gameMeta);
       onGameAdded();
       resetAndClose();
@@ -162,16 +202,18 @@ export function AddGameModal({
     try {
       const game = new models.Game({
         name: gameName,
-        path: executablePath,
+        path: isRemoteImport ? "" : executablePath,
         cover_url: manualCoverUrl,
         company: manualCompany,
         summary: manualSummary,
-        source_type: enums.SourceType.LOCAL,
-        status: enums.GameStatus.NOT_STARTED,
+        source_type: isRemoteImport ? manualSource : enums.SourceType.LOCAL,
+        status: isRemoteImport
+          ? enums.GameStatus.WANT_TO_PLAY
+          : enums.GameStatus.NOT_STARTED,
       });
       await AddGameFromWebMetadata(
         new vo.GameMetadataFromWebVO({
-          Source: enums.SourceType.LOCAL,
+          Source: isRemoteImport ? manualSource : enums.SourceType.LOCAL,
           Game: game,
           Tags: [],
         }),
@@ -188,23 +230,108 @@ export function AddGameModal({
     }
   };
 
+  const renderSourceAndIdFields = () => (
+    <>
+      <div>
+        <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">
+          {t("addGameModal.dataSource")}
+        </label>
+        <BetterSelect
+          value={manualSource}
+          onChange={value => setManualSource(value as enums.SourceType)}
+          options={sourceOptions}
+        />
+      </div>
+
+      <div>
+        <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">
+          {t("addGameModal.gameId")}
+        </label>
+        <input
+          type="text"
+          value={manualId}
+          onChange={e => setManualId(e.target.value)}
+          placeholder={t("addGameModal.gameIdPlaceholder")}
+          className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+        />
+      </div>
+    </>
+  );
+
   return (
     <ModalPortal>
       <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
         <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl dark:bg-brand-800">
-          <div className="flex items-center justify-between">
-            <h2 className="text-4xl font-bold text-brand-900 dark:text-white mb-6">
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className="text-4xl font-bold text-brand-900 dark:text-white">
               {t("library.addGame")}
             </h2>
             <button
               onClick={resetAndClose}
-              className="i-mdi-close text-2xl text-brand-500 p-1 rounded-lg mb-6
-              hover:bg-brand-100 hover:text-brand-700 focus:outline-none
-              dark:text-brand-400 dark:hover:bg-brand-700 dark:hover:text-brand-200"
+              className="i-mdi-close rounded-lg p-1 text-2xl text-brand-500 hover:bg-brand-100 hover:text-brand-700 focus:outline-none dark:text-brand-400 dark:hover:bg-brand-700 dark:hover:text-brand-200"
+              aria-label={t("common.cancel")}
             />
           </div>
 
-          {step === 1 && (
+          {step === "type" && (
+            <div className="space-y-4">
+              <p className="text-sm text-brand-600 dark:text-brand-300">
+                {t("addGameModal.chooseImportType")}
+              </p>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={startLocalImport}
+                  className="group relative min-h-56 overflow-hidden rounded-xl border border-brand-200 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-brand-700"
+                >
+                  <img
+                    src="/luna1.webp"
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute bottom-0 right-0 h-[92%] w-[78%] object-contain object-bottom opacity-65 "
+                    draggable="false"
+                  />
+                  <span className="absolute inset-0 dark:bg-brand-950/20" />
+                  <span className="absolute inset-0 bg-gradient-to-r from-white/80 via-white/42 to-transparent dark:from-brand-900/72 dark:via-brand-900/36 dark:to-transparent" />
+                  <span className="relative flex min-h-46 flex-col justify-end">
+                    <span className="block text-lg font-semibold text-brand-900 dark:text-white">
+                      {t("addGameModal.localGame")}
+                    </span>
+                    <span className="mt-2 block text-xs leading-5 text-brand-700 dark:text-brand-200">
+                      {t("addGameModal.localGameHint")}
+                    </span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={startRemoteImport}
+                  className="group relative min-h-56 overflow-hidden rounded-xl border border-brand-200 p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-brand-700"
+                >
+                  <img
+                    src="/luna2.webp"
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute bottom-0 right-0 h-[92%] w-[78%] object-contain object-bottom opacity-65"
+                    draggable="false"
+                  />
+                  <span className="absolute inset-0 dark:bg-brand-950/20" />
+                  <span className="absolute inset-0 bg-gradient-to-r from-white/80 via-white/42 to-transparent dark:from-brand-900/72 dark:via-brand-900/36 dark:to-transparent" />
+                  <span className="relative flex min-h-46 flex-col justify-end">
+                    <span className="block text-lg font-semibold text-brand-900 dark:text-white">
+                      {t("addGameModal.remoteGame")}
+                    </span>
+                    <span className="mt-2 block text-xs leading-5 text-brand-700 dark:text-brand-200">
+                      {t("addGameModal.remoteGameHint")}
+                    </span>
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === "local" && (
             <div className="space-y-6">
               <button
                 onClick={handleSelectExecutable}
@@ -236,28 +363,127 @@ export function AddGameModal({
                 />
               </div>
 
-              <div className="flex justify-end space-x-4">
+              <div className="flex justify-between gap-4">
                 <button
-                  onClick={() => setStep(4)}
-                  disabled={!executablePath || !gameName}
+                  onClick={() => setStep("type")}
+                  className="rounded-lg border border-brand-300 px-5 py-2.5 text-sm font-medium text-brand-700 hover:bg-brand-100 dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-700"
+                >
+                  {t("common.back")}
+                </button>
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setStep("manual")}
+                    disabled={!executablePath || !gameName}
+                    className="rounded-lg border border-brand-300 px-5 py-2.5 text-sm font-medium text-brand-700 hover:bg-brand-100 disabled:opacity-50 dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-700"
+                  >
+                    {t("common.manualAdd")}
+                  </button>
+                  <button
+                    onClick={handleSearchByName}
+                    disabled={!executablePath || !gameName || isLoading}
+                    className="rounded-lg bg-neutral-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
+                  >
+                    {isLoading
+                      ? t("common.searching")
+                      : t("addGameModal.searchMeta")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {step === "remote" && (
+            <div className="space-y-6">
+              <p className="text-sm text-brand-600 dark:text-brand-300">
+                {t("addGameModal.remoteImportHint")}
+              </p>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">
+                    {t("addGameModal.dataSource")}
+                  </label>
+                  <BetterSelect
+                    value={manualSource}
+                    onChange={value =>
+                      setManualSource(value as enums.SourceType)}
+                    options={sourceOptions}
+                    className="[&>button]:h-12 [&>button]:box-border [&>button]:items-center [&>button]:rounded-lg [&>button]:py-0"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">
+                    {t("addGameModal.gameId")}
+                  </label>
+                  <div className="flex gap-3">
+                    <input
+                      type="text"
+                      value={manualId}
+                      onChange={e => setManualId(e.target.value)}
+                      placeholder={t("addGameModal.gameIdPlaceholder")}
+                      className="box-border block h-12 min-w-0 flex-1 rounded-lg border border-brand-300 bg-brand-50 px-3 py-0 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+                    />
+                    <button
+                      onClick={handleSearchById}
+                      disabled={!manualId || isLoading}
+                      className="h-12 shrink-0 rounded-lg bg-neutral-600 px-5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
+                    >
+                      {isLoading ? t("common.searching") : t("common.confirm")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-brand-200 dark:bg-brand-700" />
+                <span className="text-xs text-brand-500 dark:text-brand-400">
+                  {t("addGameModal.orSearchByName")}
+                </span>
+                <div className="h-px flex-1 bg-brand-200 dark:bg-brand-700" />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">
+                  {t("addGameModal.gameName")}
+                </label>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={gameName}
+                    onChange={e => setGameName(e.target.value)}
+                    className="box-border block flex-1 rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+                  />
+                  <button
+                    onClick={handleSearchByName}
+                    disabled={!gameName || isLoading}
+                    className="rounded-lg bg-neutral-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
+                  >
+                    {isLoading
+                      ? t("common.searching")
+                      : t("addGameModal.searchMeta")}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-between gap-4">
+                <button
+                  onClick={() => setStep("type")}
+                  className="rounded-lg border border-brand-300 px-5 py-2.5 text-sm font-medium text-brand-700 hover:bg-brand-100 dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-700"
+                >
+                  {t("common.back")}
+                </button>
+                <button
+                  onClick={() => setStep("manual")}
                   className="rounded-lg border border-brand-300 px-5 py-2.5 text-sm font-medium text-brand-700 hover:bg-brand-100 disabled:opacity-50 dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-700"
                 >
                   {t("common.manualAdd")}
-                </button>
-                <button
-                  onClick={handleSearchByName}
-                  disabled={!executablePath || !gameName || isLoading}
-                  className="rounded-lg bg-neutral-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
-                >
-                  {isLoading
-                    ? t("common.searching")
-                    : t("addGameModal.searchMeta")}
                 </button>
               </div>
             </div>
           )}
 
-          {step === 2 && (
+          {step === "results" && (
             <div className="space-y-6">
               <p className="text-brand-600 dark:text-brand-300">
                 {t("addGameModal.whichResult")}
@@ -303,11 +529,10 @@ export function AddGameModal({
 
               <div className="flex items-center justify-between border-t border-brand-200 pt-4 dark:border-brand-700">
                 <button
-                  onClick={() => setStep(1)}
+                  onClick={() => setStep(entryStep)}
                   className="text-sm text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-200"
                 >
                   &larr;
-                  {" "}
                   {t("addGameModal.goBack")}
                 </button>
                 <div className="flex space-x-4">
@@ -315,13 +540,13 @@ export function AddGameModal({
                     {t("addGameModal.noneOfAbove")}
                   </div>
                   <button
-                    onClick={() => setStep(4)}
+                    onClick={() => setStep("manual")}
                     className="text-sm text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-200"
                   >
                     {t("addGameModal.fillManually")}
                   </button>
                   <button
-                    onClick={() => setStep(3)}
+                    onClick={() => setStep(isRemoteImport ? "remote" : "id")}
                     className="text-sm text-neutral-600 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-300"
                   >
                     {t("addGameModal.searchById")}
@@ -331,52 +556,13 @@ export function AddGameModal({
             </div>
           )}
 
-          {step === 3 && (
+          {step === "id" && (
             <div className="space-y-6">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">
-                  {t("addGameModal.dataSource")}
-                </label>
-                <BetterSelect
-                  value={manualSource}
-                  onChange={value =>
-                    setManualSource(value as enums.SourceType)}
-                  options={[
-                    { value: enums.SourceType.BANGUMI, label: "Bangumi" },
-                    { value: enums.SourceType.VNDB, label: "VNDB" },
-                    {
-                      value: enums.SourceType.YMGAL,
-                      label: t("gameEdit.sourceYmgal"),
-                    },
-                    {
-                      value: enums.SourceType.DLSITE,
-                      label: t("gameEdit.sourceDlsite"),
-                    },
-                    {
-                      value: enums.SourceType.EROGAMESCAPE,
-                      label: t("gameEdit.sourceErogameScape"),
-                    },
-                    { value: enums.SourceType.STEAM, label: "Steam" },
-                  ]}
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">
-                  {t("addGameModal.gameId")}
-                </label>
-                <input
-                  type="text"
-                  value={manualId}
-                  onChange={e => setManualId(e.target.value)}
-                  placeholder={t("addGameModal.gameIdPlaceholder")}
-                  className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
-                />
-              </div>
+              {renderSourceAndIdFields()}
 
               <div className="flex justify-end space-x-4">
                 <button
-                  onClick={() => setStep(2)}
+                  onClick={() => setStep("results")}
                   className="rounded-lg border border-brand-300 px-5 py-2.5 text-sm font-medium text-brand-700 hover:bg-brand-100 dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-700"
                 >
                   {t("common.back")}
@@ -392,10 +578,12 @@ export function AddGameModal({
             </div>
           )}
 
-          {step === 4 && (
+          {step === "manual" && (
             <div className="space-y-4">
               <p className="text-brand-600 dark:text-brand-300">
-                {t("addGameModal.manualFillInfo")}
+                {isRemoteImport
+                  ? t("addGameModal.remoteManualFillInfo")
+                  : t("addGameModal.manualFillInfo")}
               </p>
 
               <div>
@@ -455,13 +643,13 @@ export function AddGameModal({
                   value={manualSummary}
                   onChange={e => setManualSummary(e.target.value)}
                   rows={3}
-                  className="box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white resize-none"
+                  className="box-border block w-full resize-none rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
                 />
               </div>
 
               <div className="flex justify-end space-x-4 pt-2">
                 <button
-                  onClick={() => setStep(1)}
+                  onClick={() => setStep(entryStep)}
                   className="rounded-lg border border-brand-300 px-5 py-2.5 text-sm font-medium text-brand-700 hover:bg-brand-100 dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-700"
                 >
                   {t("common.back")}

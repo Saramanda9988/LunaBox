@@ -138,6 +138,7 @@ func TestGameService_AddGameFromWebMetadataPersistsLaunchFields(t *testing.T) {
 		UseLocaleEmulator: true,
 		UseMagpie:         true,
 		SourceType:        enums.Local,
+		Status:            enums.StatusWantToPlay,
 	}
 
 	if err := addGameViaMetadata(gameService, game); err != nil {
@@ -157,6 +158,9 @@ func TestGameService_AddGameFromWebMetadataPersistsLaunchFields(t *testing.T) {
 	}
 	if saved.ProcessName != game.ProcessName {
 		t.Fatalf("expected process name %q, got %q", game.ProcessName, saved.ProcessName)
+	}
+	if saved.Status != game.Status {
+		t.Fatalf("expected status %q, got %q", game.Status, saved.Status)
 	}
 	if saved.ReleaseDate != game.ReleaseDate {
 		t.Fatalf("expected release date %q, got %q", game.ReleaseDate, saved.ReleaseDate)
