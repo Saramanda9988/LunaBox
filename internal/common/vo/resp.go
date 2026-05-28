@@ -41,6 +41,7 @@ type MetadataRefreshResult struct {
 	UpdatedGames int `json:"updated_games"`
 	SkippedGames int `json:"skipped_games"`
 	FailedGames  int `json:"failed_games"`
+	LockedGames  int `json:"locked_games"`
 }
 
 type BangumiAuthStatus struct {

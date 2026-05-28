@@ -469,7 +469,10 @@
     "sourceErogameScape": "ErogameScape",
     "sourceId": "数据源 ID",
     "sourceIdPlaceholder": "输入平台对应的游戏ID",
-    "updateFromRemote": "从远端更新信息"
+    "metadataLock": "锁定元数据",
+    "metadataLockHint": "开启后，全量元数据更新会跳过此游戏，并阻止从远端覆盖名称、简介、封面、厂商、评分、发售日和自动标签。",
+    "updateFromRemote": "从远端更新信息",
+    "updateFromRemoteLocked": "元数据已锁定，请先解锁"
   },
   "dragDropImportModal": {
     "toast": {
@@ -733,7 +736,7 @@
       },
       "toast": {
         "atLeastOneSource": "至少需要启用一个元数据来源",
-        "refreshSuccess": "元数据更新完成：成功 {{updated}}，失败 {{failed}}，跳过 {{skipped}}",
+        "refreshSuccess": "元数据更新完成：成功 {{updated}}，失败 {{failed}}，跳过 {{skipped}}（锁定 {{locked}}）",
         "refreshFailed": "全量更新失败：{{error}}"
       }
     },

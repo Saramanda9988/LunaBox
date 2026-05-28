@@ -185,8 +185,8 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 	query := `INSERT INTO games (
 		id, name, cover_url, company, summary, rating, release_date, path, 
 		save_path, process_name, source_type, cached_at, source_id, created_at, updated_at,
-		use_locale_emulator, use_magpie
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		use_locale_emulator, use_magpie, metadata_locked
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := s.db.ExecContext(s.ctx, query,
 		game.ID,
@@ -206,6 +206,7 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 		game.UpdatedAt,
 		game.UseLocaleEmulator,
 		game.UseMagpie,
+		game.MetadataLocked,
 	)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "AddGame: failed to insert game %s: %v", game.Name, err)
@@ -393,7 +394,8 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		COALESCE(g.updated_at, g.created_at, g.cached_at) as updated_at,
 		latest.last_played_at,
 		COALESCE(g.use_locale_emulator, FALSE) as use_locale_emulator,
-		COALESCE(g.use_magpie, FALSE) as use_magpie
+		COALESCE(g.use_magpie, FALSE) as use_magpie,
+		COALESCE(g.metadata_locked, FALSE) as metadata_locked
 	FROM games g
 	LEFT JOIN (
 		SELECT game_id, MAX(start_time) as last_played_at
@@ -427,6 +429,7 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		&lastPlayedAt,
 		&game.UseLocaleEmulator,
 		&game.UseMagpie,
+		&game.MetadataLocked,
 	)
 
 	if errors.Is(err, sql.ErrNoRows) {
@@ -471,7 +474,8 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		source_id = ?,
 		updated_at = ?,
 		use_locale_emulator = ?,
-		use_magpie = ?
+		use_magpie = ?,
+		metadata_locked = ?
 	WHERE id = ?`
 
 	result, err := s.db.ExecContext(s.ctx, query,
@@ -491,6 +495,7 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		game.UpdatedAt,
 		game.UseLocaleEmulator,
 		game.UseMagpie,
+		game.MetadataLocked,
 		game.ID,
 	)
 
@@ -941,6 +946,9 @@ func (s *GameService) UpdateGameFromRemote(gameID string) error {
 
 	sourceType := normalizeMetadataSourceType(existingGame.SourceType)
 	sourceID := strings.TrimSpace(existingGame.SourceID)
+	if existingGame.MetadataLocked {
+		return fmt.Errorf("游戏元数据已锁定，请先解锁后再更新")
+	}
 	if sourceType == "" || sourceType == enums2.Local || sourceID == "" {
 		return fmt.Errorf("游戏缺少数据源信息，无法从远程更新")
 	}
@@ -997,6 +1005,12 @@ func (s *GameService) RefreshAllGamesMetadata() (vo.MetadataRefreshResult, error
 	enabledSources := s.getConfiguredMetadataSourceSet()
 
 	for _, game := range games {
+		if game.MetadataLocked {
+			result.SkippedGames++
+			result.LockedGames++
+			continue
+		}
+
 		if game.SourceType == "" || game.SourceType == enums2.Local || strings.TrimSpace(game.SourceID) == "" {
 			result.SkippedGames++
 			continue

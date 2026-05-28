@@ -469,7 +469,10 @@
     "sourceErogameScape": "ErogameScape",
     "sourceId": "Data Source ID",
     "sourceIdPlaceholder": "Enter the game ID corresponding to the platform",
-    "updateFromRemote": "Update info from remote"
+    "metadataLock": "Lock metadata",
+    "metadataLockHint": "When enabled, full metadata refresh skips this game and remote updates cannot overwrite the title, summary, cover, developer, rating, release date, or automatic tags.",
+    "updateFromRemote": "Update info from remote",
+    "updateFromRemoteLocked": "Metadata is locked. Unlock it first."
   },
   "dragDropImportModal": {
     "toast": {
@@ -733,7 +736,7 @@
       },
       "toast": {
         "atLeastOneSource": "At least one metadata source must remain enabled",
-        "refreshSuccess": "Metadata refresh complete: updated {{updated}}, failed {{failed}}, skipped {{skipped}}",
+        "refreshSuccess": "Metadata refresh complete: updated {{updated}}, failed {{failed}}, skipped {{skipped}} (locked {{locked}})",
         "refreshFailed": "Full metadata refresh failed: {{error}}"
       }
     },

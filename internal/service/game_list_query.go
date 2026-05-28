@@ -177,7 +177,8 @@ func queryGameList(ctx context.Context, db *sql.DB, req vo.GameListRequest, scop
 			COALESCE(g.updated_at, g.created_at, g.cached_at) AS updated_at,
 			latest.last_played_at,
 			COALESCE(g.use_locale_emulator, FALSE) AS use_locale_emulator,
-			COALESCE(g.use_magpie, FALSE) AS use_magpie
+			COALESCE(g.use_magpie, FALSE) AS use_magpie,
+			COALESCE(g.metadata_locked, FALSE) AS metadata_locked
 		FROM games g
 		%s
 		LEFT JOIN (
@@ -238,6 +239,7 @@ func scanGameListRow(scanner gameScanner) (models.Game, error) {
 		&lastPlayedAt,
 		&game.UseLocaleEmulator,
 		&game.UseMagpie,
+		&game.MetadataLocked,
 	)
 	if err != nil {
 		return game, fmt.Errorf("scan game list row: %w", err)

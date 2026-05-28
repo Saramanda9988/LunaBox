@@ -8,6 +8,7 @@ import (
 	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
 	"lunabox/internal/service"
+	"strings"
 	"testing"
 	"time"
 
@@ -364,6 +365,33 @@ func TestGameService_UpdateGame(t *testing.T) {
 			t.Error("期望返回错误，但没有错误")
 		}
 	})
+}
+
+func TestGameService_UpdateGameFromRemoteRespectsMetadataLock(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	gameService := service.NewGameService()
+	gameService.Init(context.Background(), db, &appconf.AppConfig{
+		MetadataSources: []string{string(enums.Bangumi)},
+	})
+
+	game := createTestGame()
+	game.ID = "locked-remote-update-001"
+	game.SourceType = enums.Bangumi
+	game.SourceID = "12345"
+	game.MetadataLocked = true
+	if err := addGameViaMetadata(gameService, game); err != nil {
+		t.Fatalf("添加游戏失败: %v", err)
+	}
+
+	err := gameService.UpdateGameFromRemote(game.ID)
+	if err == nil {
+		t.Fatal("期望锁定游戏远端更新返回错误，但没有错误")
+	}
+	if !strings.Contains(err.Error(), "元数据已锁定") {
+		t.Fatalf("期望元数据锁定错误，实际: %v", err)
+	}
 }
 
 func TestGameService_DeleteGame(t *testing.T) {

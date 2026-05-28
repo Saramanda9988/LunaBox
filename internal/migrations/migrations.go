@@ -472,6 +472,18 @@ func migration160(tx *sql.Tx) error {
 	return nil
 }
 
+// migration161 adds a per-game metadata lock so bulk remote refresh can skip user-edited games.
+func migration161(tx *sql.Tx) error {
+	_, err := tx.Exec(`
+		ALTER TABLE games
+		ADD COLUMN IF NOT EXISTS metadata_locked BOOLEAN DEFAULT FALSE
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to add metadata_locked column to games: %w", err)
+	}
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
@@ -533,6 +545,11 @@ var migrations = []Migration{
 		Version:     160,
 		Description: "Add import duplicate-check indexes",
 		Up:          migration160,
+	},
+	{
+		Version:     161,
+		Description: "Add per-game metadata lock for remote refresh",
+		Up:          migration161,
 	},
 	// {
 	// 	Version:     114,

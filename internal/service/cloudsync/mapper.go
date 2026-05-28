@@ -9,34 +9,36 @@ import (
 
 func gameFromModel(game models.Game) Game {
 	return Game{
-		ID:          game.ID,
-		Name:        game.Name,
-		Company:     game.Company,
-		Summary:     game.Summary,
-		Rating:      game.Rating,
-		ReleaseDate: game.ReleaseDate,
-		Status:      string(game.Status),
-		SourceType:  string(game.SourceType),
-		SourceID:    game.SourceID,
-		CreatedAt:   game.CreatedAt,
-		UpdatedAt:   game.UpdatedAt,
+		ID:             game.ID,
+		Name:           game.Name,
+		Company:        game.Company,
+		Summary:        game.Summary,
+		Rating:         game.Rating,
+		ReleaseDate:    game.ReleaseDate,
+		Status:         string(game.Status),
+		SourceType:     string(game.SourceType),
+		SourceID:       game.SourceID,
+		MetadataLocked: game.MetadataLocked,
+		CreatedAt:      game.CreatedAt,
+		UpdatedAt:      game.UpdatedAt,
 	}
 }
 
 func gameToModel(game Game, coverURL string) models.Game {
 	return models.Game{
-		ID:          game.ID,
-		Name:        game.Name,
-		CoverURL:    coverURL,
-		Company:     game.Company,
-		Summary:     game.Summary,
-		Rating:      game.Rating,
-		ReleaseDate: game.ReleaseDate,
-		Status:      enums.GameStatus(game.Status),
-		SourceType:  enums.SourceType(game.SourceType),
-		SourceID:    game.SourceID,
-		CreatedAt:   game.CreatedAt,
-		UpdatedAt:   game.UpdatedAt,
+		ID:             game.ID,
+		Name:           game.Name,
+		CoverURL:       coverURL,
+		Company:        game.Company,
+		Summary:        game.Summary,
+		Rating:         game.Rating,
+		ReleaseDate:    game.ReleaseDate,
+		Status:         enums.GameStatus(game.Status),
+		SourceType:     enums.SourceType(game.SourceType),
+		SourceID:       game.SourceID,
+		MetadataLocked: game.MetadataLocked,
+		CreatedAt:      game.CreatedAt,
+		UpdatedAt:      game.UpdatedAt,
 	}
 }
 

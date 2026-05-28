@@ -18,17 +18,18 @@ type CloudSyncSnapshot struct {
 }
 
 type CloudSyncGame struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Company     string    `json:"company"`
-	Summary     string    `json:"summary"`
-	Rating      float64   `json:"rating"`
-	ReleaseDate string    `json:"release_date"`
-	Status      string    `json:"status"`
-	SourceType  string    `json:"source_type"`
-	SourceID    string    `json:"source_id"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID             string    `json:"id"`
+	Name           string    `json:"name"`
+	Company        string    `json:"company"`
+	Summary        string    `json:"summary"`
+	Rating         float64   `json:"rating"`
+	ReleaseDate    string    `json:"release_date"`
+	Status         string    `json:"status"`
+	SourceType     string    `json:"source_type"`
+	SourceID       string    `json:"source_id"`
+	MetadataLocked bool      `json:"metadata_locked"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 type CloudSyncCategory struct {

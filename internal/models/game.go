@@ -24,6 +24,7 @@ type Game struct {
 	UpdatedAt         time.Time        `json:"updated_at"`
 	UseLocaleEmulator bool             `json:"use_locale_emulator"`      // 是否使用 Locale Emulator 转区启动
 	UseMagpie         bool             `json:"use_magpie"`               // 是否使用 Magpie 超分辨率缩放
+	MetadataLocked    bool             `json:"metadata_locked"`          // 是否锁定远程元数据更新
 	LastPlayedAt      *time.Time       `json:"last_played_at,omitempty"` // 最近一次游玩开始时间（由 play_sessions 聚合）
 }
 

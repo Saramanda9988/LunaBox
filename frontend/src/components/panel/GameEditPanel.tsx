@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { OpenLocalPath } from "../../../wailsjs/go/service/GameService";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterSelect } from "../ui/better/BetterSelect";
+import { BetterSwitch } from "../ui/better/BetterSwitch";
 
 interface GameEditFormProps {
   game: models.Game;
@@ -223,13 +224,42 @@ export function GameEditPanel({
           </div>
         </div>
 
+        <div className="data-glass:bg-white/2 data-glass:dark:bg-black/2 flex items-center justify-between gap-4 rounded-lg border border-brand-200 bg-brand-50 p-4 dark:border-brand-700 dark:bg-brand-700/50">
+          <div className="flex-1 space-y-2">
+            <label
+              htmlFor="game-metadata-lock"
+              className="block text-sm font-medium text-brand-700 dark:text-brand-300"
+            >
+              {t("gameEdit.metadataLock")}
+            </label>
+            <p className="text-xs text-brand-500 dark:text-brand-400">
+              {t("gameEdit.metadataLockHint")}
+            </p>
+          </div>
+          <BetterSwitch
+            id="game-metadata-lock"
+            checked={Boolean(game.metadata_locked)}
+            onCheckedChange={checked =>
+              onGameChange({
+                ...game,
+                metadata_locked: checked,
+              } as models.Game)}
+          />
+        </div>
+
         <div className="flex justify-between pt-4">
           <div className="flex gap-4 justify-end w-full">
             {onUpdateFromRemote && (
               <BetterButton
                 variant="primary"
                 onClick={onUpdateFromRemote}
+                disabled={Boolean(game.metadata_locked)}
                 icon="i-mdi-cloud-sync"
+                title={
+                  game.metadata_locked
+                    ? t("gameEdit.updateFromRemoteLocked")
+                    : t("gameEdit.updateFromRemote")
+                }
               >
                 {t("gameEdit.updateFromRemote")}
               </BetterButton>

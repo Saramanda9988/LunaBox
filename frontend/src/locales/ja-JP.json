@@ -469,7 +469,10 @@
     "sourceErogameScape": "ErogameScape",
     "sourceId": "データソース ID",
     "sourceIdPlaceholder": "プラットフォーム対応のゲームIDを入力",
-    "updateFromRemote": "リモートから情報を更新"
+    "metadataLock": "メタデータをロック",
+    "metadataLockHint": "有効にすると、全量メタデータ更新でこのゲームをスキップし、リモート更新によるタイトル・概要・カバー・開発元・評価・発売日・自動タグの上書きを防ぎます。",
+    "updateFromRemote": "リモートから情報を更新",
+    "updateFromRemoteLocked": "メタデータがロックされています。先に解除してください。"
   },
   "dragDropImportModal": {
     "toast": {
@@ -733,7 +736,7 @@
       },
       "toast": {
         "atLeastOneSource": "少なくとも1つのメタデータソースを有効にしてください",
-        "refreshSuccess": "メタデータ更新完了: 更新 {{updated}} 件、失敗 {{failed}} 件、スキップ {{skipped}} 件",
+        "refreshSuccess": "メタデータ更新完了: 更新 {{updated}} 件、失敗 {{failed}} 件、スキップ {{skipped}} 件（ロック {{locked}} 件）",
         "refreshFailed": "全量更新に失敗しました: {{error}}"
       }
     },

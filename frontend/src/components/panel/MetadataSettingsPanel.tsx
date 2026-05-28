@@ -148,6 +148,7 @@ export function MetadataSettingsPanel({
               updated: refreshResult.updated_games,
               failed: refreshResult.failed_games,
               skipped: refreshResult.skipped_games,
+              locked: refreshResult.locked_games,
             }),
           );
         }
