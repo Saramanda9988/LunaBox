@@ -1,6 +1,6 @@
 @echo off
 REM LunaBox Build Script
-REM Usage: build.bat [portable|installer|all] [version]
+REM Usage: build.bat [portable|installer|all] [version] [amd64|arm64]
 
 setlocal enabledelayedexpansion
 
@@ -22,6 +22,64 @@ set "BUILD_MODE=%~1"
 if "%BUILD_MODE%"=="" set "BUILD_MODE=all"
 
 set "VERSION_ARG=%~2"
+set "TARGET_ARCH=%~3"
+
+if /i "%VERSION_ARG%"=="amd64" (
+    set "TARGET_ARCH=amd64"
+    set "VERSION_ARG="
+)
+if /i "%VERSION_ARG%"=="arm64" (
+    set "TARGET_ARCH=arm64"
+    set "VERSION_ARG="
+)
+if "%TARGET_ARCH%"=="" set "TARGET_ARCH=amd64"
+if /i "%TARGET_ARCH%"=="x64" set "TARGET_ARCH=amd64"
+if /i "%TARGET_ARCH%"=="aarch64" set "TARGET_ARCH=arm64"
+if /i not "%TARGET_ARCH%"=="amd64" if /i not "%TARGET_ARCH%"=="arm64" (
+    echo Unknown target architecture: %TARGET_ARCH%
+    echo Usage: build.bat [portable^|installer^|all] [version] [amd64^|arm64]
+    exit /b 1
+)
+
+set "WAILS_PLATFORM=windows/%TARGET_ARCH%"
+set "GO_BUILD_TAGS="
+set "DUCKDB_DLL="
+set "DUCKDB_BUILD_LIB_DIR="
+
+if /i "%TARGET_ARCH%"=="arm64" (
+    set "DUCKDB_SOURCE_LIB_DIR=%CD%\lib\winarm64"
+    set "DUCKDB_BUILD_LIB_DIR=%CD%\build\duckdb\winarm64"
+    if not exist "!DUCKDB_SOURCE_LIB_DIR!\duckdb.dll" (
+        echo ERROR: Missing !DUCKDB_SOURCE_LIB_DIR!\duckdb.dll
+        exit /b 1
+    )
+    if not exist "!DUCKDB_SOURCE_LIB_DIR!\duckdb.lib" (
+        echo ERROR: Missing !DUCKDB_SOURCE_LIB_DIR!\duckdb.lib
+        exit /b 1
+    )
+    if not exist "!DUCKDB_BUILD_LIB_DIR!" mkdir "!DUCKDB_BUILD_LIB_DIR!"
+    copy /Y "!DUCKDB_SOURCE_LIB_DIR!\duckdb.dll" "!DUCKDB_BUILD_LIB_DIR!\duckdb.dll" >nul
+    copy /Y "!DUCKDB_SOURCE_LIB_DIR!\duckdb.lib" "!DUCKDB_BUILD_LIB_DIR!\libduckdb.dll.a" >nul
+    set "CGO_ENABLED=1"
+    if not defined CC (
+        if /i "%PROCESSOR_ARCHITECTURE%"=="ARM64" (
+            where clang >nul 2>nul
+            if not errorlevel 1 set "CC=clang"
+        ) else (
+            where aarch64-w64-mingw32-gcc >nul 2>nul
+            if not errorlevel 1 set "CC=aarch64-w64-mingw32-gcc"
+        )
+    )
+    if not defined CC (
+        echo ERROR: Windows ARM64 CGO build requires an ARM64 C compiler.
+        echo        Run this script from an ARM64 MSYS2 CLANGARM64 environment or set CC.
+        exit /b 1
+    )
+    set "CGO_LDFLAGS=-L!DUCKDB_BUILD_LIB_DIR! -lduckdb"
+    set "GO_BUILD_TAGS=-tags duckdb_use_lib"
+    set "DUCKDB_DLL=!DUCKDB_BUILD_LIB_DIR!\duckdb.dll"
+    set "PATH=!DUCKDB_BUILD_LIB_DIR!;!PATH!"
+)
 
 if not "%VERSION_ARG%"=="" (
     set "VERSION=%VERSION_ARG%"
@@ -68,10 +126,12 @@ set "LDFLAGS_INSTALLER=%LDFLAGS_BASE% -X 'lunabox/internal/version.BuildMode=ins
 echo ========================================
 echo LunaBox Build Script
 echo Build Mode: %BUILD_MODE%
+echo Target Arch: %TARGET_ARCH%
 echo Version: %VERSION%
 echo Commit: %GIT_COMMIT%
 if defined BUILD_ENV_FILE echo Build Env File: %BUILD_ENV_FILE%
 echo Bangumi OAuth Injection: !BANGUMI_OAUTH_STATUS!
+if defined DUCKDB_DLL echo DuckDB Dynamic DLL: !DUCKDB_DLL!
 echo ========================================
 echo.
 
@@ -80,7 +140,7 @@ if "%BUILD_MODE%"=="installer" goto :build_installer
 if "%BUILD_MODE%"=="all" goto :build_all
 
 echo Unknown build mode: %BUILD_MODE%
-echo Usage: build.bat [portable^|installer^|all] [version]
+echo Usage: build.bat [portable^|installer^|all] [version] [amd64^|arm64]
 exit /b 1
 
 :build_all
@@ -95,17 +155,19 @@ goto :done
 :build_portable
 echo [1/3] Building Portable GUI Version...
 echo ----------------------------------------
-wails build -ldflags "%LDFLAGS_PORTABLE%" -o lunabox-portable.exe
+wails build -platform "%WAILS_PLATFORM%" %GO_BUILD_TAGS% -ldflags "%LDFLAGS_PORTABLE%" -o lunabox-%TARGET_ARCH%-portable.exe
 if errorlevel 1 (
     echo ERROR: Portable GUI build failed!
     exit /b 1
 )
-echo Portable GUI build completed: build\bin\lunabox-portable.exe
+echo Portable GUI build completed: build\bin\lunabox-%TARGET_ARCH%-portable.exe
 echo.
 
 echo [2/3] Building CLI Version...
 echo ----------------------------------------
-go build -trimpath -ldflags "%LDFLAGS_PORTABLE%" -o build\bin\lunabox-cli.exe ./cmd/lunacli
+set "GOOS=windows"
+set "GOARCH=%TARGET_ARCH%"
+go build %GO_BUILD_TAGS% -trimpath -ldflags "%LDFLAGS_PORTABLE%" -o build\bin\lunabox-cli.exe ./cmd/lunacli
 if errorlevel 1 (
     echo ERROR: CLI build failed!
     exit /b 1
@@ -114,9 +176,9 @@ echo CLI build completed: build\bin\lunabox-cli.exe
 echo.
 
 REM Create portable ZIP package with both versions
-if exist "build\bin\lunabox-portable.exe" (
+if exist "build\bin\lunabox-%TARGET_ARCH%-portable.exe" (
     echo [3/3] Creating portable ZIP package...
-    set "TEMP_PKG_DIR=build\bin\LunaBox-Portable-%VERSION%"
+    set "TEMP_PKG_DIR=build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-portable"
     if exist "!TEMP_PKG_DIR!" rd /s /q "!TEMP_PKG_DIR!"
     mkdir "!TEMP_PKG_DIR!"
     mkdir "!TEMP_PKG_DIR!\backups"
@@ -125,10 +187,12 @@ if exist "build\bin\lunabox-portable.exe" (
     mkdir "!TEMP_PKG_DIR!\logs"
     
     REM Copy GUI version as LunaBox.exe
-    copy "build\bin\lunabox-portable.exe" "!TEMP_PKG_DIR!\LunaBox.exe" >nul
+    copy "build\bin\lunabox-%TARGET_ARCH%-portable.exe" "!TEMP_PKG_DIR!\LunaBox.exe" >nul
     
     REM Copy CLI version as lunacli.exe
     copy "build\bin\lunabox-cli.exe" "!TEMP_PKG_DIR!\lunacli.exe" >nul
+
+    if defined DUCKDB_DLL copy "!DUCKDB_DLL!" "!TEMP_PKG_DIR!\duckdb.dll" >nul
     
     REM Create README
     echo LunaBox Portable v%VERSION% > "!TEMP_PKG_DIR!\README.txt"
@@ -144,13 +208,13 @@ if exist "build\bin\lunabox-portable.exe" (
     echo   lunacli protocol unregister >> "!TEMP_PKG_DIR!\README.txt"
     echo   lunacli help >> "!TEMP_PKG_DIR!\README.txt"
     
-    if exist "build\bin\LunaBox-Portable-%VERSION%.zip" del "build\bin\LunaBox-Portable-%VERSION%.zip"
-    powershell -NoProfile -Command "Compress-Archive -Path '!TEMP_PKG_DIR!' -DestinationPath 'build\bin\LunaBox-Portable-%VERSION%.zip'"
+    if exist "build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-portable.zip" del "build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-portable.zip"
+    powershell -NoProfile -Command "Compress-Archive -Path '!TEMP_PKG_DIR!' -DestinationPath 'build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-portable.zip'"
     
     REM Clean up temp directory
     rd /s /q "!TEMP_PKG_DIR!"
     
-    echo Created: build\bin\LunaBox-Portable-%VERSION%.zip
+    echo Created: build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-portable.zip
 )
 echo.
 goto :eof
@@ -158,7 +222,9 @@ goto :eof
 :build_installer
 echo [1/2] Building CLI Version for Installer...
 echo ----------------------------------------
-go build -trimpath -ldflags "%LDFLAGS_INSTALLER%" -o build\bin\lunacli.exe ./cmd/lunacli
+set "GOOS=windows"
+set "GOARCH=%TARGET_ARCH%"
+go build %GO_BUILD_TAGS% -trimpath -ldflags "%LDFLAGS_INSTALLER%" -o build\bin\lunacli.exe ./cmd/lunacli
 if errorlevel 1 (
     echo ERROR: CLI build for installer failed!
     exit /b 1
@@ -168,7 +234,9 @@ echo.
 
 echo [2/2] Building Installer GUI Version...
 echo ----------------------------------------
-wails build -ldflags "%LDFLAGS_INSTALLER%" -nsis
+if exist "build\bin\duckdb.dll" del "build\bin\duckdb.dll"
+if defined DUCKDB_DLL copy "!DUCKDB_DLL!" "build\bin\duckdb.dll" >nul
+wails build -platform "%WAILS_PLATFORM%" %GO_BUILD_TAGS% -ldflags "%LDFLAGS_INSTALLER%" -nsis
 if errorlevel 1 (
     echo ERROR: Installer GUI build failed!
     exit /b 1
@@ -177,9 +245,13 @@ echo Installer GUI build completed!
 echo.
 
 REM Rename installer to include version
-if exist "build\bin\LunaBox-amd64-installer.exe" (
-    move /Y "build\bin\LunaBox-amd64-installer.exe" "build\bin\LunaBox-%VERSION%-Setup.exe" >nul
-    echo Created: build\bin\LunaBox-%VERSION%-Setup.exe
+if exist "build\bin\LunaBox-%TARGET_ARCH%-installer.exe" (
+    move /Y "build\bin\LunaBox-%TARGET_ARCH%-installer.exe" "build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-setup.exe" >nul
+    echo Created: build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-setup.exe
+)
+if exist "build\bin\lunabox-%TARGET_ARCH%-installer.exe" (
+    move /Y "build\bin\lunabox-%TARGET_ARCH%-installer.exe" "build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-setup.exe" >nul
+    echo Created: build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-setup.exe
 )
 echo.
 goto :eof
@@ -190,8 +262,8 @@ echo Build completed successfully!
 echo ========================================
 echo.
 echo Output files:
-echo   - Portable: build\bin\LunaBox-Portable-%VERSION%.zip
-echo   - Installer: build\bin\LunaBox-%VERSION%-Setup.exe
+echo   - Portable: build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-portable.zip
+echo   - Installer: build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-setup.exe
 echo.
 echo Portable version: Data stored in program directory
 echo Installer version: Data stored in %%APPDATA%%\LunaBox

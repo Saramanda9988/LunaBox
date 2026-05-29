@@ -342,6 +342,11 @@ Section
 
     !insertmacro wails.files
 
+    # ARM64 builds dynamically link DuckDB; include the runtime DLL when build/bin provides it.
+    !if /FileExists "..\..\bin\duckdb.dll"
+        File "..\..\bin\duckdb.dll"
+    !endif
+
     # Install CLI version and add to PATH only if user selected it
     ${If} $INSTALL_CLI_TO_PATH == "1"
         # Install CLI version (lunacli.exe) for command-line usage

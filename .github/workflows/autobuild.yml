@@ -5,17 +5,26 @@ on:
     branches:
       - main
     paths:
+      - '.github/workflows/autobuild.yml'
+      - 'build/windows/**'
+      - 'cmd/**'
       - 'frontend/**'
+      - 'go.mod'
+      - 'go.sum'
       - 'internal/**'
+      - 'lib/**'
+      - 'main.go'
+      - 'scripts/**'
+      - 'wails.json'
   workflow_dispatch:
 
 jobs:
   build-prerelease:
     name: Build Pre-release
-    runs-on: windows-latest
+    runs-on: ${{ matrix.arch == 'arm64' && 'windows-11-arm' || 'windows-latest' }}
     strategy:
       matrix:
-        arch: [amd64]
+        arch: [amd64, arm64]
         mode: [portable, installer]
     
     steps:
@@ -44,11 +53,48 @@ jobs:
       - name: Setup Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
+      - name: Setup MSYS2 for ARM64 CGO
+        if: matrix.arch == 'arm64'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANGARM64
+          path-type: inherit
+          install: mingw-w64-clang-aarch64-toolchain
+
       - name: Install NSIS
         if: matrix.mode == 'installer'
         run: |
           choco install nsis -y
           echo "C:\Program Files (x86)\NSIS" >> $env:GITHUB_PATH
+        shell: pwsh
+
+      - name: Configure build architecture
+        run: |
+          "GOOS=windows" >> $env:GITHUB_ENV
+          "GOARCH=${{ matrix.arch }}" >> $env:GITHUB_ENV
+
+          if ("${{ matrix.arch }}" -eq "arm64") {
+            $SourceDir = Join-Path $PWD "lib\winarm64"
+            $BuildLibDir = Join-Path $PWD "build\duckdb\winarm64"
+            $DuckDBDll = Join-Path $SourceDir "duckdb.dll"
+            $DuckDBLib = Join-Path $SourceDir "duckdb.lib"
+
+            if (!(Test-Path $DuckDBDll) -or !(Test-Path $DuckDBLib)) {
+              throw "Win-ARM64 DuckDB dynamic library is missing under lib\winarm64."
+            }
+
+            New-Item -ItemType Directory -Force -Path $BuildLibDir | Out-Null
+            Copy-Item $DuckDBDll -Destination (Join-Path $BuildLibDir "duckdb.dll") -Force
+            Copy-Item $DuckDBLib -Destination (Join-Path $BuildLibDir "libduckdb.dll.a") -Force
+
+            "CGO_ENABLED=1" >> $env:GITHUB_ENV
+            "CC=clang" >> $env:GITHUB_ENV
+            "CXX=clang++" >> $env:GITHUB_ENV
+            "CGO_LDFLAGS=-L$BuildLibDir -lduckdb" >> $env:GITHUB_ENV
+            "GO_BUILD_TAGS=duckdb_use_lib" >> $env:GITHUB_ENV
+            "DUCKDB_DYNAMIC_DLL=$(Join-Path $BuildLibDir "duckdb.dll")" >> $env:GITHUB_ENV
+            $BuildLibDir >> $env:GITHUB_PATH
+          }
         shell: pwsh
 
       - name: Install frontend dependencies
@@ -86,11 +132,16 @@ jobs:
         if: matrix.mode == 'portable'
         run: |
           $LDFLAGS = "-X 'lunabox/internal/version.Version=${{ steps.version_info.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.version_info.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.version_info.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=portable' -X 'lunabox/internal/version.BangumiOAuthClientID=$env:LUNABOX_BANGUMI_CLIENT_ID' -X 'lunabox/internal/version.BangumiOAuthClientSecret=$env:LUNABOX_BANGUMI_CLIENT_SECRET'"
+          $BUILD_TAGS = @()
+          if ($env:GO_BUILD_TAGS) {
+            $BUILD_TAGS = @("-tags", $env:GO_BUILD_TAGS)
+          }
+
           # Build GUI
-          wails build -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -o LunaBox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.exe
+          wails build @BUILD_TAGS -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -o LunaBox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.exe
           
           # Build CLI
-          go build -ldflags "$LDFLAGS" -o build/bin/lunacli.exe ./cmd/lunacli
+          go build @BUILD_TAGS -trimpath -ldflags "$LDFLAGS" -o build/bin/lunacli.exe ./cmd/lunacli
         shell: pwsh
         env:
           LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
@@ -100,12 +151,21 @@ jobs:
         if: matrix.mode == 'installer'
         run: |
           $LDFLAGS = "-X 'lunabox/internal/version.Version=${{ steps.version_info.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.version_info.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.version_info.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=installer' -X 'lunabox/internal/version.BangumiOAuthClientID=$env:LUNABOX_BANGUMI_CLIENT_ID' -X 'lunabox/internal/version.BangumiOAuthClientSecret=$env:LUNABOX_BANGUMI_CLIENT_SECRET'"
+          $BUILD_TAGS = @()
+          if ($env:GO_BUILD_TAGS) {
+            $BUILD_TAGS = @("-tags", $env:GO_BUILD_TAGS)
+          }
           
           # Build CLI first (needed for installer)
-          go build -ldflags "$LDFLAGS" -o build/bin/lunacli.exe ./cmd/lunacli
+          go build @BUILD_TAGS -trimpath -ldflags "$LDFLAGS" -o build/bin/lunacli.exe ./cmd/lunacli
+
+          Remove-Item "build/bin/duckdb.dll" -Force -ErrorAction SilentlyContinue
+          if ($env:DUCKDB_DYNAMIC_DLL) {
+            Copy-Item $env:DUCKDB_DYNAMIC_DLL -Destination "build/bin/duckdb.dll" -Force
+          }
           
           # Build GUI with NSIS
-          wails build -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -nsis
+          wails build @BUILD_TAGS -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -nsis
         shell: pwsh
         env:
           LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
@@ -122,6 +182,9 @@ jobs:
           
           Copy-Item "build/bin/$PKG_NAME.exe" -Destination "$PKG_DIR/LunaBox.exe"
           Copy-Item "build/bin/lunacli.exe" -Destination "$PKG_DIR/lunacli.exe"
+          if ($env:DUCKDB_DYNAMIC_DLL) {
+            Copy-Item $env:DUCKDB_DYNAMIC_DLL -Destination "$PKG_DIR/duckdb.dll"
+          }
           
           Compress-Archive -Path "$PKG_DIR" -DestinationPath "$PKG_NAME.zip"
         shell: pwsh
