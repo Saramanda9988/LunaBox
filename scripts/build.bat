@@ -62,9 +62,9 @@ if /i "%TARGET_ARCH%"=="arm64" (
     copy /Y "!DUCKDB_SOURCE_LIB_DIR!\duckdb.lib" "!DUCKDB_BUILD_LIB_DIR!\libduckdb.dll.a" >nul
     set "CGO_ENABLED=1"
     if not defined CC (
-        if /i "%PROCESSOR_ARCHITECTURE%"=="ARM64" (
-            where clang >nul 2>nul
-            if not errorlevel 1 set "CC=clang"
+        if exist "C:\msys64\clangarm64\bin\clang.exe" (
+            set "CC=C:\msys64\clangarm64\bin\clang.exe --target=aarch64-w64-windows-gnu"
+            if not defined CXX if exist "C:\msys64\clangarm64\bin\clang++.exe" set "CXX=C:\msys64\clangarm64\bin\clang++.exe --target=aarch64-w64-windows-gnu"
         ) else (
             where aarch64-w64-mingw32-gcc >nul 2>nul
             if not errorlevel 1 set "CC=aarch64-w64-mingw32-gcc"
@@ -78,7 +78,7 @@ if /i "%TARGET_ARCH%"=="arm64" (
     set "CGO_LDFLAGS=-L!DUCKDB_BUILD_LIB_DIR! -lduckdb"
     set "GO_BUILD_TAGS=-tags duckdb_use_lib"
     set "DUCKDB_DLL=!DUCKDB_BUILD_LIB_DIR!\duckdb.dll"
-    set "PATH=!DUCKDB_BUILD_LIB_DIR!;!PATH!"
+    set "PATH=C:\msys64\clangarm64\bin;!DUCKDB_BUILD_LIB_DIR!;!PATH!"
 )
 
 if not "%VERSION_ARG%"=="" (
