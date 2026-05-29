@@ -188,6 +188,15 @@ func (s *ImportService) SelectLibraryDirectory() (string, error) {
 
 // ScanLibraryDirectory 扫描游戏库目录，返回默认待导入候选项和路径阶段跳过项。
 func (s *ImportService) ScanLibraryDirectory(libraryPath string) (vo.BatchImportScanResult, error) {
+	return s.scanLibraryDirectory(libraryPath, vo.BatchImportScanOptions{})
+}
+
+// ScanLibraryDirectoryWithOptions 按指定模式扫描游戏库目录。
+func (s *ImportService) ScanLibraryDirectoryWithOptions(libraryPath string, options vo.BatchImportScanOptions) (vo.BatchImportScanResult, error) {
+	return s.scanLibraryDirectory(libraryPath, options)
+}
+
+func (s *ImportService) scanLibraryDirectory(libraryPath string, options vo.BatchImportScanOptions) (vo.BatchImportScanResult, error) {
 	var candidates []vo.BatchImportCandidate
 	var result vo.BatchImportScanResult
 
@@ -195,7 +204,13 @@ func (s *ImportService) ScanLibraryDirectory(libraryPath string) (vo.BatchImport
 	const maxDepth = 7
 	candidatesMap := make(map[string]vo.BatchImportCandidate)
 
-	err := s.scanDirectoryRecursive(libraryPath, libraryPath, 0, maxDepth, excludeKeywords, candidatesMap)
+	scanOptions := normalizeBatchImportScanOptions(options)
+	var err error
+	if scanOptions.ScanMode == "hierarchy" {
+		err = s.scanDirectoryByHierarchy(libraryPath, scanOptions.HierarchyDepth, candidatesMap)
+	} else {
+		err = s.scanDirectoryRecursive(libraryPath, libraryPath, 0, maxDepth, excludeKeywords, scanOptions.ScanNameMode, scanOptions.NameDepth, candidatesMap)
+	}
 	if err != nil {
 		applog.LogErrorf(s.ctx, "ScanLibraryDirectory: failed to scan directory: %v", err)
 		return result, fmt.Errorf("扫描目录失败: %w", err)
@@ -216,6 +231,22 @@ func (s *ImportService) ScanLibraryDirectory(libraryPath string) (vo.BatchImport
 	return result, nil
 }
 
+func normalizeBatchImportScanOptions(options vo.BatchImportScanOptions) vo.BatchImportScanOptions {
+	if options.ScanMode != "hierarchy" {
+		options.ScanMode = "scan"
+	}
+	if options.ScanNameMode != "parent" {
+		options.ScanNameMode = "depth"
+	}
+	if options.NameDepth < 0 {
+		options.NameDepth = 0
+	}
+	if options.HierarchyDepth < 0 {
+		options.HierarchyDepth = 0
+	}
+	return options
+}
+
 // scanDirectoryRecursive 递归扫描目录，找到所有包含可执行文件的目录
 func (s *ImportService) scanDirectoryRecursive(
 	rootPath string,
@@ -223,6 +254,8 @@ func (s *ImportService) scanDirectoryRecursive(
 	currentDepth int,
 	maxDepth int,
 	excludeKeywords []string,
+	scanNameMode string,
+	nameDepth int,
 	candidatesMap map[string]vo.BatchImportCandidate,
 ) error {
 	if currentDepth > maxDepth {
@@ -244,12 +277,13 @@ func (s *ImportService) scanDirectoryRecursive(
 		}
 
 		selectedExe := apputils.SelectBestExecutable(executables, folderName)
+		searchName := scanSearchName(rootPath, currentPath, scanNameMode, nameDepth)
 		candidatesMap[currentPath] = vo.BatchImportCandidate{
 			FolderPath:  currentPath,
 			FolderName:  folderName,
 			Executables: executables,
 			SelectedExe: selectedExe,
-			SearchName:  filepath.Base(currentPath),
+			SearchName:  searchName,
 			IsSelected:  true,
 			MatchStatus: "pending",
 		}
@@ -261,21 +295,90 @@ func (s *ImportService) scanDirectoryRecursive(
 			continue
 		}
 
-		lowerName := strings.ToLower(entry.Name())
-		if lowerName == "system" || lowerName == "windows" ||
-			lowerName == "program files" || lowerName == "program files (x86)" ||
-			strings.HasPrefix(lowerName, ".") ||
-			lowerName == "node_modules" || lowerName == "__pycache__" {
+		if shouldSkipImportDirectory(entry.Name()) {
 			continue
 		}
 
 		subPath := filepath.Join(currentPath, entry.Name())
-		if err := s.scanDirectoryRecursive(rootPath, subPath, currentDepth+1, maxDepth, excludeKeywords, candidatesMap); err != nil {
+		if err := s.scanDirectoryRecursive(rootPath, subPath, currentDepth+1, maxDepth, excludeKeywords, scanNameMode, nameDepth, candidatesMap); err != nil {
 			continue
 		}
 	}
 
 	return nil
+}
+
+func (s *ImportService) scanDirectoryByHierarchy(
+	rootPath string,
+	hierarchyDepth int,
+	candidatesMap map[string]vo.BatchImportCandidate,
+) error {
+	currentDirs := []string{rootPath}
+	for depth := 0; depth <= hierarchyDepth; depth++ {
+		nextDirs := make([]string, 0)
+		for _, dir := range currentDirs {
+			entries, err := os.ReadDir(dir)
+			if err != nil {
+				applog.LogWarningf(s.ctx, "scanDirectoryByHierarchy: failed to read dir %s: %v", dir, err)
+				continue
+			}
+			for _, entry := range entries {
+				if !entry.IsDir() || shouldSkipImportDirectory(entry.Name()) {
+					continue
+				}
+				nextDirs = append(nextDirs, filepath.Join(dir, entry.Name()))
+			}
+		}
+		currentDirs = nextDirs
+		if len(currentDirs) == 0 {
+			break
+		}
+	}
+
+	for _, dir := range currentDirs {
+		relativePath, _ := filepath.Rel(rootPath, dir)
+		folderName := filepath.Base(dir)
+		if relativePath != "." && relativePath != "" {
+			folderName = relativePath
+		}
+		candidatesMap[dir] = vo.BatchImportCandidate{
+			FolderPath:  dir,
+			FolderName:  folderName,
+			Executables: []string{},
+			SelectedExe: dir,
+			SearchName:  filepath.Base(dir),
+			IsSelected:  true,
+			MatchStatus: "pending",
+		}
+	}
+	return nil
+}
+
+func scanSearchName(rootPath string, currentPath string, scanNameMode string, nameDepth int) string {
+	if scanNameMode == "parent" {
+		return filepath.Base(currentPath)
+	}
+
+	relativePath, err := filepath.Rel(rootPath, currentPath)
+	if err != nil || relativePath == "." || relativePath == "" {
+		return filepath.Base(currentPath)
+	}
+
+	parts := strings.FieldsFunc(relativePath, func(r rune) bool {
+		return r == filepath.Separator || r == '/' || r == '\\'
+	})
+	if nameDepth >= 0 && nameDepth < len(parts) && strings.TrimSpace(parts[nameDepth]) != "" {
+		return parts[nameDepth]
+	}
+	return filepath.Base(currentPath)
+}
+
+func shouldSkipImportDirectory(name string) bool {
+	lowerName := strings.ToLower(name)
+	return lowerName == "system" || lowerName == "windows" ||
+		lowerName == "program files" || lowerName == "program files (x86)" ||
+		strings.HasPrefix(lowerName, ".") ||
+		lowerName == "node_modules" || lowerName == "__pycache__"
 }
 
 // ==================== 元数据获取与批量导入 ====================
@@ -516,7 +619,7 @@ func (s *ImportService) ProcessDroppedPaths(paths []string) (vo.BatchImportScanR
 		}
 
 		if info.IsDir() {
-			err := s.scanDirectoryRecursive(path, path, 0, maxDepth, excludeKeywords, candidatesMap)
+			err := s.scanDirectoryRecursive(path, path, 0, maxDepth, excludeKeywords, "parent", 0, candidatesMap)
 			if err != nil {
 				applog.LogWarningf(s.ctx, "ProcessDroppedPaths: failed to scan directory %s: %v", path, err)
 				continue

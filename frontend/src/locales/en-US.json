@@ -178,9 +178,25 @@
   "batchImportModal": {
     "title": "Batch Import Game Library",
     "selectDir": "Select your game library directory",
-    "scanHint": "The application will scan first-level subfolders. Each folder containing executable files will be recognized as a game.",
+    "scanHint": "Choose a scan strategy first. The application will create editable import candidates for review.",
     "btn": {
       "selectDir": "Browser Library Directory"
+    },
+    "options": "Options",
+    "scanMode": {
+      "label": "Scan Mode",
+      "button": "Scan Mode",
+      "scanParent": "Scan Executables",
+      "scanParentHint": "Recursively find folders containing exe or bat files, then use that folder name as the search name.",
+      "scanLibraryChild": "Scan Executables, Name by First-Level Folder",
+      "scanLibraryChildHint": "Find launchers recursively, but use the first-level folder under the library as the search name.",
+      "hierarchyChild": "Import Level {{level}} Folders",
+      "hierarchyChildHint": "Do not look for launchers. Import level {{level}} folders under the library as game paths and choose the executable on first launch.",
+      "hierarchyDepthLabel": "Folder Import Level",
+      "hierarchyDepthHint": "Currently imports level {{level}} folders under the library.",
+      "hierarchyDepthValue": "L{{level}}",
+      "decreaseDepth": "Decrease folder level",
+      "increaseDepth": "Increase folder level"
     },
     "scanning": "Scanning directory...",
     "detected": "Detected",
@@ -190,6 +206,7 @@
     "noFolderDetected": "No game folders detected",
     "searchName": "Search Name",
     "executable": "Executable",
+    "gamePath": "Game Path",
     "matchStatus": "Match Status",
     "status": {
       "pending": "Pending",

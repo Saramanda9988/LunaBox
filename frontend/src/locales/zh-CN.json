@@ -178,9 +178,25 @@
   "batchImportModal": {
     "title": "批量导入游戏库",
     "selectDir": "选择您的游戏库目录",
-    "scanHint": "程序将扫描一级子文件夹，每个包含可执行文件的文件夹将被识别为一个游戏",
+    "scanHint": "选择扫描方式后，程序会生成可预览、可编辑的导入候选项",
     "btn": {
       "selectDir": "选择游戏库目录"
+    },
+    "options": "选项",
+    "scanMode": {
+      "label": "扫描方式",
+      "button": "扫描模式",
+      "scanParent": "扫描可执行文件",
+      "scanParentHint": "递归查找包含 exe 或 bat 的目录，并用发现启动程序的目录名作为搜索名。",
+      "scanLibraryChild": "扫描可执行文件，按一级目录命名",
+      "scanLibraryChildHint": "递归查找启动程序，但用游戏库的子一级目录名作为搜索名，适合“品牌/游戏目录”结构。",
+      "hierarchyChild": "按 {{level}} 级目录导入",
+      "hierarchyChildHint": "不查找启动程序，直接把游戏库第 {{level}} 级目录作为游戏路径；首次启动时再选择可执行文件。",
+      "hierarchyDepthLabel": "按目录导入层级",
+      "hierarchyDepthHint": "当前会导入游戏库下第 {{level}} 级目录。",
+      "hierarchyDepthValue": "{{level}} 级",
+      "decreaseDepth": "减少目录层级",
+      "increaseDepth": "增加目录层级"
     },
     "scanning": "正在扫描目录...",
     "detected": "检测到",
@@ -190,6 +206,7 @@
     "noFolderDetected": "未检测到游戏文件夹",
     "searchName": "搜索名称",
     "executable": "启动程序",
+    "gamePath": "游戏路径",
     "matchStatus": "匹配状态",
     "status": {
       "pending": "待匹配",

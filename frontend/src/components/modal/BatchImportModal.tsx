@@ -11,9 +11,11 @@ import {
 } from "../../../wailsjs/go/service/GameService";
 import {
   BatchImportGames,
-  ScanLibraryDirectory,
+  ScanLibraryDirectoryWithOptions,
   SelectLibraryDirectory,
 } from "../../../wailsjs/go/service/ImportService";
+import { BetterButton } from "../ui/better/BetterButton";
+import { BetterDropdownMenu } from "../ui/better/BetterDropdownMenu";
 import { ImportManualSelectModal } from "../ui/import/ImportManualSelectModal";
 import { ImportMatchProgressStep } from "../ui/import/ImportMatchProgressStep";
 import { ImportModalContainer } from "../ui/import/ImportModalContainer";
@@ -29,6 +31,8 @@ interface BatchImportModalProps {
 }
 
 type Step = "select" | "scan" | "preview" | "match" | "importing" | "result";
+type BatchScanPreset = "scan_parent" | "scan_library_child" | "hierarchy_child";
+const MAX_HIERARCHY_DEPTH = 5;
 
 export function BatchImportModal({
   isOpen,
@@ -50,6 +54,8 @@ export function BatchImportModal({
     total: 0,
     gameName: "",
   });
+  const [scanPreset, setScanPreset] = useState<BatchScanPreset>("scan_parent");
+  const [hierarchyDepth, setHierarchyDepth] = useState(0);
 
   const { t } = useTranslation();
 
@@ -86,7 +92,16 @@ export function BatchImportModal({
         setIsLoading(true);
 
         try {
-          const scanned = await ScanLibraryDirectory(path);
+          const scanned = await ScanLibraryDirectoryWithOptions(
+            path,
+            new vo.BatchImportScanOptions({
+              scan_mode:
+                scanPreset === "hierarchy_child" ? "hierarchy" : "scan",
+              scan_name_mode: scanPreset === "scan_parent" ? "parent" : "depth",
+              name_depth: 0,
+              hierarchy_depth: hierarchyDepth,
+            }),
+          );
           const toImportCandidate = (
             c: vo.BatchImportCandidate,
           ): ImportCandidate => ({
@@ -453,6 +468,56 @@ export function BatchImportModal({
   const pendingCount = candidates.filter(
     c => c.isSelected && c.matchStatus === "pending",
   ).length;
+  const hierarchyLevel = hierarchyDepth + 1;
+  const scanPresetItems = [
+    {
+      key: "scan_parent",
+      label: t("batchImportModal.scanMode.scanParent"),
+      description: t("batchImportModal.scanMode.scanParentHint"),
+      icon:
+        scanPreset === "scan_parent"
+          ? "i-mdi-check"
+          : "i-mdi-file-search-outline",
+      iconColor:
+        scanPreset === "scan_parent" ? "text-success-500" : "text-brand-400",
+      onClick: () => setScanPreset("scan_parent"),
+    },
+    {
+      key: "scan_library_child",
+      label: t("batchImportModal.scanMode.scanLibraryChild"),
+      description: t("batchImportModal.scanMode.scanLibraryChildHint"),
+      icon:
+        scanPreset === "scan_library_child"
+          ? "i-mdi-check"
+          : "i-mdi-file-tree-outline",
+      iconColor:
+        scanPreset === "scan_library_child"
+          ? "text-success-500"
+          : "text-brand-400",
+      onClick: () => setScanPreset("scan_library_child"),
+    },
+    {
+      key: "hierarchy_child",
+      label: t("batchImportModal.scanMode.hierarchyChild", {
+        level: hierarchyLevel,
+      }),
+      description: t("batchImportModal.scanMode.hierarchyChildHint", {
+        level: hierarchyLevel,
+      }),
+      icon:
+        scanPreset === "hierarchy_child"
+          ? "i-mdi-check"
+          : "i-mdi-folder-table-outline",
+      iconColor:
+        scanPreset === "hierarchy_child"
+          ? "text-success-500"
+          : "text-brand-400",
+      onClick: () => setScanPreset("hierarchy_child"),
+    },
+  ];
+  const setHierarchyDepthWithinBounds = (depth: number) => {
+    setHierarchyDepth(Math.min(MAX_HIERARCHY_DEPTH, Math.max(0, depth)));
+  };
 
   return (
     <>
@@ -465,7 +530,7 @@ export function BatchImportModal({
           <div className="space-y-6">
             <div className="py-8 text-center">
               <div className="i-mdi-folder-open mx-auto mb-4 text-6xl text-brand-400" />
-              <p className="mb-2 text-brand-600 dark:text-brand-300">
+              <p className="mb-2 text-brand-700 dark:text-brand-300">
                 {t("batchImportModal.selectDir")}
               </p>
               <p className="text-sm text-brand-400 dark:text-brand-500">
@@ -473,15 +538,85 @@ export function BatchImportModal({
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={handleSelectDirectory}
-              disabled={isLoading}
-              className="flex w-full items-center justify-center rounded-lg bg-success-500 py-4 text-white transition hover:bg-success-600 disabled:opacity-50"
-            >
-              <div className="i-mdi-folder-search mr-2 text-xl" />
-              {t("batchImportModal.btn.selectDir")}
-            </button>
+            <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+              <BetterButton
+                variant="primary"
+                size="lg"
+                icon="i-mdi-folder-search"
+                onClick={handleSelectDirectory}
+                disabled={isLoading}
+                className="flex-1"
+              >
+                {t("batchImportModal.btn.selectDir")}
+              </BetterButton>
+
+              <BetterDropdownMenu
+                title={t("batchImportModal.scanMode.label")}
+                menuWidth="w-[22rem] max-w-[calc(100vw-3rem)]"
+                items={scanPresetItems}
+                footer={(
+                  <div
+                    className="mt-1 border-t border-brand-200 px-3 py-2.5 dark:border-brand-700"
+                    onClick={event => event.stopPropagation()}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-brand-700 dark:text-brand-200">
+                          {t("batchImportModal.scanMode.hierarchyDepthLabel")}
+                        </div>
+                        <div className="mt-0.5 text-xs leading-tight text-brand-400 dark:text-brand-500">
+                          {t("batchImportModal.scanMode.hierarchyDepthHint", {
+                            level: hierarchyLevel,
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 items-center rounded-lg border border-brand-200 bg-brand-50 p-0.5 dark:border-brand-700 dark:bg-brand-900/30">
+                        <button
+                          type="button"
+                          aria-label={t(
+                            "batchImportModal.scanMode.decreaseDepth",
+                          )}
+                          disabled={hierarchyDepth === 0}
+                          onClick={() =>
+                            setHierarchyDepthWithinBounds(hierarchyDepth - 1)}
+                          className="flex h-8 w-8 items-center justify-center rounded-md text-brand-500 transition-colors hover:bg-white hover:text-brand-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-brand-400 dark:hover:bg-brand-700 dark:hover:text-brand-100"
+                        >
+                          <div className="i-mdi-minus text-lg" />
+                        </button>
+                        <span className="min-w-12 px-2 text-center text-sm font-medium text-brand-800 dark:text-brand-100">
+                          {t("batchImportModal.scanMode.hierarchyDepthValue", {
+                            level: hierarchyLevel,
+                          })}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={t(
+                            "batchImportModal.scanMode.increaseDepth",
+                          )}
+                          disabled={hierarchyDepth === MAX_HIERARCHY_DEPTH}
+                          onClick={() =>
+                            setHierarchyDepthWithinBounds(hierarchyDepth + 1)}
+                          className="flex h-8 w-8 items-center justify-center rounded-md text-brand-500 transition-colors hover:bg-white hover:text-brand-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-brand-400 dark:hover:bg-brand-700 dark:hover:text-brand-100"
+                        >
+                          <div className="i-mdi-plus text-lg" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                trigger={(
+                  <BetterButton
+                    variant="secondary"
+                    size="lg"
+                    icon="i-mdi-tune-variant"
+                    className="w-full sm:w-auto"
+                  >
+                    {t("batchImportModal.scanMode.button")}
+                  </BetterButton>
+                )}
+              />
+            </div>
           </div>
         )}
 
@@ -506,7 +641,10 @@ export function BatchImportModal({
               notMatched: t("batchImportModal.notMatched"),
               pending: t("batchImportModal.pending"),
               searchName: t("batchImportModal.searchName"),
-              executable: t("batchImportModal.executable"),
+              executable:
+                scanPreset === "hierarchy_child"
+                  ? t("batchImportModal.gamePath")
+                  : t("batchImportModal.executable"),
               matchStatus: t("batchImportModal.matchStatus"),
               action: t("common.action"),
               empty: t("batchImportModal.noFolderDetected"),

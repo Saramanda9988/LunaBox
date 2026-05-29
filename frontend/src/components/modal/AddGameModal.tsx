@@ -394,10 +394,6 @@ export function AddGameModal({
 
           {step === "remote" && (
             <div className="space-y-6">
-              <p className="text-sm text-brand-600 dark:text-brand-300">
-                {t("addGameModal.remoteImportHint")}
-              </p>
-
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-brand-900 dark:text-white">

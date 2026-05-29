@@ -30,6 +30,8 @@ export function ProcessDroppedPaths(arg1:Array<string>):Promise<vo.BatchImportSc
 
 export function ScanLibraryDirectory(arg1:string):Promise<vo.BatchImportScanResult>;
 
+export function ScanLibraryDirectoryWithOptions(arg1:string,arg2:vo.BatchImportScanOptions):Promise<vo.BatchImportScanResult>;
+
 export function SelectJSONFile():Promise<string>;
 
 export function SelectLibraryDirectory():Promise<string>;

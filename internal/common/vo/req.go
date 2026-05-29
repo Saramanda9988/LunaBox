@@ -96,6 +96,14 @@ type BatchImportCandidate struct {
 	ExistingName string             `json:"existing_name,omitempty"` // 命中的已有游戏名称
 }
 
+// BatchImportScanOptions 批量导入扫盘选项。
+type BatchImportScanOptions struct {
+	ScanMode       string `json:"scan_mode"`       // scan, hierarchy
+	ScanNameMode   string `json:"scan_name_mode"`  // parent, depth
+	NameDepth      int    `json:"name_depth"`      // scan 模式下用于取游戏名的目录层级，0 表示游戏库子一级
+	HierarchyDepth int    `json:"hierarchy_depth"` // hierarchy 模式下作为游戏目录的目录层级，0 表示游戏库子一级
+}
+
 // BatchImportScanResult 批量导入扫描结果。
 // Candidates 是默认进入扫描预览和元数据匹配队列的新增候选项；
 // SkippedCandidates 是路径阶段已裁剪的候选项，可用于折叠明细。

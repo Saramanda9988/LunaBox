@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
 
 export interface DropdownMenuItem {
@@ -24,12 +25,13 @@ export interface DropdownMenuItem {
 }
 
 interface BetterDropdownMenuProps {
-  trigger: React.ReactNode;
+  trigger: ReactNode;
   items: DropdownMenuItem[];
   align?: "start" | "end";
   menuWidth?: string;
   title?: string;
   disabled?: boolean;
+  footer?: ReactNode;
 }
 
 export function BetterDropdownMenu({
@@ -39,6 +41,7 @@ export function BetterDropdownMenu({
   menuWidth = "min-w-[180px]",
   title,
   disabled = false,
+  footer,
 }: BetterDropdownMenuProps) {
   return (
     <Menu as="div" className="relative inline-block">
@@ -47,8 +50,9 @@ export function BetterDropdownMenu({
       </MenuButton>
 
       <MenuItems
+        portal
         anchor={align === "end" ? "bottom end" : "bottom start"}
-        className={`z-50 mt-1.5 ${menuWidth} origin-top-right rounded-xl bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700 shadow-xl focus:outline-none p-1.5 [--anchor-gap:6px]`}
+        className={`z-[9999] mt-1.5 ${menuWidth} origin-top-right rounded-xl bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700 shadow-xl focus:outline-none p-1.5 [--anchor-gap:6px]`}
       >
         {title && (
           <div className="px-2 pb-1 pt-0.5 text-xs font-medium text-brand-400 dark:text-brand-500">
@@ -63,48 +67,54 @@ export function BetterDropdownMenu({
             )}
             <MenuItem disabled={item.disabled}>
               {({ focus }: { focus: boolean }) =>
-                item.pill
-                  ? (
-                      <button
-                        type="button"
-                        onClick={item.onClick}
-                        disabled={item.disabled}
-                        className={`flex w-full items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition-all
+                item.pill ? (
+                  <button
+                    type="button"
+                    onClick={item.onClick}
+                    disabled={item.disabled}
+                    className={`flex w-full items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition-all
                           ${item.pillColor ?? "bg-brand-100 text-brand-700 dark:bg-brand-700 dark:text-brand-300"}
                           ${focus ? "ring-2 ring-brand-400 ring-offset-1 dark:ring-offset-brand-900" : ""}
                           ${item.disabled ? "cursor-not-allowed opacity-50" : ""}`}
-                      >
-                        {item.icon && <div className={`${item.icon} text-sm shrink-0`} />}
-                        {item.label}
-                      </button>
-                    )
-                  : (
-                      <button
-                        type="button"
-                        onClick={item.onClick}
-                        disabled={item.disabled}
-                        className={`flex w-full items-center rounded-lg px-3 py-2.5 text-sm text-brand-700 dark:text-brand-200 transition-colors
+                  >
+                    {item.icon && (
+                      <div className={`${item.icon} text-sm shrink-0`} />
+                    )}
+                    {item.label}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={item.onClick}
+                    disabled={item.disabled}
+                    className={`flex w-full items-center rounded-lg px-3 py-2.5 text-sm text-brand-700 dark:text-brand-200 transition-colors
                           ${focus ? "bg-brand-100 dark:bg-brand-700" : ""}
                           ${item.disabled ? "cursor-not-allowed opacity-50" : ""}`}
+                  >
+                    {item.icon && (
+                      <div
+                        className={`mr-3 text-xl shrink-0 ${item.iconColor ?? "text-brand-400 dark:text-brand-500"}`}
                       >
-                        {item.icon && (
-                          <div className={`mr-3 text-xl shrink-0 ${item.iconColor ?? "text-brand-400 dark:text-brand-500"}`}>
-                            <div className={item.icon} />
-                          </div>
-                        )}
-                        <div className="text-left">
-                          <div className="font-medium leading-tight">{item.label}</div>
-                          {item.description && (
-                            <div className="mt-0.5 text-xs leading-tight text-brand-400 dark:text-brand-500">
-                              {item.description}
-                            </div>
-                          )}
-                        </div>
-                      </button>
+                        <div className={item.icon} />
+                      </div>
                     )}
+                    <div className="text-left">
+                      <div className="font-medium leading-tight">
+                        {item.label}
+                      </div>
+                      {item.description && (
+                        <div className="mt-0.5 text-xs leading-tight text-brand-400 dark:text-brand-500">
+                          {item.description}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                )}
             </MenuItem>
           </div>
         ))}
+
+        {footer}
       </MenuItems>
     </Menu>
   );

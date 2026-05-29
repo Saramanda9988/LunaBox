@@ -50,6 +50,10 @@ export function ScanLibraryDirectory(arg1) {
   return window['go']['service']['ImportService']['ScanLibraryDirectory'](arg1);
 }
 
+export function ScanLibraryDirectoryWithOptions(arg1, arg2) {
+  return window['go']['service']['ImportService']['ScanLibraryDirectoryWithOptions'](arg1, arg2);
+}
+
 export function SelectJSONFile() {
   return window['go']['service']['ImportService']['SelectJSONFile']();
 }

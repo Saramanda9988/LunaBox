@@ -183,6 +183,24 @@ export namespace appconf {
 
 export namespace enums {
 	
+	export enum Period {
+	    DAY = "day",
+	    WEEK = "week",
+	    MONTH = "month",
+	    ALL = "all",
+	}
+	export enum PromptType {
+	    DEFAULT_SYSTEM = "你是一个幽默风趣的游戏评论员，擅长用轻松的语气点评玩家的游戏习惯。\n请用轻松幽默的方式点评这位玩家的游戏习惯，可以适当调侃但不要太过分。",
+	    MEOW_ZAKO = "你是一个雌小鬼猫娘，根据用户的游戏统计数据对用户进行锐评，语气可爱活泼，不要给用户留脸面偶（=w=）适当加入猫咪的拟声词（如“喵”）和雌小鬼的口癖（如“杂鱼~杂鱼~”），要是能再用上颜文字主人就更高兴了喵。\n\n",
+	    STRICT_TUTOR = "你是用户的严厉导师，根据用户的游戏统计数据对用户进行锐评，语气严肃认真，不允许任何调侃和幽默。\n\n",
+	}
+	export enum GameStatus {
+	    NOT_STARTED = "not_started",
+	    WANT_TO_PLAY = "want_to_play",
+	    PLAYING = "playing",
+	    COMPLETED = "completed",
+	    ON_HOLD = "on_hold",
+	}
 	export enum GameListSortBy {
 	    NAME = "name",
 	    LAST_PLAYED_AT = "last_played_at",
@@ -202,24 +220,6 @@ export namespace enums {
 	    STEAM = "steam",
 	    DLSITE = "dlsite",
 	    EROGAMESCAPE = "erogamescape",
-	}
-	export enum Period {
-	    DAY = "day",
-	    WEEK = "week",
-	    MONTH = "month",
-	    ALL = "all",
-	}
-	export enum PromptType {
-	    DEFAULT_SYSTEM = "你是一个幽默风趣的游戏评论员，擅长用轻松的语气点评玩家的游戏习惯。\n请用轻松幽默的方式点评这位玩家的游戏习惯，可以适当调侃但不要太过分。",
-	    MEOW_ZAKO = "你是一个雌小鬼猫娘，根据用户的游戏统计数据对用户进行锐评，语气可爱活泼，不要给用户留脸面偶（=w=）适当加入猫咪的拟声词（如“喵”）和雌小鬼的口癖（如“杂鱼~杂鱼~”），要是能再用上颜文字主人就更高兴了喵。\n\n",
-	    STRICT_TUTOR = "你是用户的严厉导师，根据用户的游戏统计数据对用户进行锐评，语气严肃认真，不允许任何调侃和幽默。\n\n",
-	}
-	export enum GameStatus {
-	    NOT_STARTED = "not_started",
-	    WANT_TO_PLAY = "want_to_play",
-	    PLAYING = "playing",
-	    COMPLETED = "completed",
-	    ON_HOLD = "on_hold",
 	}
 
 }
@@ -948,6 +948,24 @@ export namespace vo {
 		    }
 		    return a;
 		}
+	}
+	export class BatchImportScanOptions {
+	    scan_mode: string;
+	    scan_name_mode: string;
+	    name_depth: number;
+	    hierarchy_depth: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new BatchImportScanOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.scan_mode = source["scan_mode"];
+	        this.scan_name_mode = source["scan_name_mode"];
+	        this.name_depth = source["name_depth"];
+	        this.hierarchy_depth = source["hierarchy_depth"];
+	    }
 	}
 	export class BatchImportScanResult {
 	    candidates: BatchImportCandidate[];
