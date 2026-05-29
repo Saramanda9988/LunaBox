@@ -2,7 +2,7 @@ import type { appconf, vo } from "../../../wailsjs/go/models";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { appZoomOptions } from "../../consts/options";
+import { appZoomOptions, languageOptions } from "../../consts/options";
 import {
   disconnectBangumiAuthorization,
   fetchBangumiAuthStatus,
@@ -362,11 +362,7 @@ export function BasicSettingsPanel({
           value={formData.language}
           onChange={value =>
             onChange({ ...formData, language: value } as appconf.AppConfig)}
-          options={[
-            { value: "zh-CN", label: "简体中文" },
-            { value: "en-US", label: "English" },
-            { value: "ja-JP", label: "日本語" },
-          ]}
+          options={languageOptions}
         />
       </div>
 

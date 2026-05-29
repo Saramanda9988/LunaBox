@@ -1,23 +1,90 @@
-import vndbTagTranslationsRaw from "./vndbTagTranslations.zh-CN.json";
+import i18n from "../i18n";
+import vndbTagTranslationsJaJPRaw from "./vndbTagTranslations.ja-JP.json";
+import vndbTagTranslationsZhCNRaw from "./vndbTagTranslations.zh-CN.json";
+import vndbTagTranslationsZhTWRaw from "./vndbTagTranslations.zh-TW.json";
 
 type TranslationMap = Record<string, string>;
 
-const vndbTagTranslations = Object.fromEntries(
-  Object.entries(vndbTagTranslationsRaw as Record<string, unknown>).filter(
-    ([key, value]) => !key.startsWith("_") && typeof value === "string",
+type SupportedTagTranslationLanguage = "ja-JP" | "zh-CN" | "zh-TW";
+
+function createTranslationMap(rawTranslations: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(rawTranslations).filter(
+      ([key, value]) => !key.startsWith("_") && typeof value === "string",
+    ),
+  ) as TranslationMap;
+}
+
+const vndbTagTranslationsByLanguage: Record<
+  SupportedTagTranslationLanguage,
+  TranslationMap
+> = {
+  "ja-JP": createTranslationMap(
+    vndbTagTranslationsJaJPRaw as Record<string, unknown>,
   ),
-) as TranslationMap;
+  "zh-CN": createTranslationMap(
+    vndbTagTranslationsZhCNRaw as Record<string, unknown>,
+  ),
+  "zh-TW": createTranslationMap(
+    vndbTagTranslationsZhTWRaw as Record<string, unknown>,
+  ),
+};
 
-const normalizedTranslatedIndex = new Map<string, string[]>();
+const normalizedTranslatedIndexesByLanguage = Object.fromEntries(
+  Object.entries(vndbTagTranslationsByLanguage).map(
+    ([language, translations]) => {
+      const index = new Map<string, string[]>();
 
-for (const [rawName, translatedName] of Object.entries(vndbTagTranslations)) {
-  const normalized = normalizeTagSearchText(translatedName);
-  if (!normalized || normalized === normalizeTagSearchText(rawName)) {
-    continue;
+      for (const [rawName, translatedName] of Object.entries(translations)) {
+        const normalized = normalizeTagSearchText(translatedName);
+        if (!normalized || normalized === normalizeTagSearchText(rawName)) {
+          continue;
+        }
+        const existing = index.get(normalized) ?? [];
+        existing.push(rawName);
+        index.set(normalized, existing);
+      }
+
+      return [language, index];
+    },
+  ),
+) as Record<SupportedTagTranslationLanguage, Map<string, string[]>>;
+
+function getCurrentTagTranslationLanguage() {
+  const language = i18n.resolvedLanguage || i18n.language;
+
+  if (language.startsWith("en")) {
+    return undefined;
   }
-  const existing = normalizedTranslatedIndex.get(normalized) ?? [];
-  existing.push(rawName);
-  normalizedTranslatedIndex.set(normalized, existing);
+
+  if (language.startsWith("ja")) {
+    return "ja-JP";
+  }
+
+  if (
+    language === "zh-TW"
+    || language === "zh-HK"
+    || language === "zh-MO"
+    || language.toLowerCase().startsWith("zh-hant")
+  ) {
+    return "zh-TW";
+  }
+
+  if (language.startsWith("zh")) {
+    return "zh-CN";
+  }
+
+  return undefined;
+}
+
+function getCurrentTagTranslationMap() {
+  const language = getCurrentTagTranslationLanguage();
+  return language ? vndbTagTranslationsByLanguage[language] : undefined;
+}
+
+function getCurrentTranslatedIndex() {
+  const language = getCurrentTagTranslationLanguage();
+  return language ? normalizedTranslatedIndexesByLanguage[language] : undefined;
 }
 
 export function getTagDisplayName(
@@ -27,7 +94,8 @@ export function getTagDisplayName(
   if (!enableTranslation) {
     return tagName;
   }
-  return vndbTagTranslations[tagName] ?? tagName;
+
+  return getCurrentTagTranslationMap()?.[tagName] ?? tagName;
 }
 
 export function getTagTitle(
@@ -44,8 +112,13 @@ export function findRawTagNamesByTranslatedQuery(query: string): string[] {
     return [];
   }
 
+  const translatedIndex = getCurrentTranslatedIndex();
+  if (!translatedIndex) {
+    return [];
+  }
+
   const matches: string[] = [];
-  for (const [translatedName, rawNames] of normalizedTranslatedIndex) {
+  for (const [translatedName, rawNames] of translatedIndex) {
     if (translatedName.includes(normalizedQuery)) {
       matches.push(...rawNames);
     }

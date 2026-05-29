@@ -5,9 +5,11 @@ import { initReactI18next } from "react-i18next";
 import enUS from "./locales/en-US.json";
 import jaJP from "./locales/ja-JP.json";
 import zhCN from "./locales/zh-CN.json";
+import zhTW from "./locales/zh-TW.json";
 
 const resources = {
   "zh-CN": { translation: zhCN },
+  "zh-TW": { translation: zhTW },
   "en-US": { translation: enUS },
   "ja-JP": { translation: jaJP },
 };

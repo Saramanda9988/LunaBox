@@ -32,6 +32,13 @@ export const appZoomOptions = APP_ZOOM_LEVELS.map(value => ({
   value: String(value),
 }));
 
+export const languageOptions = [
+  { value: "zh-CN", label: "简体中文" },
+  { value: "zh-TW", label: "繁體中文" },
+  { value: "en-US", label: "English" },
+  { value: "ja-JP", label: "日本語" },
+];
+
 export function normalizeAppZoomFactor(value?: number) {
   if (typeof value !== "number" || Number.isNaN(value) || value <= 0) {
     return DEFAULT_APP_ZOOM;
