@@ -233,27 +233,27 @@ function DownloadsPage() {
   ).length;
 
   return (
-    <div className="mx-auto flex h-full max-w-8xl flex-col space-y-6 p-8">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div>
-            <h1 className="text-4xl font-bold text-brand-900 dark:text-white">
-              {t("downloads.title", "下载管理")}
-            </h1>
-            <p className="mt-1 text-sm text-brand-500 dark:text-brand-400">
-              {activeCount > 0
-                ? t("downloads.activeCount", "{{count}} 个任务进行中", {
-                    count: activeCount,
-                  })
-                : t("downloads.noActive", "暂无进行中的任务")}
-            </p>
+    <div className="h-full w-full overflow-y-auto scrollbar-stable p-8">
+      <div className="mx-auto max-w-8xl space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-4xl font-bold text-brand-900 dark:text-white">
+                {t("downloads.title", "下载管理")}
+              </h1>
+              <p className="mt-1 text-sm text-brand-500 dark:text-brand-400">
+                {activeCount > 0
+                  ? t("downloads.activeCount", "{{count}} 个任务进行中", {
+                      count: activeCount,
+                    })
+                  : t("downloads.noActive", "暂无进行中的任务")}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="flex-1 overflow-y-auto pr-1">
         {sorted.length === 0 ? (
-          <div className="glass-panel mx-auto flex h-full w-full max-w-5xl flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-brand-300 text-brand-400 select-none dark:border-brand-700 dark:text-brand-500">
+          <div className="glass-panel mx-auto flex min-h-[24rem] w-full max-w-5xl flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-brand-300 text-brand-400 select-none dark:border-brand-700 dark:text-brand-500">
             <span className="i-mdi-download-off text-5xl" />
             <p className="text-sm">{t("downloads.empty", "暂无下载任务")}</p>
           </div>

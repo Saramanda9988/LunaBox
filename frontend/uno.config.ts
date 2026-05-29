@@ -16,6 +16,12 @@ export default defineConfig({
         "-ms-overflow-style": "none",
       },
     ],
+    [
+      "scrollbar-stable",
+      {
+        "scrollbar-gutter": "stable",
+      },
+    ],
   ],
 
   // 自定义 variants - 支持 data-glass 属性

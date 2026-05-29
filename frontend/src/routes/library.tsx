@@ -650,7 +650,7 @@ function LibraryPage() {
     <div
       ref={pageRef}
       data-scroll-restoration-id={LIBRARY_SCROLL_RESTORATION_ID}
-      className="h-full w-full overflow-y-auto p-8"
+      className="h-full w-full overflow-y-auto scrollbar-stable p-8"
     >
       <div className="mx-auto max-w-8xl space-y-6">
         <div className="flex flex-col items-left justify-between">

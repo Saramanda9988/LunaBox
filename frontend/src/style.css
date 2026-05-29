@@ -47,7 +47,7 @@ textarea,
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 9px;
   height: 6px;
 }
 
@@ -57,7 +57,9 @@ textarea,
 
 ::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb);
-  border-radius: 3px;
+  background-clip: content-box;
+  border-right: 3px solid transparent;
+  border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb:hover {

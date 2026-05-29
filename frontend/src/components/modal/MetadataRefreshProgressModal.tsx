@@ -57,28 +57,6 @@ export function MetadataRefreshProgressModal({
                 style={{ width: progressWidth }}
               />
             </div>
-            <div className="mx-auto mt-4 grid max-w-md grid-cols-4 gap-2 text-xs">
-              <div className="rounded-lg bg-success-50 px-2 py-2 text-success-700 dark:bg-success-900/20 dark:text-success-300">
-                {t("settings.metadata.progress.updated", "更新")}
-                {" "}
-                {progress.updated_games}
-              </div>
-              <div className="rounded-lg bg-warning-50 px-2 py-2 text-warning-700 dark:bg-warning-900/20 dark:text-warning-300">
-                {t("settings.metadata.progress.skipped", "跳过")}
-                {" "}
-                {progress.skipped_games}
-              </div>
-              <div className="rounded-lg bg-error-50 px-2 py-2 text-error-700 dark:bg-error-900/20 dark:text-error-300">
-                {t("settings.metadata.progress.failed", "失败")}
-                {" "}
-                {progress.failed_games}
-              </div>
-              <div className="rounded-lg bg-brand-100 px-2 py-2 text-brand-600 dark:bg-brand-700 dark:text-brand-300">
-                {t("settings.metadata.progress.locked", "锁定")}
-                {" "}
-                {progress.locked_games}
-              </div>
-            </div>
             <p className="mt-4 text-xs text-brand-400">
               {t(
                 "settings.metadata.progress.hint",

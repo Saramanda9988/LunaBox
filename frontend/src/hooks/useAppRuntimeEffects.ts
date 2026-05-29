@@ -38,6 +38,8 @@ type UseAppRuntimeEffectsOptions = {
   setQuitSyncRequest: Dispatch<SetStateAction<QuitSyncRequest | null>>;
 };
 
+const WAILS_RESIZE_BORDER_THICKNESS = 5;
+
 export function useAppRuntimeEffects({
   config,
   refreshConfig,
@@ -47,6 +49,12 @@ export function useAppRuntimeEffects({
   setQuitSyncRequest,
 }: UseAppRuntimeEffectsOptions) {
   const { t } = useTranslation();
+
+  useEffect(() => {
+    if (window.wails?.flags) {
+      window.wails.flags.borderThickness = WAILS_RESIZE_BORDER_THICKNESS;
+    }
+  }, []);
 
   useEffect(() => {
     const unsubscribe = EventsOn(

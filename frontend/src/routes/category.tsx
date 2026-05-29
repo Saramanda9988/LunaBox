@@ -615,7 +615,7 @@ function CategoryDetailPage() {
     <div
       ref={pageRef}
       data-scroll-restoration-id={scrollRestorationId}
-      className="h-full w-full overflow-y-auto p-8"
+      className="h-full w-full overflow-y-auto scrollbar-stable p-8"
     >
       {/* Back Button */}
       <button
