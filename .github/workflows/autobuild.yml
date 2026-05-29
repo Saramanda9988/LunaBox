@@ -36,7 +36,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version-file: go.mod
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -51,7 +51,10 @@ jobs:
           cache-dependency-path: 'frontend/pnpm-lock.yaml'
 
       - name: Setup Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+        run: |
+          $WailsVersion = (go list -m -f "{{.Version}}" github.com/wailsapp/wails/v2).Trim()
+          go install "github.com/wailsapp/wails/v2/cmd/wails@$WailsVersion"
+        shell: pwsh
 
       - name: Setup MSYS2 for ARM64 CGO
         id: msys2
@@ -73,6 +76,8 @@ jobs:
         run: |
           "GOOS=windows" >> $env:GITHUB_ENV
           "GOARCH=${{ matrix.arch }}" >> $env:GITHUB_ENV
+          $env:GOOS = "windows"
+          $env:GOARCH = "${{ matrix.arch }}"
 
           if ("${{ matrix.arch }}" -eq "arm64") {
             $SourceDir = Join-Path $PWD "lib\winarm64"
@@ -86,6 +91,7 @@ jobs:
 
             New-Item -ItemType Directory -Force -Path $BuildLibDir | Out-Null
             Copy-Item $DuckDBDll -Destination (Join-Path $BuildLibDir "duckdb.dll") -Force
+            Copy-Item $DuckDBLib -Destination (Join-Path $BuildLibDir "duckdb.lib") -Force
             Copy-Item $DuckDBLib -Destination (Join-Path $BuildLibDir "libduckdb.dll.a") -Force
 
             $Msys2Location = "${{ steps.msys2.outputs.msys2-location }}"
@@ -99,18 +105,27 @@ jobs:
             if (!(Test-Path $Clang) -or !(Test-Path $ClangXX)) {
               throw "MSYS2 CLANGARM64 compiler was not found under $ClangArm64Bin."
             }
-            $ClangTarget = (& $Clang -dumpmachine).Trim()
+            $TargetTriple = "aarch64-w64-windows-gnu"
+            $ClangTarget = (& $Clang --target=$TargetTriple -dumpmachine).Trim()
             if ($ClangTarget -notmatch "aarch64|arm64") {
-              throw "MSYS2 CLANGARM64 compiler has unexpected target: $ClangTarget."
+              throw "MSYS2 CLANGARM64 compiler has unexpected target with --target=$TargetTriple`: $ClangTarget."
             }
-            Write-Host "Using ARM64 CGO compiler: $Clang ($ClangTarget)"
+            Write-Host "Using ARM64 CGO compiler: $Clang --target=$TargetTriple ($ClangTarget)"
 
             "CGO_ENABLED=1" >> $env:GITHUB_ENV
-            "CC=$Clang" >> $env:GITHUB_ENV
-            "CXX=$ClangXX" >> $env:GITHUB_ENV
-            "CGO_LDFLAGS=-L$BuildLibDir -lduckdb" >> $env:GITHUB_ENV
+            "CC=$Clang --target=$TargetTriple" >> $env:GITHUB_ENV
+            "CXX=$ClangXX --target=$TargetTriple" >> $env:GITHUB_ENV
+            "CGO_LDFLAGS=-fuse-ld=lld -L$BuildLibDir -lduckdb" >> $env:GITHUB_ENV
             "GO_BUILD_TAGS=duckdb_use_lib" >> $env:GITHUB_ENV
             "DUCKDB_DYNAMIC_DLL=$(Join-Path $BuildLibDir "duckdb.dll")" >> $env:GITHUB_ENV
+            $env:CGO_ENABLED = "1"
+            $env:CC = "$Clang --target=$TargetTriple"
+            $env:CXX = "$ClangXX --target=$TargetTriple"
+            $env:CGO_LDFLAGS = "-fuse-ld=lld -L$BuildLibDir -lduckdb"
+            $env:PATH = "$ClangArm64Bin;$BuildLibDir;$env:PATH"
+            go env -w CGO_ENABLED=1 CC="$env:CC" CXX="$env:CXX" CGO_LDFLAGS="$env:CGO_LDFLAGS"
+            go env GOOS GOARCH GOHOSTOS GOHOSTARCH CGO_ENABLED CC CXX CGO_LDFLAGS
+            go test -run "^$" -tags duckdb_use_lib github.com/duckdb/duckdb-go-bindings
             $ClangArm64Bin >> $env:GITHUB_PATH
             $BuildLibDir >> $env:GITHUB_PATH
           }

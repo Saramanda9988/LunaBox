@@ -67,7 +67,7 @@ if /i "%TARGET_ARCH%"=="arm64" (
             if not defined CXX if exist "C:\msys64\clangarm64\bin\clang++.exe" set "CXX=C:\msys64\clangarm64\bin\clang++.exe"
         ) else (
             where aarch64-w64-mingw32-gcc >nul 2>nul
-            if not errorlevel 1 set "CC=aarch64-w64-mingw32-gcc"
+            if not errorlevel 1set "CC=aarch64-w64-mingw32-gcc"
         )
     )
     if not defined CC (
