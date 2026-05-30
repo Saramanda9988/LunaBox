@@ -229,6 +229,10 @@ export function AddGameModal({
       toast.error(t("addGameModal.toast.fillGameName"));
       return;
     }
+    if (!isRemoteImport && !executablePath) {
+      toast.error(t("addGameModal.toast.selectExecutableRequired"));
+      return;
+    }
     setIsLoading(true);
     try {
       const game = new models.Game({
@@ -415,7 +419,7 @@ export function AddGameModal({
                 <div className="flex gap-4">
                   <button
                     onClick={() => setStep("manual")}
-                    disabled={!executablePath || !gameName}
+                    disabled={!executablePath}
                     className="rounded-lg border border-brand-300 px-5 py-2.5 text-sm font-medium text-brand-700 hover:bg-brand-100 disabled:opacity-50 dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-700"
                   >
                     {t("common.manualAdd")}

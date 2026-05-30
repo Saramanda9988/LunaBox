@@ -156,7 +156,8 @@
       "nameRequired": "请填写游戏名称",
       "saveGameFailed": "保存游戏失败",
       "fetchMetaByIdFailed": "通过id获取元信息失败, 请检查网络或token的有效性",
-      "fillGameName": "请填写游戏名称"
+      "fillGameName": "请填写游戏名称",
+      "selectExecutableRequired": "请选择启动程序"
     },
     "executablePlaceholder": "请选择一个可执行程序",
     "gameName": "游戏名称",

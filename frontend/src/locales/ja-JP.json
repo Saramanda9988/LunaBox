@@ -156,7 +156,8 @@
       "nameRequired": "ゲーム名を入力してください",
       "saveGameFailed": "ゲームの保存に失敗しました",
       "fetchMetaByIdFailed": "ID でメタデータを取得できませんでした。ネットワークまたはトークンの有効性を確認してください",
-      "fillGameName": "ゲーム名を入力してください"
+      "fillGameName": "ゲーム名を入力してください",
+      "selectExecutableRequired": "起動プログラムを選択してください"
     },
     "executablePlaceholder": "実行ファイルを選択してください",
     "gameName": "ゲーム名",

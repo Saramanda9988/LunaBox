@@ -156,7 +156,8 @@
       "nameRequired": "請填寫遊戲名稱",
       "saveGameFailed": "儲存遊戲失敗",
       "fetchMetaByIdFailed": "通過id獲取元資訊失敗, 請檢查網路或token的有效性",
-      "fillGameName": "請填寫遊戲名稱"
+      "fillGameName": "請填寫遊戲名稱",
+      "selectExecutableRequired": "請選擇啟動程式"
     },
     "executablePlaceholder": "請選擇一個可執行程式",
     "gameName": "遊戲名稱",

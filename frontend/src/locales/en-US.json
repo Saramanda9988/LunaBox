@@ -156,7 +156,8 @@
       "nameRequired": "Please enter a game name",
       "saveGameFailed": "Failed to save game",
       "fetchMetaByIdFailed": "Failed to get metadata via ID",
-      "fillGameName": "Please enter a game name"
+      "fillGameName": "Please enter a game name",
+      "selectExecutableRequired": "Please select a launch executable"
     },
     "executablePlaceholder": "Please select an executable program",
     "gameName": "Game Name",
