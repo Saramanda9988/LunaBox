@@ -488,6 +488,8 @@
     "rating": "评分",
     "ratingPlaceholder": "0-10",
     "ratingHint": "按 10 分制保存，留空表示暂无评分。",
+    "releaseDate": "发售日期",
+    "releaseDateRawHint": "当前值：{{value}}。选择日期后会按 YYYY-MM-DD 保存。",
     "path": "启动路径",
     "selectFile": "选择文件",
     "openPathFailed": "打开路径失败",

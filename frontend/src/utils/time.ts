@@ -181,6 +181,33 @@ export function formatDateToYYYYMMDD(date: Date): string {
 }
 
 /**
+ * 将后端日期字符串转换为原生 date input 可接受的 YYYY-MM-DD 值。
+ * 无法安全解析时返回空字符串，避免浏览器丢弃不符合格式的原始文本。
+ */
+export function formatDateInputValue(dateString?: string | null): string {
+  const value = String(dateString ?? "").trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) {
+    return "";
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    date.getUTCFullYear() !== year
+    || date.getUTCMonth() + 1 !== month
+    || date.getUTCDate() !== day
+  ) {
+    return "";
+  }
+
+  return value;
+}
+
+/**
  * 将 Date 对象格式化为带本地时区的 ISO 格式字符串（用于传递给后端）
  * 格式: YYYY-MM-DDTHH:mm:ss+HH:MM（RFC3339 格式，Go time.Time 可解析）
  *

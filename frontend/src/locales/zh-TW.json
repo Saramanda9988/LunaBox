@@ -488,6 +488,8 @@
     "rating": "評分",
     "ratingPlaceholder": "0-10",
     "ratingHint": "按 10 分制儲存，留空表示暫無評分。",
+    "releaseDate": "發售日期",
+    "releaseDateRawHint": "目前值：{{value}}。選擇日期後會按 YYYY-MM-DD 儲存。",
     "path": "啟動路徑",
     "selectFile": "選擇檔案",
     "openPathFailed": "開啟路徑失敗",

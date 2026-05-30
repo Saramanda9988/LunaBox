@@ -488,6 +488,8 @@
     "rating": "Rating",
     "ratingPlaceholder": "0-10",
     "ratingHint": "Stored on a 10-point scale. Leave blank for no rating.",
+    "releaseDate": "Release Date",
+    "releaseDateRawHint": "Current value: {{value}}. Pick a date to save it as YYYY-MM-DD.",
     "path": "Launch Path",
     "selectFile": "Select File",
     "openPathFailed": "Failed to open path",

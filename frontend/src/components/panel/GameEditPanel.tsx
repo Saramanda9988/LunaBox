@@ -2,6 +2,7 @@ import type { models } from "../../../wailsjs/go/models";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { OpenLocalPath } from "../../../wailsjs/go/service/GameService";
+import { formatDateInputValue } from "../../utils/time";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
@@ -28,6 +29,7 @@ export function GameEditPanel({
   onUpdateFromRemote,
 }: GameEditFormProps) {
   const { t } = useTranslation();
+  const releaseDateInputValue = formatDateInputValue(game.release_date);
 
   return (
     <div className="glass-panel mx-auto bg-white dark:bg-brand-800 p-8 rounded-lg shadow-sm">
@@ -72,23 +74,23 @@ export function GameEditPanel({
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <div>
-            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
-              {t("gameEdit.developer")}
-            </label>
-            <input
-              type="text"
-              value={game.company}
-              onChange={e =>
-                onGameChange({
-                  ...game,
-                  company: e.target.value,
-                } as models.Game)}
-              className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
+            {t("gameEdit.developer")}
+          </label>
+          <input
+            type="text"
+            value={game.company}
+            onChange={e =>
+              onGameChange({
+                ...game,
+                company: e.target.value,
+              } as models.Game)}
+            className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
+          />
+        </div>
 
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
               {t("gameEdit.rating")}
@@ -122,6 +124,22 @@ export function GameEditPanel({
             <p className="mt-1 text-xs text-brand-500 dark:text-brand-400">
               {t("gameEdit.ratingHint")}
             </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
+              {t("gameEdit.releaseDate")}
+            </label>
+            <input
+              type="date"
+              value={releaseDateInputValue}
+              onChange={e =>
+                onGameChange({
+                  ...game,
+                  release_date: e.target.value,
+                } as models.Game)}
+              className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
+            />
           </div>
         </div>
 
