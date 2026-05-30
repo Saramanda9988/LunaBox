@@ -347,6 +347,10 @@ func normalizeJapaneseDate(raw string) string {
 }
 
 func buildTagItems(names []string, source string, limit int) []TagItem {
+	if limit == 0 {
+		return nil
+	}
+
 	result := make([]TagItem, 0, tagItemsCapacity(len(names), limit))
 	seen := make(map[string]struct{}, len(names))
 	for _, raw := range names {

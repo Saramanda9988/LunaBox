@@ -6,10 +6,7 @@ import { useTranslation } from "react-i18next";
 import { RefreshAllGamesMetadata } from "../../../wailsjs/go/service/GameService";
 import { EventsOn } from "../../../wailsjs/runtime/runtime";
 import { ConfirmModal } from "../modal/ConfirmModal";
-import {
-
-  MetadataRefreshProgressModal,
-} from "../modal/MetadataRefreshProgressModal";
+import { MetadataRefreshProgressModal } from "../modal/MetadataRefreshProgressModal";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 
@@ -75,9 +72,9 @@ export function MetadataSettingsPanel({
   const selectedSources = normalizeMetadataSources(formData.metadata_sources);
   const scrapedTagLimit
     = typeof formData.scraped_tag_limit === "number"
-      ? Math.max(0, formData.scraped_tag_limit)
+      ? Math.max(-1, formData.scraped_tag_limit)
       : DEFAULT_SCRAPED_TAG_LIMIT;
-  const isTagLimitUnlimited = scrapedTagLimit === 0;
+  const isTagLimitUnlimited = scrapedTagLimit < 0;
 
   useEffect(() => {
     const unsubscribe = EventsOn(
@@ -206,10 +203,7 @@ export function MetadataSettingsPanel({
     const parsed = Number.parseInt(value, 10);
     onChange({
       ...formData,
-      scraped_tag_limit:
-        Number.isFinite(parsed) && parsed > 0
-          ? parsed
-          : DEFAULT_SCRAPED_TAG_LIMIT,
+      scraped_tag_limit: Number.isFinite(parsed) ? Math.max(0, parsed) : 0,
     } as appconf.AppConfig);
   };
 
@@ -325,7 +319,7 @@ export function MetadataSettingsPanel({
               <input
                 id="scraped-tag-limit"
                 type="number"
-                min={1}
+                min={0}
                 step={1}
                 disabled={isTagLimitUnlimited}
                 value={isTagLimitUnlimited ? "" : scrapedTagLimit}
@@ -344,7 +338,7 @@ export function MetadataSettingsPanel({
                 onCheckedChange={checked =>
                   onChange({
                     ...formData,
-                    scraped_tag_limit: checked ? 0 : DEFAULT_SCRAPED_TAG_LIMIT,
+                    scraped_tag_limit: checked ? -1 : DEFAULT_SCRAPED_TAG_LIMIT,
                   } as appconf.AppConfig)}
               />
             </div>

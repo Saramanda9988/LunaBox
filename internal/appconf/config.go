@@ -132,7 +132,7 @@ type AppConfig struct {
 	// Tag 配置
 	ShowNSFWTags         bool `json:"show_nsfw_tags"`         // 是否在详情页展示 NSFW tag，默认 false
 	EnableTagTranslation bool `json:"enable_tag_translation"` // 是否显示 VNDB tag 中文翻译，默认 true
-	ScrapedTagLimit      int  `json:"scraped_tag_limit"`      // 刮削 tag 数量上限，0 表示不限制
+	ScrapedTagLimit      int  `json:"scraped_tag_limit"`      // 刮削 tag 数量上限，-1 表示不限制，0 表示不刮削 tag
 }
 
 // getConfigPath 获取配置文件路径
@@ -315,8 +315,8 @@ func IsBangumiStatusPushEnabled(config *AppConfig) bool {
 }
 
 func NormalizeScrapedTagLimit(limit int) int {
-	if limit < 0 {
-		return 0
+	if limit < -1 {
+		return -1
 	}
 	return limit
 }

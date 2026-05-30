@@ -52,3 +52,24 @@ func TestNetworkProxyConfigReturnsGlobalProxy(t *testing.T) {
 		t.Fatalf("unexpected network proxy config: mode=%q url=%q", mode, proxyURL)
 	}
 }
+
+func TestNormalizeScrapedTagLimitAllowsZeroAndUnlimited(t *testing.T) {
+	tests := []struct {
+		name  string
+		limit int
+		want  int
+	}{
+		{name: "too negative becomes unlimited", limit: -2, want: -1},
+		{name: "unlimited stays negative one", limit: -1, want: -1},
+		{name: "zero disables scraped tags", limit: 0, want: 0},
+		{name: "positive limit is kept", limit: 10, want: 10},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NormalizeScrapedTagLimit(tt.limit); got != tt.want {
+				t.Fatalf("expected %d, got %d", tt.want, got)
+			}
+		})
+	}
+}

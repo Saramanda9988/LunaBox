@@ -75,8 +75,8 @@ func WithProxyConfig(proxyConfig proxyutils.ProxyConfigProvider) GetterOption {
 
 func WithTagLimit(limit int) GetterOption {
 	return func(config *getterConfig) {
-		if limit < 0 {
-			limit = 0
+		if limit < -1 {
+			limit = -1
 		}
 		config.tagLimit = limit
 		config.hasTagLimit = true
@@ -109,6 +109,9 @@ func newGetterConfig(options []GetterOption) getterConfig {
 }
 
 func tagItemsCapacity(total int, limit int) int {
+	if limit == 0 {
+		return 0
+	}
 	if limit > 0 && limit < total {
 		return limit
 	}

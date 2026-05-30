@@ -305,6 +305,10 @@ func pickBestSteamSearchItem(items []steamSearchItem, query string) steamSearchI
 }
 
 func extractSteamTags(genres []steamGenre, categories []steamCategory, limit int) []TagItem {
+	if limit == 0 {
+		return nil
+	}
+
 	if len(genres) == 0 && len(categories) == 0 {
 		return nil
 	}

@@ -258,6 +258,10 @@ func (b BangumiInfoGetter) FetchMetadataByName(name string, token string) (Metad
 // extractBangumiTags 从 Bangumi tag 列表中提取符合条件的 TagItem
 // 规则：count >= 5，按 count 降序，weight = count/max(count)
 func extractBangumiTags(tags []bangumiTag, limit int) []TagItem {
+	if limit == 0 {
+		return nil
+	}
+
 	// 过滤 count < 5 的 tag
 	var filtered []bangumiTag
 	for _, t := range tags {
