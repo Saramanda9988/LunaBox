@@ -1,7 +1,11 @@
+import type { ClipboardEvent } from "react";
 import type { models } from "../../../wailsjs/go/models";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { OpenLocalPath } from "../../../wailsjs/go/service/GameService";
+import {
+  OpenLocalPath,
+  SaveCoverImageDataURL,
+} from "../../../wailsjs/go/service/GameService";
 import { formatDateInputValue } from "../../utils/time";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterSelect } from "../ui/better/BetterSelect";
@@ -18,6 +22,35 @@ interface GameEditFormProps {
   onUpdateFromRemote?: () => void;
 }
 
+function readBlobAsDataURL(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error("clipboard-image-read-failed"));
+    });
+    reader.addEventListener("error", () => {
+      reject(reader.error ?? new Error("clipboard-image-read-failed"));
+    });
+    reader.readAsDataURL(blob);
+  });
+}
+
+function getClipboardImageBlob(items: DataTransferItemList): Blob | null {
+  for (const item of Array.from(items)) {
+    if (item.kind !== "file" || !item.type.startsWith("image/"))
+      continue;
+
+    const file = item.getAsFile();
+    if (file)
+      return file;
+  }
+  return null;
+}
+
 export function GameEditPanel({
   game,
   onGameChange,
@@ -30,6 +63,32 @@ export function GameEditPanel({
 }: GameEditFormProps) {
   const { t } = useTranslation();
   const releaseDateInputValue = formatDateInputValue(game.release_date);
+
+  const importCoverDataURL = async (dataURL: string) => {
+    const coverUrl = await SaveCoverImageDataURL(game.id, dataURL);
+    if (coverUrl) {
+      onGameChange({
+        ...game,
+        cover_url: coverUrl,
+      } as models.Game);
+    }
+    toast.success(t("gameEdit.importFromClipboardSuccess"));
+  };
+
+  const handleCoverPaste = async (event: ClipboardEvent<HTMLInputElement>) => {
+    const imageBlob = getClipboardImageBlob(event.clipboardData.items);
+    if (!imageBlob)
+      return;
+
+    event.preventDefault();
+    try {
+      await importCoverDataURL(await readBlobAsDataURL(imageBlob));
+    }
+    catch (error) {
+      console.error("Failed to import pasted cover image:", error);
+      toast.error(t("gameEdit.importFromClipboardFailed"));
+    }
+  };
 
   return (
     <div className="glass-panel mx-auto bg-white dark:bg-brand-800 p-8 rounded-lg shadow-sm">
@@ -60,13 +119,15 @@ export function GameEditPanel({
                   ...game,
                   cover_url: e.target.value,
                 } as models.Game)}
+              onPaste={handleCoverPaste}
               placeholder={t("gameEdit.coverPlaceholder")}
-              className="glass-input flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
+              className="glass-input min-w-0 flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
             />
             <BetterButton
               onClick={onSelectCoverImage}
               icon="i-mdi-image"
               title={t("gameEdit.selectImage")}
+              className="shrink-0"
             />
           </div>
           <p className="mt-1 text-xs text-brand-500">

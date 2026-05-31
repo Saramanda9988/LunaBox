@@ -62,6 +62,10 @@ export function ResolveExecutablePathForImport(arg1) {
   return window['go']['service']['GameService']['ResolveExecutablePathForImport'](arg1);
 }
 
+export function SaveCoverImageDataURL(arg1, arg2) {
+  return window['go']['service']['GameService']['SaveCoverImageDataURL'](arg1, arg2);
+}
+
 export function SelectCoverImage(arg1) {
   return window['go']['service']['GameService']['SelectCoverImage'](arg1);
 }

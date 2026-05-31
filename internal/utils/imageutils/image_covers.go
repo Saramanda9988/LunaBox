@@ -39,6 +39,34 @@ func SaveCoverImage(srcPath string, gameID string) (string, error) {
 	return "/local/covers/" + destFileName, nil
 }
 
+// SaveCoverImageBytes 保存封面图片字节到应用的封面目录。
+func SaveCoverImageBytes(data []byte, gameID string, contentType string) (string, error) {
+	if len(data) == 0 {
+		return "", fmt.Errorf("cover image data is empty")
+	}
+
+	ext, ok := imageExtensionFromContentType(contentType)
+	if !ok {
+		return "", fmt.Errorf("unsupported cover image type: %s", contentType)
+	}
+
+	coverDir, err := GetCoverDir()
+	if err != nil {
+		return "", err
+	}
+
+	removeFilesWithBaseName(coverDir, gameID)
+
+	destFileName := gameID + ext
+	destPath := filepath.Join(coverDir, destFileName)
+	if err := os.WriteFile(destPath, data, 0o644); err != nil {
+		_ = os.Remove(destPath)
+		return "", err
+	}
+
+	return "/local/covers/" + destFileName, nil
+}
+
 // FindManagedCoverFile locates the managed local cover file for a game ID.
 func FindManagedCoverFile(gameID string) (string, string, error) {
 	coverDir, err := GetCoverDir()

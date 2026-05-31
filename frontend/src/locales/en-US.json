@@ -481,9 +481,11 @@
   "gameEdit": {
     "name": "Game Name",
     "cover": "Cover Image",
-    "coverPlaceholder": "Enter image URL or select image",
+    "coverPlaceholder": "Enter an image URL or paste an image here",
     "selectImage": "Select Image",
-    "coverHint": "Supports remote URL and local image selection",
+    "importFromClipboardSuccess": "Cover imported from clipboard",
+    "importFromClipboardFailed": "Failed to import cover from clipboard",
+    "coverHint": "Supports remote URL, local image selection, and pasting an image into this field",
     "developer": "Developer",
     "rating": "Rating",
     "ratingPlaceholder": "0-10",

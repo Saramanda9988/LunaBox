@@ -38,6 +38,8 @@ export function RefreshAllGamesMetadata():Promise<vo.MetadataRefreshResult>;
 
 export function ResolveExecutablePathForImport(arg1:string):Promise<string>;
 
+export function SaveCoverImageDataURL(arg1:string,arg2:string):Promise<string>;
+
 export function SelectCoverImage(arg1:string):Promise<string>;
 
 export function SelectCoverImageWithTempID():Promise<string>;

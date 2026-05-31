@@ -52,21 +52,31 @@ func removeFilesWithPrefixes(dir string, prefixes ...string) {
 }
 
 func detectImageExtension(contentType, rawURL string) string {
-	switch contentType {
-	case "image/png":
-		return ".png"
-	case "image/jpeg", "image/jpg":
-		return ".jpg"
-	case "image/gif":
-		return ".gif"
-	case "image/webp":
-		return ".webp"
-	default:
-		if ext := strings.ToLower(filepath.Ext(rawURL)); ext != "" {
-			return ext
-		}
-		return ".jpg"
+	if ext, ok := imageExtensionFromContentType(contentType); ok {
+		return ext
 	}
+
+	if ext := strings.ToLower(filepath.Ext(rawURL)); ext != "" {
+		return ext
+	}
+	return ".jpg"
+}
+
+func imageExtensionFromContentType(contentType string) (string, bool) {
+	normalized := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
+	switch normalized {
+	case "image/png":
+		return ".png", true
+	case "image/jpeg", "image/jpg":
+		return ".jpg", true
+	case "image/gif":
+		return ".gif", true
+	case "image/webp":
+		return ".webp", true
+	case "image/bmp", "image/x-ms-bmp":
+		return ".bmp", true
+	}
+	return "", false
 }
 
 func saveHTTPBody(resp *http.Response, destPath string) error {

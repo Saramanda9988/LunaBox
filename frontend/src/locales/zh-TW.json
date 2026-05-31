@@ -481,9 +481,11 @@
   "gameEdit": {
     "name": "遊戲名稱",
     "cover": "封面圖片",
-    "coverPlaceholder": "輸入圖片 URL 或選擇圖片",
+    "coverPlaceholder": "輸入圖片 URL，或在此貼上圖片",
     "selectImage": "選擇圖片",
-    "coverHint": "支援遠端 URL 和本地圖片選取",
+    "importFromClipboardSuccess": "已從剪貼簿匯入封面",
+    "importFromClipboardFailed": "從剪貼簿匯入封面失敗",
+    "coverHint": "支援遠端 URL、本地圖片選取；複製圖片後可在輸入框貼上匯入",
     "developer": "開發商",
     "rating": "評分",
     "ratingPlaceholder": "0-10",

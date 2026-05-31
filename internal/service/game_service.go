@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"lunabox/internal/appconf"
@@ -26,6 +27,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+const maxClipboardCoverImageBytes = 25 * 1024 * 1024
 
 type GameService struct {
 	ctx              context.Context
@@ -788,6 +791,69 @@ func (s *GameService) SelectCoverImage(gameID string) (string, error) {
 	}
 
 	return coverPath, nil
+}
+
+// SaveCoverImageDataURL 保存前端剪贴板读取到的图片 data URL。
+func (s *GameService) SaveCoverImageDataURL(gameID string, dataURL string) (string, error) {
+	gameID = strings.TrimSpace(gameID)
+	if gameID == "" {
+		return "", errors.New("game ID is required")
+	}
+
+	contentType, encodedData, err := splitImageDataURL(dataURL)
+	if err != nil {
+		return "", err
+	}
+	if base64.StdEncoding.DecodedLen(len(encodedData)) > maxClipboardCoverImageBytes {
+		return "", fmt.Errorf("cover image is too large")
+	}
+
+	imageData, err := base64.StdEncoding.DecodeString(encodedData)
+	if err != nil {
+		return "", fmt.Errorf("decode cover image data: %w", err)
+	}
+	if len(imageData) > maxClipboardCoverImageBytes {
+		return "", fmt.Errorf("cover image is too large")
+	}
+
+	coverPath, err := imageutils.SaveCoverImageBytes(imageData, gameID, contentType)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to save cover image from clipboard: %v", err)
+		return "", fmt.Errorf("failed to save cover image from clipboard: %w", err)
+	}
+
+	return coverPath, nil
+}
+
+func splitImageDataURL(dataURL string) (string, string, error) {
+	meta, encodedData, ok := strings.Cut(strings.TrimSpace(dataURL), ",")
+	if !ok || !strings.HasPrefix(meta, "data:") {
+		return "", "", fmt.Errorf("invalid image data URL")
+	}
+
+	metaParts := strings.Split(strings.TrimPrefix(meta, "data:"), ";")
+	contentType := strings.ToLower(strings.TrimSpace(metaParts[0]))
+	if !strings.HasPrefix(contentType, "image/") {
+		return "", "", fmt.Errorf("unsupported cover image type: %s", contentType)
+	}
+
+	isBase64 := false
+	for _, part := range metaParts[1:] {
+		if strings.EqualFold(strings.TrimSpace(part), "base64") {
+			isBase64 = true
+			break
+		}
+	}
+	if !isBase64 {
+		return "", "", fmt.Errorf("image data URL must be base64 encoded")
+	}
+
+	encodedData = strings.TrimSpace(encodedData)
+	if encodedData == "" {
+		return "", "", fmt.Errorf("cover image data is empty")
+	}
+
+	return contentType, encodedData, nil
 }
 
 // SelectCoverImageWithTempID 选择封面图片并使用临时ID保存（用于新增游戏时）

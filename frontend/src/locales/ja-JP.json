@@ -464,9 +464,11 @@
   "gameEdit": {
     "name": "ゲーム名",
     "cover": "カバー画像",
-    "coverPlaceholder": "画像 URL を入力または画像を選択",
+    "coverPlaceholder": "画像 URL を入力、またはここに画像を貼り付け",
     "selectImage": "画像を選択",
-    "coverHint": "リモート URL とローカル画像の選択に対応",
+    "importFromClipboardSuccess": "クリップボードからカバーを取り込みました",
+    "importFromClipboardFailed": "クリップボードからカバーを取り込めませんでした",
+    "coverHint": "リモート URL、ローカル画像の選択、この入力欄への画像貼り付けに対応",
     "developer": "開発元",
     "rating": "評価",
     "ratingPlaceholder": "0-10",
