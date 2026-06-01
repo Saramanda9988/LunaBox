@@ -10,6 +10,7 @@ import (
 	"lunabox/internal/models"
 	"lunabox/internal/utils/processutils"
 	"lunabox/internal/utils/timerutils"
+	"lunabox/internal/utils/timerutils/focusing"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -195,6 +196,7 @@ func (s *StartService) startGame(gameID string, options LaunchOptions) (bool, er
 		cmd = exec.Command(path)
 		cmd.Dir = filepath.Dir(path)
 	}
+	processutils.ConfigureDetachedCommand(cmd)
 
 	if err := cmd.Start(); err != nil {
 		applog.LogErrorf(s.ctx, "failed to start game: %v", err)
@@ -216,7 +218,7 @@ func (s *StartService) startGame(gameID string, options LaunchOptions) (bool, er
 	}
 
 	// 启动进程检测和监控 goroutine
-	go s.detectAndMonitorProcess(cmd, sessionID, gameID, startTime, launcherPID, launcherExeName, processName, useLE)
+	go s.detectAndMonitorProcess(cmd, sessionID, gameID, startTime, launcherPID, launcherExeName, filepath.Dir(path), processName, useLE)
 
 	// pending session 已创建，Home 数据已发生变化，立即通知前端刷新
 	s.requestHomeRefresh()
@@ -228,7 +230,7 @@ func (s *StartService) startGame(gameID string, options LaunchOptions) (bool, er
 // detectAndMonitorProcess 检测实际游戏进程并开始监控
 // 采用分阶段检测策略，利用60秒会话记录阈值提供的余裕时间
 // usedLE: 是否使用了 Locale Emulator 启动，影响进程检测策略
-func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, gameID string, startTime time.Time, launcherPID uint32, launcherExeName string, savedProcessName string, usedLE bool) {
+func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, gameID string, startTime time.Time, launcherPID uint32, launcherExeName string, launchDir string, savedProcessName string, usedLE bool) {
 	var actualProcessID uint32
 	var actualProcessName string
 	var needExternalMonitor bool // 是否需要外部进程监控（非cmd子进程）
@@ -245,7 +247,15 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 		pid, err := processutils.GetProcessPIDByName(savedProcessName)
 		if err != nil {
 			applog.LogWarningf(s.ctx, "Failed to find saved process %s: %v, falling back to launcher monitoring", savedProcessName, err)
-			// 如果找不到保存的进程，使用启动器进程监控
+			if !processutils.IsProcessRunningByPID(launcherPID, s.ctx) {
+				s.reapExitedLauncher(cmd, gameID, launcherExeName)
+				if s.monitorDetectedGameProcess(sessionID, gameID, startTime, launcherPID, launcherExeName, launchDir) {
+					return
+				}
+				s.promptUserToSelectProcess(sessionID, gameID, startTime, launcherExeName)
+				return
+			}
+			// 如果找不到保存的进程且启动器仍在运行，使用启动器进程监控
 			actualProcessID = launcherPID
 			actualProcessName = launcherExeName
 			needExternalMonitor = false
@@ -282,7 +292,11 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 
 			if !launcherStillRunning {
 				// 启动器在5秒内就退出了，说明是快速启动器（如Steam）
-				applog.LogInfof(s.ctx, "Launcher %s exited quickly (within 5s), will prompt for actual game process", launcherExeName)
+				applog.LogInfof(s.ctx, "Launcher %s exited quickly (within 5s), resolving actual game process", launcherExeName)
+				s.reapExitedLauncher(cmd, gameID, launcherExeName)
+				if s.monitorDetectedGameProcess(sessionID, gameID, startTime, launcherPID, launcherExeName, launchDir) {
+					return
+				}
 				s.promptUserToSelectProcess(sessionID, gameID, startTime, launcherExeName)
 				return
 			}
@@ -300,7 +314,11 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 
 				if !processutils.IsProcessRunningByPID(launcherPID, s.ctx) {
 					// 启动器在观察期内退出了，说明它只是个启动器
-					applog.LogInfof(s.ctx, "Launcher %s exited during observation period, will prompt for actual game process", launcherExeName)
+					applog.LogInfof(s.ctx, "Launcher %s exited during observation period, resolving actual game process", launcherExeName)
+					s.reapExitedLauncher(cmd, gameID, launcherExeName)
+					if s.monitorDetectedGameProcess(sessionID, gameID, startTime, launcherPID, launcherExeName, launchDir) {
+						return
+					}
 					s.promptUserToSelectProcess(sessionID, gameID, startTime, launcherExeName)
 					return
 				}
@@ -321,12 +339,7 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 	}
 
 	// 启动活跃时间追踪（如果启用）
-	if s.config.RecordActiveTimeOnly {
-		_, err := s.activeTimeTracker.StartTracking(sessionID, gameID, actualProcessID)
-		if err != nil {
-			applog.LogWarningf(s.ctx, "Failed to start active time tracking: %v", err)
-		}
-	}
+	s.startActiveTimeTracking(sessionID, gameID, actualProcessID)
 
 	// 根据情况选择监控方式
 	if needExternalMonitor {
@@ -336,6 +349,169 @@ func (s *StartService) detectAndMonitorProcess(cmd *exec.Cmd, sessionID string, 
 		// 使用原有的 waitForGameExit：可以利用 cmd.Wait() 事件驱动
 		s.waitForGameExit(cmd, sessionID, gameID, startTime, actualProcessID)
 	}
+}
+
+func (s *StartService) monitorDetectedGameProcess(sessionID string, gameID string, startTime time.Time, launcherPID uint32, launcherExeName string, launchDir string) bool {
+	actualProcessID, actualProcessName, ok := s.detectLaunchedDescendantProcess(gameID, launcherPID, launcherExeName)
+	if !ok {
+		actualProcessID, actualProcessName, ok = s.detectProcessInLaunchDir(gameID, launchDir)
+	}
+	if !ok {
+		return false
+	}
+
+	if err := s.updateGameProcessName(gameID, actualProcessName); err != nil {
+		applog.LogWarningf(s.ctx, "Failed to update auto-detected process name for game %s: %v", gameID, err)
+	}
+
+	s.startActiveTimeTracking(sessionID, gameID, actualProcessID)
+	s.monitorProcessByPID(sessionID, gameID, startTime, actualProcessID, actualProcessName)
+	return true
+}
+
+func (s *StartService) detectLaunchedDescendantProcess(gameID string, launcherPID uint32, launcherExeName string) (uint32, string, bool) {
+	descendants, err := processutils.GetDescendantProcesses(launcherPID)
+	if err != nil {
+		applog.LogWarningf(s.ctx, "Failed to enumerate descendant processes for launcher %s (PID %d): %v", launcherExeName, launcherPID, err)
+		return 0, "", false
+	}
+	if len(descendants) == 0 {
+		applog.LogInfof(s.ctx, "No descendant process found for launcher %s (PID %d)", launcherExeName, launcherPID)
+		return 0, "", false
+	}
+
+	if foregroundPID, ok := focusing.GetForegroundProcessID(); ok {
+		for _, proc := range descendants {
+			if proc.PID == foregroundPID && !isLikelyHelperProcess(proc.Name) {
+				applog.LogInfof(s.ctx, "Auto-detected foreground descendant process for game %s: %s (PID %d)", gameID, proc.Name, proc.PID)
+				return proc.PID, proc.Name, true
+			}
+		}
+	}
+
+	candidates := make([]processutils.ProcessInfo, 0, len(descendants))
+	for _, proc := range descendants {
+		if isLikelyHelperProcess(proc.Name) {
+			continue
+		}
+		candidates = append(candidates, proc)
+	}
+
+	if len(candidates) == 1 {
+		proc := candidates[0]
+		applog.LogInfof(s.ctx, "Auto-detected descendant process for game %s: %s (PID %d)", gameID, proc.Name, proc.PID)
+		return proc.PID, proc.Name, true
+	}
+
+	if len(candidates) > 1 {
+		applog.LogInfof(s.ctx, "Multiple descendant process candidates found for game %s, requiring manual selection: %s", gameID, formatProcessCandidates(candidates))
+	} else {
+		applog.LogInfof(s.ctx, "Only helper descendant processes found for game %s, requiring manual selection: %s", gameID, formatProcessCandidates(descendants))
+	}
+	return 0, "", false
+}
+
+func (s *StartService) detectProcessInLaunchDir(gameID string, launchDir string) (uint32, string, bool) {
+	candidates, err := processutils.GetProcessesByExecutableDir(launchDir)
+	if err != nil {
+		applog.LogWarningf(s.ctx, "Failed to enumerate processes in launch dir %s for game %s: %v", launchDir, gameID, err)
+		return 0, "", false
+	}
+	if len(candidates) == 0 {
+		applog.LogInfof(s.ctx, "No running process found in launch dir %s for game %s", launchDir, gameID)
+		return 0, "", false
+	}
+
+	if foregroundPID, ok := focusing.GetForegroundProcessID(); ok {
+		for _, proc := range candidates {
+			if proc.PID == foregroundPID && !isLikelyHelperProcess(proc.Name) {
+				applog.LogInfof(s.ctx, "Auto-detected foreground process in launch dir for game %s: %s (PID %d)", gameID, proc.Name, proc.PID)
+				return proc.PID, proc.Name, true
+			}
+		}
+	}
+
+	filtered := make([]processutils.ProcessInfo, 0, len(candidates))
+	for _, proc := range candidates {
+		if isLikelyHelperProcess(proc.Name) {
+			continue
+		}
+		filtered = append(filtered, proc)
+	}
+
+	if len(filtered) == 1 {
+		proc := filtered[0]
+		applog.LogInfof(s.ctx, "Auto-detected process in launch dir for game %s: %s (PID %d)", gameID, proc.Name, proc.PID)
+		return proc.PID, proc.Name, true
+	}
+
+	if len(filtered) > 1 {
+		applog.LogInfof(s.ctx, "Multiple launch dir process candidates found for game %s, requiring manual selection: %s", gameID, formatProcessCandidates(filtered))
+	} else {
+		applog.LogInfof(s.ctx, "Only helper processes found in launch dir for game %s, requiring manual selection: %s", gameID, formatProcessCandidates(candidates))
+	}
+	return 0, "", false
+}
+
+func (s *StartService) reapExitedLauncher(cmd *exec.Cmd, gameID string, launcherExeName string) {
+	if cmd == nil || cmd.ProcessState != nil {
+		return
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Wait()
+	}()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			applog.LogDebugf(s.ctx, "Launcher %s for game %s exited with error: %v", launcherExeName, gameID, err)
+		}
+	case <-time.After(2 * time.Second):
+		applog.LogWarningf(s.ctx, "Timed out while reaping exited launcher %s for game %s", launcherExeName, gameID)
+	}
+}
+
+func (s *StartService) startActiveTimeTracking(sessionID string, gameID string, processID uint32) {
+	if !s.config.RecordActiveTimeOnly {
+		return
+	}
+
+	_, err := s.activeTimeTracker.StartTracking(sessionID, gameID, processID)
+	if err != nil {
+		applog.LogWarningf(s.ctx, "Failed to start active time tracking: %v", err)
+	}
+}
+
+func isLikelyHelperProcess(processName string) bool {
+	name := strings.ToLower(strings.TrimSpace(processName))
+	if name == "" {
+		return true
+	}
+	switch name {
+	case "conhost.exe",
+		"crashpad_handler.exe",
+		"crashreporter.exe",
+		"cef_server.exe",
+		"cefsharp.browsersubprocess.exe",
+		"werfault.exe":
+		return true
+	default:
+		return false
+	}
+}
+
+func formatProcessCandidates(processes []processutils.ProcessInfo) string {
+	if len(processes) == 0 {
+		return "(none)"
+	}
+
+	parts := make([]string, 0, len(processes))
+	for _, proc := range processes {
+		parts = append(parts, fmt.Sprintf("%s(PID %d)", proc.Name, proc.PID))
+	}
+	return strings.Join(parts, ", ")
 }
 
 func (s *StartService) emitProtocolLaunchError(message string, detail string, gameID string) {
@@ -404,12 +580,7 @@ func (s *StartService) promptUserToSelectProcess(sessionID string, gameID string
 	s.updateGameProcessName(gameID, selectedProcess)
 
 	// 启动活跃时间追踪（如果启用）
-	if s.config.RecordActiveTimeOnly {
-		_, err := s.activeTimeTracker.StartTracking(sessionID, gameID, pid)
-		if err != nil {
-			applog.LogWarningf(s.ctx, "Failed to start active time tracking: %v", err)
-		}
-	}
+	s.startActiveTimeTracking(sessionID, gameID, pid)
 
 	// 监控选中的进程
 	s.monitorProcessByPID(sessionID, gameID, startTime, pid, selectedProcess)
@@ -749,6 +920,7 @@ func (s *StartService) startMagpie() {
 	applog.LogInfof(s.ctx, "Starting Magpie in tray mode: %s", s.config.MagpiePath)
 	cmd := exec.Command(s.config.MagpiePath, "-t")
 	cmd.Dir = filepath.Dir(s.config.MagpiePath)
+	processutils.ConfigureDetachedCommand(cmd)
 
 	if err := cmd.Start(); err != nil {
 		applog.LogErrorf(s.ctx, "Failed to start Magpie: %v", err)

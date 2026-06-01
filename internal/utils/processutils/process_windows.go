@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 	"lunabox/internal/applog"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -15,14 +17,15 @@ import (
 )
 
 const (
-	SYNCHRONIZE               = 0x00100000
-	WAIT_OBJECT_0             = 0
-	STILL_ACTIVE              = 259
-	WAIT_TIMEOUT              = 258
-	WAIT_FAILED               = 0xFFFFFFFF
-	PROCESS_QUERY_INFORMATION = 0x0400
-	TH32CS_SNAPPROCESS        = 0x00000002
-	MAX_PATH                  = 260
+	SYNCHRONIZE                       = 0x00100000
+	WAIT_OBJECT_0                     = 0
+	STILL_ACTIVE                      = 259
+	WAIT_TIMEOUT                      = 258
+	WAIT_FAILED                       = 0xFFFFFFFF
+	PROCESS_QUERY_INFORMATION         = 0x0400
+	PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+	TH32CS_SNAPPROCESS                = 0x00000002
+	MAX_PATH                          = 260
 )
 
 var (
@@ -33,6 +36,7 @@ var (
 	procCreateToolhelp32Snapshot = kernel32.NewProc("CreateToolhelp32Snapshot")
 	procProcess32First           = kernel32.NewProc("Process32FirstW")
 	procProcess32Next            = kernel32.NewProc("Process32NextW")
+	procQueryFullProcessImage    = kernel32.NewProc("QueryFullProcessImageNameW")
 )
 
 // PROCESSENTRY32W Windows API 进程快照结构体
@@ -47,6 +51,12 @@ type PROCESSENTRY32W struct {
 	PriClassBase    int32
 	Flags           uint32
 	ExeFile         [MAX_PATH]uint16
+}
+
+type processSnapshotEntry struct {
+	Name      string
+	PID       uint32
+	ParentPID uint32
 }
 
 // CheckIfProcessRunning 检查指定进程是否正在运行
@@ -215,6 +225,94 @@ func GetProcessPIDByName(processName string) (uint32, error) {
 	}
 
 	return 0, fmt.Errorf("process not found: %s", processName)
+}
+
+// GetDescendantProcesses 获取指定父进程启动的仍在运行的子孙进程。
+func GetDescendantProcesses(parentPID uint32) ([]ProcessInfo, error) {
+	entries, err := getProcessSnapshotEntries()
+	if err != nil {
+		return nil, err
+	}
+
+	childrenByParent := make(map[uint32][]processSnapshotEntry)
+	for _, entry := range entries {
+		childrenByParent[entry.ParentPID] = append(childrenByParent[entry.ParentPID], entry)
+	}
+
+	seen := map[uint32]bool{parentPID: true}
+	queue := []uint32{parentPID}
+	descendants := make([]ProcessInfo, 0)
+
+	for len(queue) > 0 {
+		currentPID := queue[0]
+		queue = queue[1:]
+
+		for _, child := range childrenByParent[currentPID] {
+			if seen[child.PID] {
+				continue
+			}
+			seen[child.PID] = true
+			queue = append(queue, child.PID)
+			descendants = append(descendants, ProcessInfo{
+				Name: child.Name,
+				PID:  child.PID,
+			})
+		}
+	}
+
+	sort.Slice(descendants, func(i, j int) bool {
+		left := strings.ToLower(descendants[i].Name)
+		right := strings.ToLower(descendants[j].Name)
+		if left == right {
+			return descendants[i].PID < descendants[j].PID
+		}
+		return left < right
+	})
+
+	return descendants, nil
+}
+
+// GetProcessesByExecutableDir 获取可执行文件位于指定目录或其子目录下的正在运行进程。
+func GetProcessesByExecutableDir(rootDir string) ([]ProcessInfo, error) {
+	normalizedRoot, err := filepath.Abs(filepath.Clean(strings.TrimSpace(rootDir)))
+	if err != nil {
+		return nil, fmt.Errorf("normalize executable dir: %w", err)
+	}
+
+	entries, err := getProcessSnapshotEntries()
+	if err != nil {
+		return nil, err
+	}
+
+	processes := make([]ProcessInfo, 0)
+	seen := make(map[uint32]bool)
+	for _, entry := range entries {
+		if seen[entry.PID] {
+			continue
+		}
+
+		imagePath, ok := queryProcessImagePath(entry.PID)
+		if !ok || !isPathUnderDir(imagePath, normalizedRoot) {
+			continue
+		}
+
+		seen[entry.PID] = true
+		processes = append(processes, ProcessInfo{
+			Name: entry.Name,
+			PID:  entry.PID,
+		})
+	}
+
+	sort.Slice(processes, func(i, j int) bool {
+		left := strings.ToLower(processes[i].Name)
+		right := strings.ToLower(processes[j].Name)
+		if left == right {
+			return processes[i].PID < processes[j].PID
+		}
+		return left < right
+	})
+
+	return processes, nil
 }
 
 // IsProcessRunningByPID 检查指定PID的进程是否仍在运行
@@ -407,4 +505,87 @@ func WaitForProcessExitAsync(pid uint32) (*ProcessMonitor, <-chan struct{}, erro
 		return nil, nil, err
 	}
 	return pm, exitChan, nil
+}
+
+func getProcessSnapshotEntries() ([]processSnapshotEntry, error) {
+	snapshot, _, err := procCreateToolhelp32Snapshot.Call(
+		uintptr(TH32CS_SNAPPROCESS),
+		0,
+	)
+	if snapshot == uintptr(syscall.InvalidHandle) {
+		return nil, fmt.Errorf("failed to create process snapshot: %w", err)
+	}
+	defer procCloseHandle.Call(snapshot)
+
+	var pe32 PROCESSENTRY32W
+	pe32.Size = uint32(unsafe.Sizeof(pe32))
+
+	ret, _, _ := procProcess32First.Call(snapshot, uintptr(unsafe.Pointer(&pe32)))
+	if ret == 0 {
+		return nil, fmt.Errorf("failed to get first process")
+	}
+
+	entries := make([]processSnapshotEntry, 0)
+	for {
+		name := strings.TrimSpace(syscall.UTF16ToString(pe32.ExeFile[:]))
+		nameLower := strings.ToLower(name)
+		if name != "" &&
+			strings.HasSuffix(nameLower, ".exe") &&
+			pe32.ProcessID != 0 &&
+			pe32.ProcessID != 4 {
+			entries = append(entries, processSnapshotEntry{
+				Name:      name,
+				PID:       pe32.ProcessID,
+				ParentPID: pe32.ParentProcessID,
+			})
+		}
+
+		ret, _, _ := procProcess32Next.Call(snapshot, uintptr(unsafe.Pointer(&pe32)))
+		if ret == 0 {
+			break
+		}
+	}
+
+	return entries, nil
+}
+
+func queryProcessImagePath(pid uint32) (string, bool) {
+	handle, _, _ := procOpenProcess.Call(
+		uintptr(PROCESS_QUERY_LIMITED_INFORMATION),
+		0,
+		uintptr(pid),
+	)
+	if handle == 0 {
+		return "", false
+	}
+	defer procCloseHandle.Call(handle)
+
+	buffer := make([]uint16, 32768)
+	size := uint32(len(buffer))
+	ret, _, _ := procQueryFullProcessImage.Call(
+		handle,
+		0,
+		uintptr(unsafe.Pointer(&buffer[0])),
+		uintptr(unsafe.Pointer(&size)),
+	)
+	if ret == 0 || size == 0 {
+		return "", false
+	}
+
+	return strings.TrimSpace(syscall.UTF16ToString(buffer[:size])), true
+}
+
+func isPathUnderDir(path string, rootDir string) bool {
+	normalizedPath, err := filepath.Abs(filepath.Clean(strings.TrimSpace(path)))
+	if err != nil {
+		return false
+	}
+
+	rel, err := filepath.Rel(rootDir, normalizedPath)
+	if err != nil || rel == "." || filepath.IsAbs(rel) {
+		return false
+	}
+
+	parentPrefix := ".." + string(os.PathSeparator)
+	return rel != ".." && !strings.HasPrefix(rel, parentPrefix) && !strings.HasPrefix(rel, "../")
 }

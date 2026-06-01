@@ -20,6 +20,14 @@ func GetProcessPIDByName(processName string) (uint32, error) {
 	return 0, unsupportedProcessError()
 }
 
+func GetDescendantProcesses(parentPID uint32) ([]ProcessInfo, error) {
+	return nil, unsupportedProcessError()
+}
+
+func GetProcessesByExecutableDir(rootDir string) ([]ProcessInfo, error) {
+	return nil, unsupportedProcessError()
+}
+
 func IsProcessRunningByPID(pid uint32, ctx context.Context) bool {
 	return false
 }

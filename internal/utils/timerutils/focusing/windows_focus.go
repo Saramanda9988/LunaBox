@@ -142,26 +142,33 @@ func (ft *FocusTracker) IsFocused() bool {
 
 // isCurrentlyFocused 检查当前是否为前台窗口
 func (ft *FocusTracker) isCurrentlyFocused() bool {
-	hwnd, _, _ := procGetForegroundWindow.Call()
-	if hwnd == 0 {
+	processID, ok := GetForegroundProcessID()
+	if !ok {
 		return false
 	}
-
-	var processID uint32
-	procGetWindowThreadProcessId.Call(hwnd, uintptr(unsafe.Pointer(&processID)))
-
 	return processID == ft.targetPID
 }
 
-// IsProcessFocused 检查指定进程的窗口是否为前台窗口
-func IsProcessFocused(processID uint32) bool {
+// GetForegroundProcessID 返回当前前台窗口所属进程 ID。
+func GetForegroundProcessID() (uint32, bool) {
 	foregroundHwnd, _, _ := procGetForegroundWindow.Call()
 	if foregroundHwnd == 0 {
-		return false
+		return 0, false
 	}
 
 	var foregroundPID uint32
 	procGetWindowThreadProcessId.Call(foregroundHwnd, uintptr(unsafe.Pointer(&foregroundPID)))
+	if foregroundPID == 0 {
+		return 0, false
+	}
+	return foregroundPID, true
+}
 
+// IsProcessFocused 检查指定进程的窗口是否为前台窗口
+func IsProcessFocused(processID uint32) bool {
+	foregroundPID, ok := GetForegroundProcessID()
+	if !ok {
+		return false
+	}
 	return foregroundPID == processID
 }
