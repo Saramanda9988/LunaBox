@@ -525,7 +525,7 @@ func (s *ImportService) BatchImportGames(candidates []vo.BatchImportCandidate) (
 			continue
 		}
 
-		if ref, exists := idx.findByPath(candidate.SelectedExe); exists {
+		if ref, exists := idx.findByPathConflict(candidate.SelectedExe); exists {
 			applog.LogWarningf(s.ctx, "BatchImportGames: path already exists for game %s, skipping: %s", ref.Name, candidate.SelectedExe)
 			result.Skipped++
 			result.SkippedNames = append(result.SkippedNames, candidate.SearchName+" (路径已存在: "+ref.Name+")")

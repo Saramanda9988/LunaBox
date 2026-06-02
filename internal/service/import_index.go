@@ -67,6 +67,15 @@ func normalizeImportPath(path string) string {
 	return strings.ToLower(cleaned)
 }
 
+func importPathContainsNormalized(parentPath string, childPath string) bool {
+	parentPath = strings.TrimRight(parentPath, `\`)
+	childPath = strings.TrimRight(childPath, `\`)
+	if parentPath == "" || childPath == "" || parentPath == childPath {
+		return false
+	}
+	return strings.HasPrefix(childPath, parentPath+`\`)
+}
+
 func normalizeImportName(name string) string {
 	return strings.ToLower(strings.TrimSpace(name))
 }
@@ -128,6 +137,24 @@ func (idx importIndex) add(ref importGameRef) {
 func (idx importIndex) findByPath(path string) (importGameRef, bool) {
 	ref, ok := idx.byPath[normalizeImportPath(path)]
 	return ref, ok
+}
+
+func (idx importIndex) findByPathConflict(path string) (importGameRef, bool) {
+	pathKey := normalizeImportPath(path)
+	if pathKey == "" {
+		return importGameRef{}, false
+	}
+
+	if ref, ok := idx.byPath[pathKey]; ok {
+		return ref, true
+	}
+
+	for existingPath, ref := range idx.byPath {
+		if importPathContainsNormalized(pathKey, existingPath) || importPathContainsNormalized(existingPath, pathKey) {
+			return ref, true
+		}
+	}
+	return importGameRef{}, false
 }
 
 func (idx importIndex) findBySource(source enums.SourceType, sourceID string) (importGameRef, bool) {
@@ -320,7 +347,7 @@ func annotateScanCandidate(candidate vo.BatchImportCandidate, idx importIndex) v
 		pathsToCheck = []string{candidate.SelectedExe}
 	}
 	for _, exePath := range pathsToCheck {
-		if ref, ok := idx.findByPath(exePath); ok {
+		if ref, ok := idx.findByPathConflict(exePath); ok {
 			candidate.ImportStatus = importStatusExistsPath
 			candidate.IsSelected = false
 			candidate.ExistingID = ref.ID
@@ -330,7 +357,7 @@ func annotateScanCandidate(candidate vo.BatchImportCandidate, idx importIndex) v
 		}
 	}
 
-	if ref, ok := idx.findByPath(candidate.SelectedExe); ok {
+	if ref, ok := idx.findByPathConflict(candidate.SelectedExe); ok {
 		candidate.ImportStatus = importStatusExistsPath
 		candidate.IsSelected = false
 		candidate.ExistingID = ref.ID
