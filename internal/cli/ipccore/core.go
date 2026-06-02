@@ -186,3 +186,41 @@ type LaunchResponse struct {
 	Started bool   `json:"started"`
 	Error   string `json:"error,omitempty"`
 }
+
+// InstallURLResponse /install-url 响应
+type InstallURLResponse struct {
+	TaskID   string `json:"task_id,omitempty"`
+	GameName string `json:"game_name,omitempty"`
+	GameID   string `json:"game_id,omitempty"`
+	GamePath string `json:"game_path,omitempty"`
+	Error    string `json:"error,omitempty"`
+}
+
+// RemoteInstallFromURL 从 URL 自动下载安装游戏
+func RemoteInstallFromURL(req interface{}) (*InstallURLResponse, error) {
+	serverURL, ok := findRunningServerURL()
+	if !ok {
+		return nil, fmt.Errorf("failed to connect to LunaBox: IPC server not running")
+	}
+
+	jsonBody, _ := json.Marshal(req)
+	resp, err := http.Post(serverURL+"/install-url", "application/json", bytes.NewReader(jsonBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to LunaBox: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("LunaBox returned error status: %d", resp.StatusCode)
+	}
+
+	var installResp InstallURLResponse
+	if err := json.NewDecoder(resp.Body).Decode(&installResp); err != nil {
+		return nil, fmt.Errorf("failed to decode install response: %w", err)
+	}
+	if installResp.Error != "" {
+		return nil, fmt.Errorf("install failed: %s", installResp.Error)
+	}
+
+	return &installResp, nil
+}

@@ -1,6 +1,6 @@
 ---
 name: lunabox
-description: "Operate the LunaBox visual novel / galgame library via the `lunacli` CLI tool. This skill should be used when the user asks to browse their game library, get game details or recommendations, launch a game, backup saves, or check play status. Trigger on keywords: game, galgame, visual novel, VN, play, launch, start, backup, save, library, LunaBox, lunacli."
+description: "Operate the LunaBox visual novel / galgame library via the `lunacli` CLI tool. This skill should be used when the user asks to browse their game library, get game details or recommendations, launch a game, backup saves, install games from URLs, or check play status. Trigger on keywords: game, galgame, visual novel, VN, play, launch, start, backup, save, install, download, library, LunaBox, lunacli."
 ---
 
 # LunaBox CLI Skill
@@ -91,6 +91,43 @@ lunacli protocol unregister
 
 Register or unregister the `lunabox://` URL scheme. Typically not needed for agent use.
 
+### Install a Game from URL
+
+Download, extract, match metadata, and add a game to the library — all from a single URL.
+
+```bash
+lunacli install <url> --title <game-title>
+lunacli install <url> -t <game-title>                    # Short form
+lunacli install <url> -t <title> -f <filename>           # Specify download file name
+lunacli install <url> -t <title> -F rar                  # Specify archive format
+lunacli install <url> -t <title> -s Game.exe             # Specify startup executable
+lunacli install <url> -t <title> -m bangumi -i 12345     # Specify metadata source & ID
+```
+
+**Required flags:**
+- `--title` / `-t`: Game title (required)
+
+**Optional flags:**
+- `--file-name` / `-f`: Download file name (auto-inferred from URL if omitted)
+- `--format` / `-F`: Archive format: zip/rar/7z/none etc. (auto-inferred from file extension)
+- `--startup` / `-s`: Relative path to the main executable inside the archive
+- `--meta-source` / `-m`: Metadata source: bangumi/vndb/ymgal/steam
+- `--meta-id` / `-i`: Metadata ID from the source
+- `--size` / `-S`: File size in bytes (0 = unknown, default)
+- `--checksum-algo`: Checksum algorithm: sha256/blake3 (optional, skipped if omitted)
+- `--checksum`: Checksum value (64 hex characters, optional)
+
+**Behavior:**
+1. Downloads the file from the URL
+2. Automatically extracts the archive
+3. Searches for the main executable (uses `--startup` if provided, otherwise auto-detects)
+4. Matches metadata from configured sources (uses `--meta-source`/`--meta-id` if provided, otherwise searches by title)
+5. Adds the game to the library
+
+On success: `✓ Game installed successfully!` with Game name, ID, and Path.
+
+**Important:** This command requires LunaBox GUI to be running (uses IPC). The download may take a long time depending on file size.
+
 ## Game Resolution
 
 All `<game>` arguments resolve in this order:
@@ -120,10 +157,11 @@ Common errors (non-zero exit code, message on stderr):
 
 ## Safety Notes
 
-- Only `start` and `backup` have side effects. `list`, `detail`, and `version` are read-only.
+- `start`, `backup`, and `install` have side effects. `list`, `detail`, and `version` are read-only.
 - Do not run multiple `start` commands simultaneously — one game at a time.
-- Always confirm with the user before running `start` (launches a program) or `backup` (writes to disk).
+- Always confirm with the user before running `start` (launches a program), `backup` (writes to disk), or `install` (downloads files and adds to library).
 - When recommending games, run `lunacli list` first, then `lunacli detail` on candidates to read summaries before making recommendations.
+- For `install`, always confirm the URL and title with the user before executing, as it downloads files and modifies the library.
 
 ## System Prompt Snippet
 
@@ -137,11 +175,13 @@ Available actions:
 - `lunacli detail <game>` — Show game metadata and synopsis
 - `lunacli start <game> [--le] [--magpie]` — Launch a game
 - `lunacli backup -g <game>` — Backup game saves
+- `lunacli install <url> -t <title>` — Download and install a game from URL
 
 Game queries accept: full ID, 8-char ID prefix, or game name (fuzzy match).
 Status: · not started, ▶ playing, ✓ completed, ○ on hold, ✗ dropped.
 
 Use these tools to help the user manage their visual novel library: browse games,
-get recommendations, check play status, launch games, and backup saves.
+get recommendations, check play status, launch games, backup saves, and install games.
 Always run `lunacli list` first if you need to know what games the user has.
+Always confirm with the user before running `install` — it downloads files and modifies the library.
 ```

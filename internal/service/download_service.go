@@ -21,6 +21,8 @@ import (
 	"sync"
 	"time"
 
+	"net/url"
+
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -143,6 +145,354 @@ func (s *DownloadService) StartDownload(req vo.InstallRequest) (string, error) {
 
 	go s.runDownload(ctx, task)
 	return taskID, nil
+}
+
+// InstallFromURL 从 URL 自动下载、解压、匹配元数据并导入游戏库（同步，用于 CLI install 命令）
+// 仅 URL 和 Title 必填，其余字段自动推断或使用默认值。
+func (s *DownloadService) InstallFromURL(req vo.InstallFromURLRequest) (*InstallFromURLResult, error) {
+	if err := validateInstallFromURLRequest(req); err != nil {
+		return nil, err
+	}
+
+	// 推断 file_name
+	fileName := strings.TrimSpace(req.FileName)
+	if fileName == "" {
+		fileName = downloadutils.SanitizeDownloadedFileName(inferFileNameFromURL(req.URL))
+	}
+	if fileName == "" {
+		fileName = downloadutils.SanitizeFileName(req.Title) + ".zip"
+	}
+
+	// 推断 archive_format
+	archiveFormat := downloadutils.NormalizeArchiveFormat(req.ArchiveFormat)
+	if archiveFormat == "" {
+		archiveFormat = inferArchiveFormatFromFileName(fileName)
+	}
+	if archiveFormat == "" {
+		archiveFormat = "zip"
+	}
+
+	// 构建 InstallRequest
+	installReq := vo.InstallRequest{
+		URL:            req.URL,
+		FileName:       fileName,
+		ArchiveFormat:  archiveFormat,
+		StartupPath:    req.StartupPath,
+		Title:          req.Title,
+		DownloadSource: "cli-install",
+		MetaSource:     req.MetaSource,
+		MetaID:         req.MetaID,
+		Size:           req.Size,
+		ChecksumAlgo:   req.ChecksumAlgo,
+		Checksum:       req.Checksum,
+		ExpiresAt:      time.Now().Add(7 * 24 * time.Hour).Unix(),
+	}
+
+	// Size=0 表示未知大小，下载过程中会从 HTTP 响应更新实际大小
+
+	// 如果没有 checksum，留空（下载器会跳过校验）
+	if installReq.ChecksumAlgo == "" {
+		installReq.Checksum = ""
+	}
+
+	// 启动下载任务
+	taskID, err := s.StartDownload(installReq)
+	if err != nil {
+		return nil, fmt.Errorf("start download failed: %w", err)
+	}
+
+	// 等待下载完成
+	result, err := s.waitForTaskCompletion(taskID)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// InstallFromURLResult 安装结果
+type InstallFromURLResult struct {
+	TaskID   string `json:"task_id"`
+	GameName string `json:"game_name"`
+	GameID   string `json:"game_id"`
+	GamePath string `json:"game_path"`
+}
+
+func validateInstallFromURLRequest(req vo.InstallFromURLRequest) error {
+	if strings.TrimSpace(req.URL) == "" {
+		return fmt.Errorf("missing url")
+	}
+	if err := downloadutils.ValidateDownloadURL(req.URL); err != nil {
+		return err
+	}
+	if strings.TrimSpace(req.Title) == "" {
+		return fmt.Errorf("missing title")
+	}
+	return nil
+}
+
+// inferFileNameFromURL 从 URL 路径推断文件名
+func inferFileNameFromURL(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return ""
+	}
+	path := u.Path
+	if path == "" {
+		return ""
+	}
+	base := filepath.Base(path)
+	// 去掉查询参数
+	if idx := strings.Index(base, "?"); idx >= 0 {
+		base = base[:idx]
+	}
+	return base
+}
+
+// inferArchiveFormatFromFileName 从文件名推断压缩格式
+func inferArchiveFormatFromFileName(fileName string) string {
+	name := strings.ToLower(fileName)
+	// 按后缀长度降序排列，确保长后缀（如 .tar.gz）优先于短后缀（如 .tar）匹配
+	type suffixEntry struct {
+		suffix string
+		format string
+	}
+	entries := []suffixEntry{
+		{".tar.gz", "tar.gz"},
+		{".tar.bz2", "tar.bz2"},
+		{".tar.xz", "tar.xz"},
+		{".tar.zst", "tar.zst"},
+		{".tgz", "tgz"},
+		{".tbz2", "tbz2"},
+		{".txz", "txz"},
+		{".tzst", "tzst"},
+		{".zip", "zip"},
+		{".rar", "rar"},
+		{".7z", "7z"},
+		{".tar", "tar"},
+	}
+	for _, e := range entries {
+		if strings.HasSuffix(name, e.suffix) {
+			return e.format
+		}
+	}
+	return ""
+}
+
+// waitForTaskCompletion 等待下载任务完成并自动导入游戏库
+func (s *DownloadService) waitForTaskCompletion(taskID string) (*InstallFromURLResult, error) {
+	const maxWait = 30 * time.Minute
+	const pollInterval = 500 * time.Millisecond
+
+	deadline := time.Now().Add(maxWait)
+	for time.Now().Before(deadline) {
+		s.mu.RLock()
+		task, ok := s.tasks[taskID]
+		if !ok {
+			s.mu.RUnlock()
+			return nil, fmt.Errorf("task %s not found", taskID)
+		}
+		status := task.Status
+		filePath := task.FilePath
+		errMsg := task.Error
+		s.mu.RUnlock()
+
+		switch status {
+		case DownloadStatusDone:
+			// 下载完成，自动导入游戏库
+			return s.autoImportTask(taskID, filePath)
+		case DownloadStatusError:
+			return nil, fmt.Errorf("download failed: %s", errMsg)
+		case DownloadStatusCancelled:
+			return nil, fmt.Errorf("download cancelled")
+		case DownloadStatusPending, DownloadStatusDownloading, DownloadStatusExtracting, DownloadStatusPaused:
+			// 继续等待
+		default:
+			return nil, fmt.Errorf("unexpected task status: %s", status)
+		}
+
+		time.Sleep(pollInterval)
+	}
+
+	return nil, fmt.Errorf("download timed out after %v", maxWait)
+}
+
+// autoImportTask 自动导入下载任务到游戏库
+func (s *DownloadService) autoImportTask(taskID string, filePath string) (*InstallFromURLResult, error) {
+	s.mu.RLock()
+	task, ok := s.tasks[taskID]
+	s.mu.RUnlock()
+	if !ok {
+		return nil, fmt.Errorf("task %s not found", taskID)
+	}
+
+	// 如果有 manual_extract_required 标记，跳过自动导入
+	if task.Error == DownloadManualExtractFlag {
+		return &InstallFromURLResult{
+			TaskID:   taskID,
+			GameName: task.Request.Title,
+			GamePath: filePath,
+		}, nil
+	}
+
+	// 自动查找可执行文件
+	importPath, err := s.resolveExecutablePathAuto(filePath, task.Request.StartupPath, task.Request.Title)
+	if err != nil {
+		applog.LogWarningf(s.ctx, "auto resolve executable failed for task %s: %v", taskID, err)
+		// 无法自动解析，返回路径让用户手动处理
+		return &InstallFromURLResult{
+			TaskID:   taskID,
+			GameName: task.Request.Title,
+			GamePath: filePath,
+		}, nil
+	}
+
+	// 尝试匹配元数据
+	var metadata *vo.GameMetadataFromWebVO
+	metaSource, sourceOk := parseMetaSource(task.Request.MetaSource)
+	metaID := strings.TrimSpace(task.Request.MetaID)
+
+	if sourceOk && metaID != "" {
+		metadata = s.fetchMetadataForTask(task)
+	} else if s.gameService != nil {
+		// 没有指定元数据源，用标题搜索
+		results, err := s.gameService.FetchMetadataByName(task.Request.Title)
+		if err == nil && len(results) > 0 {
+			best := results[0]
+			metadata = &best
+			metaSource = best.Source
+			sourceOk = true
+			if best.Game.SourceID != "" {
+				metaID = best.Game.SourceID
+			}
+		}
+	}
+
+	// 检查是否已存在
+	if sourceOk && metaID != "" {
+		if existingID, ok := s.gameService.findGameIDBySource(metaSource, metaID); ok {
+			s.updateExistingGame(existingID, importPath, metaSource, metaID, metadata)
+			gameName := task.Request.Title
+			if metadata != nil && strings.TrimSpace(metadata.Game.Name) != "" {
+				gameName = metadata.Game.Name
+			}
+			return &InstallFromURLResult{
+				TaskID:   taskID,
+				GameName: gameName,
+				GameID:   existingID,
+				GamePath: importPath,
+			}, nil
+		}
+	}
+
+	if existingID, ok := s.gameService.findGameIDByPath(importPath); ok {
+		s.updateExistingGame(existingID, importPath, metaSource, metaID, metadata)
+		gameName := task.Request.Title
+		if metadata != nil && strings.TrimSpace(metadata.Game.Name) != "" {
+			gameName = metadata.Game.Name
+		}
+		return &InstallFromURLResult{
+			TaskID:   taskID,
+			GameName: gameName,
+			GameID:   existingID,
+			GamePath: importPath,
+		}, nil
+	}
+
+	// 创建新游戏
+	game := models.Game{
+		Name:       strings.TrimSpace(task.Request.Title),
+		Path:       importPath,
+		SourceType: enums2.Local,
+		Status:     enums2.StatusNotStarted,
+	}
+
+	if sourceOk {
+		game.SourceType = metaSource
+		game.SourceID = metaID
+	}
+
+	if metadata != nil {
+		mergeMetadataIntoGame(&game, metadata.Game)
+		game.Path = importPath
+	}
+
+	if sourceOk && game.SourceType == enums2.Local {
+		game.SourceType = metaSource
+	}
+	if game.SourceID == "" {
+		game.SourceID = metaID
+	}
+	if strings.TrimSpace(game.Name) == "" {
+		game.Name = strings.TrimSuffix(filepath.Base(importPath), filepath.Ext(importPath))
+	}
+
+	var addErr error
+	if metadata != nil {
+		metaToSave := *metadata
+		metaToSave.Game = game
+		addErr = s.gameService.AddGameFromWebMetadata(metaToSave)
+	} else {
+		addErr = s.gameService.AddGameFromWebMetadata(vo.GameMetadataFromWebVO{
+			Source: game.SourceType,
+			Game:   game,
+		})
+	}
+	if addErr != nil {
+		return nil, fmt.Errorf("add game failed: %w", addErr)
+	}
+
+	// 查找刚添加的游戏 ID
+	gameID, _ := s.gameService.findGameIDByPath(importPath)
+	gameName := game.Name
+
+	applog.LogInfof(s.ctx, "auto import task %s as game success: %s (ID: %s)", taskID, gameName, gameID)
+
+	return &InstallFromURLResult{
+		TaskID:   taskID,
+		GameName: gameName,
+		GameID:   gameID,
+		GamePath: importPath,
+	}, nil
+}
+
+// resolveExecutablePathAuto 自动解析可执行文件路径（不弹出对话框）
+func (s *DownloadService) resolveExecutablePathAuto(gamePath string, startupPath string, title string) (string, error) {
+	// 如果有 startup_path，优先使用
+	if resolvedPath, ok, err := resolveExecutablePathFromRequest(gamePath, startupPath); err != nil {
+		return "", err
+	} else if ok {
+		return resolvedPath, nil
+	}
+
+	// 如果路径本身就是文件，直接返回
+	trimmedPath := strings.TrimSpace(gamePath)
+	if trimmedPath == "" {
+		return "", fmt.Errorf("empty path")
+	}
+
+	info, err := os.Stat(trimmedPath)
+	if err != nil {
+		return "", fmt.Errorf("stat path failed: %w", err)
+	}
+
+	if !info.IsDir() {
+		return trimmedPath, nil
+	}
+
+	// 在目录中查找可执行文件
+	exes := apputils.FindExecutables(trimmedPath, nil)
+	if len(exes) == 0 {
+		return "", fmt.Errorf("no executables found in %s", trimmedPath)
+	}
+
+	// 自动选择最佳可执行文件
+	best := apputils.SelectBestExecutable(exes, filepath.Base(trimmedPath))
+	if best == "" {
+		best = exes[0]
+	}
+
+	return best, nil
 }
 
 // StartCoverImageDownloadTask creates a lightweight download-management task for batch cover caching.
@@ -1326,8 +1676,8 @@ func validateInstallRequest(req vo.InstallRequest) error {
 		return fmt.Errorf("invalid startup_path: %w", err)
 	}
 
-	if req.Size <= 0 {
-		return fmt.Errorf("size is required and must be > 0")
+	if req.Size < 0 {
+		return fmt.Errorf("size must be >= 0")
 	}
 	if req.ExpiresAt <= 0 {
 		return fmt.Errorf("expires_at is required")
@@ -1338,8 +1688,10 @@ func validateInstallRequest(req vo.InstallRequest) error {
 
 	algo := strings.ToLower(strings.TrimSpace(req.ChecksumAlgo))
 	checksum := strings.ToLower(strings.TrimSpace(req.Checksum))
-	if err := downloadutils.ValidateChecksumFields(algo, checksum); err != nil {
-		return err
+	if algo != "" && algo != "none" {
+		if err := downloadutils.ValidateChecksumFields(algo, checksum); err != nil {
+			return err
+		}
 	}
 
 	return nil

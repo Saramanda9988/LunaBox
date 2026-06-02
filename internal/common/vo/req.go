@@ -208,6 +208,20 @@ type InstallRequest struct {
 	ExpiresAt      int64  `json:"expires_at"`      // 请求过期时间（Unix 秒，必填）
 }
 
+// InstallFromURLRequest 简化的安装请求（仅 URL + 标题必填，其余自动推断）
+type InstallFromURLRequest struct {
+	URL           string `json:"url"`            // 下载直链（必填）
+	Title         string `json:"title"`          // 游戏标题（必填）
+	FileName      string `json:"file_name"`      // 下载文件名（可选，从 URL 推断）
+	ArchiveFormat string `json:"archive_format"` // 压缩格式（可选，从文件名推断）
+	StartupPath   string `json:"startup_path"`   // 启动相对路径（可选）
+	MetaSource    string `json:"meta_source"`    // 元数据来源（可选）
+	MetaID        string `json:"meta_id"`        // 元数据 ID（可选）
+	Size          int64  `json:"size"`           // 文件大小 bytes（可选，0=未知）
+	ChecksumAlgo  string `json:"checksum_algo"`  // 校验算法（可选）
+	Checksum      string `json:"checksum"`       // 校验值（可选）
+}
+
 // ProtocolLaunchRequest 通过 lunabox://launch?game_id=... 触发的启动请求
 type ProtocolLaunchRequest struct {
 	GameID string `json:"game_id"`           // 游戏库中的稳定 ID（必填）

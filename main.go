@@ -645,14 +645,15 @@ func main() {
 			// 启动 IPC Server (用于 CLI 通信)
 			// 构造 CLI CoreApp 以共享 GUI 的服务实例
 			cliApp := &cli.CoreApp{
-				Config:         config,
-				DB:             db,
-				Ctx:            ctx,
-				GameService:    gameService,
-				StartService:   startService,
-				SessionService: sessionService,
-				BackupService:  backupService,
-				VersionService: versionService,
+				Config:          config,
+				DB:              db,
+				Ctx:             ctx,
+				GameService:     gameService,
+				StartService:    startService,
+				SessionService:  sessionService,
+				BackupService:   backupService,
+				VersionService:  versionService,
+				DownloadService: downloadService,
 			}
 			ipcHTTPServer = ipcserver.StartServer(cliApp)
 

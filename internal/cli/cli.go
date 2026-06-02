@@ -12,14 +12,15 @@ import (
 
 // CoreApp CLI 模式的核心应用 (也可用于 GUI 传递 Context)
 type CoreApp struct {
-	Config         *appconf.AppConfig
-	DB             *sql.DB
-	Ctx            context.Context // Export Ctx
-	GameService    *service.GameService
-	StartService   *service.StartService
-	SessionService *service.SessionService
-	BackupService  *service.BackupService
-	VersionService *service.VersionService
+	Config           *appconf.AppConfig
+	DB               *sql.DB
+	Ctx              context.Context // Export Ctx
+	GameService      *service.GameService
+	StartService     *service.StartService
+	SessionService   *service.SessionService
+	BackupService    *service.BackupService
+	VersionService   *service.VersionService
+	DownloadService  *service.DownloadService
 }
 
 // RunCommand 执行 CLI 命令

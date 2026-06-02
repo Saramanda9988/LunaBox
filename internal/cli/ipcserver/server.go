@@ -99,6 +99,39 @@ func StartServer(app *cli.CoreApp) *http.Server {
 		json.NewEncoder(w).Encode(resp)
 	})
 
+	// /install-url: 从 URL 自动下载安装游戏（CLI install 命令使用）
+	mux.HandleFunc("/install-url", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var req vo.InstallFromURLRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if app.DownloadService == nil {
+			http.Error(w, "download service not available", http.StatusServiceUnavailable)
+			return
+		}
+
+		result, err := app.DownloadService.InstallFromURL(req)
+		resp := InstallURLResponse{}
+		if err != nil {
+			resp.Error = err.Error()
+		} else if result != nil {
+			resp.TaskID = result.TaskID
+			resp.GameName = result.GameName
+			resp.GameID = result.GameID
+			resp.GamePath = result.GamePath
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
 	listener, port, err := chooseIPCListener()
 	if err != nil {
 		applog.LogErrorf(app.Ctx, "IPC Server failed to acquire port: %v", err)

@@ -95,5 +95,14 @@ type InstallResponse struct {
 	Error  string `json:"error,omitempty"`
 }
 
+// InstallURLResponse IPC /install-url 响应
+type InstallURLResponse struct {
+	TaskID   string `json:"task_id,omitempty"`
+	GameName string `json:"game_name,omitempty"`
+	GameID   string `json:"game_id,omitempty"`
+	GamePath string `json:"game_path,omitempty"`
+	Error    string `json:"error,omitempty"`
+}
+
 // LaunchResponse IPC /launch 响应
 type LaunchResponse = ipccore.LaunchResponse

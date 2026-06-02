@@ -52,6 +52,37 @@ When the user asks about games from a specific developer:
 3. Filter by the Company or Source field.
 4. Present the filtered results to the user.
 
+## Install a Game from URL
+
+When the user provides a download link and wants to install a game:
+
+1. Confirm the URL and game title with the user before proceeding.
+2. Run `lunacli install <url> -t "<game-title>"`.
+3. If the user knows the archive format, add `-F <format>` (e.g., `-F rar`, `-F 7z`).
+4. If the user knows the main executable, add `-s <relative-path>` (e.g., `-s Game.exe`).
+5. If the user has metadata info, add `-m <source> -i <id>` (e.g., `-m bangumi -i 12345`).
+6. Wait for the command to complete (may take a long time for large files).
+7. On success, report the installed game name and path.
+8. Optionally offer to launch with `lunacli start <game>`.
+
+**Example — User says "帮我下载安装这个游戏 https://example.com/game.zip 叫星空的记忆"：**
+
+```bash
+lunacli install "https://example.com/game.zip" -t "星空的记忆"
+```
+
+**Example — User provides a .rar link with known Bangumi ID：**
+
+```bash
+lunacli install "https://example.com/game.rar" -t "星空的记忆" -F rar -m bangumi -i 12345
+```
+
+**Example — User provides a link and knows the startup exe：**
+
+```bash
+lunacli install "https://example.com/game.7z" -t "星空的记忆" -F 7z -s "StarMemories/Game.exe"
+```
+
 ## Output Parsing Reference
 
 | Command | Parse strategy |
@@ -60,3 +91,4 @@ When the user asks about games from a specific developer:
 | `detail` | Split lines by first `:`, treat as key-value pairs |
 | `start` | Check for `Game started successfully!` in output |
 | `backup` | Check for `✓` prefix, parse `File:`, `Size:`, `Path:` lines |
+| `install` | Check for `✓ Game installed successfully!`, parse `Game:`, `ID:`, `Path:` lines |

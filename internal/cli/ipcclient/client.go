@@ -27,3 +27,8 @@ func RemoteRun(args []string) error {
 	fmt.Print(output)
 	return err
 }
+
+// RemoteInstallFromURL 从 URL 自动下载安装游戏
+func RemoteInstallFromURL(req interface{}) (*ipccore.InstallURLResponse, error) {
+	return ipccore.RemoteInstallFromURL(req)
+}
