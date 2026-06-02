@@ -134,7 +134,7 @@ export function GameEditPanel({
   };
 
   return (
-    <div className="glass-panel mx-auto bg-white dark:bg-brand-800 p-8 rounded-lg shadow-sm">
+    <div className="glass-panel w-full min-w-0 bg-white dark:bg-brand-800 p-8 rounded-lg shadow-sm">
       <div className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">

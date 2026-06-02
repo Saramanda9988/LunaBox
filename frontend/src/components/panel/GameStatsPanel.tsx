@@ -228,20 +228,20 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
       </div>
 
       {/* 视图切换和操作栏 */}
-      <div className="glass-card bg-white dark:bg-brand-800 rounded-lg shadow-sm">
+      <div className="glass-card overflow-hidden rounded-lg bg-white shadow-sm dark:bg-brand-800">
         <div className="p-6">
           {isLoading && !stats ? (
-            <div className="h-80 flex items-center justify-center">
+            <div className="flex h-[clamp(20rem,42vh,34rem)] items-center justify-center">
               <div className="i-mdi-loading animate-spin text-3xl text-brand-500" />
             </div>
           ) : viewMode === "chart" ? (
             <HorizontalScrollChart
               data={chartData}
               options={chartOptions}
-              className="h-80"
+              className="h-[clamp(20rem,42vh,34rem)]"
             />
           ) : (
-            <div className="space-y-2">
+            <div className="max-h-[clamp(20rem,42vh,34rem)] space-y-2 overflow-y-auto pr-1">
               {sessions.length === 0 ? (
                 <div className="text-center py-12 text-brand-500">
                   <div className="i-mdi-clock-outline text-4xl mx-auto mb-2" />
@@ -280,7 +280,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
             </div>
           )}
         </div>
-        <div className="flex items-center justify-between p-4 border-t-1 border-brand-200 dark:border-brand-700">
+        <div className="flex items-center justify-between border-t-1 border-brand-200 p-4 dark:border-brand-700">
           <div className="flex gap-4">
             {/* Time Dimension Selector */}
             <SlideButton
