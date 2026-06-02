@@ -17,6 +17,7 @@ interface BetterSelectProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  buttonClassName?: string;
   name?: string;
 }
 
@@ -27,16 +28,11 @@ export function BetterSelect({
   placeholder = "请选择",
   disabled = false,
   className = "",
+  buttonClassName = "",
 }: BetterSelectProps) {
   const selectedOption = options.find(opt => opt.value === value);
   const displayValue = selectedOption?.label || placeholder;
-
-  return (
-    <Listbox value={value} onChange={onChange} disabled={disabled}>
-      <div className={`relative ${className}`}>
-        {/* Select Button */}
-        <ListboxButton
-          className="glass-card relative w-full px-3 py-2 pr-10
+  const buttonClasses = `glass-card relative w-full px-3 py-2 pr-10
                      text-left cursor-pointer
                      border border-brand-300 dark:border-brand-600
                      rounded-md shadow-sm
@@ -44,8 +40,13 @@ export function BetterSelect({
                      text-brand-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-neutral-500
                      disabled:opacity-50 disabled:cursor-not-allowed
-                     transition-colors"
-        >
+                     transition-colors ${buttonClassName}`;
+
+  return (
+    <Listbox value={value} onChange={onChange} disabled={disabled}>
+      <div className={`relative ${className}`}>
+        {/* Select Button */}
+        <ListboxButton className={buttonClasses}>
           <span
             className={`block truncate ${!selectedOption ? "text-brand-400 dark:text-brand-500" : ""}`}
           >

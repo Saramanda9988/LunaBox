@@ -959,6 +959,101 @@ export namespace vo {
 		    return a;
 		}
 	}
+	export class BatchImportMetadataSourceError {
+	    source: enums.SourceType;
+	    error: string;
+	    rate_limited: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new BatchImportMetadataSourceError(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.source = source["source"];
+	        this.error = source["error"];
+	        this.rate_limited = source["rate_limited"];
+	    }
+	}
+	export class GameMetadataFromWebVO {
+	    Source: enums.SourceType;
+	    Game: models.Game;
+	    Tags: metadata.TagItem[];
+	
+	    static createFrom(source: any = {}) {
+	        return new GameMetadataFromWebVO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Source = source["Source"];
+	        this.Game = this.convertValues(source["Game"], models.Game);
+	        this.Tags = this.convertValues(source["Tags"], metadata.TagItem);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class BatchImportMetadataMatchResult {
+	    search_name: string;
+	    preferred_source: enums.SourceType;
+	    preferred_matched: boolean;
+	    preferred_no_result: boolean;
+	    preferred_rate_limited: boolean;
+	    preferred_error?: string;
+	    matches: GameMetadataFromWebVO[];
+	    source_errors?: BatchImportMetadataSourceError[];
+	
+	    static createFrom(source: any = {}) {
+	        return new BatchImportMetadataMatchResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.search_name = source["search_name"];
+	        this.preferred_source = source["preferred_source"];
+	        this.preferred_matched = source["preferred_matched"];
+	        this.preferred_no_result = source["preferred_no_result"];
+	        this.preferred_rate_limited = source["preferred_rate_limited"];
+	        this.preferred_error = source["preferred_error"];
+	        this.matches = this.convertValues(source["matches"], GameMetadataFromWebVO);
+	        this.source_errors = this.convertValues(source["source_errors"], BatchImportMetadataSourceError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class BatchImportScanOptions {
 	    scan_mode: string;
 	    scan_name_mode: string;
@@ -1393,40 +1488,7 @@ export namespace vo {
 		    return a;
 		}
 	}
-	export class GameMetadataFromWebVO {
-	    Source: enums.SourceType;
-	    Game: models.Game;
-	    Tags: metadata.TagItem[];
 	
-	    static createFrom(source: any = {}) {
-	        return new GameMetadataFromWebVO(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.Source = source["Source"];
-	        this.Game = this.convertValues(source["Game"], models.Game);
-	        this.Tags = this.convertValues(source["Tags"], metadata.TagItem);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
 	export class GamePlayStats {
 	    game_id: string;
 	    game_name: string;
@@ -1658,6 +1720,8 @@ export namespace vo {
 	    skipped_games: number;
 	    failed_games: number;
 	    locked_games: number;
+	    failed_game_ids: string[];
+	    failed_game_names: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new MetadataRefreshResult(source);
@@ -1670,6 +1734,8 @@ export namespace vo {
 	        this.skipped_games = source["skipped_games"];
 	        this.failed_games = source["failed_games"];
 	        this.locked_games = source["locked_games"];
+	        this.failed_game_ids = source["failed_game_ids"];
+	        this.failed_game_names = source["failed_game_names"];
 	    }
 	}
 	export class MetadataRequest {

@@ -265,7 +265,10 @@ func pickVniteGamePath(localDoc vnite.GameLocalDoc) string {
 			return path
 		}
 	}
-	return strings.TrimSpace(localDoc.Path.GamePath)
+	if path := strings.TrimSpace(localDoc.Path.GamePath); path != "" {
+		return path
+	}
+	return strings.TrimSpace(localDoc.Utils.MarkPath)
 }
 
 func pickVniteSavePath(localDoc vnite.GameLocalDoc) string {

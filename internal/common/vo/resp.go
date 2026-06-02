@@ -23,6 +23,23 @@ type GameMetadataFromWebVO struct {
 	Tags   []metadata.TagItem
 }
 
+type BatchImportMetadataSourceError struct {
+	Source      enums.SourceType `json:"source"`
+	Error       string           `json:"error"`
+	RateLimited bool             `json:"rate_limited"`
+}
+
+type BatchImportMetadataMatchResult struct {
+	SearchName           string                           `json:"search_name"`
+	PreferredSource      enums.SourceType                 `json:"preferred_source"`
+	PreferredMatched     bool                             `json:"preferred_matched"`
+	PreferredNoResult    bool                             `json:"preferred_no_result"`
+	PreferredRateLimited bool                             `json:"preferred_rate_limited"`
+	PreferredError       string                           `json:"preferred_error,omitempty"`
+	Matches              []GameMetadataFromWebVO          `json:"matches"`
+	SourceErrors         []BatchImportMetadataSourceError `json:"source_errors,omitempty"`
+}
+
 type GameListResponse struct {
 	Games   []models.Game `json:"games"`
 	Limit   int           `json:"limit"`
@@ -37,11 +54,13 @@ type DownloadImportState struct {
 }
 
 type MetadataRefreshResult struct {
-	TotalGames   int `json:"total_games"`
-	UpdatedGames int `json:"updated_games"`
-	SkippedGames int `json:"skipped_games"`
-	FailedGames  int `json:"failed_games"`
-	LockedGames  int `json:"locked_games"`
+	TotalGames      int      `json:"total_games"`
+	UpdatedGames    int      `json:"updated_games"`
+	SkippedGames    int      `json:"skipped_games"`
+	FailedGames     int      `json:"failed_games"`
+	LockedGames     int      `json:"locked_games"`
+	FailedGameIDs   []string `json:"failed_game_ids"`
+	FailedGameNames []string `json:"failed_game_names"`
 }
 
 type BangumiAuthStatus struct {

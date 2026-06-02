@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ matrix.arch == 'arm64' && 'windows-11-arm' || 'windows-latest' }}
     strategy:
       matrix:
-        arch: [amd64]
+        arch: [amd64, arm64]
         mode: [portable, installer]
     
     steps:
@@ -22,7 +22,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version-file: go.mod
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -37,13 +37,84 @@ jobs:
           cache-dependency-path: 'frontend/pnpm-lock.yaml'
 
       - name: Setup Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+        run: |
+          $WailsVersion = (go list -m -f "{{.Version}}" github.com/wailsapp/wails/v2).Trim()
+          go install "github.com/wailsapp/wails/v2/cmd/wails@$WailsVersion"
+        shell: pwsh
+
+      - name: Setup MSYS2 for ARM64 CGO
+        id: msys2
+        if: matrix.arch == 'arm64'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANGARM64
+          path-type: inherit
+          install: mingw-w64-clang-aarch64-toolchain
 
       - name: Install NSIS
         if: matrix.mode == 'installer'
         run: |
           choco install nsis -y
           echo "C:\Program Files (x86)\NSIS" >> $env:GITHUB_PATH
+        shell: pwsh
+
+      - name: Configure build architecture
+        run: |
+          "GOOS=windows" >> $env:GITHUB_ENV
+          "GOARCH=${{ matrix.arch }}" >> $env:GITHUB_ENV
+          $env:GOOS = "windows"
+          $env:GOARCH = "${{ matrix.arch }}"
+
+          if ("${{ matrix.arch }}" -eq "arm64") {
+            $SourceDir = Join-Path $PWD "lib\winarm64"
+            $BuildLibDir = Join-Path $PWD "build\duckdb\winarm64"
+            $DuckDBDll = Join-Path $SourceDir "duckdb.dll"
+            $DuckDBLib = Join-Path $SourceDir "duckdb.lib"
+
+            if (!(Test-Path $DuckDBDll) -or !(Test-Path $DuckDBLib)) {
+              throw "Win-ARM64 DuckDB dynamic library is missing under lib\winarm64."
+            }
+
+            New-Item -ItemType Directory -Force -Path $BuildLibDir | Out-Null
+            Copy-Item $DuckDBDll -Destination (Join-Path $BuildLibDir "duckdb.dll") -Force
+            Copy-Item $DuckDBLib -Destination (Join-Path $BuildLibDir "duckdb.lib") -Force
+            Copy-Item $DuckDBLib -Destination (Join-Path $BuildLibDir "libduckdb.dll.a") -Force
+
+            $Msys2Location = "${{ steps.msys2.outputs.msys2-location }}"
+            if ([string]::IsNullOrWhiteSpace($Msys2Location)) {
+              throw "MSYS2 location output is empty."
+            }
+
+            $ClangArm64Bin = Join-Path $Msys2Location "clangarm64\bin"
+            $Clang = Join-Path $ClangArm64Bin "clang.exe"
+            $ClangXX = Join-Path $ClangArm64Bin "clang++.exe"
+            if (!(Test-Path $Clang) -or !(Test-Path $ClangXX)) {
+              throw "MSYS2 CLANGARM64 compiler was not found under $ClangArm64Bin."
+            }
+            $TargetTriple = "aarch64-w64-windows-gnu"
+            $ClangTarget = (& $Clang --target=$TargetTriple -dumpmachine).Trim()
+            if ($ClangTarget -notmatch "aarch64|arm64") {
+              throw "MSYS2 CLANGARM64 compiler has unexpected target with --target=$TargetTriple`: $ClangTarget."
+            }
+            Write-Host "Using ARM64 CGO compiler: $Clang --target=$TargetTriple ($ClangTarget)"
+
+            "CGO_ENABLED=1" >> $env:GITHUB_ENV
+            "CC=$Clang --target=$TargetTriple" >> $env:GITHUB_ENV
+            "CXX=$ClangXX --target=$TargetTriple" >> $env:GITHUB_ENV
+            "CGO_LDFLAGS=-L$BuildLibDir -lduckdb" >> $env:GITHUB_ENV
+            "GO_BUILD_TAGS=duckdb_use_lib" >> $env:GITHUB_ENV
+            "DUCKDB_DYNAMIC_DLL=$(Join-Path $BuildLibDir "duckdb.dll")" >> $env:GITHUB_ENV
+            $env:CGO_ENABLED = "1"
+            $env:CC = "$Clang --target=$TargetTriple"
+            $env:CXX = "$ClangXX --target=$TargetTriple"
+            $env:CGO_LDFLAGS = "-L$BuildLibDir -lduckdb"
+            $env:PATH = "$ClangArm64Bin;$BuildLibDir;$env:PATH"
+            go env -w CGO_ENABLED=1 CC="$env:CC" CXX="$env:CXX" CGO_LDFLAGS="$env:CGO_LDFLAGS"
+            go env GOOS GOARCH GOHOSTOS GOHOSTARCH CGO_ENABLED CC CXX CGO_LDFLAGS
+            go test -run "^$" -tags duckdb_use_lib github.com/duckdb/duckdb-go-bindings
+            $ClangArm64Bin >> $env:GITHUB_PATH
+            $BuildLibDir >> $env:GITHUB_PATH
+          }
         shell: pwsh
 
       - name: Install frontend dependencies
@@ -64,12 +135,20 @@ jobs:
       - name: Build Portable Version
         if: matrix.mode == 'portable'
         run: |
+          $ErrorActionPreference = "Stop"
           $LDFLAGS = "-s -w -X 'lunabox/internal/version.Version=${{ steps.get_version.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.get_version.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.get_version.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=portable' -X 'lunabox/internal/version.BangumiOAuthClientID=$env:LUNABOX_BANGUMI_CLIENT_ID' -X 'lunabox/internal/version.BangumiOAuthClientSecret=$env:LUNABOX_BANGUMI_CLIENT_SECRET'"
+          $BUILD_TAGS = @()
+          if ($env:GO_BUILD_TAGS) {
+            $BUILD_TAGS = @("-tags", $env:GO_BUILD_TAGS)
+          }
+
           # Build GUI
-          wails build -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -o LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.exe
+          wails build @BUILD_TAGS -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -o LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           
           # Build CLI
-          go build -trimpath -ldflags "$LDFLAGS" -o build/bin/lunacli.exe ./cmd/lunacli
+          go build @BUILD_TAGS -trimpath -ldflags "$LDFLAGS" -o build/bin/lunacli.exe ./cmd/lunacli
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         shell: pwsh
         env:
           LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
@@ -78,13 +157,25 @@ jobs:
       - name: Build Installer Version
         if: matrix.mode == 'installer'
         run: |
+          $ErrorActionPreference = "Stop"
           $LDFLAGS = "-s -w -X 'lunabox/internal/version.Version=${{ steps.get_version.outputs.VERSION }}' -X 'lunabox/internal/version.GitCommit=${{ steps.get_version.outputs.COMMIT }}' -X 'lunabox/internal/version.BuildTime=${{ steps.get_version.outputs.BUILD_TIME }}' -X 'lunabox/internal/version.BuildMode=installer' -X 'lunabox/internal/version.BangumiOAuthClientID=$env:LUNABOX_BANGUMI_CLIENT_ID' -X 'lunabox/internal/version.BangumiOAuthClientSecret=$env:LUNABOX_BANGUMI_CLIENT_SECRET'"
+          $BUILD_TAGS = @()
+          if ($env:GO_BUILD_TAGS) {
+            $BUILD_TAGS = @("-tags", $env:GO_BUILD_TAGS)
+          }
           
           # Build CLI first (needed for installer)
-          go build -trimpath -ldflags "$LDFLAGS" -o build/bin/lunacli.exe ./cmd/lunacli
+          go build @BUILD_TAGS -trimpath -ldflags "$LDFLAGS" -o build/bin/lunacli.exe ./cmd/lunacli
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          Remove-Item "build/bin/duckdb.dll" -Force -ErrorAction SilentlyContinue
+          if ($env:DUCKDB_DYNAMIC_DLL) {
+            Copy-Item $env:DUCKDB_DYNAMIC_DLL -Destination "build/bin/duckdb.dll" -Force
+          }
           
           # Build GUI with NSIS
-          wails build -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -nsis
+          wails build @BUILD_TAGS -platform windows/${{ matrix.arch }} -ldflags "$LDFLAGS" -nsis
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         shell: pwsh
         env:
           LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
@@ -93,6 +184,7 @@ jobs:
       - name: Create portable ZIP
         if: matrix.mode == 'portable'
         run: |
+          $ErrorActionPreference = "Stop"
           $PKG_NAME = "LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable"
           $PKG_DIR = "build/bin/$PKG_NAME"
           New-Item -ItemType Directory -Force -Path "$PKG_DIR"
@@ -101,6 +193,9 @@ jobs:
           
           Copy-Item "build/bin/$PKG_NAME.exe" -Destination "$PKG_DIR/LunaBox.exe"
           Copy-Item "build/bin/lunacli.exe" -Destination "$PKG_DIR/lunacli.exe"
+          if ($env:DUCKDB_DYNAMIC_DLL) {
+            Copy-Item $env:DUCKDB_DYNAMIC_DLL -Destination "$PKG_DIR/duckdb.dll"
+          }
           
           Compress-Archive -Path "$PKG_DIR" -DestinationPath "$PKG_NAME.zip"
         shell: pwsh
@@ -108,6 +203,7 @@ jobs:
       - name: Rename installer
         if: matrix.mode == 'installer'
         run: |
+          $ErrorActionPreference = "Stop"
           Write-Host "Files in build/bin:"
           Get-ChildItem -Path "build/bin" -Filter "*.exe" -Recurse
           
@@ -116,7 +212,7 @@ jobs:
           } elseif (Test-Path "build/bin/LunaBox-${{ matrix.arch }}-installer.exe") {
             Move-Item -Path "build/bin/LunaBox-${{ matrix.arch }}-installer.exe" -Destination "LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe"
           } else {
-            Write-Host "Warning: Installer not found for ${{ matrix.arch }}"
+            throw "Installer not found for ${{ matrix.arch }}."
           }
         shell: pwsh
 
@@ -126,6 +222,7 @@ jobs:
         with:
           name: lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable
           path: LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip
+          if-no-files-found: error
 
       - name: Upload Installer Artifact
         if: matrix.mode == 'installer'
@@ -133,6 +230,7 @@ jobs:
         with:
           name: lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-installer
           path: LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe
+          if-no-files-found: error
 
   create-release:
     name: Create GitHub Release
@@ -234,7 +332,7 @@ jobs:
           cat release_notes.md
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: release/*
           body_path: release_notes.md

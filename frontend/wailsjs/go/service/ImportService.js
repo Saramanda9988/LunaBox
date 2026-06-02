@@ -14,6 +14,10 @@ export function FetchMetadataForCandidate(arg1) {
   return window['go']['service']['ImportService']['FetchMetadataForCandidate'](arg1);
 }
 
+export function FetchMetadataForCandidateWithPreference(arg1, arg2) {
+  return window['go']['service']['ImportService']['FetchMetadataForCandidateWithPreference'](arg1, arg2);
+}
+
 export function ImportFromPlaynite(arg1, arg2) {
   return window['go']['service']['ImportService']['ImportFromPlaynite'](arg1, arg2);
 }

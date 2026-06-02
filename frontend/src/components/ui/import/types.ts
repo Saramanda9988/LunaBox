@@ -26,6 +26,7 @@ export type ImportCandidate = {
   matchedTags: metadata.TagItem[];
   matchSource: enums.SourceType | null;
   matchStatus: ImportMatchStatus;
+  matchError?: string;
   metadataDuplicateExistingId?: string;
   metadataDuplicateExistingName?: string;
   allMatches?: vo.GameMetadataFromWebVO[];

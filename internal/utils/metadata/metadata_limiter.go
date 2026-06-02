@@ -334,3 +334,19 @@ func cloneMetadataRequest(req *http.Request) (*http.Request, error) {
 	cloned.Body = body
 	return cloned, nil
 }
+
+func IsRateLimitError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "rate limit") ||
+		strings.Contains(message, "rate limited") ||
+		strings.Contains(message, "too many requests") ||
+		strings.Contains(message, "status 429") ||
+		strings.Contains(message, "status: 429") ||
+		strings.Contains(message, "http 429") ||
+		strings.Contains(message, "limit exceeded") ||
+		strings.Contains(message, "throttle")
+}

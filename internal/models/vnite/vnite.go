@@ -75,15 +75,19 @@ type GameTimer struct {
 }
 
 type GameLocalDoc struct {
-	ID       string          `json:"_id"`
-	Path     GameLocalPath   `json:"path"`
-	Launcher GameLauncher    `json:"launcher"`
-	Utils    json.RawMessage `json:"utils"`
+	ID       string         `json:"_id"`
+	Path     GameLocalPath  `json:"path"`
+	Launcher GameLauncher   `json:"launcher"`
+	Utils    GameLocalUtils `json:"utils"`
 }
 
 type GameLocalPath struct {
 	GamePath  string   `json:"gamePath"`
 	SavePaths []string `json:"savePaths"`
+}
+
+type GameLocalUtils struct {
+	MarkPath string `json:"markPath"`
 }
 
 type GameLauncher struct {

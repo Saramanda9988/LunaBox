@@ -200,6 +200,15 @@
     },
     "manualSelect": "手動選択",
     "startMatching": "メタデータの照合を開始",
+    "continueMatching": "メタデータの照合を続行",
+    "retryFailed": "失敗項目を再照合",
+    "preferredSource": {
+      "label": "優先データソース",
+      "none": "指定なし",
+      "hint": "指定なしの場合は通常の照合フローで全データソースを試します。未検出は失敗扱いせず、レート制限または連続エラー時に一括照合を停止します。",
+      "rateLimitedPause": "{{source}} がレート制限を返したため、照合を停止しました: {{error}}",
+      "consecutiveFailurePause": "{{source}} が {{count}} 回連続で失敗したため、照合を停止しました: {{error}}"
+    },
     "importCount": "{{count}} 件のゲームをインポート",
     "metadataExists": "メタデータは既に存在します: {{name}}",
     "skippedExistingSummary": "スキャン時に既存ゲーム {{count}} 件をスキップしました",
@@ -750,6 +759,18 @@
       "refreshHint": "現在有効なソースで、ゲーム名・概要・メーカー・カバー・タグを一括更新します。",
       "refreshButton": "全ゲームのメタデータを更新",
       "refreshing": "更新中...",
+      "progress": {
+        "title": "ゲームメタデータを更新中",
+        "doneTitle": "ゲームメタデータの更新が完了しました",
+        "failedTitle": "一部のゲームメタデータ更新に失敗しました",
+        "preparing": "準備中...",
+        "hint": "現在の一括更新が完了するまでお待ちください。画像は更新後にダウンロード管理へ追加されます。",
+        "updated": "成功",
+        "failed": "失敗",
+        "skipped": "スキップ",
+        "locked": "ロック",
+        "retryFailed": "失敗項目を再試行（{{count}}）"
+      },
       "modal": {
         "refreshTitle": "メタデータ全量更新の確認",
         "refreshMessage": "現在有効なソースを使って、データベース内の更新可能な全ゲームのメタデータを一括更新します。時間がかかる場合があります。続行しますか？"

@@ -411,6 +411,117 @@ func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchIm
 	return result, nil
 }
 
+// FetchMetadataForCandidateWithPreference fetches metadata for bulk import.
+// The preferred source is authoritative for the candidate: if it is unavailable,
+// rate limited, or returns no result, other sources are not queried.
+func (s *ImportService) FetchMetadataForCandidateWithPreference(searchName string, preferredSource enums.SourceType) (vo.BatchImportMetadataMatchResult, error) {
+	searchName = strings.TrimSpace(searchName)
+	result := vo.BatchImportMetadataMatchResult{
+		SearchName:      searchName,
+		PreferredSource: normalizeMetadataSourceType(preferredSource),
+		Matches:         []vo.GameMetadataFromWebVO{},
+		SourceErrors:    []vo.BatchImportMetadataSourceError{},
+	}
+	if searchName == "" {
+		result.PreferredError = "搜索名称为空"
+		return result, nil
+	}
+
+	sources := s.getConfiguredMetadataSearchSources(metadataGetterOptions(s.config))
+	if len(sources) == 0 {
+		result.PreferredError = "没有可用的数据源"
+		return result, nil
+	}
+
+	if result.PreferredSource == "" || result.PreferredSource == enums.Local {
+		result.PreferredSource = sources[0].source
+	}
+
+	preferredGetter, ok := findMetadataSearchSource(sources, result.PreferredSource)
+	if !ok {
+		result.PreferredError = fmt.Sprintf("偏好数据源 %s 未启用或不可用", result.PreferredSource)
+		return result, nil
+	}
+
+	preferredMatch, preferredErr := fetchImportMetadataSource(preferredGetter, searchName)
+	if preferredErr != nil {
+		result.PreferredError = preferredErr.Error
+		result.PreferredRateLimited = preferredErr.RateLimited
+		result.SourceErrors = append(result.SourceErrors, *preferredErr)
+		applog.LogWarningf(s.ctx, "FetchMetadataForCandidateWithPreference: preferred source %s failed for %s: %s", result.PreferredSource, searchName, preferredErr.Error)
+		return result, nil
+	}
+
+	if preferredMatch.Game == (models.Game{}) {
+		result.PreferredNoResult = true
+		result.PreferredError = "偏好数据源未找到匹配结果"
+		return result, nil
+	}
+
+	result.PreferredMatched = true
+	result.Matches = append(result.Matches, preferredMatch)
+
+	for _, src := range sources {
+		if normalizeMetadataSourceType(src.source) == result.PreferredSource {
+			continue
+		}
+
+		match, sourceErr := fetchImportMetadataSource(src, searchName)
+		if sourceErr != nil {
+			result.SourceErrors = append(result.SourceErrors, *sourceErr)
+			applog.LogWarningf(s.ctx, "FetchMetadataForCandidateWithPreference: source %s failed for %s: %s", src.source, searchName, sourceErr.Error)
+			continue
+		}
+		if match.Game != (models.Game{}) {
+			result.Matches = append(result.Matches, match)
+		}
+	}
+
+	return result, nil
+}
+
+func findMetadataSearchSource(sources []metadataSearchSource, source enums.SourceType) (metadataSearchSource, bool) {
+	source = normalizeMetadataSourceType(source)
+	for _, item := range sources {
+		if normalizeMetadataSourceType(item.source) == source {
+			return item, true
+		}
+	}
+	return metadataSearchSource{}, false
+}
+
+func fetchImportMetadataSource(src metadataSearchSource, searchName string) (vo.GameMetadataFromWebVO, *vo.BatchImportMetadataSourceError) {
+	metaResult, err := src.fetchByName(searchName)
+	if err != nil {
+		if isMetadataNoResultError(err) {
+			return vo.GameMetadataFromWebVO{Source: src.source}, nil
+		}
+		return vo.GameMetadataFromWebVO{}, &vo.BatchImportMetadataSourceError{
+			Source:      src.source,
+			Error:       err.Error(),
+			RateLimited: metadata.IsRateLimitError(err),
+		}
+	}
+	if metaResult.Game == (models.Game{}) {
+		return vo.GameMetadataFromWebVO{Source: src.source}, nil
+	}
+	return vo.GameMetadataFromWebVO{
+		Source: src.source,
+		Game:   metaResult.Game,
+		Tags:   metaResult.Tags,
+	}, nil
+}
+
+func isMetadataNoResultError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "no results found") ||
+		strings.Contains(message, "returned no game data") ||
+		strings.Contains(message, "returned no data")
+}
+
 func (s *ImportService) getConfiguredMetadataSearchSources(getterOptions []metadata.GetterOption) []metadataSearchSource {
 	vndbToken := ""
 	language := ""

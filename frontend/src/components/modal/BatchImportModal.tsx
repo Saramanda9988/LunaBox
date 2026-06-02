@@ -1,6 +1,6 @@
 import type { service } from "../../../wailsjs/go/models";
 import type { ImportCandidate, MatchProgressState } from "../ui/import/types";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
@@ -11,11 +11,14 @@ import {
 } from "../../../wailsjs/go/service/GameService";
 import {
   BatchImportGames,
+  FetchMetadataForCandidateWithPreference,
   ScanLibraryDirectoryWithOptions,
   SelectLibraryDirectory,
 } from "../../../wailsjs/go/service/ImportService";
+import { useAppStore } from "../../store";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterDropdownMenu } from "../ui/better/BetterDropdownMenu";
+import { BetterSelect } from "../ui/better/BetterSelect";
 import { ImportManualSelectModal } from "../ui/import/ImportManualSelectModal";
 import { ImportMatchProgressStep } from "../ui/import/ImportMatchProgressStep";
 import { ImportModalContainer } from "../ui/import/ImportModalContainer";
@@ -32,7 +35,69 @@ interface BatchImportModalProps {
 
 type Step = "select" | "scan" | "preview" | "match" | "importing" | "result";
 type BatchScanPreset = "scan_parent" | "scan_library_child" | "hierarchy_child";
+type PreferredSourceValue = enums.SourceType | "";
 const MAX_HIERARCHY_DEPTH = 5;
+const NO_PREFERRED_SOURCE = "";
+const PREFERRED_SOURCE_FAILURE_PAUSE_THRESHOLD = 3;
+
+const DEFAULT_METADATA_SOURCE_ORDER = [
+  enums.SourceType.BANGUMI,
+  enums.SourceType.VNDB,
+  enums.SourceType.YMGAL,
+  enums.SourceType.DLSITE,
+  enums.SourceType.EROGAMESCAPE,
+  enums.SourceType.STEAM,
+];
+
+const VALID_METADATA_SOURCE_SET = new Set<string>(
+  DEFAULT_METADATA_SOURCE_ORDER,
+);
+
+function normalizeEnabledMetadataSources(sources: string[] | undefined) {
+  if (!sources || sources.length === 0) {
+    return DEFAULT_METADATA_SOURCE_ORDER;
+  }
+
+  const normalized: enums.SourceType[] = [];
+  const seen = new Set<string>();
+  for (const source of sources) {
+    if (!VALID_METADATA_SOURCE_SET.has(source) || seen.has(source)) {
+      continue;
+    }
+    seen.add(source);
+    normalized.push(source as enums.SourceType);
+  }
+  return normalized.length > 0 ? normalized : DEFAULT_METADATA_SOURCE_ORDER;
+}
+
+function sourcePriorityOrder(preferredSource: PreferredSourceValue) {
+  if (!preferredSource) {
+    return DEFAULT_METADATA_SOURCE_ORDER;
+  }
+  return [
+    preferredSource,
+    ...DEFAULT_METADATA_SOURCE_ORDER.filter(
+      source => source !== preferredSource,
+    ),
+  ];
+}
+
+function pickBestMatch(
+  matches: vo.GameMetadataFromWebVO[],
+  preferredSource: PreferredSourceValue,
+) {
+  for (const source of sourcePriorityOrder(preferredSource)) {
+    const match = matches.find(r => r.Source === source && r.Game);
+    if (match) {
+      return match;
+    }
+  }
+  return null;
+}
+
+function errorText(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
 
 export function BatchImportModal({
   isOpen,
@@ -56,8 +121,54 @@ export function BatchImportModal({
   });
   const [scanPreset, setScanPreset] = useState<BatchScanPreset>("scan_parent");
   const [hierarchyDepth, setHierarchyDepth] = useState(0);
+  const [preferredSource, setPreferredSource]
+    = useState<PreferredSourceValue>(NO_PREFERRED_SOURCE);
+  const [matchPauseMessage, setMatchPauseMessage] = useState("");
 
   const { t } = useTranslation();
+  const config = useAppStore(state => state.config);
+
+  const enabledMetadataSources = useMemo(
+    () => normalizeEnabledMetadataSources(config?.metadata_sources),
+    [config?.metadata_sources],
+  );
+  const preferredSourceOptions = useMemo(
+    () => [
+      {
+        value: NO_PREFERRED_SOURCE,
+        label: t("batchImportModal.preferredSource.none"),
+      },
+      ...enabledMetadataSources.map(source => ({
+        value: source,
+        label:
+          source === enums.SourceType.BANGUMI
+            ? "Bangumi"
+            : source === enums.SourceType.VNDB
+              ? "VNDB"
+              : source === enums.SourceType.YMGAL
+                ? t("gameEdit.sourceYmgal")
+                : source === enums.SourceType.DLSITE
+                  ? t("gameEdit.sourceDlsite")
+                  : source === enums.SourceType.EROGAMESCAPE
+                    ? t("gameEdit.sourceErogameScape")
+                    : "Steam",
+      })),
+    ],
+    [enabledMetadataSources, t],
+  );
+
+  useEffect(() => {
+    if (preferredSource === NO_PREFERRED_SOURCE) {
+      return;
+    }
+    if (enabledMetadataSources.includes(preferredSource)) {
+      return;
+    }
+    setPreferredSource(NO_PREFERRED_SOURCE);
+  }, [enabledMetadataSources, preferredSource]);
+  const preferredSourceLabel
+    = preferredSourceOptions.find(option => option.value === preferredSource)
+      ?.label || t("batchImportModal.preferredSource.none");
 
   const abortMatchRef = useRef(false);
 
@@ -87,6 +198,7 @@ export function BatchImportModal({
     try {
       const path = await SelectLibraryDirectory();
       if (path) {
+        setMatchPauseMessage("");
         setLibraryPath(path);
         setStep("scan");
         setIsLoading(true);
@@ -118,6 +230,7 @@ export function BatchImportModal({
             matchedTags: [],
             matchSource: null,
             matchStatus: "pending",
+            matchError: "",
             metadataDuplicateExistingId: undefined,
             metadataDuplicateExistingName: undefined,
           });
@@ -150,13 +263,21 @@ export function BatchImportModal({
     }
   };
 
+  const shouldMatchCandidate = (candidate: ImportCandidate) => {
+    if (!candidate.isSelected) {
+      return false;
+    }
+    return (
+      candidate.matchStatus === "pending" || candidate.matchStatus === "error"
+    );
+  };
+
   const handleStartMatch = async () => {
     setStep("match");
+    setMatchPauseMessage("");
     abortMatchRef.current = false;
 
-    const toMatchCandidates = candidates.filter(
-      c => c.isSelected && c.matchStatus === "pending",
-    );
+    const toMatchCandidates = candidates.filter(c => shouldMatchCandidate(c));
     setMatchProgress({
       current: 0,
       total: toMatchCandidates.length,
@@ -165,17 +286,15 @@ export function BatchImportModal({
 
     const updatedCandidates = [...candidates];
     let matchedCount = 0;
+    let consecutiveFetchFailures = 0;
+    let pauseReason = "";
 
     for (let i = 0; i < candidates.length; i++) {
       if (abortMatchRef.current) {
         break;
       }
 
-      if (
-        !candidates[i].isSelected
-        || candidates[i].matchStatus === "matched"
-        || candidates[i].matchStatus === "manual"
-      ) {
+      if (!shouldMatchCandidate(candidates[i])) {
         continue;
       }
 
@@ -187,27 +306,106 @@ export function BatchImportModal({
       }));
 
       try {
-        const results = await FetchMetadataByName(candidates[i].searchName);
+        if (preferredSource !== NO_PREFERRED_SOURCE) {
+          const matchResult = await FetchMetadataForCandidateWithPreference(
+            candidates[i].searchName,
+            preferredSource,
+          );
+          const results = matchResult?.matches || [];
 
-        if (results && results.length > 0) {
-          const priorityOrder = [
-            enums.SourceType.BANGUMI,
-            enums.SourceType.VNDB,
-            enums.SourceType.YMGAL,
-            enums.SourceType.DLSITE,
-            enums.SourceType.EROGAMESCAPE,
-            enums.SourceType.STEAM,
-          ];
-          let bestMatch: vo.GameMetadataFromWebVO | null = null;
+          if (!matchResult?.preferred_matched) {
+            const reason
+              = matchResult?.preferred_error
+                || t("batchImportModal.noMatchResult");
+            const isNoResult = Boolean(matchResult?.preferred_no_result);
 
-          for (const source of priorityOrder) {
-            const match = results.find(r => r.Source === source && r.Game);
-            if (match) {
-              bestMatch = match;
+            updatedCandidates[i] = {
+              ...updatedCandidates[i],
+              matchedGame: null,
+              matchedTags: [],
+              matchSource: null,
+              matchStatus: isNoResult ? "not_found" : "error",
+              matchError: reason,
+              allMatches: results,
+              metadataDuplicateExistingId: undefined,
+              metadataDuplicateExistingName: undefined,
+            };
+
+            if (isNoResult) {
+              consecutiveFetchFailures = 0;
+            }
+            else {
+              consecutiveFetchFailures++;
+              if (matchResult?.preferred_rate_limited) {
+                pauseReason = t(
+                  "batchImportModal.preferredSource.rateLimitedPause",
+                  {
+                    source: preferredSourceLabel,
+                    error: reason,
+                  },
+                );
+              }
+              else if (
+                consecutiveFetchFailures
+                >= PREFERRED_SOURCE_FAILURE_PAUSE_THRESHOLD
+              ) {
+                pauseReason = t(
+                  "batchImportModal.preferredSource.consecutiveFailurePause",
+                  {
+                    source: preferredSourceLabel,
+                    count: PREFERRED_SOURCE_FAILURE_PAUSE_THRESHOLD,
+                    error: reason,
+                  },
+                );
+              }
+            }
+
+            setCandidates([...updatedCandidates]);
+            if (pauseReason) {
+              abortMatchRef.current = true;
               break;
             }
           }
+          else {
+            consecutiveFetchFailures = 0;
+            const bestMatch = pickBestMatch(results, preferredSource);
 
+            if (bestMatch && bestMatch.Game) {
+              updatedCandidates[i] = {
+                ...updatedCandidates[i],
+                matchedGame: bestMatch.Game,
+                matchedTags: bestMatch.Tags || [],
+                matchSource: bestMatch.Source,
+                matchStatus: "matched",
+                matchError: "",
+                allMatches: results,
+                metadataDuplicateExistingId: undefined,
+                metadataDuplicateExistingName: undefined,
+              };
+            }
+            else {
+              updatedCandidates[i] = {
+                ...updatedCandidates[i],
+                matchedGame: null,
+                matchedTags: [],
+                matchSource: null,
+                matchStatus: "not_found",
+                matchError: t("batchImportModal.noMatchResult"),
+                allMatches: results,
+                metadataDuplicateExistingId: undefined,
+                metadataDuplicateExistingName: undefined,
+              };
+            }
+          }
+        }
+        else {
+          const results = await FetchMetadataByName(candidates[i].searchName);
+          const bestMatch
+            = results && results.length > 0
+              ? pickBestMatch(results, preferredSource)
+              : null;
+
+          consecutiveFetchFailures = 0;
           if (bestMatch && bestMatch.Game) {
             updatedCandidates[i] = {
               ...updatedCandidates[i],
@@ -215,40 +413,72 @@ export function BatchImportModal({
               matchedTags: bestMatch.Tags || [],
               matchSource: bestMatch.Source,
               matchStatus: "matched",
+              matchError: "",
               allMatches: results,
+              metadataDuplicateExistingId: undefined,
+              metadataDuplicateExistingName: undefined,
             };
           }
           else {
             updatedCandidates[i] = {
               ...updatedCandidates[i],
+              matchedGame: null,
               matchedTags: [],
+              matchSource: null,
               matchStatus: "not_found",
-              allMatches: results,
+              matchError: t("batchImportModal.noMatchResult"),
+              allMatches: results || [],
+              metadataDuplicateExistingId: undefined,
+              metadataDuplicateExistingName: undefined,
             };
           }
-        }
-        else {
-          updatedCandidates[i] = {
-            ...updatedCandidates[i],
-            matchedTags: [],
-            matchStatus: "not_found",
-          };
         }
       }
       catch (error) {
         console.error(`Failed to match ${candidates[i].searchName}:`, error);
+        const reason = errorText(error);
+        consecutiveFetchFailures++;
         updatedCandidates[i] = {
           ...updatedCandidates[i],
+          matchedGame: null,
           matchedTags: [],
+          matchSource: null,
           matchStatus: "error",
+          matchError: reason,
+          metadataDuplicateExistingId: undefined,
+          metadataDuplicateExistingName: undefined,
         };
+
+        if (
+          consecutiveFetchFailures >= PREFERRED_SOURCE_FAILURE_PAUSE_THRESHOLD
+        ) {
+          pauseReason = t(
+            "batchImportModal.preferredSource.consecutiveFailurePause",
+            {
+              source: preferredSourceLabel,
+              count: PREFERRED_SOURCE_FAILURE_PAUSE_THRESHOLD,
+              error: reason,
+            },
+          );
+          abortMatchRef.current = true;
+        }
       }
 
       setCandidates([...updatedCandidates]);
+      if (pauseReason) {
+        break;
+      }
 
       if (!abortMatchRef.current) {
         await new Promise(resolve => setTimeout(resolve, 1500));
       }
+    }
+
+    if (pauseReason) {
+      setMatchPauseMessage(pauseReason);
+      toast.error(pauseReason);
+      setStep("preview");
+      return;
     }
 
     if (!abortMatchRef.current) {
@@ -337,8 +567,10 @@ export function BatchImportModal({
     updated[index].matchedGame = null;
     updated[index].matchedTags = [];
     updated[index].matchSource = null;
+    updated[index].matchError = "";
     updated[index].metadataDuplicateExistingId = undefined;
     updated[index].metadataDuplicateExistingName = undefined;
+    setMatchPauseMessage("");
     setCandidates(updated);
   };
 
@@ -384,6 +616,7 @@ export function BatchImportModal({
         matchedTags: match.Tags || [],
         matchSource: match.Source,
         matchStatus: "manual",
+        matchError: "",
       };
       try {
         const [candidateWithHint] = await applyMetadataDuplicateHints([
@@ -437,6 +670,7 @@ export function BatchImportModal({
       matchedTags: [],
       matchSource: null,
       matchStatus: "not_found",
+      matchError: "",
       metadataDuplicateExistingId: undefined,
       metadataDuplicateExistingName: undefined,
     };
@@ -452,6 +686,7 @@ export function BatchImportModal({
     setCandidates([]);
     setSkippedCandidates([]);
     setImportResult(null);
+    setMatchPauseMessage("");
     setMatchProgress({ current: 0, total: 0, gameName: "" });
     closeManualSelect();
     onClose();
@@ -468,6 +703,10 @@ export function BatchImportModal({
   const pendingCount = candidates.filter(
     c => c.isSelected && c.matchStatus === "pending",
   ).length;
+  const errorCount = candidates.filter(
+    c => c.isSelected && c.matchStatus === "error",
+  ).length;
+  const matchableCount = pendingCount + errorCount;
   const hierarchyLevel = hierarchyDepth + 1;
   const scanPresetItems = [
     {
@@ -635,6 +874,7 @@ export function BatchImportModal({
             matchedCount={matchedCount}
             notFoundCount={notFoundCount}
             pendingCount={pendingCount}
+            canStartMatch={matchableCount > 0}
             labels={{
               detected: t("batchImportModal.detected"),
               matched: t("batchImportModal.matched"),
@@ -648,7 +888,10 @@ export function BatchImportModal({
               matchStatus: t("batchImportModal.matchStatus"),
               action: t("common.action"),
               empty: t("batchImportModal.noFolderDetected"),
-              startMatching: t("batchImportModal.startMatching"),
+              startMatching:
+                errorCount > 0
+                  ? t("batchImportModal.continueMatching")
+                  : t("batchImportModal.startMatching"),
               importCount: count =>
                 t("batchImportModal.importCount", { count }),
               leftAction: `← ${t("batchImportModal.reselect")}`,
@@ -669,6 +912,35 @@ export function BatchImportModal({
               skippedPath: t("batchImportModal.skippedExistingPath"),
               closeSkippedModal: t("common.confirm"),
             }}
+            toolbar={
+              matchPauseMessage ? (
+                <div className="flex items-start gap-2 rounded-lg border border-warning-300 bg-warning-50 px-4 py-3 text-sm text-warning-800 dark:border-warning-700 dark:bg-warning-900/25 dark:text-warning-200">
+                  <div className="i-mdi-pause-circle-outline mt-0.5 shrink-0 text-lg" />
+                  <span>{matchPauseMessage}</span>
+                </div>
+              ) : undefined
+            }
+            actionToolbar={
+              matchableCount > 0 ? (
+                <div
+                  className="flex w-full flex-col gap-2 sm:h-11 sm:w-auto sm:flex-row sm:items-stretch sm:gap-0"
+                  title={t("batchImportModal.preferredSource.hint")}
+                >
+                  <div className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-brand-200 bg-white/80 px-3 text-xs font-medium text-brand-600 shadow-sm dark:border-brand-700 dark:bg-brand-800/60 dark:text-brand-300 sm:rounded-r-none sm:border-r-0">
+                    <div className="i-mdi-database-search-outline text-base text-brand-400 dark:text-brand-400" />
+                    <span>{t("batchImportModal.preferredSource.label")}</span>
+                  </div>
+                  <BetterSelect
+                    value={preferredSource}
+                    onChange={source =>
+                      setPreferredSource(source as PreferredSourceValue)}
+                    options={preferredSourceOptions}
+                    className="w-full sm:h-11 sm:w-40"
+                    buttonClassName="h-11 rounded-lg py-0 text-sm shadow-sm sm:rounded-l-none"
+                  />
+                </div>
+              ) : undefined
+            }
             theme={{
               detectedCardClassName: "bg-neutral-50 dark:bg-neutral-900/20",
               detectedValueClassName: "text-neutral-600 dark:text-neutral-400",

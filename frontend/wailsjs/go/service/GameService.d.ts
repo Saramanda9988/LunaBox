@@ -38,6 +38,8 @@ export function OpenLocalPath(arg1:string):Promise<void>;
 
 export function RefreshAllGamesMetadata():Promise<vo.MetadataRefreshResult>;
 
+export function RefreshGamesMetadata(arg1:Array<string>):Promise<vo.MetadataRefreshResult>;
+
 export function ResolveExecutablePathForImport(arg1:string):Promise<string>;
 
 export function SaveCoverImageDataURL(arg1:string,arg2:string):Promise<string>;

@@ -51,9 +51,11 @@ interface ImportPreviewStepProps {
   matchedCount: number;
   notFoundCount: number;
   pendingCount: number;
+  canStartMatch?: boolean;
   labels: ImportPreviewLabels;
   theme: ImportPreviewTheme;
   toolbar?: ReactNode;
+  actionToolbar?: ReactNode;
   onLeftAction?: () => void;
   onStartMatch: () => void;
   onImport: () => void;
@@ -72,9 +74,11 @@ export function ImportPreviewStep({
   matchedCount,
   notFoundCount,
   pendingCount,
+  canStartMatch = pendingCount > 0,
   labels,
   theme,
   toolbar,
+  actionToolbar,
   onLeftAction,
   onStartMatch,
   onImport,
@@ -149,6 +153,19 @@ export function ImportPreviewStep({
                 </div>
               )}
             </>
+          )}
+          {candidate.matchError && (
+            <div
+              className={`mt-1 flex min-w-0 items-center gap-1 text-xs ${
+                candidate.matchStatus === "error"
+                  ? "text-error-600 dark:text-error-300"
+                  : "text-orange-600 dark:text-orange-300"
+              }`}
+              title={candidate.matchError}
+            >
+              <div className="i-mdi-alert-circle-outline shrink-0" />
+              <span className="truncate">{candidate.matchError}</span>
+            </div>
           )}
         </div>
       ),
@@ -234,8 +251,6 @@ export function ImportPreviewStep({
 
   return (
     <div className="space-y-4">
-      {toolbar}
-
       {hasDetectedItems && (
         <div className="flex gap-4">
           <div
@@ -281,6 +296,8 @@ export function ImportPreviewStep({
         </div>
       )}
 
+      {toolbar}
+
       {skippedCount > 0 && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 dark:border-yellow-800/80 dark:bg-yellow-900/20">
           <div className="flex min-w-0 items-center gap-3">
@@ -318,36 +335,39 @@ export function ImportPreviewStep({
         rowClassName={candidate => (candidate.isSelected ? "" : "opacity-50")}
       />
 
-      <div className="flex justify-between">
-        <div>
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <div className="shrink-0">
           {onLeftAction && labels.leftAction && (
             <button
               type="button"
               onClick={onLeftAction}
-              className="rounded-lg border border-brand-300 px-5 py-2.5 text-sm font-medium text-brand-700 hover:bg-brand-100 dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-700"
+              className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-brand-300 px-4 text-sm font-medium text-brand-700 hover:bg-brand-100 dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-700 sm:w-auto"
             >
               {labels.leftAction}
             </button>
           )}
         </div>
-        <div className="flex gap-3">
-          {pendingCount > 0 && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+          {actionToolbar}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            {canStartMatch && (
+              <button
+                type="button"
+                onClick={onStartMatch}
+                className={`inline-flex h-11 w-full items-center justify-center whitespace-nowrap rounded-lg px-4 text-sm font-medium text-white sm:w-auto ${theme.startMatchButtonClassName}`}
+              >
+                {labels.startMatching}
+              </button>
+            )}
             <button
               type="button"
-              onClick={onStartMatch}
-              className={`rounded-lg px-5 py-2.5 text-sm font-medium text-white ${theme.startMatchButtonClassName}`}
+              onClick={onImport}
+              disabled={selectedCount === 0}
+              className={`inline-flex h-11 w-full items-center justify-center whitespace-nowrap rounded-lg px-4 text-sm font-medium text-white disabled:opacity-50 sm:w-auto ${theme.importButtonClassName}`}
             >
-              {labels.startMatching}
+              {labels.importCount(selectedCount)}
             </button>
-          )}
-          <button
-            type="button"
-            onClick={onImport}
-            disabled={selectedCount === 0}
-            className={`rounded-lg px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50 ${theme.importButtonClassName}`}
-          >
-            {labels.importCount(selectedCount)}
-          </button>
+          </div>
         </div>
       </div>
 

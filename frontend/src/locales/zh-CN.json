@@ -217,6 +217,15 @@
     },
     "manualSelect": "手动选择",
     "startMatching": "开始匹配元数据",
+    "continueMatching": "继续匹配元数据",
+    "retryFailed": "重新匹配失败项",
+    "preferredSource": {
+      "label": "偏好数据源",
+      "none": "不指定",
+      "hint": "不指定时会按普通逻辑尝试所有数据源；指定后该数据源必须成功匹配。未找到不算失败，限流或连续异常会暂停批量匹配。",
+      "rateLimitedPause": "{{source}} 返回限流，已暂停匹配：{{error}}",
+      "consecutiveFailurePause": "{{source}} 已连续 {{count}} 次匹配失败，已暂停匹配：{{error}}"
+    },
     "importCount": "导入 {{count}} 个游戏",
     "metadataExists": "元数据已存在：{{name}}",
     "skippedExistingSummary": "已在扫描阶段跳过 {{count}} 个已存在游戏",
@@ -767,6 +776,18 @@
       "refreshHint": "按当前启用来源批量刷新库内游戏的名称、简介、厂商、封面和标签。",
       "refreshButton": "更新全部游戏元数据",
       "refreshing": "更新中...",
+      "progress": {
+        "title": "正在更新游戏元数据",
+        "doneTitle": "游戏元数据更新完成",
+        "failedTitle": "部分游戏元数据更新失败",
+        "preparing": "准备中...",
+        "hint": "请等待当前批量更新完成。图片会在更新后加入下载管理。",
+        "updated": "成功",
+        "failed": "失败",
+        "skipped": "跳过",
+        "locked": "锁定",
+        "retryFailed": "重试失败项（{{count}}）"
+      },
       "modal": {
         "refreshTitle": "确认全量更新元数据",
         "refreshMessage": "将按当前启用来源批量更新数据库中所有可更新游戏的元数据。此操作可能耗时较长，是否继续？"

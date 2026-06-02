@@ -3,7 +3,10 @@ import type { MetadataRefreshProgress } from "../modal/MetadataRefreshProgressMo
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { RefreshAllGamesMetadata } from "../../../wailsjs/go/service/GameService";
+import {
+  RefreshAllGamesMetadata,
+  RefreshGamesMetadata,
+} from "../../../wailsjs/go/service/GameService";
 import { EventsOn } from "../../../wailsjs/runtime/runtime";
 import { ConfirmModal } from "../modal/ConfirmModal";
 import { MetadataRefreshProgressModal } from "../modal/MetadataRefreshProgressModal";
@@ -22,6 +25,41 @@ const VALID_METADATA_SOURCES = [
   "erogamescape",
 ];
 const DEFAULT_SCRAPED_TAG_LIMIT = 10;
+
+function createMetadataRefreshProgress(
+  status = "idle",
+): MetadataRefreshProgress {
+  return {
+    status,
+    current: 0,
+    total: 0,
+    game_name: "",
+    updated_games: 0,
+    skipped_games: 0,
+    failed_games: 0,
+    locked_games: 0,
+    failed_game_ids: [],
+    failed_game_names: [],
+  };
+}
+
+function metadataResultToProgress(
+  result: vo.MetadataRefreshResult,
+  status: string,
+): MetadataRefreshProgress {
+  return {
+    status,
+    current: result.total_games,
+    total: result.total_games,
+    game_name: "",
+    updated_games: result.updated_games,
+    skipped_games: result.skipped_games,
+    failed_games: result.failed_games,
+    locked_games: result.locked_games,
+    failed_game_ids: result.failed_game_ids || [],
+    failed_game_names: result.failed_game_names || [],
+  };
+}
 
 function normalizeMetadataSources(sources?: string[]): string[] {
   const validSourceSet = new Set(VALID_METADATA_SOURCES);
@@ -44,17 +82,9 @@ export function MetadataSettingsPanel({
 }: MetadataSettingsPanelProps) {
   const { t } = useTranslation();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRefreshModalOpen, setIsRefreshModalOpen] = useState(false);
   const [refreshProgress, setRefreshProgress]
-    = useState<MetadataRefreshProgress>({
-      status: "idle",
-      current: 0,
-      total: 0,
-      game_name: "",
-      updated_games: 0,
-      skipped_games: 0,
-      failed_games: 0,
-      locked_games: 0,
-    });
+    = useState<MetadataRefreshProgress>(() => createMetadataRefreshProgress());
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -80,7 +110,11 @@ export function MetadataSettingsPanel({
     const unsubscribe = EventsOn(
       "metadata:refresh-progress",
       (evt: MetadataRefreshProgress) => {
-        setRefreshProgress(evt);
+        setRefreshProgress({
+          ...evt,
+          failed_game_ids: evt.failed_game_ids || [],
+          failed_game_names: evt.failed_game_names || [],
+        });
       },
     );
 
@@ -153,6 +187,50 @@ export function MetadataSettingsPanel({
     } as appconf.AppConfig);
   };
 
+  const runMetadataRefresh = async (gameIDs?: string[]) => {
+    if (isRefreshing) {
+      return;
+    }
+
+    const retryIDs = (gameIDs || []).filter(id => id.trim() !== "");
+
+    setIsRefreshing(true);
+    setIsRefreshModalOpen(true);
+    setRefreshProgress(
+      createMetadataRefreshProgress(
+        retryIDs.length > 0 ? "retrying" : "started",
+      ),
+    );
+
+    try {
+      const refreshResult: vo.MetadataRefreshResult
+        = retryIDs.length > 0
+          ? await RefreshGamesMetadata(retryIDs)
+          : await RefreshAllGamesMetadata();
+
+      setRefreshProgress(metadataResultToProgress(refreshResult, "done"));
+      toast.success(
+        t("settings.metadata.toast.refreshSuccess", {
+          updated: refreshResult.updated_games,
+          failed: refreshResult.failed_games,
+          skipped: refreshResult.skipped_games,
+          locked: refreshResult.locked_games,
+        }),
+      );
+
+      if (refreshResult.failed_games === 0) {
+        setIsRefreshModalOpen(false);
+      }
+    }
+    catch (err) {
+      toast.error(t("settings.metadata.toast.refreshFailed", { error: err }));
+      setIsRefreshModalOpen(false);
+    }
+    finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const handleRefreshAllMetadata = () => {
     if (isRefreshing) {
       return;
@@ -163,40 +241,23 @@ export function MetadataSettingsPanel({
       title: t("settings.metadata.modal.refreshTitle"),
       message: t("settings.metadata.modal.refreshMessage"),
       type: "danger",
-      onConfirm: async () => {
-        setIsRefreshing(true);
-        setRefreshProgress({
-          status: "started",
-          current: 0,
-          total: 0,
-          game_name: "",
-          updated_games: 0,
-          skipped_games: 0,
-          failed_games: 0,
-          locked_games: 0,
-        });
-        try {
-          const refreshResult: vo.MetadataRefreshResult
-            = await RefreshAllGamesMetadata();
-          toast.success(
-            t("settings.metadata.toast.refreshSuccess", {
-              updated: refreshResult.updated_games,
-              failed: refreshResult.failed_games,
-              skipped: refreshResult.skipped_games,
-              locked: refreshResult.locked_games,
-            }),
-          );
-        }
-        catch (err) {
-          toast.error(
-            t("settings.metadata.toast.refreshFailed", { error: err }),
-          );
-        }
-        finally {
-          setIsRefreshing(false);
-        }
+      onConfirm: () => {
+        void runMetadataRefresh();
       },
     });
+  };
+
+  const handleRetryFailedMetadata = () => {
+    if (isRefreshing) {
+      return;
+    }
+
+    const failedIDs = refreshProgress.failed_game_ids || [];
+    if (failedIDs.length === 0) {
+      return;
+    }
+
+    void runMetadataRefresh(failedIDs);
   };
 
   const handleTagLimitChange = (value: string) => {
@@ -372,8 +433,11 @@ export function MetadataSettingsPanel({
         onConfirm={confirmConfig.onConfirm}
       />
       <MetadataRefreshProgressModal
-        isOpen={isRefreshing}
+        isOpen={isRefreshModalOpen}
         progress={refreshProgress}
+        isRefreshing={isRefreshing}
+        onRetryFailed={handleRetryFailedMetadata}
+        onClose={() => setIsRefreshModalOpen(false)}
       />
     </>
   );

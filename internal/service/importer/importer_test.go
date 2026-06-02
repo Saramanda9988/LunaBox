@@ -1,6 +1,7 @@
 package importer
 
 import (
+	"encoding/json"
 	"lunabox/internal/common/enums"
 	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
@@ -170,6 +171,26 @@ func TestVniteGamePathFallsBackToGamePath(t *testing.T) {
 
 	if got := pickVniteGamePath(localDoc); got != localDoc.Path.GamePath {
 		t.Fatalf("expected fallback gamePath %q, got %q", localDoc.Path.GamePath, got)
+	}
+}
+
+func TestVniteGamePathFallsBackToMarkPath(t *testing.T) {
+	const rawLocalDoc = `{
+		"path": {"gamePath": "", "savePaths": []},
+		"launcher": {
+			"mode": "file",
+			"fileConfig": {"path": "", "args": [], "monitorMode": "folder", "monitorPath": ""}
+		},
+		"utils": {"markPath": "D:\\Games\\unplayed-folder"}
+	}`
+
+	var localDoc vnite.GameLocalDoc
+	if err := json.Unmarshal([]byte(rawLocalDoc), &localDoc); err != nil {
+		t.Fatalf("unmarshal local doc: %v", err)
+	}
+
+	if got := pickVniteGamePath(localDoc); got != localDoc.Utils.MarkPath {
+		t.Fatalf("expected markPath fallback %q, got %q", localDoc.Utils.MarkPath, got)
 	}
 }
 

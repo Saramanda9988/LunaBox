@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 )
@@ -87,5 +88,25 @@ func TestVNDBDefaultPolicyIsConservativeForLongBatches(t *testing.T) {
 	}
 	if policy.RateLimitRetryDelay != time.Minute {
 		t.Fatalf("expected VNDB retry delay to be 1m, got %s", policy.RateLimitRetryDelay)
+	}
+}
+
+func TestIsRateLimitError(t *testing.T) {
+	cases := []error{
+		errors.New("vndb metadata request remained rate limited after retry: status 429"),
+		errors.New("VNDB API returned status: 429"),
+		errors.New("too many requests"),
+		errors.New("limit exceeded by upstream"),
+		errors.New("request was throttled"),
+	}
+
+	for _, err := range cases {
+		if !IsRateLimitError(err) {
+			t.Fatalf("expected rate limit error for %q", err.Error())
+		}
+	}
+
+	if IsRateLimitError(errors.New("no results found")) {
+		t.Fatal("did not expect no-result errors to be treated as rate limits")
 	}
 }

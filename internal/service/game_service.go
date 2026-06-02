@@ -1210,25 +1210,63 @@ func (s *GameService) emitMetadataRefreshProgress(result vo.MetadataRefreshResul
 		return
 	}
 	s.emitEvent(s.ctx, "metadata:refresh-progress", map[string]interface{}{
-		"status":        status,
-		"current":       current,
-		"total":         result.TotalGames,
-		"game_name":     gameName,
-		"updated_games": result.UpdatedGames,
-		"skipped_games": result.SkippedGames,
-		"failed_games":  result.FailedGames,
-		"locked_games":  result.LockedGames,
+		"status":            status,
+		"current":           current,
+		"total":             result.TotalGames,
+		"game_name":         gameName,
+		"updated_games":     result.UpdatedGames,
+		"skipped_games":     result.SkippedGames,
+		"failed_games":      result.FailedGames,
+		"locked_games":      result.LockedGames,
+		"failed_game_ids":   result.FailedGameIDs,
+		"failed_game_names": result.FailedGameNames,
 	})
 }
 
 func (s *GameService) RefreshAllGamesMetadata() (vo.MetadataRefreshResult, error) {
-	result := vo.MetadataRefreshResult{}
-
 	games, err := s.listAllGamesInternal()
 	if err != nil {
-		return result, fmt.Errorf("failed to get games: %w", err)
+		return newMetadataRefreshResult(), fmt.Errorf("failed to get games: %w", err)
 	}
 
+	return s.refreshGamesMetadata(games, "RefreshAllGamesMetadata")
+}
+
+func (s *GameService) RefreshGamesMetadata(gameIDs []string) (vo.MetadataRefreshResult, error) {
+	gameIDs = utils.UniqueNonEmptyStrings(gameIDs)
+	if len(gameIDs) == 0 {
+		return newMetadataRefreshResult(), nil
+	}
+
+	allGames, err := s.listAllGamesInternal()
+	if err != nil {
+		return newMetadataRefreshResult(), fmt.Errorf("failed to get games: %w", err)
+	}
+
+	idSet := make(map[string]struct{}, len(gameIDs))
+	for _, id := range gameIDs {
+		idSet[id] = struct{}{}
+	}
+
+	games := make([]models.Game, 0, len(gameIDs))
+	for _, game := range allGames {
+		if _, ok := idSet[game.ID]; ok {
+			games = append(games, game)
+		}
+	}
+
+	return s.refreshGamesMetadata(games, "RefreshGamesMetadata")
+}
+
+func newMetadataRefreshResult() vo.MetadataRefreshResult {
+	return vo.MetadataRefreshResult{
+		FailedGameIDs:   []string{},
+		FailedGameNames: []string{},
+	}
+}
+
+func (s *GameService) refreshGamesMetadata(games []models.Game, logPrefix string) (vo.MetadataRefreshResult, error) {
+	result := newMetadataRefreshResult()
 	result.TotalGames = len(games)
 	enabledSources := s.getConfiguredMetadataSourceSet()
 	imageItems := make([]CoverImageDownloadItem, 0)
@@ -1260,7 +1298,9 @@ func (s *GameService) RefreshAllGamesMetadata() (vo.MetadataRefreshResult, error
 		remoteCoverURL, err := s.updateGameMetadataFromRemote(game.ID, false)
 		if err != nil {
 			result.FailedGames++
-			applog.LogWarningf(s.ctx, "RefreshAllGamesMetadata: failed to update game %s (%s): %v", game.Name, game.ID, err)
+			result.FailedGameIDs = append(result.FailedGameIDs, game.ID)
+			result.FailedGameNames = append(result.FailedGameNames, game.Name)
+			applog.LogWarningf(s.ctx, "%s: failed to update game %s (%s): %v", logPrefix, game.Name, game.ID, err)
 		} else {
 			result.UpdatedGames++
 			if remoteCoverURL != "" {

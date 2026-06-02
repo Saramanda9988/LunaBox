@@ -62,6 +62,10 @@ export function RefreshAllGamesMetadata() {
   return window['go']['service']['GameService']['RefreshAllGamesMetadata']();
 }
 
+export function RefreshGamesMetadata(arg1) {
+  return window['go']['service']['GameService']['RefreshGamesMetadata'](arg1);
+}
+
 export function ResolveExecutablePathForImport(arg1) {
   return window['go']['service']['GameService']['ResolveExecutablePathForImport'](arg1);
 }

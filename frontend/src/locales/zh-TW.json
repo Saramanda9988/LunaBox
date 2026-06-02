@@ -217,6 +217,15 @@
     },
     "manualSelect": "手動選擇",
     "startMatching": "開始匹配後設資料",
+    "continueMatching": "繼續匹配後設資料",
+    "retryFailed": "重新匹配失敗項",
+    "preferredSource": {
+      "label": "偏好資料源",
+      "none": "不指定",
+      "hint": "不指定時會按普通邏輯嘗試所有資料源；指定後此資料源必須成功匹配。未找到不算失敗，限流或連續異常會暫停批次匹配。",
+      "rateLimitedPause": "{{source}} 返回限流，已暫停匹配：{{error}}",
+      "consecutiveFailurePause": "{{source}} 已連續 {{count}} 次匹配失敗，已暫停匹配：{{error}}"
+    },
     "importCount": "匯入 {{count}} 個遊戲",
     "metadataExists": "後設資料已存在：{{name}}",
     "skippedExistingSummary": "已在掃描階段跳過 {{count}} 個已存在遊戲",
@@ -767,6 +776,18 @@
       "refreshHint": "按當前啟用來源批次重新整理庫內遊戲的名稱、簡介、廠商、封面和標籤。",
       "refreshButton": "更新全部遊戲後設資料",
       "refreshing": "更新中...",
+      "progress": {
+        "title": "正在更新遊戲後設資料",
+        "doneTitle": "遊戲後設資料更新完成",
+        "failedTitle": "部分遊戲後設資料更新失敗",
+        "preparing": "準備中...",
+        "hint": "請等待當前批次更新完成。圖片會在更新後加入下載管理。",
+        "updated": "成功",
+        "failed": "失敗",
+        "skipped": "跳過",
+        "locked": "鎖定",
+        "retryFailed": "重試失敗項（{{count}}）"
+      },
       "modal": {
         "refreshTitle": "確認全量更新後設資料",
         "refreshMessage": "將按當前啟用來源批次更新資料庫中所有可更新遊戲的後設資料。此操作可能耗時較長，是否繼續？"
