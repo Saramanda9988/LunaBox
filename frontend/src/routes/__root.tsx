@@ -22,15 +22,6 @@ function RootLayout() {
   const bgBlur = config?.background_blur ?? 10;
   const bgOpacity = config?.background_opacity ?? 0.85;
   const zoomFactor = normalizeAppZoomFactor(config?.window_zoom_factor);
-  const zoomStyle
-    = zoomFactor === 1
-      ? undefined
-      : ({
-          height: `${100 / zoomFactor}%`,
-          transform: `scale(${zoomFactor})`,
-          transformOrigin: "top left",
-          width: `${100 / zoomFactor}%`,
-        } satisfies React.CSSProperties);
 
   useEffect(() => {
     OnFileDrop((_x: number, _y: number, paths: string[]) => {
@@ -115,13 +106,10 @@ function RootLayout() {
 
       <div className="relative flex h-full w-full flex-col text-brand-900 dark:text-brand-100">
         <TopBar />
-        <AppToaster topOffset={TOPBAR_HEIGHT + 12} />
+        <AppToaster topOffset={(TOPBAR_HEIGHT + 12) * zoomFactor} />
 
         <div className="relative flex-1 overflow-hidden">
-          <div
-            className="absolute left-0 top-0 h-full w-full shrink-0"
-            style={zoomStyle}
-          >
+          <div className="absolute left-0 top-0 h-full w-full shrink-0">
             <div className="flex h-full w-full overflow-hidden">
               <SideBar bgEnabled={!!bgEnabled} bgOpacity={bgOpacity} />
               <main

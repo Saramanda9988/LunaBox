@@ -4,17 +4,25 @@ import { useTranslation } from "react-i18next";
 
 import type { appconf } from "../../wailsjs/go/models";
 
-import { DEFAULT_APP_ZOOM, getNextAppZoomFactor, normalizeAppZoomFactor } from "../consts/options";
+import {
+  DEFAULT_APP_ZOOM,
+  getNextAppZoomFactor,
+  normalizeAppZoomFactor,
+} from "../consts/options";
+
+const BASE_FONT_SIZE = 16;
 
 function isEditableTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) {
     return false;
   }
 
-  return target.isContentEditable
+  return (
+    target.isContentEditable
     || target.tagName === "INPUT"
     || target.tagName === "TEXTAREA"
-    || target.tagName === "SELECT";
+    || target.tagName === "SELECT"
+  );
 }
 
 type UseAppZoomOptions = {
@@ -26,12 +34,24 @@ export function useAppZoom({ config, patchLiveConfig }: UseAppZoomOptions) {
   const { t } = useTranslation();
 
   useEffect(() => {
+    const zoomFactor = normalizeAppZoomFactor(config?.window_zoom_factor);
+    const root = document.documentElement;
+    root.style.fontSize = `${BASE_FONT_SIZE * zoomFactor}px`;
+    root.style.setProperty("--app-zoom-factor", String(zoomFactor));
+    window.dispatchEvent(new CustomEvent("app-zoom-change"));
+  }, [config?.window_zoom_factor]);
+
+  useEffect(() => {
     if (!config) {
       return;
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if ((!event.ctrlKey && !event.metaKey) || event.altKey || isEditableTarget(event.target)) {
+      if (
+        (!event.ctrlKey && !event.metaKey)
+        || event.altKey
+        || isEditableTarget(event.target)
+      ) {
         return;
       }
 
@@ -41,10 +61,18 @@ export function useAppZoom({ config, patchLiveConfig }: UseAppZoomOptions) {
       if (event.key === "0") {
         nextZoom = DEFAULT_APP_ZOOM;
       }
-      else if (event.key === "=" || event.key === "+" || event.code === "NumpadAdd") {
+      else if (
+        event.key === "="
+        || event.key === "+"
+        || event.code === "NumpadAdd"
+      ) {
         nextZoom = getNextAppZoomFactor(currentZoom, 1);
       }
-      else if (event.key === "-" || event.key === "_" || event.code === "NumpadSubtract") {
+      else if (
+        event.key === "-"
+        || event.key === "_"
+        || event.code === "NumpadSubtract"
+      ) {
         nextZoom = getNextAppZoomFactor(currentZoom, -1);
       }
       else {
@@ -57,9 +85,14 @@ export function useAppZoom({ config, patchLiveConfig }: UseAppZoomOptions) {
 
       event.preventDefault();
       void patchLiveConfig({ window_zoom_factor: nextZoom });
-      toast.success(t("settings.basic.zoomToast", { value: `${Math.round(nextZoom * 100)}%` }), {
-        id: "app-zoom-changed",
-      });
+      toast.success(
+        t("settings.basic.zoomToast", {
+          value: `${Math.round(nextZoom * 100)}%`,
+        }),
+        {
+          id: "app-zoom-changed",
+        },
+      );
     };
 
     window.addEventListener("keydown", handleKeyDown);

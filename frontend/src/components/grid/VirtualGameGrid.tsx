@@ -14,10 +14,24 @@ import {
 import { findScrollParent } from "../../utils/scroll";
 import { GameCard } from "../card/GameCard";
 
-const CARD_MIN_WIDTH = 140;
-const GRID_GAP = 12;
+const DEFAULT_ROOT_FONT_SIZE = 16;
+const CARD_MIN_WIDTH_REM = 8.75;
+const GRID_GAP_REM = 0.75;
 const CARD_IMAGE_ASPECT_RATIO = 3.6 / 3;
-const CARD_META_HEIGHT = 56;
+const CARD_META_HEIGHT_REM = 3.5;
+
+function getRootFontSize() {
+  if (typeof window === "undefined") {
+    return DEFAULT_ROOT_FONT_SIZE;
+  }
+
+  const fontSize = Number.parseFloat(
+    window.getComputedStyle(document.documentElement).fontSize,
+  );
+  return Number.isFinite(fontSize) && fontSize > 0
+    ? fontSize
+    : DEFAULT_ROOT_FONT_SIZE;
+}
 
 interface VirtualGameGridProps {
   gamesByIndex: ReadonlyMap<number, models.Game>;
@@ -98,6 +112,7 @@ export function VirtualGameGrid({
   const lastVisibleRangeRef = useRef("");
   const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [rootFontSize, setRootFontSize] = useState(getRootFontSize);
   const [scrollMargin, setScrollMargin] = useState(0);
   const scrollEntry = useElementScrollRestoration({
     id: scrollRestorationId,
@@ -113,6 +128,7 @@ export function VirtualGameGrid({
       const nextScrollElement = findScrollParent(element);
       setScrollElement(nextScrollElement);
       setContainerWidth(element.clientWidth);
+      setRootFontSize(getRootFontSize());
       setScrollMargin(() => {
         if (!nextScrollElement) {
           return 0;
@@ -131,22 +147,27 @@ export function VirtualGameGrid({
       observer.observe(element.parentElement);
     }
     window.addEventListener("resize", updateLayout);
+    window.addEventListener("app-zoom-change", updateLayout);
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", updateLayout);
+      window.removeEventListener("app-zoom-change", updateLayout);
     };
   }, []);
 
+  const cardMinWidth = CARD_MIN_WIDTH_REM * rootFontSize;
+  const gridGap = GRID_GAP_REM * rootFontSize;
+  const cardMetaHeight = CARD_META_HEIGHT_REM * rootFontSize;
   const columnCount = Math.max(
     1,
-    Math.floor((containerWidth + GRID_GAP) / (CARD_MIN_WIDTH + GRID_GAP)),
+    Math.floor((containerWidth + gridGap) / (cardMinWidth + gridGap)),
   );
   const cardWidth
     = columnCount > 0
-      ? (containerWidth - GRID_GAP * (columnCount - 1)) / columnCount
-      : CARD_MIN_WIDTH;
+      ? (containerWidth - gridGap * (columnCount - 1)) / columnCount
+      : cardMinWidth;
   const rowHeight = Math.ceil(
-    cardWidth * CARD_IMAGE_ASPECT_RATIO + CARD_META_HEIGHT,
+    cardWidth * CARD_IMAGE_ASPECT_RATIO + cardMetaHeight,
   );
   const rowCount = Math.ceil(totalItems / columnCount);
 
