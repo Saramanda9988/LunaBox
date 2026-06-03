@@ -466,8 +466,10 @@
     "duration": "时长:",
     "deleteRecord": "删除记录",
     "period": {
+      "day": "日",
       "week": "周",
       "month": "月",
+      "year": "年",
       "all": "全部"
     },
     "manualAdd": "手动添加",
@@ -1070,8 +1072,11 @@
   "stats": {
     "title": "统计",
     "period": {
+      "day": "日",
       "week": "周",
-      "month": "月"
+      "month": "月",
+      "year": "年",
+      "all": "全部"
     },
     "customRange": "自定义",
     "startDate": "开始日期",

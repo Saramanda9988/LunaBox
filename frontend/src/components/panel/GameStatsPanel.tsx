@@ -285,11 +285,13 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
             {/* Time Dimension Selector */}
             <SlideButton
               options={[
+                { label: t("gameStats.period.day"), value: enums.Period.DAY },
                 { label: t("gameStats.period.week"), value: enums.Period.WEEK },
                 {
                   label: t("gameStats.period.month"),
                   value: enums.Period.MONTH,
                 },
+                { label: t("gameStats.period.year"), value: enums.Period.YEAR },
                 { label: t("gameStats.period.all"), value: enums.Period.ALL },
               ]}
               value={timeDimension}

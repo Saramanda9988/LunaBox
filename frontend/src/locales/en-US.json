@@ -466,8 +466,10 @@
     "duration": "Duration:",
     "deleteRecord": "Delete Record",
     "period": {
+      "day": "Day",
       "week": "Week",
       "month": "Month",
+      "year": "Year",
       "all": "All"
     },
     "manualAdd": "Add Manually",
@@ -1070,8 +1072,11 @@
   "stats": {
     "title": "Statistics",
     "period": {
+      "day": "Day",
       "week": "Week",
-      "month": "Month"
+      "month": "Month",
+      "year": "Year",
+      "all": "All"
     },
     "customRange": "Custom",
     "startDate": "Start Date",

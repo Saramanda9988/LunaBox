@@ -76,7 +76,7 @@ func (b *AIStatsBuilder) Build(dimension enums.Period) (*AIStatsData, error) {
 	}
 
 	switch dimension {
-	case enums.Day, enums.Week, enums.Month:
+	case enums.Day, enums.Week, enums.Month, enums.Year, enums.All:
 	default:
 		dimension = enums.Week
 	}
@@ -105,12 +105,25 @@ func (b *AIStatsBuilder) Build(dimension enums.Period) (*AIStatsData, error) {
 	case enums.Month:
 		startDateExpr = "current_date - INTERVAL 29 DAY"
 		startDate = now.AddDate(0, 0, -29)
+	case enums.Year:
+		startDateExpr = "current_date - INTERVAL 364 DAY"
+		startDate = now.AddDate(0, 0, -364)
+	case enums.All:
+		startDateExpr = "(SELECT COALESCE(MIN(start_time::DATE), current_date) FROM play_sessions)"
+		startDate = time.Time{} // will be set from DB
 	default:
 		startDateExpr = "current_date - INTERVAL 6 DAY"
 		startDate = now.AddDate(0, 0, -6)
 	}
 
-	data.StartDate = startDate.Format("2006-01-02")
+	if dimension == enums.All {
+		var actualStart string
+		if err := b.db.QueryRowContext(b.ctx, "SELECT COALESCE(MIN(start_time::DATE), current_date) FROM play_sessions").Scan(&actualStart); err == nil {
+			data.StartDate = actualStart
+		}
+	} else {
+		data.StartDate = startDate.Format("2006-01-02")
+	}
 	data.EndDate = now.Format("2006-01-02")
 	data.DateRange = fmt.Sprintf("%s 至 %s", data.StartDate, data.EndDate)
 

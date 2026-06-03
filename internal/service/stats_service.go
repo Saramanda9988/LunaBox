@@ -126,6 +126,10 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 	} else {
 		// 使用默认范围
 		switch req.Dimension {
+		case enums.Day:
+			// 日维度：最近7天
+			startDate = "current_date - INTERVAL 6 DAY"
+			endDate = "current_date"
 		case enums.Week:
 			// 周：最近7天
 			startDate = "current_date - INTERVAL 6 DAY"
@@ -134,9 +138,13 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 			// 月：最近30天
 			startDate = "current_date - INTERVAL 29 DAY"
 			endDate = "current_date"
+		case enums.Year:
+			// 年：最近365天
+			startDate = "current_date - INTERVAL 364 DAY"
+			endDate = "current_date"
 		case enums.All:
 			// 所有记录：从第一条记录到现在
-			startDate = "(SELECT MIN(start_time::DATE) FROM play_sessions WHERE game_id = ?)"
+			startDate = "(SELECT COALESCE(MIN(start_time::DATE), current_date) FROM play_sessions WHERE game_id = ?)"
 			endDate = "current_date"
 		default:
 			return stats, fmt.Errorf("invalid dimension: %s", req.Dimension)
@@ -272,6 +280,14 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 			// 月：最近30天
 			startDate = "current_date - INTERVAL 29 DAY"
 			endDate = "current_date"
+		case enums.Year:
+			// 年：最近365天
+			startDate = "current_date - INTERVAL 364 DAY"
+			endDate = "current_date"
+		case enums.All:
+			// 所有记录：从第一条记录到现在
+			startDate = "(SELECT COALESCE(MIN(start_time::DATE), current_date) FROM play_sessions)"
+			endDate = "current_date"
 		default:
 			return stats, fmt.Errorf("invalid dimension: %s", req.Dimension)
 		}
@@ -295,6 +311,22 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 		endDateExpr = endDate
 		seriesStart = startDate
 		seriesEnd = endDate
+		// 获取实际日期范围用于显示
+		if req.Dimension == enums.All {
+			var actualStart, actualEnd string
+			err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(MIN(start_time::DATE), current_date), current_date FROM play_sessions").Scan(&actualStart, &actualEnd)
+			if err == nil {
+				stats.StartDate = actualStart
+				stats.EndDate = actualEnd
+			}
+		} else {
+			var actualStart, actualEnd string
+			err := s.db.QueryRowContext(s.ctx, fmt.Sprintf("SELECT %s, %s", startDateExpr, endDateExpr)).Scan(&actualStart, &actualEnd)
+			if err == nil {
+				stats.StartDate = actualStart
+				stats.EndDate = actualEnd
+			}
+		}
 	}
 
 	// 总游玩次数和时长

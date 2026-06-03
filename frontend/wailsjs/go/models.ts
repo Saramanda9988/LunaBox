@@ -194,6 +194,7 @@ export namespace enums {
 	    DAY = "day",
 	    WEEK = "week",
 	    MONTH = "month",
+	    YEAR = "year",
 	    ALL = "all",
 	}
 	export enum PromptType {

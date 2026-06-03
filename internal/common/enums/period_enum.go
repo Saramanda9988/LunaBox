@@ -6,6 +6,7 @@ const (
 	Day   Period = "day"
 	Week  Period = "week"
 	Month Period = "month"
+	Year  Period = "year"
 	All   Period = "all"
 )
 
@@ -16,5 +17,6 @@ var AllPeriodTypes = []struct {
 	{Day, "DAY"},
 	{Week, "WEEK"},
 	{Month, "MONTH"},
+	{Year, "YEAR"},
 	{All, "ALL"},
 }
