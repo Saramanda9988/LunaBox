@@ -449,11 +449,9 @@
     "duration": "時間:",
     "deleteRecord": "記録を削除",
     "period": {
-      "day": "日",
       "week": "週",
       "month": "月",
-      "year": "年",
-      "all": "すべて"
+      "year": "年"
     },
     "manualAdd": "手動追加",
     "modal": {
@@ -1055,11 +1053,9 @@
   "stats": {
     "title": "統計",
     "period": {
-      "day": "日",
       "week": "週",
       "month": "月",
-      "year": "年",
-      "all": "全期間"
+      "year": "年"
     },
     "customRange": "カスタム",
     "startDate": "開始日",

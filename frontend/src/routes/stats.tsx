@@ -132,7 +132,7 @@ function StatsPage() {
       toast.error(t("stats.toast.startBeforeEnd"));
       return;
     }
-    loadStats(enums.Period.DAY, startDate, endDate);
+    loadStats(enums.Period.WEEK, startDate, endDate);
   };
 
   const handleResetDateRange = () => {
@@ -323,11 +323,9 @@ function StatsPage() {
         <div className="flex items-center space-x-4">
           <SlideButton
             options={[
-              { label: t("stats.period.day"), value: enums.Period.DAY },
               { label: t("stats.period.week"), value: enums.Period.WEEK },
               { label: t("stats.period.month"), value: enums.Period.MONTH },
               { label: t("stats.period.year"), value: enums.Period.YEAR },
-              { label: t("stats.period.all"), value: enums.Period.ALL },
             ]}
             value={customDateRange ? ("" as enums.Period) : dimension}
             onChange={(value) => {
