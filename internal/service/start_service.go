@@ -191,8 +191,6 @@ func (s *StartService) startGame(gameID string, options LaunchOptions) (bool, er
 		cmd = exec.Command(path)
 		cmd.Dir = filepath.Dir(path)
 	}
-	processutils.ConfigureDetachedCommand(cmd)
-
 	if err := cmd.Start(); err != nil {
 		applog.LogErrorf(s.ctx, "failed to start game: %v", err)
 		return false, fmt.Errorf("failed to start game: %w", err)
@@ -935,7 +933,6 @@ func (s *StartService) startMagpie() {
 	applog.LogInfof(s.ctx, "Starting Magpie in tray mode: %s", s.config.MagpiePath)
 	cmd := exec.Command(s.config.MagpiePath, "-t")
 	cmd.Dir = filepath.Dir(s.config.MagpiePath)
-	processutils.ConfigureDetachedCommand(cmd)
 
 	if err := cmd.Start(); err != nil {
 		applog.LogErrorf(s.ctx, "Failed to start Magpie: %v", err)

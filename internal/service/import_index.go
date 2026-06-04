@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"lunabox/internal/applog"
 	"lunabox/internal/common/enums"
+	"lunabox/internal/common/importpath"
 	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
 	"lunabox/internal/service/importer"
 	"lunabox/internal/utils/metadata"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -54,26 +54,11 @@ type importItem struct {
 }
 
 func normalizeImportPath(path string) string {
-	trimmed := strings.TrimSpace(path)
-	if trimmed == "" {
-		return ""
-	}
-
-	cleaned := filepath.Clean(trimmed)
-	if abs, err := filepath.Abs(cleaned); err == nil {
-		cleaned = abs
-	}
-	cleaned = strings.ReplaceAll(cleaned, "/", `\`)
-	return strings.ToLower(cleaned)
+	return importpath.Normalize(path)
 }
 
 func importPathContainsNormalized(parentPath string, childPath string) bool {
-	parentPath = strings.TrimRight(parentPath, `\`)
-	childPath = strings.TrimRight(childPath, `\`)
-	if parentPath == "" || childPath == "" || parentPath == childPath {
-		return false
-	}
-	return strings.HasPrefix(childPath, parentPath+`\`)
+	return importpath.ContainsNormalized(parentPath, childPath)
 }
 
 func normalizeImportName(name string) string {
@@ -275,7 +260,7 @@ func (s *ImportService) addImporterItems(items []importer.ImportItem) (importer.
 			item.Path = game.Path
 		}
 
-		if ref, ok := idx.findByPath(item.Path); ok {
+		if ref, ok := idx.findByPathConflict(item.Path); ok {
 			result.Skipped++
 			result.SkippedNames = append(result.SkippedNames, displayName+" (路径已存在: "+ref.Name+")")
 			continue

@@ -197,6 +197,9 @@ export function GameImportModal({
         ? "bg-sky-600 hover:bg-sky-700"
         : "bg-neutral-600 hover:bg-neutral-700";
   const importButtonClass = resultButtonClass;
+  const statusBadgeClass
+    = "inline-flex min-w-[4.5rem] items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium leading-none";
+  const statusIconClass = "flex-shrink-0 text-sm";
 
   return (
     <ModalPortal>
@@ -325,16 +328,16 @@ export function GameImportModal({
                       {t("gameImportModal.noGameData")}
                     </div>
                   ) : (
-                    <table className="w-full">
+                    <table className="w-full table-fixed">
                       <thead className="top-0 bg-brand-50 dark:bg-brand-700">
                         <tr>
-                          <th className="px-4 py-2 text-left text-sm font-medium text-brand-600 dark:text-brand-300">
+                          <th className="w-[52%] px-4 py-2 text-left text-sm font-medium text-brand-600 dark:text-brand-300">
                             {t("gameImportModal.gameName")}
                           </th>
-                          <th className="px-4 py-2 text-left text-sm font-medium text-brand-600 dark:text-brand-300">
+                          <th className="w-[32%] px-4 py-2 text-left text-sm font-medium text-brand-600 dark:text-brand-300">
                             {t("gameImportModal.developer")}
                           </th>
-                          <th className="px-4 py-2 text-center text-sm font-medium text-brand-600 dark:text-brand-300">
+                          <th className="w-32 px-4 py-2 text-center text-sm font-medium text-brand-600 dark:text-brand-300">
                             {t("common.status")}
                           </th>
                         </tr>
@@ -363,21 +366,33 @@ export function GameImportModal({
                               <td className="px-4 py-3 text-sm text-brand-500 dark:text-brand-400">
                                 {game.developer || "-"}
                               </td>
-                              <td className="px-4 py-3 text-center">
+                              <td className="w-32 px-4 py-3 text-center">
                                 {game.exists ? (
-                                  <span className="inline-flex items-center rounded-full bg-yellow-100 px-2 py-1 text-xs text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
-                                    <div className="i-mdi-check-circle mr-1" />
-                                    已存在
+                                  <span
+                                    className={`${statusBadgeClass} bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400`}
+                                  >
+                                    <div
+                                      className={`i-mdi-check-circle ${statusIconClass}`}
+                                    />
+                                    {t("gameImportModal.exists")}
                                   </span>
                                 ) : !game.has_path && skipNoPath ? (
-                                  <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-1 text-xs text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
-                                    <div className="i-mdi-close-circle mr-1" />
+                                  <span
+                                    className={`${statusBadgeClass} bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400`}
+                                  >
+                                    <div
+                                      className={`i-mdi-close-circle ${statusIconClass}`}
+                                    />
                                     {t("gameImportModal.status.skipped")}
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center rounded-full bg-success-100 px-2 py-1 text-xs text-success-700 dark:bg-success-900/30 dark:text-success-400">
-                                    <div className="i-mdi-plus-circle mr-1" />
-                                    新增
+                                  <span
+                                    className={`${statusBadgeClass} bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-400`}
+                                  >
+                                    <div
+                                      className={`i-mdi-plus-circle ${statusIconClass}`}
+                                    />
+                                    {t("gameImportModal.newAdd")}
                                   </span>
                                 )}
                               </td>

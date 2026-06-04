@@ -31,7 +31,7 @@ type Getter interface {
 	FetchMetadataByName(name string, token string) (MetadataResult, error)
 }
 
-const metadataUserAgent = "Saramanda9988/LunaBox/1.7.2 (desktop) (https://github.com/Saramanda9988/LunaBox)"
+const metadataUserAgent = "Saramanda9988/LunaBox/1.7.3 (desktop) (https://github.com/Saramanda9988/LunaBox)"
 const metadataHTTPTimeout = 10 * time.Second
 const defaultMetadataTagLimit = 10
 

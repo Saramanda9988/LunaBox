@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"lunabox/internal/applog"
+	"lunabox/internal/common/importpath"
 	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
 	"lunabox/internal/utils/metadata"
@@ -147,6 +148,11 @@ func previewExists(idx existingPreviewIndex, gameName string, exePath string, so
 		if _, exists := idx.byPath[pathKey]; exists {
 			return true
 		}
+		for existingPath := range idx.byPath {
+			if importpath.Conflicts(pathKey, existingPath) {
+				return true
+			}
+		}
 	}
 	if sourceKey := previewSourceKey(sourceType, sourceID); sourceKey != "" {
 		if _, exists := idx.bySource[sourceKey]; exists {
@@ -172,7 +178,7 @@ func skipExistingGame(
 	exePath string,
 ) bool {
 	if exePath != "" {
-		if existingName, exists := existingPaths[normalizeImportPath(exePath)]; exists {
+		if existingName, exists := findExistingPathConflict(existingPaths, exePath); exists {
 			result.Skipped++
 			result.SkippedNames = append(result.SkippedNames, gameName+" (路径已存在: "+existingName+")")
 			return true
@@ -267,9 +273,21 @@ func updateExistingIndexes(existingNames map[string]string, existingPaths map[st
 }
 
 func normalizeImportPath(path string) string {
-	trimmed := strings.TrimSpace(path)
-	if trimmed == "" {
-		return ""
+	return importpath.Normalize(path)
+}
+
+func findExistingPathConflict(existingPaths map[string]string, path string) (string, bool) {
+	pathKey := normalizeImportPath(path)
+	if pathKey == "" {
+		return "", false
 	}
-	return strings.ToLower(strings.ReplaceAll(trimmed, "/", `\`))
+	if existingName, exists := existingPaths[pathKey]; exists {
+		return existingName, true
+	}
+	for existingPath, existingName := range existingPaths {
+		if importpath.Conflicts(pathKey, existingPath) {
+			return existingName, true
+		}
+	}
+	return "", false
 }

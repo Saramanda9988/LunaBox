@@ -104,6 +104,34 @@ func TestPreviewExistsChecksSourceDuplicate(t *testing.T) {
 	}
 }
 
+func TestPreviewExistsChecksParentChildPathDuplicate(t *testing.T) {
+	idx := newExistingPreviewIndex([]models.Game{
+		{
+			ID:   "existing-path",
+			Name: "Existing Path",
+			Path: `D:\Games\Existing`,
+		},
+	})
+
+	if !previewExists(idx, "Existing Path Child", `D:\Games\Existing\game.exe`, string(enums.Local), "") {
+		t.Fatal("expected preview to warn when path is inside existing game folder")
+	}
+}
+
+func TestSkipExistingGameChecksParentChildPathDuplicate(t *testing.T) {
+	result := newImportResult()
+	existingPaths := map[string]string{
+		normalizeImportPath(`D:\Games\Existing`): "Existing Path",
+	}
+
+	if !skipExistingGame(nil, "TestImport", &result, nil, map[string]string{}, existingPaths, "Existing Path Child", `D:\Games\Existing\game.exe`) {
+		t.Fatal("expected import to skip when path is inside existing game folder")
+	}
+	if result.Skipped != 1 {
+		t.Fatalf("expected skipped 1, got %d", result.Skipped)
+	}
+}
+
 func TestVniteConvertToGameImportsLaunchFields(t *testing.T) {
 	gameDoc := vnite.GameDoc{
 		Metadata: vnite.GameMetadata{
