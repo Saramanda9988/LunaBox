@@ -132,7 +132,7 @@ function StatsPage() {
       toast.error(t("stats.toast.startBeforeEnd"));
       return;
     }
-    loadStats(enums.Period.DAY, startDate, endDate);
+    loadStats(enums.Period.WEEK, startDate, endDate);
   };
 
   const handleResetDateRange = () => {
@@ -325,6 +325,7 @@ function StatsPage() {
             options={[
               { label: t("stats.period.week"), value: enums.Period.WEEK },
               { label: t("stats.period.month"), value: enums.Period.MONTH },
+              { label: t("stats.period.year"), value: enums.Period.YEAR },
             ]}
             value={customDateRange ? ("" as enums.Period) : dimension}
             onChange={(value) => {

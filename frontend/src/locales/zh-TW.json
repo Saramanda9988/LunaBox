@@ -469,7 +469,7 @@
     "period": {
       "week": "周",
       "month": "月",
-      "all": "全部"
+      "year": "年"
     },
     "manualAdd": "手動新增",
     "modal": {
@@ -1072,7 +1072,8 @@
     "title": "統計",
     "period": {
       "week": "周",
-      "month": "月"
+      "month": "月",
+      "year": "年"
     },
     "customRange": "自定義",
     "startDate": "開始日期",

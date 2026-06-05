@@ -469,7 +469,7 @@
     "period": {
       "week": "Week",
       "month": "Month",
-      "all": "All"
+      "year": "Year"
     },
     "manualAdd": "Add Manually",
     "modal": {
@@ -1072,7 +1072,8 @@
     "title": "Statistics",
     "period": {
       "week": "Week",
-      "month": "Month"
+      "month": "Month",
+      "year": "Year"
     },
     "customRange": "Custom",
     "startDate": "Start Date",

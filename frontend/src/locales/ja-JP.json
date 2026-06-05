@@ -452,7 +452,7 @@
     "period": {
       "week": "週",
       "month": "月",
-      "all": "すべて"
+      "year": "年"
     },
     "manualAdd": "手動追加",
     "modal": {
@@ -1055,7 +1055,8 @@
     "title": "統計",
     "period": {
       "week": "週",
-      "month": "月"
+      "month": "月",
+      "year": "年"
     },
     "customRange": "カスタム",
     "startDate": "開始日",

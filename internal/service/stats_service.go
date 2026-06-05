@@ -126,6 +126,10 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 	} else {
 		// 使用默认范围
 		switch req.Dimension {
+		case enums.Day:
+			// 日维度：最近7天
+			startDate = "current_date - INTERVAL 6 DAY"
+			endDate = "current_date"
 		case enums.Week:
 			// 周：最近7天
 			startDate = "current_date - INTERVAL 6 DAY"
@@ -134,18 +138,27 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 			// 月：最近30天
 			startDate = "current_date - INTERVAL 29 DAY"
 			endDate = "current_date"
+		case enums.Year:
+			// 年：最近365天
+			startDate = "current_date - INTERVAL 364 DAY"
+			endDate = "current_date"
 		case enums.All:
 			// 所有记录：从第一条记录到现在
-			startDate = "(SELECT MIN(start_time::DATE) FROM play_sessions WHERE game_id = ?)"
+			startDate = "(SELECT COALESCE(MIN(start_time::DATE), current_date) FROM play_sessions WHERE game_id = ?)"
 			endDate = "current_date"
 		default:
 			return stats, fmt.Errorf("invalid dimension: %s", req.Dimension)
 		}
 	}
 
-	// 所有维度都按日聚合
-	dateFormat = "%Y-%m-%d"
-	stepInterval = "INTERVAL 1 DAY"
+	// 按维度设置聚合粒度：年维度按月聚合，其他按日聚合
+	if req.Dimension == enums.Year {
+		dateFormat = "%Y-%m"
+		stepInterval = "INTERVAL 1 MONTH"
+	} else {
+		dateFormat = "%Y-%m-%d"
+		stepInterval = "INTERVAL 1 DAY"
+	}
 
 	// 构建日期表达式
 	var startDateExpr, endDateExpr, seriesStart, seriesEnd string
@@ -203,19 +216,37 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 	}
 
 	// 3. Play History Timeline
-	queryTimeline := fmt.Sprintf(`
-		WITH dates AS (
-			SELECT generate_series AS day 
-			FROM generate_series(%s, %s, %s)
-		)
-		SELECT 
-			strftime(d.day, '%s'), 
-			COALESCE(SUM(ps.duration), 0)
-		FROM dates d
-		LEFT JOIN play_sessions ps ON ps.game_id = ? AND ps.start_time::DATE = d.day
-		GROUP BY d.day
-		ORDER BY d.day ASC
-	`, seriesStart, seriesEnd, stepInterval, dateFormat)
+	// 年维度按月聚合，其他维度按日聚合
+	var queryTimeline string
+	if req.Dimension == enums.Year {
+		queryTimeline = fmt.Sprintf(`
+			WITH months AS (
+				SELECT generate_series AS month
+				FROM generate_series(DATE_TRUNC('month', %s), DATE_TRUNC('month', %s), %s)
+			)
+			SELECT
+				strftime(m.month, '%s'),
+				COALESCE(SUM(ps.duration), 0)
+			FROM months m
+			LEFT JOIN play_sessions ps ON ps.game_id = ? AND DATE_TRUNC('month', ps.start_time) = m.month
+			GROUP BY m.month
+			ORDER BY m.month ASC
+		`, seriesStart, seriesEnd, stepInterval, dateFormat)
+	} else {
+		queryTimeline = fmt.Sprintf(`
+			WITH dates AS (
+				SELECT generate_series AS day 
+				FROM generate_series(%s, %s, %s)
+			)
+			SELECT 
+				strftime(d.day, '%s'), 
+				COALESCE(SUM(ps.duration), 0)
+			FROM dates d
+			LEFT JOIN play_sessions ps ON ps.game_id = ? AND ps.start_time::DATE = d.day
+			GROUP BY d.day
+			ORDER BY d.day ASC
+		`, seriesStart, seriesEnd, stepInterval, dateFormat)
+	}
 
 	var rows *sql.Rows
 	if req.Dimension == enums.All && req.StartDate == "" {
@@ -272,14 +303,27 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 			// 月：最近30天
 			startDate = "current_date - INTERVAL 29 DAY"
 			endDate = "current_date"
+		case enums.Year:
+			// 年：最近365天
+			startDate = "current_date - INTERVAL 364 DAY"
+			endDate = "current_date"
+		case enums.All:
+			// 所有记录：从第一条记录到现在
+			startDate = "(SELECT COALESCE(MIN(start_time::DATE), current_date) FROM play_sessions)"
+			endDate = "current_date"
 		default:
 			return stats, fmt.Errorf("invalid dimension: %s", req.Dimension)
 		}
 	}
 
-	// 所有维度都按日聚合
-	dateFormat = "%Y-%m-%d"
-	stepInterval = "INTERVAL 1 DAY"
+	// 按维度设置聚合粒度：年维度按月聚合，其他按日聚合
+	if req.Dimension == enums.Year {
+		dateFormat = "%Y-%m"
+		stepInterval = "INTERVAL 1 MONTH"
+	} else {
+		dateFormat = "%Y-%m-%d"
+		stepInterval = "INTERVAL 1 DAY"
+	}
 
 	// 构建日期表达式
 	var startDateExpr, endDateExpr, seriesStart, seriesEnd string
@@ -295,6 +339,22 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 		endDateExpr = endDate
 		seriesStart = startDate
 		seriesEnd = endDate
+		// 获取实际日期范围用于显示
+		if req.Dimension == enums.All {
+			var actualStart, actualEnd string
+			err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(MIN(start_time::DATE), current_date), current_date FROM play_sessions").Scan(&actualStart, &actualEnd)
+			if err == nil {
+				stats.StartDate = actualStart
+				stats.EndDate = actualEnd
+			}
+		} else {
+			var actualStart, actualEnd string
+			err := s.db.QueryRowContext(s.ctx, fmt.Sprintf("SELECT %s, %s", startDateExpr, endDateExpr)).Scan(&actualStart, &actualEnd)
+			if err == nil {
+				stats.StartDate = actualStart
+				stats.EndDate = actualEnd
+			}
+		}
 	}
 
 	// 总游玩次数和时长
@@ -382,22 +442,38 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 	rows.Close()
 
 	// 3. Timeline (Total)
-	// 注意：使用 ps.start_time::DATE 将 TIMESTAMPTZ 转换为本地日期进行匹配
-	// 这样可以正确地按用户本地时区的日期进行聚合
+	// 年维度按月聚合，其他维度按日聚合
 	stats.Timeline = make([]vo.TimePoint, 0)
-	queryTimeline := fmt.Sprintf(`
-		WITH dates AS (
-			SELECT generate_series AS day 
-			FROM generate_series(%s, %s, %s)
-		)
-		SELECT 
-			strftime(d.day, '%s'), 
-			COALESCE(SUM(ps.duration), 0)
-		FROM dates d
-		LEFT JOIN play_sessions ps ON ps.start_time::DATE = d.day
-		GROUP BY d.day
-		ORDER BY d.day ASC
-	`, seriesStart, seriesEnd, stepInterval, dateFormat)
+	var queryTimeline string
+	if req.Dimension == enums.Year {
+		queryTimeline = fmt.Sprintf(`
+			WITH months AS (
+				SELECT generate_series AS month
+				FROM generate_series(DATE_TRUNC('month', %s), DATE_TRUNC('month', %s), %s)
+			)
+			SELECT
+				strftime(m.month, '%s'),
+				COALESCE(SUM(ps.duration), 0)
+			FROM months m
+			LEFT JOIN play_sessions ps ON DATE_TRUNC('month', ps.start_time) = m.month
+			GROUP BY m.month
+			ORDER BY m.month ASC
+		`, seriesStart, seriesEnd, stepInterval, dateFormat)
+	} else {
+		queryTimeline = fmt.Sprintf(`
+			WITH dates AS (
+				SELECT generate_series AS day 
+				FROM generate_series(%s, %s, %s)
+			)
+			SELECT 
+				strftime(d.day, '%s'), 
+				COALESCE(SUM(ps.duration), 0)
+			FROM dates d
+			LEFT JOIN play_sessions ps ON ps.start_time::DATE = d.day
+			GROUP BY d.day
+			ORDER BY d.day ASC
+		`, seriesStart, seriesEnd, stepInterval, dateFormat)
+	}
 
 	rows, err = s.db.QueryContext(s.ctx, queryTimeline)
 	if err != nil {
@@ -439,6 +515,22 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 			GROUP BY d.day
 			ORDER BY d.day ASC
 		`, seriesStart, seriesEnd, stepInterval, dateFormat)
+
+		if req.Dimension == enums.Year {
+			queryGameSeries = fmt.Sprintf(`
+				WITH months AS (
+					SELECT generate_series AS month
+					FROM generate_series(DATE_TRUNC('month', %s), DATE_TRUNC('month', %s), %s)
+				)
+				SELECT
+					strftime(m.month, '%s'),
+					COALESCE(SUM(ps.duration), 0)
+				FROM months m
+				LEFT JOIN play_sessions ps ON ps.game_id = ? AND DATE_TRUNC('month', ps.start_time) = m.month
+				GROUP BY m.month
+				ORDER BY m.month ASC
+			`, seriesStart, seriesEnd, stepInterval, dateFormat)
+		}
 
 		rows, err := s.db.QueryContext(s.ctx, queryGameSeries, game.GameID)
 		if err != nil {

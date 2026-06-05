@@ -290,7 +290,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
                   label: t("gameStats.period.month"),
                   value: enums.Period.MONTH,
                 },
-                { label: t("gameStats.period.all"), value: enums.Period.ALL },
+                { label: t("gameStats.period.year"), value: enums.Period.YEAR },
               ]}
               value={timeDimension}
               onChange={setTimeDimension}
