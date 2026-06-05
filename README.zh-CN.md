@@ -178,6 +178,14 @@ wails build
 
 - [7-Zip](https://www.7-zip.org/) - A free and open-source file archiver, a utility used to place groups of files within compressed containers known as "archives".
 
+代码签名支持:
+
+<a href="https://about.signpath.io/product/open-source">
+  <img src="screenshot/signpath.png" alt="SignPath" width="180" />
+</a>
+
+- 免费代码签名由 [SignPath.io](https://about.signpath.io/product/open-source) 提供，证书由 [SignPath Foundation](https://signpath.org/) 提供。
+
 ## 📄 开源协议
 
 本项目采用 [AGPL v3](LICENSE) 协议开源。
