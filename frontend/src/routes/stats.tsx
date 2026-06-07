@@ -1,15 +1,4 @@
-import type { ChartOptions, TooltipItem } from "chart.js";
 import { createRoute } from "@tanstack/react-router";
-import {
-  CategoryScale,
-  Chart as ChartJS,
-  Legend,
-  LinearScale,
-  LineElement,
-  PointElement,
-  Title,
-  Tooltip,
-} from "chart.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
@@ -17,30 +6,18 @@ import { enums, vo } from "../../wailsjs/go/models";
 import { AISummarize } from "../../wailsjs/go/service/AiService";
 import { GetGlobalPeriodStats } from "../../wailsjs/go/service/StatsService";
 import { AiSummaryCard } from "../components/card/AiSummaryCard";
-import { HorizontalScrollChart } from "../components/chart/HorizontalScrollChart";
+import { DurationLineChart } from "../components/chart/DurationLineChart";
 import { TemplateExportModal } from "../components/modal/TemplateExportModal";
 import { StatsSkeleton } from "../components/skeleton/StatsSkeleton";
 import { CollapsibleSection } from "../components/ui/CollapsibleSection";
 import { SlideButton } from "../components/ui/SlideButton";
-import { useChartTheme } from "../hooks/useChartTheme";
 import { useAppStore } from "../store";
 import {
   formatDateToYYYYMMDD,
   formatDuration,
-  formatDurationChart,
   formatDurationCompact,
 } from "../utils/time";
 import { Route as rootRoute } from "./__root";
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-);
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -51,7 +28,6 @@ export const Route = createRoute({
 function StatsPage() {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
-  const { textColor, gridColor } = useChartTheme();
   const [dimension, setDimension] = useState<enums.Period>(enums.Period.WEEK);
   const [stats, setStats] = useState<vo.PeriodStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -216,58 +192,6 @@ function StatsPage() {
       };
     }),
   };
-
-  const createChartOptions = (
-    hasChartPlayData: boolean,
-  ): ChartOptions<"line"> => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "top" as const,
-        labels: {
-          color: textColor,
-        },
-      },
-      tooltip: {
-        callbacks: {
-          label: (context: TooltipItem<"line">) => {
-            const label = context.dataset.label
-              ? `${context.dataset.label}: `
-              : "";
-            return `${label}${formatDuration(Number(context.parsed.y || 0), t)}`;
-          },
-        },
-      },
-    },
-    scales: {
-      x: {
-        grid: {
-          color: gridColor,
-        },
-        ticks: {
-          color: textColor,
-        },
-      },
-      y: {
-        beginAtZero: true,
-        max: hasChartPlayData ? undefined : 600,
-        title: {
-          display: true,
-          text: t("stats.chartYAxis"),
-          color: textColor,
-        },
-        grid: {
-          color: gridColor,
-        },
-        ticks: {
-          color: textColor,
-          stepSize: hasChartPlayData ? undefined : 60,
-          callback: value => formatDurationChart(Number(value), t),
-        },
-      },
-    },
-  });
 
   const libraryOverviewItems = [
     {
@@ -567,9 +491,10 @@ function StatsPage() {
           <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">
             {t("stats.charts.totalTrend")}
           </h3>
-          <HorizontalScrollChart
+          <DurationLineChart
             data={totalTrendData}
-            options={createChartOptions(hasTotalTrendPlayData)}
+            hasPlayData={hasTotalTrendPlayData}
+            yAxisTitle={t("stats.chartYAxis")}
             className="h-96"
           />
         </div>
@@ -577,9 +502,10 @@ function StatsPage() {
           <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">
             {t("stats.charts.gameTrend")}
           </h3>
-          <HorizontalScrollChart
+          <DurationLineChart
             data={gameTrendData}
-            options={createChartOptions(hasGameTrendPlayData)}
+            hasPlayData={hasGameTrendPlayData}
+            yAxisTitle={t("stats.chartYAxis")}
             className="h-96"
           />
         </div>

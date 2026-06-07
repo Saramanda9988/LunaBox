@@ -16,6 +16,8 @@
     "@tanstack/react-router": "^1.140.0",
     "@tanstack/react-virtual": "^3.13.25",
     "chart.js": "^4.5.1",
+    "chartjs-adapter-date-fns": "^3.0.0",
+    "date-fns": "^4.4.0",
     "emoji-picker-element": "^1.29.0",
     "fast-average-color": "^9.5.0",
     "html2canvas": "^1.4.1",

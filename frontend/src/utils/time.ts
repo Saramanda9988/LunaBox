@@ -181,6 +181,33 @@ export function formatDateToYYYYMMDD(date: Date): string {
 }
 
 /**
+ * 将 YYYY-MM-DD 日期字符串解析为本地时区当天零点的时间戳。
+ * 用于图表时间轴，避免 Date.parse("YYYY-MM-DD") 按 UTC 解析造成日期偏移。
+ */
+export function parseDateOnlyToLocalTimestamp(
+  dateString?: string | null,
+): number | undefined {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString ?? "");
+  if (!match)
+    return undefined;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year
+    || date.getMonth() + 1 !== month
+    || date.getDate() !== day
+  ) {
+    return undefined;
+  }
+
+  return date.getTime();
+}
+
+/**
  * 将后端日期字符串转换为原生 date input 可接受的 YYYY-MM-DD 值。
  * 无法安全解析时返回空字符串，避免浏览器丢弃不符合格式的原始文本。
  */

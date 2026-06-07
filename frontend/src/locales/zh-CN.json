@@ -467,9 +467,11 @@
     "duration": "时长:",
     "deleteRecord": "删除记录",
     "period": {
+      "day": "日",
       "week": "周",
       "month": "月",
-      "year": "年"
+      "year": "年",
+      "all": "全部"
     },
     "manualAdd": "手动添加",
     "modal": {

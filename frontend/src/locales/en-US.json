@@ -467,9 +467,11 @@
     "duration": "Duration:",
     "deleteRecord": "Delete Record",
     "period": {
+      "day": "Day",
       "week": "Week",
       "month": "Month",
-      "year": "Year"
+      "year": "Year",
+      "all": "All"
     },
     "manualAdd": "Add Manually",
     "modal": {

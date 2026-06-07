@@ -450,9 +450,11 @@
     "duration": "時間:",
     "deleteRecord": "記録を削除",
     "period": {
+      "day": "日",
       "week": "週",
       "month": "月",
-      "year": "年"
+      "year": "年",
+      "all": "すべて"
     },
     "manualAdd": "手動追加",
     "modal": {

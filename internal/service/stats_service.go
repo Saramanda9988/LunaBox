@@ -177,7 +177,7 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 		// 获取实际日期范围用于显示
 		var actualStart, actualEnd string
 		if req.Dimension == enums.All {
-			err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(MIN(start_time::DATE), current_date), current_date FROM play_sessions WHERE game_id = ?", req.GameID).Scan(&actualStart, &actualEnd)
+			err := s.db.QueryRowContext(s.ctx, "SELECT COALESCE(MIN(start_time::DATE), current_date), COALESCE(MAX(start_time::DATE), current_date) FROM play_sessions WHERE game_id = ?", req.GameID).Scan(&actualStart, &actualEnd)
 			if err == nil {
 				stats.StartDate = actualStart
 				stats.EndDate = actualEnd
@@ -218,7 +218,17 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 	// 3. Play History Timeline
 	// 年维度按月聚合，其他维度按日聚合
 	var queryTimeline string
-	if req.Dimension == enums.Year {
+	if req.Dimension == enums.All && req.StartDate == "" {
+		queryTimeline = `
+			SELECT
+				strftime(start_time::DATE, '%Y-%m-%d'),
+				COALESCE(SUM(duration), 0)
+			FROM play_sessions
+			WHERE game_id = ?
+			GROUP BY start_time::DATE
+			ORDER BY start_time::DATE ASC
+		`
+	} else if req.Dimension == enums.Year {
 		queryTimeline = fmt.Sprintf(`
 			WITH months AS (
 				SELECT generate_series AS month
@@ -250,7 +260,7 @@ func (s *StatsService) GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats
 
 	var rows *sql.Rows
 	if req.Dimension == enums.All && req.StartDate == "" {
-		rows, err = s.db.QueryContext(s.ctx, queryTimeline, req.GameID, req.GameID)
+		rows, err = s.db.QueryContext(s.ctx, queryTimeline, req.GameID)
 	} else {
 		rows, err = s.db.QueryContext(s.ctx, queryTimeline, req.GameID)
 	}

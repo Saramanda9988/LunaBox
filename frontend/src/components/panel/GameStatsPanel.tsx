@@ -1,15 +1,4 @@
-import type { ChartOptions, TooltipItem } from "chart.js";
 import type { models, vo } from "../../../wailsjs/go/models";
-import {
-  CategoryScale,
-  Chart as ChartJS,
-  Legend,
-  LinearScale,
-  LineElement,
-  PointElement,
-  Title,
-  Tooltip,
-} from "chart.js";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
@@ -19,27 +8,16 @@ import {
   GetPlaySessions,
 } from "../../../wailsjs/go/service/SessionService";
 import { GetGameStats } from "../../../wailsjs/go/service/StatsService";
-import { useChartTheme } from "../../hooks/useChartTheme";
 import { useAppStore } from "../../store";
 import {
   formatDuration,
-  formatDurationChart,
   formatLocalDateTime,
+  parseDateOnlyToLocalTimestamp,
 } from "../../utils/time";
-import { HorizontalScrollChart } from "../chart/HorizontalScrollChart";
+import { DurationLineChart } from "../chart/DurationLineChart";
 import { AddPlaySessionModal } from "../modal/AddPlaySessionModal";
 import { ConfirmModal } from "../modal/ConfirmModal";
 import { SlideButton } from "../ui/SlideButton";
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-);
 
 interface GameStatsPanelProps {
   gameId: string;
@@ -49,7 +27,6 @@ type ViewMode = "chart" | "sessions";
 
 export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
   const config = useAppStore(state => state.config);
-  const { textColor, gridColor } = useChartTheme();
   const [stats, setStats] = useState<vo.GameDetailStats | null>(null);
   const [sessions, setSessions] = useState<models.PlaySession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -126,68 +103,42 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
   const recentPlayHistory = stats?.recent_play_history || [];
   const chartDurations = recentPlayHistory.map(h => h.duration);
   const hasChartPlayData = chartDurations.some(duration => duration > 0);
+  const isAllTimeline = timeDimension === enums.Period.ALL;
+  const sparseChartPoints = recentPlayHistory.flatMap((history) => {
+    const timestamp = parseDateOnlyToLocalTimestamp(history.date);
+    return timestamp === undefined
+      ? []
+      : [{ x: timestamp, y: history.duration }];
+  });
 
-  const chartData = {
-    labels: recentPlayHistory.map(h => h.date), // 后端已返回本地日期字符串，直接使用
-    datasets: [
-      {
-        label: t("gameStats.chartLabel"),
-        data: chartDurations,
-        borderColor: "rgb(59, 130, 246)",
-        backgroundColor: "rgba(59, 130, 246, 0.5)",
-        tension: 0.3,
-      },
-    ],
-  };
-
-  const chartOptions: ChartOptions<"line"> = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: {
-      mode: "index" as const,
-      intersect: false,
-    },
-    plugins: {
-      legend: {
-        display: false,
-      },
-      title: {
-        display: false,
-      },
-      tooltip: {
-        callbacks: {
-          label: (context: TooltipItem<"line">) => {
-            const label = context.dataset.label
-              ? `${context.dataset.label}: `
-              : "";
-            return `${label}${formatDuration(Number(context.parsed.y || 0), t)}`;
+  const chartData = isAllTimeline
+    ? {
+        datasets: [
+          {
+            label: t("gameStats.chartLabel"),
+            data: sparseChartPoints,
+            borderColor: "rgb(59, 130, 246)",
+            backgroundColor: "rgba(59, 130, 246, 0.5)",
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            parsing: false as const,
+            showLine: true,
+            tension: 0.2,
           },
-        },
-      },
-    },
-    scales: {
-      x: {
-        grid: {
-          color: gridColor,
-        },
-        ticks: {
-          color: textColor,
-        },
-      },
-      y: {
-        beginAtZero: true,
-        max: hasChartPlayData ? undefined : 600,
-        grid: {
-          color: gridColor,
-        },
-        ticks: {
-          color: textColor,
-          stepSize: hasChartPlayData ? undefined : 60,
-          callback: value => formatDurationChart(Number(value), t),
-        },
-      },
-    },
-  };
+        ],
+      }
+    : {
+        labels: recentPlayHistory.map(h => h.date), // 后端已返回本地日期字符串，直接使用
+        datasets: [
+          {
+            label: t("gameStats.chartLabel"),
+            data: chartDurations,
+            borderColor: "rgb(59, 130, 246)",
+            backgroundColor: "rgba(59, 130, 246, 0.5)",
+            tension: 0.3,
+          },
+        ],
+      };
 
   return (
     <div className="space-y-8">
@@ -235,9 +186,19 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
               <div className="i-mdi-loading animate-spin text-3xl text-brand-500" />
             </div>
           ) : viewMode === "chart" ? (
-            <HorizontalScrollChart
+            <DurationLineChart
               data={chartData}
-              options={chartOptions}
+              hasPlayData={hasChartPlayData}
+              scaleType={isAllTimeline ? "time" : "category"}
+              showLegend={false}
+              timeRange={
+                isAllTimeline
+                  ? {
+                      start: stats?.start_date,
+                      end: stats?.end_date,
+                    }
+                  : undefined
+              }
               className="h-[clamp(20rem,42vh,34rem)]"
             />
           ) : (
@@ -285,12 +246,14 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
             {/* Time Dimension Selector */}
             <SlideButton
               options={[
+                { label: t("gameStats.period.day"), value: enums.Period.DAY },
                 { label: t("gameStats.period.week"), value: enums.Period.WEEK },
                 {
                   label: t("gameStats.period.month"),
                   value: enums.Period.MONTH,
                 },
                 { label: t("gameStats.period.year"), value: enums.Period.YEAR },
+                { label: t("gameStats.period.all"), value: enums.Period.ALL },
               ]}
               value={timeDimension}
               onChange={setTimeDimension}
