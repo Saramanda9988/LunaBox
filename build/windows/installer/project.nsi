@@ -176,6 +176,16 @@ Function .onInit
             Sleep 2000
          ${EndIf}
 
+         # Back up PATH before running the old uninstaller. Old uninstallers may still
+         # contain unsafe PATH mutation logic, so the new installer must create the backup first.
+         Call BackupMachinePathBeforeUpdateUninstall
+         ${If} $7 != "0"
+            IfSilent 0 +2
+               Quit
+            MessageBox MB_OK|MB_ICONSTOP "无法备份系统 PATH。为避免旧版卸载器可能破坏环境变量，安装已中止。"
+            Quit
+         ${EndIf}
+
          # $3 already contains the uninstaller path without quotes (from lines 110-111)
          # Execute uninstaller silently from the old install location
          ExecWait '"$3" /S _?=$2' $4
@@ -290,6 +300,135 @@ Function un.RemoveLunaBoxProtocol
     System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
 FunctionEnd
 
+# Back up the machine PATH before executing an old uninstaller during update.
+Function BackupMachinePathBeforeUpdateUninstall
+    SetRegView 64
+    InitPluginsDir
+
+    StrCpy $7 "1"
+    StrCpy $9 "$PLUGINSDIR\lunabox-backup-path-before-update-uninstall.ps1"
+    FileOpen $8 $9 w
+    FileWrite $8 "$$ErrorActionPreference = 'Stop'$\r$\n"
+    FileWrite $8 "$$keyPath = 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment'$\r$\n"
+    FileWrite $8 "$$key = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey($$keyPath, $$false)$\r$\n"
+    FileWrite $8 "if ($$null -eq $$key) { throw 'Environment registry key not found' }$\r$\n"
+    FileWrite $8 "try {$\r$\n"
+    FileWrite $8 "  $$path = [string]$$key.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)$\r$\n"
+    FileWrite $8 "  $$backupDir = Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'LunaBox\environment-backups'$\r$\n"
+    FileWrite $8 "  [void][System.IO.Directory]::CreateDirectory($$backupDir)$\r$\n"
+    FileWrite $8 "  $$backupFile = Join-Path $$backupDir ('machine-path-before-update-uninstall-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '.txt')$\r$\n"
+    FileWrite $8 "  [System.IO.File]::WriteAllText($$backupFile, $$path, [System.Text.Encoding]::UTF8)$\r$\n"
+    FileWrite $8 "  Write-Output ('Backed up machine PATH to ' + $$backupFile)$\r$\n"
+    FileWrite $8 "} finally {$\r$\n"
+    FileWrite $8 "  $$key.Close()$\r$\n"
+    FileWrite $8 "}$\r$\n"
+    FileClose $8
+
+    nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$9"'
+    Pop $6
+    Pop $5
+    ${If} $6 != "0"
+        DetailPrint "Warning: failed to back up machine PATH before update uninstall: $5"
+    ${Else}
+        DetailPrint "$5"
+        StrCpy $7 "0"
+    ${EndIf}
+    Delete $9
+FunctionEnd
+
+# Add $INSTDIR to the machine PATH without round-tripping PATH through NSIS variables.
+# NSIS strings are commonly limited to 1024 chars; long PATH values would otherwise be truncated.
+Function AddInstallDirToPath
+    SetRegView 64
+    InitPluginsDir
+
+    ${StrRep} $7 "$INSTDIR" "'" "''"
+    StrCpy $9 "$PLUGINSDIR\lunabox-add-path.ps1"
+    FileOpen $8 $9 w
+    FileWrite $8 "$$ErrorActionPreference = 'Stop'$\r$\n"
+    FileWrite $8 "$$installDir = '$7'$\r$\n"
+    FileWrite $8 "$$keyPath = 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment'$\r$\n"
+    FileWrite $8 "$$key = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey($$keyPath, $$true)$\r$\n"
+    FileWrite $8 "if ($$null -eq $$key) { throw 'Environment registry key not found' }$\r$\n"
+    FileWrite $8 "try {$\r$\n"
+    FileWrite $8 "  $$path = [string]$$key.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)$\r$\n"
+    FileWrite $8 "  $$backupDir = Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'LunaBox\environment-backups'$\r$\n"
+    FileWrite $8 "  [void][System.IO.Directory]::CreateDirectory($$backupDir)$\r$\n"
+    FileWrite $8 "  $$backupFile = Join-Path $$backupDir ('machine-path-before-install-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.txt')$\r$\n"
+    FileWrite $8 "  [System.IO.File]::WriteAllText($$backupFile, $$path, [System.Text.Encoding]::UTF8)$\r$\n"
+    FileWrite $8 "  Write-Output ('Backed up machine PATH to ' + $$backupFile)$\r$\n"
+    FileWrite $8 "  $$entries = @($$path -split ';' | Where-Object { $$_ -ne '' })$\r$\n"
+    FileWrite $8 "  $$normalizedInstallDir = $$installDir.Trim().Trim([char]34).TrimEnd([char]92)$\r$\n"
+    FileWrite $8 "  $$exists = $$false$\r$\n"
+    FileWrite $8 "  foreach ($$entry in $$entries) {$\r$\n"
+    FileWrite $8 "    if ($$entry.Trim().Trim([char]34).TrimEnd([char]92) -ieq $$normalizedInstallDir) { $$exists = $$true; break }$\r$\n"
+    FileWrite $8 "  }$\r$\n"
+    FileWrite $8 "  if (-not $$exists) {$\r$\n"
+    FileWrite $8 "    $$entries += $$installDir$\r$\n"
+    FileWrite $8 "    $$key.SetValue('Path', [string]::Join(';', $$entries), [Microsoft.Win32.RegistryValueKind]::ExpandString)$\r$\n"
+    FileWrite $8 "  }$\r$\n"
+    FileWrite $8 "} finally {$\r$\n"
+    FileWrite $8 "  $$key.Close()$\r$\n"
+    FileWrite $8 "}$\r$\n"
+    FileClose $8
+
+    nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$9"'
+    Pop $6
+    Pop $5
+    ${If} $6 != "0"
+        DetailPrint "Warning: failed to add install directory to PATH: $5"
+    ${Else}
+        DetailPrint "$5"
+    ${EndIf}
+    Delete $9
+FunctionEnd
+
+# Remove $INSTDIR from the machine PATH without round-tripping PATH through NSIS variables.
+Function un.RemoveInstallDirFromPath
+    SetRegView 64
+    InitPluginsDir
+
+    ${UnStrRep} $7 "$INSTDIR" "'" "''"
+    StrCpy $9 "$PLUGINSDIR\lunabox-remove-path.ps1"
+    FileOpen $8 $9 w
+    FileWrite $8 "$$ErrorActionPreference = 'Stop'$\r$\n"
+    FileWrite $8 "$$installDir = '$7'$\r$\n"
+    FileWrite $8 "$$keyPath = 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment'$\r$\n"
+    FileWrite $8 "$$key = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey($$keyPath, $$true)$\r$\n"
+    FileWrite $8 "if ($$null -eq $$key) { throw 'Environment registry key not found' }$\r$\n"
+    FileWrite $8 "try {$\r$\n"
+    FileWrite $8 "  $$path = [string]$$key.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)$\r$\n"
+    FileWrite $8 "  $$backupDir = Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'LunaBox\environment-backups'$\r$\n"
+    FileWrite $8 "  [void][System.IO.Directory]::CreateDirectory($$backupDir)$\r$\n"
+    FileWrite $8 "  $$backupFile = Join-Path $$backupDir ('machine-path-before-uninstall-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.txt')$\r$\n"
+    FileWrite $8 "  [System.IO.File]::WriteAllText($$backupFile, $$path, [System.Text.Encoding]::UTF8)$\r$\n"
+    FileWrite $8 "  Write-Output ('Backed up machine PATH to ' + $$backupFile)$\r$\n"
+    FileWrite $8 "  $$normalizedInstallDir = $$installDir.Trim().Trim([char]34).TrimEnd([char]92)$\r$\n"
+    FileWrite $8 "  $$newEntries = New-Object System.Collections.Generic.List[string]$\r$\n"
+    FileWrite $8 "  $$changed = $$false$\r$\n"
+    FileWrite $8 "  foreach ($$entry in @($$path -split ';')) {$\r$\n"
+    FileWrite $8 "    if ($$entry.Trim().Trim([char]34).TrimEnd([char]92) -ieq $$normalizedInstallDir) { $$changed = $$true; continue }$\r$\n"
+    FileWrite $8 "    [void]$$newEntries.Add($$entry)$\r$\n"
+    FileWrite $8 "  }$\r$\n"
+    FileWrite $8 "  if ($$changed) {$\r$\n"
+    FileWrite $8 "    $$key.SetValue('Path', [string]::Join(';', $$newEntries.ToArray()).Trim(';'), [Microsoft.Win32.RegistryValueKind]::ExpandString)$\r$\n"
+    FileWrite $8 "  }$\r$\n"
+    FileWrite $8 "} finally {$\r$\n"
+    FileWrite $8 "  $$key.Close()$\r$\n"
+    FileWrite $8 "}$\r$\n"
+    FileClose $8
+
+    nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$9"'
+    Pop $6
+    Pop $5
+    ${If} $6 != "0"
+        DetailPrint "Warning: failed to remove install directory from PATH: $5"
+    ${Else}
+        DetailPrint "$5"
+    ${EndIf}
+    Delete $9
+FunctionEnd
+
 # Uninstaller: Initialize the user data options page
 Function un.ShowUserDataOptions
    # Skip this page in silent mode (preserve user data)
@@ -353,18 +492,11 @@ Section
         File "..\..\bin\lunacli.exe"
 
         # Add install directory to system PATH (for CLI usage)
-        ReadRegStr $0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
-        
-        # Check if already in PATH
-        ${StrStr} $1 $0 "$INSTDIR"
-        ${If} $1 == ""
-            # Not in PATH, add it
-            WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path" "$0;$INSTDIR"
-            # Broadcast WM_SETTINGCHANGE to notify of PATH change
-            # Use SendMessageTimeout to avoid hanging if a top-level window is unresponsive
-            # 0xffff = HWND_BROADCAST, 2 = SMTO_ABORTIFHUNG, 5000 = Timeout in ms
-            System::Call 'user32::SendMessageTimeout(p 0xffff, i ${WM_SETTINGCHANGE}, p 0, t "Environment", i 2, i 5000, *i .r0)'
-        ${EndIf}
+        Call AddInstallDirToPath
+        # Broadcast WM_SETTINGCHANGE to notify of PATH change
+        # Use SendMessageTimeout to avoid hanging if a top-level window is unresponsive
+        # 0xffff = HWND_BROADCAST, 2 = SMTO_ABORTIFHUNG, 5000 = Timeout in ms
+        System::Call 'user32::SendMessageTimeout(p 0xffff, i ${WM_SETTINGCHANGE}, p 0, t "Environment", i 2, i 5000, *i .r0)'
 
         # Record that CLI was installed (for future updates)
         SetRegView 64
@@ -408,19 +540,11 @@ Section "uninstall"
     ReadRegStr $0 HKLM "${UNINST_KEY}" "CLIInstalled"
     ${If} $0 == "1"
         # CLI was installed, remove from PATH
-        ReadRegStr $0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
-        ${UnStrStr} $1 $0 "$INSTDIR"
-        ${If} $1 != ""
-            # Found in PATH, remove it
-            ${UnStrRep} $2 $0 ";$INSTDIR" ""  # Try with semicolon first
-            ${UnStrRep} $3 $2 "$INSTDIR;" ""  # Try with semicolon after
-            ${UnStrRep} $4 $3 "$INSTDIR" ""   # Try standalone
-            WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path" "$4"
-            # Broadcast WM_SETTINGCHANGE to notify of PATH change
-            # Use SendMessageTimeout to avoid hanging if a top-level window is unresponsive
-            # 0xffff = HWND_BROADCAST, 2 = SMTO_ABORTIFHUNG, 5000 = Timeout in ms
-            System::Call 'user32::SendMessageTimeout(p 0xffff, i ${WM_SETTINGCHANGE}, p 0, t "Environment", i 2, i 5000, *i .r0)'
-        ${EndIf}
+        Call un.RemoveInstallDirFromPath
+        # Broadcast WM_SETTINGCHANGE to notify of PATH change
+        # Use SendMessageTimeout to avoid hanging if a top-level window is unresponsive
+        # 0xffff = HWND_BROADCAST, 2 = SMTO_ABORTIFHUNG, 5000 = Timeout in ms
+        System::Call 'user32::SendMessageTimeout(p 0xffff, i ${WM_SETTINGCHANGE}, p 0, t "Environment", i 2, i 5000, *i .r0)'
     ${EndIf}
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
@@ -448,4 +572,3 @@ Section "uninstall"
 
     !insertmacro wails.deleteUninstaller
 SectionEnd
-
