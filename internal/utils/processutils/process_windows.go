@@ -8,12 +8,15 @@ import (
 	"lunabox/internal/applog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 const (
@@ -26,10 +29,15 @@ const (
 	PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 	TH32CS_SNAPPROCESS                = 0x00000002
 	MAX_PATH                          = 260
+	ERROR_ELEVATION_REQUIRED          = syscall.Errno(740)
+	SEE_MASK_NOCLOSEPROCESS           = 0x00000040
+	SW_SHOWNORMAL                     = 1
 )
 
 var (
 	kernel32                     = syscall.NewLazyDLL("kernel32.dll")
+	shell32                      = syscall.NewLazyDLL("shell32.dll")
+	user32                       = syscall.NewLazyDLL("user32.dll")
 	procOpenProcess              = kernel32.NewProc("OpenProcess")
 	procWaitForSingleObject      = kernel32.NewProc("WaitForSingleObject")
 	procCloseHandle              = kernel32.NewProc("CloseHandle")
@@ -37,7 +45,14 @@ var (
 	procProcess32First           = kernel32.NewProc("Process32FirstW")
 	procProcess32Next            = kernel32.NewProc("Process32NextW")
 	procQueryFullProcessImage    = kernel32.NewProc("QueryFullProcessImageNameW")
+	procShellExecuteEx           = shell32.NewProc("ShellExecuteExW")
+	procEnumWindows              = user32.NewProc("EnumWindows")
+	procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
+	procIsWindowVisible          = user32.NewProc("IsWindowVisible")
+	procGetWindow                = user32.NewProc("GetWindow")
 )
+
+var visibleWindowEnumCallback = syscall.NewCallback(visibleWindowEnumProc)
 
 // PROCESSENTRY32W Windows API 进程快照结构体
 type PROCESSENTRY32W struct {
@@ -57,6 +72,209 @@ type processSnapshotEntry struct {
 	Name      string
 	PID       uint32
 	ParentPID uint32
+}
+
+type shellExecuteInfo struct {
+	Size       uint32
+	Mask       uint32
+	Hwnd       uintptr
+	Verb       *uint16
+	File       *uint16
+	Parameters *uint16
+	Directory  *uint16
+	Show       int32
+	Instance   uintptr
+	IDList     uintptr
+	Class      *uint16
+	KeyClass   uintptr
+	HotKey     uint32
+	Icon       uintptr
+	Process    uintptr
+}
+
+type windowEnumState struct {
+	allowed map[uint32]bool
+	pids    map[uint32]bool
+}
+
+// StartProcess starts an executable through ShellExecuteEx so Windows can honor
+// UAC elevation manifests while still returning a process handle for tracking.
+func StartProcess(file string, args []string, dir string) (*StartedProcess, error) {
+	started, err := startProcessWithVerb("open", file, args, dir)
+	if err == nil {
+		return started, nil
+	}
+	if err == ERROR_ELEVATION_REQUIRED {
+		return startProcessWithVerb("runas", file, args, dir)
+	}
+	return nil, err
+}
+
+func startProcessWithVerb(verb string, file string, args []string, dir string) (*StartedProcess, error) {
+	file = strings.TrimSpace(file)
+	if file == "" {
+		return nil, fmt.Errorf("executable path is empty")
+	}
+
+	filePtr, err := windows.UTF16PtrFromString(file)
+	if err != nil {
+		return nil, fmt.Errorf("encode executable path: %w", err)
+	}
+
+	var verbPtr *uint16
+	if strings.TrimSpace(verb) != "" {
+		verbPtr, err = windows.UTF16PtrFromString(verb)
+		if err != nil {
+			return nil, fmt.Errorf("encode shell verb: %w", err)
+		}
+	}
+
+	var parametersPtr *uint16
+	if len(args) > 0 {
+		parameters := windows.ComposeCommandLine(args)
+		parametersPtr, err = windows.UTF16PtrFromString(parameters)
+		if err != nil {
+			return nil, fmt.Errorf("encode command parameters: %w", err)
+		}
+	}
+
+	var directoryPtr *uint16
+	if strings.TrimSpace(dir) != "" {
+		directoryPtr, err = windows.UTF16PtrFromString(dir)
+		if err != nil {
+			return nil, fmt.Errorf("encode working directory: %w", err)
+		}
+	}
+
+	info := shellExecuteInfo{
+		Size:       uint32(unsafe.Sizeof(shellExecuteInfo{})),
+		Mask:       SEE_MASK_NOCLOSEPROCESS,
+		Verb:       verbPtr,
+		File:       filePtr,
+		Parameters: parametersPtr,
+		Directory:  directoryPtr,
+		Show:       SW_SHOWNORMAL,
+	}
+
+	ret, _, callErr := procShellExecuteEx.Call(uintptr(unsafe.Pointer(&info)))
+	if ret == 0 {
+		if errno, ok := callErr.(syscall.Errno); ok && errno != 0 {
+			return nil, errno
+		}
+		return nil, fmt.Errorf("ShellExecuteEx failed for %s", file)
+	}
+
+	if info.Process == 0 {
+		return nil, fmt.Errorf("ShellExecuteEx did not return a process handle for %s", file)
+	}
+
+	pid, err := getProcessIDFromHandle(info.Process)
+	if err != nil {
+		CloseProcessHandle(info.Process)
+		return nil, fmt.Errorf("resolve launched process id: %w", err)
+	}
+
+	return &StartedProcess{
+		PID:    pid,
+		Handle: info.Process,
+	}, nil
+}
+
+// CloseProcessHandle closes a process handle returned by StartProcess.
+func CloseProcessHandle(processHandle uintptr) error {
+	if processHandle == 0 {
+		return nil
+	}
+	ret, _, err := procCloseHandle.Call(processHandle)
+	if ret == 0 {
+		return fmt.Errorf("failed to close process handle: %w", err)
+	}
+	return nil
+}
+
+func getProcessIDFromHandle(processHandle uintptr) (uint32, error) {
+	pid, err := windows.GetProcessId(windows.Handle(processHandle))
+	if err != nil {
+		return 0, err
+	}
+	if pid == 0 {
+		return 0, fmt.Errorf("process id is zero")
+	}
+	return pid, nil
+}
+
+// FilterProcessesWithVisibleWindows keeps processes that own at least one
+// visible top-level window. This is useful for launchers that stay alive while
+// another process owns the actual game window.
+func FilterProcessesWithVisibleWindows(processes []ProcessInfo) []ProcessInfo {
+	if len(processes) == 0 {
+		return nil
+	}
+
+	allowedPIDs := make(map[uint32]bool, len(processes))
+	for _, proc := range processes {
+		if proc.PID != 0 {
+			allowedPIDs[proc.PID] = true
+		}
+	}
+
+	windowPIDs := visibleWindowPIDs(allowedPIDs)
+	filtered := make([]ProcessInfo, 0, len(processes))
+	for _, proc := range processes {
+		if windowPIDs[proc.PID] {
+			filtered = append(filtered, proc)
+		}
+	}
+	return filtered
+}
+
+// HasVisibleTopLevelWindow reports whether pid owns a visible top-level window.
+func HasVisibleTopLevelWindow(pid uint32) bool {
+	if pid == 0 {
+		return false
+	}
+	return visibleWindowPIDs(map[uint32]bool{pid: true})[pid]
+}
+
+func visibleWindowPIDs(allowedPIDs map[uint32]bool) map[uint32]bool {
+	result := make(map[uint32]bool)
+	if len(allowedPIDs) == 0 {
+		return result
+	}
+
+	state := &windowEnumState{
+		allowed: allowedPIDs,
+		pids:    result,
+	}
+
+	procEnumWindows.Call(visibleWindowEnumCallback, uintptr(unsafe.Pointer(state)))
+	runtime.KeepAlive(state)
+	return result
+}
+
+func visibleWindowEnumProc(hwnd uintptr, lparam uintptr) uintptr {
+	enumState := (*windowEnumState)(unsafe.Pointer(lparam))
+	if !isVisibleTopLevelWindow(hwnd) {
+		return 1
+	}
+
+	var pid uint32
+	procGetWindowThreadProcessId.Call(hwnd, uintptr(unsafe.Pointer(&pid)))
+	if enumState.allowed[pid] {
+		enumState.pids[pid] = true
+	}
+	return 1
+}
+
+func isVisibleTopLevelWindow(hwnd uintptr) bool {
+	visible, _, _ := procIsWindowVisible.Call(hwnd)
+	if visible == 0 {
+		return false
+	}
+
+	const GW_OWNER = 4
+	owner, _, _ := procGetWindow.Call(hwnd, uintptr(GW_OWNER))
+	return owner == 0
 }
 
 // CheckIfProcessRunning 检查指定进程是否正在运行
@@ -227,6 +445,26 @@ func GetProcessPIDByName(processName string) (uint32, error) {
 	return 0, fmt.Errorf("process not found: %s", processName)
 }
 
+// IsProcessPresentByPID checks process existence from a Toolhelp snapshot. It
+// does not require opening the process, so it is useful for elevated games when
+// the app itself is not elevated.
+func IsProcessPresentByPID(pid uint32) bool {
+	if pid == 0 {
+		return false
+	}
+
+	entries, err := getProcessSnapshotEntries()
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		if entry.PID == pid {
+			return true
+		}
+	}
+	return false
+}
+
 // GetDescendantProcesses 获取指定父进程启动的仍在运行的子孙进程。
 func GetDescendantProcesses(parentPID uint32) ([]ProcessInfo, error) {
 	entries, err := getProcessSnapshotEntries()
@@ -354,6 +592,59 @@ func IsProcessRunningByPID(pid uint32, ctx context.Context) bool {
 	return false
 }
 
+func NewSnapshotProcessMonitor(pid uint32) *SnapshotProcessMonitor {
+	monitor := &SnapshotProcessMonitor{
+		stopChan: make(chan struct{}),
+		exitChan: make(chan struct{}),
+	}
+
+	go func() {
+		defer close(monitor.exitChan)
+
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				if !IsProcessPresentByPID(pid) {
+					return
+				}
+			case <-monitor.stopChan:
+				return
+			}
+		}
+	}()
+
+	return monitor
+}
+
+func (m *SnapshotProcessMonitor) Stop() {
+	if m == nil {
+		return
+	}
+	m.stopOnce.Do(func() {
+		close(m.stopChan)
+	})
+}
+
+func (m *SnapshotProcessMonitor) ExitChan() <-chan struct{} {
+	if m == nil {
+		exitChan := make(chan struct{})
+		close(exitChan)
+		return exitChan
+	}
+	return m.exitChan
+}
+
+// WaitForProcessExitBySnapshotAsync polls the process snapshot until pid
+// disappears. It avoids OpenProcess, so it is useful for elevated processes
+// when the app itself is not elevated.
+func WaitForProcessExitBySnapshotAsync(pid uint32) (*SnapshotProcessMonitor, <-chan struct{}) {
+	monitor := NewSnapshotProcessMonitor(pid)
+	return monitor, monitor.ExitChan()
+}
+
 //====================ProcessMonitor====================
 
 // ProcessMonitor 进程监控器
@@ -367,12 +658,29 @@ type ProcessMonitor struct {
 	exitChan      chan struct{} // 进程退出通知
 }
 
+type SnapshotProcessMonitor struct {
+	stopOnce sync.Once
+	stopChan chan struct{}
+	exitChan chan struct{}
+}
+
 // NewProcessMonitor 创建进程监控器
 func NewProcessMonitor(pid uint32) *ProcessMonitor {
 	return &ProcessMonitor{
 		pid:      pid,
 		stopChan: make(chan struct{}),
 		exitChan: make(chan struct{}),
+	}
+}
+
+// NewProcessMonitorWithHandle creates a monitor from an already-owned process
+// handle. The monitor closes the handle during cleanup.
+func NewProcessMonitorWithHandle(pid uint32, processHandle uintptr) *ProcessMonitor {
+	return &ProcessMonitor{
+		pid:           pid,
+		processHandle: processHandle,
+		stopChan:      make(chan struct{}),
+		exitChan:      make(chan struct{}),
 	}
 }
 
@@ -383,6 +691,12 @@ func (pm *ProcessMonitor) Start() (<-chan struct{}, error) {
 	defer pm.mu.Unlock()
 
 	if pm.running {
+		return pm.exitChan, nil
+	}
+
+	if pm.processHandle != 0 {
+		pm.running = true
+		go pm.monitorLoop()
 		return pm.exitChan, nil
 	}
 
@@ -500,6 +814,20 @@ func (pm *ProcessMonitor) WaitForProcessExit(timeout time.Duration) bool {
 // 调用者需要在不再需要时调用 Stop()
 func WaitForProcessExitAsync(pid uint32) (*ProcessMonitor, <-chan struct{}, error) {
 	pm := NewProcessMonitor(pid)
+	exitChan, err := pm.Start()
+	if err != nil {
+		return nil, nil, err
+	}
+	return pm, exitChan, nil
+}
+
+// WaitForProcessHandleExitAsync waits for an already-owned process handle to
+// exit. The returned monitor owns and closes the handle.
+func WaitForProcessHandleExitAsync(pid uint32, processHandle uintptr) (*ProcessMonitor, <-chan struct{}, error) {
+	if processHandle == 0 {
+		return nil, nil, fmt.Errorf("process handle is empty")
+	}
+	pm := NewProcessMonitorWithHandle(pid, processHandle)
 	exitChan, err := pm.Start()
 	if err != nil {
 		return nil, nil, err
