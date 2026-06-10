@@ -245,7 +245,7 @@ func (s *StartService) detectAndMonitorProcess(sessionID string, gameID string, 
 
 	// 情况1: 已保存了process_name，且与启动器exe名称不同
 	// 说明之前用户已选择过实际的游戏进程
-	if savedProcessName != "" && savedProcessName != launcherExeName {
+	if hasReliableSavedProcessName(savedProcessName, launcherExeName) {
 		applog.LogInfof(s.ctx, "Game %s has saved process_name: %s, will search for it after initial delay", gameID, savedProcessName)
 
 		// 等待5秒，给启动器时间启动实际游戏
@@ -287,7 +287,7 @@ func (s *StartService) detectAndMonitorProcess(sessionID string, gameID string, 
 			useLauncherHandle = true
 
 			// 保存进程名
-			if savedProcessName == "" {
+			if shouldPersistLauncherProcessName(savedProcessName) {
 				s.updateGameProcessName(gameID, launcherExeName)
 			}
 		} else {
@@ -351,7 +351,7 @@ func (s *StartService) detectAndMonitorProcess(sessionID string, gameID string, 
 			useLauncherHandle = true
 
 			// 保存进程名
-			if savedProcessName == "" {
+			if shouldPersistLauncherProcessName(savedProcessName) {
 				s.updateGameProcessName(gameID, launcherExeName)
 			}
 		}
@@ -381,9 +381,7 @@ func (s *StartService) monitorDetectedGameProcess(sessionID string, gameID strin
 		return false
 	}
 
-	if err := s.updateGameProcessName(gameID, actualProcessName); err != nil {
-		applog.LogWarningf(s.ctx, "Failed to update auto-detected process name for game %s: %v", gameID, err)
-	}
+	s.persistDetectedProcessName(gameID, launcherExeName, actualProcessName)
 
 	s.startActiveTimeTracking(sessionID, gameID, actualProcessID)
 	s.monitorProcessByPID(sessionID, gameID, startTime, actualProcessID, actualProcessName)
@@ -391,20 +389,66 @@ func (s *StartService) monitorDetectedGameProcess(sessionID string, gameID strin
 }
 
 func (s *StartService) monitorVisibleGameProcess(sessionID string, gameID string, startTime time.Time, launcher launchedProcess, launcherExeName string, launchDir string) bool {
-	actualProcessID, actualProcessName, ok := s.detectVisibleProcessInLaunchDir(gameID, launchDir, launcher.PID)
+	actualProcessID, actualProcessName, ok := s.detectVisibleLaunchedDescendantProcess(gameID, launcher.PID, launcherExeName)
+	if !ok {
+		actualProcessID, actualProcessName, ok = s.detectVisibleProcessInLaunchDir(gameID, launchDir, launcher.PID)
+	}
 	if !ok || actualProcessID == launcher.PID {
 		return false
 	}
 
-	if err := s.updateGameProcessName(gameID, actualProcessName); err != nil {
-		applog.LogWarningf(s.ctx, "Failed to update visible-window process name for game %s: %v", gameID, err)
-	}
+	s.persistDetectedProcessName(gameID, launcherExeName, actualProcessName)
 
 	applog.LogInfof(s.ctx, "Detected visible game window process for game %s: %s (PID %d), launcher: %s (PID %d)", gameID, actualProcessName, actualProcessID, launcherExeName, launcher.PID)
 	s.closeLauncherHandle(launcher)
 	s.startActiveTimeTracking(sessionID, gameID, actualProcessID)
 	s.monitorProcessByPID(sessionID, gameID, startTime, actualProcessID, actualProcessName)
 	return true
+}
+
+func (s *StartService) detectVisibleLaunchedDescendantProcess(gameID string, launcherPID uint32, launcherExeName string) (uint32, string, bool) {
+	descendants, err := processutils.GetDescendantProcesses(launcherPID)
+	if err != nil {
+		applog.LogWarningf(s.ctx, "Failed to enumerate visible descendant processes for launcher %s (PID %d): %v", launcherExeName, launcherPID, err)
+		return 0, "", false
+	}
+	if len(descendants) == 0 {
+		return 0, "", false
+	}
+
+	candidates := make([]processutils.ProcessInfo, 0, len(descendants))
+	for _, proc := range descendants {
+		if isLikelyHelperProcess(proc.Name) {
+			continue
+		}
+		candidates = append(candidates, proc)
+	}
+	if len(candidates) == 0 {
+		return 0, "", false
+	}
+
+	windowCandidates := processutils.FilterProcessesWithVisibleWindows(candidates)
+	if len(windowCandidates) == 0 {
+		return 0, "", false
+	}
+
+	if foregroundPID, ok := focusing.GetForegroundProcessID(); ok {
+		for _, proc := range windowCandidates {
+			if proc.PID == foregroundPID {
+				applog.LogInfof(s.ctx, "Auto-detected foreground visible-window descendant process for game %s: %s (PID %d)", gameID, proc.Name, proc.PID)
+				return proc.PID, proc.Name, true
+			}
+		}
+	}
+
+	if len(windowCandidates) == 1 {
+		proc := windowCandidates[0]
+		applog.LogInfof(s.ctx, "Auto-detected visible-window descendant process for game %s: %s (PID %d)", gameID, proc.Name, proc.PID)
+		return proc.PID, proc.Name, true
+	}
+
+	applog.LogInfof(s.ctx, "Multiple visible-window descendant candidates found for game %s, requiring more evidence: %s", gameID, formatProcessCandidates(windowCandidates))
+	return 0, "", false
 }
 
 func (s *StartService) detectLaunchedDescendantProcess(gameID string, launcherPID uint32, launcherExeName string) (uint32, string, bool) {
@@ -444,8 +488,12 @@ func (s *StartService) detectLaunchedDescendantProcess(gameID string, launcherPI
 
 	if len(candidates) == 1 {
 		proc := candidates[0]
-		applog.LogInfof(s.ctx, "Auto-detected descendant process for game %s: %s (PID %d)", gameID, proc.Name, proc.PID)
-		return proc.PID, proc.Name, true
+		if isPersistableProcessName(proc.Name) {
+			applog.LogInfof(s.ctx, "Auto-detected stable descendant process for game %s: %s (PID %d)", gameID, proc.Name, proc.PID)
+			return proc.PID, proc.Name, true
+		}
+		applog.LogInfof(s.ctx, "Single non-exe descendant process found for game %s without visible window, requiring manual selection: %s", gameID, formatProcessCandidates(candidates))
+		return 0, "", false
 	}
 
 	if len(candidates) > 1 {
@@ -541,8 +589,12 @@ func (s *StartService) detectProcessInLaunchDir(gameID string, launchDir string,
 
 	if len(candidates) == 1 {
 		proc := candidates[0]
-		applog.LogInfof(s.ctx, "Auto-detected process in launch dir for game %s: %s (PID %d)", gameID, proc.Name, proc.PID)
-		return proc.PID, proc.Name, true
+		if isPersistableProcessName(proc.Name) {
+			applog.LogInfof(s.ctx, "Auto-detected stable process in launch dir for game %s: %s (PID %d)", gameID, proc.Name, proc.PID)
+			return proc.PID, proc.Name, true
+		}
+		applog.LogInfof(s.ctx, "Single non-exe launch dir process found for game %s without visible window, requiring manual selection: %s", gameID, formatProcessCandidates(candidates))
+		return 0, "", false
 	}
 
 	if len(candidates) > 1 {
@@ -598,6 +650,59 @@ func (s *StartService) startActiveTimeTracking(sessionID string, gameID string, 
 	if err != nil {
 		applog.LogWarningf(s.ctx, "Failed to start active time tracking: %v", err)
 	}
+}
+
+func (s *StartService) persistDetectedProcessName(gameID string, launcherExeName string, detectedProcessName string) {
+	processName := processNameForPersistence(launcherExeName, detectedProcessName)
+	if processName == "" {
+		return
+	}
+	if !strings.EqualFold(processName, strings.TrimSpace(detectedProcessName)) {
+		applog.LogInfof(s.ctx, "Detected transient wrapper process for game %s: %s, persisting stable launcher name: %s", gameID, detectedProcessName, processName)
+	}
+	if err := s.updateGameProcessName(gameID, processName); err != nil {
+		applog.LogWarningf(s.ctx, "Failed to update auto-detected process name for game %s: %v", gameID, err)
+	}
+}
+
+func (s *StartService) persistSelectedProcessName(gameID string, selectedProcessName string) {
+	if !isPersistableProcessName(selectedProcessName) {
+		applog.LogInfof(s.ctx, "Selected non-exe process for game %s will not be persisted as process_name: %s", gameID, selectedProcessName)
+		return
+	}
+	if err := s.updateGameProcessName(gameID, selectedProcessName); err != nil {
+		applog.LogWarningf(s.ctx, "Failed to update selected process name for game %s: %v", gameID, err)
+	}
+}
+
+func hasReliableSavedProcessName(savedProcessName string, launcherExeName string) bool {
+	saved := strings.TrimSpace(savedProcessName)
+	if saved == "" || strings.EqualFold(saved, strings.TrimSpace(launcherExeName)) {
+		return false
+	}
+	return isPersistableProcessName(saved)
+}
+
+func shouldPersistLauncherProcessName(savedProcessName string) bool {
+	saved := strings.TrimSpace(savedProcessName)
+	return saved == "" || !isPersistableProcessName(saved)
+}
+
+func processNameForPersistence(launcherExeName string, detectedProcessName string) string {
+	detected := strings.TrimSpace(detectedProcessName)
+	if isPersistableProcessName(detected) {
+		return detected
+	}
+	launcher := strings.TrimSpace(launcherExeName)
+	if isPersistableProcessName(launcher) {
+		return launcher
+	}
+	return ""
+}
+
+func isPersistableProcessName(processName string) bool {
+	name := strings.ToLower(strings.TrimSpace(processName))
+	return strings.HasSuffix(name, ".exe")
 }
 
 func isLikelyHelperProcess(processName string) bool {
@@ -693,7 +798,7 @@ func (s *StartService) promptUserToSelectProcess(sessionID string, gameID string
 	}
 
 	// 保存用户选择的进程名
-	s.updateGameProcessName(gameID, selectedProcess)
+	s.persistSelectedProcessName(gameID, selectedProcess)
 
 	// 启动活跃时间追踪（如果启用）
 	s.startActiveTimeTracking(sessionID, gameID, pid)
@@ -814,11 +919,15 @@ func (s *StartService) updateGameProcessName(gameID string, processName string) 
 }
 
 // NotifyProcessSelected 用户选择了进程后调用此方法通知后端
-// 这会唤醒等待的 goroutine 并更新数据库
+// 这会唤醒等待的 goroutine，并在选择稳定 exe 进程时更新数据库
 func (s *StartService) NotifyProcessSelected(gameID string, processName string) error {
-	// 先更新数据库
-	if err := s.updateGameProcessName(gameID, processName); err != nil {
-		return err
+	// 先更新数据库。非 exe 包装进程通常是随机/伪装名称，只用于本次监控。
+	if isPersistableProcessName(processName) {
+		if err := s.updateGameProcessName(gameID, processName); err != nil {
+			return err
+		}
+	} else {
+		applog.LogInfof(s.ctx, "Selected non-exe process for game %s will not be persisted as process_name: %s", gameID, processName)
 	}
 
 	// 通过 channel 通知等待的 goroutine

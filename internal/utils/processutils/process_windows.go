@@ -291,7 +291,7 @@ func CheckIfProcessRunning(processName string) (bool, error) {
 }
 
 // GetRunningProcesses 获取系统中正在运行的进程列表
-// 只返回有意义的exe进程，过滤掉系统进程和常见的无关进程
+// 返回有意义的 exe 进程，以及带可见窗口的非 exe 包装进程，过滤掉系统进程和常见无关进程
 // 使用 Windows API 代替 tasklist，避免编码和语言问题
 func GetRunningProcesses() ([]ProcessInfo, error) {
 	// 需要过滤的系统进程和常见无关进程
@@ -362,15 +362,16 @@ func GetRunningProcesses() ([]ProcessInfo, error) {
 		name := strings.TrimSpace(syscall.UTF16ToString(pe32.ExeFile[:]))
 		nameLower := strings.ToLower(name)
 
+		processID := pe32.ProcessID
 		if name != "" &&
 			!systemProcesses[nameLower] &&
-			strings.HasSuffix(nameLower, ".exe") &&
-			pe32.ProcessID != 0 &&
-			pe32.ProcessID != 4 {
+			isSelectableProcessName(nameLower, processID) &&
+			processID != 0 &&
+			processID != 4 {
 			if _, exists := processMap[nameLower]; !exists {
 				processMap[nameLower] = ProcessInfo{
 					Name: name,
-					PID:  pe32.ProcessID,
+					PID:  processID,
 				}
 			}
 		}
@@ -510,7 +511,7 @@ func GetDescendantProcesses(parentPID uint32) ([]ProcessInfo, error) {
 	return descendants, nil
 }
 
-// GetProcessesByExecutableDir 获取可执行文件位于指定目录或其子目录下的正在运行进程。
+// GetProcessesByExecutableDir 获取进程镜像位于指定目录或其子目录下的正在运行进程。
 func GetProcessesByExecutableDir(rootDir string) ([]ProcessInfo, error) {
 	normalizedRoot, err := filepath.Abs(filepath.Clean(strings.TrimSpace(rootDir)))
 	if err != nil {
@@ -856,9 +857,7 @@ func getProcessSnapshotEntries() ([]processSnapshotEntry, error) {
 	entries := make([]processSnapshotEntry, 0)
 	for {
 		name := strings.TrimSpace(syscall.UTF16ToString(pe32.ExeFile[:]))
-		nameLower := strings.ToLower(name)
 		if name != "" &&
-			strings.HasSuffix(nameLower, ".exe") &&
 			pe32.ProcessID != 0 &&
 			pe32.ProcessID != 4 {
 			entries = append(entries, processSnapshotEntry{
@@ -875,6 +874,16 @@ func getProcessSnapshotEntries() ([]processSnapshotEntry, error) {
 	}
 
 	return entries, nil
+}
+
+func isSelectableProcessName(nameLower string, pid uint32) bool {
+	if strings.HasSuffix(nameLower, ".exe") {
+		return true
+	}
+
+	// Some games unpack their real process into a random non-exe wrapper
+	// (.tmp/.log/etc.). Only expose those when they own a visible window.
+	return HasVisibleTopLevelWindow(pid)
 }
 
 func queryProcessImagePath(pid uint32) (string, bool) {
