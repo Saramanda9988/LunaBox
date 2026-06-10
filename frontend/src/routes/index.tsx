@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { enums } from "../../wailsjs/go/models";
 import { GetGames } from "../../wailsjs/go/service/GameService";
 import { StartGameWithTracking } from "../../wailsjs/go/service/StartService";
+import { BetterEdgeIconButton } from "../components/ui/better/BetterEdgeIconButton";
 import { useAppStore } from "../store";
 import { formatDuration, formatLocalDateTime } from "../utils/time";
 import { Route as rootRoute } from "./__root";
@@ -33,7 +34,7 @@ function HomePage() {
   const [recentGames, setRecentGames] = useState<models.Game[]>([]);
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const [playingGameId, setPlayingGameId] = useState<string | null>(null);
-  const [isPickerExpanded, setIsPickerExpanded] = useState(true);
+  const [isPickerExpanded, setIsPickerExpanded] = useState(false);
   const [isCarouselPaused, setIsCarouselPaused] = useState(false);
 
   const loadRecentGames = useCallback(async () => {
@@ -143,12 +144,9 @@ function HomePage() {
     = !config?.background_enabled || !config?.background_hide_game_cover;
   const showHeroCover
     = !config?.background_enabled || !config?.background_hide_game_hero_cover;
-  const contentBottomClass
-    = carouselGames.length > 1
-      ? isPickerExpanded
-        ? "bottom-44"
-        : "bottom-20"
-      : "bottom-8";
+  const hasCoverPicker = carouselGames.length > 1;
+  const showCoverPicker = hasCoverPicker && isPickerExpanded;
+  const contentBottomClass = showCoverPicker ? "bottom-52" : "bottom-8";
 
   const openGameDetail = useCallback(
     (gameId?: string) => {
@@ -338,104 +336,75 @@ function HomePage() {
           </button>
         )}
 
-        {carouselGames.length > 1 && (
+        {showCoverPicker && (
           <div
             className="absolute inset-x-0 bottom-0 z-20"
             onMouseEnter={() => setIsCarouselPaused(true)}
             onMouseLeave={() => setIsCarouselPaused(false)}
           >
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/40 via-black/15 to-transparent dark:from-black/60" />
-            <div className="relative px-8 pb-4">
-              <div className="mb-2 flex items-center justify-between gap-4">
-                {/* <div className="flex min-w-0 items-center gap-3 text-brand-900 dark:text-white">
-                  <span className="h-7 w-1 rounded-full bg-primary-400 shadow-[0_0_18px_rgba(124,106,239,0.8)]" />
-                  <div className="min-w-0">
-                    <div className="text-lg font-semibold leading-none drop-shadow">
-                      {t("home.recentPlayed")}
-                    </div>
-                    <div className="mt-1 truncate text-xs text-brand-700 dark:text-white/70 drop-shadow">
-                      {selectedGame.name}
-                    </div>
-                  </div>
-                </div> */}
-
-                <button
-                  type="button"
-                  onClick={() => setIsPickerExpanded(value => !value)}
-                  className="glass-btn-neutral flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/50 text-brand-800 shadow-lg backdrop-blur-md transition-colors hover:bg-white/70 dark:bg-black/30 dark:text-white dark:hover:bg-black/40"
-                  title={
-                    isPickerExpanded
-                      ? t("home.collapseCoverPicker")
-                      : t("home.expandCoverPicker")
-                  }
-                  aria-label={
-                    isPickerExpanded
-                      ? t("home.collapseCoverPicker")
-                      : t("home.expandCoverPicker")
-                  }
-                >
-                  <span
-                    className={`text-xl ${
-                      isPickerExpanded
-                        ? "i-mdi-chevron-down"
-                        : "i-mdi-chevron-up"
-                    }`}
-                  />
-                </button>
-              </div>
-
-              <div
-                className={`grid transition-[grid-template-rows,opacity] duration-300 ${
-                  isPickerExpanded
-                    ? "grid-rows-[1fr] opacity-100"
-                    : "grid-rows-[0fr] opacity-0"
-                }`}
-              >
-                <div className="min-h-0 overflow-hidden">
-                  <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-1">
-                    {carouselGames.map((game) => {
-                      const isActive = game.id === selectedGame.id;
-                      return (
-                        <button
-                          type="button"
-                          key={game.id}
-                          onClick={() => setActiveGameId(game.id)}
-                          className={`group relative h-32 w-24 shrink-0 overflow-hidden rounded-xl border bg-white/30 shadow-lg transition-all duration-300 dark:bg-black/20 ${
-                            isActive
-                              ? "border-primary-300 opacity-100 ring-2 ring-primary-400/70"
-                              : "border-white/30 opacity-75 hover:-translate-y-1 hover:opacity-100 hover:border-white/60"
-                          }`}
-                          title={game.name}
-                          aria-label={t("home.selectGame", {
-                            name: game.name,
-                          })}
-                        >
-                          {game.cover_url ? (
-                            <img
-                              src={game.cover_url}
-                              alt={game.name}
-                              referrerPolicy="no-referrer"
-                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                              draggable="false"
-                              onDragStart={e => e.preventDefault()}
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-brand-200 text-brand-400 dark:bg-brand-800/70 dark:text-white/50">
-                              <span className="i-mdi-image-off text-3xl" />
-                            </div>
-                          )}
-                          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent" />
-                          {isActive && (
-                            <div className="absolute inset-x-2 bottom-2 h-1 rounded-full bg-primary-300 shadow-[0_0_16px_rgba(196,181,253,0.8)]" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-52 bg-gradient-to-t from-black/40 via-black/15 to-transparent dark:from-black/60" />
+            <div className="relative px-8 pb-14">
+              <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-1">
+                {carouselGames.map((game) => {
+                  const isActive = game.id === selectedGame.id;
+                  return (
+                    <button
+                      type="button"
+                      key={game.id}
+                      onClick={() => setActiveGameId(game.id)}
+                      className={`group relative h-32 w-24 shrink-0 overflow-hidden rounded-xl border bg-white/30 shadow-lg transition-all duration-300 dark:bg-black/20 ${
+                        isActive
+                          ? "border-primary-300 opacity-100 ring-2 ring-primary-400/70"
+                          : "border-white/30 opacity-75 hover:-translate-y-1 hover:opacity-100 hover:border-white/60"
+                      }`}
+                      title={game.name}
+                      aria-label={t("home.selectGame", {
+                        name: game.name,
+                      })}
+                    >
+                      {game.cover_url ? (
+                        <img
+                          src={game.cover_url}
+                          alt={game.name}
+                          referrerPolicy="no-referrer"
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          draggable="false"
+                          onDragStart={e => e.preventDefault()}
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-brand-200 text-brand-400 dark:bg-brand-800/70 dark:text-white/50">
+                          <span className="i-mdi-image-off text-3xl" />
+                        </div>
+                      )}
+                      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent" />
+                      {isActive && (
+                        <div className="absolute inset-x-2 bottom-2 h-1 rounded-full bg-primary-300 shadow-[0_0_16px_rgba(196,181,253,0.8)]" />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
+        )}
+
+        {hasCoverPicker && (
+          <BetterEdgeIconButton
+            placement="bottom"
+            icon={isPickerExpanded ? "i-mdi-chevron-down" : "i-mdi-chevron-up"}
+            onClick={() => setIsPickerExpanded(value => !value)}
+            title={
+              isPickerExpanded
+                ? t("home.collapseCoverPicker")
+                : t("home.expandCoverPicker")
+            }
+            aria-label={
+              isPickerExpanded
+                ? t("home.collapseCoverPicker")
+                : t("home.expandCoverPicker")
+            }
+            className="absolute bottom-0 left-1/2 z-30 -translate-x-1/2"
+          />
         )}
       </div>
     </div>

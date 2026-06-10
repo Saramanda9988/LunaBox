@@ -9,6 +9,7 @@ import {
   SelectCoverImageWithTempID,
   SelectGameExecutable,
 } from "../../../wailsjs/go/service/GameService";
+import { BetterEdgeIconButton } from "../ui/better/BetterEdgeIconButton";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { ModalPortal } from "../ui/ModalPortal";
 
@@ -576,8 +577,9 @@ export function AddGameModal({
                 </div>
 
                 {canScrollResultsPrev && (
-                  <button
-                    type="button"
+                  <BetterEdgeIconButton
+                    placement="left"
+                    icon="i-mdi-chevron-left"
                     onClick={() => scrollResults(-1)}
                     aria-label={t(
                       "addGameModal.scrollResultsPrev",
@@ -587,18 +589,14 @@ export function AddGameModal({
                       "addGameModal.scrollResultsPrev",
                       "向前查看更多结果",
                     )}
-                    className="absolute left-0 top-1/2 z-10 flex h-16 w-10 -translate-y-1/2 items-center justify-center rounded-r-xl bg-white/40 text-brand-700 opacity-75 shadow-lg backdrop-blur-md transition hover:bg-white/65 hover:opacity-100 dark:bg-black/35 dark:text-brand-200 dark:hover:bg-black/55"
-                  >
-                    <span
-                      className="i-mdi-chevron-left text-3xl"
-                      aria-hidden="true"
-                    />
-                  </button>
+                    className="absolute left-0 top-1/2 z-10 -translate-y-1/2"
+                  />
                 )}
 
                 {canScrollResultsNext && (
-                  <button
-                    type="button"
+                  <BetterEdgeIconButton
+                    placement="right"
+                    icon="i-mdi-chevron-right"
                     onClick={() => scrollResults(1)}
                     aria-label={t(
                       "addGameModal.scrollResultsNext",
@@ -608,13 +606,8 @@ export function AddGameModal({
                       "addGameModal.scrollResultsNext",
                       "向后查看更多结果",
                     )}
-                    className="absolute right-0 top-1/2 z-10 flex h-16 w-10 -translate-y-1/2 items-center justify-center rounded-l-xl bg-white/40 text-brand-700 opacity-75 shadow-lg backdrop-blur-md transition hover:bg-white/65 hover:opacity-100 dark:bg-black/35 dark:text-brand-200 dark:hover:bg-black/55"
-                  >
-                    <span
-                      className="i-mdi-chevron-right text-3xl"
-                      aria-hidden="true"
-                    />
-                  </button>
+                    className="absolute right-0 top-1/2 z-10 -translate-y-1/2"
+                  />
                 )}
               </div>
 
