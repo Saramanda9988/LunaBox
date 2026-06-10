@@ -1,6 +1,14 @@
 import type { models, vo } from "../../wailsjs/go/models";
 import { createRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { FastAverageColor } from "fast-average-color";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { enums } from "../../wailsjs/go/models";
@@ -12,7 +20,17 @@ import { formatDuration, formatLocalDateTime } from "../utils/time";
 import { Route as rootRoute } from "./__root";
 
 const RECENT_GAME_LIMIT = 12;
-const CAROUSEL_INTERVAL_MS = 4000;
+const CAROUSEL_INTERVAL_MS = 6500;
+const BACKGROUND_CROSSFADE_MS = 1200;
+const HERO_FADE_OUT_MS = 280;
+const HERO_FADE_IN_DELAY_MS = 90;
+const DEFAULT_HERO_ACCENT_RGB = "71, 85, 105";
+const DEFAULT_HERO_ACCENT_VALUE: [number, number, number, number] = [
+  71,
+  85,
+  105,
+  255,
+];
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -22,6 +40,62 @@ export const Route = createRoute({
 
 function hasRecentPlayTime(game: models.Game) {
   return Boolean(game.last_played_at);
+}
+
+interface HeroSnapshot {
+  game: models.Game;
+  isPlaying: boolean;
+  lastPlayedAt: Parameters<typeof formatLocalDateTime>[0];
+  totalPlayedDur: number;
+}
+
+function clampColorChannel(value: number) {
+  return Math.max(32, Math.min(224, Math.round(value)));
+}
+
+function formatHeroAccentRgb(value: number[]) {
+  const [rawRed, rawGreen, rawBlue] = value;
+  const neutral = [71, 85, 105];
+  const red = clampColorChannel(rawRed * 0.72 + neutral[0] * 0.28);
+  const green = clampColorChannel(rawGreen * 0.72 + neutral[1] * 0.28);
+  const blue = clampColorChannel(rawBlue * 0.72 + neutral[2] * 0.28);
+
+  return `${red}, ${green}, ${blue}`;
+}
+
+function getCoverAccentRgb(coverUrl: string) {
+  return new Promise<string>((resolve, reject) => {
+    const fac = new FastAverageColor();
+    const image = new Image();
+
+    image.crossOrigin = "anonymous";
+    image.referrerPolicy = "no-referrer";
+
+    image.onload = () => {
+      try {
+        const color = fac.getColor(image, {
+          algorithm: "sqrt",
+          defaultColor: DEFAULT_HERO_ACCENT_VALUE,
+          mode: "speed",
+          silent: true,
+        });
+        resolve(formatHeroAccentRgb(color.value));
+      }
+      catch (error) {
+        reject(error);
+      }
+      finally {
+        fac.destroy();
+      }
+    };
+
+    image.onerror = (error) => {
+      fac.destroy();
+      reject(error);
+    };
+
+    image.src = coverUrl;
+  });
 }
 
 function HomePage() {
@@ -36,6 +110,22 @@ function HomePage() {
   const [playingGameId, setPlayingGameId] = useState<string | null>(null);
   const [isPickerExpanded, setIsPickerExpanded] = useState(false);
   const [isCarouselPaused, setIsCarouselPaused] = useState(false);
+  const [isHeroVisible, setIsHeroVisible] = useState(false);
+  const [displayedHeroSnapshot, setDisplayedHeroSnapshot]
+    = useState<HeroSnapshot | null>(null);
+  const [previousBackgroundUrl, setPreviousBackgroundUrl] = useState<
+    string | null
+  >(null);
+  const [isBackgroundCrossfading, setIsBackgroundCrossfading] = useState(false);
+  const [heroAccentRgb, setHeroAccentRgb] = useState(DEFAULT_HERO_ACCENT_RGB);
+  const backgroundUrlRef = useRef<string | null>(null);
+  const backgroundFrameRef = useRef<number | null>(null);
+  const backgroundTimerRef = useRef<number | null>(null);
+  const displayedHeroSnapshotRef = useRef<HeroSnapshot | null>(null);
+  const pendingHeroSnapshotRef = useRef<HeroSnapshot | null>(null);
+  const heroFrameRef = useRef<number | null>(null);
+  const heroTimerRef = useRef<number | null>(null);
+  const colorCacheRef = useRef(new Map<string, string>());
 
   const loadRecentGames = useCallback(async () => {
     try {
@@ -120,6 +210,90 @@ function HomePage() {
     );
   }, [activeGameId, carouselGames]);
 
+  useLayoutEffect(() => {
+    const nextBackgroundUrl = selectedGame?.cover_url || null;
+    const currentBackgroundUrl = backgroundUrlRef.current;
+
+    if (backgroundFrameRef.current !== null) {
+      window.cancelAnimationFrame(backgroundFrameRef.current);
+      backgroundFrameRef.current = null;
+    }
+    if (backgroundTimerRef.current !== null) {
+      window.clearTimeout(backgroundTimerRef.current);
+      backgroundTimerRef.current = null;
+    }
+
+    if (
+      currentBackgroundUrl
+      && nextBackgroundUrl
+      && currentBackgroundUrl !== nextBackgroundUrl
+    ) {
+      setPreviousBackgroundUrl(currentBackgroundUrl);
+      setIsBackgroundCrossfading(true);
+
+      backgroundFrameRef.current = window.requestAnimationFrame(() => {
+        setIsBackgroundCrossfading(false);
+        backgroundFrameRef.current = null;
+      });
+
+      backgroundTimerRef.current = window.setTimeout(() => {
+        setPreviousBackgroundUrl(null);
+        backgroundTimerRef.current = null;
+      }, BACKGROUND_CROSSFADE_MS);
+    }
+    else if (!nextBackgroundUrl) {
+      setPreviousBackgroundUrl(null);
+      setIsBackgroundCrossfading(false);
+    }
+
+    backgroundUrlRef.current = nextBackgroundUrl;
+  }, [selectedGame?.cover_url]);
+
+  useEffect(() => {
+    return () => {
+      if (backgroundFrameRef.current !== null) {
+        window.cancelAnimationFrame(backgroundFrameRef.current);
+      }
+      if (backgroundTimerRef.current !== null) {
+        window.clearTimeout(backgroundTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const coverUrl = selectedGame?.cover_url;
+
+    if (!coverUrl) {
+      setHeroAccentRgb(DEFAULT_HERO_ACCENT_RGB);
+      return;
+    }
+
+    const cachedColor = colorCacheRef.current.get(coverUrl);
+    if (cachedColor) {
+      setHeroAccentRgb(cachedColor);
+      return;
+    }
+
+    let isCancelled = false;
+
+    void getCoverAccentRgb(coverUrl)
+      .then((rgb) => {
+        colorCacheRef.current.set(coverUrl, rgb);
+        if (!isCancelled) {
+          setHeroAccentRgb(rgb);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setHeroAccentRgb(DEFAULT_HERO_ACCENT_RGB);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedGame?.cover_url]);
+
   const selectedLastPlayedAt = useMemo(() => {
     if (!selectedGame) {
       return null;
@@ -140,6 +314,24 @@ function HomePage() {
   const isSelectedGamePlaying = Boolean(
     selectedGame?.id && playingGameId === selectedGame.id,
   );
+  const currentHeroSnapshot = useMemo<HeroSnapshot | null>(() => {
+    if (!selectedGame) {
+      return null;
+    }
+
+    return {
+      game: selectedGame,
+      isPlaying: isSelectedGamePlaying,
+      lastPlayedAt: selectedLastPlayedAt,
+      totalPlayedDur: Number(selectedTotalPlayedDur || 0),
+    };
+  }, [
+    isSelectedGamePlaying,
+    selectedGame,
+    selectedLastPlayedAt,
+    selectedTotalPlayedDur,
+  ]);
+  const currentHeroId = currentHeroSnapshot?.game.id ?? null;
   const showGameBackground
     = !config?.background_enabled || !config?.background_hide_game_cover;
   const showHeroCover
@@ -147,6 +339,96 @@ function HomePage() {
   const hasCoverPicker = carouselGames.length > 1;
   const showCoverPicker = hasCoverPicker && isPickerExpanded;
   const contentBottomClass = showCoverPicker ? "bottom-72" : "bottom-8";
+  const heroCoverMotionClass = isHeroVisible
+    ? "duration-[760ms] opacity-100 translate-y-0 scale-100 blur-0 delay-75"
+    : "duration-[220ms] opacity-0 translate-y-5 scale-[0.99] blur-[2px] delay-0";
+  const heroMetaMotionClass = isHeroVisible
+    ? "duration-[680ms] opacity-100 translate-y-0 blur-0 delay-150"
+    : "duration-[180ms] opacity-0 translate-y-4 blur-[2px] delay-0";
+  const heroAccentStyle = useMemo(
+    () => ({ backgroundColor: `rgb(${heroAccentRgb})` }),
+    [heroAccentRgb],
+  );
+
+  useLayoutEffect(() => {
+    pendingHeroSnapshotRef.current = currentHeroSnapshot;
+  }, [currentHeroSnapshot]);
+
+  useLayoutEffect(() => {
+    const nextHeroSnapshot = pendingHeroSnapshotRef.current;
+    const visibleSnapshot = displayedHeroSnapshotRef.current;
+    const hasNewHero = Boolean(nextHeroSnapshot?.game.id);
+    const hasVisibleHero = Boolean(visibleSnapshot?.game.id);
+    const hasChangedHero
+      = hasVisibleHero
+        && Boolean(nextHeroSnapshot?.game.id)
+        && visibleSnapshot?.game.id !== nextHeroSnapshot?.game.id;
+
+    if (heroFrameRef.current !== null) {
+      window.cancelAnimationFrame(heroFrameRef.current);
+      heroFrameRef.current = null;
+    }
+    if (heroTimerRef.current !== null) {
+      window.clearTimeout(heroTimerRef.current);
+      heroTimerRef.current = null;
+    }
+
+    if (!hasNewHero) {
+      setIsHeroVisible(false);
+      setDisplayedHeroSnapshot(null);
+      displayedHeroSnapshotRef.current = null;
+      return;
+    }
+
+    if (!hasVisibleHero || !hasChangedHero) {
+      setDisplayedHeroSnapshot(nextHeroSnapshot);
+      displayedHeroSnapshotRef.current = nextHeroSnapshot;
+      setIsHeroVisible(false);
+
+      heroFrameRef.current = window.requestAnimationFrame(() => {
+        setIsHeroVisible(true);
+        heroFrameRef.current = null;
+      });
+      return;
+    }
+
+    setIsHeroVisible(false);
+
+    heroTimerRef.current = window.setTimeout(() => {
+      setDisplayedHeroSnapshot(nextHeroSnapshot);
+      displayedHeroSnapshotRef.current = nextHeroSnapshot;
+
+      heroTimerRef.current = window.setTimeout(() => {
+        heroFrameRef.current = window.requestAnimationFrame(() => {
+          setIsHeroVisible(true);
+          heroFrameRef.current = null;
+        });
+        heroTimerRef.current = null;
+      }, HERO_FADE_IN_DELAY_MS);
+    }, HERO_FADE_OUT_MS);
+  }, [currentHeroId]);
+
+  useLayoutEffect(() => {
+    if (
+      currentHeroSnapshot
+      && displayedHeroSnapshotRef.current?.game.id === currentHeroSnapshot.game.id
+    ) {
+      displayedHeroSnapshotRef.current = currentHeroSnapshot;
+      setDisplayedHeroSnapshot(currentHeroSnapshot);
+    }
+  }, [currentHeroSnapshot]);
+
+  useEffect(() => {
+    return () => {
+      if (heroFrameRef.current !== null) {
+        window.cancelAnimationFrame(heroFrameRef.current);
+      }
+      if (heroTimerRef.current !== null) {
+        window.clearTimeout(heroTimerRef.current);
+        heroTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!showCoverPicker) {
@@ -184,6 +466,79 @@ function HomePage() {
       toast.error(t("home.toast.launchFailed"));
     }
   }, [fetchHomeData, loadRecentGames, selectedGame, t]);
+
+  const renderHeroContent = useCallback(
+    (
+      snapshot: HeroSnapshot,
+      isInteractive: boolean,
+      coverMotionClass = "",
+      metaMotionClass = "",
+    ) => {
+      return (
+        <>
+          {showHeroCover && snapshot.game.cover_url && (
+            <div
+              className={`w-fit max-w-full transition-all duration-300 ease-out ${
+                showCoverPicker
+                  ? "mb-0 max-h-0 -translate-y-2 overflow-hidden opacity-0"
+                  : "mb-4 max-h-72 translate-y-0 overflow-visible opacity-100"
+              }`}
+            >
+              <img
+                src={snapshot.game.cover_url}
+                alt={snapshot.game.name}
+                referrerPolicy="no-referrer"
+                className={`block max-h-72 max-w-full sm:max-w-sm md:max-w-md lg:max-w-lg rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.3)] object-contain ring-2 ring-white/20 dark:ring-white/10 transition-[opacity,transform,filter] ease-out will-change-transform ${
+                  isInteractive ? "cursor-pointer" : ""
+                } ${coverMotionClass}`}
+                onClick={
+                  isInteractive
+                    ? () => openGameDetail(snapshot.game.id)
+                    : undefined
+                }
+                draggable="false"
+              />
+            </div>
+          )}
+          <div
+            className={`transition-[opacity,transform,filter] ease-out will-change-transform ${metaMotionClass}`}
+          >
+            <h1
+              className={`text-4xl font-bold text-brand-900 dark:text-white mb-2 drop-shadow-lg ${
+                isInteractive
+                  ? "cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                  : ""
+              }`}
+              onClick={
+                isInteractive
+                  ? () => openGameDetail(snapshot.game.id)
+                  : undefined
+              }
+            >
+              {snapshot.game.name}
+            </h1>
+            <p className="text-brand-700 dark:text-white/80 text-sm drop-shadow">
+              {snapshot.isPlaying
+                ? t("home.playingNow")
+                : t("home.lastPlayed", {
+                    time: formatLocalDateTime(
+                      snapshot.lastPlayedAt,
+                      config?.time_zone,
+                    ),
+                  })}
+            </p>
+            {snapshot.totalPlayedDur > 0 && !snapshot.isPlaying && (
+              <p className="text-brand-600 dark:text-white/70 text-sm mt-1 drop-shadow">
+                {t("home.totalPlayTime")}
+                {formatDuration(snapshot.totalPlayedDur, t)}
+              </p>
+            )}
+          </div>
+        </>
+      );
+    },
+    [config?.time_zone, openGameDetail, showCoverPicker, showHeroCover, t],
+  );
 
   if (isLoading) {
     return null;
@@ -251,17 +606,35 @@ function HomePage() {
         {/* 仅在未启用自定义背景或未选择隐藏游戏封面时显示 */}
         {showGameBackground && (
           <div className="absolute inset-0">
-            <img
-              key={selectedGame.id}
-              src={selectedGame.cover_url}
-              alt=""
-              referrerPolicy="no-referrer"
-              className="w-full h-full object-cover"
-              draggable="false"
-              onDragStart={e => e.preventDefault()}
-            />
+            {selectedGame.cover_url && (
+              <img
+                src={selectedGame.cover_url}
+                alt=""
+                referrerPolicy="no-referrer"
+                className="absolute inset-0 h-full w-full object-cover"
+                draggable="false"
+                onDragStart={e => e.preventDefault()}
+              />
+            )}
+            {previousBackgroundUrl
+              && previousBackgroundUrl !== selectedGame.cover_url && (
+              <img
+                src={previousBackgroundUrl}
+                alt=""
+                referrerPolicy="no-referrer"
+                className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1200ms] ease-in-out ${
+                  isBackgroundCrossfading ? "opacity-100" : "opacity-0"
+                }`}
+                draggable="false"
+                onDragStart={e => e.preventDefault()}
+              />
+            )}
             {/* 整体柔和毛玻璃遮罩，使用统一不透明度替代复杂的渐变叠加以保持暗黑模式下的干净通透 */}
             <div className="absolute inset-0 backdrop-blur-lg bg-white/50 dark:bg-black/60" />
+            <div
+              className="absolute inset-0 opacity-[0.08] transition-colors duration-[1400ms] ease-in-out dark:opacity-[0.12]"
+              style={heroAccentStyle}
+            />
 
             {/* 仅保留底部极其轻柔的渐变，确保文字高对比度可读性 */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent dark:from-black/40 pointer-events-none" />
@@ -289,46 +662,13 @@ function HomePage() {
         <div
           className={`absolute ${contentBottomClass} left-8 max-w-lg z-10 transition-[bottom] duration-300 ease-out`}
         >
-          {showHeroCover && selectedGame.cover_url && (
-            <div
-              className={`w-fit max-w-full transition-all duration-300 ease-out ${
-                showCoverPicker
-                  ? "mb-0 max-h-0 -translate-y-2 overflow-hidden opacity-0"
-                  : "mb-4 max-h-72 translate-y-0 overflow-visible opacity-100"
-              }`}
-            >
-              <img
-                src={selectedGame.cover_url}
-                alt={selectedGame.name}
-                referrerPolicy="no-referrer"
-                className="block max-h-72 max-w-full sm:max-w-sm md:max-w-md lg:max-w-lg rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.3)] object-contain cursor-pointer ring-2 ring-white/20 dark:ring-white/10"
-                onClick={() => openGameDetail(selectedGame.id)}
-                draggable="false"
-              />
-            </div>
-          )}
-          <h1
-            className="text-4xl font-bold text-brand-900 dark:text-white mb-2 cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors drop-shadow-lg"
-            onClick={() => openGameDetail(selectedGame.id)}
-          >
-            {selectedGame.name}
-          </h1>
-          <p className="text-brand-700 dark:text-white/80 text-sm drop-shadow">
-            {isSelectedGamePlaying
-              ? t("home.playingNow")
-              : t("home.lastPlayed", {
-                  time: formatLocalDateTime(
-                    selectedLastPlayedAt,
-                    config?.time_zone,
-                  ),
-                })}
-          </p>
-          {selectedTotalPlayedDur > 0 && !isSelectedGamePlaying && (
-            <p className="text-brand-600 dark:text-white/70 text-sm mt-1 drop-shadow">
-              {t("home.totalPlayTime")}
-              {formatDuration(selectedTotalPlayedDur, t)}
-            </p>
-          )}
+          {displayedHeroSnapshot
+            && renderHeroContent(
+              displayedHeroSnapshot,
+              true,
+              heroCoverMotionClass,
+              heroMetaMotionClass,
+            )}
         </div>
         {isSelectedGamePlaying ? (
           <div
