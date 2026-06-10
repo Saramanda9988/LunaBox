@@ -1,17 +1,27 @@
+import type { models, vo } from "../../wailsjs/go/models";
 import { createRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
+import { enums } from "../../wailsjs/go/models";
+import { GetGames } from "../../wailsjs/go/service/GameService";
 import { StartGameWithTracking } from "../../wailsjs/go/service/StartService";
 import { useAppStore } from "../store";
 import { formatDuration, formatLocalDateTime } from "../utils/time";
 import { Route as rootRoute } from "./__root";
+
+const RECENT_GAME_LIMIT = 12;
+const CAROUSEL_INTERVAL_MS = 4000;
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: HomePage,
 });
+
+function hasRecentPlayTime(game: models.Game) {
+  return Boolean(game.last_played_at);
+}
 
 function HomePage() {
   const navigate = useNavigate();
@@ -20,34 +30,156 @@ function HomePage() {
   const fetchHomeData = useAppStore(state => state.fetchHomeData);
   const isLoading = useAppStore(state => state.isLoading);
   const config = useAppStore(state => state.config);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [recentGames, setRecentGames] = useState<models.Game[]>([]);
+  const [activeGameId, setActiveGameId] = useState<string | null>(null);
+  const [playingGameId, setPlayingGameId] = useState<string | null>(null);
+  const [isPickerExpanded, setIsPickerExpanded] = useState(true);
+  const [isCarouselPaused, setIsCarouselPaused] = useState(false);
+
+  const loadRecentGames = useCallback(async () => {
+    try {
+      const response = await GetGames({
+        limit: RECENT_GAME_LIMIT,
+        offset: 0,
+        search_query: "",
+        tags: [],
+        sort_by: enums.GameListSortBy.LAST_PLAYED_AT,
+        sort_order: enums.SortOrder.DESC,
+      } as vo.GameListRequest);
+      setRecentGames((response?.games || []).filter(hasRecentPlayTime));
+    }
+    catch (error) {
+      console.error("Failed to fetch recent games:", error);
+    }
+  }, []);
 
   useEffect(() => {
-    fetchHomeData();
-  }, [fetchHomeData]);
+    void fetchHomeData();
+    void loadRecentGames();
+  }, [fetchHomeData, loadRecentGames]);
 
   // 每次 homeData 刷新后都以服务端状态为准，避免本地乐观状态卡住
   useEffect(() => {
-    setIsPlaying(homeData?.last_played?.is_playing ?? false);
+    setPlayingGameId(
+      homeData?.last_played?.is_playing ? homeData.last_played.game.id : null,
+    );
   }, [homeData]);
 
-  const handleContinuePlay = async () => {
-    if (!homeData?.last_played)
+  const carouselGames = useMemo(() => {
+    const games = [...recentGames];
+    const lastPlayed = homeData?.last_played;
+
+    if (
+      lastPlayed?.game.id
+      && !games.some(game => game.id === lastPlayed.game.id)
+    ) {
+      games.unshift({
+        ...lastPlayed.game,
+        last_played_at: lastPlayed.last_played_at,
+      } as models.Game);
+    }
+
+    return games;
+  }, [homeData?.last_played, recentGames]);
+
+  useEffect(() => {
+    setActiveGameId(current =>
+      current && carouselGames.some(game => game.id === current)
+        ? current
+        : (carouselGames[0]?.id ?? null),
+    );
+  }, [carouselGames]);
+
+  useEffect(() => {
+    if (carouselGames.length <= 1 || isCarouselPaused) {
       return;
-    try {
-      const success = await StartGameWithTracking(homeData.last_played.game.id);
-      if (success) {
-        setIsPlaying(true);
-        toast.success(
-          t("home.toast.launching", { name: homeData.last_played.game.name }),
+    }
+
+    const timer = window.setInterval(() => {
+      setActiveGameId((current) => {
+        const currentIndex = carouselGames.findIndex(
+          game => game.id === current,
         );
+        const nextIndex
+          = currentIndex >= 0 ? (currentIndex + 1) % carouselGames.length : 0;
+        return carouselGames[nextIndex]?.id ?? current;
+      });
+    }, CAROUSEL_INTERVAL_MS);
+
+    return () => window.clearInterval(timer);
+  }, [carouselGames, isCarouselPaused]);
+
+  const selectedGame = useMemo(() => {
+    if (carouselGames.length === 0) {
+      return null;
+    }
+
+    return (
+      carouselGames.find(game => game.id === activeGameId) ?? carouselGames[0]
+    );
+  }, [activeGameId, carouselGames]);
+
+  const selectedLastPlayedAt = useMemo(() => {
+    if (!selectedGame) {
+      return null;
+    }
+    const lastPlayed = homeData?.last_played;
+    return selectedGame.id === lastPlayed?.game.id
+      ? lastPlayed.last_played_at
+      : selectedGame.last_played_at;
+  }, [homeData?.last_played, selectedGame]);
+
+  const lastPlayedForSelected = homeData?.last_played;
+  const selectedTotalPlayedDur
+    = selectedGame
+      && lastPlayedForSelected
+      && selectedGame.id === lastPlayedForSelected.game.id
+      ? lastPlayedForSelected.total_played_dur
+      : 0;
+  const isSelectedGamePlaying = Boolean(
+    selectedGame?.id && playingGameId === selectedGame.id,
+  );
+  const showGameBackground
+    = !config?.background_enabled || !config?.background_hide_game_cover;
+  const showHeroCover
+    = !config?.background_enabled || !config?.background_hide_game_hero_cover;
+  const contentBottomClass
+    = carouselGames.length > 1
+      ? isPickerExpanded
+        ? "bottom-44"
+        : "bottom-20"
+      : "bottom-8";
+
+  const openGameDetail = useCallback(
+    (gameId?: string) => {
+      if (!gameId) {
+        return;
+      }
+      navigate({ to: "/game/$gameId", params: { gameId } });
+    },
+    [navigate],
+  );
+
+  const handleContinuePlay = useCallback(async () => {
+    if (!selectedGame?.id) {
+      return;
+    }
+
+    try {
+      const success = await StartGameWithTracking(selectedGame.id);
+      if (success) {
+        setPlayingGameId(selectedGame.id);
+        setActiveGameId(selectedGame.id);
+        toast.success(t("home.toast.launching", { name: selectedGame.name }));
+        void fetchHomeData();
+        void loadRecentGames();
       }
     }
     catch (err) {
       console.error("Failed to launch game:", err);
       toast.error(t("home.toast.launchFailed"));
     }
-  };
+  }, [fetchHomeData, loadRecentGames, selectedGame, t]);
 
   if (isLoading) {
     return null;
@@ -69,7 +201,7 @@ function HomePage() {
 
   const lastPlayed = homeData.last_played;
 
-  if (!lastPlayed) {
+  if (!lastPlayed || !selectedGame) {
     return (
       <div className="h-full relative flex flex-col items-center justify-center">
         <div className="absolute top-6 left-8">
@@ -113,11 +245,11 @@ function HomePage() {
     <div className="h-full flex flex-col">
       <div className="flex-1 relative overflow-hidden">
         {/* 仅在未启用自定义背景或未选择隐藏游戏封面时显示 */}
-        {(!config?.background_enabled
-          || !config?.background_hide_game_cover) && (
+        {showGameBackground && (
           <div className="absolute inset-0">
             <img
-              src={lastPlayed.game.cover_url}
+              key={selectedGame.id}
+              src={selectedGame.cover_url}
               alt=""
               referrerPolicy="no-referrer"
               className="w-full h-full object-cover"
@@ -150,64 +282,160 @@ function HomePage() {
             </div>
           </div>
         </div>
-        <div className="absolute bottom-8 left-8 max-w-lg z-10">
-          {(!config?.background_enabled
-            || !config?.background_hide_game_hero_cover) && (
+        <div
+          className={`absolute ${contentBottomClass} left-8 max-w-lg z-10 transition-[bottom] duration-300`}
+        >
+          {showHeroCover && selectedGame.cover_url && (
             <div className="mb-4">
               <img
-                src={lastPlayed.game.cover_url}
-                alt={lastPlayed.game.name}
+                src={selectedGame.cover_url}
+                alt={selectedGame.name}
                 referrerPolicy="no-referrer"
                 className="max-h-72 max-w-full sm:max-w-sm md:max-w-md lg:max-w-lg rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.3)] object-contain hover:scale-105 origin-left transition-transform duration-300 cursor-pointer ring-2 ring-white/20 dark:ring-white/10"
-                onClick={() =>
-                  navigate({
-                    to: "/game/$gameId",
-                    params: { gameId: lastPlayed.game.id },
-                  })}
+                onClick={() => openGameDetail(selectedGame.id)}
                 draggable="false"
               />
             </div>
           )}
           <h1
             className="text-4xl font-bold text-brand-900 dark:text-white mb-2 cursor-pointer hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors drop-shadow-lg"
-            onClick={() =>
-              navigate({
-                to: "/game/$gameId",
-                params: { gameId: lastPlayed.game.id },
-              })}
+            onClick={() => openGameDetail(selectedGame.id)}
           >
-            {lastPlayed.game.name}
+            {selectedGame.name}
           </h1>
           <p className="text-brand-700 dark:text-white/80 text-sm drop-shadow">
-            {isPlaying
+            {isSelectedGamePlaying
               ? t("home.playingNow")
               : t("home.lastPlayed", {
                   time: formatLocalDateTime(
-                    lastPlayed.last_played_at,
+                    selectedLastPlayedAt,
                     config?.time_zone,
                   ),
                 })}
           </p>
-          {lastPlayed.total_played_dur > 0 && !isPlaying && (
+          {selectedTotalPlayedDur > 0 && !isSelectedGamePlaying && (
             <p className="text-brand-600 dark:text-white/70 text-sm mt-1 drop-shadow">
               {t("home.totalPlayTime")}
-              {formatDuration(lastPlayed.total_played_dur, t)}
+              {formatDuration(selectedTotalPlayedDur, t)}
             </p>
           )}
         </div>
-        {isPlaying ? (
-          <div className="absolute bottom-8 right-8 flex items-center gap-2 px-6 py-3 bg-success-600 text-white rounded-xl shadow-lg font-medium z-10">
+        {isSelectedGamePlaying ? (
+          <div
+            className={`absolute ${contentBottomClass} right-8 flex items-center gap-2 px-6 py-3 bg-success-600 text-white rounded-xl shadow-lg font-medium z-10 transition-[bottom] duration-300`}
+          >
             <span className="i-mdi-gamepad-variant text-xl animate-pulse" />
             {t("home.gaming")}
           </div>
         ) : (
           <button
+            type="button"
             onClick={handleContinuePlay}
-            className="absolute bottom-8 right-8 flex items-center gap-2 px-6 py-3 bg-neutral-600 hover:bg-neutral-700 text-white rounded-xl shadow-lg transition-all hover:scale-105 font-medium z-10"
+            className={`absolute ${contentBottomClass} right-8 flex items-center gap-2 px-6 py-3 bg-neutral-600 hover:bg-neutral-700 text-white rounded-xl shadow-lg transition-all hover:scale-105 font-medium z-10`}
           >
             <span className="i-mdi-play text-xl" />
             {t("home.continueGame")}
           </button>
+        )}
+
+        {carouselGames.length > 1 && (
+          <div
+            className="absolute inset-x-0 bottom-0 z-20"
+            onMouseEnter={() => setIsCarouselPaused(true)}
+            onMouseLeave={() => setIsCarouselPaused(false)}
+          >
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/40 via-black/15 to-transparent dark:from-black/60" />
+            <div className="relative px-8 pb-4">
+              <div className="mb-2 flex items-center justify-between gap-4">
+                {/* <div className="flex min-w-0 items-center gap-3 text-brand-900 dark:text-white">
+                  <span className="h-7 w-1 rounded-full bg-primary-400 shadow-[0_0_18px_rgba(124,106,239,0.8)]" />
+                  <div className="min-w-0">
+                    <div className="text-lg font-semibold leading-none drop-shadow">
+                      {t("home.recentPlayed")}
+                    </div>
+                    <div className="mt-1 truncate text-xs text-brand-700 dark:text-white/70 drop-shadow">
+                      {selectedGame.name}
+                    </div>
+                  </div>
+                </div> */}
+
+                <button
+                  type="button"
+                  onClick={() => setIsPickerExpanded(value => !value)}
+                  className="glass-btn-neutral flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/50 text-brand-800 shadow-lg backdrop-blur-md transition-colors hover:bg-white/70 dark:bg-black/30 dark:text-white dark:hover:bg-black/40"
+                  title={
+                    isPickerExpanded
+                      ? t("home.collapseCoverPicker")
+                      : t("home.expandCoverPicker")
+                  }
+                  aria-label={
+                    isPickerExpanded
+                      ? t("home.collapseCoverPicker")
+                      : t("home.expandCoverPicker")
+                  }
+                >
+                  <span
+                    className={`text-xl ${
+                      isPickerExpanded
+                        ? "i-mdi-chevron-down"
+                        : "i-mdi-chevron-up"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div
+                className={`grid transition-[grid-template-rows,opacity] duration-300 ${
+                  isPickerExpanded
+                    ? "grid-rows-[1fr] opacity-100"
+                    : "grid-rows-[0fr] opacity-0"
+                }`}
+              >
+                <div className="min-h-0 overflow-hidden">
+                  <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-1">
+                    {carouselGames.map((game) => {
+                      const isActive = game.id === selectedGame.id;
+                      return (
+                        <button
+                          type="button"
+                          key={game.id}
+                          onClick={() => setActiveGameId(game.id)}
+                          className={`group relative h-32 w-24 shrink-0 overflow-hidden rounded-xl border bg-white/30 shadow-lg transition-all duration-300 dark:bg-black/20 ${
+                            isActive
+                              ? "border-primary-300 opacity-100 ring-2 ring-primary-400/70"
+                              : "border-white/30 opacity-75 hover:-translate-y-1 hover:opacity-100 hover:border-white/60"
+                          }`}
+                          title={game.name}
+                          aria-label={t("home.selectGame", {
+                            name: game.name,
+                          })}
+                        >
+                          {game.cover_url ? (
+                            <img
+                              src={game.cover_url}
+                              alt={game.name}
+                              referrerPolicy="no-referrer"
+                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              draggable="false"
+                              onDragStart={e => e.preventDefault()}
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-brand-200 text-brand-400 dark:bg-brand-800/70 dark:text-white/50">
+                              <span className="i-mdi-image-off text-3xl" />
+                            </div>
+                          )}
+                          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent" />
+                          {isActive && (
+                            <div className="absolute inset-x-2 bottom-2 h-1 rounded-full bg-primary-300 shadow-[0_0_16px_rgba(196,181,253,0.8)]" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

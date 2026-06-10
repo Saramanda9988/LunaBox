@@ -546,6 +546,11 @@
     "totalPlayTime": "総プレイ時間: ",
     "gaming": "プレイ中",
     "continueGame": "ゲームを続ける",
+    "recentPlayed": "最近プレイ",
+    "openGameDetail": "ゲーム詳細を表示",
+    "expandCoverPicker": "カバー選択を展開",
+    "collapseCoverPicker": "カバー選択を閉じる",
+    "selectGame": "{{name}} に切り替える",
     "toast": {
       "launching": "{{name}} を起動中",
       "launchFailed": "ゲームの起動に失敗しました"

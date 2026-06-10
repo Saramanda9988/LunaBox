@@ -563,6 +563,11 @@
     "totalPlayTime": "总游玩时长：",
     "gaming": "正在游戏",
     "continueGame": "继续游戏",
+    "recentPlayed": "最近游玩",
+    "openGameDetail": "查看游戏详情",
+    "expandCoverPicker": "展开封面选择",
+    "collapseCoverPicker": "收起封面选择",
+    "selectGame": "切换到 {{name}}",
     "toast": {
       "launching": "正在启动 {{name}}",
       "launchFailed": "启动游戏失败"

@@ -563,6 +563,11 @@
     "totalPlayTime": "Total play time: ",
     "gaming": "Playing",
     "continueGame": "Continue",
+    "recentPlayed": "Recently Played",
+    "openGameDetail": "View game details",
+    "expandCoverPicker": "Expand cover picker",
+    "collapseCoverPicker": "Collapse cover picker",
+    "selectGame": "Switch to {{name}}",
     "toast": {
       "launching": "Launching {{name}}",
       "launchFailed": "Failed to launch game"
