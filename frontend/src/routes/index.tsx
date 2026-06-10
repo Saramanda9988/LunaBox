@@ -291,17 +291,17 @@ function HomePage() {
         >
           {showHeroCover && selectedGame.cover_url && (
             <div
-              className={`overflow-hidden transition-all duration-300 ease-out ${
+              className={`w-fit max-w-full transition-all duration-300 ease-out ${
                 showCoverPicker
-                  ? "mb-0 max-h-0 -translate-y-2 opacity-0"
-                  : "mb-4 max-h-72 translate-y-0 opacity-100"
+                  ? "mb-0 max-h-0 -translate-y-2 overflow-hidden opacity-0"
+                  : "mb-4 max-h-72 translate-y-0 overflow-visible opacity-100"
               }`}
             >
               <img
                 src={selectedGame.cover_url}
                 alt={selectedGame.name}
                 referrerPolicy="no-referrer"
-                className="max-h-72 max-w-full sm:max-w-sm md:max-w-md lg:max-w-lg rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.3)] object-contain hover:scale-105 origin-left transition-transform duration-300 cursor-pointer ring-2 ring-white/20 dark:ring-white/10"
+                className="block max-h-72 max-w-full sm:max-w-sm md:max-w-md lg:max-w-lg rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.3)] object-contain cursor-pointer ring-2 ring-white/20 dark:ring-white/10"
                 onClick={() => openGameDetail(selectedGame.id)}
                 draggable="false"
               />
@@ -361,7 +361,7 @@ function HomePage() {
           >
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-black/40 via-black/15 to-transparent dark:from-black/60" />
             <div className="relative px-8 pb-12">
-              <div className="scrollbar-hide flex gap-1 overflow-x-auto pb-1">
+              <div className="scrollbar-hide -my-3 flex gap-1 overflow-x-auto px-1 py-3">
                 {carouselGames.map((game) => {
                   const isActive = game.id === selectedGame.id;
                   return (
@@ -370,34 +370,46 @@ function HomePage() {
                       key={game.id}
                       onClick={() => setActiveGameId(game.id)}
                       tabIndex={showCoverPicker ? 0 : -1}
-                      className={`group relative h-48 w-36 shrink-0 overflow-hidden rounded-xl border bg-white/30 shadow-lg transition-all duration-300 dark:bg-black/20 ${
+                      className={`group relative h-48 w-36 shrink-0 rounded-xl border p-[2px] shadow-lg transition-all duration-300 hover:scale-[1.03] hover:shadow-xl ${
                         isActive
-                          ? "border-primary-300 opacity-100 ring-2 ring-primary-400/70"
-                          : "border-white/30 opacity-75 hover:-translate-y-1 hover:opacity-100 hover:border-white/60"
+                          ? "border-transparent opacity-100 shadow-[0_0_24px_rgba(244,63,94,0.38)]"
+                          : "border-white/30 bg-white/30 opacity-75 hover:-translate-y-1 hover:opacity-100 hover:border-white/60 dark:bg-black/20"
                       }`}
                       title={game.name}
                       aria-label={t("home.selectGame", {
                         name: game.name,
                       })}
                     >
-                      {game.cover_url ? (
-                        <img
-                          src={game.cover_url}
-                          alt={game.name}
-                          referrerPolicy="no-referrer"
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          draggable="false"
-                          onDragStart={e => e.preventDefault()}
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-brand-200 text-brand-400 dark:bg-brand-800/70 dark:text-white/50">
-                          <span className="i-mdi-image-off text-3xl" />
-                        </div>
-                      )}
-                      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent" />
                       {isActive && (
-                        <div className="absolute inset-x-2 bottom-2 h-1 rounded-full bg-primary-300 shadow-[0_0_16px_rgba(196,181,253,0.8)]" />
+                        <span
+                          className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl"
+                          aria-hidden="true"
+                        >
+                          <span className="absolute left-1/2 top-1/2 h-[22rem] w-[22rem] -translate-x-1/2 -translate-y-1/2">
+                            <span
+                              className="absolute inset-0 animate-spin bg-[conic-gradient(from_0deg,#ef4444_0deg,#a855f7_90deg,#dc2626_180deg,#7e22ce_270deg,#ef4444_360deg)] opacity-95 blur-[1px]"
+                              style={{ animationDuration: "3s" }}
+                            />
+                          </span>
+                        </span>
                       )}
+                      <div className="relative z-10 h-full w-full rounded-[0.65rem] bg-brand-200 dark:bg-brand-800/70">
+                        {game.cover_url ? (
+                          <img
+                            src={game.cover_url}
+                            alt={game.name}
+                            referrerPolicy="no-referrer"
+                            className="h-full w-full rounded-[0.65rem] object-cover"
+                            draggable="false"
+                            onDragStart={e => e.preventDefault()}
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center rounded-[0.65rem] text-brand-400 dark:text-white/50">
+                            <span className="i-mdi-image-off text-3xl" />
+                          </div>
+                        )}
+                        <div className="absolute inset-x-0 bottom-0 h-1/2 rounded-b-[0.65rem] bg-gradient-to-t from-black/60 to-transparent" />
+                      </div>
                     </button>
                   );
                 })}
