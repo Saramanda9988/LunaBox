@@ -101,11 +101,13 @@ export function HomeGameRailPanel({
             ? t("home.collapseCoverPicker")
             : t("home.expandCoverPicker")
         }
-        className="absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-full"
+        blurClassName="backdrop-blur-[2px]"
+        className="absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-full border-b-0 border-white/15 dark:border-white/8"
+        surfaceClassName="bg-white/10 hover:bg-white/18 dark:bg-black/12 dark:hover:bg-black/20 data-glass:bg-white/10 data-glass:hover:bg-white/18 data-glass:dark:bg-black/12 data-glass:dark:hover:bg-black/20"
       />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-black/40 via-black/15 to-transparent dark:from-black/60" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-black/25 via-black/8 to-transparent dark:from-black/40 dark:via-black/10" />
       <div
-        className={`relative px-8 pb-6 pt-7 transition-opacity duration-200 ${
+        className={`relative overflow-hidden rounded-t-2xl bg-white/10 px-2 pb-4 pt-5 shadow-lg backdrop-blur-[2px] transition-opacity duration-200 dark:bg-black/12 ${
           isExpanded ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
         aria-hidden={!isExpanded}
@@ -114,10 +116,10 @@ export function HomeGameRailPanel({
           <div className="relative">
             <div
               ref={scrollerRef}
-              className="scrollbar-hide -my-3 w-full overflow-x-auto px-1 py-3 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+              className="scrollbar-hide -my-2 w-full overflow-x-auto px-0.5 py-2 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             >
               <div
-                className={`flex gap-3 ${
+                className={`flex gap-1 ${
                   hasOverflow ? "w-max justify-start" : "w-full justify-center"
                 }`}
               >
@@ -198,21 +200,21 @@ export function HomeGameRailPanel({
             )}
           </div>
         ) : (
-          <div className="mx-auto grid max-w-5xl grid-cols-2 gap-3 px-1 py-3 md:grid-cols-4">
+          <div className="grid h-48 grid-cols-4 items-center gap-4 px-8 py-2">
             {libraryOverviewItems.map(item => (
               <div
                 key={item.label}
-                className="glass-card flex min-h-30 flex-col justify-between rounded-xl border border-white/30 bg-white/40 p-4 shadow-lg backdrop-blur-md dark:border-white/15 dark:bg-black/25"
+                className="flex h-full min-w-0 flex-col justify-center gap-3 px-4"
               >
                 <span
-                  className={`${item.icon} text-2xl text-neutral-500 dark:text-neutral-400`}
+                  className={`${item.icon} text-3xl text-brand-500/80 dark:text-brand-300/80`}
                   aria-hidden="true"
                 />
                 <div>
-                  <p className="truncate text-2xl font-bold text-brand-900 dark:text-white">
+                  <p className="truncate text-3xl font-bold text-brand-900 drop-shadow dark:text-white">
                     {item.value}
                   </p>
-                  <p className="mt-1 text-xs text-brand-600 dark:text-brand-300">
+                  <p className="mt-1 text-sm text-brand-600 drop-shadow dark:text-white/70">
                     {item.label}
                   </p>
                 </div>
@@ -221,7 +223,7 @@ export function HomeGameRailPanel({
           </div>
         )}
 
-        <div className="mt-3 flex justify-center">
+        <div className="mt-2 flex justify-center">
           <SlideButton
             options={tabOptions}
             value={activeTab}

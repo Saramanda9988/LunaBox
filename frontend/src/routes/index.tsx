@@ -234,7 +234,7 @@ function HomePage() {
     = !config?.background_enabled || !config?.background_hide_game_cover;
   const showHeroCover
     = !config?.background_enabled || !config?.background_hide_game_hero_cover;
-  const contentBottomClass = showCoverPicker ? "bottom-72" : "bottom-8";
+  const contentBottomClass = showCoverPicker ? "bottom-[18rem]" : "bottom-8";
   const heroCoverMotionClass = isHeroVisible
     ? "duration-[760ms] opacity-100 translate-y-0 scale-100 blur-0 delay-75"
     : "duration-[220ms] opacity-0 translate-y-5 scale-[0.99] blur-[2px] delay-0";
