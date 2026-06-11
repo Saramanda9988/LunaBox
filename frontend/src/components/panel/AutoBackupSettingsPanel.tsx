@@ -4,6 +4,7 @@ import {
   getSyncIntervalSeconds,
   isCloudProviderConfigured,
 } from "../../utils/cloudSync";
+import { BetterNumberInput } from "../ui/better/BetterNumberInput";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 
 interface AutoBackupSettingsProps {
@@ -97,47 +98,57 @@ export function AutoBackupSettingsPanel({
             } as appconf.AppConfig)}
         />
 
-        <div className="grid grid-cols-1 gap-4 border-t border-brand-200 pt-4 dark:border-brand-700 md:grid-cols-2">
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-              {t("settings.autoBackup.localGameRetention")}
-            </label>
-            <input
-              type="number"
-              name="local_backup_retention"
+        <div className="space-y-4 border-t border-brand-200 pt-4 dark:border-brand-700">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1 space-y-2">
+              <label
+                htmlFor="local_backup_retention"
+                className="block text-sm font-medium text-brand-700 dark:text-brand-300"
+              >
+                {t("settings.autoBackup.localGameRetention")}
+              </label>
+              <p className="text-xs text-brand-500 dark:text-brand-400">
+                {t("settings.autoBackup.localGameRetentionHint")}
+              </p>
+            </div>
+            <BetterNumberInput
+              id="local_backup_retention"
+              min={0}
               value={formData.local_backup_retention || 10}
-              onChange={e =>
+              onValueChange={value =>
                 onChange({
                   ...formData,
-                  local_backup_retention:
-                    Number.parseInt(e.target.value, 10) || 0,
+                  local_backup_retention: value,
                 } as appconf.AppConfig)}
-              className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+              size="sm"
+              className="shrink-0"
             />
-            <p className="text-xs text-brand-500 dark:text-brand-400">
-              {t("settings.autoBackup.localGameRetentionHint")}
-            </p>
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-              {t("settings.autoBackup.localDbRetention")}
-            </label>
-            <input
-              type="number"
-              name="local_db_backup_retention"
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1 space-y-2">
+              <label
+                htmlFor="local_db_backup_retention"
+                className="block text-sm font-medium text-brand-700 dark:text-brand-300"
+              >
+                {t("settings.autoBackup.localDbRetention")}
+              </label>
+              <p className="text-xs text-brand-500 dark:text-brand-400">
+                {t("settings.autoBackup.localDbRetentionHint")}
+              </p>
+            </div>
+            <BetterNumberInput
+              id="local_db_backup_retention"
+              min={0}
               value={formData.local_db_backup_retention || 5}
-              onChange={e =>
+              onValueChange={value =>
                 onChange({
                   ...formData,
-                  local_db_backup_retention:
-                    Number.parseInt(e.target.value, 10) || 0,
+                  local_db_backup_retention: value,
                 } as appconf.AppConfig)}
-              className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+              size="sm"
+              className="shrink-0"
             />
-            <p className="text-xs text-brand-500 dark:text-brand-400">
-              {t("settings.autoBackup.localDbRetentionHint")}
-            </p>
           </div>
         </div>
       </div>
@@ -176,37 +187,42 @@ export function AutoBackupSettingsPanel({
         />
 
         <div className="space-y-2 border-t border-brand-200 pt-4 dark:border-brand-700">
-          <label
-            className={`block text-sm font-medium ${
-              cloudServiceEnabled
-                ? "text-brand-700 dark:text-brand-300"
-                : "text-brand-400 dark:text-brand-500"
-            }`}
-          >
-            {t("settings.cloudBackup.retentionLabel")}
-          </label>
-          <input
-            type="number"
-            value={formData.cloud_backup_retention || 5}
-            onChange={e =>
-              onChange({
-                ...formData,
-                cloud_backup_retention:
-                  Number.parseInt(e.target.value, 10) || 20,
-              } as appconf.AppConfig)}
-            min={1}
-            max={100}
-            disabled={!cloudServiceEnabled}
-            className="glass-input w-32 rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
-          />
-          <p className="text-xs text-brand-500 dark:text-brand-400">
-            {t("settings.cloudBackup.retentionHint")}
-          </p>
-          {!cloudServiceEnabled && (
-            <p className="text-xs text-warning-600 dark:text-warning-400">
-              {t("settings.autoBackup.cloudServiceRequiredHint")}
-            </p>
-          )}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1 space-y-2">
+              <label
+                htmlFor="cloud_backup_retention"
+                className={`block text-sm font-medium ${
+                  cloudServiceEnabled
+                    ? "text-brand-700 dark:text-brand-300"
+                    : "text-brand-400 dark:text-brand-500"
+                }`}
+              >
+                {t("settings.cloudBackup.retentionLabel")}
+              </label>
+              <p className="text-xs text-brand-500 dark:text-brand-400">
+                {t("settings.cloudBackup.retentionHint")}
+              </p>
+              {!cloudServiceEnabled && (
+                <p className="text-xs text-warning-600 dark:text-warning-400">
+                  {t("settings.autoBackup.cloudServiceRequiredHint")}
+                </p>
+              )}
+            </div>
+            <BetterNumberInput
+              id="cloud_backup_retention"
+              value={formData.cloud_backup_retention || 5}
+              onValueChange={value =>
+                onChange({
+                  ...formData,
+                  cloud_backup_retention: value,
+                } as appconf.AppConfig)}
+              min={1}
+              max={100}
+              disabled={!cloudServiceEnabled}
+              size="sm"
+              className="shrink-0"
+            />
+          </div>
         </div>
       </div>
 
@@ -247,20 +263,43 @@ export function AutoBackupSettingsPanel({
         />
 
         <div className="space-y-2 border-t border-brand-200 pt-4 dark:border-brand-700">
-          <label
-            className={`block text-sm font-medium ${
-              cloudServiceEnabled
-              && formData.cloud_sync_enabled
-              && formData.auto_cloud_sync_enabled
-                ? "text-brand-700 dark:text-brand-300"
-                : "text-brand-400 dark:text-brand-500"
-            }`}
-          >
-            {t("settings.cloudBackup.syncIntervalLabel")}
-          </label>
-          <div className="flex items-center gap-3">
-            <input
-              type="number"
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1 space-y-2">
+              <label
+                htmlFor="cloud_sync_interval_sec"
+                className={`block text-sm font-medium ${
+                  cloudServiceEnabled
+                  && formData.cloud_sync_enabled
+                  && formData.auto_cloud_sync_enabled
+                    ? "text-brand-700 dark:text-brand-300"
+                    : "text-brand-400 dark:text-brand-500"
+                }`}
+              >
+                {t("settings.cloudBackup.syncIntervalLabel")}
+              </label>
+              <p className="text-xs text-brand-500 dark:text-brand-400">
+                {t("settings.cloudBackup.syncIntervalHint")}
+              </p>
+              {!cloudServiceEnabled && (
+                <p className="text-xs text-warning-600 dark:text-warning-400">
+                  {t("settings.autoBackup.cloudServiceRequiredHint")}
+                </p>
+              )}
+              {cloudServiceEnabled && !cloudConfigured && (
+                <p className="text-xs text-warning-600 dark:text-warning-400">
+                  {t("settings.autoBackup.cloudSyncConfigRequiredHint")}
+                </p>
+              )}
+              {cloudServiceEnabled
+                && formData.cloud_sync_enabled
+                && !formData.auto_cloud_sync_enabled && (
+                <p className="text-xs text-brand-500 dark:text-brand-400">
+                  {t("settings.autoBackup.cloudSyncManualRecommendedHint")}
+                </p>
+              )}
+            </div>
+            <BetterNumberInput
+              id="cloud_sync_interval_sec"
               min={15}
               step={5}
               value={syncIntervalSeconds}
@@ -269,40 +308,17 @@ export function AutoBackupSettingsPanel({
                 || !formData.cloud_sync_enabled
                 || !formData.auto_cloud_sync_enabled
               }
-              onChange={(e) => {
-                const raw = Number.parseInt(e.target.value, 10);
-                const nextValue = Number.isNaN(raw) ? 60 : Math.max(15, raw);
+              onValueChange={(value) => {
                 onChange({
                   ...formData,
-                  cloud_sync_interval_sec: nextValue,
+                  cloud_sync_interval_sec: value,
                 } as appconf.AppConfig);
               }}
-              className="glass-input w-32 rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+              unit={t("settings.cloudBackup.syncIntervalUnit")}
+              size="sm"
+              className="shrink-0"
             />
-            <span className="text-sm text-brand-500 dark:text-brand-400">
-              {t("settings.cloudBackup.syncIntervalUnit")}
-            </span>
           </div>
-          <p className="text-xs text-brand-500 dark:text-brand-400">
-            {t("settings.cloudBackup.syncIntervalHint")}
-          </p>
-          {!cloudServiceEnabled && (
-            <p className="text-xs text-warning-600 dark:text-warning-400">
-              {t("settings.autoBackup.cloudServiceRequiredHint")}
-            </p>
-          )}
-          {cloudServiceEnabled && !cloudConfigured && (
-            <p className="text-xs text-warning-600 dark:text-warning-400">
-              {t("settings.autoBackup.cloudSyncConfigRequiredHint")}
-            </p>
-          )}
-          {cloudServiceEnabled
-            && formData.cloud_sync_enabled
-            && !formData.auto_cloud_sync_enabled && (
-            <p className="text-xs text-brand-500 dark:text-brand-400">
-              {t("settings.autoBackup.cloudSyncManualRecommendedHint")}
-            </p>
-          )}
         </div>
       </div>
     </div>

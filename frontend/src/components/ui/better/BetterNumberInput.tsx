@@ -142,7 +142,7 @@ export function BetterNumberInput({
           controlSizeClass,
           "border border-brand-300 bg-white shadow-sm transition-all duration-200",
           "focus-within:border-neutral-500 focus-within:ring-2 focus-within:ring-neutral-500/30",
-          "dark:border-brand-600 dark:bg-brand-800/80",
+          "dark:border-brand-600 dark:bg-brand-700",
           disabled ? "cursor-not-allowed opacity-60" : "",
         ].join(" ")}
       >
@@ -167,7 +167,7 @@ export function BetterNumberInput({
           className={`min-w-0 flex-1 bg-transparent font-medium tabular-nums text-brand-900 outline-none placeholder:text-brand-400 disabled:cursor-not-allowed dark:text-white dark:placeholder:text-brand-500 ${inputSizeClass}`}
         />
         <div
-          className={`flex shrink-0 flex-col border-l border-brand-200 bg-brand-100/70 dark:border-brand-700 dark:bg-brand-900/40 ${stepperSizeClass}`}
+          className={`flex shrink-0 flex-col border-l border-brand-200 bg-brand-50/80 dark:border-brand-600 dark:bg-brand-700 ${stepperSizeClass}`}
         >
           <button
             type="button"
