@@ -123,6 +123,21 @@ func NewDownloader(config TransferConfig) (*Downloader, string, error) {
 	}, proxyDesc, nil
 }
 
+func NewSecureHTTPClientFromConfig(timeout time.Duration, config proxyutils.ProxyConfigProvider) (*http.Client, string, error) {
+	proxyMode := proxyutils.ProxyModeSystem
+	proxyURL := ""
+	if config != nil {
+		proxyMode, proxyURL = config.NetworkProxyConfig()
+	}
+
+	httpClient, proxyDesc, err := newSecureHTTPClient(proxyMode, proxyURL)
+	if err != nil {
+		return nil, "", err
+	}
+	httpClient.Timeout = timeout
+	return httpClient, proxyDesc, nil
+}
+
 func (d *Downloader) Download(ctx context.Context, req TransferRequest) error {
 	if d == nil {
 		return fmt.Errorf("downloader is nil")

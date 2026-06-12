@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"lunabox/internal/applog"
 	"lunabox/internal/autostart"
@@ -15,7 +16,9 @@ import (
 	"lunabox/internal/protocol"
 	"lunabox/internal/utils/apputils"
 	"lunabox/internal/utils/dbutils"
+	"lunabox/internal/utils/imageutils"
 	"lunabox/internal/utils/sessionend"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -53,7 +56,10 @@ var config *appconf.AppConfig
 
 var appState = newLifecycleState()
 var ipcHTTPServer *http.Server
+var remoteImageProxyHTTPServer *http.Server
 var sessionEndHook *sessionend.Hook
+
+const remoteImageProxyHTTPAddr = "127.0.0.1:23680"
 
 type lifecycleState struct {
 	ctxMu sync.RWMutex
@@ -465,6 +471,24 @@ func main() {
 	if err != nil {
 		appLogger.Error("Warning: Failed to create local file handler: " + err.Error())
 	}
+	remoteImageProxyHandler := imageutils.NewRemoteImageProxyHandler(config)
+	remoteImageProxyListener, err := net.Listen("tcp", remoteImageProxyHTTPAddr)
+	if err != nil {
+		appLogger.Warning("Warning: Failed to start remote image proxy server: " + err.Error())
+	} else {
+		imageProxyMux := http.NewServeMux()
+		imageProxyMux.Handle("/proxy/image", remoteImageProxyHandler)
+		remoteImageProxyHTTPServer = &http.Server{
+			Handler:           imageProxyMux,
+			ReadHeaderTimeout: 5 * time.Second,
+		}
+		appLogger.Info("Remote image proxy server listening on http://" + remoteImageProxyHTTPAddr + "/proxy/image")
+		go func() {
+			if serveErr := remoteImageProxyHTTPServer.Serve(remoteImageProxyListener); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
+				appLogger.Error("Remote image proxy server failed: " + serveErr.Error())
+			}
+		}()
+	}
 
 	// Create application with options
 	// 使用配置中保存的窗口尺寸，如果小于最小值则使用最小值
@@ -501,6 +525,11 @@ func main() {
 
 					if localFileHandler != nil && strings.HasPrefix(r.URL.Path, "/local/") {
 						localFileHandler.ServeHTTP(w, r)
+						return
+					}
+
+					if remoteImageProxyHandler != nil && r.URL.Path == "/proxy/image" {
+						remoteImageProxyHandler.ServeHTTP(w, r)
 						return
 					}
 
@@ -703,6 +732,18 @@ func main() {
 				if err := mcpServerService.Shutdown(); err != nil {
 					appLogger.Error("failed to shutdown MCP server: " + err.Error())
 				}
+			})
+
+			logShutdownStep("shutdown remote image proxy server", func() {
+				if remoteImageProxyHTTPServer == nil {
+					return
+				}
+				closeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+				defer cancel()
+				if err := remoteImageProxyHTTPServer.Shutdown(closeCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
+					appLogger.Error("failed to shutdown remote image proxy server: " + err.Error())
+				}
+				remoteImageProxyHTTPServer = nil
 			})
 
 			// 从 configService 获取最新配置（避免使用启动时的旧配置覆盖文件）

@@ -4,10 +4,15 @@ import { defineConfig } from "vite";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [
-    react(),
-    UnoCSS(),
-  ],
+  plugins: [react(), UnoCSS()],
+  server: {
+    proxy: {
+      "/proxy/image": {
+        target: "http://127.0.0.1:23680",
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     minify: "esbuild",
     target: "es2020",

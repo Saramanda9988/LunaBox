@@ -12,6 +12,7 @@ import {
 import { BetterEdgeIconButton } from "../ui/better/BetterEdgeIconButton";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { ModalPortal } from "../ui/ModalPortal";
+import { ProxyImage } from "../ui/ProxyImage";
 
 interface AddGameModalProps {
   isOpen: boolean;
@@ -547,13 +548,10 @@ export function AddGameModal({
                       >
                         <div className="aspect-[3/4] w-full overflow-hidden rounded-md bg-brand-200 dark:bg-brand-700">
                           {item.Game!.cover_url ? (
-                            <img
+                            <ProxyImage
                               src={item.Game!.cover_url}
                               alt={item.Game!.name}
                               className="h-full w-full object-cover"
-                              referrerPolicy="no-referrer"
-                              draggable="false"
-                              onDragStart={e => e.preventDefault()}
                             />
                           ) : (
                             <div className="flex h-full items-center justify-center text-brand-400">

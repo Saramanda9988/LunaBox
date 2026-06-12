@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { enums } from "../../../wailsjs/go/models";
 import { StartGameWithTracking } from "../../../wailsjs/go/service/StartService";
+import { ProxyImage } from "../ui/ProxyImage";
 
 function HighlightText({ text, query }: { text: string; query: string }) {
   if (!query || !text) {
@@ -109,15 +110,12 @@ function GameCardComponent({
       )}
       <div className="relative aspect-[3/3.6] w-full overflow-hidden bg-brand-200 dark:bg-brand-700">
         {game.cover_url ? (
-          <img
+          <ProxyImage
             src={game.cover_url}
             alt={game.name}
-            referrerPolicy="no-referrer"
             className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-110"
             decoding="async"
-            draggable="false"
             loading="lazy"
-            onDragStart={e => e.preventDefault()}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-brand-400">

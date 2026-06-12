@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useHorizontalRailScrollControls } from "../../hooks/useHorizontalRailScrollControls";
 import { formatDuration } from "../../utils/time";
 import { BetterEdgeIconButton } from "../ui/better/BetterEdgeIconButton";
+import { ProxyImage } from "../ui/ProxyImage";
 import { SlideButton } from "../ui/SlideButton";
 
 type HomeGameRailPanelTab = "recent" | "stats";
@@ -150,13 +151,10 @@ export function HomeGameRailPanel({
                       )}
                       <div className="relative z-10 h-full w-full rounded-[0.65rem] bg-brand-200 dark:bg-brand-800/70">
                         {game.cover_url ? (
-                          <img
+                          <ProxyImage
                             src={game.cover_url}
                             alt={game.name}
-                            referrerPolicy="no-referrer"
                             className="h-full w-full rounded-[0.65rem] object-cover"
-                            draggable="false"
-                            onDragStart={e => e.preventDefault()}
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center rounded-[0.65rem] text-brand-400 dark:text-white/50">

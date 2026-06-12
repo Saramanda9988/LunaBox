@@ -8,10 +8,12 @@ import { GetGames } from "../../wailsjs/go/service/GameService";
 import { StartGameWithTracking } from "../../wailsjs/go/service/StartService";
 import { GetGlobalPeriodStats } from "../../wailsjs/go/service/StatsService";
 import { HomeGameRailPanel } from "../components/panel/HomeGameRailPanel";
+import { ProxyImage } from "../components/ui/ProxyImage";
 import { useCrossfadeBackground } from "../hooks/useCrossfadeBackground";
 import { useImageAccentRgb } from "../hooks/useImageAccentRgb";
 import { useSnapshotVisibilityTransition } from "../hooks/useSnapshotVisibilityTransition";
 import { useAppStore } from "../store";
+import { proxiedImageSrc } from "../utils/imageProxy";
 import { formatDuration, formatLocalDateTime } from "../utils/time";
 import { Route as rootRoute } from "./__root";
 
@@ -177,9 +179,11 @@ function HomePage() {
     );
   }, [activeGameId, carouselGames]);
 
-  const heroAccentRgb = useImageAccentRgb(selectedGame?.cover_url);
+  const selectedGameCoverSrc = selectedGame?.cover_url ?? "";
+  const selectedGameAccentSrc = proxiedImageSrc(selectedGameCoverSrc);
+  const heroAccentRgb = useImageAccentRgb(selectedGameAccentSrc);
   const { isBackgroundCrossfading, previousBackgroundUrl }
-    = useCrossfadeBackground(selectedGame?.cover_url, {
+    = useCrossfadeBackground(selectedGameCoverSrc, {
       durationMs: BACKGROUND_CROSSFADE_MS,
     });
 
@@ -300,10 +304,9 @@ function HomePage() {
                   : "mb-4 max-h-72 translate-y-0 overflow-visible opacity-100"
               }`}
             >
-              <img
+              <ProxyImage
                 src={snapshot.game.cover_url}
                 alt={snapshot.game.name}
-                referrerPolicy="no-referrer"
                 className={`block max-h-72 max-w-full sm:max-w-sm md:max-w-md lg:max-w-lg rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.3)] object-contain ring-2 ring-white/20 dark:ring-white/10 transition-[opacity,transform,filter] ease-out will-change-transform ${
                   isInteractive ? "cursor-pointer" : ""
                 } ${coverMotionClass}`}
@@ -312,7 +315,6 @@ function HomePage() {
                     ? () => openGameDetail(snapshot.game.id)
                     : undefined
                 }
-                draggable="false"
               />
             </div>
           )}
@@ -412,26 +414,20 @@ function HomePage() {
         {showGameBackground && (
           <div className="absolute inset-0">
             {selectedGame.cover_url && (
-              <img
-                src={selectedGame.cover_url}
+              <ProxyImage
+                src={selectedGameCoverSrc}
                 alt=""
-                referrerPolicy="no-referrer"
                 className="absolute inset-0 h-full w-full object-cover"
-                draggable="false"
-                onDragStart={e => e.preventDefault()}
               />
             )}
             {previousBackgroundUrl
-              && previousBackgroundUrl !== selectedGame.cover_url && (
-              <img
+              && previousBackgroundUrl !== selectedGameCoverSrc && (
+              <ProxyImage
                 src={previousBackgroundUrl}
                 alt=""
-                referrerPolicy="no-referrer"
                 className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1200ms] ease-in-out ${
                   isBackgroundCrossfading ? "opacity-100" : "opacity-0"
                 }`}
-                draggable="false"
-                onDragStart={e => e.preventDefault()}
               />
             )}
             {/* 整体柔和毛玻璃遮罩，使用统一不透明度替代复杂的渐变叠加以保持暗黑模式下的干净通透 */}

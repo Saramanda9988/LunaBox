@@ -35,6 +35,7 @@ import { GameStatsPanel } from "../components/panel/GameStatsPanel";
 import { GameDetailSkeleton } from "../components/skeleton/GameDetailSkeleton";
 import { BetterSplitButton } from "../components/ui/better/BetterSplitButton";
 import { GameTags } from "../components/ui/GameTags";
+import { ProxyImage } from "../components/ui/ProxyImage";
 import { useAppStore } from "../store";
 import { formatLocalDate } from "../utils/time";
 import { Route as rootRoute } from "./__root";
@@ -468,13 +469,10 @@ function GameDetailPage() {
       <div className="grid min-w-0 grid-cols-[15rem_minmax(0,1fr)] items-center gap-6">
         <div className="relative w-60 rounded-lg overflow-hidden shadow-lg bg-brand-200 dark:bg-brand-800">
           {coverImageSrc ? (
-            <img
+            <ProxyImage
               src={coverImageSrc}
               alt={game.name}
               className="w-full h-auto block"
-              referrerPolicy="no-referrer"
-              draggable="false"
-              onDragStart={e => e.preventDefault()}
             />
           ) : (
             <div className="w-full h-64 flex items-center justify-center text-brand-400">
