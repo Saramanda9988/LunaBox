@@ -34,6 +34,8 @@ const DefaultMCPPort = 39200
 const DefaultScrapedTagLimit = 10
 const DefaultHomeGameCarouselIntervalSec = 6
 const MinHomeGameCarouselIntervalSec = 4
+const DefaultBatchImportScanPreset = "scan_parent"
+const MaxBatchImportHierarchyDepth = 5
 
 // AppConfig 应用配置结构体
 type AppConfig struct {
@@ -130,6 +132,10 @@ type AppConfig struct {
 	TimeZone string `json:"time_zone,omitempty"` // 数据库使用的 IANA 时区名称（如 "Asia/Shanghai"）
 	// 游戏库路径配置
 	GameLibraryPath string `json:"game_library_path,omitempty"` // 游戏库主目录（下载的游戏将解压到此）
+	// 批量导入偏好
+	BatchImportScanPreset      string `json:"batch_import_scan_preset,omitempty"` // 批量导入扫描预设
+	BatchImportHierarchyDepth  int    `json:"batch_import_hierarchy_depth"`       // 批量导入按目录导入层级
+	BatchImportPreferredSource string `json:"batch_import_preferred_source,omitempty"`
 	// 网络代理配置
 	NetworkProxyMode string `json:"network_proxy_mode,omitempty"` // 全局网络代理模式：system / manual / direct
 	NetworkProxyURL  string `json:"network_proxy_url,omitempty"`  // 全局手动代理 URL
@@ -223,6 +229,9 @@ func LoadConfig() (*AppConfig, error) {
 		MagpiePath:                  "",
 		AutoDetectGameProcess:       true, // 默认启用自动检测，保持向后兼容
 		GameLibraryPath:             "",
+		BatchImportScanPreset:       DefaultBatchImportScanPreset,
+		BatchImportHierarchyDepth:   0,
+		BatchImportPreferredSource:  "",
 		NetworkProxyMode:            "system",
 		NetworkProxyURL:             "",
 		EnableTagTranslation:        true,
@@ -265,6 +274,7 @@ func LoadConfig() (*AppConfig, error) {
 	config.MCPPort = NormalizeMCPPort(config.MCPPort)
 	config.ScrapedTagLimit = NormalizeScrapedTagLimit(config.ScrapedTagLimit)
 	config.HomeGameCarouselIntervalSec = NormalizeHomeGameCarouselIntervalSec(config.HomeGameCarouselIntervalSec)
+	NormalizeBatchImportPreferences(config)
 
 	shouldSaveSanitizedConfig := SanitizeBangumiOAuthConfig(config)
 	if NormalizeProxySettings(config) {
@@ -304,6 +314,7 @@ func SaveConfig(config *AppConfig) error {
 	config.MCPPort = NormalizeMCPPort(config.MCPPort)
 	config.ScrapedTagLimit = NormalizeScrapedTagLimit(config.ScrapedTagLimit)
 	config.HomeGameCarouselIntervalSec = NormalizeHomeGameCarouselIntervalSec(config.HomeGameCarouselIntervalSec)
+	NormalizeBatchImportPreferences(config)
 	configCopy := *config
 	configCopy.BackupPassword = ""
 	data, err := json.MarshalIndent(&configCopy, "", "  ")
@@ -337,6 +348,38 @@ func NormalizeHomeGameCarouselIntervalSec(intervalSec int) int {
 		return MinHomeGameCarouselIntervalSec
 	}
 	return intervalSec
+}
+
+func NormalizeBatchImportPreferences(config *AppConfig) bool {
+	if config == nil {
+		return false
+	}
+
+	changed := false
+	switch config.BatchImportScanPreset {
+	case "scan_parent", "scan_library_child", "hierarchy_child":
+	default:
+		config.BatchImportScanPreset = DefaultBatchImportScanPreset
+		changed = true
+	}
+
+	if config.BatchImportHierarchyDepth < 0 {
+		config.BatchImportHierarchyDepth = 0
+		changed = true
+	}
+	if config.BatchImportHierarchyDepth > MaxBatchImportHierarchyDepth {
+		config.BatchImportHierarchyDepth = MaxBatchImportHierarchyDepth
+		changed = true
+	}
+
+	if config.BatchImportPreferredSource != "" {
+		if _, ok := allowedMetadataSourceSet[config.BatchImportPreferredSource]; !ok {
+			config.BatchImportPreferredSource = ""
+			changed = true
+		}
+	}
+
+	return changed
 }
 
 func (config *AppConfig) NetworkProxyConfig() (string, string) {

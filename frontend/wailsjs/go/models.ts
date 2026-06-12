@@ -79,6 +79,9 @@ export namespace appconf {
 	    auto_detect_game_process: boolean;
 	    time_zone?: string;
 	    game_library_path?: string;
+	    batch_import_scan_preset?: string;
+	    batch_import_hierarchy_depth: number;
+	    batch_import_preferred_source?: string;
 	    network_proxy_mode?: string;
 	    network_proxy_url?: string;
 	    show_nsfw_tags: boolean;
@@ -169,6 +172,9 @@ export namespace appconf {
 	        this.auto_detect_game_process = source["auto_detect_game_process"];
 	        this.time_zone = source["time_zone"];
 	        this.game_library_path = source["game_library_path"];
+	        this.batch_import_scan_preset = source["batch_import_scan_preset"];
+	        this.batch_import_hierarchy_depth = source["batch_import_hierarchy_depth"];
+	        this.batch_import_preferred_source = source["batch_import_preferred_source"];
 	        this.network_proxy_mode = source["network_proxy_mode"];
 	        this.network_proxy_url = source["network_proxy_url"];
 	        this.show_nsfw_tags = source["show_nsfw_tags"];
@@ -181,11 +187,6 @@ export namespace appconf {
 
 export namespace enums {
 	
-	export enum PromptType {
-	    DEFAULT_SYSTEM = "你是一个幽默风趣的游戏评论员，擅长用轻松的语气点评玩家的游戏习惯。\n请用轻松幽默的方式点评这位玩家的游戏习惯，可以适当调侃但不要太过分。",
-	    MEOW_ZAKO = "你是一个雌小鬼猫娘，根据用户的游戏统计数据对用户进行锐评，语气可爱活泼，不要给用户留脸面偶（=w=）适当加入猫咪的拟声词（如“喵”）和雌小鬼的口癖（如“杂鱼~杂鱼~”），要是能再用上颜文字主人就更高兴了喵。\n\n",
-	    STRICT_TUTOR = "你是用户的严厉导师，根据用户的游戏统计数据对用户进行锐评，语气严肃认真，不允许任何调侃和幽默。\n\n",
-	}
 	export enum GameStatus {
 	    NOT_STARTED = "not_started",
 	    WANT_TO_PLAY = "want_to_play",
@@ -219,6 +220,11 @@ export namespace enums {
 	    MONTH = "month",
 	    YEAR = "year",
 	    ALL = "all",
+	}
+	export enum PromptType {
+	    DEFAULT_SYSTEM = "你是一个幽默风趣的游戏评论员，擅长用轻松的语气点评玩家的游戏习惯。\n请用轻松幽默的方式点评这位玩家的游戏习惯，可以适当调侃但不要太过分。",
+	    MEOW_ZAKO = "你是一个雌小鬼猫娘，根据用户的游戏统计数据对用户进行锐评，语气可爱活泼，不要给用户留脸面偶（=w=）适当加入猫咪的拟声词（如“喵”）和雌小鬼的口癖（如“杂鱼~杂鱼~”），要是能再用上颜文字主人就更高兴了喵。\n\n",
+	    STRICT_TUTOR = "你是用户的严厉导师，根据用户的游戏统计数据对用户进行锐评，语气严肃认真，不允许任何调侃和幽默。\n\n",
 	}
 
 }
@@ -692,6 +698,7 @@ export namespace service {
 	export class LaunchOptions {
 	    UseLocaleEmulator?: boolean;
 	    UseMagpie?: boolean;
+	    RunAsAdmin?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new LaunchOptions(source);
@@ -701,6 +708,7 @@ export namespace service {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.UseLocaleEmulator = source["UseLocaleEmulator"];
 	        this.UseMagpie = source["UseMagpie"];
+	        this.RunAsAdmin = source["RunAsAdmin"];
 	    }
 	}
 	export class PreviewGame {
