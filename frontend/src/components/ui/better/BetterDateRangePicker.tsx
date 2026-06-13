@@ -19,11 +19,7 @@ interface BetterDateRangePickerProps {
   className?: string;
 }
 
-const dayFormatter = new Intl.DateTimeFormat(undefined, { weekday: "short" });
-const monthFormatter = new Intl.DateTimeFormat(undefined, {
-  year: "numeric",
-  month: "long",
-});
+const weekdayLabels = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const todayValue = formatDateToYYYYMMDD(new Date());
 
 function parseDateValue(value: string): Date | null {
@@ -55,19 +51,44 @@ function addMonths(date: Date, amount: number): Date {
   return new Date(date.getFullYear(), date.getMonth() + amount, 1);
 }
 
-function getLatestVisibleMonth(): Date {
-  return addMonths(startOfMonth(new Date()), -1);
+function getLatestCalendarMonth(): Date {
+  return startOfMonth(new Date());
 }
 
-function getInitialVisibleMonth(startDate: string): Date {
+function getInitialLeftMonth(startDate: string): Date {
   const selectedMonth = startOfMonth(parseDateValue(startDate) ?? new Date());
-  const latestVisibleMonth = getLatestVisibleMonth();
+  const latestLeftMonth = addMonths(getLatestCalendarMonth(), -1);
 
-  if (selectedMonth > latestVisibleMonth) {
-    return latestVisibleMonth;
+  if (selectedMonth > latestLeftMonth) {
+    return latestLeftMonth;
   }
 
   return selectedMonth;
+}
+
+function getInitialRightMonth(leftMonth: Date, endDate: string): Date {
+  const selectedEndMonth = parseDateValue(endDate);
+  const latestCalendarMonth = getLatestCalendarMonth();
+  const fallbackMonth = addMonths(leftMonth, 1);
+  const rightMonth = selectedEndMonth
+    ? startOfMonth(selectedEndMonth)
+    : fallbackMonth;
+
+  if (rightMonth <= leftMonth) {
+    return fallbackMonth;
+  }
+
+  if (rightMonth > latestCalendarMonth) {
+    return latestCalendarMonth;
+  }
+
+  return rightMonth;
+}
+
+function formatCalendarMonth(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${year}/${month}`;
 }
 
 function getCalendarDays(monthDate: Date) {
@@ -91,6 +112,14 @@ function CalendarMonth({
   startDate,
   endDate,
   onSelectDate,
+  canGoPreviousMonth = true,
+  canGoPreviousYear = true,
+  canGoNextMonth,
+  canGoNextYear,
+  onGoPreviousMonth,
+  onGoPreviousYear,
+  onGoNextMonth,
+  onGoNextYear,
   headerStart,
   headerEnd,
 }: {
@@ -98,6 +127,14 @@ function CalendarMonth({
   startDate: string;
   endDate: string;
   onSelectDate: (value: string) => void;
+  canGoPreviousMonth?: boolean;
+  canGoPreviousYear?: boolean;
+  canGoNextMonth: boolean;
+  canGoNextYear: boolean;
+  onGoPreviousMonth: () => void;
+  onGoPreviousYear: () => void;
+  onGoNextMonth: () => void;
+  onGoNextYear: () => void;
   headerStart?: ReactNode;
   headerEnd?: ReactNode;
 }) {
@@ -106,19 +143,53 @@ function CalendarMonth({
   return (
     <div className="w-[18.5rem]">
       <div className="mb-3 grid h-9 grid-cols-[4.5rem_1fr_4.5rem] items-center">
-        <div className="flex items-center gap-1">{headerStart}</div>
-        <div className="text-center text-sm font-semibold text-brand-900 dark:text-white">
-          {monthFormatter.format(monthDate)}
+        <div className="flex items-center gap-1">
+          {headerStart ?? (
+            <>
+              <CalendarNavButton
+                icon="i-mdi-chevron-double-left"
+                label="Previous year"
+                disabled={!canGoPreviousYear}
+                onClick={onGoPreviousYear}
+              />
+              <CalendarNavButton
+                icon="i-mdi-chevron-left"
+                label="Previous month"
+                disabled={!canGoPreviousMonth}
+                onClick={onGoPreviousMonth}
+              />
+            </>
+          )}
         </div>
-        <div className="flex items-center justify-end gap-1">{headerEnd}</div>
+        <div className="text-center text-sm font-semibold text-brand-900 dark:text-white">
+          {formatCalendarMonth(monthDate)}
+        </div>
+        <div className="flex items-center justify-end gap-1">
+          {headerEnd ?? (
+            <>
+              <CalendarNavButton
+                icon="i-mdi-chevron-right"
+                label="Next month"
+                disabled={!canGoNextMonth}
+                onClick={onGoNextMonth}
+              />
+              <CalendarNavButton
+                icon="i-mdi-chevron-double-right"
+                label="Next year"
+                disabled={!canGoNextYear}
+                onClick={onGoNextYear}
+              />
+            </>
+          )}
+        </div>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center">
-        {Array.from({ length: 7 }, (_, index) => (
+        {weekdayLabels.map(label => (
           <div
-            key={`weekday-${index}`}
+            key={`weekday-${label}`}
             className="h-8 text-[11px] font-medium leading-8 text-brand-400 dark:text-brand-500"
           >
-            {dayFormatter.format(new Date(2026, 1, index + 1))}
+            {label}
           </div>
         ))}
         {days.map((date) => {
@@ -208,13 +279,19 @@ export function BetterDateRangePicker({
   disabled = false,
   className = "",
 }: BetterDateRangePickerProps) {
-  const [visibleMonth, setVisibleMonth] = useState(() =>
-    getInitialVisibleMonth(startDate),
+  const [leftMonth, setLeftMonth] = useState(() =>
+    getInitialLeftMonth(startDate),
   );
-  const latestVisibleMonth = getLatestVisibleMonth();
-  const nextMonth = addMonths(visibleMonth, 1);
-  const canGoNextMonth = addMonths(visibleMonth, 1) <= latestVisibleMonth;
-  const canGoNextYear = addMonths(visibleMonth, 12) <= latestVisibleMonth;
+  const [rightMonth, setRightMonth] = useState(() =>
+    getInitialRightMonth(getInitialLeftMonth(startDate), endDate),
+  );
+  const latestCalendarMonth = getLatestCalendarMonth();
+  const canGoNextLeftMonth = addMonths(leftMonth, 1) < rightMonth;
+  const canGoNextLeftYear = addMonths(leftMonth, 12) < rightMonth;
+  const canGoPreviousRightMonth = addMonths(rightMonth, -1) > leftMonth;
+  const canGoPreviousRightYear = addMonths(rightMonth, -12) > leftMonth;
+  const canGoNextRightMonth = addMonths(rightMonth, 1) <= latestCalendarMonth;
+  const canGoNextRightYear = addMonths(rightMonth, 12) <= latestCalendarMonth;
   const rangeText
     = startDate && endDate ? `${startDate} - ${endDate}` : triggerLabel;
   const selectedRangeText
@@ -224,19 +301,11 @@ export function BetterDateRangePicker({
     if (!startDate || (startDate && endDate)) {
       onStartDateChange(value);
       onEndDateChange("");
-      const selectedMonth = startOfMonth(parseDateValue(value) ?? visibleMonth);
-      if (selectedMonth <= latestVisibleMonth) {
-        setVisibleMonth(selectedMonth);
-      }
       return;
     }
 
     if (value < startDate) {
       onStartDateChange(value);
-      const selectedMonth = startOfMonth(parseDateValue(value) ?? visibleMonth);
-      if (selectedMonth <= latestVisibleMonth) {
-        setVisibleMonth(selectedMonth);
-      }
       return;
     }
 
@@ -265,50 +334,38 @@ export function BetterDateRangePicker({
           <div className="space-y-3">
             <div className="flex flex-col gap-4 xl:flex-row">
               <CalendarMonth
-                monthDate={visibleMonth}
+                monthDate={leftMonth}
                 startDate={startDate}
                 endDate={endDate}
                 onSelectDate={handleSelectDate}
-                headerStart={(
-                  <>
-                    <CalendarNavButton
-                      icon="i-mdi-chevron-double-left"
-                      label="Previous year"
-                      onClick={() =>
-                        setVisibleMonth(month => addMonths(month, -12))}
-                    />
-                    <CalendarNavButton
-                      icon="i-mdi-chevron-left"
-                      label="Previous month"
-                      onClick={() =>
-                        setVisibleMonth(month => addMonths(month, -1))}
-                    />
-                  </>
-                )}
+                canGoNextMonth={canGoNextLeftMonth}
+                canGoNextYear={canGoNextLeftYear}
+                onGoPreviousMonth={() =>
+                  setLeftMonth(month => addMonths(month, -1))}
+                onGoPreviousYear={() =>
+                  setLeftMonth(month => addMonths(month, -12))}
+                onGoNextMonth={() =>
+                  setLeftMonth(month => addMonths(month, 1))}
+                onGoNextYear={() =>
+                  setLeftMonth(month => addMonths(month, 12))}
               />
               <CalendarMonth
-                monthDate={nextMonth}
+                monthDate={rightMonth}
                 startDate={startDate}
                 endDate={endDate}
                 onSelectDate={handleSelectDate}
-                headerEnd={(
-                  <>
-                    <CalendarNavButton
-                      icon="i-mdi-chevron-right"
-                      label="Next month"
-                      disabled={!canGoNextMonth}
-                      onClick={() =>
-                        setVisibleMonth(month => addMonths(month, 1))}
-                    />
-                    <CalendarNavButton
-                      icon="i-mdi-chevron-double-right"
-                      label="Next year"
-                      disabled={!canGoNextYear}
-                      onClick={() =>
-                        setVisibleMonth(month => addMonths(month, 12))}
-                    />
-                  </>
-                )}
+                canGoPreviousMonth={canGoPreviousRightMonth}
+                canGoPreviousYear={canGoPreviousRightYear}
+                canGoNextMonth={canGoNextRightMonth}
+                canGoNextYear={canGoNextRightYear}
+                onGoPreviousMonth={() =>
+                  setRightMonth(month => addMonths(month, -1))}
+                onGoPreviousYear={() =>
+                  setRightMonth(month => addMonths(month, -12))}
+                onGoNextMonth={() =>
+                  setRightMonth(month => addMonths(month, 1))}
+                onGoNextYear={() =>
+                  setRightMonth(month => addMonths(month, 12))}
               />
             </div>
 
