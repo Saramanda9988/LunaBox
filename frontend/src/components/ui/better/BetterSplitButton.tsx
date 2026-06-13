@@ -28,11 +28,11 @@ const variantClasses: Record<ButtonVariant, string> = {
   secondary:
     "bg-brand-100 text-brand-700 hover:bg-brand-200 "
     + "dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600 "
-    + "border border-transparent",
+    + "border border-brand-200 dark:border-brand-700",
   primary:
-    "bg-neutral-700 text-white hover:bg-neutral-800 "
-    + "dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100 "
-    + "border border-transparent shadow-sm",
+    "bg-neutral-600 text-white hover:bg-neutral-700 "
+    + "dark:bg-neutral-600 dark:hover:bg-neutral-700 "
+    + "border border-neutral-600 shadow-sm",
   danger:
     "bg-error-500 text-white hover:bg-error-600 "
     + "dark:bg-error-600 dark:hover:bg-error-700 "
@@ -45,7 +45,7 @@ const variantClasses: Record<ButtonVariant, string> = {
 
 const glassClasses: Record<ButtonVariant, string> = {
   secondary: "glass-btn-neutral",
-  primary: "glass-btn-primary",
+  primary: "glass-btn-neutral",
   danger: "glass-btn-error",
   ghost: "glass-btn-none",
 };

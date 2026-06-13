@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { enums, vo } from "../../wailsjs/go/models";
 import { AISummarize } from "../../wailsjs/go/service/AiService";
 import { GetGlobalPeriodStats } from "../../wailsjs/go/service/StatsService";
+import { StatsToolbar } from "../components/bar/StatsToolbar";
 import { AiSummaryCard } from "../components/card/AiSummaryCard";
 import { DurationLineChart } from "../components/chart/DurationLineChart";
 import { HourWeekDistribution } from "../components/chart/HourWeekDistribution";
@@ -13,7 +14,6 @@ import { TagDistributionChart } from "../components/chart/TagDistributionChart";
 import { TemplateExportModal } from "../components/modal/TemplateExportModal";
 import { StatsSkeleton } from "../components/skeleton/StatsSkeleton";
 import { ProxyImage } from "../components/ui/ProxyImage";
-import { SlideButton } from "../components/ui/SlideButton";
 import { useAppStore } from "../store";
 import {
   formatDateToYYYYMMDD,
@@ -111,6 +111,7 @@ function StatsPage() {
       toast.error(t("stats.toast.startBeforeEnd"));
       return;
     }
+    setCustomDateRange(true);
     loadStats(enums.Period.WEEK, startDate, endDate);
   };
 
@@ -258,97 +259,28 @@ function StatsPage() {
           {t("stats.title")}
         </h1>
       </div>
-      <div className="flex justify-between items-center no-export">
-        <div className="flex items-center space-x-4">
-          <SlideButton
-            options={[
-              { label: t("stats.period.week"), value: enums.Period.WEEK },
-              { label: t("stats.period.month"), value: enums.Period.MONTH },
-              { label: t("stats.period.year"), value: enums.Period.YEAR },
-            ]}
-            value={customDateRange ? ("" as enums.Period) : dimension}
-            onChange={(value) => {
-              setDimension(value);
-              if (customDateRange) {
-                setCustomDateRange(false);
-                setStartDate("");
-                setEndDate("");
-              }
-            }}
-            disabled={loading}
-          />
-
-          {/* Custom Date Range Toggle */}
-          <button
-            type="button"
-            onClick={() => setCustomDateRange(!customDateRange)}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
-              customDateRange
-                ? "bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400"
-                : "text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200"
-            }`}
-          >
-            <span className="i-mdi-calendar-range text-lg" />
-            {t("stats.customRange")}
-          </button>
-        </div>
-        <div className="flex space-x-2 items-center">
-          <button
-            type="button"
-            onClick={() => setShowTemplateModal(true)}
-            className="flex justify-end i-mdi-image-filter-hdr text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors"
-            title={t("stats.exportTitle")}
-          />
-          <button
-            type="button"
-            onClick={handleAISummarize}
-            className="flex justify-end i-mdi-robot-happy text-2xl text-brand-600 dark:text-brand-400 hover:text-brand-900 dark:hover:text-brand-200 transition-colors"
-            title={t("stats.aiSummarizeTitle")}
-          />
-        </div>
-      </div>
-
-      {/* Custom Date Range Picker */}
-      {customDateRange && (
-        <div className="glass-panel flex items-center gap-4 p-4 bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 no-export">
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-brand-600 dark:text-brand-400">
-              {t("stats.startDate")}
-            </label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={e => setStartDate(e.target.value)}
-              className="px-3 py-1.5 rounded-md border border-brand-300 dark:border-brand-600 bg-white dark:bg-brand-700 text-brand-900 dark:text-white text-sm"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-brand-600 dark:text-brand-400">
-              {t("stats.endDate")}
-            </label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={e => setEndDate(e.target.value)}
-              className="px-3 py-1.5 rounded-md border border-brand-300 dark:border-brand-600 bg-white dark:bg-brand-700 text-brand-900 dark:text-white text-sm"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={handleApplyDateRange}
-            className="px-4 py-1.5 bg-neutral-600 hover:bg-neutral-700 text-white rounded-md text-sm font-medium transition-colors"
-          >
-            {t("stats.applyBtn")}
-          </button>
-          <button
-            type="button"
-            onClick={handleResetDateRange}
-            className="px-4 py-1.5 bg-brand-200 dark:bg-brand-700 hover:bg-brand-300 dark:hover:bg-brand-600 text-brand-700 dark:text-brand-300 rounded-md text-sm font-medium transition-colors"
-          >
-            {t("stats.resetBtn")}
-          </button>
-        </div>
-      )}
+      <StatsToolbar
+        period={dimension}
+        customRangeActive={customDateRange}
+        startDate={startDate}
+        endDate={endDate}
+        loading={loading}
+        aiLoading={aiLoading}
+        onPeriodChange={(value) => {
+          setDimension(value);
+          if (customDateRange) {
+            setCustomDateRange(false);
+            setStartDate("");
+            setEndDate("");
+          }
+        }}
+        onStartDateChange={setStartDate}
+        onEndDateChange={setEndDate}
+        onApplyDateRange={handleApplyDateRange}
+        onResetDateRange={handleResetDateRange}
+        onExportReport={() => setShowTemplateModal(true)}
+        onAISummarize={handleAISummarize}
+      />
 
       {/* AI Summary Card */}
       {(aiLoading || aiSummary) && (

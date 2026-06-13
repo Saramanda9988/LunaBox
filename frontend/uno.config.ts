@@ -62,13 +62,13 @@ export default defineConfig({
       ([, color]) => {
         const colorMap: Record<string, string> = {
           neutral:
-            "data-glass:bg-white/30 data-glass:dark:bg-black/30 data-glass:text-brand-900 data-glass:dark:text-brand-100 data-glass:hover:bg-white/40 data-glass:dark:hover:bg-black/40",
+            "data-glass:bg-white/30 data-glass:dark:bg-black/30 data-glass:text-neutral-900 data-glass:dark:text-neutral-100 data-glass:hover:bg-white/45 data-glass:dark:hover:bg-black/45",
           error:
-            "data-glass:bg-error-500/70 data-glass:text-white data-glass:hover:bg-error-500/80",
+            "data-glass:bg-error-500/70 data-glass:text-white data-glass:hover:bg-error-500/85",
           success:
-            "data-glass:bg-success-600/70 data-glass:text-white data-glass:hover:bg-success-600/80",
+            "data-glass:bg-success-600/70 data-glass:text-white data-glass:hover:bg-success-600/85",
           primary:
-            "data-glass:bg-primary-600/70 data-glass:text-white data-glass:hover:bg-primary-600/80",
+            "data-glass:bg-neutral-800/80 data-glass:text-white data-glass:hover:bg-neutral-900/85 data-glass:dark:bg-white/85 data-glass:dark:text-neutral-900 data-glass:dark:hover:bg-white/95",
         };
         return `data-glass:backdrop-blur-12 data-glass:border data-glass:border-white/30 data-glass:dark:border-white/15 ${colorMap[color] || colorMap.neutral}`;
       },

@@ -231,13 +231,13 @@ export function FilterBar({
           <button
             type="button"
             onClick={() => onBatchModeChange(!batchMode)}
-            className={`glass-panel flex items-center gap-1.5 px-3 py-2 text-sm
+            className={`glass-btn-neutral flex items-center gap-1.5 px-3 py-2 text-sm
                        ${
           batchMode
-            ? "text-brand-900 dark:text-white bg-brand-100 dark:bg-brand-700 border-brand-300 dark:border-brand-600"
-            : "text-brand-500 dark:text-brand-400 bg-white dark:bg-brand-800 border-brand-200 dark:border-brand-700"
+            ? "text-brand-900 dark:text-white bg-brand-200 dark:bg-brand-600 border-brand-300 dark:border-brand-500"
+            : "text-brand-600 dark:text-brand-300 bg-brand-100 dark:bg-brand-700 border-brand-200 dark:border-brand-700"
           }
-                       border rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700`}
+                       border rounded-lg hover:bg-brand-200 dark:hover:bg-brand-600`}
             title={
               batchMode
                 ? t("filterBar.exitBatchSelection")
@@ -257,12 +257,12 @@ export function FilterBar({
         <Menu as="div" className="relative inline-block">
           <MenuButton
             type="button"
-            className="glass-panel flex items-center gap-2 px-3 py-2 text-sm
-                       text-brand-600 dark:text-brand-300
-                       bg-white dark:bg-brand-800
+            className="glass-btn-neutral flex items-center gap-2 px-3 py-2 text-sm
+                       text-brand-700 dark:text-brand-300
+                       bg-brand-100 dark:bg-brand-700
                        border border-brand-200 dark:border-brand-700
                        rounded-lg
-                       hover:bg-brand-100 dark:hover:bg-brand-700"
+                       hover:bg-brand-200 dark:hover:bg-brand-600"
           >
             <div className="i-mdi-filter-variant text-lg" />
             <span>{t("filterBar.filters")}</span>
