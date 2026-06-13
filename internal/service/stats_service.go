@@ -430,7 +430,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 		WHERE ps.start_time >= %s AND ps.start_time <= %s + INTERVAL 1 DAY
 		GROUP BY ps.game_id, g.name, g.cover_url
 		ORDER BY total DESC
-		LIMIT 10
+		LIMIT 20
 	`, startDateExpr, endDateExpr)
 
 	// 构建Leaderboard
@@ -505,7 +505,10 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 	// 4. Leaderboard Series（趋势图覆盖榜单 Top 10）
 	// 使用 ps.start_time::DATE 进行本地时区日期匹配
 	stats.LeaderboardSeries = make([]vo.GameTrendSeries, 0)
-	for _, game := range stats.PlayTimeLeaderboard {
+	for index, game := range stats.PlayTimeLeaderboard {
+		if index >= 10 {
+			break
+		}
 		series := vo.GameTrendSeries{
 			GameID:   game.GameID,
 			GameName: game.GameName,

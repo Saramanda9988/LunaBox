@@ -1140,6 +1140,8 @@
     "leaderboard": {
       "title": "排行榜",
       "fullTitle": "遊玩時長排行榜 Top 10",
+      "modalTitle": "遊玩時長排行榜 Top 20",
+      "viewMore": "查看更多",
       "rankCol": "排名",
       "gameCol": "遊戲",
       "durationCol": "時長",
@@ -1153,7 +1155,7 @@
       "noPlay": "未遊玩",
       "less": "少",
       "more": "多",
-      "summary": "本期間累計 {{duration}}，活躍 {{days}} 天",
+      "summary": "過去一年活躍 {{days}} 天",
       "maxDay": "單日最長 {{duration}}",
       "weekdays": {
         "sun": "日",

@@ -1140,6 +1140,8 @@
     "leaderboard": {
       "title": "Leaderboard",
       "fullTitle": "Play Time Leaderboard · Top 10",
+      "modalTitle": "Play Time Leaderboard · Top 20",
+      "viewMore": "View more",
       "rankCol": "Rank",
       "gameCol": "Game",
       "durationCol": "Duration",
@@ -1153,7 +1155,7 @@
       "noPlay": "No play",
       "less": "Less",
       "more": "More",
-      "summary": "{{duration}} total · {{days}} active days",
+      "summary": "{{days}} contributions in the last year",
       "maxDay": "Peak day: {{duration}}",
       "weekdays": {
         "sun": "Sun",

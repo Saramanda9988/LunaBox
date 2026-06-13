@@ -1,5 +1,5 @@
 import { createRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { enums, vo } from "../../wailsjs/go/models";
@@ -9,8 +9,8 @@ import { StatsToolbar } from "../components/bar/StatsToolbar";
 import { AiSummaryCard } from "../components/card/AiSummaryCard";
 import { DurationLineChart } from "../components/chart/DurationLineChart";
 import { HourWeekDistribution } from "../components/chart/HourWeekDistribution";
-import { PlayHeatmap } from "../components/chart/PlayHeatmap";
 import { TagDistributionChart } from "../components/chart/TagDistributionChart";
+import { StatsLeaderboardModal } from "../components/modal/StatsLeaderboardModal";
 import { TemplateExportModal } from "../components/modal/TemplateExportModal";
 import { StatsSkeleton } from "../components/skeleton/StatsSkeleton";
 import { ProxyImage } from "../components/ui/ProxyImage";
@@ -28,269 +28,152 @@ export const Route = createRoute({
   component: StatsPage,
 });
 
-function StatsPage() {
+interface StatsContentProps {
+  stats: vo.PeriodStats;
+}
+
+interface SummaryItem {
+  value: string | number;
+  label: string;
+  suffix?: string;
+  valueClassName?: string;
+}
+
+const GAME_TREND_COLORS = [
+  "rgb(255, 99, 132)",
+  "rgb(54, 162, 235)",
+  "rgb(255, 206, 86)",
+  "rgb(75, 192, 192)",
+  "rgb(153, 102, 255)",
+  "rgb(255, 159, 64)",
+  "rgb(99, 255, 132)",
+  "rgb(199, 99, 255)",
+  "rgb(64, 224, 208)",
+  "rgb(255, 105, 180)",
+];
+
+const StatsContent = memo(({ stats }: StatsContentProps) => {
   const { t } = useTranslation();
-  const ref = useRef<HTMLDivElement>(null);
-  const [dimension, setDimension] = useState<enums.Period>(enums.Period.WEEK);
-  const [stats, setStats] = useState<vo.PeriodStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [showSkeleton, setShowSkeleton] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [webSearchUsed, setWebSearchUsed] = useState(false);
-  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
 
-  // Custom date range
-  const [customDateRange, setCustomDateRange] = useState(false);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-
-  // Delay skeleton display to avoid flash
-  useEffect(() => {
-    let timer: number;
-    if (loading) {
-      timer = window.setTimeout(() => {
-        setShowSkeleton(true);
-      }, 300);
-    }
-    else {
-      setShowSkeleton(false);
-    }
-    return () => clearTimeout(timer);
-  }, [loading]);
-
-  // Get cached AI summary from store
-  const aiSummaryCache = useAppStore(state => state.aiSummaryCache);
-  const setAISummary = useAppStore(state => state.setAISummary);
-  const aiSummary = aiSummaryCache[dimension] || "";
-
-  const handleAISummarize = useCallback(async () => {
-    setAiLoading(true);
-    setWebSearchUsed(false);
-    setAISummary(dimension, "");
-    try {
-      const result = await AISummarize({ dimension, spoiler_level: "" });
-      setAISummary(dimension, result.summary);
-      setWebSearchUsed(result.web_search_used ?? false);
-    }
-    catch (err) {
-      console.error("AI summarize failed:", err);
-      setAISummary(dimension, "");
-      toast.error(t("stats.ai.summarizeFailed"));
-    }
-    finally {
-      setAiLoading(false);
-    }
-  }, [dimension, setAISummary, t]);
-
-  const loadStats = async (dim: enums.Period, start?: string, end?: string) => {
-    setLoading(true);
-    try {
-      const req = new vo.PeriodStatsRequest({
-        dimension: dim,
-        start_date: start || "",
-        end_date: end || "",
-      });
-      const data = await GetGlobalPeriodStats(req);
-      setStats(data);
-    }
-    catch (error) {
-      console.error("Failed to load stats:", error);
-      toast.error(t("stats.toast.loadStatsFailed"));
-    }
-    finally {
-      setLoading(false);
-    }
-  };
-
-  const handleApplyDateRange = () => {
-    if (!startDate || !endDate) {
-      toast.error(t("stats.toast.selectDateRange"));
-      return;
-    }
-    if (new Date(startDate) >= new Date(endDate)) {
-      toast.error(t("stats.toast.startBeforeEnd"));
-      return;
-    }
-    setCustomDateRange(true);
-    loadStats(enums.Period.WEEK, startDate, endDate);
-  };
-
-  const handleResetDateRange = () => {
-    setCustomDateRange(false);
-    setStartDate("");
-    setEndDate("");
-    loadStats(dimension);
-  };
-
-  useEffect(() => {
-    if (!customDateRange) {
-      loadStats(dimension);
-    }
-  }, [dimension]);
-
-  // When switching to custom date range, initialize dates to today
-  useEffect(() => {
-    if (customDateRange && !startDate && !endDate) {
-      const today = formatDateToYYYYMMDD(new Date());
-      setStartDate(today);
-      setEndDate(today);
-    }
-  }, [customDateRange]);
-
-  if (loading && !stats) {
-    if (!showSkeleton) {
-      return null;
-    }
-    return <StatsSkeleton />;
-  }
-
-  if (!stats) {
-    return null;
-  }
-
-  // Chart 1: Total Play Duration Trend
-  const timelineLabels = stats.timeline.map(p => p.label);
-  const totalTrendDurations = stats.timeline.map(p => p.duration);
-  const hasTotalTrendPlayData = totalTrendDurations.some(
-    duration => duration > 0,
-  );
-
-  const totalTrendData = {
-    labels: timelineLabels,
-    datasets: [
+  const summaryItems = useMemo<SummaryItem[]>(
+    () => [
       {
-        label: t("stats.totalDurationDataset"),
-        data: totalTrendDurations,
-        borderColor: "rgb(75, 192, 192)",
-        backgroundColor: "rgba(75, 192, 192, 0.5)",
-        tension: 0.3,
+        value: stats.total_play_count,
+        label: t("stats.summary.totalPlayCount"),
+      },
+      {
+        value: formatDurationCompact(stats.total_play_duration, t),
+        label: t("stats.summary.totalPlayDuration"),
+        valueClassName: "whitespace-nowrap",
+      },
+      {
+        value: stats.total_games_count,
+        label: t("stats.summary.gamesPlayed"),
+      },
+      {
+        value: stats.completed_games_count,
+        label: t("stats.summary.completedGames"),
+      },
+      {
+        value: formatDurationCompact(stats.avg_daily_duration, t),
+        label: t("stats.summary.avgDailyDuration"),
+        valueClassName: "whitespace-nowrap",
+      },
+      {
+        value: formatDurationCompact(stats.avg_session_duration, t),
+        label: t("stats.summary.avgSessionDuration"),
+        valueClassName: "whitespace-nowrap",
+      },
+      {
+        value: stats.max_streak,
+        label: t("stats.summary.maxStreak"),
+        suffix: t("stats.summary.dayUnit"),
+      },
+      {
+        value: stats.new_games_count,
+        label: t("stats.summary.newGames"),
       },
     ],
-  };
-
-  // Chart 2: Game Play Duration Trend (Multi-line)
-  const gameTrendDurations = stats.leaderboard_series.flatMap(series =>
-    series.points.map(p => p.duration),
-  );
-  const hasGameTrendPlayData = gameTrendDurations.some(
-    duration => duration > 0,
+    [stats, t],
   );
 
-  const gameTrendData = {
-    labels: timelineLabels,
-    datasets: stats.leaderboard_series.map((series, index) => {
-      const colors = [
-        "rgb(255, 99, 132)",
-        "rgb(54, 162, 235)",
-        "rgb(255, 206, 86)",
-        "rgb(75, 192, 192)",
-        "rgb(153, 102, 255)",
-        "rgb(255, 159, 64)",
-        "rgb(99, 255, 132)",
-        "rgb(199, 99, 255)",
-        "rgb(64, 224, 208)",
-        "rgb(255, 105, 180)",
-      ];
-      const color = colors[index % colors.length];
-      return {
-        label: series.game_name,
-        data: series.points.map(p => p.duration),
-        borderColor: color,
-        backgroundColor: color.replace("rgb", "rgba").replace(")", ", 0.5)"),
-        tension: 0.3,
-      };
+  const timelineLabels = useMemo(
+    () => stats.timeline.map(point => point.label),
+    [stats.timeline],
+  );
+
+  const totalTrendDurations = useMemo(
+    () => stats.timeline.map(point => point.duration),
+    [stats.timeline],
+  );
+
+  const hasTotalTrendPlayData = useMemo(
+    () => totalTrendDurations.some(duration => duration > 0),
+    [totalTrendDurations],
+  );
+
+  const totalTrendData = useMemo(
+    () => ({
+      labels: timelineLabels,
+      datasets: [
+        {
+          label: t("stats.totalDurationDataset"),
+          data: totalTrendDurations,
+          borderColor: "rgb(75, 192, 192)",
+          backgroundColor: "rgba(75, 192, 192, 0.5)",
+          tension: 0.3,
+        },
+      ],
     }),
-  };
+    [t, timelineLabels, totalTrendDurations],
+  );
 
-  const summaryItems = [
-    {
-      value: stats.total_play_count,
-      label: t("stats.summary.totalPlayCount"),
-    },
-    {
-      value: formatDurationCompact(stats.total_play_duration, t),
-      label: t("stats.summary.totalPlayDuration"),
-      valueClassName: "whitespace-nowrap",
-    },
-    {
-      value: stats.total_games_count,
-      label: t("stats.summary.gamesPlayed"),
-    },
-    {
-      value: stats.completed_games_count,
-      label: t("stats.summary.completedGames"),
-    },
-    {
-      value: formatDurationCompact(stats.avg_daily_duration, t),
-      label: t("stats.summary.avgDailyDuration"),
-      valueClassName: "whitespace-nowrap",
-    },
-    {
-      value: formatDurationCompact(stats.avg_session_duration, t),
-      label: t("stats.summary.avgSessionDuration"),
-      valueClassName: "whitespace-nowrap",
-    },
-    {
-      value: stats.max_streak,
-      label: t("stats.summary.maxStreak"),
-      suffix: t("stats.summary.dayUnit"),
-    },
-    {
-      value: stats.new_games_count,
-      label: t("stats.summary.newGames"),
-    },
-  ];
+  const gameTrendDurations = useMemo(
+    () =>
+      stats.leaderboard_series.flatMap(series =>
+        series.points.map(point => point.duration),
+      ),
+    [stats.leaderboard_series],
+  );
 
-  const hasLeaderboard = stats.play_time_leaderboard.length > 0;
+  const hasGameTrendPlayData = useMemo(
+    () => gameTrendDurations.some(duration => duration > 0),
+    [gameTrendDurations],
+  );
+
+  const gameTrendData = useMemo(
+    () => ({
+      labels: timelineLabels,
+      datasets: stats.leaderboard_series.map((series, index) => {
+        const color = GAME_TREND_COLORS[index % GAME_TREND_COLORS.length];
+        return {
+          label: series.game_name,
+          data: series.points.map(point => point.duration),
+          borderColor: color,
+          backgroundColor: color.replace("rgb", "rgba").replace(")", ", 0.5)"),
+          tension: 0.3,
+        };
+      }),
+    }),
+    [stats.leaderboard_series, timelineLabels],
+  );
+
+  const previewLeaderboard = useMemo(
+    () => stats.play_time_leaderboard.slice(0, 10),
+    [stats.play_time_leaderboard],
+  );
+
+  const modalLeaderboard = useMemo(
+    () => stats.play_time_leaderboard.slice(0, 20),
+    [stats.play_time_leaderboard],
+  );
+
+  const hasLeaderboard = previewLeaderboard.length > 0;
+  const showMoreLeaderboard = previewLeaderboard.length >= 10;
   const hasTagDistribution = (stats.tag_distribution?.length ?? 0) > 0;
-  const showHeatmap
-    = dimension === enums.Period.YEAR
-      && !customDateRange
-      && (stats.heatmap?.length ?? 0) > 0;
-
   return (
-    <div
-      id="stats-container"
-      ref={ref}
-      className={`space-y-6 max-w-8xl mx-auto p-8 transition-opacity duration-300 ${loading ? "opacity-50 pointer-events-none" : "opacity-100"}`}
-    >
-      <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-bold text-brand-900 dark:text-white">
-          {t("stats.title")}
-        </h1>
-      </div>
-      <StatsToolbar
-        period={dimension}
-        customRangeActive={customDateRange}
-        startDate={startDate}
-        endDate={endDate}
-        loading={loading}
-        aiLoading={aiLoading}
-        onPeriodChange={(value) => {
-          setDimension(value);
-          if (customDateRange) {
-            setCustomDateRange(false);
-            setStartDate("");
-            setEndDate("");
-          }
-        }}
-        onStartDateChange={setStartDate}
-        onEndDateChange={setEndDate}
-        onApplyDateRange={handleApplyDateRange}
-        onResetDateRange={handleResetDateRange}
-        onExportReport={() => setShowTemplateModal(true)}
-        onAISummarize={handleAISummarize}
-      />
-
-      {/* AI Summary Card */}
-      {(aiLoading || aiSummary) && (
-        <AiSummaryCard
-          aiSummary={aiSummary}
-          aiLoading={aiLoading}
-          webSearchUsed={webSearchUsed}
-        />
-      )}
-
+    <>
       {/* Summary Cards - compact 4/8 cols grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-8 gap-3">
         {summaryItems.map(item => (
@@ -315,19 +198,8 @@ function StatsPage() {
         ))}
       </div>
 
-      {/* Year Heatmap (year dimension only, custom range excluded) */}
-      {showHeatmap && (
-        <div className="glass-card bg-white dark:bg-brand-800 p-6 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700">
-          <h3 className="text-lg font-semibold text-brand-900 dark:text-white mb-4">
-            {t("stats.heatmap.title")}
-          </h3>
-          <PlayHeatmap cells={stats.heatmap} />
-        </div>
-      )}
-
       {/* Row: Leaderboard + Tag Distribution (container-query 2-col) */}
       <div className="grid grid-cols-1 @[1024px]:grid-cols-12 gap-6">
-        {/* Leaderboard - @[1024px]:col-spansm:grid-cols-4 lg:grid-cols-8-7 */}
         <div className="@[1024px]:col-span-7 glass-card bg-white dark:bg-brand-800 p-5 rounded-xl shadow-sm border border-brand-200 dark:border-brand-700 flex flex-col">
           <h3 className="text-base font-semibold text-brand-900 dark:text-white mb-3">
             {t("stats.leaderboard.fullTitle")}
@@ -345,27 +217,24 @@ function StatsPage() {
                   #1
                 </div>
                 <ProxyImage
-                  src={stats.play_time_leaderboard[0].cover_url}
-                  alt={stats.play_time_leaderboard[0].game_name}
+                  src={previewLeaderboard[0].cover_url}
+                  alt={previewLeaderboard[0].game_name}
                   className="w-10 h-14 object-cover rounded shadow-md flex-shrink-0 bg-brand-200 dark:bg-brand-700"
                 />
                 <div className="flex-1 min-w-0">
                   <h4 className="text-sm font-bold text-brand-900 dark:text-white line-clamp-1">
-                    {stats.play_time_leaderboard[0].game_name}
+                    {previewLeaderboard[0].game_name}
                   </h4>
                   <p className="text-base font-mono font-semibold text-neutral-700 dark:text-neutral-300 mt-0.5">
-                    {formatDuration(
-                      stats.play_time_leaderboard[0].total_duration,
-                      t,
-                    )}
+                    {formatDuration(previewLeaderboard[0].total_duration, t)}
                   </p>
                 </div>
               </div>
 
               {/* #2 - #10: two-column grid, denser rows */}
-              {stats.play_time_leaderboard.length > 1 && (
+              {previewLeaderboard.length > 1 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {stats.play_time_leaderboard.slice(1).map((game, index) => (
+                  {previewLeaderboard.slice(1).map((game, index) => (
                     <div
                       key={game.game_id}
                       className="flex items-center gap-2.5 p-2 rounded-lg bg-brand-50 dark:bg-brand-700/40 hover:bg-brand-100 dark:hover:bg-brand-700/60 transition-colors data-glass:bg-white/5 data-glass:dark:bg-black/5"
@@ -389,6 +258,25 @@ function StatsPage() {
                       </div>
                     </div>
                   ))}
+                  {showMoreLeaderboard && (
+                    <button
+                      type="button"
+                      onClick={() => setShowLeaderboardModal(true)}
+                      className="flex min-h-[3.5rem] items-center justify-start gap-3 rounded-lg border border-dashed border-brand-300 bg-transparent px-4 py-2 text-left transition-colors hover:border-brand-500 hover:bg-brand-50/40 data-glass:bg-transparent data-glass:hover:bg-white/5 dark:border-brand-600 dark:hover:border-brand-400 dark:hover:bg-brand-700/20"
+                    >
+                      <span className="i-mdi-format-list-numbered flex-shrink-0 text-3xl text-brand-500 dark:text-brand-300" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-brand-900 dark:text-white line-clamp-1">
+                          {t("stats.leaderboard.viewMore")}
+                        </p>
+                        <p className="mt-1 text-xs text-brand-500 dark:text-brand-400">
+                          {t("stats.leaderboard.countHint", {
+                            count: modalLeaderboard.length,
+                          })}
+                        </p>
+                      </div>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -447,13 +335,201 @@ function StatsPage() {
         />
       </div>
 
-      {/* Template Export Modal */}
-      <TemplateExportModal
-        isOpen={showTemplateModal}
-        onClose={() => setShowTemplateModal(false)}
-        stats={stats}
-        aiSummary={aiSummary}
+      <StatsLeaderboardModal
+        isOpen={showLeaderboardModal}
+        games={modalLeaderboard}
+        onClose={() => setShowLeaderboardModal(false)}
       />
+    </>
+  );
+});
+
+function StatsPage() {
+  const { t } = useTranslation();
+  const ref = useRef<HTMLDivElement>(null);
+  const [dimension, setDimension] = useState<enums.Period>(enums.Period.WEEK);
+  const [stats, setStats] = useState<vo.PeriodStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showSkeleton, setShowSkeleton] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [webSearchUsed, setWebSearchUsed] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+
+  // Custom date range
+  const [customDateRange, setCustomDateRange] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  // Delay skeleton display to avoid flash
+  useEffect(() => {
+    let timer: number;
+    if (loading) {
+      timer = window.setTimeout(() => {
+        setShowSkeleton(true);
+      }, 300);
+    }
+    else {
+      setShowSkeleton(false);
+    }
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  // Get cached AI summary from store
+  const aiSummaryCache = useAppStore(state => state.aiSummaryCache);
+  const setAISummary = useAppStore(state => state.setAISummary);
+  const aiSummary = aiSummaryCache[dimension] || "";
+
+  const handleAISummarize = useCallback(async () => {
+    setAiLoading(true);
+    setWebSearchUsed(false);
+    setAISummary(dimension, "");
+    try {
+      const result = await AISummarize({ dimension, spoiler_level: "" });
+      setAISummary(dimension, result.summary);
+      setWebSearchUsed(result.web_search_used ?? false);
+    }
+    catch (err) {
+      console.error("AI summarize failed:", err);
+      setAISummary(dimension, "");
+      toast.error(t("stats.ai.summarizeFailed"));
+    }
+    finally {
+      setAiLoading(false);
+    }
+  }, [dimension, setAISummary, t]);
+
+  const loadStats = useCallback(
+    async (dim: enums.Period, start?: string, end?: string) => {
+      setLoading(true);
+      try {
+        const req = new vo.PeriodStatsRequest({
+          dimension: dim,
+          start_date: start || "",
+          end_date: end || "",
+        });
+        const data = await GetGlobalPeriodStats(req);
+        setStats(data);
+      }
+      catch (error) {
+        console.error("Failed to load stats:", error);
+        toast.error(t("stats.toast.loadStatsFailed"));
+      }
+      finally {
+        setLoading(false);
+      }
+    },
+    [t],
+  );
+
+  const handleApplyDateRange = useCallback(() => {
+    if (!startDate || !endDate) {
+      toast.error(t("stats.toast.selectDateRange"));
+      return;
+    }
+    if (new Date(startDate) >= new Date(endDate)) {
+      toast.error(t("stats.toast.startBeforeEnd"));
+      return;
+    }
+    setCustomDateRange(true);
+    loadStats(enums.Period.WEEK, startDate, endDate);
+  }, [endDate, loadStats, startDate, t]);
+
+  const handleResetDateRange = useCallback(() => {
+    setCustomDateRange(false);
+    setStartDate("");
+    setEndDate("");
+    loadStats(dimension);
+  }, [dimension, loadStats]);
+
+  const handlePeriodChange = useCallback(
+    (value: enums.Period) => {
+      setDimension(value);
+      if (customDateRange) {
+        setCustomDateRange(false);
+        setStartDate("");
+        setEndDate("");
+      }
+    },
+    [customDateRange],
+  );
+
+  const openTemplateModal = useCallback(() => {
+    setShowTemplateModal(true);
+  }, []);
+
+  const closeTemplateModal = useCallback(() => {
+    setShowTemplateModal(false);
+  }, []);
+
+  useEffect(() => {
+    if (!customDateRange) {
+      loadStats(dimension);
+    }
+  }, [customDateRange, dimension, loadStats]);
+
+  // When switching to custom date range, initialize dates to today
+  useEffect(() => {
+    if (customDateRange && !startDate && !endDate) {
+      const today = formatDateToYYYYMMDD(new Date());
+      setStartDate(today);
+      setEndDate(today);
+    }
+  }, [customDateRange]);
+
+  if (loading && !stats) {
+    if (!showSkeleton) {
+      return null;
+    }
+    return <StatsSkeleton />;
+  }
+
+  return (
+    <div
+      id="stats-container"
+      ref={ref}
+      className="space-y-6 max-w-8xl mx-auto p-8"
+    >
+      <div className="flex items-center justify-between">
+        <h1 className="text-4xl font-bold text-brand-900 dark:text-white">
+          {t("stats.title")}
+        </h1>
+      </div>
+      <StatsToolbar
+        period={dimension}
+        customRangeActive={customDateRange}
+        startDate={startDate}
+        endDate={endDate}
+        loading={loading}
+        aiLoading={aiLoading}
+        onPeriodChange={handlePeriodChange}
+        onStartDateChange={setStartDate}
+        onEndDateChange={setEndDate}
+        onApplyDateRange={handleApplyDateRange}
+        onResetDateRange={handleResetDateRange}
+        onExportReport={openTemplateModal}
+        onAISummarize={handleAISummarize}
+      />
+
+      {/* AI Summary Card */}
+      {(aiLoading || aiSummary) && (
+        <AiSummaryCard
+          aiSummary={aiSummary}
+          aiLoading={aiLoading}
+          webSearchUsed={webSearchUsed}
+        />
+      )}
+
+      {stats && <StatsContent stats={stats} />}
+
+      {/* Template Export Modal */}
+      {stats && (
+        <TemplateExportModal
+          isOpen={showTemplateModal}
+          onClose={closeTemplateModal}
+          stats={stats}
+          aiSummary={aiSummary}
+        />
+      )}
     </div>
   );
 }

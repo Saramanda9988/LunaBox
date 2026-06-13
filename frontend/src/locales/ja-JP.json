@@ -1123,6 +1123,8 @@
     "leaderboard": {
       "title": "ランキング",
       "fullTitle": "プレイ時間ランキング Top 10",
+      "modalTitle": "プレイ時間ランキング Top 20",
+      "viewMore": "もっと見る",
       "rankCol": "順位",
       "gameCol": "ゲーム",
       "durationCol": "時間",
@@ -1136,7 +1138,7 @@
       "noPlay": "未プレイ",
       "less": "少",
       "more": "多",
-      "summary": "期間合計 {{duration}} · 活動 {{days}} 日",
+      "summary": "過去 1 年の活動日数 {{days}} 日",
       "maxDay": "最長日 {{duration}}",
       "weekdays": {
         "sun": "日",
