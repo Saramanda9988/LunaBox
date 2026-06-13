@@ -27,8 +27,9 @@ func NewPotatoVNImporter(deps Dependencies) *PotatoVNImporter {
 	return &PotatoVNImporter{deps: deps}
 }
 
-func (p *PotatoVNImporter) Import(zipPath string, skipNoPath bool) (ImportResult, error) {
+func (p *PotatoVNImporter) Import(zipPath string, skipNoPath bool, samePathAction string) (ImportResult, error) {
 	result := newImportResult()
+	samePathAction = NormalizeSamePathAction(samePathAction)
 
 	zipReader, err := zip.OpenReader(zipPath)
 	if err != nil {
@@ -65,29 +66,51 @@ func (p *PotatoVNImporter) Import(zipPath string, skipNoPath bool) (ImportResult
 		exePath := galgame.GetExePath()
 		hasPath := exePath != ""
 
-		if skipExistingGame(p.deps.Ctx, "ImportFromPotatoVN", &result, existingGames, existingNames, existingPaths, gameName, exePath) {
-			continue
-		}
-
 		if skipNoPath && !hasPath {
 			result.Skipped++
 			result.SkippedNames = append(result.SkippedNames, gameName+" (无路径)")
 			continue
 		}
 
-		game, sessions := p.convertToGame(galgame, tempDir)
+		action := ImportActionCreate
+		existingGameID := ""
+		if conflict, exists := findExistingGameConflict(existingGames, existingNames, existingPaths, gameName, exePath); exists {
+			if conflict.Type != ConflictTypeSamePath || samePathAction != SamePathActionMerge {
+				result.Skipped++
+				if conflict.Type == ConflictTypeNameAndPath {
+					result.SkippedNames = append(result.SkippedNames, gameName+" (已存在)")
+				} else {
+					result.SkippedNames = append(result.SkippedNames, gameName+" (路径已存在: "+conflict.Game.Name+")")
+				}
+				continue
+			}
+			action = ImportActionUpdateExisting
+			existingGameID = conflict.Game.ID
+		}
+		game, sessions := p.convertToGame(galgame, tempDir, existingGameID)
+		if action == ImportActionUpdateExisting {
+			game.Path = exePath
+			for i := range sessions {
+				sessions[i].GameID = existingGameID
+			}
+		}
+
 		source := vo.GameMetadataFromWebVO{
 			Source: game.SourceType,
 			Game:   game,
 			Tags:   tagsFromNames(galgame.Tags.Value),
 		}
 		items = append(items, ImportItem{
-			Source:      source,
-			Sessions:    sessions,
-			DisplayName: gameName,
-			Path:        exePath,
+			Source:         source,
+			Sessions:       sessions,
+			DisplayName:    gameName,
+			Path:           exePath,
+			Action:         action,
+			ExistingGameID: existingGameID,
 		})
-		updateExistingIndexes(existingNames, existingPaths, game, gameName, exePath)
+		if action == ImportActionCreate {
+			updateExistingIndexes(existingNames, existingPaths, game, gameName, exePath)
+		}
 	}
 
 	batchResult, err := addImportedItems(p.deps, items)
@@ -121,13 +144,17 @@ func (p *PotatoVNImporter) Preview(zipPath string) ([]PreviewGame, error) {
 	for _, galgame := range galgames {
 		name := galgame.GetDisplayName()
 		sourceType := string(mapPotatoVNRssTypeToSourceType(galgame.RssType))
+		conflict := previewConflict(existingIndex, name, galgame.GetExePath(), sourceType, galgame.GetSourceID())
 		previews = append(previews, PreviewGame{
-			Name:       name,
-			Developer:  galgame.Developer.Value,
-			SourceType: sourceType,
-			Exists:     previewExists(existingIndex, name, galgame.GetExePath(), sourceType, galgame.GetSourceID()),
-			AddTime:    galgame.AddTime.ToTime(),
-			HasPath:    galgame.GetExePath() != "",
+			Name:         name,
+			Developer:    galgame.Developer.Value,
+			SourceType:   sourceType,
+			Exists:       conflict.Type != ConflictTypeNone,
+			ConflictType: conflict.Type,
+			ExistingID:   conflict.Game.ID,
+			ExistingName: conflict.Game.Name,
+			AddTime:      galgame.AddTime.ToTime(),
+			HasPath:      galgame.GetExePath() != "",
 		})
 	}
 
@@ -187,8 +214,10 @@ func (p *PotatoVNImporter) readGalgamesFromZip(zipPath string) ([]potatovn.Galga
 	return nil, fmt.Errorf("无法读取 data.galgames.json: 文件不存在")
 }
 
-func (p *PotatoVNImporter) convertToGame(galgame potatovn.Galgame, tempDir string) (models.Game, []models.PlaySession) {
-	gameID := uuid.New().String()
+func (p *PotatoVNImporter) convertToGame(galgame potatovn.Galgame, tempDir string, gameID string) (models.Game, []models.PlaySession) {
+	if gameID == "" {
+		gameID = uuid.New().String()
+	}
 	game := models.Game{
 		ID:                gameID,
 		Name:              galgame.GetDisplayName(),

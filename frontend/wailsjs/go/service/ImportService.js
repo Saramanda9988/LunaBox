@@ -22,12 +22,24 @@ export function ImportFromPlaynite(arg1, arg2) {
   return window['go']['service']['ImportService']['ImportFromPlaynite'](arg1, arg2);
 }
 
+export function ImportFromPlayniteWithOptions(arg1, arg2, arg3) {
+  return window['go']['service']['ImportService']['ImportFromPlayniteWithOptions'](arg1, arg2, arg3);
+}
+
 export function ImportFromPotatoVN(arg1, arg2) {
   return window['go']['service']['ImportService']['ImportFromPotatoVN'](arg1, arg2);
 }
 
+export function ImportFromPotatoVNWithOptions(arg1, arg2, arg3) {
+  return window['go']['service']['ImportService']['ImportFromPotatoVNWithOptions'](arg1, arg2, arg3);
+}
+
 export function ImportFromVnite(arg1, arg2) {
   return window['go']['service']['ImportService']['ImportFromVnite'](arg1, arg2);
+}
+
+export function ImportFromVniteWithOptions(arg1, arg2, arg3) {
+  return window['go']['service']['ImportService']['ImportFromVniteWithOptions'](arg1, arg2, arg3);
 }
 
 export function Init(arg1, arg2, arg3, arg4) {

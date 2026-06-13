@@ -272,6 +272,12 @@
     "loading": "読み込み中...",
     "willImport": "インポート予定",
     "exists": "既存",
+    "samePath": "同じパス",
+    "samePathActionTitle": "同じパスのゲームが {{count}} 件見つかりました",
+    "samePathSkip": "スキップ",
+    "samePathSkipHint": "既存ゲームを保持し、これらの項目はインポートしません。",
+    "samePathMerge": "更新して結合",
+    "samePathMergeHint": "インポート側のメタデータで既存ゲームを更新し、プレイ記録を結合します。",
     "noPath": "パスなし",
     "skipNoPath": "パスなしゲームをスキップ",
     "noPathHint": "{{count}} 件のゲームにはローカルパスがありません。オンラインゲームまたは削除済みのゲームの可能性があります。",
@@ -281,7 +287,8 @@
     "gameName": "ゲーム名",
     "developer": "開発元",
     "status": {
-      "skipped": "スキップ予定"
+      "skipped": "スキップ予定",
+      "update": "更新予定"
     },
     "willSkip": "スキップ予定",
     "newAdd": "新規追加",

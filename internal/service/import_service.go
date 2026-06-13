@@ -33,12 +33,15 @@ type ImportResult struct {
 
 // PreviewGame 预览导入的游戏信息
 type PreviewGame struct {
-	Name       string    `json:"name"`
-	Developer  string    `json:"developer"`
-	SourceType string    `json:"source_type"`
-	Exists     bool      `json:"exists"`
-	AddTime    time.Time `json:"add_time"`
-	HasPath    bool      `json:"has_path"`
+	Name         string    `json:"name"`
+	Developer    string    `json:"developer"`
+	SourceType   string    `json:"source_type"`
+	Exists       bool      `json:"exists"`
+	ConflictType string    `json:"conflict_type"`
+	ExistingID   string    `json:"existing_id"`
+	ExistingName string    `json:"existing_name"`
+	AddTime      time.Time `json:"add_time"`
+	HasPath      bool      `json:"has_path"`
 }
 
 type ImportService struct {
@@ -116,7 +119,11 @@ func (s *ImportService) SelectZipFile() (string, error) {
 
 // ImportFromPotatoVN 从 PotatoVN 导出的 ZIP 文件导入数据
 func (s *ImportService) ImportFromPotatoVN(zipPath string, skipNoPath bool) (ImportResult, error) {
-	result, err := importer.NewPotatoVNImporter(s.importerDependencies()).Import(zipPath, skipNoPath)
+	return s.ImportFromPotatoVNWithOptions(zipPath, skipNoPath, importer.SamePathActionSkip)
+}
+
+func (s *ImportService) ImportFromPotatoVNWithOptions(zipPath string, skipNoPath bool, samePathAction string) (ImportResult, error) {
+	result, err := importer.NewPotatoVNImporter(s.importerDependencies()).Import(zipPath, skipNoPath, samePathAction)
 	return ImportResult(result), err
 }
 
@@ -150,7 +157,11 @@ func (s *ImportService) PreviewPlayniteImport(jsonPath string) ([]PreviewGame, e
 
 // ImportFromPlaynite 从 Playnite 导出的 JSON 文件导入数据
 func (s *ImportService) ImportFromPlaynite(jsonPath string, skipNoPath bool) (ImportResult, error) {
-	result, err := importer.NewPlayniteImporter(s.importerDependencies()).Import(jsonPath, skipNoPath)
+	return s.ImportFromPlayniteWithOptions(jsonPath, skipNoPath, importer.SamePathActionSkip)
+}
+
+func (s *ImportService) ImportFromPlayniteWithOptions(jsonPath string, skipNoPath bool, samePathAction string) (ImportResult, error) {
+	result, err := importer.NewPlayniteImporter(s.importerDependencies()).Import(jsonPath, skipNoPath, samePathAction)
 	return ImportResult(result), err
 }
 
@@ -172,7 +183,11 @@ func (s *ImportService) PreviewVniteImport(vniteDir string) ([]PreviewGame, erro
 
 // ImportFromVnite 从 Vnite 导出的数据库目录导入数据
 func (s *ImportService) ImportFromVnite(vniteDir string, skipNoPath bool) (ImportResult, error) {
-	result, err := importer.NewVniteImporter(s.importerDependencies()).Import(vniteDir, skipNoPath)
+	return s.ImportFromVniteWithOptions(vniteDir, skipNoPath, importer.SamePathActionSkip)
+}
+
+func (s *ImportService) ImportFromVniteWithOptions(vniteDir string, skipNoPath bool, samePathAction string) (ImportResult, error) {
+	result, err := importer.NewVniteImporter(s.importerDependencies()).Import(vniteDir, skipNoPath, samePathAction)
 	return ImportResult(result), err
 }
 
@@ -694,6 +709,7 @@ func (s *ImportService) BatchImportGames(candidates []vo.BatchImportCandidate) (
 			Game:   game,
 			Tags:   candidate.MatchedTags,
 			Source: source,
+			Action: importer.ImportActionCreate,
 		}
 		items = append(items, item)
 		idx.add(importGameRef{

@@ -60,14 +60,18 @@ func (v *VniteImporter) Preview(vniteDir string) ([]PreviewGame, error) {
 			exePath = pickVniteGamePath(localDoc)
 		}
 		sourceType := string(mapVniteSourceType(gameDoc))
+		conflict := previewConflict(existingIndex, name, exePath, sourceType, pickVniteSourceID(gameDoc))
 
 		previews = append(previews, PreviewGame{
-			Name:       name,
-			Developer:  pickVniteDeveloper(gameDoc),
-			SourceType: sourceType,
-			Exists:     previewExists(existingIndex, name, exePath, sourceType, pickVniteSourceID(gameDoc)),
-			AddTime:    parseVniteTimeOrNow(gameDoc.Record.AddDate),
-			HasPath:    hasLocal && exePath != "",
+			Name:         name,
+			Developer:    pickVniteDeveloper(gameDoc),
+			SourceType:   sourceType,
+			Exists:       conflict.Type != ConflictTypeNone,
+			ConflictType: conflict.Type,
+			ExistingID:   conflict.Game.ID,
+			ExistingName: conflict.Game.Name,
+			AddTime:      parseVniteTimeOrNow(gameDoc.Record.AddDate),
+			HasPath:      hasLocal && exePath != "",
 		})
 	}
 
@@ -75,8 +79,9 @@ func (v *VniteImporter) Preview(vniteDir string) ([]PreviewGame, error) {
 	return previews, nil
 }
 
-func (v *VniteImporter) Import(vniteDir string, skipNoPath bool) (ImportResult, error) {
+func (v *VniteImporter) Import(vniteDir string, skipNoPath bool, samePathAction string) (ImportResult, error) {
 	result := newImportResult()
+	samePathAction = NormalizeSamePathAction(samePathAction)
 
 	startedAt := time.Now()
 	stepStartedAt := time.Now()
@@ -111,10 +116,6 @@ func (v *VniteImporter) Import(vniteDir string, skipNoPath bool) (ImportResult, 
 
 		exePath := pickVniteGamePath(localDoc)
 		hasPath := exePath != ""
-		if skipExistingGame(v.deps.Ctx, "ImportFromVnite", &result, existingGames, existingNames, existingPaths, gameName, exePath) {
-			continue
-		}
-
 		if skipNoPath && !hasPath {
 			result.Skipped++
 			result.SkippedNames = append(result.SkippedNames, gameName+" (无路径)")
@@ -122,19 +123,44 @@ func (v *VniteImporter) Import(vniteDir string, skipNoPath bool) (ImportResult, 
 		}
 
 		game, sessions := v.convertToGame(gameDoc, localDoc)
+		action := ImportActionCreate
+		existingGameID := ""
+		if conflict, exists := findExistingGameConflict(existingGames, existingNames, existingPaths, gameName, exePath); exists {
+			if conflict.Type != ConflictTypeSamePath || samePathAction != SamePathActionMerge {
+				result.Skipped++
+				if conflict.Type == ConflictTypeNameAndPath {
+					result.SkippedNames = append(result.SkippedNames, gameName+" (已存在)")
+				} else {
+					result.SkippedNames = append(result.SkippedNames, gameName+" (路径已存在: "+conflict.Game.Name+")")
+				}
+				continue
+			}
+			action = ImportActionUpdateExisting
+			existingGameID = conflict.Game.ID
+			game.ID = conflict.Game.ID
+			game.Path = conflict.Game.Path
+			for i := range sessions {
+				sessions[i].GameID = conflict.Game.ID
+			}
+		}
+
 		source := vo.GameMetadataFromWebVO{
 			Source: game.SourceType,
 			Game:   game,
 			Tags:   tagsFromNames(gameDoc.Metadata.Tags),
 		}
 		items = append(items, ImportItem{
-			Source:      source,
-			Sessions:    sessions,
-			DisplayName: gameName,
-			Path:        exePath,
-			CoverLoader: v.coverLoader(vniteDir, gameDoc),
+			Source:         source,
+			Sessions:       sessions,
+			DisplayName:    gameName,
+			Path:           exePath,
+			Action:         action,
+			ExistingGameID: existingGameID,
+			CoverLoader:    v.coverLoader(vniteDir, gameDoc),
 		})
-		updateExistingIndexes(existingNames, existingPaths, game, gameName, exePath)
+		if action == ImportActionCreate {
+			updateExistingIndexes(existingNames, existingPaths, game, gameName, exePath)
+		}
 	}
 	applog.LogInfof(v.deps.Ctx, "ImportFromVnite: built import items=%d skipped=%d failed=%d elapsed=%s", len(items), result.Skipped, result.Failed, time.Since(stepStartedAt))
 

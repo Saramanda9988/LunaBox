@@ -3,9 +3,9 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import {
-  ImportFromPlaynite,
-  ImportFromPotatoVN,
-  ImportFromVnite,
+  ImportFromPlayniteWithOptions,
+  ImportFromPotatoVNWithOptions,
+  ImportFromVniteWithOptions,
   PreviewImport,
   PreviewPlayniteImport,
   PreviewVniteImport,
@@ -25,6 +25,7 @@ interface GameImportModalProps {
 }
 
 type Step = "select" | "preview" | "importing" | "result";
+type SamePathAction = "skip" | "merge";
 
 // 配置类型
 interface ImportConfig {
@@ -41,6 +42,7 @@ interface ImportConfig {
   doImport: (
     path: string,
     skipNoPath: boolean,
+    samePathAction: SamePathAction,
   ) => Promise<service.ImportResult>;
 }
 
@@ -57,7 +59,7 @@ function getImportConfigs(t: any): Record<ImportSource, ImportConfig> {
       hoverColor: "hover:bg-purple-600",
       selectFile: SelectJSONFile,
       previewImport: PreviewPlayniteImport,
-      doImport: ImportFromPlaynite,
+      doImport: ImportFromPlayniteWithOptions,
     },
     potatovn: {
       title: t("gameImportModal.potatovn.title"),
@@ -70,7 +72,7 @@ function getImportConfigs(t: any): Record<ImportSource, ImportConfig> {
       hoverColor: "hover:bg-neutral-600",
       selectFile: SelectZipFile,
       previewImport: PreviewImport,
-      doImport: ImportFromPotatoVN,
+      doImport: ImportFromPotatoVNWithOptions,
     },
     vnite: {
       title: t("gameImportModal.vnite.title"),
@@ -83,7 +85,7 @@ function getImportConfigs(t: any): Record<ImportSource, ImportConfig> {
       hoverColor: "hover:bg-sky-600",
       selectFile: SelectVniteDirectory,
       previewImport: PreviewVniteImport,
-      doImport: ImportFromVnite,
+      doImport: ImportFromVniteWithOptions,
     },
   };
 }
@@ -102,6 +104,7 @@ export function GameImportModal({
   );
   const [isLoading, setIsLoading] = useState(false);
   const [skipNoPath, setSkipNoPath] = useState(true);
+  const [samePathAction, setSamePathAction] = useState<SamePathAction>("skip");
   const { t } = useTranslation();
 
   const config = getImportConfigs(t)[source];
@@ -143,7 +146,11 @@ export function GameImportModal({
     setIsLoading(true);
 
     try {
-      const result = await config.doImport(filePath, skipNoPath);
+      const result = await config.doImport(
+        filePath,
+        skipNoPath,
+        samePathAction,
+      );
       setImportResult(result);
       setStep("result");
 
@@ -170,13 +177,22 @@ export function GameImportModal({
     setPreviewGames([]);
     setImportResult(null);
     setSkipNoPath(true);
+    setSamePathAction("skip");
     onClose();
   };
 
+  const samePathGamesCount = previewGames.filter(
+    g => g.conflict_type === "same_path",
+  ).length;
+  const shouldMergeSamePath = samePathAction === "merge";
   const newGamesCount = previewGames.filter(
     g => !g.exists && (skipNoPath ? g.has_path : true),
   ).length;
-  const existingGamesCount = previewGames.filter(g => g.exists).length;
+  const updateGamesCount = shouldMergeSamePath ? samePathGamesCount : 0;
+  const actionableGamesCount = newGamesCount + updateGamesCount;
+  const existingGamesCount = previewGames.filter(
+    g => g.exists && g.conflict_type !== "same_path",
+  ).length;
   const noPathGamesCount = previewGames.filter(
     g => !g.has_path && !g.exists,
   ).length;
@@ -291,7 +307,63 @@ export function GameImportModal({
                       </div>
                     </div>
                   )}
+                  {samePathGamesCount > 0 && (
+                    <div className="flex-1 rounded-lg bg-sky-50 dark:bg-sky-900/20 p-4 text-center">
+                      <div className="text-3xl font-bold text-sky-600 dark:text-sky-400">
+                        {samePathGamesCount}
+                      </div>
+                      <div className="text-sm text-sky-700 dark:text-sky-300">
+                        {t("gameImportModal.samePath")}
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {samePathGamesCount > 0 && (
+                  <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 dark:border-sky-800 dark:bg-sky-900/20">
+                    <div className="mb-3 text-sm font-medium text-sky-800 dark:text-sky-200">
+                      {t("gameImportModal.samePathActionTitle", {
+                        count: samePathGamesCount,
+                      })}
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => setSamePathAction("skip")}
+                        className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
+                          samePathAction === "skip"
+                            ? "border-sky-500 bg-white text-sky-800 shadow-sm dark:bg-sky-950/40 dark:text-sky-100"
+                            : "border-sky-200 bg-white/60 text-sky-700 hover:bg-white dark:border-sky-800 dark:bg-sky-950/20 dark:text-sky-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 font-medium">
+                          <div className="i-mdi-skip-next-circle text-base" />
+                          {t("gameImportModal.samePathSkip")}
+                        </div>
+                        <div className="mt-1 text-xs opacity-80">
+                          {t("gameImportModal.samePathSkipHint")}
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSamePathAction("merge")}
+                        className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
+                          samePathAction === "merge"
+                            ? "border-sky-500 bg-white text-sky-800 shadow-sm dark:bg-sky-950/40 dark:text-sky-100"
+                            : "border-sky-200 bg-white/60 text-sky-700 hover:bg-white dark:border-sky-800 dark:bg-sky-950/20 dark:text-sky-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 font-medium">
+                          <div className="i-mdi-database-sync-outline text-base" />
+                          {t("gameImportModal.samePathMerge")}
+                        </div>
+                        <div className="mt-1 text-xs opacity-80">
+                          {t("gameImportModal.samePathMergeHint")}
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Skip no-path option */}
                 {noPathGamesCount > 0 && (
@@ -344,8 +416,16 @@ export function GameImportModal({
                       </thead>
                       <tbody className="divide-y divide-brand-100 dark:divide-brand-700">
                         {previewGames.map((game, index) => {
+                          const willBeUpdated
+                            = game.conflict_type === "same_path"
+                              && shouldMergeSamePath;
                           const willBeSkipped
-                            = game.exists || (skipNoPath && !game.has_path);
+                            = (game.exists
+                              && !(
+                                game.conflict_type === "same_path"
+                                && shouldMergeSamePath
+                              ))
+                              || (!willBeUpdated && skipNoPath && !game.has_path);
                           return (
                             <tr
                               key={game.name + index}
@@ -369,12 +449,19 @@ export function GameImportModal({
                               <td className="w-32 px-4 py-3 text-center">
                                 {game.exists ? (
                                   <span
-                                    className={`${statusBadgeClass} bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400`}
+                                    className={
+                                      willBeUpdated
+                                        ? `${statusBadgeClass} bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400`
+                                        : `${statusBadgeClass} bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400`
+                                    }
+                                    title={game.existing_name || undefined}
                                   >
                                     <div
-                                      className={`i-mdi-check-circle ${statusIconClass}`}
+                                      className={`${willBeUpdated ? "i-mdi-database-sync-outline" : "i-mdi-check-circle"} ${statusIconClass}`}
                                     />
-                                    {t("gameImportModal.exists")}
+                                    {willBeUpdated
+                                      ? t("gameImportModal.status.update")
+                                      : t("gameImportModal.exists")}
                                   </span>
                                 ) : !game.has_path && skipNoPath ? (
                                   <span
@@ -418,10 +505,12 @@ export function GameImportModal({
                   <button
                     type="button"
                     onClick={handleImport}
-                    disabled={newGamesCount === 0}
+                    disabled={actionableGamesCount === 0}
                     className={`rounded-lg px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50 ${importButtonClass}`}
                   >
-                    {t("gameImportModal.importCount", { count: newGamesCount })}
+                    {t("gameImportModal.importCount", {
+                      count: actionableGamesCount,
+                    })}
                   </button>
                 </div>
               </div>

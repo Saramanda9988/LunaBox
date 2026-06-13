@@ -289,6 +289,12 @@
     "loading": "加载中...",
     "willImport": "将导入",
     "exists": "已存在",
+    "samePath": "相同路径",
+    "samePathActionTitle": "检测到 {{count}} 个相同路径游戏",
+    "samePathSkip": "跳过",
+    "samePathSkipHint": "保留现有游戏，不导入这些条目。",
+    "samePathMerge": "更新并合并",
+    "samePathMergeHint": "使用导入侧元数据更新现有游戏，并合并游玩记录。",
     "noPath": "无路径",
     "skipNoPath": "跳过无路径的游戏",
     "noPathHint": "有 {{count}} 个游戏没有本地路径，这些可能是网络游戏或已删除的游戏。",
@@ -298,7 +304,8 @@
     "gameName": "游戏名称",
     "developer": "开发商",
     "status": {
-      "skipped": "将跳过"
+      "skipped": "将跳过",
+      "update": "将更新"
     },
     "willSkip": "将跳过",
     "newAdd": "新增",

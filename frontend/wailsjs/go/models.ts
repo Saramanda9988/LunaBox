@@ -189,6 +189,17 @@ export namespace appconf {
 
 export namespace enums {
 	
+	export enum GameListSortBy {
+	    NAME = "name",
+	    LAST_PLAYED_AT = "last_played_at",
+	    CREATED_AT = "created_at",
+	    RATING = "rating",
+	    RELEASE_DATE = "release_date",
+	}
+	export enum SortOrder {
+	    ASC = "asc",
+	    DESC = "desc",
+	}
 	export enum SourceType {
 	    LOCAL = "local",
 	    BANGUMI = "bangumi",
@@ -216,17 +227,6 @@ export namespace enums {
 	    PLAYING = "playing",
 	    COMPLETED = "completed",
 	    ON_HOLD = "on_hold",
-	}
-	export enum GameListSortBy {
-	    NAME = "name",
-	    LAST_PLAYED_AT = "last_played_at",
-	    CREATED_AT = "created_at",
-	    RATING = "rating",
-	    RELEASE_DATE = "release_date",
-	}
-	export enum SortOrder {
-	    ASC = "asc",
-	    DESC = "desc",
 	}
 
 }
@@ -792,6 +792,9 @@ export namespace service {
 	    developer: string;
 	    source_type: string;
 	    exists: boolean;
+	    conflict_type: string;
+	    existing_id: string;
+	    existing_name: string;
 	    add_time: time.Time;
 	    has_path: boolean;
 	
@@ -805,6 +808,9 @@ export namespace service {
 	        this.developer = source["developer"];
 	        this.source_type = source["source_type"];
 	        this.exists = source["exists"];
+	        this.conflict_type = source["conflict_type"];
+	        this.existing_id = source["existing_id"];
+	        this.existing_name = source["existing_name"];
 	        this.add_time = this.convertValues(source["add_time"], time.Time);
 	        this.has_path = source["has_path"];
 	    }

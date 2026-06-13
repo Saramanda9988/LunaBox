@@ -1,12 +1,15 @@
 package importer
 
 import (
+	"archive/zip"
 	"encoding/json"
 	"lunabox/internal/common/enums"
 	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
 	"lunabox/internal/models/potatovn"
 	"lunabox/internal/models/vnite"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -28,7 +31,7 @@ func TestPotatoVNConvertToGameImportsLaunchFields(t *testing.T) {
 		EnableMagpie:        true,
 	}
 
-	game, _ := NewPotatoVNImporter(Dependencies{}).convertToGame(galgame, "")
+	game, _ := NewPotatoVNImporter(Dependencies{}).convertToGame(galgame, "", "")
 
 	if game.Path != exePath {
 		t.Fatalf("expected path %q, got %q", exePath, game.Path)
@@ -85,6 +88,81 @@ func TestAddImportedItemsUsesBatchDependency(t *testing.T) {
 	}
 	if result.Success != 1 {
 		t.Fatalf("expected success 1, got %d", result.Success)
+	}
+}
+
+func TestPotatoVNImportSamePathMergeTargetsExistingGame(t *testing.T) {
+	exePath := `D:\Games\Same\game.exe`
+	existingGame := models.Game{
+		ID:   "existing-game",
+		Name: "Existing Game",
+		Path: exePath,
+	}
+	galgame := potatovn.Galgame{
+		Name:    potatovn.LockableProperty[string]{Value: "Imported Game"},
+		ExePath: &exePath,
+		PlayedTime: map[string]int{
+			"2024/1/2": 30,
+		},
+	}
+	tempDir := t.TempDir()
+	data, err := json.Marshal([]potatovn.Galgame{galgame})
+	if err != nil {
+		t.Fatalf("marshal galgame: %v", err)
+	}
+	zipPath := filepath.Join(tempDir, "potatovn.zip")
+	zipFile, err := os.Create(zipPath)
+	if err != nil {
+		t.Fatalf("create zip: %v", err)
+	}
+	zipWriter := zip.NewWriter(zipFile)
+	entry, err := zipWriter.Create("data.galgames.json")
+	if err != nil {
+		t.Fatalf("create zip entry: %v", err)
+	}
+	if _, err := entry.Write(data); err != nil {
+		t.Fatalf("write zip entry: %v", err)
+	}
+	if err := zipWriter.Close(); err != nil {
+		t.Fatalf("close zip writer: %v", err)
+	}
+	if err := zipFile.Close(); err != nil {
+		t.Fatalf("close zip file: %v", err)
+	}
+
+	var committed []ImportItem
+	deps := Dependencies{
+		ListGames: func() ([]models.Game, error) {
+			return []models.Game{existingGame}, nil
+		},
+		AddItems: func(items []ImportItem) (ImportResult, error) {
+			committed = items
+			sessionsImported := 0
+			if len(items) > 0 {
+				sessionsImported = len(items[0].Sessions)
+			}
+			return ImportResult{Success: len(items), SessionsImported: sessionsImported}, nil
+		},
+	}
+
+	result, err := NewPotatoVNImporter(deps).Import(zipPath, true, SamePathActionMerge)
+	if err != nil {
+		t.Fatalf("Import returned error: %v", err)
+	}
+	if result.Skipped != 0 || result.Success != 1 {
+		t.Fatalf("expected one merged success without skips, got result=%+v", result)
+	}
+	if len(committed) != 1 {
+		t.Fatalf("expected one committed item, got %d", len(committed))
+	}
+	if committed[0].Action != ImportActionUpdateExisting {
+		t.Fatalf("expected update action, got %q", committed[0].Action)
+	}
+	if committed[0].ExistingGameID != existingGame.ID || committed[0].Source.Game.ID != existingGame.ID {
+		t.Fatalf("expected existing game id %q, got item=%+v", existingGame.ID, committed[0])
+	}
+	if len(committed[0].Sessions) != 1 || committed[0].Sessions[0].GameID != existingGame.ID {
+		t.Fatalf("expected session to target existing game, got %+v", committed[0].Sessions)
 	}
 }
 

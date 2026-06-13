@@ -24,12 +24,15 @@ type ImportResult struct {
 
 // PreviewGame 预览导入的游戏信息
 type PreviewGame struct {
-	Name       string    `json:"name"`
-	Developer  string    `json:"developer"`
-	SourceType string    `json:"source_type"`
-	Exists     bool      `json:"exists"`
-	AddTime    time.Time `json:"add_time"`
-	HasPath    bool      `json:"has_path"`
+	Name         string    `json:"name"`
+	Developer    string    `json:"developer"`
+	SourceType   string    `json:"source_type"`
+	Exists       bool      `json:"exists"`
+	ConflictType string    `json:"conflict_type"`
+	ExistingID   string    `json:"existing_id"`
+	ExistingName string    `json:"existing_name"`
+	AddTime      time.Time `json:"add_time"`
+	HasPath      bool      `json:"has_path"`
 }
 
 type Dependencies struct {
@@ -42,17 +45,45 @@ type Dependencies struct {
 }
 
 type ImportItem struct {
-	Source      vo.GameMetadataFromWebVO
-	Sessions    []models.PlaySession
-	DisplayName string
-	Path        string
-	CoverLoader func(models.Game) (string, error)
+	Source         vo.GameMetadataFromWebVO
+	Sessions       []models.PlaySession
+	DisplayName    string
+	Path           string
+	Action         string
+	ExistingGameID string
+	CoverLoader    func(models.Game) (string, error)
+}
+
+const (
+	ImportActionCreate         = "create"
+	ImportActionUpdateExisting = "update_existing"
+
+	SamePathActionSkip  = "skip"
+	SamePathActionMerge = "merge"
+
+	ConflictTypeNone        = ""
+	ConflictTypeSamePath    = "same_path"
+	ConflictTypePath        = "path"
+	ConflictTypeSource      = "source"
+	ConflictTypeNameAndPath = "name_path"
+)
+
+type existingGameConflict struct {
+	Type string
+	Game models.Game
+}
+
+func NormalizeSamePathAction(action string) string {
+	if strings.EqualFold(strings.TrimSpace(action), SamePathActionMerge) {
+		return SamePathActionMerge
+	}
+	return SamePathActionSkip
 }
 
 type existingPreviewIndex struct {
-	byPath     map[string]struct{}
-	bySource   map[string]struct{}
-	byNamePath map[string]struct{}
+	byPath     map[string]models.Game
+	bySource   map[string]models.Game
+	byNamePath map[string]models.Game
 }
 
 func newImportResult() ImportResult {
@@ -107,19 +138,19 @@ func (d Dependencies) existingNameSet(logPrefix string) (map[string]bool, error)
 
 func newExistingPreviewIndex(existingGames []models.Game) existingPreviewIndex {
 	idx := existingPreviewIndex{
-		byPath:     make(map[string]struct{}, len(existingGames)),
-		bySource:   make(map[string]struct{}, len(existingGames)),
-		byNamePath: make(map[string]struct{}, len(existingGames)),
+		byPath:     make(map[string]models.Game, len(existingGames)),
+		bySource:   make(map[string]models.Game, len(existingGames)),
+		byNamePath: make(map[string]models.Game, len(existingGames)),
 	}
 	for _, game := range existingGames {
 		if pathKey := normalizeImportPath(game.Path); pathKey != "" {
-			idx.byPath[pathKey] = struct{}{}
+			idx.byPath[pathKey] = game
 		}
 		if sourceKey := previewSourceKey(string(game.SourceType), game.SourceID); sourceKey != "" {
-			idx.bySource[sourceKey] = struct{}{}
+			idx.bySource[sourceKey] = game
 		}
 		if namePathKey := previewNamePathKey(game.Name, game.Path); namePathKey != "" {
-			idx.byNamePath[namePathKey] = struct{}{}
+			idx.byNamePath[namePathKey] = game
 		}
 	}
 	return idx
@@ -144,27 +175,58 @@ func previewNamePathKey(gameName string, exePath string) string {
 }
 
 func previewExists(idx existingPreviewIndex, gameName string, exePath string, sourceType string, sourceID string) bool {
+	return previewConflict(idx, gameName, exePath, sourceType, sourceID).Type != ConflictTypeNone
+}
+
+func previewConflict(idx existingPreviewIndex, gameName string, exePath string, sourceType string, sourceID string) existingGameConflict {
 	if pathKey := normalizeImportPath(exePath); pathKey != "" {
-		if _, exists := idx.byPath[pathKey]; exists {
-			return true
+		if game, exists := idx.byPath[pathKey]; exists {
+			return existingGameConflict{Type: ConflictTypeSamePath, Game: game}
 		}
-		for existingPath := range idx.byPath {
+		for existingPath, game := range idx.byPath {
 			if importpath.Conflicts(pathKey, existingPath) {
-				return true
+				return existingGameConflict{Type: ConflictTypePath, Game: game}
 			}
 		}
 	}
 	if sourceKey := previewSourceKey(sourceType, sourceID); sourceKey != "" {
-		if _, exists := idx.bySource[sourceKey]; exists {
-			return true
+		if game, exists := idx.bySource[sourceKey]; exists {
+			return existingGameConflict{Type: ConflictTypeSource, Game: game}
 		}
 	}
 	if namePathKey := previewNamePathKey(gameName, exePath); namePathKey != "" {
-		if _, exists := idx.byNamePath[namePathKey]; exists {
-			return true
+		if game, exists := idx.byNamePath[namePathKey]; exists {
+			return existingGameConflict{Type: ConflictTypeNameAndPath, Game: game}
 		}
 	}
-	return false
+	return existingGameConflict{}
+}
+
+func findExistingGameConflict(existingGames []models.Game, existingNames map[string]string, existingPaths map[string]string, gameName string, exePath string) (existingGameConflict, bool) {
+	pathKey := normalizeImportPath(exePath)
+	if pathKey != "" {
+		for _, game := range existingGames {
+			if normalizeImportPath(game.Path) == pathKey {
+				return existingGameConflict{Type: ConflictTypeSamePath, Game: game}, true
+			}
+		}
+		if existingName, exists := findExistingPathConflict(existingPaths, exePath); exists {
+			return existingGameConflict{
+				Type: ConflictTypePath,
+				Game: models.Game{Name: existingName},
+			}, true
+		}
+	}
+
+	if existingID, exists := existingNames[strings.ToLower(gameName)]; exists {
+		for _, game := range existingGames {
+			if game.ID == existingID && normalizeImportPath(game.Path) == pathKey {
+				return existingGameConflict{Type: ConflictTypeNameAndPath, Game: game}, true
+			}
+		}
+	}
+
+	return existingGameConflict{}, false
 }
 
 func skipExistingGame(
@@ -177,22 +239,17 @@ func skipExistingGame(
 	gameName string,
 	exePath string,
 ) bool {
-	if exePath != "" {
-		if existingName, exists := findExistingPathConflict(existingPaths, exePath); exists {
-			result.Skipped++
-			result.SkippedNames = append(result.SkippedNames, gameName+" (路径已存在: "+existingName+")")
+	if conflict, exists := findExistingGameConflict(existingGames, existingNames, existingPaths, gameName, exePath); exists {
+		result.Skipped++
+		if conflict.Type == ConflictTypeNameAndPath {
+			result.SkippedNames = append(result.SkippedNames, gameName+" (已存在)")
 			return true
 		}
+		result.SkippedNames = append(result.SkippedNames, gameName+" (路径已存在: "+conflict.Game.Name+")")
+		return true
 	}
 
-	if existingID, exists := existingNames[strings.ToLower(gameName)]; exists {
-		for _, g := range existingGames {
-			if g.ID == existingID && normalizeImportPath(g.Path) == normalizeImportPath(exePath) {
-				result.Skipped++
-				result.SkippedNames = append(result.SkippedNames, gameName+" (已存在)")
-				return true
-			}
-		}
+	if _, exists := existingNames[strings.ToLower(gameName)]; exists {
 		applog.LogInfof(ctx, "%s: importing duplicate name %s with different path: %s", logPrefix, gameName, exePath)
 	}
 

@@ -289,6 +289,12 @@
     "loading": "Loading...",
     "willImport": "Will Import",
     "exists": "Exists",
+    "samePath": "Same Path",
+    "samePathActionTitle": "{{count}} same-path games detected",
+    "samePathSkip": "Skip",
+    "samePathSkipHint": "Keep existing games and do not import these entries.",
+    "samePathMerge": "Update & Merge",
+    "samePathMergeHint": "Update existing games with imported metadata and merge play sessions.",
     "noPath": "No Path",
     "skipNoPath": "Skip games with no path",
     "noPathHint": "There are {{count}} games without a local path. They may be network games or already removed.",
@@ -298,7 +304,8 @@
     "gameName": "Game Name",
     "developer": "Developer",
     "status": {
-      "skipped": "Will Skip"
+      "skipped": "Will Skip",
+      "update": "Will Update"
     },
     "willSkip": "Will Skip",
     "newAdd": "New",

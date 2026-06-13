@@ -17,9 +17,15 @@ export function FetchMetadataForCandidateWithPreference(arg1:string,arg2:enums.S
 
 export function ImportFromPlaynite(arg1:string,arg2:boolean):Promise<service.ImportResult>;
 
+export function ImportFromPlayniteWithOptions(arg1:string,arg2:boolean,arg3:string):Promise<service.ImportResult>;
+
 export function ImportFromPotatoVN(arg1:string,arg2:boolean):Promise<service.ImportResult>;
 
+export function ImportFromPotatoVNWithOptions(arg1:string,arg2:boolean,arg3:string):Promise<service.ImportResult>;
+
 export function ImportFromVnite(arg1:string,arg2:boolean):Promise<service.ImportResult>;
+
+export function ImportFromVniteWithOptions(arg1:string,arg2:boolean,arg3:string):Promise<service.ImportResult>;
 
 export function Init(arg1:context.Context,arg2:sql.DB,arg3:appconf.AppConfig,arg4:service.GameService):Promise<void>;
 

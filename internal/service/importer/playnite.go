@@ -23,8 +23,9 @@ func NewPlayniteImporter(deps Dependencies) *PlayniteImporter {
 	return &PlayniteImporter{deps: deps}
 }
 
-func (p *PlayniteImporter) Import(jsonPath string, skipNoPath bool) (ImportResult, error) {
+func (p *PlayniteImporter) Import(jsonPath string, skipNoPath bool, samePathAction string) (ImportResult, error) {
 	result := newImportResult()
+	samePathAction = NormalizeSamePathAction(samePathAction)
 
 	playniteGames, err := p.readGames(jsonPath)
 	if err != nil {
@@ -38,27 +39,46 @@ func (p *PlayniteImporter) Import(jsonPath string, skipNoPath bool) (ImportResul
 
 	items := make([]ImportItem, 0, len(playniteGames))
 	for _, pg := range playniteGames {
-		if skipExistingGame(p.deps.Ctx, "ImportFromPlaynite", &result, existingGames, existingNames, existingPaths, pg.Name, pg.Path) {
-			continue
-		}
-
 		if skipNoPath && pg.Path == "" {
 			result.Skipped++
 			result.SkippedNames = append(result.SkippedNames, pg.Name+" (无路径)")
 			continue
 		}
 
-		game := p.convertToGame(pg)
+		action := ImportActionCreate
+		existingGameID := ""
+		if conflict, exists := findExistingGameConflict(existingGames, existingNames, existingPaths, pg.Name, pg.Path); exists {
+			if conflict.Type != ConflictTypeSamePath || samePathAction != SamePathActionMerge {
+				result.Skipped++
+				if conflict.Type == ConflictTypeNameAndPath {
+					result.SkippedNames = append(result.SkippedNames, pg.Name+" (已存在)")
+				} else {
+					result.SkippedNames = append(result.SkippedNames, pg.Name+" (路径已存在: "+conflict.Game.Name+")")
+				}
+				continue
+			}
+			action = ImportActionUpdateExisting
+			existingGameID = conflict.Game.ID
+		}
+		game := p.convertToGame(pg, existingGameID)
+		if action == ImportActionUpdateExisting {
+			game.Path = pg.Path
+		}
+
 		source := vo.GameMetadataFromWebVO{
 			Source: game.SourceType,
 			Game:   game,
 		}
 		items = append(items, ImportItem{
-			Source:      source,
-			DisplayName: pg.Name,
-			Path:        pg.Path,
+			Source:         source,
+			DisplayName:    pg.Name,
+			Path:           pg.Path,
+			Action:         action,
+			ExistingGameID: existingGameID,
 		})
-		updateExistingIndexes(existingNames, existingPaths, game, pg.Name, pg.Path)
+		if action == ImportActionCreate {
+			updateExistingIndexes(existingNames, existingPaths, game, pg.Name, pg.Path)
+		}
 	}
 
 	batchResult, err := addImportedItems(p.deps, items)
@@ -90,13 +110,17 @@ func (p *PlayniteImporter) Preview(jsonPath string) ([]PreviewGame, error) {
 
 	previews := make([]PreviewGame, 0, len(playniteGames))
 	for _, pg := range playniteGames {
+		conflict := previewConflict(existingIndex, pg.Name, pg.Path, pg.SourceType, pg.SourceID)
 		previews = append(previews, PreviewGame{
-			Name:       pg.Name,
-			Developer:  pg.Company,
-			SourceType: pg.SourceType,
-			Exists:     previewExists(existingIndex, pg.Name, pg.Path, pg.SourceType, pg.SourceID),
-			AddTime:    pg.CreatedAt,
-			HasPath:    pg.Path != "",
+			Name:         pg.Name,
+			Developer:    pg.Company,
+			SourceType:   pg.SourceType,
+			Exists:       conflict.Type != ConflictTypeNone,
+			ConflictType: conflict.Type,
+			ExistingID:   conflict.Game.ID,
+			ExistingName: conflict.Game.Name,
+			AddTime:      pg.CreatedAt,
+			HasPath:      pg.Path != "",
 		})
 	}
 
@@ -121,9 +145,12 @@ func (p *PlayniteImporter) readGames(jsonPath string) ([]playnite.PlayniteGame, 
 	return playniteGames, nil
 }
 
-func (p *PlayniteImporter) convertToGame(pg playnite.PlayniteGame) models.Game {
+func (p *PlayniteImporter) convertToGame(pg playnite.PlayniteGame, gameID string) models.Game {
+	if gameID == "" {
+		gameID = pg.ID
+	}
 	game := models.Game{
-		ID:          pg.ID,
+		ID:          gameID,
 		Name:        pg.Name,
 		Company:     pg.Company,
 		Summary:     pg.Summary,
