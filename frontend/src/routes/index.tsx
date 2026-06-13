@@ -5,10 +5,13 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { enums, vo } from "../../wailsjs/go/models";
 import { GetGames } from "../../wailsjs/go/service/GameService";
-import { StartGameWithTracking } from "../../wailsjs/go/service/StartService";
+import {
+  StartGameWithOptions,
+  StartGameWithTracking,
+} from "../../wailsjs/go/service/StartService";
 import { GetGlobalPeriodStats } from "../../wailsjs/go/service/StatsService";
 import { HomeGameRailPanel } from "../components/panel/HomeGameRailPanel";
-import { BetterButton } from "../components/ui/better/BetterButton";
+import { BetterSplitButton } from "../components/ui/better/BetterSplitButton";
 import { ProxyImage } from "../components/ui/ProxyImage";
 import { useCrossfadeBackground } from "../hooks/useCrossfadeBackground";
 import { useImageAccentRgb } from "../hooks/useImageAccentRgb";
@@ -24,6 +27,8 @@ const MIN_HOME_GAME_CAROUSEL_INTERVAL_SEC = 4;
 const BACKGROUND_CROSSFADE_MS = 1200;
 const HERO_FADE_OUT_MS = 280;
 const HERO_FADE_IN_DELAY_MS = 90;
+
+type LaunchMode = "normal" | "admin";
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -54,6 +59,7 @@ function HomePage() {
   const [playingGameId, setPlayingGameId] = useState<string | null>(null);
   const [isPickerExpanded, setIsPickerExpanded] = useState(false);
   const [isCarouselPaused, setIsCarouselPaused] = useState(false);
+  const [launchMode, setLaunchMode] = useState<LaunchMode>("normal");
   const [libraryPreviewStats, setLibraryPreviewStats]
     = useState<vo.PeriodStats | null>(null);
 
@@ -267,26 +273,32 @@ function HomePage() {
     [navigate],
   );
 
-  const handleContinuePlay = useCallback(async () => {
-    if (!selectedGame?.id) {
-      return;
-    }
-
-    try {
-      const success = await StartGameWithTracking(selectedGame.id);
-      if (success) {
-        setPlayingGameId(selectedGame.id);
-        setActiveGameId(selectedGame.id);
-        toast.success(t("home.toast.launching", { name: selectedGame.name }));
-        void fetchHomeData();
-        void loadRecentGames();
+  const handleContinuePlay = useCallback(
+    async (mode: LaunchMode = launchMode) => {
+      if (!selectedGame?.id) {
+        return;
       }
-    }
-    catch (err) {
-      console.error("Failed to launch game:", err);
-      toast.error(t("home.toast.launchFailed"));
-    }
-  }, [fetchHomeData, loadRecentGames, selectedGame, t]);
+
+      try {
+        const success
+          = mode === "admin"
+            ? await StartGameWithOptions(selectedGame.id, { RunAsAdmin: true })
+            : await StartGameWithTracking(selectedGame.id);
+        if (success) {
+          setPlayingGameId(selectedGame.id);
+          setActiveGameId(selectedGame.id);
+          toast.success(t("home.toast.launching", { name: selectedGame.name }));
+          void fetchHomeData();
+          void loadRecentGames();
+        }
+      }
+      catch (err) {
+        console.error("Failed to launch game:", err);
+        toast.error(t("home.toast.launchFailed"));
+      }
+    },
+    [fetchHomeData, launchMode, loadRecentGames, selectedGame, t],
+  );
 
   const renderHeroContent = useCallback(
     (
@@ -378,6 +390,28 @@ function HomePage() {
   }
 
   const lastPlayed = homeData.last_played;
+  const launchOptions: Array<{
+    key: LaunchMode;
+    label: string;
+    description: string;
+    icon: string;
+  }> = [
+    {
+      key: "normal",
+      label: t("home.continueGame"),
+      description: t("gameCard.normalLaunchDesc"),
+      icon: "i-mdi-play",
+    },
+    {
+      key: "admin",
+      label: t("gameCard.startAsAdmin"),
+      description: t("gameCard.adminLaunchDesc"),
+      icon: "i-mdi-shield-account",
+    },
+  ];
+  const selectedLaunchOption
+    = launchOptions.find(option => option.key === launchMode)
+      ?? launchOptions[0];
 
   if (!lastPlayed || !selectedGame) {
     return (
@@ -469,15 +503,23 @@ function HomePage() {
             {t("home.gaming")}
           </div>
         ) : (
-          <BetterButton
-            onClick={handleContinuePlay}
-            icon="i-mdi-play"
-            size="lg"
-            variant="primary"
-            className={`absolute ${contentBottomClass} right-8 rounded-xl px-6 py-3 duration-300 z-10`}
+          <div
+            className={`absolute ${contentBottomClass} right-8 z-10 transition-[bottom] duration-300 ease-out`}
           >
-            {t("home.continueGame")}
-          </BetterButton>
+            <BetterSplitButton
+              label={selectedLaunchOption.label}
+              icon={selectedLaunchOption.icon}
+              selectedKey={launchMode}
+              options={launchOptions}
+              onClick={() => handleContinuePlay()}
+              onSelect={setLaunchMode}
+              size="md"
+              variant="primary"
+              menuTitle={t("gameCard.launchMode")}
+              menuAlign="right"
+              menuPlacement="top"
+            />
+          </div>
         )}
 
         {hasCoverPicker && (

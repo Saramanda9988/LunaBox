@@ -21,6 +21,8 @@ interface BetterSplitButtonProps<Key extends string = string> {
   disabled?: boolean;
   isLoading?: boolean;
   className?: string;
+  menuAlign?: "left" | "right";
+  menuPlacement?: "bottom" | "top";
   menuTitle?: string;
 }
 
@@ -91,6 +93,8 @@ export function BetterSplitButton<Key extends string = string>({
   disabled = false,
   isLoading = false,
   className = "",
+  menuAlign = "left",
+  menuPlacement = "bottom",
   menuTitle,
 }: BetterSplitButtonProps<Key>) {
   const isDisabled = disabled || isLoading;
@@ -142,7 +146,16 @@ export function BetterSplitButton<Key extends string = string>({
         <span className={`i-mdi-chevron-down ${sizeClasses[size].icon}`} />
       </MenuButton>
 
-      <MenuItems className="absolute left-0 top-full z-[9999] mt-1.5 min-w-full w-max max-w-[min(22rem,calc(100vw-2rem))] origin-top-left rounded-xl border border-brand-200 bg-white p-1.5 shadow-xl focus:outline-none dark:border-brand-700 dark:bg-brand-800">
+      <MenuItems
+        className={[
+          "absolute z-[9999] min-w-full w-max max-w-[min(22rem,calc(100vw-2rem))] rounded-xl",
+          "border border-brand-200 bg-white p-1.5 shadow-xl focus:outline-none dark:border-brand-700 dark:bg-brand-800",
+          menuAlign === "right" ? "right-0" : "left-0",
+          menuPlacement === "top"
+            ? "bottom-full mb-1.5 origin-bottom"
+            : "top-full mt-1.5 origin-top",
+        ].join(" ")}
+      >
         {menuTitle && (
           <div className="px-2 pb-1 pt-0.5 text-xs font-medium text-brand-400 dark:text-brand-500">
             {menuTitle}
