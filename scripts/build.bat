@@ -46,8 +46,15 @@ set "GO_BUILD_TAGS="
 set "DUCKDB_DLL="
 set "DUCKDB_BUILD_LIB_DIR="
 set "SEVENZIP_SOURCE_DIR=%CD%\lib\win%TARGET_ARCH%\7z"
-if not exist "!SEVENZIP_SOURCE_DIR!\7z.exe" set "SEVENZIP_SOURCE_DIR=%CD%\lib\winamd64\7z"
 set "SEVENZIP_BUILD_DIR=%CD%\build\bin\7z"
+if not exist "!SEVENZIP_SOURCE_DIR!\7z.exe" (
+    echo ERROR: Missing !SEVENZIP_SOURCE_DIR!\7z.exe
+    exit /b 1
+)
+if not exist "!SEVENZIP_SOURCE_DIR!\7z.dll" (
+    echo ERROR: Missing !SEVENZIP_SOURCE_DIR!\7z.dll
+    exit /b 1
+)
 
 if /i "%TARGET_ARCH%"=="arm64" (
     set "DUCKDB_SOURCE_LIB_DIR=%CD%\lib\winarm64"
