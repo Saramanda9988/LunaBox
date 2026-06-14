@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -526,7 +527,7 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 18, G: 20, B: 22, A: 0},
 		StartHidden:      true,
-		Frameless:        true, // 启用无边框模式
+		Frameless:        goruntime.GOOS != "darwin", // macOS 需要原生 NSWindow 才有 traffic lights 和系统圆角
 		// 启用拖拽文件导入功能
 		DragAndDrop: &options.DragAndDrop{
 			EnableFileDrop:     true,
@@ -542,7 +543,7 @@ func main() {
 			Theme:                windows.SystemDefault,
 		},
 		Mac: &mac.Options{
-			TitleBar:             mac.TitleBarHiddenInset(),
+			TitleBar:             mac.TitleBarHidden(),
 			WebviewIsTransparent: true,
 			WindowIsTranslucent:  true,
 		},

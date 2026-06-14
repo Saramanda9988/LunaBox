@@ -13,7 +13,8 @@ export const TOPBAR_HEIGHT = 28;
 export function TopBar() {
   const [platform, setPlatform] = useState<string | null>(null);
   const [isMaximised, setIsMaximised] = useState(false);
-  const showWindowControls = platform !== null && platform !== "darwin";
+  const isMac = platform === "darwin";
+  const showWindowControls = platform !== null && !isMac;
 
   useEffect(() => {
     let mounted = true;
@@ -70,7 +71,7 @@ export function TopBar() {
 
   return (
     <div
-      className="flex h-7 select-none items-center justify-center border-b border-brand-200/50 bg-brand-50 dark:border-brand-700/50 dark:bg-brand-800"
+      className="flex h-[28px] select-none items-center justify-center border-b border-brand-200/50 bg-brand-50 dark:border-brand-700/50 dark:bg-brand-800"
       style={
         {
           "--wails-draggable": "drag",
@@ -80,13 +81,13 @@ export function TopBar() {
       {/* 中央标题 */}
       <img
         src="/topbar-title-dark.png"
-        className="h-5 absolute dark:hidden left-1/2 -translate-x-1/2 pointer-events-none"
+        className="h-[20px] absolute dark:hidden left-1/2 -translate-x-1/2 pointer-events-none"
         draggable="false"
         onDragStart={e => e.preventDefault()}
       />
       <img
         src="/topbar-title.png"
-        className="h-5 absolute hidden dark:block left-1/2 -translate-x-1/2 pointer-events-none"
+        className="h-[20px] absolute hidden dark:block left-1/2 -translate-x-1/2 pointer-events-none"
         draggable="false"
         onDragStart={e => e.preventDefault()}
       />
@@ -99,11 +100,11 @@ export function TopBar() {
           {/* 最小化 */}
           <button
             onClick={handleMinimise}
-            className="flex h-7 w-11 items-center justify-center transition-colors hover:bg-brand-200 active:scale-98 dark:hover:bg-brand-700"
+            className="flex h-[28px] w-[44px] items-center justify-center transition-colors hover:bg-brand-200 active:scale-98 dark:hover:bg-brand-700"
             title="最小化"
           >
             <svg
-              className="h-2.5 w-2.5 text-brand-600 dark:text-brand-400"
+              className="h-[10px] w-[10px] text-brand-600 dark:text-brand-400"
               viewBox="0 0 12 12"
               fill="none"
             >
@@ -114,12 +115,12 @@ export function TopBar() {
           {/* 最大化/还原 */}
           <button
             onClick={handleMaximise}
-            className="flex h-7 w-11 items-center justify-center transition-colors hover:bg-brand-200 active:scale-98 dark:hover:bg-brand-700"
+            className="flex h-[28px] w-[44px] items-center justify-center transition-colors hover:bg-brand-200 active:scale-98 dark:hover:bg-brand-700"
             title={isMaximised ? "还原" : "最大化"}
           >
             {isMaximised ? (
               <svg
-                className="h-2.5 w-2.5 text-brand-600 dark:text-brand-400"
+                className="h-[10px] w-[10px] text-brand-600 dark:text-brand-400"
                 viewBox="0 0 12 12"
                 fill="none"
               >
@@ -132,7 +133,7 @@ export function TopBar() {
               </svg>
             ) : (
               <svg
-                className="h-2.5 w-2.5 text-brand-600 dark:text-brand-400"
+                className="h-[10px] w-[10px] text-brand-600 dark:text-brand-400"
                 viewBox="0 0 12 12"
                 fill="none"
               >
@@ -148,11 +149,11 @@ export function TopBar() {
           {/* 关闭 */}
           <button
             onClick={handleClose}
-            className="flex h-7 w-11 items-center justify-center transition-colors hover:bg-red-500 active:scale-98"
+            className="flex h-[28px] w-[44px] items-center justify-center transition-colors hover:bg-red-500 active:scale-98"
             title="关闭"
           >
             <svg
-              className="h-2.5 w-2.5 text-brand-600 transition-colors group-hover:text-white dark:text-brand-400"
+              className="h-[10px] w-[10px] text-brand-600 transition-colors group-hover:text-white dark:text-brand-400"
               viewBox="0 0 12 12"
               fill="none"
             >
