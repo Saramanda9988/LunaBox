@@ -85,6 +85,7 @@ export function PortableSetupPanel() {
 
   const protocolBadge = describeProtocolStatus(status.protocol, t);
   const cliBadge = describeCLIStatus(status.cli, t);
+  const isMacOS = status.platform === "darwin";
 
   const handleProtocolRegister = () =>
     run(
@@ -118,7 +119,11 @@ export function PortableSetupPanel() {
   return (
     <div className="space-y-6">
       <p className="text-xs text-brand-500 dark:text-brand-400">
-        {t("settings.portableSetup.description")}
+        {t(
+          isMacOS
+            ? "settings.portableSetup.descriptionMac"
+            : "settings.portableSetup.description",
+        )}
       </p>
 
       <div className="space-y-2">
@@ -126,7 +131,11 @@ export function PortableSetupPanel() {
           {t("settings.portableSetup.protocolTitle")}
         </label>
         <p className="text-xs text-brand-500 dark:text-brand-400">
-          {t("settings.portableSetup.protocolHint")}
+          {t(
+            isMacOS
+              ? "settings.portableSetup.protocolHintMac"
+              : "settings.portableSetup.protocolHint",
+          )}
         </p>
         <StatusLine
           label={t("settings.portableSetup.statusLabel")}
@@ -143,30 +152,32 @@ export function PortableSetupPanel() {
           label={t("settings.portableSetup.currentPathLabel")}
           value={status.executablePath || status.protocol.currentPath || "-"}
         />
-        <div className="flex flex-wrap gap-2 pt-1">
-          <BetterButton
-            type="button"
-            variant="primary"
-            icon="i-mdi-link-variant"
-            isLoading={busy === "registerProtocol"}
-            onClick={handleProtocolRegister}
-          >
-            {status.protocol.registered && !status.protocol.upToDate
-              ? t("settings.portableSetup.reregisterProtocol")
-              : t("settings.portableSetup.registerProtocol")}
-          </BetterButton>
-          {status.protocol.registered && (
+        {!isMacOS && (
+          <div className="flex flex-wrap gap-2 pt-1">
             <BetterButton
               type="button"
-              variant="secondary"
-              icon="i-mdi-link-variant-off"
-              isLoading={busy === "unregisterProtocol"}
-              onClick={handleProtocolUnregister}
+              variant="primary"
+              icon="i-mdi-link-variant"
+              isLoading={busy === "registerProtocol"}
+              onClick={handleProtocolRegister}
             >
-              {t("settings.portableSetup.unregisterProtocol")}
+              {status.protocol.registered && !status.protocol.upToDate
+                ? t("settings.portableSetup.reregisterProtocol")
+                : t("settings.portableSetup.registerProtocol")}
             </BetterButton>
-          )}
-        </div>
+            {status.protocol.registered && (
+              <BetterButton
+                type="button"
+                variant="secondary"
+                icon="i-mdi-link-variant-off"
+                isLoading={busy === "unregisterProtocol"}
+                onClick={handleProtocolUnregister}
+              >
+                {t("settings.portableSetup.unregisterProtocol")}
+              </BetterButton>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -174,7 +185,11 @@ export function PortableSetupPanel() {
           {t("settings.portableSetup.cliTitle")}
         </label>
         <p className="text-xs text-brand-500 dark:text-brand-400">
-          {t("settings.portableSetup.cliHint")}
+          {t(
+            isMacOS
+              ? "settings.portableSetup.cliHintMac"
+              : "settings.portableSetup.cliHint",
+          )}
         </p>
         <StatusLine
           label={t("settings.portableSetup.statusLabel")}
@@ -185,9 +200,19 @@ export function PortableSetupPanel() {
           label={t("settings.portableSetup.cliPathLabel")}
           value={status.cli.cliPath || "-"}
         />
+        {status.cli.installPath && (
+          <DetailLine
+            label={t("settings.portableSetup.cliInstallPathLabel")}
+            value={status.cli.installPath}
+          />
+        )}
         {!status.cli.available && (
           <p className="text-xs text-amber-600 dark:text-amber-400">
-            {t("settings.portableSetup.cliMissingHint")}
+            {t(
+              isMacOS
+                ? "settings.portableSetup.cliMissingHintMac"
+                : "settings.portableSetup.cliMissingHint",
+            )}
           </p>
         )}
         <div className="flex flex-wrap gap-2 pt-1">
@@ -216,7 +241,11 @@ export function PortableSetupPanel() {
           )}
         </div>
         <p className="text-xs text-brand-500 dark:text-brand-400">
-          {t("settings.portableSetup.pathReopenHint")}
+          {t(
+            isMacOS
+              ? "settings.portableSetup.pathReopenHintMac"
+              : "settings.portableSetup.pathReopenHint",
+          )}
         </p>
       </div>
     </div>
