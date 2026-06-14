@@ -66,12 +66,10 @@ func resolveBundled7z() (string, string, error) {
 		}
 	}
 
-	for _, libDir := range []string{"win" + runtime.GOARCH, "winamd64"} {
-		if exePath, ok := resolveRepoLibFile(libDir, "7z", "7z.exe"); ok {
-			dir := filepath.Dir(exePath)
-			if fileExists(filepath.Join(dir, "7z.dll")) {
-				return exePath, dir, nil
-			}
+	if exePath, ok := resolveRepoLibFile("win"+runtime.GOARCH, "7z", "7z.exe"); ok {
+		dir := filepath.Dir(exePath)
+		if fileExists(filepath.Join(dir, "7z.dll")) {
+			return exePath, dir, nil
 		}
 	}
 

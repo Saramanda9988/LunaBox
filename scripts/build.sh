@@ -18,15 +18,15 @@ copy_macos_runtime_tools() {
         return
     fi
     if [ ! -f "$MAC_SEVENZIP_SOURCE" ]; then
-        echo "Warning: bundled 7zz not found at $MAC_SEVENZIP_SOURCE"
-        return
+        echo "ERROR: bundled 7zz not found at $MAC_SEVENZIP_SOURCE"
+        exit 1
     fi
 
     local app_path
     app_path="$(find build/bin -maxdepth 1 -name '*.app' -type d | head -n 1)"
     if [ -z "$app_path" ]; then
-        echo "Warning: no .app bundle found under build/bin"
-        return
+        echo "ERROR: no .app bundle found under build/bin"
+        exit 1
     fi
 
     mkdir -p "$app_path/Contents/Resources/bin"
