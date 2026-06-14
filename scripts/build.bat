@@ -45,6 +45,9 @@ set "WAILS_PLATFORM=windows/%TARGET_ARCH%"
 set "GO_BUILD_TAGS="
 set "DUCKDB_DLL="
 set "DUCKDB_BUILD_LIB_DIR="
+set "SEVENZIP_SOURCE_DIR=%CD%\lib\win%TARGET_ARCH%\7z"
+if not exist "!SEVENZIP_SOURCE_DIR!\7z.exe" set "SEVENZIP_SOURCE_DIR=%CD%\lib\winamd64\7z"
+set "SEVENZIP_BUILD_DIR=%CD%\build\bin\7z"
 
 if /i "%TARGET_ARCH%"=="arm64" (
     set "DUCKDB_SOURCE_LIB_DIR=%CD%\lib\winarm64"
@@ -132,6 +135,7 @@ echo Commit: %GIT_COMMIT%
 if defined BUILD_ENV_FILE echo Build Env File: %BUILD_ENV_FILE%
 echo Bangumi OAuth Injection: !BANGUMI_OAUTH_STATUS!
 if defined DUCKDB_DLL echo DuckDB Dynamic DLL: !DUCKDB_DLL!
+if exist "!SEVENZIP_SOURCE_DIR!\7z.exe" echo Bundled 7z: !SEVENZIP_SOURCE_DIR!
 echo ========================================
 echo.
 
@@ -193,6 +197,11 @@ if exist "build\bin\lunabox-%TARGET_ARCH%-portable.exe" (
     copy "build\bin\lunabox-cli.exe" "!TEMP_PKG_DIR!\lunacli.exe" >nul
 
     if defined DUCKDB_DLL copy "!DUCKDB_DLL!" "!TEMP_PKG_DIR!\duckdb.dll" >nul
+    if exist "!SEVENZIP_SOURCE_DIR!\7z.exe" (
+        mkdir "!TEMP_PKG_DIR!\7z"
+        copy /Y "!SEVENZIP_SOURCE_DIR!\7z.exe" "!TEMP_PKG_DIR!\7z\7z.exe" >nul
+        if exist "!SEVENZIP_SOURCE_DIR!\7z.dll" copy /Y "!SEVENZIP_SOURCE_DIR!\7z.dll" "!TEMP_PKG_DIR!\7z\7z.dll" >nul
+    )
     
     REM Create README
     echo LunaBox Portable v%VERSION% > "!TEMP_PKG_DIR!\README.txt"
@@ -236,6 +245,12 @@ echo [2/2] Building Installer GUI Version...
 echo ----------------------------------------
 if exist "build\bin\duckdb.dll" del "build\bin\duckdb.dll"
 if defined DUCKDB_DLL copy "!DUCKDB_DLL!" "build\bin\duckdb.dll" >nul
+if exist "!SEVENZIP_BUILD_DIR!" rd /s /q "!SEVENZIP_BUILD_DIR!"
+if exist "!SEVENZIP_SOURCE_DIR!\7z.exe" (
+    mkdir "!SEVENZIP_BUILD_DIR!"
+    copy /Y "!SEVENZIP_SOURCE_DIR!\7z.exe" "!SEVENZIP_BUILD_DIR!\7z.exe" >nul
+    if exist "!SEVENZIP_SOURCE_DIR!\7z.dll" copy /Y "!SEVENZIP_SOURCE_DIR!\7z.dll" "!SEVENZIP_BUILD_DIR!\7z.dll" >nul
+)
 wails build -platform "%WAILS_PLATFORM%" %GO_BUILD_TAGS% -ldflags "%LDFLAGS_INSTALLER%" -nsis
 if errorlevel 1 (
     echo ERROR: Installer GUI build failed!

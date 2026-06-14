@@ -11,6 +11,29 @@ VERSION="1.0.0"
 # -s: strip symbol table, -w: strip DWARF debug info (reduces binary size ~20-30%)
 LDFLAGS_PORTABLE="-s -w -X 'lunabox/internal/utils.buildMode=portable'"
 LDFLAGS_INSTALLER="-s -w -X 'lunabox/internal/utils.buildMode=installer'"
+MAC_SEVENZIP_SOURCE="lib/macarm64/7z/7zz"
+
+copy_macos_runtime_tools() {
+    if [ "$(uname -s)" != "Darwin" ]; then
+        return
+    fi
+    if [ ! -f "$MAC_SEVENZIP_SOURCE" ]; then
+        echo "Warning: bundled 7zz not found at $MAC_SEVENZIP_SOURCE"
+        return
+    fi
+
+    local app_path
+    app_path="$(find build/bin -maxdepth 1 -name '*.app' -type d | head -n 1)"
+    if [ -z "$app_path" ]; then
+        echo "Warning: no .app bundle found under build/bin"
+        return
+    fi
+
+    mkdir -p "$app_path/Contents/Resources/bin"
+    cp "$MAC_SEVENZIP_SOURCE" "$app_path/Contents/Resources/bin/7zz"
+    chmod 755 "$app_path/Contents/Resources/bin/7zz"
+    echo "Bundled 7zz copied to $app_path/Contents/Resources/bin/7zz"
+}
 
 echo "========================================"
 echo "LunaBox Build Script"
@@ -22,6 +45,7 @@ build_portable() {
     echo "[1/2] Building Portable Version..."
     echo "----------------------------------------"
     wails build -ldflags "$LDFLAGS_PORTABLE" -o lunabox-portable
+    copy_macos_runtime_tools
     echo "Portable build completed: bin/lunabox-portable"
     echo
     
@@ -45,6 +69,7 @@ build_installer() {
         Darwin*)
             # macOS - 不支持 NSIS
             wails build -ldflags "$LDFLAGS_INSTALLER"
+            copy_macos_runtime_tools
             echo "macOS build completed (no installer, just app bundle)"
             ;;
         Linux*)

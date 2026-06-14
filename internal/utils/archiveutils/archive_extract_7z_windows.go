@@ -3,32 +3,19 @@
 package archiveutils
 
 import (
-	_ "embed"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
-	"sync"
 	"syscall"
 )
 
 const createNoWindowFlag uint32 = 0x08000000
 
-var (
-	//go:embed 7z/7z.exe
-	embedded7zExe []byte
-	//go:embed 7z/7z.dll
-	embedded7zDLL []byte
-
-	embedded7zOnce sync.Once
-	embedded7zPath string
-	embedded7zDir  string
-	embedded7zErr  error
-)
-
-func extractArchiveWithEmbedded7z(source, target string) (bool, error) {
-	exePath, workDir, err := ensureEmbedded7zFiles()
+func extractArchiveWithBundled7z(source, target string) (bool, error) {
+	exePath, workDir, err := resolveBundled7z()
 	if err != nil {
 		return false, err
 	}
@@ -50,53 +37,43 @@ func extractArchiveWithEmbedded7z(source, target string) (bool, error) {
 		return true, nil
 	}
 
-	if exitErr, ok := runErr.(*exec.ExitError); ok {
-		exitCode := exitErr.ExitCode()
-		if exitCode == 1 {
-			return true, nil
-		}
+	if exitErr, ok := runErr.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+		return true, nil
 	}
 
-	return false, fmt.Errorf("embedded 7z extract failed: %w; output=%s", runErr, strings.TrimSpace(string(output)))
+	return false, fmt.Errorf("bundled 7z extract failed: %w; output=%s", runErr, strings.TrimSpace(string(output)))
 }
 
-func ensureEmbedded7zFiles() (string, string, error) {
-	embedded7zOnce.Do(func() {
-		if len(embedded7zExe) == 0 {
-			embedded7zErr = fmt.Errorf("embedded 7z.exe is empty")
-			return
-		}
-		if len(embedded7zDLL) == 0 {
-			embedded7zErr = fmt.Errorf("embedded 7z.dll is empty")
-			return
-		}
-
-		tempDir, err := os.MkdirTemp("", "lunabox-7z-*")
-		if err != nil {
-			embedded7zErr = fmt.Errorf("create temp dir for embedded 7z: %w", err)
-			return
-		}
-
-		exePath := filepath.Join(tempDir, "7z.exe")
-		dllPath := filepath.Join(tempDir, "7z.dll")
-
-		if err := os.WriteFile(exePath, embedded7zExe, 0755); err != nil {
-			embedded7zErr = fmt.Errorf("write embedded 7z.exe: %w", err)
-			return
-		}
-
-		if err := os.WriteFile(dllPath, embedded7zDLL, 0644); err != nil {
-			embedded7zErr = fmt.Errorf("write embedded 7z.dll: %w", err)
-			return
-		}
-
-		embedded7zPath = exePath
-		embedded7zDir = tempDir
-	})
-
-	if embedded7zErr != nil {
-		return "", "", embedded7zErr
+func resolveBundled7z() (string, string, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return "", "", fmt.Errorf("resolve executable path: %w", err)
+	}
+	exe, err = filepath.Abs(exe)
+	if err != nil {
+		return "", "", fmt.Errorf("resolve absolute executable path: %w", err)
 	}
 
-	return embedded7zPath, embedded7zDir, nil
+	baseDir := filepath.Dir(exe)
+	for _, dir := range []string{
+		filepath.Join(baseDir, "7z"),
+		baseDir,
+	} {
+		exePath := filepath.Join(dir, "7z.exe")
+		dllPath := filepath.Join(dir, "7z.dll")
+		if fileExists(exePath) && fileExists(dllPath) {
+			return exePath, dir, nil
+		}
+	}
+
+	for _, libDir := range []string{"win" + runtime.GOARCH, "winamd64"} {
+		if exePath, ok := resolveRepoLibFile(libDir, "7z", "7z.exe"); ok {
+			dir := filepath.Dir(exePath)
+			if fileExists(filepath.Join(dir, "7z.dll")) {
+				return exePath, dir, nil
+			}
+		}
+	}
+
+	return "", "", fmt.Errorf("bundled 7z.exe/7z.dll not found")
 }

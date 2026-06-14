@@ -96,7 +96,7 @@
 - `ExtractArchive` 的返回值 `(extracted bool, err error)` 有语义差异：
   `extracted=false` 通常表示“可回退失败”，上层可以转入手动解压模式。
 - ZIP 解压已做 Zip Slip 防护；不要在业务层复制一套路径校验。
-- Windows 下内置了 `7z.exe` / `7z.dll` 提高兼容性，优先复用现有入口。
+- Windows / macOS 下会优先调用随安装包/便携包分发的 `7z` / `7zz` 提高兼容性，再回退 `xtractr`。
 
 ---
 

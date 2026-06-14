@@ -487,6 +487,15 @@ Section
         File "..\..\bin\duckdb.dll"
     !endif
 
+    !if /FileExists "..\..\bin\7z\7z.exe"
+        SetOutPath "$INSTDIR\7z"
+        File "..\..\bin\7z\7z.exe"
+        !if /FileExists "..\..\bin\7z\7z.dll"
+            File "..\..\bin\7z\7z.dll"
+        !endif
+        SetOutPath $INSTDIR
+    !endif
+
     # Install CLI version and add to PATH only if user selected it
     ${If} $INSTALL_CLI_TO_PATH == "1"
         # Install CLI version (lunacli.exe) for command-line usage
