@@ -1,6 +1,6 @@
 //go:build !darwin
 
-package main
+package apptray
 
 import (
 	goruntime "runtime"
@@ -8,31 +8,33 @@ import (
 	"github.com/energye/systray"
 )
 
-func (s *lifecycleState) StartTray() {
+func Start(options Options) {
+	setCallbacks(options.Callbacks)
+
 	go func() {
 		goruntime.LockOSThread()
 		defer goruntime.UnlockOSThread()
-		systray.Run(onSystrayReady, onSystrayExit)
+		systray.Run(func() {
+			onSystrayReady(options.Icon)
+		}, onSystrayExit)
 	}()
 }
 
-func (s *lifecycleState) RequestTrayQuit() {
-	s.trayQuitOnce.Do(func() {
-		systray.Quit()
-	})
+func Stop() {
+	systray.Quit()
 }
 
-func onSystrayReady() {
+func onSystrayReady(icon []byte) {
 	systray.SetIcon(icon)
 	systray.SetTitle("LunaBox")
 	systray.SetTooltip("LunaBox")
 
 	systray.SetOnClick(func(menu systray.IMenu) {
-		appState.ShowMainWindow()
+		showMainWindow()
 	})
 
 	systray.SetOnDClick(func(menu systray.IMenu) {
-		appState.ShowMainWindow()
+		showMainWindow()
 	})
 
 	mShow := systray.AddMenuItem("显示主窗口", "显示 LunaBox 主窗口")
@@ -40,21 +42,16 @@ func onSystrayReady() {
 	mQuit := systray.AddMenuItem("退出", "退出 LunaBox")
 
 	mShow.Click(func() {
-		appState.ShowMainWindow()
+		showMainWindow()
 	})
 
 	mQuit.Click(func() {
-		if shouldRunFrontendQuitSync(config) {
-			appState.RequestFrontendQuitSync("tray-menu")
-			return
-		}
-
-		appState.QuitApplication()
+		requestQuit()
 	})
 
-	appState.MarkTrayReady()
+	notifyReady()
 }
 
 func onSystrayExit() {
-	appState.MarkTrayExit()
+	notifyExit()
 }

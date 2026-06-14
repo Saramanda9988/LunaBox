@@ -1,6 +1,6 @@
 //go:build darwin
 
-package main
+package apptray
 
 /*
 #cgo darwin CFLAGS: -x objective-c -fobjc-arc
@@ -21,6 +21,15 @@ extern void lunaboxTrayQuitApplication(void);
 
 @implementation LunaBoxTrayTarget
 - (void)showMainWindow:(id)sender {
+	for (NSWindow *window in [NSApp windows]) {
+		if ([window canBecomeKeyWindow]) {
+			[window deminiaturize:nil];
+			[window makeKeyAndOrderFront:nil];
+			break;
+		}
+	}
+	[NSApp unhide:nil];
+	[NSApp activateIgnoringOtherApps:YES];
 	lunaboxTrayShowMainWindow();
 }
 
@@ -33,6 +42,11 @@ static NSStatusItem *lunaboxStatusItem = nil;
 static LunaBoxTrayTarget *lunaboxTrayTarget = nil;
 
 void lunaboxTrayStart(const char *iconBytes, int iconLength) {
+	NSData *iconData = nil;
+	if (iconBytes != NULL && iconLength > 0) {
+		iconData = [NSData dataWithBytes:iconBytes length:(NSUInteger)iconLength];
+	}
+
 	dispatch_async(dispatch_get_main_queue(), ^{
 		if (lunaboxStatusItem != nil) {
 			lunaboxTrayReady();
@@ -44,9 +58,8 @@ void lunaboxTrayStart(const char *iconBytes, int iconLength) {
 
 		NSButton *button = lunaboxStatusItem.button;
 		if (button != nil) {
-			if (iconBytes != NULL && iconLength > 0) {
-				NSData *data = [NSData dataWithBytes:iconBytes length:iconLength];
-				NSImage *image = [[NSImage alloc] initWithData:data];
+			if (iconData != nil && [iconData length] > 0) {
+				NSImage *image = [[NSImage alloc] initWithData:iconData];
 				if (image != nil) {
 					[image setSize:NSMakeSize(18, 18)];
 					image.template = YES;

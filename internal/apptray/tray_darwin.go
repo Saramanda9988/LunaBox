@@ -1,6 +1,6 @@
 //go:build darwin
 
-package main
+package apptray
 
 /*
 #cgo darwin CFLAGS: -x objective-c -fobjc-arc
@@ -13,11 +13,16 @@ import "C"
 
 import "unsafe"
 
-func (s *lifecycleState) StartTray() {
+func Start(options Options) {
+	setCallbacks(options.Callbacks)
+
 	var iconPtr *C.char
-	iconBytes := appIcon
+	iconBytes := options.DarwinIcon
 	if len(iconBytes) == 0 {
-		iconBytes = icon
+		iconBytes = options.AppIcon
+	}
+	if len(iconBytes) == 0 {
+		iconBytes = options.Icon
 	}
 	if len(iconBytes) > 0 {
 		iconPtr = (*C.char)(unsafe.Pointer(&iconBytes[0]))
@@ -25,33 +30,26 @@ func (s *lifecycleState) StartTray() {
 	C.lunaboxTrayStart(iconPtr, C.int(len(iconBytes)))
 }
 
-func (s *lifecycleState) RequestTrayQuit() {
-	s.trayQuitOnce.Do(func() {
-		C.lunaboxTrayStop()
-	})
+func Stop() {
+	C.lunaboxTrayStop()
 }
 
 //export lunaboxTrayReady
 func lunaboxTrayReady() {
-	appState.MarkTrayReady()
+	notifyReady()
 }
 
 //export lunaboxTrayExit
 func lunaboxTrayExit() {
-	appState.MarkTrayExit()
+	notifyExit()
 }
 
 //export lunaboxTrayShowMainWindow
 func lunaboxTrayShowMainWindow() {
-	appState.ShowMainWindow()
+	go notifyNativeMainWindowDidShow()
 }
 
 //export lunaboxTrayQuitApplication
 func lunaboxTrayQuitApplication() {
-	if shouldRunFrontendQuitSync(config) {
-		appState.RequestFrontendQuitSync("tray-menu")
-		return
-	}
-
-	appState.QuitApplication()
+	requestQuit()
 }

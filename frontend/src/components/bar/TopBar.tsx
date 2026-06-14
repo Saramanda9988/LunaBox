@@ -5,6 +5,7 @@ import {
   WindowIsMaximised,
   WindowMaximise,
   WindowMinimise,
+  WindowToggleMaximise,
   WindowUnmaximise,
 } from "../../../wailsjs/runtime/runtime";
 
@@ -69,8 +70,15 @@ export function TopBar() {
     Quit();
   };
 
+  const handleTopBarDoubleClick = async () => {
+    await WindowToggleMaximise();
+    const maximised = await WindowIsMaximised();
+    setIsMaximised(maximised);
+  };
+
   return (
     <div
+      onDoubleClick={handleTopBarDoubleClick}
       className="flex h-[28px] select-none items-center justify-center border-b border-brand-200/50 bg-brand-50 dark:border-brand-700/50 dark:bg-brand-800"
       style={
         {
@@ -94,6 +102,7 @@ export function TopBar() {
 
       {showWindowControls && (
         <div
+          onDoubleClick={e => e.stopPropagation()}
           className="ml-auto flex items-center"
           style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}
         >

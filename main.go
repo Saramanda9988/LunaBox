@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"lunabox/internal/applog"
+	"lunabox/internal/apptray"
 	"lunabox/internal/autostart"
 	"lunabox/internal/cli"
 	"lunabox/internal/cli/ipcclient"
@@ -52,6 +53,9 @@ var icon []byte
 
 //go:embed build/appicon.png
 var appIcon []byte
+
+//go:embed build/darwin/tray-template.png
+var darwinTrayIcon []byte
 
 var db *sql.DB
 
@@ -168,6 +172,15 @@ func (s *lifecycleState) ShowMainWindow() {
 	runtime.EventsEmit(ctx, "app:main-window-shown")
 }
 
+func (s *lifecycleState) EmitMainWindowShown() {
+	ctx := s.Context()
+	if ctx == nil || s.shuttingDown.Load() {
+		return
+	}
+
+	runtime.EventsEmit(ctx, "app:main-window-shown")
+}
+
 func (s *lifecycleState) QuitApplication() {
 	if s.shuttingDown.Load() {
 		return
@@ -239,6 +252,29 @@ func (s *lifecycleState) WaitForTrayExit(timeout time.Duration) bool {
 	case <-time.After(timeout):
 		return false
 	}
+}
+
+func (s *lifecycleState) StartTray() {
+	apptray.Start(apptray.Options{
+		Icon:       icon,
+		AppIcon:    appIcon,
+		DarwinIcon: darwinTrayIcon,
+		Callbacks: apptray.Callbacks{
+			OnReady:                   s.MarkTrayReady,
+			OnExit:                    s.MarkTrayExit,
+			ShowMainWindow:            s.ShowMainWindow,
+			NativeMainWindowDidShow:   s.EmitMainWindowShown,
+			RequestFrontendQuitSync:   s.RequestFrontendQuitSync,
+			QuitApplication:           s.QuitApplication,
+			ShouldRunFrontendQuitSync: func() bool { return shouldRunFrontendQuitSync(config) },
+		},
+	})
+}
+
+func (s *lifecycleState) RequestTrayQuit() {
+	s.trayQuitOnce.Do(func() {
+		apptray.Stop()
+	})
 }
 
 func shouldRunFrontendQuitSync(config *appconf.AppConfig) bool {
