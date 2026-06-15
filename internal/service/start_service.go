@@ -40,9 +40,10 @@ type StartService struct {
 }
 
 type launchedProcess struct {
-	PID    uint32
-	Name   string
-	Handle uintptr
+	PID      uint32
+	Name     string
+	Handle   uintptr
+	ExitChan <-chan struct{}
 }
 
 func NewStartService() *StartService {
@@ -208,9 +209,10 @@ func (s *StartService) startGame(gameID string, options launcherpkg.LaunchOption
 	}
 
 	launcher := launchedProcess{
-		PID:    startedProcess.PID,
-		Name:   plan.DisplayName,
-		Handle: startedProcess.Handle,
+		PID:      startedProcess.PID,
+		Name:     plan.DisplayName,
+		Handle:   startedProcess.Handle,
+		ExitChan: startedProcess.ExitChan,
 	}
 
 	startTime := time.Now()
@@ -645,6 +647,10 @@ func (s *StartService) monitorLauncherOnly(sessionID string, gameID string, star
 	s.startActiveTimeTracking(sessionID, gameID, launcher.PID, plan.ActiveTrack)
 	if launcher.Handle != 0 {
 		s.monitorProcessByHandle(sessionID, gameID, startTime, launcher.PID, launcher.Name, launcher.Handle)
+		return
+	}
+	if launcher.ExitChan != nil {
+		s.waitForProcessExit(sessionID, gameID, startTime, launcher.Name, launcher.PID, launcher.ExitChan)
 		return
 	}
 	s.monitorProcessByPID(sessionID, gameID, startTime, launcher.PID, launcher.Name)

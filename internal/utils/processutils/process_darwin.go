@@ -62,11 +62,13 @@ func StartProcessWithEnv(file string, args []string, dir string, env []string) (
 	}
 
 	pid := uint32(cmd.Process.Pid)
-	if err := cmd.Process.Release(); err != nil {
-		return nil, fmt.Errorf("release started process: %w", err)
-	}
+	exitChan := make(chan struct{})
+	go func() {
+		_ = cmd.Wait()
+		close(exitChan)
+	}()
 
-	return &StartedProcess{PID: pid}, nil
+	return &StartedProcess{PID: pid, ExitChan: exitChan}, nil
 }
 
 func StartProcessElevated(file string, args []string, dir string) (*StartedProcess, error) {

@@ -10,6 +10,7 @@ type ProcessInfo struct {
 // an owned process handle. The caller must either pass Handle to a ProcessMonitor
 // or close it with CloseProcessHandle.
 type StartedProcess struct {
-	PID    uint32
-	Handle uintptr
+	PID      uint32
+	Handle   uintptr
+	ExitChan <-chan struct{}
 }
