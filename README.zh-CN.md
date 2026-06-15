@@ -45,32 +45,102 @@
 <details>
 <summary>点击展开更多自定义背景样式</summary>
 
-![主界面](screenshot/home-img.png)
-
-![库视图](screenshot/lib-img.png)
-
-![游戏详情](screenshot/game-img.png)
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="screenshot/home-img.png" alt="自定义背景主界面" />
+      <br />
+      <sub>主界面</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="screenshot/home-1-img.png" alt="自定义背景主界面变体" />
+      <br />
+      <sub>主界面变体</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="screenshot/lib-img.png" alt="自定义背景库视图" />
+      <br />
+      <sub>库视图</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="screenshot/game-img.png" alt="自定义背景游戏详情" />
+      <br />
+      <sub>游戏详情</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="screenshot/stats-img.png" alt="自定义背景统计视图" width="60%" />
+      <br />
+      <sub>统计视图</sub>
+    </td>
+  </tr>
+</table>
 
 </details>
 
 <details>
 <summary>点击查看统计导出海报模板</summary>
 
-![简约](screenshot/lunabox-stats-20260124-175553.png)
-
-![未来复古](screenshot/lunabox-stats-20260124-175602.png)
-
-![手账风](screenshot/lunabox-stats-20260124-175617.png)
+<table>
+  <tr>
+    <td width="33%" align="center">
+      <img src="screenshot/lunabox-stats-20260124-175553.png" alt="简约统计海报" />
+      <br />
+      <sub>简约</sub>
+    </td>
+    <td width="33%" align="center">
+      <img src="screenshot/lunabox-stats-20260124-175602.png" alt="未来复古统计海报" />
+      <br />
+      <sub>未来复古</sub>
+    </td>
+    <td width="33%" align="center">
+      <img src="screenshot/lunabox-stats-20260124-175617.png" alt="手账风统计海报" />
+      <br />
+      <sub>手账风</sub>
+    </td>
+  </tr>
+</table>
 
 </details>
 
 应用中的部分截图（位于仓库的 `screenshot/` 目录）：
 
-![主界面](screenshot/home.png)
-
-![库视图](screenshot/lib.png)
-
-![游戏详情](screenshot/game.png)
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="screenshot/home.png" alt="主界面" />
+      <br />
+      <sub>主界面</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="screenshot/home-1.png" alt="主界面变体" />
+      <br />
+      <sub>主界面变体</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="screenshot/lib.png" alt="库视图" />
+      <br />
+      <sub>库视图</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="screenshot/game.png" alt="游戏详情" />
+      <br />
+      <sub>游戏详情</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="screenshot/stats.png" alt="统计视图" width="60%" />
+      <br />
+      <sub>统计视图</sub>
+    </td>
+  </tr>
+</table>
 
 ## 🛠️ 技术栈
 

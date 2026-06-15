@@ -45,32 +45,102 @@
 <details>
 <summary>Click to view more custom background styles</summary>
 
-![Home](screenshot/home-img.png)
-
-![Library](screenshot/lib-img.png)
-
-![Game Detail](screenshot/game-img.png)
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="screenshot/home-img.png" alt="Home with custom background" />
+      <br />
+      <sub>Home</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="screenshot/home-1-img.png" alt="Alternative home with custom background" />
+      <br />
+      <sub>Alternative Home</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="screenshot/lib-img.png" alt="Library with custom background" />
+      <br />
+      <sub>Library</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="screenshot/game-img.png" alt="Game detail with custom background" />
+      <br />
+      <sub>Game Detail</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="screenshot/stats-img.png" alt="Statistics with custom background" width="60%" />
+      <br />
+      <sub>Statistics</sub>
+    </td>
+  </tr>
+</table>
 
 </details>
 
 <details>
 <summary>Click to view stat export poster templates</summary>
 
-![Minimal](screenshot/lunabox-stats-20260124-175553.png)
-
-![Future Retro](screenshot/lunabox-stats-20260124-175602.png)
-
-![Journal Style](screenshot/lunabox-stats-20260124-175617.png)
+<table>
+  <tr>
+    <td width="33%" align="center">
+      <img src="screenshot/lunabox-stats-20260124-175553.png" alt="Minimal stat poster" />
+      <br />
+      <sub>Minimal</sub>
+    </td>
+    <td width="33%" align="center">
+      <img src="screenshot/lunabox-stats-20260124-175602.png" alt="Future retro stat poster" />
+      <br />
+      <sub>Future Retro</sub>
+    </td>
+    <td width="33%" align="center">
+      <img src="screenshot/lunabox-stats-20260124-175617.png" alt="Journal style stat poster" />
+      <br />
+      <sub>Journal Style</sub>
+    </td>
+  </tr>
+</table>
 
 </details>
 
 Additional in-app screenshots (located in the `screenshot/` directory):
 
-![Home](screenshot/home.png)
-
-![Library](screenshot/lib.png)
-
-![Game Detail](screenshot/game.png)
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="screenshot/home.png" alt="Home" />
+      <br />
+      <sub>Home</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="screenshot/home-1.png" alt="Alternative home" />
+      <br />
+      <sub>Alternative Home</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="screenshot/lib.png" alt="Library" />
+      <br />
+      <sub>Library</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="screenshot/game.png" alt="Game detail" />
+      <br />
+      <sub>Game Detail</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="screenshot/stats.png" alt="Statistics" width="60%" />
+      <br />
+      <sub>Statistics</sub>
+    </td>
+  </tr>
+</table>
 
 ## 🛠️ Tech Stack
 

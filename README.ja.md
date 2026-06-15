@@ -44,32 +44,102 @@
 <details>
 <summary>カスタム背景スタイルをさらに表示</summary>
 
-![ホーム](screenshot/home-img.png)
-
-![ライブラリ](screenshot/lib-img.png)
-
-![ゲーム詳細](screenshot/game-img.png)
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="screenshot/home-img.png" alt="カスタム背景のホーム" />
+      <br />
+      <sub>ホーム</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="screenshot/home-1-img.png" alt="カスタム背景の別ホーム" />
+      <br />
+      <sub>別ホーム</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="screenshot/lib-img.png" alt="カスタム背景のライブラリ" />
+      <br />
+      <sub>ライブラリ</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="screenshot/game-img.png" alt="カスタム背景のゲーム詳細" />
+      <br />
+      <sub>ゲーム詳細</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="screenshot/stats-img.png" alt="カスタム背景の統計" width="60%" />
+      <br />
+      <sub>統計</sub>
+    </td>
+  </tr>
+</table>
 
 </details>
 
 <details>
 <summary>統計エクスポート用ポスターテンプレートを表示</summary>
 
-![ミニマル](screenshot/lunabox-stats-20260124-175553.png)
-
-![フューチャーレトロ](screenshot/lunabox-stats-20260124-175602.png)
-
-![手帳風](screenshot/lunabox-stats-20260124-175617.png)
+<table>
+  <tr>
+    <td width="33%" align="center">
+      <img src="screenshot/lunabox-stats-20260124-175553.png" alt="ミニマル統計ポスター" />
+      <br />
+      <sub>ミニマル</sub>
+    </td>
+    <td width="33%" align="center">
+      <img src="screenshot/lunabox-stats-20260124-175602.png" alt="フューチャーレトロ統計ポスター" />
+      <br />
+      <sub>フューチャーレトロ</sub>
+    </td>
+    <td width="33%" align="center">
+      <img src="screenshot/lunabox-stats-20260124-175617.png" alt="手帳風統計ポスター" />
+      <br />
+      <sub>手帳風</sub>
+    </td>
+  </tr>
+</table>
 
 </details>
 
 アプリ内スクリーンショット（リポジトリ内の `screenshot/` ディレクトリ）：
 
-![ホーム](screenshot/home.png)
-
-![ライブラリ](screenshot/lib.png)
-
-![ゲーム詳細](screenshot/game.png)
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="screenshot/home.png" alt="ホーム" />
+      <br />
+      <sub>ホーム</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="screenshot/home-1.png" alt="別ホーム" />
+      <br />
+      <sub>別ホーム</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="screenshot/lib.png" alt="ライブラリ" />
+      <br />
+      <sub>ライブラリ</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="screenshot/game.png" alt="ゲーム詳細" />
+      <br />
+      <sub>ゲーム詳細</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="screenshot/stats.png" alt="統計" width="60%" />
+      <br />
+      <sub>統計</sub>
+    </td>
+  </tr>
+</table>
 
 ## 🛠️ 技術スタック
 
