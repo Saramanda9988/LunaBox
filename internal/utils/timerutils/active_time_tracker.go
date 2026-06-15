@@ -28,10 +28,10 @@ type ActiveTrack struct {
 }
 
 var (
-	getForegroundBundlePath = focusing.GetForegroundBundlePath
-	getForegroundProcessID  = focusing.GetForegroundProcessID
-	getDescendantProcesses  = processutils.GetDescendantProcesses
-	isProcessFocused        = focusing.IsProcessFocused
+	isBundlePathFocused    = focusing.IsBundlePathFocused
+	getForegroundProcessID = focusing.GetForegroundProcessID
+	getDescendantProcesses = processutils.GetDescendantProcesses
+	isProcessFocused       = focusing.IsProcessFocused
 )
 
 // TrackingSession 正在追踪的会话
@@ -128,7 +128,7 @@ func (s *ActiveTimeTracker) StopTracking(gameID string) int {
 // trackActiveTime 追踪活跃时间（核心逻辑）
 func (s *ActiveTimeTracker) trackActiveTime(ctx context.Context, session *TrackingSession) {
 	if session.ActiveTrack.Kind != ActiveTrackDefault {
-		s.fallbackPolling(ctx, session)
+		s.trackActiveTimeByPolling(ctx, session, true)
 		return
 	}
 
@@ -138,7 +138,7 @@ func (s *ActiveTimeTracker) trackActiveTime(ctx context.Context, session *Tracki
 	if err != nil {
 		applog.LogErrorf(s.ctx, "[ActiveTimeTracker] Failed to start focus tracker for game %s: %v", session.GameID, err)
 		// 降级到轮询模式
-		s.fallbackPolling(ctx, session)
+		s.trackActiveTimeByPolling(ctx, session, false)
 		return
 	}
 	defer tracker.Stop()
@@ -168,13 +168,7 @@ func (s *ActiveTimeTracker) trackActiveTime(ctx context.Context, session *Tracki
 			// 焦点状态发生变化,使用通知中的状态信息
 			if info.IsFocused != isFocused {
 				isFocused = info.IsFocused
-				if isFocused {
-					applog.LogInfof(s.ctx, "[ActiveTimeTracker] Game %s gained focus", session.GameID)
-					log.Printf("[ActiveTimeTracker] Game %s gained focus", session.GameID)
-				} else {
-					applog.LogInfof(s.ctx, "[ActiveTimeTracker] Game %s lost focus", session.GameID)
-					log.Printf("[ActiveTimeTracker] Game %s lost focus", session.GameID)
-				}
+				s.logFocusChanged(session.GameID, isFocused)
 			}
 
 		case <-ticker.C:
@@ -195,31 +189,51 @@ func (s *ActiveTimeTracker) trackActiveTime(ctx context.Context, session *Tracki
 	}
 }
 
-// fallbackPolling 降级轮询模式（当事件 Hook 失败时使用）
-func (s *ActiveTimeTracker) fallbackPolling(ctx context.Context, session *TrackingSession) {
-	applog.LogInfof(s.ctx, "[ActiveTimeTracker] Falling back to polling mode for game %s", session.GameID)
-	log.Printf("[ActiveTimeTracker] Falling back to polling mode for game %s", session.GameID)
+func (s *ActiveTimeTracker) trackActiveTimeByPolling(ctx context.Context, session *TrackingSession, strategyPolling bool) {
+	if strategyPolling {
+		applog.LogInfof(s.ctx, "[ActiveTimeTracker] Using active-track foreground polling mode for game %s (%s)", session.GameID, session.ActiveTrack.Kind)
+		log.Printf("[ActiveTimeTracker] Using active-track foreground polling mode for game %s (%s)", session.GameID, session.ActiveTrack.Kind)
+	} else {
+		applog.LogInfof(s.ctx, "[ActiveTimeTracker] Falling back to polling mode for game %s", session.GameID)
+		log.Printf("[ActiveTimeTracker] Falling back to polling mode for game %s", session.GameID)
+	}
 
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
+
+	isFocused := s.isSessionFocused(session)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if s.isSessionFocused(session) {
+			currentFocus := s.isSessionFocused(session)
+			if currentFocus != isFocused {
+				isFocused = currentFocus
+				s.logFocusChanged(session.GameID, isFocused)
+			}
+			if isFocused {
 				s.incrementPlayTime(session.GameID, 1)
 			}
 		}
 	}
 }
 
+func (s *ActiveTimeTracker) logFocusChanged(gameID string, isFocused bool) {
+	if isFocused {
+		applog.LogInfof(s.ctx, "[ActiveTimeTracker] Game %s gained focus", gameID)
+		log.Printf("[ActiveTimeTracker] Game %s gained focus", gameID)
+		return
+	}
+	applog.LogInfof(s.ctx, "[ActiveTimeTracker] Game %s lost focus", gameID)
+	log.Printf("[ActiveTimeTracker] Game %s lost focus", gameID)
+}
+
 func (s *ActiveTimeTracker) isSessionFocused(session *TrackingSession) bool {
 	switch session.ActiveTrack.Kind {
 	case ActiveTrackBundlePath:
-		bundlePath, ok := getForegroundBundlePath()
-		return ok && bundlePath == session.ActiveTrack.BundlePath
+		return isBundlePathFocused(session.ActiveTrack.BundlePath)
 	case ActiveTrackWineRootPID:
 		foregroundPID, ok := getForegroundProcessID()
 		if !ok {
