@@ -5,6 +5,7 @@ package focusing
 import (
 	"net/url"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -154,7 +155,26 @@ func GetForegroundBundlePath() (string, bool) {
 	return raw, raw != ""
 }
 
+func IsBundlePathFocused(bundlePath string) bool {
+	foregroundBundlePath, ok := GetForegroundBundlePath()
+	return ok && sameBundlePath(foregroundBundlePath, bundlePath)
+}
+
 func IsProcessFocused(processID uint32) bool {
 	foregroundPID, ok := GetForegroundProcessID()
 	return ok && foregroundPID == processID
+}
+
+func sameBundlePath(a string, b string) bool {
+	a = normalizeBundlePath(a)
+	b = normalizeBundlePath(b)
+	return a != "" && b != "" && strings.EqualFold(a, b)
+}
+
+func normalizeBundlePath(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return ""
+	}
+	return filepath.Clean(strings.TrimSuffix(path, string(filepath.Separator)))
 }

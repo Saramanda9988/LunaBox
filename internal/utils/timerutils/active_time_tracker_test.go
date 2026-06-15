@@ -9,8 +9,8 @@ import (
 func TestActiveTrackFocusByBundlePath(t *testing.T) {
 	restore := stubFocusFunctions(t)
 	defer restore()
-	getForegroundBundlePath = func() (string, bool) {
-		return "/Applications/Game.app", true
+	isBundlePathFocused = func(bundlePath string) bool {
+		return bundlePath == "/Applications/Game.app"
 	}
 
 	tracker := NewActiveTimeTracker(context.Background(), nil)
@@ -76,18 +76,18 @@ func TestActiveTrackFocusByLauncherPID(t *testing.T) {
 
 func stubFocusFunctions(t *testing.T) func() {
 	t.Helper()
-	origBundle := getForegroundBundlePath
+	origBundleFocused := isBundlePathFocused
 	origPID := getForegroundProcessID
 	origDescendants := getDescendantProcesses
 	origFocused := isProcessFocused
 
-	getForegroundBundlePath = func() (string, bool) { return "", false }
+	isBundlePathFocused = func(bundlePath string) bool { return false }
 	getForegroundProcessID = func() (uint32, bool) { return 0, false }
 	getDescendantProcesses = func(parentPID uint32) ([]processutils.ProcessInfo, error) { return nil, nil }
 	isProcessFocused = func(processID uint32) bool { return false }
 
 	return func() {
-		getForegroundBundlePath = origBundle
+		isBundlePathFocused = origBundleFocused
 		getForegroundProcessID = origPID
 		getDescendantProcesses = origDescendants
 		isProcessFocused = origFocused
