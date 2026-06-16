@@ -1,21 +1,83 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Environment,
   Quit,
   WindowIsMaximised,
   WindowMaximise,
   WindowMinimise,
-  WindowToggleMaximise,
   WindowUnmaximise,
 } from "../../../wailsjs/runtime/runtime";
 
 export const TOPBAR_HEIGHT = 28;
+const WINDOW_STATE_SYNC_INTERVAL_MS = 500;
+const WINDOW_STATE_SETTLE_MS = 800;
+const WINDOW_STATE_DRAG_SYNC_DELAYS_MS = [80, 300] as const;
 
 export function TopBar() {
   const [platform, setPlatform] = useState<string | null>(null);
   const [isMaximised, setIsMaximised] = useState(false);
+  const isMaximisedRef = useRef(false);
+  const pendingWindowStateRef = useRef<{
+    until: number;
+    value: boolean;
+  } | null>(null);
   const isMac = platform === "darwin";
   const showWindowControls = platform !== null && !isMac;
+
+  function setMaximisedState(maximised: boolean) {
+    isMaximisedRef.current = maximised;
+    setIsMaximised(maximised);
+  }
+
+  async function syncMaximisedState(force = false) {
+    const maximised = await WindowIsMaximised();
+    const pending = pendingWindowStateRef.current;
+
+    if (
+      !force
+      && pending
+      && Date.now() < pending.until
+      && maximised !== pending.value
+    ) {
+      return;
+    }
+
+    pendingWindowStateRef.current = null;
+    setMaximisedState(maximised);
+  }
+
+  function setOptimisticMaximisedState(maximised: boolean) {
+    pendingWindowStateRef.current = {
+      until: Date.now() + WINDOW_STATE_SETTLE_MS,
+      value: maximised,
+    };
+    setMaximisedState(maximised);
+    window.setTimeout(() => {
+      void syncMaximisedState(true);
+    }, WINDOW_STATE_SETTLE_MS);
+  }
+
+  async function getMaximisedStateForCommand() {
+    const pending = pendingWindowStateRef.current;
+
+    if (pending && Date.now() < pending.until) {
+      return pending.value;
+    }
+
+    const maximised = await WindowIsMaximised();
+    setMaximisedState(maximised);
+    return maximised;
+  }
+
+  function scheduleForcedMaximisedStateSync() {
+    pendingWindowStateRef.current = null;
+
+    for (const delay of WINDOW_STATE_DRAG_SYNC_DELAYS_MS) {
+      window.setTimeout(() => {
+        void syncMaximisedState(true);
+      }, delay);
+    }
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -39,46 +101,73 @@ export function TopBar() {
 
   // 检查窗口最大化状态
   useEffect(() => {
-    const checkMaximised = async () => {
-      const maximised = await WindowIsMaximised();
-      setIsMaximised(maximised);
+    if (isMac) {
+      return;
+    }
+
+    const sync = () => {
+      void syncMaximisedState();
     };
 
-    checkMaximised();
+    sync();
+    window.addEventListener("resize", sync);
 
     // 定期检查（因为用户可能通过拖拽边缘等方式改变窗口状态）
-    const interval = setInterval(checkMaximised, 500);
-    return () => clearInterval(interval);
-  }, []);
+    const interval = window.setInterval(sync, WINDOW_STATE_SYNC_INTERVAL_MS);
+    return () => {
+      window.removeEventListener("resize", sync);
+      window.clearInterval(interval);
+    };
+  }, [isMac]);
 
   const handleMinimise = () => {
     WindowMinimise();
   };
 
-  const handleMaximise = async () => {
-    if (isMaximised) {
+  const toggleWindowMaximised = async () => {
+    const maximised = await getMaximisedStateForCommand();
+
+    if (maximised) {
       await WindowUnmaximise();
-      setIsMaximised(false);
+      setOptimisticMaximisedState(false);
     }
     else {
       await WindowMaximise();
-      setIsMaximised(true);
+      setOptimisticMaximisedState(true);
     }
+  };
+
+  const handleMaximise = async () => {
+    await toggleWindowMaximised();
   };
 
   const handleClose = () => {
     Quit();
   };
 
-  const handleTopBarDoubleClick = async () => {
-    await WindowToggleMaximise();
-    const maximised = await WindowIsMaximised();
-    setIsMaximised(maximised);
+  const handleTopBarMouseDown = async (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) {
+      return;
+    }
+
+    if (e.detail === 1 && isMaximisedRef.current) {
+      window.addEventListener("mouseup", scheduleForcedMaximisedStateSync, {
+        once: true,
+      });
+      return;
+    }
+
+    if (e.detail !== 2) {
+      return;
+    }
+
+    e.preventDefault();
+    await toggleWindowMaximised();
   };
 
   return (
     <div
-      onDoubleClick={handleTopBarDoubleClick}
+      onMouseDown={handleTopBarMouseDown}
       className="flex h-[28px] select-none items-center justify-center border-b border-brand-200/50 bg-brand-50 dark:border-brand-700/50 dark:bg-brand-800"
       style={
         {
@@ -103,6 +192,7 @@ export function TopBar() {
       {showWindowControls && (
         <div
           onDoubleClick={e => e.stopPropagation()}
+          onMouseDown={e => e.stopPropagation()}
           className="ml-auto flex items-center"
           style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}
         >
