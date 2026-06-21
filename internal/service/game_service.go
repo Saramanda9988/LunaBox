@@ -52,6 +52,8 @@ type metadataSearchSource struct {
 	fetchByName func(string) (metadata.MetadataResult, error)
 }
 
+type metadataUpdateFieldSet map[enums2.MetadataUpdateField]struct{}
+
 func metadataGetterOptions(config *appconf.AppConfig) []metadata.GetterOption {
 	if config == nil {
 		return nil
@@ -1214,16 +1216,23 @@ func isSteamAppID(sourceId string) bool {
 
 // UpdateGameFromRemote 从远程数据源更新游戏信息
 func (s *GameService) UpdateGameFromRemote(gameID string) error {
-	_, err := s.updateGameMetadataFromRemote(gameID, true)
+	_, err := s.updateGameMetadataFromRemote(gameID, true, nil)
 	return err
 }
 
-func (s *GameService) updateGameMetadataFromRemote(gameID string, downloadCoverImmediately bool) (string, error) {
+// UpdateGameFromRemoteWithFields 从远程数据源更新指定字段。
+func (s *GameService) UpdateGameFromRemoteWithFields(gameID string, fields []enums2.MetadataUpdateField) error {
+	_, err := s.updateGameMetadataFromRemote(gameID, true, fields)
+	return err
+}
+
+func (s *GameService) updateGameMetadataFromRemote(gameID string, downloadCoverImmediately bool, fields []enums2.MetadataUpdateField) (string, error) {
 	// 获取现有游戏信息
 	existingGame, err := s.GetGameByID(gameID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get game: %w", err)
 	}
+	fieldSet := normalizeMetadataUpdateFields(fields)
 
 	sourceType := normalizeMetadataSourceType(existingGame.SourceType)
 	sourceID := strings.TrimSpace(existingGame.SourceID)
@@ -1248,32 +1257,78 @@ func (s *GameService) updateGameMetadataFromRemote(gameID string, downloadCoverI
 	remoteCoverURL := strings.TrimSpace(remoteGame.CoverURL)
 
 	// 保留本地重要字段，更新远程可获取的字段
-	existingGame.Name = remoteGame.Name
-	existingGame.Company = remoteGame.Company
-	existingGame.Summary = remoteGame.Summary
-	existingGame.Rating = remoteGame.Rating
-	existingGame.ReleaseDate = remoteGame.ReleaseDate
+	if fieldSet.has(enums2.MetadataUpdateFieldName) {
+		existingGame.Name = remoteGame.Name
+	}
+	if fieldSet.has(enums2.MetadataUpdateFieldCompany) {
+		existingGame.Company = remoteGame.Company
+	}
+	if fieldSet.has(enums2.MetadataUpdateFieldSummary) {
+		existingGame.Summary = remoteGame.Summary
+	}
+	if fieldSet.has(enums2.MetadataUpdateFieldRating) {
+		existingGame.Rating = remoteGame.Rating
+	}
+	if fieldSet.has(enums2.MetadataUpdateFieldReleaseDate) {
+		existingGame.ReleaseDate = remoteGame.ReleaseDate
+	}
 	existingGame.CachedAt = time.Now()
 
-	existingGame.CoverURL = remoteCoverURL
+	if fieldSet.has(enums2.MetadataUpdateFieldCover) {
+		existingGame.CoverURL = remoteCoverURL
+	}
 
 	if err := s.UpdateGame(existingGame); err != nil {
 		return "", fmt.Errorf("failed to update game: %w", err)
 	}
 
-	if downloadCoverImmediately && remoteCoverURL != "" {
+	if downloadCoverImmediately && fieldSet.has(enums2.MetadataUpdateFieldCover) && remoteCoverURL != "" {
 		go s.asyncDownloadCoverImage(existingGame.ID, existingGame.Name, remoteCoverURL, true)
 	}
 
 	// 写入 tags（先删除刮削来源的旧 tag，再批量插入新 tag，保留用户 tag）
-	if s.tagService != nil && len(metaResult.Tags) > 0 {
+	if fieldSet.has(enums2.MetadataUpdateFieldTags) && s.tagService != nil && len(metaResult.Tags) > 0 {
 		if err := s.tagService.upsertScrapedTags(gameID, metaResult.Tags); err != nil {
 			applog.LogWarningf(s.ctx, "UpdateGameFromRemote: failed to upsert tags for game %s: %v", gameID, err)
 		}
 	}
 
 	applog.LogInfof(s.ctx, "UpdateGameFromRemote: successfully updated game %s from %s", existingGame.Name, sourceType)
+	if !fieldSet.has(enums2.MetadataUpdateFieldCover) {
+		return "", nil
+	}
 	return remoteCoverURL, nil
+}
+
+func normalizeMetadataUpdateFields(fields []enums2.MetadataUpdateField) metadataUpdateFieldSet {
+	fieldSet := make(metadataUpdateFieldSet, len(enums2.DefaultMetadataUpdateFields))
+	for _, field := range fields {
+		normalized := enums2.MetadataUpdateField(strings.ToLower(strings.TrimSpace(string(field))))
+		switch normalized {
+		case enums2.MetadataUpdateFieldName,
+			enums2.MetadataUpdateFieldCover,
+			enums2.MetadataUpdateFieldCompany,
+			enums2.MetadataUpdateFieldSummary,
+			enums2.MetadataUpdateFieldRating,
+			enums2.MetadataUpdateFieldReleaseDate,
+			enums2.MetadataUpdateFieldTags:
+			fieldSet[normalized] = struct{}{}
+		}
+	}
+
+	if len(fieldSet) > 0 {
+		return fieldSet
+	}
+
+	for _, field := range enums2.DefaultMetadataUpdateFields {
+		fieldSet[field] = struct{}{}
+	}
+	return fieldSet
+}
+
+func (fields metadataUpdateFieldSet) has(field enums2.MetadataUpdateField) bool {
+	_, ok := fields[field]
+	return ok
 }
 
 func (s *GameService) emitMetadataRefreshProgress(result vo.MetadataRefreshResult, current int, gameName string, status string) {
@@ -1295,15 +1350,23 @@ func (s *GameService) emitMetadataRefreshProgress(result vo.MetadataRefreshResul
 }
 
 func (s *GameService) RefreshAllGamesMetadata() (vo.MetadataRefreshResult, error) {
+	return s.RefreshAllGamesMetadataWithFields(nil)
+}
+
+func (s *GameService) RefreshAllGamesMetadataWithFields(fields []enums2.MetadataUpdateField) (vo.MetadataRefreshResult, error) {
 	games, err := s.listAllGamesInternal()
 	if err != nil {
 		return newMetadataRefreshResult(), fmt.Errorf("failed to get games: %w", err)
 	}
 
-	return s.refreshGamesMetadata(games, "RefreshAllGamesMetadata")
+	return s.refreshGamesMetadata(games, "RefreshAllGamesMetadata", fields)
 }
 
 func (s *GameService) RefreshGamesMetadata(gameIDs []string) (vo.MetadataRefreshResult, error) {
+	return s.RefreshGamesMetadataWithFields(gameIDs, nil)
+}
+
+func (s *GameService) RefreshGamesMetadataWithFields(gameIDs []string, fields []enums2.MetadataUpdateField) (vo.MetadataRefreshResult, error) {
 	gameIDs = utils.UniqueNonEmptyStrings(gameIDs)
 	if len(gameIDs) == 0 {
 		return newMetadataRefreshResult(), nil
@@ -1326,7 +1389,7 @@ func (s *GameService) RefreshGamesMetadata(gameIDs []string) (vo.MetadataRefresh
 		}
 	}
 
-	return s.refreshGamesMetadata(games, "RefreshGamesMetadata")
+	return s.refreshGamesMetadata(games, "RefreshGamesMetadata", fields)
 }
 
 func newMetadataRefreshResult() vo.MetadataRefreshResult {
@@ -1336,7 +1399,7 @@ func newMetadataRefreshResult() vo.MetadataRefreshResult {
 	}
 }
 
-func (s *GameService) refreshGamesMetadata(games []models.Game, logPrefix string) (vo.MetadataRefreshResult, error) {
+func (s *GameService) refreshGamesMetadata(games []models.Game, logPrefix string, fields []enums2.MetadataUpdateField) (vo.MetadataRefreshResult, error) {
 	result := newMetadataRefreshResult()
 	result.TotalGames = len(games)
 	enabledSources := s.getConfiguredMetadataSourceSet()
@@ -1366,7 +1429,7 @@ func (s *GameService) refreshGamesMetadata(games []models.Game, logPrefix string
 			continue
 		}
 
-		remoteCoverURL, err := s.updateGameMetadataFromRemote(game.ID, false)
+		remoteCoverURL, err := s.updateGameMetadataFromRemote(game.ID, false, fields)
 		if err != nil {
 			result.FailedGames++
 			result.FailedGameIDs = append(result.FailedGameIDs, game.ID)

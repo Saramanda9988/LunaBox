@@ -571,6 +571,47 @@
     "updateFromRemote": "Update info from remote",
     "updateFromRemoteLocked": "Metadata is locked. Unlock it first."
   },
+  "metadataUpdateFields": {
+    "selectAll": "Update all fields",
+    "selectedCount": "{{count}} / {{total}} fields selected",
+    "emptyWarning": "Select at least one field to update.",
+    "name": {
+      "label": "Game title",
+      "hint": "Replace the local title with the remote entry title"
+    },
+    "cover": {
+      "label": "Cover",
+      "hint": "Update the cover URL and cache the image after refresh"
+    },
+    "company": {
+      "label": "Developer",
+      "hint": "Update developer or brand information"
+    },
+    "summary": {
+      "label": "Summary",
+      "hint": "Replace the local summary with the remote summary"
+    },
+    "rating": {
+      "label": "Rating",
+      "hint": "Update the remote rating"
+    },
+    "release_date": {
+      "label": "Release date",
+      "hint": "Update the release date"
+    },
+    "tags": {
+      "label": "Automatic tags",
+      "hint": "Replace scraped tags while keeping manual tags"
+    },
+    "modal": {
+      "singleTitle": "Choose Fields to Update",
+      "singleDescription": "Only selected fields will be overwritten from remote metadata. Unselected local fields stay unchanged.",
+      "fullTitle": "Choose Fields for Full Refresh",
+      "fullDescription": "Full refresh skips locked games and only overwrites the fields you select.",
+      "continue": "Continue",
+      "update": "Start Update"
+    }
+  },
   "dragDropImportModal": {
     "toast": {
       "noValidGames": "No valid game files detected",

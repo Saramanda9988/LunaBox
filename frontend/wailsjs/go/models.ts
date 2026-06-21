@@ -232,6 +232,15 @@ export namespace enums {
 	    ASC = "asc",
 	    DESC = "desc",
 	}
+	export enum MetadataUpdateField {
+	    NAME = "name",
+	    COVER = "cover",
+	    COMPANY = "company",
+	    SUMMARY = "summary",
+	    RATING = "rating",
+	    RELEASE_DATE = "release_date",
+	    TAGS = "tags",
+	}
 
 }
 

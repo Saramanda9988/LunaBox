@@ -62,8 +62,16 @@ export function RefreshAllGamesMetadata() {
   return window['go']['service']['GameService']['RefreshAllGamesMetadata']();
 }
 
+export function RefreshAllGamesMetadataWithFields(arg1) {
+  return window['go']['service']['GameService']['RefreshAllGamesMetadataWithFields'](arg1);
+}
+
 export function RefreshGamesMetadata(arg1) {
   return window['go']['service']['GameService']['RefreshGamesMetadata'](arg1);
+}
+
+export function RefreshGamesMetadataWithFields(arg1, arg2) {
+  return window['go']['service']['GameService']['RefreshGamesMetadataWithFields'](arg1, arg2);
 }
 
 export function ResolveExecutablePathForImport(arg1) {
@@ -120,6 +128,10 @@ export function UpdateGame(arg1) {
 
 export function UpdateGameFromRemote(arg1) {
   return window['go']['service']['GameService']['UpdateGameFromRemote'](arg1);
+}
+
+export function UpdateGameFromRemoteWithFields(arg1, arg2) {
+  return window['go']['service']['GameService']['UpdateGameFromRemoteWithFields'](arg1, arg2);
 }
 
 export function UpdateGameProcessName(arg1, arg2) {

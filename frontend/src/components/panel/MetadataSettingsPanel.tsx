@@ -1,14 +1,18 @@
-import type { appconf, vo } from "../../../wailsjs/go/models";
+import type { appconf, enums, vo } from "../../../wailsjs/go/models";
 import type { MetadataRefreshProgress } from "../modal/MetadataRefreshProgressModal";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import {
-  RefreshAllGamesMetadata,
-  RefreshGamesMetadata,
+  RefreshAllGamesMetadataWithFields,
+  RefreshGamesMetadataWithFields,
 } from "../../../wailsjs/go/service/GameService";
 import { EventsOn } from "../../../wailsjs/runtime/runtime";
 import { ConfirmModal } from "../modal/ConfirmModal";
+import {
+  DEFAULT_METADATA_UPDATE_FIELDS,
+  MetadataFieldSelectModal,
+} from "../modal/MetadataFieldSelectModal";
 import { MetadataRefreshProgressModal } from "../modal/MetadataRefreshProgressModal";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterNumberInput } from "../ui/better/BetterNumberInput";
@@ -84,6 +88,10 @@ export function MetadataSettingsPanel({
   const { t } = useTranslation();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isRefreshModalOpen, setIsRefreshModalOpen] = useState(false);
+  const [isFieldModalOpen, setIsFieldModalOpen] = useState(false);
+  const [selectedRefreshFields, setSelectedRefreshFields] = useState<
+    enums.MetadataUpdateField[]
+  >(DEFAULT_METADATA_UPDATE_FIELDS);
   const [refreshProgress, setRefreshProgress]
     = useState<MetadataRefreshProgress>(() => createMetadataRefreshProgress());
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -188,12 +196,17 @@ export function MetadataSettingsPanel({
     } as appconf.AppConfig);
   };
 
-  const runMetadataRefresh = async (gameIDs?: string[]) => {
+  const runMetadataRefresh = async (
+    gameIDs?: string[],
+    fields?: enums.MetadataUpdateField[],
+  ) => {
     if (isRefreshing) {
       return;
     }
 
     const retryIDs = (gameIDs || []).filter(id => id.trim() !== "");
+    const refreshFields
+      = fields && fields.length > 0 ? fields : DEFAULT_METADATA_UPDATE_FIELDS;
 
     setIsRefreshing(true);
     setIsRefreshModalOpen(true);
@@ -206,8 +219,8 @@ export function MetadataSettingsPanel({
     try {
       const refreshResult: vo.MetadataRefreshResult
         = retryIDs.length > 0
-          ? await RefreshGamesMetadata(retryIDs)
-          : await RefreshAllGamesMetadata();
+          ? await RefreshGamesMetadataWithFields(retryIDs, refreshFields)
+          : await RefreshAllGamesMetadataWithFields(refreshFields);
 
       setRefreshProgress(metadataResultToProgress(refreshResult, "done"));
       toast.success(
@@ -237,13 +250,19 @@ export function MetadataSettingsPanel({
       return;
     }
 
+    setIsFieldModalOpen(true);
+  };
+
+  const handleConfirmRefreshFields = (fields: enums.MetadataUpdateField[]) => {
+    setSelectedRefreshFields(fields);
+    setIsFieldModalOpen(false);
     setConfirmConfig({
       isOpen: true,
       title: t("settings.metadata.modal.refreshTitle"),
       message: t("settings.metadata.modal.refreshMessage"),
       type: "danger",
       onConfirm: () => {
-        void runMetadataRefresh();
+        void runMetadataRefresh(undefined, fields);
       },
     });
   };
@@ -258,7 +277,7 @@ export function MetadataSettingsPanel({
       return;
     }
 
-    void runMetadataRefresh(failedIDs);
+    void runMetadataRefresh(failedIDs, selectedRefreshFields);
   };
 
   const handleTagLimitChange = (value: number) => {
@@ -430,6 +449,15 @@ export function MetadataSettingsPanel({
         type={confirmConfig.type}
         onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
         onConfirm={confirmConfig.onConfirm}
+      />
+      <MetadataFieldSelectModal
+        isOpen={isFieldModalOpen}
+        title={t("metadataUpdateFields.modal.fullTitle")}
+        description={t("metadataUpdateFields.modal.fullDescription")}
+        confirmText={t("metadataUpdateFields.modal.continue")}
+        initialFields={selectedRefreshFields}
+        onClose={() => setIsFieldModalOpen(false)}
+        onConfirm={handleConfirmRefreshFields}
       />
       <MetadataRefreshProgressModal
         isOpen={isRefreshModalOpen}

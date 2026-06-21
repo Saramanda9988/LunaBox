@@ -493,6 +493,7 @@ func main() {
 		enums.AllGameStatuses,
 		enums.AllGameListSortByTypes,
 		enums.AllSortOrderTypes,
+		enums.AllMetadataUpdateFields,
 	}
 
 	// 如果有待安装 URL，解析并暂存到 downloadService

@@ -6,6 +6,7 @@ import {processutils} from '../models';
 import {context} from '../models';
 import {sql} from '../models';
 import {appconf} from '../models';
+import {enums} from '../models';
 import {service} from '../models';
 
 export function AddGameFromWebMetadata(arg1:vo.GameMetadataFromWebVO):Promise<void>;
@@ -38,7 +39,11 @@ export function OpenLocalPath(arg1:string):Promise<void>;
 
 export function RefreshAllGamesMetadata():Promise<vo.MetadataRefreshResult>;
 
+export function RefreshAllGamesMetadataWithFields(arg1:Array<enums.MetadataUpdateField>):Promise<vo.MetadataRefreshResult>;
+
 export function RefreshGamesMetadata(arg1:Array<string>):Promise<vo.MetadataRefreshResult>;
+
+export function RefreshGamesMetadataWithFields(arg1:Array<string>,arg2:Array<enums.MetadataUpdateField>):Promise<vo.MetadataRefreshResult>;
 
 export function ResolveExecutablePathForImport(arg1:string):Promise<string>;
 
@@ -67,5 +72,7 @@ export function SetTagService(arg1:service.TagService):Promise<void>;
 export function UpdateGame(arg1:models.Game):Promise<void>;
 
 export function UpdateGameFromRemote(arg1:string):Promise<void>;
+
+export function UpdateGameFromRemoteWithFields(arg1:string,arg2:Array<enums.MetadataUpdateField>):Promise<void>;
 
 export function UpdateGameProcessName(arg1:string,arg2:string):Promise<void>;

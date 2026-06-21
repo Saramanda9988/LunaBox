@@ -19,7 +19,7 @@ import {
   SelectSaveDirectory,
   SelectSaveFile,
   UpdateGame,
-  UpdateGameFromRemote,
+  UpdateGameFromRemoteWithFields,
 } from "../../wailsjs/go/service/GameService";
 import {
   StartGameWithOptions,
@@ -27,6 +27,10 @@ import {
 } from "../../wailsjs/go/service/StartService";
 import { AddToCategoryModal } from "../components/modal/AddToCategoryModal";
 import { ConfirmModal } from "../components/modal/ConfirmModal";
+import {
+  DEFAULT_METADATA_UPDATE_FIELDS,
+  MetadataFieldSelectModal,
+} from "../components/modal/MetadataFieldSelectModal";
 import { GameBackupPanel } from "../components/panel/GameBackupPanel";
 import { GameEditPanel } from "../components/panel/GameEditPanel";
 import { GameLaunchPanel } from "../components/panel/GameLaunchPanel";
@@ -78,6 +82,12 @@ function GameDetailPage() {
   );
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isMetadataFieldModalOpen, setIsMetadataFieldModalOpen]
+    = useState(false);
+  const [isUpdatingFromRemote, setIsUpdatingFromRemote] = useState(false);
+  const [selectedMetadataFields, setSelectedMetadataFields] = useState<
+    enums.MetadataUpdateField[]
+  >(DEFAULT_METADATA_UPDATE_FIELDS);
   const [allCategories, setAllCategories] = useState<vo.CategoryVO[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [tagRefreshToken, setTagRefreshToken] = useState(0);
@@ -256,11 +266,24 @@ function GameDetailPage() {
     }
   };
 
-  const handleUpdateFromRemote = async () => {
+  const handleOpenUpdateFromRemote = () => {
+    if (!game || game.metadata_locked)
+      return;
+    setIsMetadataFieldModalOpen(true);
+  };
+
+  const handleUpdateFromRemote = async (
+    fields: enums.MetadataUpdateField[],
+  ) => {
     if (!game)
       return;
+    const updateFields
+      = fields.length > 0 ? fields : DEFAULT_METADATA_UPDATE_FIELDS;
+    setSelectedMetadataFields(updateFields);
+    setIsMetadataFieldModalOpen(false);
+    setIsUpdatingFromRemote(true);
     try {
-      await UpdateGameFromRemote(game.id);
+      await UpdateGameFromRemoteWithFields(game.id, updateFields);
       const updatedGame = await GetGameByID(game.id);
       setGame(updatedGame);
       originalGameData.current = updatedGame;
@@ -271,6 +294,9 @@ function GameDetailPage() {
     catch (error) {
       console.error("Failed to update from remote:", error);
       toast.error(t("game.toast.updateRemoteFailed", { error }));
+    }
+    finally {
+      setIsUpdatingFromRemote(false);
     }
   };
 
@@ -648,7 +674,7 @@ function GameDetailPage() {
           onSelectCoverImage={handleSelectCoverImage}
           onCoverImageChanged={() =>
             setCoverImageRefreshToken(prev => prev + 1)}
-          onUpdateFromRemote={handleUpdateFromRemote}
+          onUpdateFromRemote={handleOpenUpdateFromRemote}
         />
       )}
 
@@ -685,6 +711,17 @@ function GameDetailPage() {
         initialSelectedIds={selectedCategoryIds}
         onClose={() => setIsCategoryModalOpen(false)}
         onSave={handleSaveCategories}
+      />
+
+      <MetadataFieldSelectModal
+        isOpen={isMetadataFieldModalOpen}
+        title={t("metadataUpdateFields.modal.singleTitle")}
+        description={t("metadataUpdateFields.modal.singleDescription")}
+        confirmText={t("metadataUpdateFields.modal.update")}
+        initialFields={selectedMetadataFields}
+        isSubmitting={isUpdatingFromRemote}
+        onClose={() => setIsMetadataFieldModalOpen(false)}
+        onConfirm={handleUpdateFromRemote}
       />
     </div>
   );

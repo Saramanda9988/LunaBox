@@ -571,6 +571,47 @@
     "updateFromRemote": "从远端更新信息",
     "updateFromRemoteLocked": "元数据已锁定，请先解锁"
   },
+  "metadataUpdateFields": {
+    "selectAll": "更新全部字段",
+    "selectedCount": "已选择 {{count}} / {{total}} 个字段",
+    "emptyWarning": "请至少选择一个要更新的字段。",
+    "name": {
+      "label": "游戏名称",
+      "hint": "使用远端条目标题覆盖本地名称"
+    },
+    "cover": {
+      "label": "封面",
+      "hint": "更新封面地址，并在更新后缓存图片"
+    },
+    "company": {
+      "label": "开发商",
+      "hint": "更新厂商或品牌信息"
+    },
+    "summary": {
+      "label": "简介",
+      "hint": "使用远端简介覆盖本地简介"
+    },
+    "rating": {
+      "label": "评分",
+      "hint": "更新远端评分"
+    },
+    "release_date": {
+      "label": "发售日期",
+      "hint": "更新发售日期"
+    },
+    "tags": {
+      "label": "自动标签",
+      "hint": "替换刮削来源标签，保留手动标签"
+    },
+    "modal": {
+      "singleTitle": "选择要更新的字段",
+      "singleDescription": "只会从远端覆盖你勾选的字段，未勾选的本地内容会保留。",
+      "fullTitle": "选择全量更新字段",
+      "fullDescription": "全量更新会跳过已锁定游戏，并只覆盖你勾选的字段。",
+      "continue": "继续",
+      "update": "开始更新"
+    }
+  },
   "dragDropImportModal": {
     "toast": {
       "noValidGames": "未检测到有效的游戏文件",
