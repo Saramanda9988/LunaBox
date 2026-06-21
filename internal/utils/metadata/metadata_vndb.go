@@ -38,9 +38,12 @@ func NewVNDBInfoGetterWithLanguage(language string, options ...GetterOption) *VN
 }
 
 var _ Getter = (*VNDBInfoGetter)(nil)
+var _ BatchGetter = (*VNDBInfoGetter)(nil)
 
 const vndbAPIURL = "https://api.vndb.org/kana/vn"
 const vndbSearchSort = "searchrank"
+const vndbBatchSize = 100
+const vndbFields = "id, title, titles.lang, titles.title, titles.latin, titles.official, titles.main, image.url, description, rating, released, developers.name, tags.name, tags.rating, tags.spoiler"
 
 type vndbRequest struct {
 	Filters []interface{} `json:"filters"`
@@ -91,49 +94,94 @@ func (v VNDBInfoGetter) FetchMetadata(id string, token string) (MetadataResult, 
 	return v.queryVNDB([]interface{}{"id", "=", id}, "")
 }
 
+func (v VNDBInfoGetter) FetchMetadataBatch(ids []string, token string) (map[string]MetadataResult, error) {
+	ids = uniqueTrimmedStrings(ids)
+	results := make(map[string]MetadataResult, len(ids))
+	if len(ids) == 0 {
+		return results, nil
+	}
+
+	for start := 0; start < len(ids); start += vndbBatchSize {
+		end := start + vndbBatchSize
+		if end > len(ids) {
+			end = len(ids)
+		}
+
+		batchIDs := ids[start:end]
+		batchResults, err := v.queryVNDBResults(buildVNDBIDBatchFilters(batchIDs), "", len(batchIDs))
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range batchResults {
+			id := strings.ToLower(strings.TrimSpace(item.ID))
+			if id == "" {
+				continue
+			}
+			results[id] = MetadataResult{
+				Game: v.convertResultToGame(item),
+				Tags: extractVNDBTags(item.Tags, v.tagLimit),
+			}
+		}
+	}
+
+	return results, nil
+}
+
 func (v VNDBInfoGetter) FetchMetadataByName(name string, token string) (MetadataResult, error) {
 	return v.queryVNDB([]interface{}{"search", "=", name}, vndbSearchSort)
 }
 
 func (v VNDBInfoGetter) queryVNDB(filters []interface{}, sort string) (MetadataResult, error) {
+	results, err := v.queryVNDBResults(filters, sort, 1)
+	if err != nil {
+		return MetadataResult{}, err
+	}
+	if len(results) == 0 {
+		return MetadataResult{}, errors.New("no results found")
+	}
+
+	result := results[0]
+	return MetadataResult{Game: v.convertResultToGame(result), Tags: extractVNDBTags(result.Tags, v.tagLimit)}, nil
+}
+
+func (v VNDBInfoGetter) queryVNDBResults(filters []interface{}, sort string, resultsLimit int) ([]vndbQueryResult, error) {
 	reqBody := vndbRequest{
 		Filters: filters,
-		Fields:  "id, title, titles.lang, titles.title, titles.latin, titles.official, titles.main, image.url, description, rating, released, developers.name, tags.name, tags.rating, tags.spoiler",
+		Fields:  vndbFields,
 		Sort:    sort,
-		Results: 1,
+		Results: resultsLimit,
 	}
 
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
-		return MetadataResult{}, err
+		return nil, err
 	}
 
 	req, err := http.NewRequest("POST", vndbAPIURL, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return MetadataResult{}, err
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := doLimitedMetadataRequest(v.client, req, MetadataSourceVNDB)
 	if err != nil {
-		return MetadataResult{}, err
+		return nil, err
 	}
 	defer closeResponseBody(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return MetadataResult{}, fmt.Errorf("VNDB API returned status: %d, body: %s", resp.StatusCode, string(bodyBytes))
+		return nil, fmt.Errorf("VNDB API returned status: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var vndbResp vndbResponse
 	if err := json.NewDecoder(resp.Body).Decode(&vndbResp); err != nil {
-		return MetadataResult{}, err
+		return nil, err
 	}
-	if len(vndbResp.Results) == 0 {
-		return MetadataResult{}, errors.New("no results found")
-	}
+	return vndbResp.Results, nil
+}
 
-	result := vndbResp.Results[0]
+func (v VNDBInfoGetter) convertResultToGame(result vndbQueryResult) models.Game {
 	displayName := pickVNDBDisplayTitle(result, v.preferredLangs)
 	company := ""
 	if len(result.Developers) > 0 {
@@ -155,8 +203,38 @@ func (v VNDBInfoGetter) queryVNDB(filters []interface{}, sort string) (MetadataR
 		SourceID:    result.ID,
 		CachedAt:    time.Now(),
 	}
+	return game
+}
 
-	return MetadataResult{Game: game, Tags: extractVNDBTags(result.Tags, v.tagLimit)}, nil
+func buildVNDBIDBatchFilters(ids []string) []interface{} {
+	if len(ids) == 1 {
+		return []interface{}{"id", "=", ids[0]}
+	}
+
+	filters := make([]interface{}, 0, len(ids)+1)
+	filters = append(filters, "or")
+	for _, id := range ids {
+		filters = append(filters, []interface{}{"id", "=", id})
+	}
+	return filters
+}
+
+func uniqueTrimmedStrings(values []string) []string {
+	result := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		key := strings.ToLower(trimmed)
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		result = append(result, trimmed)
+	}
+	return result
 }
 
 func pickVNDBDisplayTitle(result vndbQueryResult, preferredLangs []string) string {

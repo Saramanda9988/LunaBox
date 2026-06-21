@@ -1253,6 +1253,16 @@ func (s *GameService) updateGameMetadataFromRemote(gameID string, downloadCoverI
 		return "", fmt.Errorf("failed to fetch metadata from remote: %w", err)
 	}
 
+	remoteCoverURL, err := s.applyRemoteMetadataResult(existingGame, metaResult, downloadCoverImmediately, fieldSet)
+	if err != nil {
+		return "", err
+	}
+
+	applog.LogInfof(s.ctx, "UpdateGameFromRemote: successfully updated game %s from %s", existingGame.Name, sourceType)
+	return remoteCoverURL, nil
+}
+
+func (s *GameService) applyRemoteMetadataResult(existingGame models.Game, metaResult metadata.MetadataResult, downloadCoverImmediately bool, fieldSet metadataUpdateFieldSet) (string, error) {
 	remoteGame := metaResult.Game
 	remoteCoverURL := strings.TrimSpace(remoteGame.CoverURL)
 
@@ -1288,12 +1298,11 @@ func (s *GameService) updateGameMetadataFromRemote(gameID string, downloadCoverI
 
 	// 写入 tags（先删除刮削来源的旧 tag，再批量插入新 tag，保留用户 tag）
 	if fieldSet.has(enums2.MetadataUpdateFieldTags) && s.tagService != nil && len(metaResult.Tags) > 0 {
-		if err := s.tagService.upsertScrapedTags(gameID, metaResult.Tags); err != nil {
-			applog.LogWarningf(s.ctx, "UpdateGameFromRemote: failed to upsert tags for game %s: %v", gameID, err)
+		if err := s.tagService.upsertScrapedTags(existingGame.ID, metaResult.Tags); err != nil {
+			applog.LogWarningf(s.ctx, "UpdateGameFromRemote: failed to upsert tags for game %s: %v", existingGame.ID, err)
 		}
 	}
 
-	applog.LogInfof(s.ctx, "UpdateGameFromRemote: successfully updated game %s from %s", existingGame.Name, sourceType)
 	if !fieldSet.has(enums2.MetadataUpdateFieldCover) {
 		return "", nil
 	}
@@ -1405,6 +1414,8 @@ func (s *GameService) refreshGamesMetadata(games []models.Game, logPrefix string
 	enabledSources := s.getConfiguredMetadataSourceSet()
 	imageItems := make([]CoverImageDownloadItem, 0)
 	s.emitMetadataRefreshProgress(result, 0, "", "started")
+	fieldSet := normalizeMetadataUpdateFields(fields)
+	batchResults := s.fetchBatchMetadataForRefresh(games, enabledSources)
 
 	for index, game := range games {
 		current := index + 1
@@ -1425,6 +1436,36 @@ func (s *GameService) refreshGamesMetadata(games []models.Game, logPrefix string
 
 		if _, enabled := enabledSources[normalizeMetadataSourceType(game.SourceType)]; !enabled {
 			result.SkippedGames++
+			s.emitMetadataRefreshProgress(result, current, game.Name, "running")
+			continue
+		}
+
+		batchKey := metadataRefreshBatchKeyForGame(game)
+		if metaResult, ok := batchResults.results[batchKey]; ok {
+			remoteCoverURL, err := s.applyRemoteMetadataResult(game, metaResult, false, fieldSet)
+			if err != nil {
+				result.FailedGames++
+				result.FailedGameIDs = append(result.FailedGameIDs, game.ID)
+				result.FailedGameNames = append(result.FailedGameNames, game.Name)
+				applog.LogWarningf(s.ctx, "%s: failed to update game %s (%s): %v", logPrefix, game.Name, game.ID, err)
+			} else {
+				result.UpdatedGames++
+				if remoteCoverURL != "" {
+					imageItems = append(imageItems, CoverImageDownloadItem{
+						GameID:   game.ID,
+						GameName: game.Name,
+						CoverURL: remoteCoverURL,
+					})
+				}
+			}
+			s.emitMetadataRefreshProgress(result, current, game.Name, "running")
+			continue
+		}
+		if err, failed := batchResults.errors[batchKey]; failed {
+			result.FailedGames++
+			result.FailedGameIDs = append(result.FailedGameIDs, game.ID)
+			result.FailedGameNames = append(result.FailedGameNames, game.Name)
+			applog.LogWarningf(s.ctx, "%s: failed to update game %s (%s): %v", logPrefix, game.Name, game.ID, err)
 			s.emitMetadataRefreshProgress(result, current, game.Name, "running")
 			continue
 		}
@@ -1455,6 +1496,77 @@ func (s *GameService) refreshGamesMetadata(games []models.Game, logPrefix string
 	s.emitMetadataRefreshProgress(result, result.TotalGames, "", "done")
 
 	return result, nil
+}
+
+type metadataRefreshBatchResults struct {
+	results map[string]metadata.MetadataResult
+	errors  map[string]error
+}
+
+func (s *GameService) fetchBatchMetadataForRefresh(games []models.Game, enabledSources map[enums2.SourceType]struct{}) metadataRefreshBatchResults {
+	results := metadataRefreshBatchResults{
+		results: make(map[string]metadata.MetadataResult),
+		errors:  make(map[string]error),
+	}
+
+	vndbIDs := make([]string, 0)
+	vndbGamesByID := make(map[string][]models.Game)
+	for _, game := range games {
+		if game.MetadataLocked {
+			continue
+		}
+		sourceType := normalizeMetadataSourceType(game.SourceType)
+		sourceID := strings.ToLower(strings.TrimSpace(game.SourceID))
+		if sourceType != enums2.VNDB || sourceID == "" {
+			continue
+		}
+		if _, enabled := enabledSources[sourceType]; !enabled {
+			continue
+		}
+		if _, exists := vndbGamesByID[sourceID]; !exists {
+			vndbIDs = append(vndbIDs, sourceID)
+		}
+		vndbGamesByID[sourceID] = append(vndbGamesByID[sourceID], game)
+	}
+	if len(vndbIDs) == 0 {
+		return results
+	}
+
+	language := ""
+	vndbToken := ""
+	if s.config != nil {
+		language = s.config.Language
+		vndbToken = s.config.VNDBAccessToken
+	}
+	getter := metadata.NewVNDBInfoGetterWithLanguage(language, metadataGetterOptions(s.config)...)
+	batch, err := getter.FetchMetadataBatch(vndbIDs, vndbToken)
+	if err != nil {
+		for _, id := range vndbIDs {
+			for _, game := range vndbGamesByID[id] {
+				results.errors[metadataRefreshBatchKeyForGame(game)] = fmt.Errorf("failed to fetch metadata from remote: %w", err)
+			}
+		}
+		return results
+	}
+
+	for _, id := range vndbIDs {
+		metaResult, ok := batch[id]
+		if !ok {
+			for _, game := range vndbGamesByID[id] {
+				results.errors[metadataRefreshBatchKeyForGame(game)] = errors.New("failed to fetch metadata from remote: no results found")
+			}
+			continue
+		}
+		for _, game := range vndbGamesByID[id] {
+			results.results[metadataRefreshBatchKeyForGame(game)] = metaResult
+		}
+	}
+
+	return results
+}
+
+func metadataRefreshBatchKeyForGame(game models.Game) string {
+	return string(normalizeMetadataSourceType(game.SourceType)) + ":" + strings.ToLower(strings.TrimSpace(game.SourceID))
 }
 
 // GetRunningProcesses 获取系统中正在运行的进程列表（过滤掉系统进程）

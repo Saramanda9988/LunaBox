@@ -31,6 +31,11 @@ type Getter interface {
 	FetchMetadataByName(name string, token string) (MetadataResult, error)
 }
 
+// BatchGetter 可选实现：数据源支持按 ID 批量拉取详情时使用。
+type BatchGetter interface {
+	FetchMetadataBatch(ids []string, token string) (map[string]MetadataResult, error)
+}
+
 const metadataUserAgent = "Saramanda9988/LunaBox/1.8.0 (desktop) (https://github.com/Saramanda9988/LunaBox)"
 const metadataHTTPTimeout = 10 * time.Second
 const defaultMetadataTagLimit = 10
