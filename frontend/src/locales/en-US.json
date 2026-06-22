@@ -925,6 +925,8 @@
       "refreshHint": "Bulk refresh game title, summary, company, cover, and tags using currently enabled sources.",
       "refreshButton": "Refresh All Game Metadata",
       "refreshing": "Refreshing...",
+      "downloadCoverButton": "Download Remote Covers Locally",
+      "downloadCoverQueueing": "Creating download task...",
       "progress": {
         "title": "Refreshing game metadata",
         "doneTitle": "Game metadata refresh complete",
@@ -944,7 +946,11 @@
       "toast": {
         "atLeastOneSource": "At least one metadata source must remain enabled",
         "refreshSuccess": "Metadata refresh complete: updated {{updated}}, failed {{failed}}, skipped {{skipped}} (locked {{locked}})",
-        "refreshFailed": "Full metadata refresh failed: {{error}}"
+        "refreshFailed": "Full metadata refresh failed: {{error}}",
+        "noRemoteCovers": "No remote covers need downloading",
+        "downloadCoverQueued": "Created a remote cover download task",
+        "downloadCoverTaskFailed": "Failed to create cover download task",
+        "downloadCoverFailed": "Failed to create cover download task: {{error}}"
       }
     },
     "cloudBackup": {

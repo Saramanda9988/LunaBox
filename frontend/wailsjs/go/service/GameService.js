@@ -122,6 +122,10 @@ export function SetTagService(arg1) {
   return window['go']['service']['GameService']['SetTagService'](arg1);
 }
 
+export function StartRemoteCoverImageDownloadTask() {
+  return window['go']['service']['GameService']['StartRemoteCoverImageDownloadTask']();
+}
+
 export function UpdateGame(arg1) {
   return window['go']['service']['GameService']['UpdateGame'](arg1);
 }

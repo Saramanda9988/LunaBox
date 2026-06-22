@@ -867,6 +867,8 @@
       "refreshHint": "現在有効なソースで、ゲーム名・概要・メーカー・カバー・タグを一括更新します。",
       "refreshButton": "全ゲームのメタデータを更新",
       "refreshing": "更新中...",
+      "downloadCoverButton": "リモートカバーをローカルに保存",
+      "downloadCoverQueueing": "ダウンロードタスクを作成中...",
       "progress": {
         "title": "ゲームメタデータを更新中",
         "doneTitle": "ゲームメタデータの更新が完了しました",
@@ -886,7 +888,11 @@
       "toast": {
         "atLeastOneSource": "少なくとも1つのメタデータソースを有効にしてください",
         "refreshSuccess": "メタデータ更新完了: 更新 {{updated}} 件、失敗 {{failed}} 件、スキップ {{skipped}} 件（ロック {{locked}} 件）",
-        "refreshFailed": "全量更新に失敗しました: {{error}}"
+        "refreshFailed": "全量更新に失敗しました: {{error}}",
+        "noRemoteCovers": "ダウンロードが必要なリモートカバーはありません",
+        "downloadCoverQueued": "リモートカバーのダウンロードタスクを作成しました",
+        "downloadCoverTaskFailed": "カバーダウンロードタスクの作成に失敗しました",
+        "downloadCoverFailed": "カバーダウンロードタスクの作成に失敗しました: {{error}}"
       }
     },
     "cloudBackup": {

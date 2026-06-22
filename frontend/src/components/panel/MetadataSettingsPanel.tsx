@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import {
   RefreshAllGamesMetadataWithFields,
   RefreshGamesMetadataWithFields,
+  StartRemoteCoverImageDownloadTask,
 } from "../../../wailsjs/go/service/GameService";
 import { EventsOn } from "../../../wailsjs/runtime/runtime";
 import { ConfirmModal } from "../modal/ConfirmModal";
@@ -87,6 +88,7 @@ export function MetadataSettingsPanel({
 }: MetadataSettingsPanelProps) {
   const { t } = useTranslation();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isQueueingCoverDownload, setIsQueueingCoverDownload] = useState(false);
   const [isRefreshModalOpen, setIsRefreshModalOpen] = useState(false);
   const [isFieldModalOpen, setIsFieldModalOpen] = useState(false);
   const [selectedRefreshFields, setSelectedRefreshFields] = useState<
@@ -251,6 +253,31 @@ export function MetadataSettingsPanel({
     }
 
     setIsFieldModalOpen(true);
+  };
+
+  const handleDownloadRemoteCovers = async () => {
+    if (isQueueingCoverDownload) {
+      return;
+    }
+
+    setIsQueueingCoverDownload(true);
+    try {
+      const taskID = await StartRemoteCoverImageDownloadTask();
+      if (!taskID) {
+        toast.success(t("settings.metadata.toast.noRemoteCovers"));
+        return;
+      }
+
+      toast.success(t("settings.metadata.toast.downloadCoverQueued"));
+    }
+    catch (err) {
+      toast.error(
+        t("settings.metadata.toast.downloadCoverFailed", { error: err }),
+      );
+    }
+    finally {
+      setIsQueueingCoverDownload(false);
+    }
   };
 
   const handleConfirmRefreshFields = (fields: enums.MetadataUpdateField[]) => {
@@ -429,17 +456,34 @@ export function MetadataSettingsPanel({
         <div className="block text-sm font-semibold text-brand-700 dark:text-brand-300">
           {t("settings.metadata.refreshTitle")}
         </div>
-        <BetterButton
-          className="mt-4 w-full justify-center sm:w-auto"
-          variant="primary"
-          icon="i-mdi-database-refresh"
-          isLoading={isRefreshing}
-          onClick={handleRefreshAllMetadata}
-        >
-          {isRefreshing
-            ? t("settings.metadata.refreshing")
-            : t("settings.metadata.refreshButton")}
-        </BetterButton>
+        <p className="mt-2 text-xs text-brand-500 dark:text-brand-400">
+          {t("settings.metadata.refreshHint")}
+        </p>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <BetterButton
+            className="w-full justify-center sm:w-auto"
+            variant="primary"
+            icon="i-mdi-database-refresh"
+            isLoading={isRefreshing}
+            onClick={handleRefreshAllMetadata}
+          >
+            {isRefreshing
+              ? t("settings.metadata.refreshing")
+              : t("settings.metadata.refreshButton")}
+          </BetterButton>
+          <BetterButton
+            className="w-full justify-center sm:w-auto"
+            variant="secondary"
+            icon="i-mdi-image-move"
+            isLoading={isQueueingCoverDownload}
+            disabled={isRefreshing}
+            onClick={handleDownloadRemoteCovers}
+          >
+            {isQueueingCoverDownload
+              ? t("settings.metadata.downloadCoverQueueing")
+              : t("settings.metadata.downloadCoverButton")}
+          </BetterButton>
+        </div>
       </div>
 
       <ConfirmModal

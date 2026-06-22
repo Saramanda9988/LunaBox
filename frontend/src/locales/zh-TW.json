@@ -884,6 +884,8 @@
       "refreshHint": "按當前啟用來源批次重新整理庫內遊戲的名稱、簡介、廠商、封面和標籤。",
       "refreshButton": "更新全部遊戲後設資料",
       "refreshing": "更新中...",
+      "downloadCoverButton": "下載遠端封面到本機",
+      "downloadCoverQueueing": "建立下載任務中...",
       "progress": {
         "title": "正在更新遊戲後設資料",
         "doneTitle": "遊戲後設資料更新完成",
@@ -903,7 +905,11 @@
       "toast": {
         "atLeastOneSource": "至少需要啟用一個後設資料來源",
         "refreshSuccess": "後設資料更新完成：成功 {{updated}}，失敗 {{failed}}，跳過 {{skipped}}（鎖定 {{locked}}）",
-        "refreshFailed": "全量更新失敗：{{error}}"
+        "refreshFailed": "全量更新失敗：{{error}}",
+        "noRemoteCovers": "目前沒有需要下載的遠端封面",
+        "downloadCoverQueued": "已建立遠端封面下載任務",
+        "downloadCoverTaskFailed": "建立封面下載任務失敗",
+        "downloadCoverFailed": "封面下載任務建立失敗：{{error}}"
       }
     },
     "cloudBackup": {

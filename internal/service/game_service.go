@@ -332,6 +332,40 @@ func (s *GameService) DownloadCoverImage(gameID string, coverURL string) (string
 	return localPath, nil
 }
 
+// StartRemoteCoverImageDownloadTask queues a download-management task for all games
+// whose current cover URL still points to a remote image.
+func (s *GameService) StartRemoteCoverImageDownloadTask() (string, error) {
+	if s.imageTaskStarter == nil {
+		return "", fmt.Errorf("cover image download task starter is not initialized")
+	}
+
+	games, err := s.listAllGamesInternal()
+	if err != nil {
+		return "", fmt.Errorf("failed to list games: %w", err)
+	}
+
+	items := make([]CoverImageDownloadItem, 0)
+	for _, game := range games {
+		if !gamehelper.IsDownloadableCoverURL(game.CoverURL) {
+			continue
+		}
+		items = append(items, CoverImageDownloadItem{
+			GameID:   game.ID,
+			GameName: game.Name,
+			CoverURL: game.CoverURL,
+		})
+	}
+	if len(items) == 0 {
+		return "", nil
+	}
+
+	taskID := s.imageTaskStarter(items)
+	if strings.TrimSpace(taskID) == "" {
+		return "", fmt.Errorf("failed to create cover image download task")
+	}
+	return taskID, nil
+}
+
 func (s *GameService) emitCoverImageDownloadEvent(gameID, gameName, status, errorMsg string) {
 	if s.ctx == nil || s.emitEvent == nil {
 		return

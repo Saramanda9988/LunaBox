@@ -69,6 +69,8 @@ export function SetImageDownloadTaskStarter(arg1:any):Promise<void>;
 
 export function SetTagService(arg1:service.TagService):Promise<void>;
 
+export function StartRemoteCoverImageDownloadTask():Promise<string>;
+
 export function UpdateGame(arg1:models.Game):Promise<void>;
 
 export function UpdateGameFromRemote(arg1:string):Promise<void>;

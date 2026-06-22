@@ -925,6 +925,8 @@
       "refreshHint": "按当前启用来源批量刷新库内游戏的名称、简介、厂商、封面和标签。",
       "refreshButton": "更新全部游戏元数据",
       "refreshing": "更新中...",
+      "downloadCoverButton": "下载远程封面到本地",
+      "downloadCoverQueueing": "创建下载任务中...",
       "progress": {
         "title": "正在更新游戏元数据",
         "doneTitle": "游戏元数据更新完成",
@@ -944,7 +946,11 @@
       "toast": {
         "atLeastOneSource": "至少需要启用一个元数据来源",
         "refreshSuccess": "元数据更新完成：成功 {{updated}}，失败 {{failed}}，跳过 {{skipped}}（锁定 {{locked}}）",
-        "refreshFailed": "全量更新失败：{{error}}"
+        "refreshFailed": "全量更新失败：{{error}}",
+        "noRemoteCovers": "当前没有需要下载的远程封面",
+        "downloadCoverQueued": "已创建远程封面下载任务",
+        "downloadCoverTaskFailed": "创建封面下载任务失败",
+        "downloadCoverFailed": "封面下载任务创建失败：{{error}}"
       }
     },
     "cloudBackup": {
