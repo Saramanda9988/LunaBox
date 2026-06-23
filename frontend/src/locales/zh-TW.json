@@ -1391,12 +1391,16 @@
   "addPlaySession": {
     "title": "新增遊玩記錄",
     "desc": "您可以對過去的遊玩時間進行補充記錄，以更準確地統計總遊玩時長。",
+    "date": "日期",
+    "selectDate": "選擇日期",
     "startTime": "開始時間",
     "endTime": "結束時間",
     "duration": "遊玩時長",
+    "endPreview": "預計結束",
     "submitting": "新增中...",
     "toast": {
       "endBeforeStart": "結束時間必須晉於開始時間",
+      "invalidStartTime": "請選擇有效的開始時間",
       "zeroDuration": "遊玩時長必須大於0",
       "futureEnd": "結束時間不能晉於當前時間",
       "success": "遊玩記錄新增成功",

@@ -1374,12 +1374,16 @@
   "addPlaySession": {
     "title": "プレイ記録を追加",
     "desc": "過去のプレイ時間を補完記録することで、総プレイ時間をより正確に統計できます。",
+    "date": "日付",
+    "selectDate": "日付を選択",
     "startTime": "開始時刻",
     "endTime": "終了時刻",
     "duration": "プレイ時間",
+    "endPreview": "終了予定",
     "submitting": "追加中...",
     "toast": {
       "endBeforeStart": "終了時刻は開始時刻より後である必要があります",
+      "invalidStartTime": "有効な開始時刻を選択してください",
       "zeroDuration": "プレイ時間は 0 より大きい必要があります",
       "futureEnd": "終了時刻は現在時刻より後にできません",
       "success": "プレイ記録の追加に成功しました",

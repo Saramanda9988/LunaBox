@@ -14,9 +14,11 @@ interface BetterDateRangePickerProps {
   onEndDateChange: (value: string) => void;
   onApply: () => void;
   onReset: () => void;
+  selectionMode?: "range" | "single";
   active?: boolean;
   disabled?: boolean;
   className?: string;
+  triggerClassName?: string;
 }
 
 const weekdayLabels = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -275,9 +277,11 @@ export function BetterDateRangePicker({
   onEndDateChange,
   onApply,
   onReset,
+  selectionMode = "range",
   active = false,
   disabled = false,
   className = "",
+  triggerClassName = "",
 }: BetterDateRangePickerProps) {
   const [leftMonth, setLeftMonth] = useState(() =>
     getInitialLeftMonth(startDate),
@@ -292,12 +296,26 @@ export function BetterDateRangePicker({
   const canGoPreviousRightYear = addMonths(rightMonth, -12) > leftMonth;
   const canGoNextRightMonth = addMonths(rightMonth, 1) <= latestCalendarMonth;
   const canGoNextRightYear = addMonths(rightMonth, 12) <= latestCalendarMonth;
+  const isSingleMode = selectionMode === "single";
   const rangeText
-    = startDate && endDate ? `${startDate} - ${endDate}` : triggerLabel;
-  const selectedRangeText
-    = startDate && endDate ? `${startDate} - ${endDate}` : startDate || "";
+    = isSingleMode && startDate
+      ? startDate
+      : startDate && endDate
+        ? `${startDate} - ${endDate}`
+        : triggerLabel;
+  const selectedRangeText = isSingleMode
+    ? startDate
+    : startDate && endDate
+      ? `${startDate} - ${endDate}`
+      : startDate || "";
 
   const handleSelectDate = (value: string) => {
+    if (isSingleMode) {
+      onStartDateChange(value);
+      onEndDateChange(value);
+      return;
+    }
+
     if (!startDate || (startDate && endDate)) {
       onStartDateChange(value);
       onEndDateChange("");
@@ -320,7 +338,7 @@ export function BetterDateRangePicker({
         variant={active ? "primary" : "secondary"}
         icon="i-mdi-calendar-range"
         disabled={disabled}
-        className="h-10"
+        className={`h-10 ${triggerClassName}`}
         aria-pressed={active}
       >
         <span className="max-w-[14rem] truncate">{rangeText}</span>
@@ -393,7 +411,10 @@ export function BetterDateRangePicker({
                   disabled={disabled}
                   onClick={() => {
                     onApply();
-                    if (startDate && endDate && startDate < endDate) {
+                    if (
+                      (isSingleMode && startDate)
+                      || (startDate && endDate && startDate < endDate)
+                    ) {
                       close();
                     }
                   }}

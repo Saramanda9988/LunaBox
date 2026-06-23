@@ -1432,12 +1432,16 @@
   "addPlaySession": {
     "title": "添加游玩记录",
     "desc": "您可以对过去的游玩时间进行补充记录，以更准确地统计总游玩时长。",
+    "date": "日期",
+    "selectDate": "选择日期",
     "startTime": "开始时间",
     "endTime": "结束时间",
     "duration": "游玩时长",
+    "endPreview": "预计结束",
     "submitting": "添加中...",
     "toast": {
       "endBeforeStart": "结束时间必须晋于开始时间",
+      "invalidStartTime": "请选择有效的开始时间",
       "zeroDuration": "游玩时长必须大于0",
       "futureEnd": "结束时间不能晋于当前时间",
       "success": "游玩记录添加成功",

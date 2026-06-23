@@ -1432,12 +1432,16 @@
   "addPlaySession": {
     "title": "Add Play Record",
     "desc": "You can add past play sessions to more accurately track your total play time.",
+    "date": "Date",
+    "selectDate": "Select date",
     "startTime": "Start Time",
     "endTime": "End Time",
     "duration": "Duration",
+    "endPreview": "Estimated End",
     "submitting": "Adding...",
     "toast": {
       "endBeforeStart": "End time must be after start time",
+      "invalidStartTime": "Select a valid start time",
       "zeroDuration": "Play duration must be greater than 0",
       "futureEnd": "End time cannot be in the future",
       "success": "Play record added successfully",
