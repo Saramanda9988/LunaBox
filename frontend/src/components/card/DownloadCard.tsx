@@ -144,10 +144,14 @@ export function DownloadCard({
                 <span className="i-mdi-play text-xl" />
               </button>
             )}
-            {isError && !isImageDownloadTask && (
+            {isError && (
               <button
                 type="button"
-                title={t("downloads.retry", "重试下载")}
+                title={
+                  isImageDownloadTask
+                    ? t("downloads.retryFailedCovers", "重试失败封面")
+                    : t("downloads.retry", "重试下载")
+                }
                 onClick={() => onRetry(task.id)}
                 className="border-l border-brand-300 flex h-10 w-10 items-center justify-center text-info-600 transition-colors hover:bg-info-100 dark:border-brand-600 dark:text-info-300 dark:hover:bg-info-900/40"
               >

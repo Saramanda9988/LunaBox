@@ -54,6 +54,10 @@ type DownloadTask struct {
 	cancel     context.CancelFunc
 	pauseReq   bool
 	cancelReq  bool
+	// coverItems 仅用于封面批量任务：在内存中保留"上一轮仍需处理的项"，
+	// 首跑时是全量列表，失败重试时是上一次的失败项。重启进程后该字段为空，
+	// 此时图片任务不再支持按粒度重试（与现有持久化策略一致）。
+	coverItems []CoverImageDownloadItem
 }
 
 // DownloadProgressEvent 通过 Wails event 推送的进度事件
@@ -164,10 +168,11 @@ func (s *DownloadService) StartCoverImageDownloadTask(items []CoverImageDownload
 			Size:           int64(len(normalized)),
 			ExpiresAt:      time.Now().Add(24 * time.Hour).Unix(),
 		},
-		Status:    DownloadStatusPending,
-		Total:     int64(len(normalized)),
-		cancel:    cancel,
-		cancelReq: false,
+		Status:     DownloadStatusPending,
+		Total:      int64(len(normalized)),
+		cancel:     cancel,
+		cancelReq:  false,
+		coverItems: normalized,
 	}
 
 	s.mu.Lock()
@@ -280,8 +285,20 @@ func (s *DownloadService) RetryDownload(taskID string) error {
 		return fmt.Errorf("task %s is not retryable", taskID)
 	}
 	if task.Request.DownloadSource == imageDownloadSource {
+		// 图片批量任务按粒度重试：只跑上一次失败的封面项
+		pending := task.coverItems
+		if len(pending) == 0 {
+			s.mu.Unlock()
+			return fmt.Errorf("no failed cover items to retry")
+		}
+		ctx := s.requeueTaskLocked(task)
+		task.Total = int64(len(pending))
+		task.Downloaded = 0
+		task.Progress = 0
 		s.mu.Unlock()
-		return fmt.Errorf("image download task cannot be retried")
+		s.emitProgress(task)
+		go s.runCoverImageDownloadTask(ctx, task, pending)
+		return nil
 	}
 	ctx := s.requeueTaskLocked(task)
 	s.mu.Unlock()
@@ -578,7 +595,7 @@ func (s *DownloadService) runCoverImageDownloadTask(ctx context.Context, task *D
 	s.emitProgress(task)
 
 	success := 0
-	failed := 0
+	failedItems := make([]CoverImageDownloadItem, 0)
 	for index, item := range items {
 		select {
 		case <-ctx.Done():
@@ -594,7 +611,7 @@ func (s *DownloadService) runCoverImageDownloadTask(ctx context.Context, task *D
 		if ok := s.downloadAndUpdateCoverImage(item); ok {
 			success++
 		} else {
-			failed++
+			failedItems = append(failedItems, item)
 		}
 
 		downloaded := int64(index + 1)
@@ -602,26 +619,29 @@ func (s *DownloadService) runCoverImageDownloadTask(ctx context.Context, task *D
 		s.mu.Lock()
 		task.Downloaded = downloaded
 		task.Progress = progress
-		if failed > 0 {
-			task.Error = fmt.Sprintf("success=%d failed=%d", success, failed)
+		if len(failedItems) > 0 {
+			task.Error = fmt.Sprintf("success=%d failed=%d", success, len(failedItems))
 		}
 		s.mu.Unlock()
 		s.emitProgress(task)
 	}
 
 	s.mu.Lock()
-	task.Status = DownloadStatusDone
 	task.Progress = 100
 	task.Downloaded = int64(len(items))
 	task.Total = int64(len(items))
-	if failed > 0 {
-		task.Error = fmt.Sprintf("success=%d failed=%d", success, failed)
+	task.coverItems = failedItems
+	if len(failedItems) > 0 {
+		// 留在 error 状态，让用户可以在下载页对该任务再次点重试，只重跑失败项
+		task.Status = DownloadStatusError
+		task.Error = fmt.Sprintf("success=%d failed=%d", success, len(failedItems))
 	} else {
+		task.Status = DownloadStatusDone
 		task.Error = ""
 	}
 	s.mu.Unlock()
 	s.emitProgress(task)
-	applog.LogInfof(s.ctx, "Cover image batch download complete: %s success=%d failed=%d", task.ID, success, failed)
+	applog.LogInfof(s.ctx, "Cover image batch download complete: %s success=%d failed=%d", task.ID, success, len(failedItems))
 }
 
 func (s *DownloadService) downloadAndUpdateCoverImage(item CoverImageDownloadItem) bool {
