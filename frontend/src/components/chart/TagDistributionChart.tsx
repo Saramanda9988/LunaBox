@@ -1,12 +1,18 @@
 import type { ChartData, ChartOptions, TooltipItem } from "chart.js";
-import { ArcElement, Chart as ChartJS, Legend, Tooltip } from "chart.js";
+import {
+  ArcElement,
+  Chart as ChartJS,
+  Legend,
+  RadialLinearScale,
+  Tooltip,
+} from "chart.js";
 import { useMemo } from "react";
-import { Doughnut } from "react-chartjs-2";
+import { PolarArea } from "react-chartjs-2";
 import { useTranslation } from "react-i18next";
 import { useChartTheme } from "../../hooks/useChartTheme";
-import { formatDuration, formatDurationCompact } from "../../utils/time";
+import { formatDuration } from "../../utils/time";
 
-ChartJS.register(ArcElement, Tooltip, Legend);
+ChartJS.register(ArcElement, RadialLinearScale, Tooltip, Legend);
 
 interface TagPlayStats {
   name: string;
@@ -37,14 +43,14 @@ export function TagDistributionChart({
   className = "",
 }: TagDistributionChartProps) {
   const { t } = useTranslation();
-  const { textColor, isDark } = useChartTheme();
+  const { isDark } = useChartTheme();
 
   const totalDuration = useMemo(
     () => tags.reduce((sum, tag) => sum + tag.total_duration, 0),
     [tags],
   );
 
-  const chartData: ChartData<"doughnut"> = useMemo(
+  const chartData: ChartData<"polarArea"> = useMemo(
     () => ({
       labels: tags.map(t => t.name),
       datasets: [
@@ -61,23 +67,32 @@ export function TagDistributionChart({
     [tags, isDark],
   );
 
-  const options = useMemo<ChartOptions<"doughnut">>(
+  const options = useMemo<ChartOptions<"polarArea">>(
     () => ({
       responsive: true,
       maintainAspectRatio: false,
-      cutout: "62%",
+      layout: {
+        padding: 0,
+      },
       plugins: {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: (ctx: TooltipItem<"doughnut">) => {
-              const value = Number(ctx.parsed || 0);
+            label: (ctx: TooltipItem<"polarArea">) => {
+              const value = Number(ctx.parsed.r || 0);
               const pct = totalDuration
                 ? ((value / totalDuration) * 100).toFixed(1)
                 : "0.0";
               return `${ctx.label}: ${formatDuration(value, t)} (${pct}%)`;
             },
           },
+        },
+      },
+      scales: {
+        r: {
+          beginAtZero: true,
+          display: false,
+          ticks: { display: false },
         },
       },
     }),
@@ -96,21 +111,10 @@ export function TagDistributionChart({
 
   return (
     <div className={`flex flex-col gap-5 ${className}`}>
-      {/* Doughnut - 居中置顶，固定尺寸保证可读 */}
+      {/* Polar area - 居中置顶，固定尺寸保证可读 */}
       <div className="flex justify-center">
         <div className="relative aspect-square w-[200px] max-w-full">
-          <Doughnut data={chartData} options={options} />
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-2">
-            <span className="text-xs text-brand-500 dark:text-brand-400">
-              {t("stats.tagDistribution.totalLabel")}
-            </span>
-            <span
-              className="text-base font-bold whitespace-nowrap"
-              style={{ color: textColor }}
-            >
-              {formatDuration(totalDuration, t)}
-            </span>
-          </div>
+          <PolarArea data={chartData} options={options} />
         </div>
       </div>
 
@@ -137,10 +141,8 @@ export function TagDistributionChart({
                   </span>
                   <span
                     className="text-xs font-mono text-brand-500 dark:text-brand-400 flex-shrink-0 whitespace-nowrap"
-                    title={`${formatDuration(tag.total_duration, t)} · ${pct.toFixed(1)}%`}
+                    title={`${pct.toFixed(1)}%`}
                   >
-                    {formatDurationCompact(tag.total_duration, t)}
-                    {" · "}
                     {pct.toFixed(1)}
                     %
                   </span>
