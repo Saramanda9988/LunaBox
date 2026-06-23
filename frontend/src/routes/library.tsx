@@ -144,6 +144,19 @@ function readStoredLibrarySearchQuery() {
   return readStoredValue(`${LIBRARY_STORAGE_KEY}_searchQuery`) || "";
 }
 
+function writeStoredLibrarySearchQuery(value: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (value) {
+    window.localStorage.setItem(`${LIBRARY_STORAGE_KEY}_searchQuery`, value);
+  }
+  else {
+    window.localStorage.removeItem(`${LIBRARY_STORAGE_KEY}_searchQuery`);
+  }
+}
+
 function readStoredLibraryStatusFilter() {
   const savedStatusFilter = readStoredValue(
     `${LIBRARY_STORAGE_KEY}_statusFilter`,
@@ -169,6 +182,7 @@ function LibraryPage() {
   const navigate = useNavigate();
   const { tagFilter: routeTagFilter, searchQuery: routeSearchQuery }
     = Route.useSearch();
+  const routeTagFilterValue = routeTagFilter?.trim() || "";
   const pageRef = useRef<HTMLDivElement | null>(null);
   const toolbarRef = useRef<HTMLDivElement | null>(null);
   const { t } = useTranslation();
@@ -201,6 +215,10 @@ function LibraryPage() {
   );
   const [statusFilter, setStatusFilter] = useState<GameStatusFilter>(() =>
     readStoredLibraryStatusFilter(),
+  );
+  const storedSelectedTags = useAppStore(state => state.librarySelectedTags);
+  const setStoredSelectedTags = useAppStore(
+    state => state.setLibrarySelectedTags,
   );
   const showSortField = useAppStore(
     state => state.config?.show_sort_field_on_cover ?? false,
@@ -310,6 +328,9 @@ function LibraryPage() {
     clearTagFilter,
   } = useTagGameFilter({
     enableTagTranslation,
+    initialSelectedTags: routeTagFilterValue
+      ? [routeTagFilterValue]
+      : storedSelectedTags,
     onManualTagChange: clearRouteTagFilter,
   });
   const isPageReady = !(loading && total === 0 && loadedGameCount === 0);
@@ -320,20 +341,24 @@ function LibraryPage() {
     toolbarRef,
   });
 
+  useEffect(() => {
+    setStoredSelectedTags(selectedTags);
+  }, [selectedTags, setStoredSelectedTags]);
+
   // 通过路由参数进入库页面时，自动应用 tag 筛选
   useEffect(() => {
-    const incomingTag = routeTagFilter?.trim();
-    if (!incomingTag) {
+    if (!routeTagFilterValue) {
       return;
     }
-    selectTag(incomingTag, { manual: false });
-  }, [routeTagFilter, selectTag]);
+    selectTag(routeTagFilterValue, { manual: false });
+  }, [routeTagFilterValue, selectTag]);
 
   useEffect(() => {
     const incomingSearchQuery = routeSearchQuery?.trim();
     if (!incomingSearchQuery) {
       return;
     }
+    writeStoredLibrarySearchQuery(incomingSearchQuery);
     setSearchQuery(incomingSearchQuery);
   }, [routeSearchQuery]);
 

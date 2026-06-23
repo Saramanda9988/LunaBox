@@ -98,6 +98,17 @@ function GameDetailPage() {
   const isInitialMount = useRef(true);
   const originalGameData = useRef<models.Game | null>(null);
 
+  const navigateToLibrary = () => {
+    navigate({ to: "/library" });
+  };
+
+  const searchLibraryByCompany = (company: string) => {
+    navigate({
+      to: "/library",
+      search: { searchQuery: company },
+    });
+  };
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -182,7 +193,7 @@ function GameDetailPage() {
         <p className="text-xl">{t("game.notFound")}</p>
         <button
           type="button"
-          onClick={() => navigate({ to: "/library" })}
+          onClick={navigateToLibrary}
           className="text-neutral-600 hover:underline"
         >
           {t("game.backToLibrary")}
@@ -216,7 +227,7 @@ function GameDetailPage() {
     try {
       await DeleteGame(game.id);
       toast.success(t("game.toast.deleteSuccess"));
-      navigate({ to: "/library" });
+      navigateToLibrary();
     }
     catch (error) {
       console.error("Failed to delete game:", error);
@@ -577,11 +588,7 @@ function GameDetailPage() {
               {game.company?.trim() ? (
                 <button
                   type="button"
-                  onClick={() =>
-                    navigate({
-                      to: "/library",
-                      search: { searchQuery: game.company.trim() },
-                    })}
+                  onClick={() => searchLibraryByCompany(game.company.trim())}
                   className="max-w-full break-all text-left text-brand-750 dark:text-brand-400"
                 >
                   {game.company}

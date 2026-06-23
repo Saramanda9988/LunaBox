@@ -15,6 +15,17 @@ type AISummaryCache = {
   [dimension: string]: string;
 };
 
+function normalizeLibraryTags(tags: string[]) {
+  return [...new Set(tags.map(tag => tag.trim()).filter(Boolean))];
+}
+
+function areStringArraysEqual(left: string[], right: string[]) {
+  return (
+    left.length === right.length
+    && left.every((value, index) => value === right[index])
+  );
+}
+
 function withSidebarState(
   config: appconf.AppConfig,
   sidebarOpen: boolean,
@@ -42,9 +53,11 @@ type AppState = {
   // 游戏列表全局状态
   games: models.Game[];
   gamesLoading: boolean;
+  librarySelectedTags: string[];
   fetchGames: (
     request?: Partial<vo.GameListRequest>,
   ) => Promise<vo.GameListResponse | null>;
+  setLibrarySelectedTags: (tags: string[]) => void;
   // AI Summary 缓存
   aiSummaryCache: AISummaryCache;
   setAISummary: (dimension: string, summary: string) => void;
@@ -73,6 +86,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isLoading: false,
   games: [],
   gamesLoading: false,
+  librarySelectedTags: [],
   fetchHomeData: async () => {
     set({ isLoading: true });
     try {
@@ -207,6 +221,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   // 游戏列表管理
+  setLibrarySelectedTags: (tags: string[]) => {
+    const nextTags = normalizeLibraryTags(tags);
+    if (areStringArraysEqual(get().librarySelectedTags, nextTags)) {
+      return;
+    }
+    set({ librarySelectedTags: nextTags });
+  },
   fetchGames: async (request = {}) => {
     set({ gamesLoading: true });
     try {
