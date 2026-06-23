@@ -24,6 +24,8 @@ const COLLAPSED_PEEK_HEIGHT = 14;
 const COLLAPSE_TRANSLATE_Y
   = COLLAPSED_PEEK_HEIGHT - ISLAND_HEIGHT - EXPANDED_TOP_GAP;
 const HIDE_DISTANCE = Math.abs(COLLAPSE_TRANSLATE_Y);
+const EXPANDED_ISLAND_WIDTH = "min(19rem, calc(100vw - 9rem))";
+const COLLAPSED_ISLAND_WIDTH = "15rem";
 const END_BUTTON_SELECTOR = "[data-playing-island-end]";
 const EXIT_ANIMATION_MS = 220;
 interface IslandDragState {
@@ -101,8 +103,11 @@ function PlayingIslandBody({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
+  const [shouldScrollTitle, setShouldScrollTitle] = useState(false);
   const dragRef = useRef<IslandDragState | null>(null);
   const suppressNextClickRef = useRef(false);
+  const titleMeasureRef = useRef<HTMLSpanElement | null>(null);
+  const titleViewportRef = useRef<HTMLDivElement | null>(null);
   const visible = isRuntimeVisible(gameRuntime.state);
   const elapsedSeconds = useElapsedSeconds(
     gameRuntime.startTime,
@@ -120,6 +125,53 @@ function PlayingIslandBody({
       duration: formatDurationCompact(elapsedSeconds, t),
     });
   }, [elapsedSeconds, gameRuntime.state, isEnding, t]);
+
+  const canMeasureTitle = !isCollapsed || dragOffset > 0;
+
+  useEffect(() => {
+    const measureElement = titleMeasureRef.current;
+    const viewportElement = titleViewportRef.current;
+
+    if (!measureElement || !viewportElement || !canMeasureTitle) {
+      setShouldScrollTitle(false);
+      return;
+    }
+
+    let animationFrame = 0;
+    let settleTimer = 0;
+
+    const updateTitleOverflow = () => {
+      if (animationFrame) {
+        window.cancelAnimationFrame(animationFrame);
+      }
+
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = 0;
+        const nextShouldScroll
+          = measureElement.offsetWidth > viewportElement.clientWidth + 1;
+        setShouldScrollTitle(current =>
+          current === nextShouldScroll ? current : nextShouldScroll,
+        );
+      });
+    };
+
+    updateTitleOverflow();
+    settleTimer = window.setTimeout(updateTitleOverflow, 430);
+
+    const resizeObserver = new ResizeObserver(updateTitleOverflow);
+    resizeObserver.observe(viewportElement);
+    resizeObserver.observe(measureElement);
+
+    return () => {
+      if (animationFrame) {
+        window.cancelAnimationFrame(animationFrame);
+      }
+      if (settleTimer) {
+        window.clearTimeout(settleTimer);
+      }
+      resizeObserver.disconnect();
+    };
+  }, [canMeasureTitle, game.name]);
 
   const handleEndPlay = async () => {
     if (!gameRuntime.gameId || isEnding) {
@@ -264,6 +316,11 @@ function PlayingIslandBody({
     : Math.min(Math.abs(dragOffset) / HIDE_DISTANCE, 1);
   const contentOpacity = 1 - hideProgress;
   const handleOpacity = Math.max(hideProgress, isCollapsed ? 1 : 0);
+  const isExpandedWidth = !isCollapsed || dragOffset > 0;
+  const islandFrameStyle = {
+    transform: `translate(-50%, ${translateY}px)`,
+    width: isExpandedWidth ? EXPANDED_ISLAND_WIDTH : COLLAPSED_ISLAND_WIDTH,
+  } as CSSProperties;
   const islandStyle = {
     "--wails-draggable": "no-drag",
     "touchAction": "none",
@@ -274,16 +331,15 @@ function PlayingIslandBody({
     <div
       className={[
         "pointer-events-none absolute left-1/2 top-[calc(28px+0.75rem)] z-45",
-        "w-[min(24rem,calc(100vw-9rem))]",
         isDragging
           ? "transition-none"
-          : "transition-[transform,opacity] duration-[420ms] ease-[cubic-bezier(.2,.9,.18,1)]",
+          : "transition-[width,transform,opacity] duration-[420ms] ease-[cubic-bezier(.2,.9,.18,1)]",
       ].join(" ")}
-      style={{ transform: `translate(-50%, ${translateY}px)` }}
+      style={islandFrameStyle}
     >
       <div
         className={[
-          "pointer-events-auto relative overflow-hidden rounded-full bg-black text-white",
+          "pointer-events-auto relative w-full overflow-hidden rounded-full bg-black text-white",
           "shadow-[0_16px_40px_rgba(0,0,0,0.34)] ring-1 ring-white/12",
           "h-14 origin-center transition-[box-shadow,opacity,transform] duration-[420ms] ease-[cubic-bezier(.2,.9,.18,1)]",
           isExiting
@@ -313,7 +369,6 @@ function PlayingIslandBody({
           ].join(" ")}
           style={{ opacity: contentOpacity }}
         >
-          {/* <span className="pointer-events-none absolute left-1/2 top-1 h-1.5 w-10 -translate-x-1/2 rounded-full bg-white/22" /> */}
           <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-brand-800 ring-1 ring-white/16">
             {game.cover_url ? (
               <ProxyImage
@@ -329,11 +384,27 @@ function PlayingIslandBody({
             )}
           </div>
           <div className="min-w-0 flex-1 overflow-hidden">
-            <div className="overflow-hidden whitespace-nowrap">
-              <div className="inline-block min-w-max animate-playing-island-marquee text-sm font-semibold leading-5">
-                <span>{game.name}</span>
-                <span className="px-8 text-white/28">{game.name}</span>
-              </div>
+            <div
+              ref={titleViewportRef}
+              className="relative overflow-hidden whitespace-nowrap"
+            >
+              {shouldScrollTitle ? (
+                <div className="inline-block min-w-max animate-playing-island-marquee text-sm font-semibold leading-5">
+                  <span>{game.name}</span>
+                  <span className="px-8 text-white/28">{game.name}</span>
+                </div>
+              ) : (
+                <div className="truncate text-sm font-semibold leading-5">
+                  {game.name}
+                </div>
+              )}
+              <span
+                ref={titleMeasureRef}
+                aria-hidden="true"
+                className="pointer-events-none invisible absolute left-0 top-0 inline-block whitespace-nowrap text-sm font-semibold leading-5"
+              >
+                {game.name}
+              </span>
             </div>
             <div className="text-xs leading-4 text-white/68">{statusText}</div>
           </div>
@@ -364,7 +435,7 @@ function PlayingIslandBody({
           style={{ opacity: handleOpacity }}
           aria-hidden="true"
         >
-          <span className="h-1.5 w-16 rounded-full bg-white/68 shadow-[0_0_16px_rgba(255,255,255,0.24)]" />
+          <span className="h-1 w-16 rounded-full bg-white/68 shadow-[0_0_16px_rgba(255,255,255,0.24)]" />
         </div>
       </div>
     </div>
