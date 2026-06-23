@@ -119,7 +119,6 @@ func (s *AiService) buildSystemPrompt(data *AIStatsData, spoilerLevel string) st
 	sb.WriteString("- 你首先是上方定义的人设，不是中立助手、新闻编辑或统计播报员。\n")
 	sb.WriteString("- 先按人设开口，再使用数据做支撑；所有评论都应像在直接点评玩家本人。\n")
 	sb.WriteString("- 后续所有通用要求都服务于人设表达；若与人设冲突，以人设要求优先，但仍必须遵守语言、剧透和篇幅限制。\n")
-	sb.WriteString("- 后续所有通用要求都服务于人设表达；若与人设冲突，以人设要求优先，但仍必须遵守语言、剧透和篇幅限制。\n")
 	sb.WriteString("- 允许有鲜明态度，但判断必须能从给定数据中找到依据。\n\n")
 
 	// 工具环境提醒
@@ -161,8 +160,11 @@ func (s *AiService) buildSystemPrompt(data *AIStatsData, spoilerLevel string) st
 	sb.WriteString("- 请以自然分段输出，不要出现小标题、编号或“玩家画像”“重点作品点评”等字样。不要写成标题列表、统计报告、攻略说明或媒体测评。\n")
 	sb.WriteString("- 请以自然分段输出，不要出现小标题、编号或“玩家画像”“重点作品点评”等字样。不要写成标题列表、统计报告、攻略说明或媒体测评。\n")
 	sb.WriteString("- 语气、措辞、是否调侃、是否使用 emoji、是否加入括号包含的动作描写等表现形式必须服从上方人设。适当添加，不要为了加而加\n")
-	sb.WriteString("- 评论重点是玩家的口味、习惯、状态与游玩时间特征\n")
+	sb.WriteString("- 评论重点是玩家的口味、习惯、状态与游玩时间特征。\n")
+	sb.WriteString("- 判断“用户最近在玩什么”时，优先参考最近启动记录和本期新增时长；不要只因为某款游戏累计时长高、简介丰富或库状态显眼，就把它写成用户正在持续游玩。\n")
 	sb.WriteString("- 不要把“当前库状态=已通关”理解为“用户在本期内通关”；除非数据明确提供通关日期，否则不得推断通关发生时间或用本期时长推断通关耗时。\n")
+	sb.WriteString("- 对当前库状态为“已通关”的游戏：如果它没有出现在最近启动记录中，或没有明确的本期新增时长，请按“已经收尾/曾经投入/作为口味背景”处理，不要写成“还在推进、继续沉迷、正在玩”。\n")
+	sb.WriteString("- 对当前库状态为“已通关”的游戏：如果它没有出现在最近启动记录中，或没有明确的本期新增时长，请按“已经收尾/曾经投入/作为口味背景”处理，不要写成“还在推进、继续沉迷、正在玩”。\n")
 	sb.WriteString("- 如果引用游戏简介或 WebSearch 信息，只能当作辅助证据，不要连续大段改写原文。必要时提及游戏名是可以的\n")
 	sb.WriteString("- 如果数据量少，请聚焦最明显的一两个特征，不要为了凑结构硬写。\n")
 
@@ -212,6 +214,25 @@ func (s *AiService) buildContextPrompt(data *AIStatsData) string {
 			if g.ProgressNote != "" {
 				sb.WriteString(fmt.Sprintf("   玩家进度备注：%s\n", g.ProgressNote))
 			}
+		}
+		sb.WriteString("\n")
+	}
+
+	if len(data.RecentSessions) > 0 {
+		limit := len(data.RecentSessions)
+		if limit > 8 {
+			limit = 8
+		}
+		sb.WriteString(fmt.Sprintf("最近启动记录（按启动时间倒序，优先用于判断近期实际在玩什么；仅列前 %d 条）：\n", limit))
+		for i := 0; i < limit; i++ {
+			sess := data.RecentSessions[i]
+			sb.WriteString(fmt.Sprintf("%d. 《%s》 — %.1f 小时，%s %02d时启动\n",
+				i+1,
+				sess.GameName,
+				float64(sess.Duration)/3600,
+				sess.StartTime.Format("2006-01-02"),
+				sess.Hour,
+			))
 		}
 		sb.WriteString("\n")
 	}
@@ -277,6 +298,8 @@ func (s *AiService) buildTaskPrompt(data *AIStatsData) string {
 
 优先抓住最鲜明的一两个特征，自然组织内容，不要自我解释结构，也不要套固定模板。
 游戏题材、标签、进度、作息和 WebSearch 信息都只能作为你下判断时的证据
+请把最近启动记录和本期新增时长作为中心线索：更偏向点评最近启动过、且确实增加了游玩时长的游戏。
+如果某款游戏当前库状态是已通关，但近期没有启动或没有明确新增时长，请把它当成已结束的经历/口味背景，不要描述成用户仍在玩这款游戏。
 
 请严格遵守[剧透控制]规则和[输出约束]规则，以你的人设，围绕用户在「%s」里的游玩表现写一段锐评。`, periodName)
 }
