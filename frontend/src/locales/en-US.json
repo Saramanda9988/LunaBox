@@ -656,6 +656,7 @@
     "ending": "Ending",
     "collapse": "Collapse current game",
     "expand": "Expand current game",
+    "switchGame": "Switch running game ({{count}})",
     "end": "End play session",
     "toast": {
       "endSuccess": "Ended this play session",

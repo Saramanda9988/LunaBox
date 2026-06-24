@@ -615,6 +615,7 @@
     "ending": "正在結束",
     "collapse": "收起正在遊玩的遊戲",
     "expand": "展開正在遊玩的遊戲",
+    "switchGame": "切換正在遊玩的遊戲（{{count}}）",
     "end": "結束遊玩",
     "toast": {
       "endSuccess": "已結束本次遊玩記錄",

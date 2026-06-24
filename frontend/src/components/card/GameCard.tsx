@@ -5,7 +5,6 @@ import { memo, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { enums } from "../../../wailsjs/go/models";
-import { StartGameWithTracking } from "../../../wailsjs/go/service/StartService";
 import { useAppStore } from "../../store";
 import { formatLocalDate } from "../../utils/time";
 import { ProxyImage } from "../ui/ProxyImage";
@@ -77,11 +76,12 @@ function GameCardComponent({
 }: GameCardProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const gameRuntime = useAppStore(state => state.gameRuntime);
-  const isCurrentGameRunning
-    = gameRuntime.gameId === game.id && gameRuntime.state !== "idle";
-  const isCurrentGameEnding
-    = gameRuntime.gameId === game.id && gameRuntime.state === "ending";
+  const startGame = useAppStore(state => state.startGame);
+  const gameRuntime = useAppStore(state =>
+    game.id ? state.gameRuntimes[game.id] : undefined,
+  );
+  const isCurrentGameRunning = Boolean(gameRuntime);
+  const isCurrentGameEnding = gameRuntime?.state === "ending";
 
   const handleToggleSelect = useCallback(
     (e: React.MouseEvent) => {
@@ -99,7 +99,7 @@ function GameCardComponent({
       }
       if (game.id) {
         try {
-          const started = await StartGameWithTracking(game.id);
+          const started = await startGame(game);
           // if (started) {
           //   toast.success(t("gameCard.startSuccess", { name: game.name }));
           // }
@@ -120,7 +120,7 @@ function GameCardComponent({
         }
       }
     },
-    [game.id, game.name, isCurrentGameRunning, t],
+    [game, isCurrentGameRunning, startGame, t],
   );
 
   const handleViewDetails = useCallback(() => {

@@ -29,6 +29,8 @@ export type GameRuntimeInfo = {
   state: GameRuntimeState;
 };
 
+export type GameRuntimeMap = Record<string, GameRuntimeInfo>;
+
 export type GameRuntimeChangedEvent = {
   game?: models.Game | null;
   game_id?: string;
@@ -61,6 +63,52 @@ function withSidebarState(
   return { ...config, sidebar_open: sidebarOpen };
 }
 
+export function isGameRuntimeVisible(runtime?: GameRuntimeInfo | null) {
+  return (
+    runtime?.state === "launching"
+    || runtime?.state === "playing"
+    || runtime?.state === "ending"
+  );
+}
+
+function getRuntimeStartTime(runtime: GameRuntimeInfo) {
+  const timestamp = Date.parse(String(runtime.startTime ?? ""));
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function getVisibleGameRuntimes(gameRuntimes: GameRuntimeMap) {
+  return Object.values(gameRuntimes).filter(isGameRuntimeVisible);
+}
+
+function pickGameRuntime(
+  gameRuntimes: GameRuntimeMap,
+  preferredGameId: string,
+): GameRuntimeInfo | undefined {
+  if (preferredGameId && isGameRuntimeVisible(gameRuntimes[preferredGameId])) {
+    return gameRuntimes[preferredGameId];
+  }
+
+  const visibleRuntimes = getVisibleGameRuntimes(gameRuntimes);
+  if (visibleRuntimes.length === 0) {
+    return undefined;
+  }
+
+  return [...visibleRuntimes].sort(
+    (left, right) => getRuntimeStartTime(right) - getRuntimeStartTime(left),
+  )[0];
+}
+
+function runtimeSelectionPatch(
+  gameRuntimes: GameRuntimeMap,
+  preferredGameId: string,
+) {
+  const gameRuntime = pickGameRuntime(gameRuntimes, preferredGameId);
+
+  return {
+    activeGameRuntimeId: gameRuntime?.gameId ?? "",
+  };
+}
+
 type AppState = {
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
@@ -70,12 +118,14 @@ type AppState = {
   draftConfig: appconf.AppConfig | null;
   platformGOOS: string;
   isLoading: boolean;
-  gameRuntime: GameRuntimeInfo;
+  gameRuntimes: GameRuntimeMap;
+  activeGameRuntimeId: string;
   fetchHomeData: (options?: FetchHomeDataOptions) => Promise<void>;
   fetchConfig: () => Promise<void>;
   fetchPlatformGOOS: () => Promise<void>;
   applyGameRuntimeEvent: (event: GameRuntimeChangedEvent) => void;
-  setGameRuntimeFromHome: (lastPlayed: vo.LastPlayedGame | null) => void;
+  setGameRuntimeFromHome: (recentPlayed: vo.LastPlayedGame[] | null) => void;
+  selectNextGameRuntime: () => void;
   startGame: (
     game: models.Game,
     options?: launcher.LaunchOptions,
@@ -119,13 +169,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   draftConfig: null,
   platformGOOS: "",
   isLoading: false,
-  gameRuntime: {
-    game: null,
-    gameId: "",
-    sessionId: "",
-    startTime: null,
-    state: "idle",
-  },
+  gameRuntimes: {},
+  activeGameRuntimeId: "",
   games: [],
   gamesLoading: false,
   librarySelectedTags: [],
@@ -139,7 +184,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const data = await GetHomePageData();
       set({ homeData: data });
       if (options.syncRuntime !== false) {
-        get().setGameRuntimeFromHome(data?.last_played ?? null);
+        get().setGameRuntimeFromHome(data?.recent_played ?? null);
       }
     }
     catch (error) {
@@ -177,77 +222,123 @@ export const useAppStore = create<AppState>((set, get) => ({
     const state = event.state ?? "idle";
     const gameId = event.game_id ?? event.game?.id ?? "";
 
+    if (!gameId) {
+      if (state === "idle") {
+        set({
+          activeGameRuntimeId: "",
+          gameRuntimes: {},
+        });
+      }
+      return;
+    }
+
     if (state === "idle") {
       set((currentState) => {
+        const currentRuntime = currentState.gameRuntimes[gameId];
         if (
-          gameId
-          && currentState.gameRuntime.gameId
-          && currentState.gameRuntime.gameId !== gameId
+          event.session_id
+          && currentRuntime?.sessionId
+          && currentRuntime.sessionId !== event.session_id
         ) {
           return currentState;
         }
 
+        const nextGameRuntimes = { ...currentState.gameRuntimes };
+        delete nextGameRuntimes[gameId];
+        const preferredGameId
+          = currentState.activeGameRuntimeId === gameId
+            ? ""
+            : currentState.activeGameRuntimeId;
+
         return {
-          gameRuntime: {
-            game: event.game ?? null,
-            gameId,
-            sessionId: event.session_id ?? "",
-            startTime: event.start_time ?? null,
-            state: "idle",
-          },
+          gameRuntimes: nextGameRuntimes,
+          ...runtimeSelectionPatch(nextGameRuntimes, preferredGameId),
         };
       });
       return;
     }
 
-    set(currentState => ({
-      gameRuntime: {
-        game: event.game ?? currentState.gameRuntime.game,
+    set((currentState) => {
+      const currentRuntime = currentState.gameRuntimes[gameId];
+      const nextRuntime: GameRuntimeInfo = {
+        game: event.game ?? currentRuntime?.game ?? null,
         gameId,
-        sessionId: event.session_id ?? currentState.gameRuntime.sessionId,
-        startTime: event.start_time ?? currentState.gameRuntime.startTime,
+        sessionId: event.session_id ?? currentRuntime?.sessionId ?? "",
+        startTime: event.start_time ?? currentRuntime?.startTime ?? null,
         state,
-      },
-    }));
+      };
+      const nextGameRuntimes = {
+        ...currentState.gameRuntimes,
+        [gameId]: nextRuntime,
+      };
+      const preferredGameId
+        = state === "launching"
+          || !isGameRuntimeVisible(
+            currentState.gameRuntimes[currentState.activeGameRuntimeId],
+          )
+          ? gameId
+          : currentState.activeGameRuntimeId;
+
+      return {
+        gameRuntimes: nextGameRuntimes,
+        ...runtimeSelectionPatch(nextGameRuntimes, preferredGameId),
+      };
+    });
   },
-  setGameRuntimeFromHome: (lastPlayed: vo.LastPlayedGame | null) => {
-    if (!lastPlayed?.is_playing) {
-      set((state) => {
-        if (state.gameRuntime.state === "idle") {
+  setGameRuntimeFromHome: (recentPlayed: vo.LastPlayedGame[] | null) => {
+    const playingItems = (recentPlayed ?? []).filter(
+      item => item.is_playing && item.game?.id,
+    );
+
+    set((state) => {
+      if (playingItems.length === 0) {
+        if (getVisibleGameRuntimes(state.gameRuntimes).length === 0) {
           return state;
         }
 
         return {
-          gameRuntime: {
-            game: state.gameRuntime.game,
-            gameId: state.gameRuntime.gameId,
-            sessionId: state.gameRuntime.sessionId,
-            startTime: state.gameRuntime.startTime,
-            state: "idle",
-          },
+          gameRuntimes: {},
+          ...runtimeSelectionPatch({}, ""),
         };
-      });
-      return;
-    }
+      }
 
-    const game = lastPlayed.game;
-    set(state => ({
-      gameRuntime: {
-        game,
-        gameId: game.id,
-        sessionId:
-          state.gameRuntime.gameId === game.id
-            ? state.gameRuntime.sessionId
-            : "",
-        startTime: lastPlayed.last_played_at,
-        state:
-          state.gameRuntime.gameId === game.id
-          && (state.gameRuntime.state === "launching"
-            || state.gameRuntime.state === "ending")
-            ? state.gameRuntime.state
-            : "playing",
-      },
-    }));
+      const nextGameRuntimes: GameRuntimeMap = {};
+      for (const item of playingItems) {
+        const game = item.game;
+        const currentRuntime = state.gameRuntimes[game.id];
+        nextGameRuntimes[game.id] = {
+          game,
+          gameId: game.id,
+          sessionId: currentRuntime?.sessionId ?? "",
+          startTime: item.last_played_at,
+          state:
+            currentRuntime?.state === "launching"
+            || currentRuntime?.state === "ending"
+              ? currentRuntime.state
+              : "playing",
+        };
+      }
+
+      return {
+        gameRuntimes: nextGameRuntimes,
+        ...runtimeSelectionPatch(nextGameRuntimes, state.activeGameRuntimeId),
+      };
+    });
+  },
+  selectNextGameRuntime: () => {
+    set((state) => {
+      const runtimes = getVisibleGameRuntimes(state.gameRuntimes);
+      if (runtimes.length <= 1) {
+        return state;
+      }
+
+      const currentIndex = runtimes.findIndex(
+        runtime => runtime.gameId === state.activeGameRuntimeId,
+      );
+      const nextRuntime = runtimes[(currentIndex + 1) % runtimes.length];
+
+      return runtimeSelectionPatch(state.gameRuntimes, nextRuntime.gameId);
+    });
   },
   startGame: async (game: models.Game, options?: launcher.LaunchOptions) => {
     const gameId = game.id;
@@ -255,35 +346,57 @@ export const useAppStore = create<AppState>((set, get) => ({
       return false;
     }
 
-    const previousRuntime = get().gameRuntime;
-    if (previousRuntime.gameId === gameId && previousRuntime.state !== "idle") {
+    const previousGameRuntimes = get().gameRuntimes;
+    const previousActiveGameRuntimeId = get().activeGameRuntimeId;
+    const previousRuntime = previousGameRuntimes[gameId];
+    if (isGameRuntimeVisible(previousRuntime)) {
+      set(runtimeSelectionPatch(previousGameRuntimes, gameId));
       return true;
     }
 
     const optimisticStartTime = new Date().toISOString();
+    const optimisticRuntime: GameRuntimeInfo = {
+      game,
+      gameId,
+      sessionId: previousRuntime?.sessionId ?? "",
+      startTime: optimisticStartTime,
+      state: "launching",
+    };
+    const optimisticGameRuntimes = {
+      ...previousGameRuntimes,
+      [gameId]: optimisticRuntime,
+    };
     set({
-      gameRuntime: {
-        game,
-        gameId,
-        sessionId:
-          previousRuntime.gameId === gameId ? previousRuntime.sessionId : "",
-        startTime: optimisticStartTime,
-        state: "launching",
-      },
+      gameRuntimes: optimisticGameRuntimes,
+      ...runtimeSelectionPatch(optimisticGameRuntimes, gameId),
     });
 
     const rollbackOptimisticRuntime = () => {
       set((state) => {
-        const runtime = state.gameRuntime;
+        const runtime = state.gameRuntimes[gameId];
         if (
-          runtime.gameId !== gameId
+          !runtime
           || runtime.startTime !== optimisticStartTime
           || runtime.state !== "launching"
         ) {
           return state;
         }
 
-        return { gameRuntime: previousRuntime };
+        const nextGameRuntimes = { ...state.gameRuntimes };
+        if (previousRuntime) {
+          nextGameRuntimes[gameId] = previousRuntime;
+        }
+        else {
+          delete nextGameRuntimes[gameId];
+        }
+
+        return {
+          gameRuntimes: nextGameRuntimes,
+          ...runtimeSelectionPatch(
+            nextGameRuntimes,
+            previousActiveGameRuntimeId,
+          ),
+        };
       });
     };
 

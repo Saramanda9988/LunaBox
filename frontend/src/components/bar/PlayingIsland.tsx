@@ -1,6 +1,7 @@
 import type {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
 } from "react";
 import type { GameRuntimeInfo } from "../../store";
@@ -9,13 +10,9 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import { EndCurrentPlaySession } from "../../../wailsjs/go/service/StartService";
 import { useElapsedSeconds } from "../../hooks/useElapsedSeconds";
-import { useAppStore } from "../../store";
+import { isGameRuntimeVisible, useAppStore } from "../../store";
 import { formatDurationCompact } from "../../utils/time";
 import { ProxyImage } from "../ui/ProxyImage";
-
-function isRuntimeVisible(state: string) {
-  return state === "launching" || state === "playing" || state === "ending";
-}
 
 const COLLAPSE_DRAG_THRESHOLD = 24;
 const ISLAND_HEIGHT = 56;
@@ -27,7 +24,8 @@ const HIDE_DISTANCE = Math.abs(COLLAPSE_TRANSLATE_Y);
 const EXPANDED_ISLAND_WIDTH = "min(19rem, calc(100vw - 9rem))";
 const COLLAPSED_ISLAND_WIDTH = "15rem";
 const AUTO_COLLAPSE_AFTER_PLAYING_SECONDS = 5;
-const END_BUTTON_SELECTOR = "[data-playing-island-end]";
+const INTERACTIVE_SELECTOR
+  = "[data-playing-island-end],[data-playing-island-switch]";
 const ENTER_ANIMATION_MS = 360;
 const EXIT_ANIMATION_MS = 220;
 interface IslandDragState {
@@ -37,16 +35,24 @@ interface IslandDragState {
 }
 
 export function PlayingIsland() {
-  const gameRuntime = useAppStore(state => state.gameRuntime);
-  const visible = isRuntimeVisible(gameRuntime.state);
+  const gameRuntime = useAppStore(
+    state => state.gameRuntimes[state.activeGameRuntimeId] ?? null,
+  );
+  const runtimeCount = useAppStore(
+    state => Object.keys(state.gameRuntimes).length,
+  );
+  const selectNextGameRuntime = useAppStore(
+    state => state.selectNextGameRuntime,
+  );
+  const visible = isGameRuntimeVisible(gameRuntime);
   const [renderRuntime, setRenderRuntime] = useState<GameRuntimeInfo | null>(
-    () => (visible && gameRuntime.game ? gameRuntime : null),
+    () => (visible && gameRuntime?.game ? gameRuntime : null),
   );
   const [isExiting, setIsExiting] = useState(false);
   const exitTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (visible && gameRuntime.game) {
+    if (visible && gameRuntime?.game) {
       if (exitTimerRef.current !== null) {
         window.clearTimeout(exitTimerRef.current);
         exitTimerRef.current = null;
@@ -84,10 +90,12 @@ export function PlayingIsland() {
 
   return (
     <PlayingIslandBody
-      key={renderRuntime.gameId}
+      key={`${renderRuntime.gameId}:${renderRuntime.sessionId}`}
       game={game}
       gameRuntime={renderRuntime}
       isExiting={isExiting}
+      onSwitchRuntime={selectNextGameRuntime}
+      runtimeCount={runtimeCount}
     />
   );
 }
@@ -96,10 +104,14 @@ function PlayingIslandBody({
   game,
   gameRuntime,
   isExiting,
+  onSwitchRuntime,
+  runtimeCount,
 }: {
   game: NonNullable<GameRuntimeInfo["game"]>;
   gameRuntime: GameRuntimeInfo;
   isExiting: boolean;
+  onSwitchRuntime: () => void;
+  runtimeCount: number;
 }) {
   const { t } = useTranslation();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -112,7 +124,8 @@ function PlayingIslandBody({
   const autoCollapsedRuntimeRef = useRef("");
   const titleMeasureRef = useRef<HTMLSpanElement | null>(null);
   const titleViewportRef = useRef<HTMLDivElement | null>(null);
-  const visible = isRuntimeVisible(gameRuntime.state);
+  const visible = isGameRuntimeVisible(gameRuntime);
+  const hasMultipleRuntimes = runtimeCount > 1;
   const elapsedSeconds = useElapsedSeconds(
     gameRuntime.startTime,
     visible && Boolean(gameRuntime.startTime),
@@ -154,22 +167,13 @@ function PlayingIslandBody({
       return;
     }
 
-    const remainingSeconds
-      = AUTO_COLLAPSE_AFTER_PLAYING_SECONDS - elapsedSeconds;
-
-    if (remainingSeconds <= 0) {
-      autoCollapsedRuntimeRef.current = runtimeKey;
-      setIsCollapsed(true);
-      return;
-    }
-
     const timer = window.setTimeout(() => {
       autoCollapsedRuntimeRef.current = runtimeKey;
       setIsCollapsed(true);
-    }, remainingSeconds * 1000);
+    }, AUTO_COLLAPSE_AFTER_PLAYING_SECONDS * 1000);
 
     return () => window.clearTimeout(timer);
-  }, [elapsedSeconds, gameRuntime.state, isCollapsed, isExiting, runtimeKey]);
+  }, [gameRuntime.state, isCollapsed, isExiting, runtimeKey]);
 
   const canMeasureTitle = !isCollapsed || dragOffset > 0;
 
@@ -235,6 +239,18 @@ function PlayingIslandBody({
     }
   };
 
+  const handleSwitchRuntime = useCallback(
+    (event: ReactMouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+      if (!hasMultipleRuntimes) {
+        return;
+      }
+
+      onSwitchRuntime();
+    },
+    [hasMultipleRuntimes, onSwitchRuntime],
+  );
+
   const resetDrag = useCallback(() => {
     dragRef.current = null;
     setDragOffset(0);
@@ -247,7 +263,7 @@ function PlayingIslandBody({
       }
 
       const target = event.target;
-      if (target instanceof Element && target.closest(END_BUTTON_SELECTOR)) {
+      if (target instanceof Element && target.closest(INTERACTIVE_SELECTOR)) {
         return;
       }
 
@@ -408,13 +424,28 @@ function PlayingIslandBody({
         <div
           className={[
             "flex h-full min-w-0 items-center gap-3 px-3",
+            isCollapsed && !isDragging ? "pointer-events-none" : "",
             isDragging
               ? "transition-none"
               : "transition-opacity duration-[260ms] ease-out",
           ].join(" ")}
           style={{ opacity: contentOpacity }}
         >
-          <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-brand-100 ring-1 ring-brand-900/10 dark:bg-brand-800 dark:ring-white/16">
+          <button
+            type="button"
+            data-playing-island-switch
+            aria-label={t("playingIsland.switchGame", {
+              count: runtimeCount,
+            })}
+            disabled={!hasMultipleRuntimes}
+            onClick={handleSwitchRuntime}
+            className={[
+              "relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-brand-100 ring-1 ring-brand-900/10 transition-transform dark:bg-brand-800 dark:ring-white/16",
+              hasMultipleRuntimes
+                ? "cursor-pointer hover:scale-105 active:scale-95"
+                : "cursor-default",
+            ].join(" ")}
+          >
             {game.cover_url ? (
               <ProxyImage
                 src={game.cover_url}
@@ -427,7 +458,12 @@ function PlayingIslandBody({
                 <span className="i-mdi-gamepad-variant text-lg text-brand-500 dark:text-white/65" />
               </div>
             )}
-          </div>
+            {hasMultipleRuntimes && (
+              <span className="absolute right-0 top-0 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-brand-900 px-1 text-[9px] font-semibold leading-none text-white ring-1 ring-white/90 dark:bg-white dark:text-brand-900 dark:ring-black/80">
+                {runtimeCount}
+              </span>
+            )}
+          </button>
           <div className="min-w-0 flex-1 overflow-hidden">
             <div
               ref={titleViewportRef}

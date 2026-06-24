@@ -21,10 +21,6 @@ import {
   UpdateGame,
   UpdateGameFromRemoteWithFields,
 } from "../../wailsjs/go/service/GameService";
-import {
-  StartGameWithOptions,
-  StartGameWithTracking,
-} from "../../wailsjs/go/service/StartService";
 import { AddToCategoryModal } from "../components/modal/AddToCategoryModal";
 import { ConfirmModal } from "../components/modal/ConfirmModal";
 import {
@@ -73,7 +69,8 @@ function GameDetailPage() {
   const { gameId } = Route.useParams();
   const config = useAppStore(state => state.config);
   const platformGOOS = useAppStore(state => state.platformGOOS);
-  const gameRuntime = useAppStore(state => state.gameRuntime);
+  const startGame = useAppStore(state => state.startGame);
+  const gameRuntime = useAppStore(state => state.gameRuntimes[gameId]);
   const { t } = useTranslation();
   const [game, setGame] = useState<models.Game | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -346,13 +343,13 @@ function GameDetailPage() {
   const handleStartGame = async (mode: LaunchMode = launchMode) => {
     if (!game || !game.id)
       return;
-    if (gameRuntime.gameId === game.id && gameRuntime.state !== "idle")
+    if (gameRuntime)
       return;
     try {
       const started
         = mode === "admin"
-          ? await StartGameWithOptions(game.id, { RunAsAdmin: true })
-          : await StartGameWithTracking(game.id);
+          ? await startGame(game, { RunAsAdmin: true })
+          : await startGame(game);
       if (started) {
         try {
           const updatedGame = await GetGameByID(game.id);
@@ -504,10 +501,8 @@ function GameDetailPage() {
   const selectedLaunchOption
     = launchOptions.find(option => option.key === launchMode)
       ?? launchOptions[0];
-  const isCurrentGameRunning
-    = gameRuntime.gameId === game.id && gameRuntime.state !== "idle";
-  const isCurrentGameEnding
-    = gameRuntime.gameId === game.id && gameRuntime.state === "ending";
+  const isCurrentGameRunning = Boolean(gameRuntime);
+  const isCurrentGameEnding = gameRuntime?.state === "ending";
 
   return (
     <div

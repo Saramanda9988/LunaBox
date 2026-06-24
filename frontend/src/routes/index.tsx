@@ -171,11 +171,11 @@ function HomePage() {
     } as models.Game;
   }, [selectedCarouselItem]);
   const selectedGameHasRuntime = useAppStore((state) => {
-    if (!selectedGame?.id || state.gameRuntime.gameId !== selectedGame.id) {
+    if (!selectedGame?.id) {
       return false;
     }
 
-    return state.gameRuntime.state !== "idle";
+    return Boolean(state.gameRuntimes[selectedGame.id]);
   });
 
   const selectedGameCoverSrc = selectedGame?.cover_url ?? "";
