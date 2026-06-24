@@ -28,10 +28,20 @@ const INTERACTIVE_SELECTOR
   = "[data-playing-island-end],[data-playing-island-switch]";
 const ENTER_ANIMATION_MS = 360;
 const EXIT_ANIMATION_MS = 220;
+const CONTENT_SWITCH_ANIMATION_MS = 260;
 interface IslandDragState {
   pointerId: number;
   startCollapsed: boolean;
   startY: number;
+}
+
+interface RuntimeSnapshot {
+  game: NonNullable<GameRuntimeInfo["game"]>;
+  statusText: string;
+}
+
+function getRuntimeKey(runtime: GameRuntimeInfo) {
+  return `${runtime.gameId}:${runtime.sessionId}:${String(runtime.startTime ?? "")}`;
 }
 
 export function PlayingIsland() {
@@ -90,7 +100,6 @@ export function PlayingIsland() {
 
   return (
     <PlayingIslandBody
-      key={`${renderRuntime.gameId}:${renderRuntime.sessionId}`}
       game={game}
       gameRuntime={renderRuntime}
       isExiting={isExiting}
@@ -119,16 +128,22 @@ function PlayingIslandBody({
   const [dragOffset, setDragOffset] = useState(0);
   const [shouldScrollTitle, setShouldScrollTitle] = useState(false);
   const [hasPlayedEnterAnimation, setHasPlayedEnterAnimation] = useState(false);
+  const [displayRuntime, setDisplayRuntime] = useState(gameRuntime);
+  const [outgoingSnapshot, setOutgoingSnapshot]
+    = useState<RuntimeSnapshot | null>(null);
+  const [isSwitchingRuntime, setIsSwitchingRuntime] = useState(false);
   const dragRef = useRef<IslandDragState | null>(null);
   const suppressNextClickRef = useRef(false);
   const autoCollapsedRuntimeRef = useRef("");
+  const contentSwitchTimerRef = useRef<number | null>(null);
   const titleMeasureRef = useRef<HTMLSpanElement | null>(null);
   const titleViewportRef = useRef<HTMLDivElement | null>(null);
-  const visible = isGameRuntimeVisible(gameRuntime);
+  const displayGame = displayRuntime.game ?? game;
+  const visible = isGameRuntimeVisible(displayRuntime);
   const hasMultipleRuntimes = runtimeCount > 1;
   const elapsedSeconds = useElapsedSeconds(
-    gameRuntime.startTime,
-    visible && Boolean(gameRuntime.startTime),
+    displayRuntime.startTime,
+    visible && Boolean(displayRuntime.startTime),
   );
 
   useEffect(() => {
@@ -144,24 +159,66 @@ function PlayingIslandBody({
   }, [hasPlayedEnterAnimation]);
 
   const statusText = useMemo(() => {
-    if (gameRuntime.state === "launching") {
+    if (displayRuntime.state === "launching") {
       return t("playingIsland.launching");
     }
-    if (gameRuntime.state === "ending" || isEnding) {
+    if (displayRuntime.state === "ending" || isEnding) {
       return t("playingIsland.ending");
     }
     return t("playingIsland.elapsed", {
       duration: formatDurationCompact(elapsedSeconds, t),
     });
-  }, [elapsedSeconds, gameRuntime.state, isEnding, t]);
+  }, [displayRuntime.state, elapsedSeconds, isEnding, t]);
 
-  const runtimeKey = `${gameRuntime.gameId}:${gameRuntime.sessionId}:${String(gameRuntime.startTime ?? "")}`;
+  const runtimeKey = getRuntimeKey(displayRuntime);
+  const incomingRuntimeKey = getRuntimeKey(gameRuntime);
+
+  useEffect(() => {
+    if (runtimeKey === incomingRuntimeKey) {
+      if (displayRuntime !== gameRuntime) {
+        setDisplayRuntime(gameRuntime);
+      }
+      return;
+    }
+
+    if (contentSwitchTimerRef.current !== null) {
+      window.clearTimeout(contentSwitchTimerRef.current);
+    }
+
+    setOutgoingSnapshot({
+      game: displayGame,
+      statusText,
+    });
+    setDisplayRuntime(gameRuntime);
+    setIsEnding(false);
+    setIsSwitchingRuntime(true);
+    contentSwitchTimerRef.current = window.setTimeout(() => {
+      setOutgoingSnapshot(null);
+      setIsSwitchingRuntime(false);
+      contentSwitchTimerRef.current = null;
+    }, CONTENT_SWITCH_ANIMATION_MS);
+  }, [
+    displayGame,
+    displayRuntime,
+    gameRuntime,
+    incomingRuntimeKey,
+    runtimeKey,
+    statusText,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      if (contentSwitchTimerRef.current !== null) {
+        window.clearTimeout(contentSwitchTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (
       isExiting
       || isCollapsed
-      || gameRuntime.state !== "playing"
+      || displayRuntime.state !== "playing"
       || autoCollapsedRuntimeRef.current === runtimeKey
     ) {
       return;
@@ -173,7 +230,7 @@ function PlayingIslandBody({
     }, AUTO_COLLAPSE_AFTER_PLAYING_SECONDS * 1000);
 
     return () => window.clearTimeout(timer);
-  }, [gameRuntime.state, isCollapsed, isExiting, runtimeKey]);
+  }, [displayRuntime.state, isCollapsed, isExiting, runtimeKey]);
 
   const canMeasureTitle = !isCollapsed || dragOffset > 0;
 
@@ -220,16 +277,16 @@ function PlayingIslandBody({
       }
       resizeObserver.disconnect();
     };
-  }, [canMeasureTitle, game.name]);
+  }, [canMeasureTitle, displayGame.name]);
 
   const handleEndPlay = async () => {
-    if (!gameRuntime.gameId || isEnding) {
+    if (!displayRuntime.gameId || isEnding) {
       return;
     }
 
     setIsEnding(true);
     try {
-      await EndCurrentPlaySession(gameRuntime.gameId);
+      await EndCurrentPlaySession(displayRuntime.gameId);
       toast.success(t("playingIsland.toast.endSuccess"));
     }
     catch (error) {
@@ -249,6 +306,38 @@ function PlayingIslandBody({
       onSwitchRuntime();
     },
     [hasMultipleRuntimes, onSwitchRuntime],
+  );
+
+  const renderCoverContent = useCallback(
+    (snapshotGame: NonNullable<GameRuntimeInfo["game"]>) => (
+      <>
+        {snapshotGame.cover_url ? (
+          <ProxyImage
+            src={snapshotGame.cover_url}
+            alt={snapshotGame.name}
+            className={[
+              "h-full w-full object-cover transition-[filter,opacity] duration-180",
+              hasMultipleRuntimes
+                ? "group-hover:blur-[1.5px] group-hover:brightness-75"
+                : "",
+            ].join(" ")}
+            decoding="async"
+          />
+        ) : (
+          <div
+            className={[
+              "flex h-full w-full items-center justify-center transition-[filter,opacity] duration-180",
+              hasMultipleRuntimes
+                ? "group-hover:blur-[1px] group-hover:brightness-75"
+                : "",
+            ].join(" ")}
+          >
+            <span className="i-mdi-gamepad-variant text-lg text-brand-500 dark:text-white/65" />
+          </div>
+        )}
+      </>
+    ),
+    [hasMultipleRuntimes],
   );
 
   const resetDrag = useCallback(() => {
@@ -431,52 +520,61 @@ function PlayingIslandBody({
           ].join(" ")}
           style={{ opacity: contentOpacity }}
         >
-          <button
-            type="button"
-            data-playing-island-switch
-            aria-label={t("playingIsland.switchGame", {
-              count: runtimeCount,
-            })}
-            disabled={!hasMultipleRuntimes}
-            onClick={handleSwitchRuntime}
+          <div
             className={[
-              "relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-brand-100 ring-1 ring-brand-900/10 transition-transform dark:bg-brand-800 dark:ring-white/16",
-              hasMultipleRuntimes
-                ? "cursor-pointer hover:scale-105 active:scale-95"
-                : "cursor-default",
+              "relative h-9 w-9 shrink-0",
+              isSwitchingRuntime ? "animate-playing-island-content-in" : "",
             ].join(" ")}
           >
-            {game.cover_url ? (
-              <ProxyImage
-                src={game.cover_url}
-                alt={game.name}
-                className="h-full w-full object-cover"
-                decoding="async"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <span className="i-mdi-gamepad-variant text-lg text-brand-500 dark:text-white/65" />
+            <button
+              type="button"
+              data-playing-island-switch
+              aria-label={t("playingIsland.switchGame", {
+                count: runtimeCount,
+              })}
+              disabled={!hasMultipleRuntimes}
+              onClick={handleSwitchRuntime}
+              className={[
+                "group relative h-full w-full overflow-hidden rounded-full bg-brand-100 ring-1 ring-brand-900/10 transition-[box-shadow,background-color] duration-180 dark:bg-brand-800 dark:ring-white/16",
+                hasMultipleRuntimes
+                  ? "cursor-pointer hover:bg-brand-200 hover:ring-brand-900/18 dark:hover:bg-brand-700 dark:hover:ring-white/24"
+                  : "cursor-default",
+              ].join(" ")}
+            >
+              {renderCoverContent(displayGame)}
+              {hasMultipleRuntimes && (
+                <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-brand-900/22 opacity-0 transition-opacity duration-180 group-hover:opacity-100 dark:bg-black/28">
+                  <span className="i-mdi-arrow-right text-lg text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)]" />
+                </span>
+              )}
+            </button>
+            {outgoingSnapshot && (
+              <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-full bg-brand-100 ring-1 ring-brand-900/10 animate-playing-island-content-out dark:bg-brand-800 dark:ring-white/16">
+                {renderCoverContent(outgoingSnapshot.game)}
               </div>
             )}
             {hasMultipleRuntimes && (
-              <span className="absolute right-0 top-0 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-brand-900 px-1 text-[9px] font-semibold leading-none text-white ring-1 ring-white/90 dark:bg-white dark:text-brand-900 dark:ring-black/80">
+              <span className="pointer-events-none absolute -right-1 -top-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-white px-1 text-[10px] font-semibold leading-none text-brand-900 ring-1 ring-brand-900/16 shadow-[0_2px_7px_rgba(0,0,0,0.18)] dark:bg-white dark:text-brand-900 dark:ring-black/50">
                 {runtimeCount}
               </span>
             )}
-          </button>
-          <div className="min-w-0 flex-1 overflow-hidden">
+          </div>
+          <div className="relative min-w-0 flex-1 overflow-hidden">
             <div
               ref={titleViewportRef}
-              className="relative overflow-hidden whitespace-nowrap"
+              className={[
+                "relative overflow-hidden whitespace-nowrap",
+                isSwitchingRuntime ? "animate-playing-island-content-in" : "",
+              ].join(" ")}
             >
               {shouldScrollTitle ? (
                 <div className="inline-block min-w-max animate-playing-island-marquee text-sm font-semibold leading-5">
-                  <span>{game.name}</span>
-                  <span className="px-8">{game.name}</span>
+                  <span>{displayGame.name}</span>
+                  <span className="px-8">{displayGame.name}</span>
                 </div>
               ) : (
                 <div className="truncate text-sm font-semibold leading-5">
-                  {game.name}
+                  {displayGame.name}
                 </div>
               )}
               <span
@@ -484,24 +582,39 @@ function PlayingIslandBody({
                 aria-hidden="true"
                 className="pointer-events-none invisible absolute left-0 top-0 inline-block whitespace-nowrap text-sm font-semibold leading-5"
               >
-                {game.name}
+                {displayGame.name}
               </span>
             </div>
-            <div className="text-xs leading-4 text-brand-600 dark:text-white/68">
+            <div
+              className={[
+                "text-xs leading-4 text-brand-600 dark:text-white/68",
+                isSwitchingRuntime ? "animate-playing-island-content-in" : "",
+              ].join(" ")}
+            >
               {statusText}
             </div>
+            {outgoingSnapshot && (
+              <div className="pointer-events-none absolute inset-0 z-10 animate-playing-island-content-out overflow-hidden bg-white/96 dark:bg-black data-glass:bg-white/82 data-glass:dark:bg-black/62">
+                <div className="truncate text-sm font-semibold leading-5">
+                  {outgoingSnapshot.game.name}
+                </div>
+                <div className="text-xs leading-4 text-brand-600 dark:text-white/68">
+                  {outgoingSnapshot.statusText}
+                </div>
+              </div>
+            )}
           </div>
           <button
             type="button"
             data-playing-island-end
             aria-label={t("playingIsland.end")}
-            disabled={gameRuntime.state === "ending" || isEnding}
+            disabled={displayRuntime.state === "ending" || isEnding}
             onClick={handleEndPlay}
             className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-brand-700 transition-colors hover:bg-brand-900/8 active:scale-95 disabled:cursor-not-allowed disabled:opacity-55 dark:text-white dark:hover:bg-white/12"
           >
             <span
               className={
-                gameRuntime.state === "ending" || isEnding
+                displayRuntime.state === "ending" || isEnding
                   ? "i-mdi-loading animate-spin text-xl"
                   : "i-mdi-stop text-xl"
               }

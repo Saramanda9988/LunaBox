@@ -109,11 +109,15 @@ export default defineConfig({
         "playing-island-marquee": "infinite",
         "playing-island-enter": "1",
         "playing-island-leave": "1",
+        "playing-island-content-in": "1",
+        "playing-island-content-out": "1",
       },
       durations: {
         "playing-island-marquee": "8s",
         "playing-island-enter": "360ms",
         "playing-island-leave": "220ms",
+        "playing-island-content-in": "260ms",
+        "playing-island-content-out": "220ms",
       },
       keyframes: {
         "playing-island-marquee":
@@ -122,6 +126,10 @@ export default defineConfig({
           "{0%{opacity:0;transform:scaleX(.18) scaleY(.72)}62%{opacity:1;transform:scaleX(1.05) scaleY(1.02)}100%{opacity:1;transform:scaleX(1) scaleY(1)}}",
         "playing-island-leave":
           "{0%{opacity:1;transform:scaleX(1) scaleY(1)}100%{opacity:0;transform:scaleX(.22) scaleY(.74)}}",
+        "playing-island-content-in":
+          "{0%{opacity:0;filter:blur(2px)}100%{opacity:1;filter:blur(0)}}",
+        "playing-island-content-out":
+          "{0%{opacity:1;filter:blur(0)}100%{opacity:0;filter:blur(2px)}}",
       },
       properties: {
         "playing-island-enter": {
@@ -132,10 +140,18 @@ export default defineConfig({
           "animation-fill-mode": "both",
           "transform-origin": "center",
         },
+        "playing-island-content-in": {
+          "animation-fill-mode": "both",
+        },
+        "playing-island-content-out": {
+          "animation-fill-mode": "both",
+        },
       },
       timingFns: {
         "playing-island-enter": "cubic-bezier(.16,1,.3,1)",
         "playing-island-leave": "cubic-bezier(.4,0,1,1)",
+        "playing-island-content-in": "cubic-bezier(.2,.9,.18,1)",
+        "playing-island-content-out": "cubic-bezier(.4,0,.2,1)",
       },
     },
     colors: {
