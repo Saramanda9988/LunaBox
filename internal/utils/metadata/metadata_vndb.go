@@ -43,7 +43,7 @@ var _ BatchGetter = (*VNDBInfoGetter)(nil)
 const vndbAPIURL = "https://api.vndb.org/kana/vn"
 const vndbSearchSort = "searchrank"
 const vndbBatchSize = 100
-const vndbFields = "id, title, titles.lang, titles.title, titles.latin, titles.official, titles.main, image.url, description, rating, released, developers.name, tags.name, tags.rating, tags.spoiler"
+const vndbFields = "id, title, titles.lang, titles.title, titles.latin, titles.official, titles.main, image.url, description, rating, released, developers.name, tags.name, tags.rating, tags.spoiler, tags.lie"
 
 type vndbRequest struct {
 	Filters []interface{} `json:"filters"`
@@ -64,6 +64,7 @@ type vndbTag struct {
 	Name    string  `json:"name"`
 	Rating  float64 `json:"rating"`
 	Spoiler int     `json:"spoiler"` // 0=无剧透, 1=轻微, 2=重度
+	Lie     bool    `json:"lie"`
 }
 
 type vndbTitle struct {
@@ -368,7 +369,7 @@ func firstNonEmpty(values ...string) string {
 }
 
 // extractVNDBTags 从 VNDB tag 列表中提取 TagItem。
-// 规则：保留全部非空 tag，spoiler >= 2 标记为 is_spoiler，按 rating 降序，weight = rating/3.0。
+// 规则：过滤空名与 lie tag，spoiler >= 2 标记为 is_spoiler，按 rating 降序，weight = rating/3.0。
 func extractVNDBTags(tags []vndbTag, limit int) []TagItem {
 	if limit == 0 {
 		return nil
@@ -376,7 +377,7 @@ func extractVNDBTags(tags []vndbTag, limit int) []TagItem {
 
 	var filtered []vndbTag
 	for _, t := range tags {
-		if strings.TrimSpace(t.Name) == "" {
+		if strings.TrimSpace(t.Name) == "" || t.Lie {
 			continue
 		}
 		filtered = append(filtered, t)

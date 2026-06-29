@@ -20,6 +20,21 @@ func TestExtractVNDBTagsKeepsLowRatedTags(t *testing.T) {
 	}
 }
 
+func TestExtractVNDBTagsFiltersLieBeforeLimit(t *testing.T) {
+	tags := extractVNDBTags([]vndbTag{
+		{Name: "lie", Rating: 3.0, Lie: true},
+		{Name: "high", Rating: 2.0},
+		{Name: "low", Rating: 1.0},
+	}, 2)
+
+	if len(tags) != 2 {
+		t.Fatalf("expected lie tag to be filtered before limit, got %#v", tags)
+	}
+	if tags[0].Name != "high" || tags[1].Name != "low" {
+		t.Fatalf("expected high and low tags after filtering lie tag, got %#v", tags)
+	}
+}
+
 func TestExtractBangumiTagsKeepsLowCountTags(t *testing.T) {
 	tags := extractBangumiTags([]bangumiTag{
 		{Name: "low", Count: 1},
