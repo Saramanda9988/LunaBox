@@ -56,11 +56,9 @@ ManifestDPIAware true
 !include "StrFunc.nsh"
 
 # Declare string functions for installer
-${StrStr}
 ${StrRep}
 
 # Declare string functions for uninstaller (with Un prefix)
-${UnStrStr}
 ${UnStrRep}
 
 !define MUI_ICON "..\icon.ico"

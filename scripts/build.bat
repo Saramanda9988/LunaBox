@@ -276,6 +276,32 @@ if exist "!SEVENZIP_SOURCE_DIR!\7z.exe" (
     copy /Y "!SEVENZIP_SOURCE_DIR!\7z.exe" "!SEVENZIP_BUILD_DIR!\7z.exe" >nul
     if exist "!SEVENZIP_SOURCE_DIR!\7z.dll" copy /Y "!SEVENZIP_SOURCE_DIR!\7z.dll" "!SEVENZIP_BUILD_DIR!\7z.dll" >nul
 )
+
+set "NSIS_TMP_DIR=build\windows\installer\tmp"
+set "WEBVIEW2_SETUP=!NSIS_TMP_DIR!\MicrosoftEdgeWebview2Setup.exe"
+if exist "!WEBVIEW2_SETUP!" goto :eof
+
+if not exist "!NSIS_TMP_DIR!" mkdir "!NSIS_TMP_DIR!"
+
+set "WAILS_MODULE_DIR="
+for /f "delims=" %%i in ('go list -m -f "{{.Dir}}" github.com/wailsapp/wails/v2 2^>nul') do set "WAILS_MODULE_DIR=%%i"
+if not defined WAILS_MODULE_DIR (
+    echo ERROR: Unable to locate github.com/wailsapp/wails/v2 module directory.
+    exit /b 1
+)
+
+set "WEBVIEW2_SOURCE=!WAILS_MODULE_DIR!\internal\webview2runtime\MicrosoftEdgeWebview2Setup.exe"
+if not exist "!WEBVIEW2_SOURCE!" (
+    echo ERROR: Missing Wails WebView2 bootstrapper: !WEBVIEW2_SOURCE!
+    exit /b 1
+)
+
+copy /Y "!WEBVIEW2_SOURCE!" "!WEBVIEW2_SETUP!" >nul
+if errorlevel 1 (
+    echo ERROR: Failed to prepare WebView2 bootstrapper for NSIS.
+    exit /b 1
+)
+echo Prepared WebView2 bootstrapper: !WEBVIEW2_SETUP!
 goto :eof
 
 :build_installer
@@ -283,6 +309,7 @@ call :build_installer_payload
 if errorlevel 1 exit /b 1
 call :build_installer_package
 if errorlevel 1 exit /b 1
+if exist "build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-installer-payload.zip" del "build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-installer-payload.zip"
 goto :eof
 
 :build_installer_payload
