@@ -66,6 +66,20 @@ jobs:
           $env:GOARCH = "${{ matrix.arch }}"
 
           if ("${{ matrix.arch }}" -eq "arm64") {
+            $SourceDir = Join-Path $PWD "lib\winarm64"
+            $BuildLibDir = Join-Path $PWD "build\duckdb\winarm64"
+            $DuckDBDll = Join-Path $SourceDir "duckdb.dll"
+            $DuckDBLib = Join-Path $SourceDir "duckdb.lib"
+
+            if (!(Test-Path $DuckDBDll) -or !(Test-Path $DuckDBLib)) {
+              throw "Win-ARM64 DuckDB dynamic library is missing under lib\winarm64."
+            }
+
+            New-Item -ItemType Directory -Force -Path $BuildLibDir | Out-Null
+            Copy-Item $DuckDBDll -Destination (Join-Path $BuildLibDir "duckdb.dll") -Force
+            Copy-Item $DuckDBLib -Destination (Join-Path $BuildLibDir "duckdb.lib") -Force
+            Copy-Item $DuckDBLib -Destination (Join-Path $BuildLibDir "libduckdb.dll.a") -Force
+
             $Msys2Location = "${{ steps.msys2.outputs.msys2-location }}"
             if ([string]::IsNullOrWhiteSpace($Msys2Location)) {
               throw "MSYS2 location output is empty."
@@ -88,13 +102,20 @@ jobs:
             "CGO_ENABLED=1" >> $env:GITHUB_ENV
             "CC=$Clang --target=$TargetTriple" >> $env:GITHUB_ENV
             "CXX=$ClangXX --target=$TargetTriple" >> $env:GITHUB_ENV
+            "CGO_LDFLAGS=-L$BuildLibDir -lduckdb" >> $env:GITHUB_ENV
+            "GO_BUILD_TAGS=duckdb_use_lib" >> $env:GITHUB_ENV
+            "DUCKDB_DYNAMIC_DLL=$(Join-Path $BuildLibDir "duckdb.dll")" >> $env:GITHUB_ENV
             $env:MSYS2_LOCATION = $Msys2Location
             $env:CGO_ENABLED = "1"
             $env:CC = "$Clang --target=$TargetTriple"
             $env:CXX = "$ClangXX --target=$TargetTriple"
-            $env:PATH = "$ClangArm64Bin;$env:PATH"
-            go env GOOS GOARCH GOHOSTOS GOHOSTARCH
+            $env:CGO_LDFLAGS = "-L$BuildLibDir -lduckdb"
+            $env:PATH = "$ClangArm64Bin;$BuildLibDir;$env:PATH"
+            go env -w CGO_ENABLED=1 CC="$env:CC" CXX="$env:CXX" CGO_LDFLAGS="$env:CGO_LDFLAGS"
+            go env GOOS GOARCH GOHOSTOS GOHOSTARCH CGO_ENABLED CC CXX CGO_LDFLAGS
+            go test -run "^$" -tags duckdb_use_lib github.com/duckdb/duckdb-go-bindings
             $ClangArm64Bin >> $env:GITHUB_PATH
+            $BuildLibDir >> $env:GITHUB_PATH
           }
         shell: pwsh
 

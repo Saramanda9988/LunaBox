@@ -1,6 +1,6 @@
 @echo off
 REM LunaBox Build Script
-REM Usage: build.bat [portable|installer|all] [version] [amd64|arm64]
+REM Usage: build.bat [portable|installer|installer-payload|installer-package|all] [version] [amd64|arm64]
 
 setlocal enabledelayedexpansion
 
@@ -39,7 +39,7 @@ if /i "%TARGET_ARCH%"=="x64" set "TARGET_ARCH=amd64"
 if /i "%TARGET_ARCH%"=="aarch64" set "TARGET_ARCH=arm64"
 if /i not "%TARGET_ARCH%"=="amd64" if /i not "%TARGET_ARCH%"=="arm64" (
     echo Unknown target architecture: %TARGET_ARCH%
-    echo Usage: build.bat [portable^|installer^|all] [version] [amd64^|arm64]
+    echo Usage: build.bat [portable^|installer^|installer-payload^|installer-package^|all] [version] [amd64^|arm64]
     exit /b 1
 )
 
@@ -178,10 +178,12 @@ echo.
 
 if "%BUILD_MODE%"=="portable" goto :build_portable
 if "%BUILD_MODE%"=="installer" goto :build_installer
+if "%BUILD_MODE%"=="installer-payload" goto :build_installer_payload
+if "%BUILD_MODE%"=="installer-package" goto :build_installer_package
 if "%BUILD_MODE%"=="all" goto :build_all
 
 echo Unknown build mode: %BUILD_MODE%
-echo Usage: build.bat [portable^|installer^|all] [version] [amd64^|arm64]
+echo Usage: build.bat [portable^|installer^|installer-payload^|installer-package^|all] [version] [amd64^|arm64]
 exit /b 1
 
 :build_all
@@ -265,8 +267,26 @@ if exist "build\bin\lunabox-%TARGET_ARCH%-portable.exe" (
 echo.
 goto :eof
 
+:prepare_installer_runtime
+if exist "build\bin\duckdb.dll" del "build\bin\duckdb.dll"
+if defined DUCKDB_DLL copy "!DUCKDB_DLL!" "build\bin\duckdb.dll" >nul
+if exist "!SEVENZIP_BUILD_DIR!" rd /s /q "!SEVENZIP_BUILD_DIR!"
+if exist "!SEVENZIP_SOURCE_DIR!\7z.exe" (
+    mkdir "!SEVENZIP_BUILD_DIR!"
+    copy /Y "!SEVENZIP_SOURCE_DIR!\7z.exe" "!SEVENZIP_BUILD_DIR!\7z.exe" >nul
+    if exist "!SEVENZIP_SOURCE_DIR!\7z.dll" copy /Y "!SEVENZIP_SOURCE_DIR!\7z.dll" "!SEVENZIP_BUILD_DIR!\7z.dll" >nul
+)
+goto :eof
+
 :build_installer
-echo [1/2] Building CLI Version for Installer...
+call :build_installer_payload
+if errorlevel 1 exit /b 1
+call :build_installer_package
+if errorlevel 1 exit /b 1
+goto :eof
+
+:build_installer_payload
+echo [1/3] Building CLI Version for Installer...
 echo ----------------------------------------
 set "GOOS=windows"
 set "GOARCH=%TARGET_ARCH%"
@@ -278,33 +298,71 @@ if errorlevel 1 (
 echo CLI build completed: build\bin\lunacli.exe
 echo.
 
-echo [2/2] Building Installer GUI Version...
+echo [2/3] Building Installer GUI Payload...
 echo ----------------------------------------
-if exist "build\bin\duckdb.dll" del "build\bin\duckdb.dll"
-if defined DUCKDB_DLL copy "!DUCKDB_DLL!" "build\bin\duckdb.dll" >nul
-if exist "!SEVENZIP_BUILD_DIR!" rd /s /q "!SEVENZIP_BUILD_DIR!"
-if exist "!SEVENZIP_SOURCE_DIR!\7z.exe" (
-    mkdir "!SEVENZIP_BUILD_DIR!"
-    copy /Y "!SEVENZIP_SOURCE_DIR!\7z.exe" "!SEVENZIP_BUILD_DIR!\7z.exe" >nul
-    if exist "!SEVENZIP_SOURCE_DIR!\7z.dll" copy /Y "!SEVENZIP_SOURCE_DIR!\7z.dll" "!SEVENZIP_BUILD_DIR!\7z.dll" >nul
-)
-wails build -platform "%WAILS_PLATFORM%" %GO_BUILD_TAGS% -ldflags "%LDFLAGS_INSTALLER%" -nsis
+wails build -platform "%WAILS_PLATFORM%" %GO_BUILD_TAGS% -ldflags "%LDFLAGS_INSTALLER%" -o LunaBox.exe
 if errorlevel 1 (
-    echo ERROR: Installer GUI build failed!
+    echo ERROR: Installer GUI payload build failed!
     exit /b 1
 )
-echo Installer GUI build completed!
+if not exist "build\bin\LunaBox.exe" (
+    echo ERROR: Installer GUI payload not found: build\bin\LunaBox.exe
+    exit /b 1
+)
+call :prepare_installer_runtime
+if errorlevel 1 exit /b 1
+echo Installer GUI payload completed: build\bin\LunaBox.exe
 echo.
 
-REM Rename installer to include version
+echo [3/3] Creating installer payload ZIP for signing...
+echo ----------------------------------------
+set "INSTALLER_PAYLOAD_ZIP=build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-installer-payload.zip"
+if exist "!INSTALLER_PAYLOAD_ZIP!" del "!INSTALLER_PAYLOAD_ZIP!"
+powershell -NoProfile -Command "Compress-Archive -Path 'build\bin\LunaBox.exe','build\bin\lunacli.exe' -DestinationPath '!INSTALLER_PAYLOAD_ZIP!'"
+if errorlevel 1 (
+    echo ERROR: Installer payload ZIP creation failed!
+    exit /b 1
+)
+echo Created: !INSTALLER_PAYLOAD_ZIP!
+echo.
+goto :eof
+
+:build_installer_package
+echo [1/1] Building NSIS Installer from Installer Payload...
+echo ----------------------------------------
+if not exist "build\bin\LunaBox.exe" (
+    echo ERROR: Missing signed installer GUI payload: build\bin\LunaBox.exe
+    exit /b 1
+)
+if not exist "build\bin\lunacli.exe" (
+    echo ERROR: Missing signed installer CLI payload: build\bin\lunacli.exe
+    exit /b 1
+)
+call :prepare_installer_runtime
+if errorlevel 1 exit /b 1
+
+set "WAILS_BINARY_DEFINE=ARG_WAILS_AMD64_BINARY=..\..\bin\LunaBox.exe"
+if /i "%TARGET_ARCH%"=="arm64" set "WAILS_BINARY_DEFINE=ARG_WAILS_ARM64_BINARY=..\..\bin\LunaBox.exe"
+
+pushd build\windows\installer
+makensis /D%WAILS_BINARY_DEFINE% project.nsi
+set "MAKENSIS_EXIT=%ERRORLEVEL%"
+popd
+if not "%MAKENSIS_EXIT%"=="0" (
+    echo ERROR: NSIS installer build failed!
+    exit /b %MAKENSIS_EXIT%
+)
+
+if exist "build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-setup.exe" del "build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-setup.exe"
 if exist "build\bin\LunaBox-%TARGET_ARCH%-installer.exe" (
     move /Y "build\bin\LunaBox-%TARGET_ARCH%-installer.exe" "build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-setup.exe" >nul
-    echo Created: build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-setup.exe
-)
-if exist "build\bin\lunabox-%TARGET_ARCH%-installer.exe" (
+) else if exist "build\bin\lunabox-%TARGET_ARCH%-installer.exe" (
     move /Y "build\bin\lunabox-%TARGET_ARCH%-installer.exe" "build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-setup.exe" >nul
-    echo Created: build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-setup.exe
+) else (
+    echo ERROR: Installer not found for %TARGET_ARCH%.
+    exit /b 1
 )
+echo Created: build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-setup.exe
 echo.
 goto :eof
 
