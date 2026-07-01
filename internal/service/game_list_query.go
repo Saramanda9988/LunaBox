@@ -89,7 +89,7 @@ func gameListOrderClause(sortBy enums2.GameListSortBy, sortOrder enums2.SortOrde
 	case enums2.GameListSortByRating:
 		return fmt.Sprintf("COALESCE(g.rating, 0) %s, g.created_at DESC, g.id ASC", direction)
 	case enums2.GameListSortByReleaseDate:
-		return fmt.Sprintf("COALESCE(g.release_date, '') %s, g.created_at DESC, g.id ASC", direction)
+		return fmt.Sprintf("NULLIF(TRIM(COALESCE(g.release_date, '')), '') IS NULL ASC, NULLIF(TRIM(COALESCE(g.release_date, '')), '') %s, g.created_at DESC, g.id ASC", direction)
 	default:
 		return fmt.Sprintf("g.created_at %s, g.id ASC", direction)
 	}

@@ -314,6 +314,64 @@ func TestGameService_GetGames(t *testing.T) {
 			t.Fatalf("期望按名称升序返回 Alpha One, 实际 %s", resp.Games[0].Name)
 		}
 	})
+
+	t.Run("发售日期排序空日期始终在最后", func(t *testing.T) {
+		newDB, newCleanup := setupTestDB(t)
+		defer newCleanup()
+
+		newService := service.NewGameService()
+		newService.Init(context.Background(), newDB, &appconf.AppConfig{})
+
+		fixtures := []struct {
+			id          string
+			name        string
+			releaseDate string
+		}{
+			{id: "release-empty", name: "No Date", releaseDate: ""},
+			{id: "release-newer", name: "Newer", releaseDate: "2025-06-01"},
+			{id: "release-older", name: "Older", releaseDate: "2024-01-02"},
+		}
+		for _, item := range fixtures {
+			game := createTestGame()
+			game.ID = item.id
+			game.Name = item.name
+			game.CoverURL = ""
+			game.ReleaseDate = item.releaseDate
+			if err := addGameViaMetadata(newService, game); err != nil {
+				t.Fatalf("添加游戏 %s 失败: %v", item.id, err)
+			}
+		}
+
+		ascResp, err := newService.GetGames(vo.GameListRequest{
+			SortBy:    enums.GameListSortByReleaseDate,
+			SortOrder: enums.SortOrderAsc,
+		})
+		if err != nil {
+			t.Fatalf("按发售日期升序查询失败: %v", err)
+		}
+		assertGameOrder(t, ascResp.Games, []string{"release-older", "release-newer", "release-empty"})
+
+		descResp, err := newService.GetGames(vo.GameListRequest{
+			SortBy:    enums.GameListSortByReleaseDate,
+			SortOrder: enums.SortOrderDesc,
+		})
+		if err != nil {
+			t.Fatalf("按发售日期降序查询失败: %v", err)
+		}
+		assertGameOrder(t, descResp.Games, []string{"release-newer", "release-older", "release-empty"})
+	})
+}
+
+func assertGameOrder(t *testing.T, games []models.Game, wantIDs []string) {
+	t.Helper()
+	if len(games) != len(wantIDs) {
+		t.Fatalf("期望返回 %d 个游戏, 实际 %d", len(wantIDs), len(games))
+	}
+	for i, wantID := range wantIDs {
+		if games[i].ID != wantID {
+			t.Fatalf("第 %d 个游戏期望 %s, 实际 %s", i, wantID, games[i].ID)
+		}
+	}
 }
 
 func TestGameService_UpdateGame(t *testing.T) {
