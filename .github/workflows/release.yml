@@ -210,9 +210,9 @@ jobs:
           .\scripts\build.bat "installer-payload" "${{ steps.get_version.outputs.VERSION }}" "${{ matrix.arch }}"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          if (!(Test-Path "build/bin/LunaBox.exe") -or !(Test-Path "build/bin/lunacli.exe")) {
+          if (!(Test-Path "build/bin/LunaBox.exe") -or !(Test-Path "build/bin/lunacli.exe") -or !(Test-Path "build/bin/LunaBoxUpdater.exe")) {
             Get-ChildItem -Path "build/bin" -Recurse | ForEach-Object { Write-Host $_.FullName }
-            throw "Installer payload must contain build/bin/LunaBox.exe and build/bin/lunacli.exe."
+            throw "Installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe."
           }
         shell: pwsh
 
@@ -248,6 +248,33 @@ jobs:
             Get-ChildItem -Path signed -Recurse | ForEach-Object { Write-Host $_.FullName }
             throw "Signed portable artifact not found: $Artifact"
           }
+
+          $ExtractDir = Join-Path $env:RUNNER_TEMP "lunabox-signed-portable"
+          if (Test-Path $ExtractDir) { Remove-Item $ExtractDir -Recurse -Force }
+          Expand-Archive -Path $Artifact -DestinationPath $ExtractDir -Force
+          $PayloadDir = (Get-ChildItem $ExtractDir -Filter "LunaBox.exe" -Recurse | Select-Object -First 1).Directory.FullName
+          if ([string]::IsNullOrWhiteSpace($PayloadDir)) {
+            throw "Signed portable archive does not contain LunaBox.exe."
+          }
+          foreach ($Name in @("LunaBox.exe", "lunacli.exe", "LunaBoxUpdater.exe")) {
+            $Path = Join-Path $PayloadDir $Name
+            if (!(Test-Path $Path)) { throw "Signed portable archive is missing $Name." }
+            $Signature = Get-AuthenticodeSignature $Path
+            if ($Signature.Status -ne "Valid") {
+              throw "$Name does not have a valid Authenticode signature: $($Signature.Status)"
+            }
+          }
+
+          $RuntimeDir = Join-Path $PWD "update-runtime"
+          if (Test-Path $RuntimeDir) { Remove-Item $RuntimeDir -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
+          foreach ($Name in @("LunaBox.exe", "lunacli.exe", "LunaBoxUpdater.exe", "duckdb.dll")) {
+            $Source = Join-Path $PayloadDir $Name
+            if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
+          }
+          if (Test-Path (Join-Path $PayloadDir "7z")) {
+            Copy-Item (Join-Path $PayloadDir "7z") -Destination $RuntimeDir -Recurse -Force
+          }
         shell: pwsh
 
       - name: Upload Portable Artifact
@@ -267,6 +294,7 @@ jobs:
           path: |
             build/bin/LunaBox.exe
             build/bin/lunacli.exe
+            build/bin/LunaBoxUpdater.exe
           if-no-files-found: error
 
       - name: Sign Installer Payload
@@ -289,13 +317,21 @@ jobs:
           $ErrorActionPreference = "Stop"
           $SignedGui = "signed-payload/LunaBox.exe"
           $SignedCli = "signed-payload/lunacli.exe"
-          if (!(Test-Path $SignedGui) -or !(Test-Path $SignedCli)) {
+          $SignedUpdater = "signed-payload/LunaBoxUpdater.exe"
+          if (!(Test-Path $SignedGui) -or !(Test-Path $SignedCli) -or !(Test-Path $SignedUpdater)) {
             Get-ChildItem -Path signed-payload -Recurse | ForEach-Object { Write-Host $_.FullName }
-            throw "Signed installer payload must contain LunaBox.exe and lunacli.exe."
+            throw "Signed installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe."
+          }
+          foreach ($Path in @($SignedGui, $SignedCli, $SignedUpdater)) {
+            $Signature = Get-AuthenticodeSignature $Path
+            if ($Signature.Status -ne "Valid") {
+              throw "$(Split-Path $Path -Leaf) does not have a valid Authenticode signature: $($Signature.Status)"
+            }
           }
 
           Copy-Item $SignedGui -Destination "build/bin/LunaBox.exe" -Force
           Copy-Item $SignedCli -Destination "build/bin/lunacli.exe" -Force
+          Copy-Item $SignedUpdater -Destination "build/bin/LunaBoxUpdater.exe" -Force
 
           .\scripts\build.bat "installer-package" "${{ steps.get_version.outputs.VERSION }}" "${{ matrix.arch }}"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -305,7 +341,25 @@ jobs:
             Get-ChildItem -Path "build/bin" -Recurse | ForEach-Object { Write-Host $_.FullName }
             throw "Installer artifact not found: $Artifact"
           }
+
+          $RuntimeDir = Join-Path $PWD "update-runtime"
+          if (Test-Path $RuntimeDir) { Remove-Item $RuntimeDir -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
+          foreach ($Name in @("LunaBox.exe", "lunacli.exe", "LunaBoxUpdater.exe", "duckdb.dll")) {
+            $Source = Join-Path "build/bin" $Name
+            if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
+          }
+          if (Test-Path "build/bin/7z") {
+            Copy-Item "build/bin/7z" -Destination $RuntimeDir -Recurse -Force
+          }
         shell: pwsh
+
+      - name: Upload update runtime input
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-runtime-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-${{ matrix.mode }}
+          path: update-runtime/
+          if-no-files-found: error
 
       - name: Upload Unsigned Installer Artifact
         id: upload-unsigned-installer
@@ -362,6 +416,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
       - name: Get version from tag
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
@@ -372,6 +431,12 @@ jobs:
           pattern: lunabox-*
           path: ./artifacts
 
+      - name: Download signed update runtime inputs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: update-runtime-*
+          path: ./update-runtime-artifacts
+
       - name: Display structure of downloaded files
         run: ls -R ./artifacts
 
@@ -379,6 +444,46 @@ jobs:
         run: |
           mkdir -p release
           find ./artifacts -type f \( -name "*.zip" -o -name "*.exe" \) -exec cp {} ./release/ \;
+          ls -lh ./release
+
+      - name: Find previous stable release
+        id: previous_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CURRENT_TAG="$GITHUB_REF_NAME"
+          PREVIOUS_TAG="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 30 --json tagName,isDraft,isPrerelease --jq "[.[] | select(.isDraft == false and .isPrerelease == false and .tagName != \"$CURRENT_TAG\")][0].tagName // \"\"")"
+          PREVIOUS_VERSION="${PREVIOUS_TAG#v}"
+          echo "tag=$PREVIOUS_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$PREVIOUS_VERSION" >> "$GITHUB_OUTPUT"
+
+          mkdir -p previous-update-assets
+          if [ -n "$PREVIOUS_TAG" ]; then
+            gh release download "$PREVIOUS_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --pattern "LunaBox-${PREVIOUS_VERSION}-windows-*-LunaBox.exe.zst" \
+              --dir previous-update-assets || true
+          fi
+
+      - name: Install Zstandard CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zstd
+
+      - name: Generate full and delta update assets
+        run: |
+          ARGS=(
+            --input-root ./update-runtime-artifacts
+            --previous-root ./previous-update-assets
+            --output ./release
+            --version "${{ steps.get_version.outputs.VERSION }}"
+            --repository "$GITHUB_REPOSITORY"
+          )
+          if [ -n "${{ steps.previous_release.outputs.version }}" ]; then
+            ARGS+=(--previous-version "${{ steps.previous_release.outputs.version }}")
+          fi
+          go run ./cmd/lunabox-update-builder "${ARGS[@]}"
+          jq empty "release/LunaBox-${{ steps.get_version.outputs.VERSION }}-update-manifest.json"
           ls -lh ./release
 
       - name: Generate release notes

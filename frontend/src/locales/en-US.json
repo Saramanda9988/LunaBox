@@ -1517,7 +1517,16 @@
     "changelog": "Changelog",
     "githubDownload": "Download from GitHub",
     "giteeDownload": "Download from Gitee",
-    "skipVersion": "Skip This Version"
+    "skipVersion": "Skip This Version",
+    "updateNow": "Update Now",
+    "downloading": "Downloading update {{percent}}%",
+    "preparing": "Verifying and preparing update",
+    "fallback": "Delta update unavailable; switching to the full package",
+    "restarting": "Update ready; safely closing and restarting",
+    "updateFailed": "In-app update failed",
+    "manualFallback": "You can still download the full release using a link below.",
+    "noFilesToUpdate": "The installed files already match this release",
+    "close": "Close update dialog"
   },
   "category": {
     "notFound": "Category not found",

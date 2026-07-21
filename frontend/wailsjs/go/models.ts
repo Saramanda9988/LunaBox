@@ -924,6 +924,22 @@ export namespace service {
 	
 	    }
 	}
+	export class UpdateApplyResult {
+	    started: boolean;
+	    fallback_used: boolean;
+	    file_count: number;
+
+	    static createFrom(source: any = {}) {
+	        return new UpdateApplyResult(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.started = source["started"];
+	        this.fallback_used = source["fallback_used"];
+	        this.file_count = source["file_count"];
+	    }
+	}
 	export class UpdateCheckResult {
 	    has_update: boolean;
 	    current_ver: string;
@@ -931,6 +947,7 @@ export namespace service {
 	    release_date: string;
 	    changelog: string[];
 	    downloads: Record<string, string>;
+	    update_manifest_url: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateCheckResult(source);
@@ -944,6 +961,7 @@ export namespace service {
 	        this.release_date = source["release_date"];
 	        this.changelog = source["changelog"];
 	        this.downloads = source["downloads"];
+	        this.update_manifest_url = source["update_manifest_url"];
 	    }
 	}
 
@@ -2352,4 +2370,3 @@ export namespace vo {
 	}
 
 }
-

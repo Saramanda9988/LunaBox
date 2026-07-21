@@ -9,7 +9,9 @@ import (
 	"lunabox/internal/applog"
 	"lunabox/internal/utils/proxyutils"
 	"net/http"
+	goruntime "runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"lunabox/internal/version"
@@ -20,26 +22,30 @@ import (
 
 // UpdateInfo 版本信息结构
 type UpdateInfo struct {
-	Version     string            `json:"version"`      // 版本号，如 1.2.0
-	ReleaseDate string            `json:"release_date"` // 发布日期，如 2024-01-15
-	Changelog   []string          `json:"changelog"`    // 更新日志内容数组
-	Downloads   map[string]string `json:"downloads"`    // 下载链接字典：github, gitee 等
+	Version           string            `json:"version"`             // 版本号，如 1.2.0
+	ReleaseDate       string            `json:"release_date"`        // 发布日期，如 2024-01-15
+	Changelog         []string          `json:"changelog"`           // 更新日志内容数组
+	Downloads         map[string]string `json:"downloads"`           // 下载链接字典：github, gitee 等
+	UpdateManifestURL string            `json:"update_manifest_url"` // 应用内更新清单
 }
 
 // UpdateCheckResult 更新检查结果
 type UpdateCheckResult struct {
-	HasUpdate   bool              `json:"has_update"`   // 是否有更新
-	CurrentVer  string            `json:"current_ver"`  // 当前版本
-	LatestVer   string            `json:"latest_ver"`   // 最新版本
-	ReleaseDate string            `json:"release_date"` // 发布日期
-	Changelog   []string          `json:"changelog"`    // 更新日志内容
-	Downloads   map[string]string `json:"downloads"`    // 下载链接
+	HasUpdate         bool              `json:"has_update"`          // 是否有更新
+	CurrentVer        string            `json:"current_ver"`         // 当前版本
+	LatestVer         string            `json:"latest_ver"`          // 最新版本
+	ReleaseDate       string            `json:"release_date"`        // 发布日期
+	Changelog         []string          `json:"changelog"`           // 更新日志内容
+	Downloads         map[string]string `json:"downloads"`           // 下载链接
+	UpdateManifestURL string            `json:"update_manifest_url"` // 应用内更新清单
 }
 
 // UpdateService 更新服务
 type UpdateService struct {
-	ctx    context.Context
-	config *ConfigService
+	ctx         context.Context
+	config      *ConfigService
+	quitHandler func()
+	applyMu     sync.Mutex
 }
 
 // 默认更新检查 URL 列表（按优先级排序）
@@ -48,8 +54,14 @@ var defaultUpdateURLs = []string{
 	"https://4update.netlify.app/version.json", // Netlify 备份（用户可修改）
 }
 
-func NewUpdateService() *UpdateService {
-	return &UpdateService{}
+const defaultUpdateReleaseRepository = "Saramanda9988/LunaBox"
+
+func NewUpdateService(quitHandlers ...func()) *UpdateService {
+	service := &UpdateService{}
+	if len(quitHandlers) > 0 {
+		service.quitHandler = quitHandlers[0]
+	}
+	return service
 }
 
 func (s *UpdateService) Init(ctx context.Context, configService *ConfigService) {
@@ -112,6 +124,15 @@ func (s *UpdateService) checkUpdates(isAutoCheck bool) (*UpdateCheckResult, erro
 		applog.LogWarningf(s.ctx, "[UpdateService] failed to fetch update info from all sources: %v", lastErr)
 		return nil, fmt.Errorf("[UpdateService] failed to fetch update info from all sources: %w", lastErr)
 	}
+	if appConfig.UpdateCheckURL == "" && goruntime.GOOS == "windows" {
+		versionWithoutPrefix := strings.TrimPrefix(strings.TrimSpace(updateInfo.Version), "v")
+		updateInfo.UpdateManifestURL = fmt.Sprintf(
+			"https://github.com/%s/releases/download/v%s/LunaBox-%s-update-manifest.json",
+			defaultUpdateReleaseRepository,
+			versionWithoutPrefix,
+			versionWithoutPrefix,
+		)
+	}
 
 	// 更新最后检查时间
 	s.updateLastCheckTime()
@@ -133,12 +154,13 @@ func (s *UpdateService) checkUpdates(isAutoCheck bool) (*UpdateCheckResult, erro
 	}
 
 	result := &UpdateCheckResult{
-		HasUpdate:   hasUpdate,
-		CurrentVer:  currentVer,
-		LatestVer:   updateInfo.Version,
-		ReleaseDate: updateInfo.ReleaseDate,
-		Changelog:   updateInfo.Changelog,
-		Downloads:   updateInfo.Downloads,
+		HasUpdate:         hasUpdate,
+		CurrentVer:        currentVer,
+		LatestVer:         updateInfo.Version,
+		ReleaseDate:       updateInfo.ReleaseDate,
+		Changelog:         updateInfo.Changelog,
+		Downloads:         updateInfo.Downloads,
+		UpdateManifestURL: updateInfo.UpdateManifestURL,
 	}
 
 	return result, nil

@@ -480,6 +480,9 @@ Section
 
     !insertmacro wails.files
 
+    # Standalone updater runs from a temporary copy, so it can also replace its installed copy.
+    File "..\..\bin\LunaBoxUpdater.exe"
+
     # ARM64 builds dynamically link DuckDB; include the runtime DLL when build/bin provides it.
     !if /FileExists "..\..\bin\duckdb.dll"
         File "..\..\bin\duckdb.dll"

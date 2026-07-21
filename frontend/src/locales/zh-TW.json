@@ -1476,7 +1476,16 @@
     "changelog": "更新內容",
     "githubDownload": "GitHub 下載",
     "giteeDownload": "Gitee 下載",
-    "skipVersion": "跳過此版本"
+    "skipVersion": "跳過此版本",
+    "updateNow": "立即更新",
+    "downloading": "正在下載更新 {{percent}}%",
+    "preparing": "正在驗證並準備更新",
+    "fallback": "增量更新不可用，正在切換完整套件",
+    "restarting": "更新已就緒，正在安全退出並重新啟動",
+    "updateFailed": "應用程式內更新失敗",
+    "manualFallback": "你仍可使用下方連結手動下載完整版本。",
+    "noFilesToUpdate": "目前檔案已經是目標版本",
+    "close": "關閉更新視窗"
   },
   "category": {
     "notFound": "未找到該分類",

@@ -10,6 +10,10 @@ export function CheckForUpdatesOnStartup() {
   return window['go']['service']['UpdateService']['CheckForUpdatesOnStartup']();
 }
 
+export function DownloadAndApplyUpdate(arg1) {
+  return window['go']['service']['UpdateService']['DownloadAndApplyUpdate'](arg1);
+}
+
 export function Init(arg1, arg2) {
   return window['go']['service']['UpdateService']['Init'](arg1, arg2);
 }

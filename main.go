@@ -457,7 +457,12 @@ func main() {
 	importService := service.NewImportService()
 	versionService := service.NewVersionService()
 	templateService := service.NewTemplateService()
-	updateService := service.NewUpdateService()
+	updateService := service.NewUpdateService(func() {
+		if shouldRunFrontendQuitSync(config) && appState.RequestFrontendQuitSync("application-update") {
+			return
+		}
+		appState.QuitApplication()
+	})
 	sessionService := service.NewSessionService()
 	downloadService := service.NewDownloadService()
 	gameProgressService := service.NewGameProgressService()

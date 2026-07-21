@@ -240,7 +240,7 @@ if errorlevel 1 exit /b 1
 goto :done
 
 :build_portable
-echo [1/3] Building Portable GUI Version...
+echo [1/4] Building Portable GUI Version...
 echo ----------------------------------------
 wails build -platform "%WAILS_PLATFORM%" %GO_BUILD_TAGS% -ldflags "%LDFLAGS_PORTABLE%" -o lunabox-%TARGET_ARCH%-portable.exe
 if errorlevel 1 (
@@ -250,7 +250,7 @@ if errorlevel 1 (
 echo Portable GUI build completed: build\bin\lunabox-%TARGET_ARCH%-portable.exe
 echo.
 
-echo [2/3] Building CLI Version...
+echo [2/4] Building CLI Version...
 echo ----------------------------------------
 set "GOOS=windows"
 set "GOARCH=%TARGET_ARCH%"
@@ -262,9 +262,15 @@ if errorlevel 1 (
 echo CLI build completed: build\bin\lunabox-cli.exe
 echo.
 
+echo [3/4] Building Standalone Updater...
+echo ----------------------------------------
+call :build_updater
+if errorlevel 1 exit /b 1
+echo.
+
 REM Create portable ZIP package with both versions
 if exist "build\bin\lunabox-%TARGET_ARCH%-portable.exe" (
-    echo [3/3] Creating portable ZIP package...
+    echo [4/4] Creating portable ZIP package...
     set "TEMP_PKG_DIR=build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-portable"
     if exist "!TEMP_PKG_DIR!" rd /s /q "!TEMP_PKG_DIR!"
     mkdir "!TEMP_PKG_DIR!"
@@ -279,6 +285,9 @@ if exist "build\bin\lunabox-%TARGET_ARCH%-portable.exe" (
     REM Copy CLI version as lunacli.exe
     copy "build\bin\lunabox-cli.exe" "!TEMP_PKG_DIR!\lunacli.exe" >nul
 
+    REM Copy standalone updater. It runs from a temporary transaction directory during updates.
+    copy "build\bin\LunaBoxUpdater.exe" "!TEMP_PKG_DIR!\LunaBoxUpdater.exe" >nul
+
     if defined DUCKDB_DLL copy "!DUCKDB_DLL!" "!TEMP_PKG_DIR!\duckdb.dll" >nul
     if exist "!SEVENZIP_SOURCE_DIR!\7z.exe" (
         mkdir "!TEMP_PKG_DIR!\7z"
@@ -292,6 +301,7 @@ if exist "build\bin\lunabox-%TARGET_ARCH%-portable.exe" (
     echo This package contains: >> "!TEMP_PKG_DIR!\README.txt"
     echo   - LunaBox.exe  : GUI version (Double-click to launch) >> "!TEMP_PKG_DIR!\README.txt"
     echo   - lunacli.exe  : CLI version (Use in terminal) >> "!TEMP_PKG_DIR!\README.txt"
+    echo   - LunaBoxUpdater.exe : Signed standalone update helper >> "!TEMP_PKG_DIR!\README.txt"
     echo. >> "!TEMP_PKG_DIR!\README.txt"
     echo CLI Usage: >> "!TEMP_PKG_DIR!\README.txt"
     echo   lunacli list >> "!TEMP_PKG_DIR!\README.txt"
@@ -309,6 +319,17 @@ if exist "build\bin\lunabox-%TARGET_ARCH%-portable.exe" (
     echo Created: build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-portable.zip
 )
 echo.
+goto :eof
+
+:build_updater
+set "GOOS=windows"
+set "GOARCH=%TARGET_ARCH%"
+go build -trimpath -ldflags "-s -w" -o build\bin\LunaBoxUpdater.exe ./cmd/lunabox-updater
+if errorlevel 1 (
+    echo ERROR: Standalone updater build failed!
+    exit /b 1
+)
+echo Updater build completed: build\bin\LunaBoxUpdater.exe
 goto :eof
 
 :prepare_installer_runtime
@@ -357,7 +378,7 @@ if exist "build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-installer-payload.zi
 goto :eof
 
 :build_installer_payload
-echo [1/3] Building CLI Version for Installer...
+echo [1/4] Building CLI Version for Installer...
 echo ----------------------------------------
 set "GOOS=windows"
 set "GOARCH=%TARGET_ARCH%"
@@ -369,7 +390,7 @@ if errorlevel 1 (
 echo CLI build completed: build\bin\lunacli.exe
 echo.
 
-echo [2/3] Building Installer GUI Payload...
+echo [2/4] Building Installer GUI Payload...
 echo ----------------------------------------
 wails build -platform "%WAILS_PLATFORM%" %GO_BUILD_TAGS% -ldflags "%LDFLAGS_INSTALLER%" -o LunaBox.exe
 if errorlevel 1 (
@@ -385,11 +406,17 @@ if errorlevel 1 exit /b 1
 echo Installer GUI payload completed: build\bin\LunaBox.exe
 echo.
 
-echo [3/3] Creating installer payload ZIP for signing...
+echo [3/4] Building Standalone Updater...
+echo ----------------------------------------
+call :build_updater
+if errorlevel 1 exit /b 1
+echo.
+
+echo [4/4] Creating installer payload ZIP for signing...
 echo ----------------------------------------
 set "INSTALLER_PAYLOAD_ZIP=build\bin\LunaBox-%VERSION%-windows-%TARGET_ARCH%-installer-payload.zip"
 if exist "!INSTALLER_PAYLOAD_ZIP!" del "!INSTALLER_PAYLOAD_ZIP!"
-powershell -NoProfile -Command "Compress-Archive -Path 'build\bin\LunaBox.exe','build\bin\lunacli.exe' -DestinationPath '!INSTALLER_PAYLOAD_ZIP!'"
+powershell -NoProfile -Command "Compress-Archive -Path 'build\bin\LunaBox.exe','build\bin\lunacli.exe','build\bin\LunaBoxUpdater.exe' -DestinationPath '!INSTALLER_PAYLOAD_ZIP!'"
 if errorlevel 1 (
     echo ERROR: Installer payload ZIP creation failed!
     exit /b 1
@@ -407,6 +434,10 @@ if not exist "build\bin\LunaBox.exe" (
 )
 if not exist "build\bin\lunacli.exe" (
     echo ERROR: Missing signed installer CLI payload: build\bin\lunacli.exe
+    exit /b 1
+)
+if not exist "build\bin\LunaBoxUpdater.exe" (
+    echo ERROR: Missing signed standalone updater: build\bin\LunaBoxUpdater.exe
     exit /b 1
 )
 call :prepare_installer_runtime

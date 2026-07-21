@@ -1452,7 +1452,16 @@
     "changelog": "更新内容",
     "githubDownload": "GitHub ダウンロード",
     "giteeDownload": "Gitee ダウンロード",
-    "skipVersion": "このバージョンをスキップ"
+    "skipVersion": "このバージョンをスキップ",
+    "updateNow": "今すぐ更新",
+    "downloading": "更新をダウンロード中 {{percent}}%",
+    "preparing": "更新を検証して準備しています",
+    "fallback": "差分更新を利用できないため、完全版に切り替えています",
+    "restarting": "更新の準備が完了しました。安全に終了して再起動します",
+    "updateFailed": "アプリ内更新に失敗しました",
+    "manualFallback": "下のリンクから完全版を手動でダウンロードできます。",
+    "noFilesToUpdate": "インストール済みファイルはすでに対象バージョンです",
+    "close": "更新ダイアログを閉じる"
   },
   "category": {
     "notFound": "このカテゴリは見つかりません",

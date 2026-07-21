@@ -22,6 +22,7 @@ interface UpdateInfo {
   release_date: string;
   changelog: string[];
   downloads: Record<string, string>;
+  update_manifest_url: string;
 }
 
 export function UpdateSettingsPanel({

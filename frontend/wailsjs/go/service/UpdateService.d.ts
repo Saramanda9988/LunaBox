@@ -7,6 +7,8 @@ export function CheckForUpdates():Promise<service.UpdateCheckResult>;
 
 export function CheckForUpdatesOnStartup():Promise<service.UpdateCheckResult>;
 
+export function DownloadAndApplyUpdate(arg1:string):Promise<service.UpdateApplyResult>;
+
 export function Init(arg1:context.Context,arg2:service.ConfigService):Promise<void>;
 
 export function OpenDownloadURL(arg1:string):Promise<void>;
