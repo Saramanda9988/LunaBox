@@ -53,3 +53,20 @@ release workflow 会验证三者的 Authenticode 签名，收集每个 channel �
 ```
 
 当前 patch 只覆盖紧邻的上一稳定版本，不做多版本 patch 链。跳版本用户以及任何不匹配官方源文件哈希的用户都会使用完整 `.zst`，不会尝试模糊匹配。
+
+## 测试发布
+
+在 GitHub Actions 中手动运行 `.github/workflows/update-test.yml` 定义的 `Test Update Release`：
+
+1. 使用工作流自带的 branch 下拉框选择要构建的分支。
+2. `version` 填不带 `v` 的 `X.Y.Z-test.N`，并确保它在 SemVer 顺序上高于待更新客户端，例如从 `1.10.0` 测试时使用 `1.10.1-test.1`。
+3. `previous_tag` 留空时只生成 full 资产；填写已有 release tag 时，会下载该版本的 `LunaBox.exe.zst` 并尝试生成 delta。
+
+测试 tag 不会覆盖，成功后会创建 `vX.Y.Z-test.N` pre-release。要验证 delta，先发布并安装 A（例如 `1.10.1-test.1`），再发布 B（例如 `1.10.1-test.2`），且 B 的 `previous_tag` 填 A 的 tag。
+
+每个测试 release 都包含 `LunaBox-<version>-version.json`。不要修改正式的 `sync/version.json`；关闭待测试客户端后，在其 `appconf.json` 中将 `update_check_url` 设置为 release notes 给出的测试 JSON 地址：
+
+- 便携版：程序目录旁的 `appconf.json`
+- 安装版：`%APPDATA%\LunaBox\appconf.json`
+
+自定义更新源不会自动推导 manifest 地址，因此测试 JSON 已显式包含 `update_manifest_url`。测试结束后删除 `update_check_url` 或设为空字符串，即可恢复正式 Cloudflare/Netlify 更新源。
