@@ -514,6 +514,13 @@ func (s *GameService) GetGames(req vo.GameListRequest) (vo.GameListResponse, err
 	return resp, nil
 }
 
+// ListAllGames 返回库中全部游戏（自动分页取完）
+//
+//wails:ignore
+func (s *GameService) ListAllGames() ([]models.Game, error) {
+	return s.listAllGamesInternal()
+}
+
 func (s *GameService) listAllGamesInternal() ([]models.Game, error) {
 	var all []models.Game
 	req := vo.GameListRequest{

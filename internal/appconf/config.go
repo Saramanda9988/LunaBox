@@ -75,7 +75,7 @@ type AppConfig struct {
 	MCPPort             int    `json:"mcp_port,omitempty"`          // MCP HTTP 服务监听端口（仅绑定 127.0.0.1）
 	// 云备份配置
 	CloudBackupEnabled   bool   `json:"cloud_backup_enabled"`             // 是否启用云备份
-	CloudBackupProvider  string `json:"cloud_backup_provider,omitempty"`  // 云备份提供商: s3, onedrive, umbra
+	CloudBackupProvider  string `json:"cloud_backup_provider,omitempty"`  // 云备份提供商: s3, onedrive, umbra, webdav
 	BackupPassword       string `json:"backup_password,omitempty"`        // 备份密码（用于生成 user-id 和加密）
 	BackupUserID         string `json:"backup_user_id,omitempty"`         // 云端用户标识（由备份密码 hash 生成）
 	CloudSyncEnabled     bool   `json:"cloud_sync_enabled"`               // 是否启用云同步
@@ -93,6 +93,10 @@ type AppConfig struct {
 	// OneDrive OAuth 配置
 	OneDriveClientID     string `json:"onedrive_client_id,omitempty"`     // OneDrive Client ID
 	OneDriveRefreshToken string `json:"onedrive_refresh_token,omitempty"` // OneDrive Refresh Token（OAuth 授权后获得）
+	// WebDAV 配置
+	WebDAVURL      string `json:"webdav_url,omitempty"`      // WebDAV 服务地址（可含子路径）
+	WebDAVUsername string `json:"webdav_username,omitempty"` // WebDAV 用户名
+	WebDAVPassword string `json:"webdav_password,omitempty"` // WebDAV 密码
 	// Umbra OAuth 配置（token 与设备密钥由 DPAPI 加密存储，不写入配置文件）
 	UmbraBaseURL       string `json:"umbra_base_url,omitempty"`      // Umbra 服务地址
 	UmbraAuthenticated bool   `json:"umbra_authenticated,omitempty"` // 是否已完成 OAuth 与设备注册
@@ -212,6 +216,9 @@ func LoadConfig() (*AppConfig, error) {
 		CloudBackupRetention:         5,
 		OneDriveClientID:             "",
 		OneDriveRefreshToken:         "",
+		WebDAVURL:                    "",
+		WebDAVUsername:               "",
+		WebDAVPassword:               "",
 		UmbraBaseURL:                 DefaultUmbraBaseURL,
 		UmbraAuthenticated:           false,
 		LastDBBackupTime:             "",

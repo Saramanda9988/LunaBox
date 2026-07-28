@@ -162,7 +162,7 @@ func TestBangumiService_RefreshExpiredTokenAndPushMappedStatus(t *testing.T) {
 						t.Fatalf("读取收藏请求体失败: %v", err)
 					}
 					if !strings.Contains(string(body), fmt.Sprintf(`"type":%d`, tc.expectedType)) {
-						t.Fatalf("期望收藏 type 为 %q，实际请求体 %s", tc.expectedType, string(body))
+						t.Fatalf("期望收藏 type 为 %d，实际请求体 %s", tc.expectedType, string(body))
 					}
 					gotCollectionType = fmt.Sprintf("%d", tc.expectedType)
 					w.WriteHeader(http.StatusNoContent)

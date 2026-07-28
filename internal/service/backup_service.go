@@ -225,6 +225,15 @@ func (s *BackupService) TestOneDriveConnection(config appconf.AppConfig) error {
 	return cloudprovider.TestConnection(s.ctx, cloudprovider.ProviderOneDrive, &config)
 }
 
+// TestWebDAVConnection 测试 WebDAV 连接
+func (s *BackupService) TestWebDAVConnection(config appconf.AppConfig) error {
+	if err := cloudprovider.TestConnection(s.ctx, cloudprovider.ProviderWebDAV, &config); err != nil {
+		applog.LogErrorf(s.ctx, "TestWebDAVConnection: connection test failed: %v", err)
+		return fmt.Errorf("连接测试失败: %w", err)
+	}
+	return nil
+}
+
 // StartUmbraAuth 启动 Umbra OAuth 与设备注册流程。
 // OAuth client ID 与安装令牌由发行构建注入，不接受用户手动填写。
 func (s *BackupService) StartUmbraAuth(config appconf.AppConfig) error {

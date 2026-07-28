@@ -17,6 +17,10 @@ export function isCloudProviderConfigured(config?: appconf.AppConfig | null) {
     return Boolean(config.umbra_base_url && config.umbra_authenticated);
   }
 
+  if (config.cloud_backup_provider === "webdav") {
+    return Boolean(config.webdav_url);
+  }
+
   return Boolean(config.s3_endpoint && config.s3_access_key);
 }
 

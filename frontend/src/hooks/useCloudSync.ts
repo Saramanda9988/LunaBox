@@ -78,6 +78,7 @@ export function useCloudSync({ config }: UseCloudSyncOptions) {
     config?.time_zone,
     config?.umbra_authenticated,
     config?.umbra_base_url,
+    config?.webdav_url,
     refreshSyncStatus,
   ]);
 

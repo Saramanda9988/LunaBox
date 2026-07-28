@@ -113,7 +113,7 @@ export class AppConfig {
     "cloud_backup_enabled": boolean;
 
     /**
-     * 云备份提供商: s3, onedrive, umbra
+     * 云备份提供商: s3, onedrive, umbra, webdav
      */
     "cloud_backup_provider"?: string;
 
@@ -197,6 +197,22 @@ export class AppConfig {
      * OneDrive Refresh Token（OAuth 授权后获得）
      */
     "onedrive_refresh_token"?: string;
+
+    /**
+     * WebDAV 配置
+     * WebDAV 服务地址（可含子路径）
+     */
+    "webdav_url"?: string;
+
+    /**
+     * WebDAV 用户名
+     */
+    "webdav_username"?: string;
+
+    /**
+     * WebDAV 密码
+     */
+    "webdav_password"?: string;
 
     /**
      * Umbra OAuth 配置（token 与设备密钥由 DPAPI 加密存储，不写入配置文件）

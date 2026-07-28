@@ -292,6 +292,13 @@ export function TestUmbraConnection(config: appconf$0.AppConfig): $CancellablePr
 }
 
 /**
+ * TestWebDAVConnection 测试 WebDAV 连接
+ */
+export function TestWebDAVConnection(config: appconf$0.AppConfig): $CancellablePromise<void> {
+    return $Call.ByID(3937884146, config);
+}
+
+/**
  * UploadDBBackupToCloud 上传数据库备份到云端
  */
 export function UploadDBBackupToCloud(backupPath: string): $CancellablePromise<void> {

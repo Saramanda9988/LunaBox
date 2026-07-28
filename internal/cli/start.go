@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 	"lunabox/internal/applog"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
 	"lunabox/internal/service/launcher"
 	"path/filepath"
 	goruntime "runtime"
@@ -137,16 +135,11 @@ func resolveGame(w io.Writer, app *CoreApp, query string) (gameID string, gameNa
 		return game.ID, game.Name, nil
 	}
 
-	resp, err := app.GameService.GetGames(vo.GameListRequest{
-		Limit:       50,
-		SearchQuery: query,
-		SortBy:      enums.GameListSortByName,
-		SortOrder:   enums.SortOrderAsc,
-	})
+	// 2. 拉取完整游戏列表（GetGames 的 SearchQuery 只匹配名称/公司，无法用于短ID匹配）
+	games, err := app.GameService.ListAllGames()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get games: %w", err)
 	}
-	games := resp.Games
 
 	queryLower := strings.ToLower(query)
 

@@ -12,6 +12,7 @@ import {
   TestOneDriveConnection,
   TestS3Connection,
   TestUmbraConnection,
+  TestWebDAVConnection,
 } from "../../../bindings/lunabox/internal/service/backupservice";
 import { GetAppConfig } from "../../../bindings/lunabox/internal/service/configservice";
 import { formatFileSize } from "../../utils/size";
@@ -32,6 +33,7 @@ export function CloudBackupSettingsPanel({
   const [testingS3, setTestingS3] = useState(false);
   const [testingOneDrive, setTestingOneDrive] = useState(false);
   const [testingUmbra, setTestingUmbra] = useState(false);
+  const [testingWebDAV, setTestingWebDAV] = useState(false);
   const [authorizingOneDrive, setAuthorizingOneDrive] = useState(false);
   const [authorizingUmbra, setAuthorizingUmbra] = useState(false);
   const [cancellingUmbra, setCancellingUmbra] = useState(false);
@@ -46,7 +48,8 @@ export function CloudBackupSettingsPanel({
   const hasOneDriveClientID = oneDriveClientID.length > 0;
   const requiresBackupPassword
     = formData.cloud_backup_provider === "s3"
-      || formData.cloud_backup_provider === "onedrive";
+      || formData.cloud_backup_provider === "onedrive"
+      || formData.cloud_backup_provider === "webdav";
   const umbraStoragePercent
     = umbraProfile && umbraProfile.quota_bytes > 0
       ? Math.min(
@@ -185,6 +188,22 @@ export function CloudBackupSettingsPanel({
     }
     finally {
       setTestingS3(false);
+    }
+  };
+
+  const handleTestWebDAV = async () => {
+    setTestingWebDAV(true);
+    try {
+      await TestWebDAVConnection(formData);
+      toast.success(t("settings.cloudBackup.toast.webdavTestSuccess"));
+    }
+    catch (err: any) {
+      toast.error(
+        t("settings.cloudBackup.toast.webdavTestFailed", { error: err }),
+      );
+    }
+    finally {
+      setTestingWebDAV(false);
     }
   };
 
@@ -367,6 +386,7 @@ export function CloudBackupSettingsPanel({
           options={[
             { value: "s3", label: t("settings.cloudBackup.providerS3") },
             { value: "onedrive", label: "OneDrive" },
+            { value: "webdav", label: "WebDAV" },
             { value: "umbra", label: t("settings.cloudBackup.providerUmbra") },
           ]}
         />
@@ -490,6 +510,68 @@ export function CloudBackupSettingsPanel({
               className="glass-btn-neutral rounded-md bg-brand-100 px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-200 disabled:opacity-50 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600"
             >
               {testingS3
+                ? t("settings.cloudBackup.testing")
+                : t("settings.cloudBackup.testConnection")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {formData.cloud_backup_provider === "webdav" && (
+        <div className="glass-card space-y-4 rounded-lg bg-brand-100 p-4 dark:bg-brand-800">
+          <div className="block text-sm font-semibold text-brand-700 dark:text-brand-300">
+            {t("settings.cloudBackup.webdavSection")}
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+              URL
+            </label>
+            <input
+              type="text"
+              name="webdav_url"
+              value={formData.webdav_url || ""}
+              onChange={handleChange}
+              placeholder="https://dav.example.com/remote.php/dav/files/user"
+              className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+            />
+            <p className="text-xs text-brand-500 dark:text-brand-400">
+              {t("settings.cloudBackup.webdavUrlHint")}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                {t("settings.cloudBackup.webdavUsername")}
+              </label>
+              <input
+                type="text"
+                name="webdav_username"
+                value={formData.webdav_username || ""}
+                onChange={handleChange}
+                className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                {t("settings.cloudBackup.webdavPassword")}
+              </label>
+              <input
+                type="password"
+                name="webdav_password"
+                value={formData.webdav_password || ""}
+                onChange={handleChange}
+                className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleTestWebDAV}
+              disabled={testingWebDAV}
+              className="glass-btn-neutral rounded-md bg-brand-100 px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-200 disabled:opacity-50 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600"
+            >
+              {testingWebDAV
                 ? t("settings.cloudBackup.testing")
                 : t("settings.cloudBackup.testConnection")}
             </button>
