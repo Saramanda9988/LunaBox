@@ -3,6 +3,7 @@ package metadata
 import (
 	"encoding/json"
 	"io"
+	"lunabox/internal/version"
 	"net/http"
 	"reflect"
 	"strings"
@@ -113,7 +114,7 @@ func TestFetchSteamCommunityTagsUsesPopularUserTags(t *testing.T) {
 	browseRequests := 0
 	catalogRequests := 0
 	client := &http.Client{Transport: metadataRoundTripperFunc(func(req *http.Request) (*http.Response, error) {
-		if got := req.Header.Get("User-Agent"); got != metadataUserAgent {
+		if got := req.Header.Get("User-Agent"); got != version.UserAgent() {
 			t.Fatalf("unexpected Steam community tag user agent: %q", got)
 		}
 
@@ -207,7 +208,7 @@ func TestFetchSteamCommunityTagsFallsBackToStorePage(t *testing.T) {
 	sharedMetadataRateLimiter = newMetadataRateLimiter(nil)
 
 	client := &http.Client{Transport: metadataRoundTripperFunc(func(req *http.Request) (*http.Response, error) {
-		if got := req.Header.Get("User-Agent"); got != metadataUserAgent {
+		if got := req.Header.Get("User-Agent"); got != version.UserAgent() {
 			t.Fatalf("unexpected Steam community tag user agent: %q", got)
 		}
 

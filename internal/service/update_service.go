@@ -174,7 +174,7 @@ func (s *UpdateService) fetchUpdateInfo(url string, appConfig *appconf.AppConfig
 		return nil, err
 	}
 
-	req.Header.Set("User-Agent", "LunaBox-Updater/1.0")
+	req.Header.Set("User-Agent", version.UserAgent())
 
 	client, _, err := proxyutils.NewHTTPClientFromConfig(10*time.Second, appConfig)
 	if err != nil {

@@ -37,7 +37,6 @@ const (
 	bangumiOAuthTokenURL       = "https://bgm.tv/oauth/access_token"
 	bangumiCurrentUserURL      = "https://api.bgm.tv/v0/me"
 	bangumiCollectionAPIFormat = "https://api.bgm.tv/v0/users/-/collections/%s"
-	bangumiUserAgent           = "Saramanda9988/LunaBox/1.10.0 (desktop) (https://github.com/Saramanda9988/LunaBox)"
 
 	bangumiOAuthClientIDEnv     = "LUNABOX_BANGUMI_CLIENT_ID"
 	bangumiOAuthClientSecretEnv = "LUNABOX_BANGUMI_CLIENT_SECRET"
@@ -432,7 +431,7 @@ func (s *BangumiService) refreshAccessTokenLocked(ctx context.Context) (string, 
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", bangumiUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
@@ -587,7 +586,7 @@ func (s *BangumiService) exchangeAuthorizationCode(ctx context.Context, code, re
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", bangumiUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
@@ -623,7 +622,7 @@ func (s *BangumiService) fetchCurrentUser(ctx context.Context, accessToken strin
 		return nil, fmt.Errorf("创建 Bangumi 当前用户请求失败: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("User-Agent", bangumiUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := s.httpClient.Do(req)
@@ -758,7 +757,7 @@ func (s *BangumiService) postSubjectCollection(ctx context.Context, subjectID, a
 		return fmt.Errorf("创建 Bangumi 收藏请求失败: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("User-Agent", bangumiUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
 

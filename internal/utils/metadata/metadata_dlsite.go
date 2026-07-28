@@ -6,6 +6,7 @@ import (
 	"io"
 	"lunabox/internal/common/enums"
 	"lunabox/internal/models"
+	"lunabox/internal/version"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -135,7 +136,7 @@ func (d DLsiteInfoGetter) fetchDocument(reqURL string) (*goquery.Document, error
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", metadataUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 	req.Header.Set("Accept-Language", "ja,en;q=0.8")
 	req.Header.Set("Cookie", "adultchecked=1; locale=ja")

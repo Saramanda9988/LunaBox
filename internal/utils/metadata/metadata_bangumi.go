@@ -8,6 +8,7 @@ import (
 	"io"
 	"lunabox/internal/common/enums"
 	"lunabox/internal/models"
+	"lunabox/internal/version"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -105,7 +106,7 @@ func (b BangumiInfoGetter) FetchMetadata(id string, token string) (MetadataResul
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	req.Header.Set("User-Agent", metadataUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 
 	resp, err := doLimitedMetadataRequest(b.client, req, enums.Bangumi)
 	if err != nil {
@@ -193,7 +194,7 @@ func (b BangumiInfoGetter) FetchMetadataByName(name string, token string) (Metad
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	req.Header.Set("User-Agent", metadataUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := doLimitedMetadataRequest(b.client, req, enums.Bangumi)

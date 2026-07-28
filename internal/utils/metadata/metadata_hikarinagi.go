@@ -207,7 +207,7 @@ func (h HikarinagiInfoGetter) getAccessToken() (string, error) {
 	req.SetBasicAuth(clientID, clientSecret)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", metadataUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 
 	resp, err := h.client.Do(req)
 	if err != nil {
@@ -266,7 +266,7 @@ func (h HikarinagiInfoGetter) doAuthorizedGet(reqURL string) ([]byte, error) {
 		}
 		req.Header.Set("Authorization", "Bearer "+accessToken)
 		req.Header.Set("Accept", "application/json")
-		req.Header.Set("User-Agent", metadataUserAgent)
+		req.Header.Set("User-Agent", version.UserAgent())
 
 		statusCode, _, bodyBytes, err := doLimitedMetadataRequestBody(h.client, req, enums.Hikarinagi)
 		if err != nil {

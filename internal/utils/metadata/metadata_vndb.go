@@ -8,6 +8,7 @@ import (
 	"io"
 	"lunabox/internal/common/enums"
 	"lunabox/internal/models"
+	"lunabox/internal/version"
 	"net/http"
 	"strings"
 	"time"
@@ -168,6 +169,7 @@ func (v VNDBInfoGetter) queryVNDBResults(filters []interface{}, sort string, res
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", version.UserAgent())
 
 	resp, err := doLimitedMetadataRequest(v.client, req, enums.VNDB)
 	if err != nil {

@@ -60,8 +60,7 @@ func (h *RemoteImageProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "failed to build image request", http.StatusBadRequest)
 		return
 	}
-	req.Header.Set("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
-	req.Header.Set("User-Agent", "LunaBox")
+	setImageRequestHeaders(req)
 	if rangeHeader := strings.TrimSpace(r.Header.Get("Range")); rangeHeader != "" {
 		req.Header.Set("Range", rangeHeader)
 	}

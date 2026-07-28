@@ -206,7 +206,13 @@ func DownloadAndSaveCoverImageWithClient(client *http.Client, imageURL string, g
 			return imageURL, fmt.Errorf("create cover image download client: %w", clientErr)
 		}
 	}
-	resp, err := client.Get(imageURL)
+	req, err := http.NewRequest(http.MethodGet, imageURL, nil)
+	if err != nil {
+		return imageURL, err
+	}
+	setImageRequestHeaders(req)
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return imageURL, err
 	}

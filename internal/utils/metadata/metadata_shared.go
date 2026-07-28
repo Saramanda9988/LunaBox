@@ -36,7 +36,6 @@ type BatchGetter interface {
 	FetchMetadataBatch(ids []string, token string) (map[string]MetadataResult, error)
 }
 
-const metadataUserAgent = "Saramanda9988/LunaBox/1.10.0 (desktop) (https://github.com/Saramanda9988/LunaBox)"
 const metadataHTTPTimeout = 10 * time.Second
 const defaultMetadataTagLimit = 10
 

@@ -205,7 +205,7 @@ func (t TouchGalInfoGetter) FetchMetadataByName(name string, token string) (Meta
 
 func (t TouchGalInfoGetter) setHeaders(req *http.Request, token string) {
 	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(token))
-	req.Header.Set("User-Agent", metadataUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 	req.Header.Set("Accept", "application/json")
 }
 

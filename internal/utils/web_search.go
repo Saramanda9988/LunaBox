@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"lunabox/internal/utils/proxyutils"
+	"lunabox/internal/version"
 )
 
 // SearchViaTavily 使用 Tavily Search API
@@ -90,7 +91,7 @@ func SearchViaDuckDuckGoWithProxyConfig(query string, proxyConfig proxyutils.Pro
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("User-Agent", "LunaBox/1.0")
+	req.Header.Set("User-Agent", version.UserAgent())
 
 	client, _, err := proxyutils.NewHTTPClientFromConfig(10*time.Second, proxyConfig)
 	if err != nil {
@@ -146,7 +147,7 @@ func SearchViaMoeGirlWithProxyConfig(query string, proxyConfig proxyutils.ProxyC
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("User-Agent", "LunaBox/1.0 (game library app)")
+	req.Header.Set("User-Agent", version.UserAgent())
 
 	client, _, err := proxyutils.NewHTTPClientFromConfig(10*time.Second, proxyConfig)
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"io"
 	"lunabox/internal/common/enums"
 	"lunabox/internal/models"
+	"lunabox/internal/version"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -275,7 +276,7 @@ func (s SteamInfoGetter) fetchByAppIDAndLang(appID int, lang string) (MetadataRe
 	if err != nil {
 		return MetadataResult{}, err
 	}
-	req.Header.Set("User-Agent", metadataUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 
 	resp, err := doLimitedMetadataRequest(s.client, req, enums.Steam)
 	if err != nil {
@@ -404,7 +405,7 @@ func steamCoverURLAvailable(ctx context.Context, client *http.Client, candidate 
 	if err != nil {
 		return false
 	}
-	req.Header.Set("User-Agent", metadataUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -430,7 +431,7 @@ func (s SteamInfoGetter) searchByName(keyword string, lang string) ([]steamSearc
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", metadataUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 
 	resp, err := doLimitedMetadataRequest(s.client, req, enums.Steam)
 	if err != nil {
@@ -557,7 +558,7 @@ func (s SteamInfoGetter) fetchCommunityTagWeights(appID int, lang string) ([]ste
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", metadataUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := doLimitedMetadataRequest(s.client, req, enums.Steam)
@@ -601,7 +602,7 @@ func (s SteamInfoGetter) fetchCommunityTagCatalog(lang string) (map[int]string, 
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", metadataUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := doLimitedMetadataRequest(s.client, req, enums.Steam)
@@ -648,7 +649,7 @@ func (s SteamInfoGetter) fetchCommunityTagsFromStorePage(appID int, lang string)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", metadataUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 	req.Header.Set("Cookie", "birthtime=568022401; lastagecheckage=1-January-1988; wants_mature_content=1")
 
@@ -898,7 +899,7 @@ func (s SteamInfoGetter) fetchReviewRating(appID int) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	req.Header.Set("User-Agent", metadataUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 
 	resp, err := doLimitedMetadataRequest(s.client, req, enums.Steam)
 	if err != nil {
