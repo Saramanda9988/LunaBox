@@ -104,8 +104,18 @@ func resolveSteamPlatformTarget(_ context.Context, game models.Game) (SteamResul
 
 func importSteamPlatformShortcut(ctx context.Context, game models.Game) (SteamResult, error) {
 	resolved, err := resolveSteamPlatformTarget(ctx, game)
-	if err != nil || resolved.Status.Ready {
+	if err != nil {
 		return resolved, err
+	}
+	if resolved.Status.Ready {
+		if !resolved.Status.SteamRunning && resolved.Status.LaunchKind == "shortcut" {
+			if appID, ok := steamutils.ShortcutAppIDFromLongID(resolved.Status.LaunchID); ok {
+				if steamRoot, rootErr := findSteamRoot(); rootErr == nil {
+					_ = importSteamShortcutArtwork(steamRoot, resolved.Status.UserID, appID, game)
+				}
+			}
+		}
+		return resolved, nil
 	}
 	if resolved.Status.State != SteamLaunchStateNeedsImport {
 		return resolved, nil
@@ -152,6 +162,7 @@ func importSteamPlatformShortcut(ctx context.Context, game models.Game) (SteamRe
 			return SteamResult{}, err
 		}
 		resolved.BackupPath = backupPath
+		_ = importSteamShortcutArtwork(steamRoot, userID, appID, game)
 		return resolved, nil
 	}
 
@@ -186,6 +197,7 @@ func importSteamPlatformShortcut(ctx context.Context, game models.Game) (SteamRe
 	}
 	resolved.Imported = true
 	resolved.BackupPath = backupPath
+	_ = importSteamShortcutArtwork(steamRoot, userID, appID, game)
 	return resolved, nil
 }
 
@@ -344,6 +356,9 @@ func importSteamPlatformShortcuts(_ context.Context, games []models.Game) (Steam
 			status.LaunchID = steamutils.ShortcutLongID(appID)
 			status.LaunchKind = "shortcut"
 			item.Result.Status = status
+			if !steamRunning {
+				_ = importSteamShortcutArtwork(steamRoot, userID, appID, candidate.game)
+			}
 			continue
 		}
 		if steamRunning {
@@ -397,7 +412,11 @@ func importSteamPlatformShortcuts(_ context.Context, games []models.Game) (Steam
 	}
 	batch.BackupPath = backupPath
 	for _, itemIndex := range addedItemIndexes {
-		batch.Items[itemIndex].Result.BackupPath = backupPath
+		item := &batch.Items[itemIndex]
+		item.Result.BackupPath = backupPath
+		if appID, ok := steamutils.ShortcutAppIDFromLongID(item.Result.Status.LaunchID); ok {
+			_ = importSteamShortcutArtwork(steamRoot, userID, appID, games[itemIndex])
+		}
 	}
 	return batch, nil
 }
