@@ -12,10 +12,14 @@ import (
 )
 
 const (
-	linuxDesktopID             = "org.wails.lunabox"
-	linuxDesktopFileName       = linuxDesktopID + ".desktop"
-	legacyLinuxDesktopFileName = "lunabox.desktop"
+	linuxDesktopID       = "io.github.saramanda9988.lunabox"
+	linuxDesktopFileName = linuxDesktopID + ".desktop"
 )
+
+var legacyLinuxDesktopFileNames = []string{
+	"org.wails.lunabox.desktop",
+	"lunabox.desktop",
+}
 
 func RegisterURLScheme(exePath string) error {
 	if strings.TrimSpace(exePath) == "" {
@@ -62,7 +66,7 @@ func UnregisterURLScheme() error {
 	if err != nil {
 		return err
 	}
-	for _, desktopFileName := range []string{linuxDesktopFileName, legacyLinuxDesktopFileName} {
+	for _, desktopFileName := range append([]string{linuxDesktopFileName}, legacyLinuxDesktopFileNames...) {
 		path := filepath.Join(applicationsDir, desktopFileName)
 		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("remove desktop entry: %w", err)
@@ -142,9 +146,11 @@ func protocolDesktopIcon(exePath string) string {
 }
 
 func removeLegacyDesktopFile(currentDesktopPath string) {
-	legacyPath := filepath.Join(filepath.Dir(currentDesktopPath), legacyLinuxDesktopFileName)
-	if legacyPath != currentDesktopPath {
-		_ = os.Remove(legacyPath)
+	for _, desktopFileName := range legacyLinuxDesktopFileNames {
+		legacyPath := filepath.Join(filepath.Dir(currentDesktopPath), desktopFileName)
+		if legacyPath != currentDesktopPath {
+			_ = os.Remove(legacyPath)
+		}
 	}
 }
 

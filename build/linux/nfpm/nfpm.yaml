@@ -17,9 +17,9 @@ contents:
   - src: "./build/bin/lunacli"
     dst: "/usr/bin/lunacli"
   - src: "./build/appicon.png"
-    dst: "/usr/share/icons/hicolor/512x512/apps/org.wails.lunabox.png"
+    dst: "/usr/share/icons/hicolor/512x512/apps/io.github.saramanda9988.lunabox.png"
   - src: "./build/linux/desktop"
-    dst: "/usr/share/applications/org.wails.lunabox.desktop"
+    dst: "/usr/share/applications/io.github.saramanda9988.lunabox.desktop"
 
 depends:
   - libgtk-4-1

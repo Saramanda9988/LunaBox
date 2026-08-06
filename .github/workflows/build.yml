@@ -27,6 +27,7 @@ jobs:
         os:
           - windows-latest
           - macos-15
+          - ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -47,6 +48,14 @@ jobs:
           node-version: 20
           cache: 'pnpm'
           cache-dependency-path: 'frontend/pnpm-lock.yaml'
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential libayatana-appindicator3-dev libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
 
       - name: Install matching Wails v3 CLI
         shell: bash
