@@ -392,9 +392,91 @@ jobs:
           path: build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-macos-${{ matrix.arch }}.dmg
           if-no-files-found: error
 
+  build-linux:
+    name: Linux amd64 / Packages
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install Linux build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential libayatana-appindicator3-dev libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+
+      - name: Install nFPM
+        shell: bash
+        run: |
+          set -euo pipefail
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+          nfpm --version
+
+      - name: Install matching Wails v3 CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
+          go install "github.com/wailsapp/wails/v3/cmd/wails3@$version"
+          test "$(wails3 version 2>&1)" = "$version"
+
+      - name: Get version from tag
+        id: get_version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Linux packages
+        shell: bash
+        env:
+          LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
+          LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
+          LUNABOX_HIKARINAGI_CLIENT_ID: ${{ vars.LUNABOX_HIKARINAGI_CLIENT_ID }}
+          LUNABOX_TOUCHGAL_TOKEN: ${{ secrets.LUNABOX_TOUCHGAL_TOKEN }}
+          LUNABOX_UMBRA_CLIENT_ID: ${{ vars.LUNABOX_UMBRA_CLIENT_ID }}
+          LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
+        run: |
+          set -euo pipefail
+          chmod +x scripts/build.sh
+          ./scripts/build.sh all '${{ steps.get_version.outputs.VERSION }}' amd64
+          test -f 'build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-linux-amd64-portable.tar.gz'
+          test -f 'build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-linux-amd64.deb'
+          test -f 'build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-linux-amd64.rpm'
+
+      - name: Upload Linux packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunabox-${{ steps.get_version.outputs.VERSION }}-linux-amd64
+          path: |
+            build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-linux-amd64-portable.tar.gz
+            build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-linux-amd64.deb
+            build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-linux-amd64.rpm
+          if-no-files-found: error
+
   create-release:
     name: Create GitHub Release
-    needs: [build-release, build-macos]
+    needs: [build-release, build-macos, build-linux]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
@@ -422,8 +504,8 @@ jobs:
       - name: Prepare release files
         run: |
           mkdir -p release
-          find ./artifacts -maxdepth 1 -type f \( -name "*.zip" -o -name "*.exe" -o -name "*.dmg" \) -exec cp {} ./release/ \;
-          test "$(find ./release -maxdepth 1 -type f | wc -l | tr -d ' ')" -eq 6
+          find ./artifacts -maxdepth 1 -type f \( -name "*.zip" -o -name "*.exe" -o -name "*.dmg" -o -name "*.tar.gz" -o -name "*.deb" -o -name "*.rpm" \) -exec cp {} ./release/ \;
+          test "$(find ./release -maxdepth 1 -type f | wc -l | tr -d ' ')" -eq 9
           ls -lh ./release
 
       - name: Generate release notes
@@ -488,8 +570,11 @@ jobs:
           echo "| \`*-windows-*-portable.zip\` | Windows 便携版，解压即用，数据存储在程序目录 |" >> release_notes.md
           echo "| \`*-windows-*-setup.exe\` | Windows 安装版，数据存储在 %APPDATA%\\\\LunaBox |" >> release_notes.md
           echo "| \`*-macos-*.dmg\` | macOS 磁盘映像，将 LunaBox 拖入 Applications |" >> release_notes.md
+          echo "| \`*-linux-*-portable.tar.gz\` | Linux 便携版，解压后运行 LunaBox |" >> release_notes.md
+          echo "| \`*-linux-*.deb\` | Linux Debian/Ubuntu 安装包 |" >> release_notes.md
+          echo "| \`*-linux-*.rpm\` | Linux Fedora/RHEL/openSUSE 安装包 |" >> release_notes.md
           echo "" >> release_notes.md
-          echo "Windows 提供 AMD64、ARM64；macOS 提供 Intel AMD64、Apple Silicon ARM64。" >> release_notes.md
+          echo "Windows 提供 AMD64、ARM64；macOS 提供 Intel AMD64、Apple Silicon ARM64；Linux 提供 AMD64。" >> release_notes.md
           echo "" >> release_notes.md
           echo "### 🔗 相关链接" >> release_notes.md
           echo "" >> release_notes.md
