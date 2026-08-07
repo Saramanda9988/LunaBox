@@ -12,12 +12,12 @@ import (
 )
 
 const (
-	linuxDesktopID       = "io.github.saramanda9988.lunabox"
+	linuxDesktopID       = "org.wails.lunabox"
 	linuxDesktopFileName = linuxDesktopID + ".desktop"
 )
 
 var legacyLinuxDesktopFileNames = []string{
-	"org.wails.lunabox.desktop",
+	"io.github.saramanda9988.lunabox.desktop",
 	"lunabox.desktop",
 }
 
