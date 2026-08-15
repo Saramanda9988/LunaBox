@@ -171,6 +171,15 @@ jobs:
             throw 'Installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe.'
           }
 
+          $SigningDir = 'build/signing/test-installer-payload'
+          if (Test-Path -LiteralPath $SigningDir) {
+            Remove-Item -LiteralPath $SigningDir -Recurse -Force
+          }
+          New-Item -ItemType Directory -Force -Path $SigningDir | Out-Null
+          Copy-Item -LiteralPath "$PayloadDir/LunaBox.exe" -Destination $SigningDir -Force
+          Copy-Item -LiteralPath "$PayloadDir/lunacli.exe" -Destination $SigningDir -Force
+          Copy-Item -LiteralPath 'build/bin/LunaBoxUpdater.exe' -Destination $SigningDir -Force
+
       - name: Upload unsigned portable artifact
         id: upload-unsigned-portable
         if: matrix.mode == 'portable'
@@ -247,10 +256,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-lunabox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-installer-payload
-          path: |
-            build/windows/payload/${{ matrix.arch }}/LunaBox.exe
-            build/windows/payload/${{ matrix.arch }}/lunacli.exe
-            build/bin/LunaBoxUpdater.exe
+          path: build/signing/test-installer-payload/
           if-no-files-found: error
           retention-days: 1
 
@@ -262,7 +268,7 @@ jobs:
           organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
           project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
           signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG || 'test-signing' }}
-          artifact-configuration-slug: ${{ vars.SIGNPATH_INSTALLER_PAYLOAD_ARTIFACT_CONFIGURATION_SLUG || 'github-installer-payload' }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_TEST_INSTALLER_PAYLOAD_ARTIFACT_CONFIGURATION_SLUG || 'github-test-installer-payload-v3' }}
           github-artifact-id: ${{ steps.upload-unsigned-installer-payload.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 1200
