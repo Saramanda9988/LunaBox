@@ -6,14 +6,28 @@ on:
     paths:
       - 'frontend/**'
       - 'internal/**'
+      - 'cmd/**'
+      - 'build/**'
+      - 'scripts/**'
+      - '*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Taskfile.yml'
       - '.github/workflows/build.yml'
   pull_request:
     branches: [main, master, develop]
 
 jobs:
   test:
-    name: Test Compilation
-    runs-on: windows-latest
+    name: Test Compilation (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - macos-15
+          - ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,8 +49,21 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: 'frontend/pnpm-lock.yaml'
 
-      - name: Setup Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential libayatana-appindicator3-dev libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+
+      - name: Install matching Wails v3 CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
+          go install "github.com/wailsapp/wails/v3/cmd/wails3@$version"
+          test "$(wails3 version 2>&1)" = "$version"
 
       - name: Install frontend dependencies
         working-directory: ./frontend
@@ -46,8 +73,20 @@ jobs:
         working-directory: ./frontend
         run: pnpm run build
 
-      - name: Build application (test)
-        run: go build -o lunabox-test.exe .
+      - name: Configure macOS compilation
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          echo 'CGO_ENABLED=1' >> "$GITHUB_ENV"
+          echo 'CGO_CFLAGS=-mmacosx-version-min=12.0' >> "$GITHUB_ENV"
+          echo 'CGO_LDFLAGS=-mmacosx-version-min=12.0' >> "$GITHUB_ENV"
+          echo 'MACOSX_DEPLOYMENT_TARGET=12.0' >> "$GITHUB_ENV"
+
+      - name: Compile platform-specific Go tests
+        run: go test -run '^$' ./internal/...
+
+      - name: Build application with Wails v3
+        run: wails3 build
 
     #   - name: Run Go tests
     #     run: go test ./... -v
@@ -76,18 +115,25 @@ jobs:
   #       with:
   #         version: 9
 
-  #     - name: Setup Wails
-  #       run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+  #     - name: Install matching Wails v3 CLI
+  #       shell: pwsh
+  #       run: |
+  #         $Version = (go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3).Trim()
+  #         go install "github.com/wailsapp/wails/v3/cmd/wails3@$Version"
+  #         $Installed = (& wails3 version 2>&1 | Out-String).Trim()
+  #         if ($Installed -ne $Version) {
+  #           throw "wails3 version mismatch: expected $Version, found $Installed"
+  #         }
 
   #     - name: Install frontend dependencies
   #       working-directory: ./frontend
   #       run: pnpm install
 
   #     - name: Build with Wails (dev tag)
-  #       run: wails build -devtools
+  #       run: wails3 build
 
   #     - name: Upload artifact
   #       uses: actions/upload-artifact@v4
   #       with:
   #         name: lunabox-dev-windows-amd64
-  #         path: build/bin/LunaBox.exe
+  #         path: bin/LunaBox.exe

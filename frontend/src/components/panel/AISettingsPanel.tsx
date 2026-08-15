@@ -1,6 +1,6 @@
-import type { appconf } from "../../../wailsjs/go/models";
+import type { appconf } from "../../../src/bindings/models";
 import { useTranslation } from "react-i18next";
-import { enums } from "../../../wailsjs/go/models";
+import { enums } from "../../../src/bindings/models";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 
@@ -38,9 +38,9 @@ export function AISettingsPanel({ formData, onChange }: AISettingsProps) {
   };
 
   const PROMPT_LABELS: Record<string, string> = {
-    DEFAULT_SYSTEM: t("settings.ai.promptLabels.DEFAULT_SYSTEM"),
-    MEOW_ZAKO: t("settings.ai.promptLabels.MEOW_ZAKO"),
-    STRICT_TUTOR: t("settings.ai.promptLabels.STRICT_TUTOR"),
+    DefaultSystemPrompt: t("settings.ai.promptLabels.DEFAULT_SYSTEM"),
+    MeowZakoPrompt: t("settings.ai.promptLabels.MEOW_ZAKO"),
+    StrictTutorPrompt: t("settings.ai.promptLabels.STRICT_TUTOR"),
   };
 
   return (
@@ -106,20 +106,22 @@ export function AISettingsPanel({ formData, onChange }: AISettingsProps) {
           {t("settings.ai.systemPromptLabel")}
         </label>
         <div className="flex flex-wrap gap-2">
-          {Object.entries(enums.PromptType).map(([name, prompt]) => (
-            <button
-              key={name}
-              type="button"
-              onClick={() =>
-                onChange({
-                  ...formData,
-                  ai_system_prompt: prompt,
-                } as appconf.AppConfig)}
-              className="px-2 py-1 text-xs bg-brand-100 dark:bg-brand-700 text-brand-600 dark:text-brand-300 rounded hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
-            >
-              {PROMPT_LABELS[name] || name}
-            </button>
-          ))}
+          {Object.entries(enums.PromptType)
+            .filter(([, prompt]) => prompt !== "")
+            .map(([name, prompt]) => (
+              <button
+                key={name}
+                type="button"
+                onClick={() =>
+                  onChange({
+                    ...formData,
+                    ai_system_prompt: prompt,
+                  } as appconf.AppConfig)}
+                className="px-2 py-1 text-xs bg-brand-100 dark:bg-brand-700 text-brand-600 dark:text-brand-300 rounded hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors"
+              >
+                {PROMPT_LABELS[name] || name}
+              </button>
+            ))}
         </div>
         <textarea
           name="ai_system_prompt"

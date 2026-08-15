@@ -629,6 +629,172 @@ func migrationGameDirectory(launchPath string) string {
 	return directory
 }
 
+// migration166 stores the device-local Steam launch identity separately from
+// remote metadata identity.
+func migration166(tx *sql.Tx) error {
+	columns := []struct {
+		name string
+		sql  string
+	}{
+		{"steam_launch_id", `ALTER TABLE games ADD COLUMN IF NOT EXISTS steam_launch_id TEXT DEFAULT ''`},
+		{"steam_launch_kind", `ALTER TABLE games ADD COLUMN IF NOT EXISTS steam_launch_kind TEXT DEFAULT ''`},
+		{"steam_user_id", `ALTER TABLE games ADD COLUMN IF NOT EXISTS steam_user_id TEXT DEFAULT ''`},
+	}
+	for _, column := range columns {
+		if _, err := tx.Exec(column.sql); err != nil {
+			return fmt.Errorf("failed to add %s column to games: %w", column.name, err)
+		}
+	}
+	return nil
+}
+
+func migrateCompatibilityLaunchMode(tx *sql.Tx) error {
+	if _, err := tx.Exec(`
+		UPDATE games
+		SET launch_mode = 'compatibility'
+		WHERE COALESCE(TRIM(wine_runner), '') <> ''
+		  AND COALESCE(NULLIF(TRIM(launch_mode), ''), 'normal') = 'normal'
+	`); err != nil {
+		return fmt.Errorf("failed to migrate Wine games to compatibility launch mode: %w", err)
+	}
+
+	if _, err := tx.Exec(`
+		UPDATE games
+		SET wine_runner = 'system'
+		WHERE LOWER(TRIM(COALESCE(wine_runner, ''))) = 'custom'
+	`); err != nil {
+		return fmt.Errorf("failed to normalize custom Wine runners: %w", err)
+	}
+	return nil
+}
+
+// migration167 makes Wine/CrossOver an explicit launch mode and folds the
+// former custom runner into the equivalent Wine runner option.
+func migration167(tx *sql.Tx) error {
+	return migrateCompatibilityLaunchMode(tx)
+}
+
+// migration168 stores Steam LaunchOptions for device-local shortcut launches.
+// It also re-runs the compatibility migration so databases that already used
+// the old Linux branch migration167 still receive the main-branch backfill.
+func migration168(tx *sql.Tx) error {
+	if _, err := tx.Exec(`
+		ALTER TABLE games
+		ADD COLUMN IF NOT EXISTS steam_launch_options TEXT DEFAULT ''
+	`); err != nil {
+		return fmt.Errorf("failed to add steam_launch_options column to games: %w", err)
+	}
+	return migrateCompatibilityLaunchMode(tx)
+}
+
+// migration169 stores user-defined game aliases as a JSON string array.
+func migration169(tx *sql.Tx) error {
+	if _, err := tx.Exec(`
+		ALTER TABLE games
+		ADD COLUMN IF NOT EXISTS aliases TEXT DEFAULT '[]'
+	`); err != nil {
+		return fmt.Errorf("failed to add aliases column to games: %w", err)
+	}
+	if _, err := tx.Exec(`
+		UPDATE games
+		SET aliases = '[]'
+		WHERE aliases IS NULL OR TRIM(aliases) = ''
+	`); err != nil {
+		return fmt.Errorf("failed to initialize game aliases: %w", err)
+	}
+	return nil
+}
+
+// migration170 introduces first-class per-provider metadata identities.
+func migration170(tx *sql.Tx) error {
+	if _, err := tx.Exec(`
+		CREATE TABLE IF NOT EXISTS game_metadata_sources (
+			game_id TEXT NOT NULL,
+			source_type TEXT NOT NULL,
+			source_id TEXT NOT NULL,
+			cached_at TIMESTAMPTZ,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (game_id, source_type)
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create game_metadata_sources table: %w", err)
+	}
+
+	if _, err := tx.Exec(`
+		INSERT INTO game_metadata_sources (
+			game_id, source_type, source_id, cached_at, created_at, updated_at
+		)
+		SELECT
+			id,
+			LOWER(TRIM(source_type)),
+			TRIM(source_id),
+			cached_at,
+			COALESCE(created_at, CURRENT_TIMESTAMP),
+			COALESCE(updated_at, cached_at, created_at, CURRENT_TIMESTAMP)
+		FROM games
+		WHERE LOWER(TRIM(COALESCE(source_type, ''))) NOT IN ('', 'local', 'mixed')
+		  AND TRIM(COALESCE(source_id, '')) <> ''
+		ON CONFLICT (game_id, source_type) DO UPDATE SET
+			source_id = EXCLUDED.source_id,
+			cached_at = EXCLUDED.cached_at,
+			updated_at = EXCLUDED.updated_at
+	`); err != nil {
+		return fmt.Errorf("failed to backfill game metadata sources: %w", err)
+	}
+
+	indexes := []struct {
+		name string
+		sql  string
+	}{
+		{"idx_game_metadata_sources_identity", `CREATE INDEX IF NOT EXISTS idx_game_metadata_sources_identity ON game_metadata_sources(source_type, source_id)`},
+		{"idx_game_metadata_sources_game_id", `CREATE INDEX IF NOT EXISTS idx_game_metadata_sources_game_id ON game_metadata_sources(game_id)`},
+	}
+	for _, index := range indexes {
+		if _, err := tx.Exec(index.sql); err != nil {
+			return fmt.Errorf("failed to create %s: %w", index.name, err)
+		}
+	}
+	return nil
+}
+
+// migration171 adds persistent game filter presets.
+func migration171(tx *sql.Tx) error {
+	if _, err := tx.Exec(`
+		CREATE TABLE IF NOT EXISTS game_filter_presets (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			tags TEXT NOT NULL DEFAULT '[]',
+			exclude_tags BOOLEAN NOT NULL DEFAULT FALSE,
+			status TEXT NOT NULL DEFAULT '',
+			exclude_status BOOLEAN NOT NULL DEFAULT FALSE,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create game_filter_presets table: %w", err)
+	}
+	return nil
+}
+
+// migration172 adds one user-authored review per game.
+func migration172(tx *sql.Tx) error {
+	if _, err := tx.Exec(`
+		CREATE TABLE IF NOT EXISTS game_reviews (
+			game_id TEXT PRIMARY KEY,
+			rating INTEGER,
+			content TEXT NOT NULL DEFAULT '',
+			is_spoiler BOOLEAN NOT NULL DEFAULT FALSE,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			CHECK (rating IS NULL OR (rating >= 1 AND rating <= 10))
+		)
+	`); err != nil {
+		return fmt.Errorf("failed to create game_reviews table: %w", err)
+	}
+	return nil
+}
+
 // 所有迁移按版本号顺序排列
 var migrations = []Migration{
 	{
@@ -715,6 +881,41 @@ var migrations = []Migration{
 		Version:     165,
 		Description: "Add remote cover source URL and game directory to games",
 		Up:          migration165,
+	},
+	{
+		Version:     166,
+		Description: "Add device-local Steam launch identity to games",
+		Up:          migration166,
+	},
+	{
+		Version:     167,
+		Description: "Migrate Wine games to explicit compatibility launch mode",
+		Up:          migration167,
+	},
+	{
+		Version:     168,
+		Description: "Add Steam launch options and repair legacy Linux compatibility migration",
+		Up:          migration168,
+	},
+	{
+		Version:     169,
+		Description: "Add JSON aliases column to games",
+		Up:          migration169,
+	},
+	{
+		Version:     170,
+		Description: "Add first-class per-provider metadata identities",
+		Up:          migration170,
+	},
+	{
+		Version:     171,
+		Description: "Add persistent game filter presets",
+		Up:          migration171,
+	},
+	{
+		Version:     172,
+		Description: "Add user-authored game reviews",
+		Up:          migration172,
 	},
 	// {
 	// 	Version:     114,

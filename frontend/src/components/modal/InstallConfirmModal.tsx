@@ -1,7 +1,8 @@
-import type { vo } from "../../../wailsjs/go/models";
+import type { vo } from "../../../src/bindings/models";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { StartDownload } from "../../../wailsjs/go/service/DownloadService";
+import { StartDownload } from "../../../bindings/lunabox/internal/service/downloadservice";
+import { getMetadataSourceURL } from "../../utils/metadataSources";
 import { ModalPortal } from "../ui/ModalPortal";
 
 const META_SOURCE_LABELS: Record<string, string> = {
@@ -14,29 +15,6 @@ const META_SOURCE_LABELS: Record<string, string> = {
   hikarinagi: "Hikarinagi",
   erogamescape: "ErogameScape",
 };
-
-function metaUrl(source: string, id: string): string {
-  switch (source) {
-    case "vndb":
-      return `https://vndb.org/${id}`;
-    case "bangumi":
-      return `https://bgm.tv/subject/${id}`;
-    case "ymgal":
-      return `https://www.ymgal.games/ga/${id}`;
-    case "steam":
-      return `https://store.steampowered.com/app/${id}`;
-    case "dlsite":
-      return `https://www.dlsite.com/maniax/work/=/product_id/${id}.html`;
-    case "touchgal":
-      return `https://www.touchgal.ink/${id}`;
-    case "hikarinagi":
-      return `https://www.hikarinagi.org/galgames/${id}`;
-    case "erogamescape":
-      return `https://erogamescape.org/~ap2/ero/toukei_kaiseki/game.php?game=${id}`;
-    default:
-      return "";
-  }
-}
 
 interface InstallConfirmModalProps {
   request: vo.InstallRequest | null;
@@ -121,7 +99,10 @@ export function InstallConfirmModal({
                 const label
                   = META_SOURCE_LABELS[request.meta_source]
                     ?? request.meta_source;
-                const href = metaUrl(request.meta_source, request.meta_id);
+                const href = getMetadataSourceURL(
+                  request.meta_source,
+                  request.meta_id,
+                );
                 return (
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-brand-500 dark:text-brand-400 w-14 shrink-0">

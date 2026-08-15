@@ -7,6 +7,8 @@ import (
 	"lunabox/internal/applog"
 	"lunabox/internal/utils/processutils"
 	"lunabox/internal/utils/timerutils/focusing"
+	"path"
+	"strings"
 	"sync"
 	"time"
 )
@@ -16,15 +18,18 @@ type ActiveTrackKind string
 const (
 	ActiveTrackDefault     ActiveTrackKind = ""
 	ActiveTrackBundlePath  ActiveTrackKind = "bundle-path"
+	ActiveTrackProcessTree ActiveTrackKind = "process-tree"
 	ActiveTrackWineRootPID ActiveTrackKind = "wine-root-pid"
 	ActiveTrackLauncherPID ActiveTrackKind = "launcher-pid"
 )
 
 type ActiveTrack struct {
-	Kind        ActiveTrackKind
-	BundlePath  string
-	RootPID     uint32
-	LauncherPID uint32
+	Kind           ActiveTrackKind
+	BundlePath     string
+	RootPID        uint32
+	LauncherPID    uint32
+	ExecutablePath string
+	Bottle         string
 }
 
 type ActiveTimeUpdate struct {
@@ -36,10 +41,21 @@ type ActiveTimeUpdate struct {
 
 type ActiveTimeUpdateHandler func(ActiveTimeUpdate)
 
+type FocusUpdate struct {
+	GameID    string
+	SessionID string
+	ProcessID uint32
+	IsFocused bool
+}
+
+type FocusUpdateHandler func(FocusUpdate)
+
 var (
 	isBundlePathFocused    = focusing.IsBundlePathFocused
 	getForegroundProcessID = focusing.GetForegroundProcessID
 	getDescendantProcesses = processutils.GetDescendantProcesses
+	isProcessPresent       = processutils.IsProcessPresentByPID
+	getProcessCommandInfo  = processutils.GetProcessCommandInfo
 	isProcessFocused       = focusing.IsProcessFocused
 )
 
@@ -48,6 +64,7 @@ type TrackingSession struct {
 	SessionID          string
 	GameID             string
 	ProcessID          uint32
+	focusedProcessID   uint32
 	ActiveTrack        ActiveTrack
 	StartTime          time.Time
 	cancel             context.CancelFunc
@@ -66,6 +83,25 @@ func (t *TrackingSession) setPID(pid uint32) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.ProcessID = pid
+	t.focusedProcessID = 0
+}
+
+func (t *TrackingSession) setFocusedProcessID(pid uint32) {
+	if pid == 0 {
+		return
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.focusedProcessID = pid
+}
+
+func (t *TrackingSession) focusUpdateProcessID() uint32 {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.focusedProcessID != 0 {
+		return t.focusedProcessID
+	}
+	return t.ProcessID
 }
 
 // ActiveTimeTracker 活跃时间追踪服务
@@ -77,6 +113,8 @@ type ActiveTimeTracker struct {
 	sessions        map[string]*TrackingSession // gameID -> session
 	updateHandlerMu sync.RWMutex
 	updateHandler   ActiveTimeUpdateHandler
+	focusHandlerMu  sync.RWMutex
+	focusHandler    FocusUpdateHandler
 }
 
 // NewActiveTimeTracker 创建活跃时间追踪器（内部服务，由 StartService 管理）
@@ -92,6 +130,12 @@ func (s *ActiveTimeTracker) SetUpdateHandler(handler ActiveTimeUpdateHandler) {
 	s.updateHandlerMu.Lock()
 	defer s.updateHandlerMu.Unlock()
 	s.updateHandler = handler
+}
+
+func (s *ActiveTimeTracker) SetFocusUpdateHandler(handler FocusUpdateHandler) {
+	s.focusHandlerMu.Lock()
+	defer s.focusHandlerMu.Unlock()
+	s.focusHandler = handler
 }
 
 // StartTracking 开始追踪指定游戏的活跃游玩时间
@@ -211,6 +255,7 @@ func (s *ActiveTimeTracker) trackActiveTime(ctx context.Context, session *Tracki
 
 	// 获取当前焦点状态
 	isFocused := tracker.IsFocused()
+	s.emitFocusUpdate(session, isFocused)
 	s.emitActiveTimeUpdate(session, isFocused)
 
 	for {
@@ -228,10 +273,12 @@ func (s *ActiveTimeTracker) trackActiveTime(ctx context.Context, session *Tracki
 			if info.IsFocused != isFocused {
 				isFocused = info.IsFocused
 				s.logFocusChanged(session.GameID, isFocused)
+				s.emitFocusUpdate(session, isFocused)
 				s.emitActiveTimeUpdate(session, isFocused)
 			}
 
 		case <-ticker.C:
+			s.emitFocusUpdate(session, isFocused)
 			if isFocused {
 				// 窗口有焦点，累加时间
 				s.incrementPlayTime(session.GameID, 1)
@@ -245,6 +292,7 @@ func (s *ActiveTimeTracker) trackActiveTime(ctx context.Context, session *Tracki
 				isFocused = currentFocus
 				applog.LogInfof(s.ctx, "[ActiveTimeTracker] Game %s focus state corrected to %v", session.GameID, isFocused)
 				log.Printf("[ActiveTimeTracker] Game %s focus state corrected to %v", session.GameID, isFocused)
+				s.emitFocusUpdate(session, isFocused)
 				s.emitActiveTimeUpdate(session, isFocused)
 			}
 		}
@@ -264,6 +312,7 @@ func (s *ActiveTimeTracker) trackActiveTimeByPolling(ctx context.Context, sessio
 	defer ticker.Stop()
 
 	isFocused := s.isSessionFocused(session)
+	s.emitFocusUpdate(session, isFocused)
 	s.emitActiveTimeUpdate(session, isFocused)
 
 	for {
@@ -277,6 +326,7 @@ func (s *ActiveTimeTracker) trackActiveTimeByPolling(ctx context.Context, sessio
 				s.logFocusChanged(session.GameID, isFocused)
 				s.emitActiveTimeUpdate(session, isFocused)
 			}
+			s.emitFocusUpdate(session, isFocused)
 			if isFocused {
 				s.incrementPlayTime(session.GameID, 1)
 				s.emitActiveTimeUpdate(session, isFocused)
@@ -298,8 +348,14 @@ func (s *ActiveTimeTracker) logFocusChanged(gameID string, isFocused bool) {
 func (s *ActiveTimeTracker) isSessionFocused(session *TrackingSession) bool {
 	switch session.ActiveTrack.Kind {
 	case ActiveTrackBundlePath:
-		return isBundlePathFocused(session.ActiveTrack.BundlePath)
-	case ActiveTrackWineRootPID:
+		focused := isBundlePathFocused(session.ActiveTrack.BundlePath)
+		if focused {
+			if foregroundPID, ok := getForegroundProcessID(); ok {
+				session.setFocusedProcessID(foregroundPID)
+			}
+		}
+		return focused
+	case ActiveTrackProcessTree:
 		foregroundPID, ok := getForegroundProcessID()
 		if !ok {
 			return false
@@ -308,29 +364,118 @@ func (s *ActiveTimeTracker) isSessionFocused(session *TrackingSession) bool {
 		if rootPID == 0 {
 			rootPID = session.pid()
 		}
-		if foregroundPID == rootPID {
+		focused := isRootOrDescendantFocused(rootPID, foregroundPID)
+		if focused {
+			session.setFocusedProcessID(foregroundPID)
+		}
+		return focused
+	case ActiveTrackWineRootPID:
+		rootPID := session.ActiveTrack.RootPID
+		if rootPID == 0 {
+			rootPID = session.pid()
+		}
+
+		foregroundPID, ok := getForegroundProcessID()
+		if !ok {
+			return s.isWineRootAlive(rootPID)
+		}
+		if isRootOrDescendantFocused(rootPID, foregroundPID) {
+			session.setFocusedProcessID(foregroundPID)
 			return true
 		}
-		descendants, err := getDescendantProcesses(rootPID)
-		if err != nil {
-			return false
+		focused := isWineTargetProcess(foregroundPID, session.ActiveTrack)
+		if focused {
+			session.setFocusedProcessID(foregroundPID)
 		}
-		for _, proc := range descendants {
-			if proc.PID == foregroundPID {
-				return true
-			}
-		}
-		return false
+		return focused
 	case ActiveTrackLauncherPID:
 		launcherPID := session.ActiveTrack.LauncherPID
 		if launcherPID == 0 {
 			launcherPID = session.pid()
 		}
 		foregroundPID, ok := getForegroundProcessID()
-		return ok && foregroundPID == launcherPID
+		focused := ok && foregroundPID == launcherPID
+		if focused {
+			session.setFocusedProcessID(foregroundPID)
+		}
+		return focused
 	default:
-		return isProcessFocused(session.pid())
+		processID := session.pid()
+		focused := isProcessFocused(processID)
+		if focused {
+			session.setFocusedProcessID(processID)
+		}
+		return focused
 	}
+}
+
+func (s *ActiveTimeTracker) isWineRootAlive(rootPID uint32) bool {
+	if rootPID == 0 {
+		return false
+	}
+	if isProcessPresent(rootPID) {
+		return true
+	}
+	descendants, err := getDescendantProcesses(rootPID)
+	return err == nil && len(descendants) > 0
+}
+
+func isRootOrDescendantFocused(rootPID uint32, foregroundPID uint32) bool {
+	if rootPID == 0 || foregroundPID == 0 {
+		return false
+	}
+	if foregroundPID == rootPID {
+		return true
+	}
+	descendants, err := getDescendantProcesses(rootPID)
+	if err != nil {
+		return false
+	}
+	for _, proc := range descendants {
+		if proc.PID == foregroundPID {
+			return true
+		}
+	}
+	return false
+}
+
+func isWineTargetProcess(pid uint32, activeTrack ActiveTrack) bool {
+	targetPath := strings.TrimSpace(activeTrack.ExecutablePath)
+	if targetPath == "" {
+		return false
+	}
+
+	info, err := getProcessCommandInfo(pid)
+	if err != nil {
+		return false
+	}
+
+	targetName := executableBaseName(targetPath)
+	if targetName == "" {
+		return false
+	}
+	matched := strings.EqualFold(executableBaseName(info.ExecutablePath), targetName)
+	for _, argument := range info.Arguments {
+		if strings.EqualFold(executableBaseName(argument), targetName) {
+			matched = true
+			break
+		}
+	}
+	if !matched {
+		return false
+	}
+
+	expectedBottle := strings.TrimSpace(activeTrack.Bottle)
+	actualBottle := strings.TrimSpace(info.Environment["CX_BOTTLE"])
+	return expectedBottle == "" || actualBottle == "" || strings.EqualFold(actualBottle, expectedBottle)
+}
+
+func executableBaseName(value string) string {
+	normalized := strings.ReplaceAll(strings.Trim(strings.TrimSpace(value), `"'`), `\`, "/")
+	if normalized == "" {
+		return ""
+	}
+	return path.Base(normalized)
 }
 
 // incrementPlayTime 增加游玩时间（秒）- 仅在内存中累加
@@ -369,6 +514,22 @@ func (s *ActiveTimeTracker) emitActiveTimeUpdate(session *TrackingSession, isFoc
 		SessionID:     session.SessionID,
 		ActiveSeconds: activeSeconds,
 		IsFocused:     isFocused,
+	})
+}
+
+func (s *ActiveTimeTracker) emitFocusUpdate(session *TrackingSession, isFocused bool) {
+	s.focusHandlerMu.RLock()
+	handler := s.focusHandler
+	s.focusHandlerMu.RUnlock()
+	if handler == nil {
+		return
+	}
+
+	handler(FocusUpdate{
+		GameID:    session.GameID,
+		SessionID: session.SessionID,
+		ProcessID: session.focusUpdateProcessID(),
+		IsFocused: isFocused,
 	})
 }
 

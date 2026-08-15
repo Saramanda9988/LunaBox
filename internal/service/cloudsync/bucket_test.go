@@ -31,7 +31,7 @@ func TestBucketKeyOfGame(t *testing.T) {
 func TestBucketizeUnbucketizeRoundTrip(t *testing.T) {
 	now := time.Date(2026, 6, 15, 10, 30, 0, 0, time.UTC)
 	snapshot := Snapshot{
-		SchemaVersion: SchemaVersionV2,
+		SchemaVersion: SchemaVersion,
 		Games: []Game{
 			{ID: "3a2e", Name: "G1", UpdatedAt: now, CreatedAt: now},
 			{ID: "9bbb", Name: "G2", UpdatedAt: now, CreatedAt: now},
@@ -42,8 +42,15 @@ func TestBucketizeUnbucketizeRoundTrip(t *testing.T) {
 		GameProgresses: []GameProgress{
 			{ID: "p1", GameID: "9bbb", UpdatedAt: now},
 		},
+		GameReviews: []GameReview{
+			{GameID: "3a2e", Rating: intPtr(9), Content: "great", IsSpoiler: true, UpdatedAt: now, CreatedAt: now},
+		},
 		GameTags: []GameTag{
 			{ID: "t1", GameID: "3a2e", Name: "fav", Source: "user", Weight: 1.0, UpdatedAt: now, CreatedAt: now},
+		},
+		MetadataSources: []MetadataSource{
+			{GameID: "3a2e", SourceType: "bangumi", SourceID: "42", CachedAt: now, UpdatedAt: now, CreatedAt: now},
+			{GameID: "3a2e", SourceType: "hikarinagi", SourceID: "84", CachedAt: now, UpdatedAt: now, CreatedAt: now},
 		},
 		GameCategories: []Relation{
 			{GameID: "9bbb", CategoryID: "cat1", UpdatedAt: now},
@@ -77,6 +84,16 @@ func TestBucketizeUnbucketizeRoundTrip(t *testing.T) {
 	if !reflect.DeepEqual(got.PlaySessions, snapshot.PlaySessions) {
 		t.Errorf("PlaySessions mismatch after round-trip")
 	}
+	if !reflect.DeepEqual(got.MetadataSources, snapshot.MetadataSources) {
+		t.Errorf("MetadataSources mismatch after round-trip: got %+v want %+v", got.MetadataSources, snapshot.MetadataSources)
+	}
+	if !reflect.DeepEqual(got.GameReviews, snapshot.GameReviews) {
+		t.Errorf("GameReviews mismatch after round-trip: got %+v want %+v", got.GameReviews, snapshot.GameReviews)
+	}
+}
+
+func intPtr(value int) *int {
+	return &value
 }
 
 func TestBucketHashIsDeterministic(t *testing.T) {

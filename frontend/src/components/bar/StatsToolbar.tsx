@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { enums } from "../../../wailsjs/go/models";
+import { enums } from "../../../src/bindings/models";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterDateRangePicker } from "../ui/better/BetterDateRangePicker";
 import { SlideButton } from "../ui/SlideButton";
@@ -42,9 +42,9 @@ export function StatsToolbar({
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
         <SlideButton
           options={[
-            { label: t("stats.period.week"), value: enums.Period.WEEK },
-            { label: t("stats.period.month"), value: enums.Period.MONTH },
-            { label: t("stats.period.year"), value: enums.Period.YEAR },
+            { label: t("stats.period.week"), value: enums.Period.Week },
+            { label: t("stats.period.month"), value: enums.Period.Month },
+            { label: t("stats.period.year"), value: enums.Period.Year },
           ]}
           value={customRangeActive ? "" : period}
           onChange={(value) => {

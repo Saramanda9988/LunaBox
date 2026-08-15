@@ -1,6 +1,5 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App";
 import "@unocss/reset/tailwind.css";
 import "virtual:uno.css";
 import "./style.css";
@@ -10,10 +9,20 @@ const container = document.getElementById("root");
 
 const root = createRoot(container!);
 
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
+const isStartupWindow = window.location.pathname.startsWith("/startup");
 
-container?.classList.add("ready");
+async function mountApplication() {
+  const { default: ApplicationRoot } = isStartupWindow
+    ? await import("./components/startup/StartupWindow")
+    : await import("./App");
+
+  root.render(
+    <React.StrictMode>
+      <ApplicationRoot />
+    </React.StrictMode>,
+  );
+
+  container?.classList.add("ready");
+}
+
+void mountApplication();

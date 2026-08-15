@@ -1,8 +1,8 @@
-import type { enums } from "../../../../wailsjs/go/models";
+import type { enums } from "../../../../src/bindings/models";
 import type { ImportCandidate } from "./types";
 
-import { vo } from "../../../../wailsjs/go/models";
-import { CheckImportMetadataDuplicates } from "../../../../wailsjs/go/service/ImportService";
+import { CheckImportMetadataDuplicates } from "../../../../bindings/lunabox/internal/service/importservice";
+import { vo } from "../../../../src/bindings/models";
 
 function getMetadataDuplicateKey(
   source: enums.SourceType | null | undefined,
@@ -14,28 +14,49 @@ function getMetadataDuplicateKey(
   return `${source}\0${sourceId.trim().toLowerCase()}`;
 }
 
+function getCandidateMetadataSourceKeys(candidate: ImportCandidate): string[] {
+  const keys: string[] = [];
+  const seen = new Set<string>();
+  const addKey = (
+    source: enums.SourceType | null | undefined,
+    sourceId: string | undefined,
+  ) => {
+    const key = getMetadataDuplicateKey(source, sourceId);
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      keys.push(key);
+    }
+  };
+
+  addKey(
+    candidate.matchSource || candidate.matchedGame?.source_type,
+    candidate.matchedGame?.source_id,
+  );
+  for (const source of candidate.matchedGame?.metadata_sources || []) {
+    addKey(source.source_type, source.source_id);
+  }
+  return keys;
+}
+
 export async function applyMetadataDuplicateHints(
   candidates: ImportCandidate[],
 ): Promise<ImportCandidate[]> {
   const requestsByKey = new Map<string, vo.ImportMetadataDuplicateRequest>();
 
   for (const candidate of candidates) {
-    const source = candidate.matchSource || candidate.matchedGame?.source_type;
-    const sourceId = candidate.matchedGame?.source_id;
-    if (!source || !sourceId) {
-      continue;
+    for (const key of getCandidateMetadataSourceKeys(candidate)) {
+      if (requestsByKey.has(key)) {
+        continue;
+      }
+      const separatorIndex = key.indexOf("\0");
+      requestsByKey.set(
+        key,
+        new vo.ImportMetadataDuplicateRequest({
+          source: key.slice(0, separatorIndex) as enums.SourceType,
+          source_id: key.slice(separatorIndex + 1),
+        }),
+      );
     }
-    const key = getMetadataDuplicateKey(source, sourceId);
-    if (requestsByKey.has(key)) {
-      continue;
-    }
-    requestsByKey.set(
-      key,
-      new vo.ImportMetadataDuplicateRequest({
-        source,
-        source_id: sourceId,
-      }),
-    );
   }
 
   if (requestsByKey.size === 0) {
@@ -57,11 +78,9 @@ export async function applyMetadataDuplicateHints(
   );
 
   return candidates.map((candidate) => {
-    const source = candidate.matchSource || candidate.matchedGame?.source_type;
-    const sourceId = candidate.matchedGame?.source_id;
-    const duplicate = resultsByKey.get(
-      getMetadataDuplicateKey(source, sourceId),
-    );
+    const duplicate = getCandidateMetadataSourceKeys(candidate)
+      .map(key => resultsByKey.get(key))
+      .find(result => result?.exists);
 
     return {
       ...candidate,

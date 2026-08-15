@@ -20,6 +20,7 @@ func InitSchema(db *sql.DB) error {
 		`CREATE TABLE IF NOT EXISTS games (
 			id TEXT PRIMARY KEY,
 			name TEXT,
+			aliases TEXT DEFAULT '[]',
 			cover_url TEXT,
 			cover_source_url TEXT DEFAULT '',
 			company TEXT,
@@ -34,6 +35,10 @@ func InitSchema(db *sql.DB) error {
 			wine_args TEXT DEFAULT '',
 			wine_prefix TEXT DEFAULT '',
 			launch_mode TEXT DEFAULT 'normal',
+			steam_launch_id TEXT DEFAULT '',
+			steam_launch_kind TEXT DEFAULT '',
+			steam_user_id TEXT DEFAULT '',
+			steam_launch_options TEXT DEFAULT '',
 			status TEXT DEFAULT 'not_started',
 			source_type TEXT,
 			cached_at TIMESTAMPTZ,
@@ -44,6 +49,15 @@ func InitSchema(db *sql.DB) error {
 			use_magpie BOOLEAN DEFAULT FALSE,
 			is_nsfw BOOLEAN DEFAULT FALSE,
 			metadata_locked BOOLEAN DEFAULT FALSE
+		)`,
+		`CREATE TABLE IF NOT EXISTS game_metadata_sources (
+			game_id TEXT NOT NULL,
+			source_type TEXT NOT NULL,
+			source_id TEXT NOT NULL,
+			cached_at TIMESTAMPTZ,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (game_id, source_type)
 		)`,
 		`CREATE TABLE IF NOT EXISTS game_categories (
 			game_id TEXT,
@@ -76,6 +90,15 @@ func InitSchema(db *sql.DB) error {
 			spoiler_boundary TEXT DEFAULT 'none',
 			updated_at TIMESTAMPTZ
 		)`,
+		`CREATE TABLE IF NOT EXISTS game_reviews (
+			game_id TEXT PRIMARY KEY,
+			rating INTEGER,
+			content TEXT NOT NULL DEFAULT '',
+			is_spoiler BOOLEAN NOT NULL DEFAULT FALSE,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			CHECK (rating IS NULL OR (rating >= 1 AND rating <= 10))
+		)`,
 		`CREATE TABLE IF NOT EXISTS download_tasks (
 			id TEXT PRIMARY KEY,
 			request_json TEXT,
@@ -101,17 +124,6 @@ func InitSchema(db *sql.DB) error {
 			UNIQUE (game_id, name, source)
 		)
 		`,
-		`CREATE INDEX IF NOT EXISTS idx_games_status ON games(status)`,
-		`CREATE INDEX IF NOT EXISTS idx_games_created_at ON games(created_at)`,
-		`CREATE INDEX IF NOT EXISTS idx_games_rating ON games(rating)`,
-		`CREATE INDEX IF NOT EXISTS idx_games_release_date ON games(release_date)`,
-		`CREATE INDEX IF NOT EXISTS idx_games_path ON games(path)`,
-		`CREATE INDEX IF NOT EXISTS idx_games_source_identity ON games(source_type, source_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_games_name_path ON games(name, path)`,
-		`CREATE INDEX IF NOT EXISTS idx_play_sessions_game_start ON play_sessions(game_id, start_time)`,
-		`CREATE INDEX IF NOT EXISTS idx_game_tags_game_id ON game_tags(game_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_game_tags_name ON game_tags(name)`,
-		`CREATE INDEX IF NOT EXISTS idx_game_tags_name_game ON game_tags(name, game_id)`,
 		`CREATE TABLE IF NOT EXISTS cloud_sync_state (
 			bucket_key TEXT PRIMARY KEY,
 			local_hash TEXT NOT NULL,
@@ -119,11 +131,49 @@ func InitSchema(db *sql.DB) error {
 			remote_revision_id TEXT NOT NULL,
 			updated_at TIMESTAMPTZ NOT NULL
 		)`,
+		`CREATE TABLE IF NOT EXISTS game_filter_presets (
+			id TEXT PRIMARY KEY,
+			name TEXT NOT NULL,
+			tags TEXT NOT NULL DEFAULT '[]',
+			exclude_tags BOOLEAN NOT NULL DEFAULT FALSE,
+			status TEXT NOT NULL DEFAULT '',
+			exclude_status BOOLEAN NOT NULL DEFAULT FALSE,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
 	}
 
 	for _, query := range queries {
 		_, err := db.Exec(query)
 		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// InitIndexes creates indexes after migrations have added columns missing from
+// legacy databases. Running these statements during InitSchema would prevent
+// older backups from reaching the migrations that add rating and release_date.
+func InitIndexes(db *sql.DB) error {
+	queries := []string{
+		`CREATE INDEX IF NOT EXISTS idx_games_status ON games(status)`,
+		`CREATE INDEX IF NOT EXISTS idx_games_created_at ON games(created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_games_rating ON games(rating)`,
+		`CREATE INDEX IF NOT EXISTS idx_games_release_date ON games(release_date)`,
+		`CREATE INDEX IF NOT EXISTS idx_games_path ON games(path)`,
+		`CREATE INDEX IF NOT EXISTS idx_games_source_identity ON games(source_type, source_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_game_metadata_sources_identity ON game_metadata_sources(source_type, source_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_game_metadata_sources_game_id ON game_metadata_sources(game_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_games_name_path ON games(name, path)`,
+		`CREATE INDEX IF NOT EXISTS idx_play_sessions_game_start ON play_sessions(game_id, start_time)`,
+		`CREATE INDEX IF NOT EXISTS idx_game_tags_game_id ON game_tags(game_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_game_tags_name ON game_tags(name)`,
+		`CREATE INDEX IF NOT EXISTS idx_game_tags_name_game ON game_tags(name, game_id)`,
+	}
+
+	for _, query := range queries {
+		if _, err := db.Exec(query); err != nil {
 			return err
 		}
 	}

@@ -26,6 +26,7 @@ func NewCategoryService() *CategoryService {
 	return &CategoryService{}
 }
 
+//wails:ignore
 func (s *CategoryService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
 	s.db = db

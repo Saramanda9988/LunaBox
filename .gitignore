@@ -1,8 +1,14 @@
 build/bin
-build/windows/installer/tmp
+/bin/
+/.task/
+build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
+build/windows/payload/
+build/windows/webview2bootstrapper/
+build/darwin/icons.icns
 node_modules
 frontend/dist
 .idea
+.DS_Store
 frontend/package.json.md5
 *.db
 go.sum
@@ -25,3 +31,7 @@ openspec
 .windsurf/
 /bin
 /.task
+/build/windows/nsis
+/build/windows/payload
+/build/windows/webview2bootstrapper
+参考项目

@@ -1,27 +1,39 @@
-import { enums } from "../../wailsjs/go/models";
+import { enums } from "../../src/bindings/models";
 
 export type GameStatusFilter = enums.GameStatus | "";
 
 export const statusOptions: Array<{ label: string; value: GameStatusFilter }>
   = [
     { label: "common.allStatus", value: "" },
-    { label: "common.notStarted", value: enums.GameStatus.NOT_STARTED },
-    { label: "common.wantToPlay", value: enums.GameStatus.WANT_TO_PLAY },
-    { label: "common.playing", value: enums.GameStatus.PLAYING },
-    { label: "common.completed", value: enums.GameStatus.COMPLETED },
-    { label: "common.onHold", value: enums.GameStatus.ON_HOLD },
+    { label: "common.notStarted", value: enums.GameStatus.StatusNotStarted },
+    { label: "common.wantToPlay", value: enums.GameStatus.StatusWantToPlay },
+    { label: "common.playing", value: enums.GameStatus.StatusPlaying },
+    { label: "common.completed", value: enums.GameStatus.StatusCompleted },
+    { label: "common.onHold", value: enums.GameStatus.StatusOnHold },
   ];
 
 export const sortOptions: Array<{
   label: string;
   value: enums.GameListSortBy;
 }> = [
-  { label: "common.name", value: enums.GameListSortBy.NAME },
-  { label: "common.company", value: enums.GameListSortBy.COMPANY },
-  { label: "common.lastPlayedAt", value: enums.GameListSortBy.LAST_PLAYED_AT },
-  { label: "common.createdAt", value: enums.GameListSortBy.CREATED_AT },
-  { label: "common.rating", value: enums.GameListSortBy.RATING },
-  { label: "common.releaseDate", value: enums.GameListSortBy.RELEASE_DATE },
+  { label: "common.name", value: enums.GameListSortBy.GameListSortByName },
+  {
+    label: "common.company",
+    value: enums.GameListSortBy.GameListSortByCompany,
+  },
+  {
+    label: "common.lastPlayedAt",
+    value: enums.GameListSortBy.GameListSortByLastPlayedAt,
+  },
+  {
+    label: "common.createdAt",
+    value: enums.GameListSortBy.GameListSortByCreatedAt,
+  },
+  { label: "common.rating", value: enums.GameListSortBy.GameListSortByRating },
+  {
+    label: "common.releaseDate",
+    value: enums.GameListSortBy.GameListSortByReleaseDate,
+  },
 ];
 
 export const APP_ZOOM_LEVELS = [0.8, 0.9, 1, 1.1, 1.25, 1.5] as const;

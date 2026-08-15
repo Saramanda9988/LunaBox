@@ -477,6 +477,10 @@ func IsProcessPresentByPID(pid uint32) bool {
 	return false
 }
 
+func GetProcessCommandInfo(pid uint32) (ProcessCommandInfo, error) {
+	return ProcessCommandInfo{}, fmt.Errorf("process command info is not supported on Windows")
+}
+
 // GetDescendantProcesses 获取指定父进程启动的仍在运行的子孙进程。
 func GetDescendantProcesses(parentPID uint32) ([]ProcessInfo, error) {
 	entries, err := getProcessSnapshotEntries()

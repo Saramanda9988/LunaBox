@@ -9,6 +9,7 @@ import (
 	"lunabox/internal/utils/proxyutils"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var defaultMetadataSources = []string{
@@ -36,30 +37,42 @@ const DefaultMCPPort = 39200
 const DefaultScrapedTagLimit = 10
 const DefaultHomeGameCarouselIntervalSec = 6
 const MinHomeGameCarouselIntervalSec = 4
+const DefaultProcessDetectionTimeoutSec = 60
+const MinProcessDetectionTimeoutSec = 60
+const MaxProcessDetectionTimeoutSec = 600
 const DefaultBatchImportScanPreset = "scan_parent"
 const MaxBatchImportHierarchyDepth = 5
 const DefaultGameCardLayout = "portrait"
 const DefaultUmbraBaseURL = "https://umbrae.cc"
 
-const legacyUmbraStageBaseURL = "https://stage.umbrae.cc"
-
 // AppConfig 应用配置结构体
 type AppConfig struct {
-	BangumiAccessToken           string   `json:"access_token,omitempty"`
-	BangumiRefreshToken          string   `json:"bangumi_refresh_token,omitempty"`
-	BangumiTokenExpiresAt        string   `json:"bangumi_token_expires_at,omitempty"`
-	BangumiAuthorizedUserID      string   `json:"bangumi_authorized_user_id,omitempty"`
-	BangumiAuthorizedUsername    string   `json:"bangumi_authorized_username,omitempty"`
-	BangumiAuthorizedAvatarURL   string   `json:"bangumi_authorized_avatar_url,omitempty"`
-	BangumiAuthError             string   `json:"bangumi_auth_error,omitempty"`
-	BangumiStatusPushEnabled     *bool    `json:"bangumi_status_push_enabled,omitempty"`
-	VNDBAccessToken              string   `json:"vndb_access_token,omitempty"`
-	MetadataSources              []string `json:"metadata_sources,omitempty"`      // 元数据拉取来源列表（bangumi/vndb/ymgal/steam/dlsite/touchgal/hikarinagi/erogamescape）
-	AllowDuplicateMetadataImport bool     `json:"allow_duplicate_metadata_import"` // 批量/外部导入时允许相同 source_type + source_id
-	Theme                        string   `json:"theme"`                           // light or dark
-	Language                     string   `json:"language"`                        // zh, en, etc.
-	SidebarOpen                  bool     `json:"sidebar_open"`                    // 侧边栏是否展开
-	CloseToTray                  bool     `json:"close_to_tray"`                   // 关闭时最小化到托盘
+	BangumiAccessToken            string                       `json:"access_token,omitempty"`
+	BangumiRefreshToken           string                       `json:"bangumi_refresh_token,omitempty"`
+	BangumiTokenExpiresAt         string                       `json:"bangumi_token_expires_at,omitempty"`
+	BangumiAuthorizedUserID       string                       `json:"bangumi_authorized_user_id,omitempty"`
+	BangumiAuthorizedUsername     string                       `json:"bangumi_authorized_username,omitempty"`
+	BangumiAuthorizedAvatarURL    string                       `json:"bangumi_authorized_avatar_url,omitempty"`
+	BangumiAuthError              string                       `json:"bangumi_auth_error,omitempty"`
+	BangumiStatusPushEnabled      *bool                        `json:"bangumi_status_push_enabled,omitempty"`
+	HikarinagiAccessToken         string                       `json:"hikarinagi_access_token,omitempty"`
+	HikarinagiRefreshToken        string                       `json:"hikarinagi_refresh_token,omitempty"`
+	HikarinagiTokenExpiresAt      string                       `json:"hikarinagi_token_expires_at,omitempty"`
+	HikarinagiAuthorizedUserID    string                       `json:"hikarinagi_authorized_user_id,omitempty"`
+	HikarinagiAuthorizedUsername  string                       `json:"hikarinagi_authorized_username,omitempty"`
+	HikarinagiAuthorizedAvatarURL string                       `json:"hikarinagi_authorized_avatar_url,omitempty"`
+	HikarinagiAuthError           string                       `json:"hikarinagi_auth_error,omitempty"`
+	HikarinagiStatusPushEnabled   *bool                        `json:"hikarinagi_status_push_enabled,omitempty"`
+	VNDBAccessToken               string                       `json:"vndb_access_token,omitempty"`
+	MetadataSources               []string                     `json:"metadata_sources,omitempty"`        // 元数据拉取来源列表（bangumi/vndb/ymgal/steam/dlsite/touchgal/hikarinagi/erogamescape）
+	AllowDuplicateMetadataImport  bool                         `json:"allow_duplicate_metadata_import"`   // 批量/外部导入时允许相同 source_type + source_id
+	BangumiCoverSource            enums2.MetadataCoverSource   `json:"bangumi_cover_source,omitempty"`    // Bangumi 封面来源
+	VNDBCoverSource               enums2.MetadataCoverSource   `json:"vndb_cover_source,omitempty"`       // VNDB 封面来源
+	SteamCoverOrientation         enums2.SteamCoverOrientation `json:"steam_cover_orientation,omitempty"` // Steam 封面方向
+	Theme                         string                       `json:"theme"`                             // light or dark
+	Language                      string                       `json:"language"`                          // zh, en, etc.
+	SidebarOpen                   bool                         `json:"sidebar_open"`                      // 侧边栏是否展开
+	CloseToTray                   bool                         `json:"close_to_tray"`                     // 关闭时最小化到托盘
 	// AI 配置
 	AIProvider     string `json:"ai_provider,omitempty"`      // openai, deepseek, etc.
 	AIBaseURL      string `json:"ai_base_url,omitempty"`      // API base URL
@@ -75,7 +88,7 @@ type AppConfig struct {
 	MCPPort             int    `json:"mcp_port,omitempty"`          // MCP HTTP 服务监听端口（仅绑定 127.0.0.1）
 	// 云备份配置
 	CloudBackupEnabled   bool   `json:"cloud_backup_enabled"`             // 是否启用云备份
-	CloudBackupProvider  string `json:"cloud_backup_provider,omitempty"`  // 云备份提供商: s3, onedrive, umbra
+	CloudBackupProvider  string `json:"cloud_backup_provider,omitempty"`  // 云备份提供商: s3, onedrive, umbra, webdav
 	BackupPassword       string `json:"backup_password,omitempty"`        // 备份密码（用于生成 user-id 和加密）
 	BackupUserID         string `json:"backup_user_id,omitempty"`         // 云端用户标识（由备份密码 hash 生成）
 	CloudSyncEnabled     bool   `json:"cloud_sync_enabled"`               // 是否启用云同步
@@ -93,6 +106,10 @@ type AppConfig struct {
 	// OneDrive OAuth 配置
 	OneDriveClientID     string `json:"onedrive_client_id,omitempty"`     // OneDrive Client ID
 	OneDriveRefreshToken string `json:"onedrive_refresh_token,omitempty"` // OneDrive Refresh Token（OAuth 授权后获得）
+	// WebDAV 配置
+	WebDAVURL      string `json:"webdav_url,omitempty"`      // WebDAV 服务地址（可含子路径）
+	WebDAVUsername string `json:"webdav_username,omitempty"` // WebDAV 用户名
+	WebDAVPassword string `json:"webdav_password,omitempty"` // WebDAV 密码
 	// Umbra OAuth 配置（token 与设备密钥由 DPAPI 加密存储，不写入配置文件）
 	UmbraBaseURL       string `json:"umbra_base_url,omitempty"`      // Umbra 服务地址
 	UmbraAuthenticated bool   `json:"umbra_authenticated,omitempty"` // 是否已完成 OAuth 与设备注册
@@ -116,7 +133,9 @@ type AppConfig struct {
 	WindowZoomFactor float64 `json:"window_zoom_factor"` // 应用界面缩放倍率
 	LaunchAtLogin    bool    `json:"launch_at_login"`    // Windows 登录后自动启动应用
 	// 活跃时间追踪配置
-	RecordActiveTimeOnly bool `json:"record_active_time_only"` // 仅记录活跃游玩时长（窗口在前台时）
+	RecordActiveTimeOnly       bool `json:"record_active_time_only"`       // 仅记录活跃游玩时长（窗口在前台时）
+	MuteGameInBackground       bool `json:"mute_game_in_background"`       // 游戏窗口进入后台时静音
+	ProcessDetectionTimeoutSec int  `json:"process_detection_timeout_sec"` // 启动后检测实际游戏进程的最长等待时间
 	// 自动更新配置
 	CheckUpdateOnStartup bool   `json:"check_update_on_startup"`     // 启动时自动检查更新
 	UpdateCheckURL       string `json:"update_check_url,omitempty"`  // 自定义更新检查 URL
@@ -133,12 +152,12 @@ type AppConfig struct {
 	HomeGameCarouselEnabled     bool    `json:"home_game_carousel_enabled"`      // 首页游戏封面是否自动轮播
 	HomeGameCarouselIntervalSec int     `json:"home_game_carousel_interval_sec"` // 首页游戏封面轮播间隔（秒）
 	// Locale Emulator 和 Magpie 配置
-	LocaleEmulatorPath string `json:"locale_emulator_path,omitempty"` // Locale Emulator 可执行文件路径
-	MagpiePath         string `json:"magpie_path,omitempty"`          // Magpie 可执行文件路径
-	WineRunnerPath     string `json:"wine_runner_path,omitempty"`     // macOS Wine/CrossOver wine 可执行文件路径
-	WinePrefix         string `json:"wine_prefix,omitempty"`          // macOS 默认 WINEPREFIX 或 CrossOver bottle 名
-	// 进程检测配置
-	AutoDetectGameProcess bool `json:"auto_detect_game_process"` // 是否启用自动游戏进程检测（分阶段检测策略）
+	LocaleEmulatorPath  string `json:"locale_emulator_path,omitempty"`  // Locale Emulator 可执行文件路径
+	MagpiePath          string `json:"magpie_path,omitempty"`           // Magpie 可执行文件路径
+	WineRunnerPath      string `json:"wine_runner_path,omitempty"`      // macOS/Linux Wine 可执行文件路径
+	WinePrefix          string `json:"wine_prefix,omitempty"`           // macOS/Linux 默认 WINEPREFIX 或 Proton prefix
+	CrossOverRunnerPath string `json:"crossover_runner_path,omitempty"` // macOS CrossOver bundle 内的 wine 可执行文件路径
+	CrossOverBottle     string `json:"crossover_bottle,omitempty"`      // macOS 默认 CrossOver bottle 名
 	// 时区配置
 	TimeZone string `json:"time_zone,omitempty"` // 数据库使用的 IANA 时区名称（如 "Asia/Shanghai"）
 	// 游戏库路径配置
@@ -171,67 +190,83 @@ func getConfigPath() (string, error) {
 
 func LoadConfig() (*AppConfig, error) {
 	config := &AppConfig{
-		BangumiAccessToken:           "",
-		BangumiRefreshToken:          "",
-		BangumiTokenExpiresAt:        "",
-		BangumiAuthorizedUserID:      "",
-		BangumiAuthorizedUsername:    "",
-		BangumiAuthorizedAvatarURL:   "",
-		BangumiAuthError:             "",
-		BangumiStatusPushEnabled:     boolPtr(true),
-		VNDBAccessToken:              "",
-		MetadataSources:              cloneStringSlice(defaultMetadataSources),
-		AllowDuplicateMetadataImport: false,
-		Theme:                        "light",
-		Language:                     "zh-CN",
-		SidebarOpen:                  true,
-		CloseToTray:                  false,
-		AIProvider:                   "",
-		AIBaseURL:                    "",
-		AIAPIKey:                     "",
-		AIModel:                      "",
-		AISystemPrompt:               string(enums2.DefaultSystemPrompt),
-		MCPEnabled:                   false,
-		MCPPort:                      DefaultMCPPort,
-		CloudBackupEnabled:           false,
-		CloudBackupProvider:          "umbra",
-		BackupPassword:               "",
-		BackupUserID:                 "",
-		CloudSyncEnabled:             false,
-		AutoCloudSyncEnabled:         false,
-		CloudSyncIntervalSec:         60,
-		LastCloudSyncTime:            "",
-		LastCloudSyncStatus:          "idle",
-		LastCloudSyncError:           "",
-		S3Endpoint:                   "",
-		TimeZone:                     "",
-		S3Region:                     "",
-		S3Bucket:                     "",
-		S3AccessKey:                  "",
-		S3SecretKey:                  "",
-		CloudBackupRetention:         5,
-		OneDriveClientID:             "",
-		OneDriveRefreshToken:         "",
-		UmbraBaseURL:                 DefaultUmbraBaseURL,
-		UmbraAuthenticated:           false,
-		LastDBBackupTime:             "",
-		PendingDBRestore:             "",
-		LastFullBackupTime:           "",
-		PendingFullRestore:           "",
-		AutoBackupDB:                 false,
-		AutoBackupGameSave:           false,
-		AutoUploadToCloud:            false,
-		LocalBackupRetention:         10,
-		LocalDBBackupRetention:       5,
-		WindowWidth:                  1230,
-		WindowHeight:                 800,
-		WindowZoomFactor:             1.0,
-		LaunchAtLogin:                false,
-		RecordActiveTimeOnly:         false, // 默认关闭，向后兼容
-		CheckUpdateOnStartup:         true,  // 默认开启启动时检查更新
-		UpdateCheckURL:               "",
-		LastUpdateCheck:              "",
-		SkipVersion:                  "",
+		BangumiAccessToken:            "",
+		BangumiRefreshToken:           "",
+		BangumiTokenExpiresAt:         "",
+		BangumiAuthorizedUserID:       "",
+		BangumiAuthorizedUsername:     "",
+		BangumiAuthorizedAvatarURL:    "",
+		BangumiAuthError:              "",
+		BangumiStatusPushEnabled:      boolPtr(true),
+		HikarinagiAccessToken:         "",
+		HikarinagiRefreshToken:        "",
+		HikarinagiTokenExpiresAt:      "",
+		HikarinagiAuthorizedUserID:    "",
+		HikarinagiAuthorizedUsername:  "",
+		HikarinagiAuthorizedAvatarURL: "",
+		HikarinagiAuthError:           "",
+		HikarinagiStatusPushEnabled:   boolPtr(true),
+		VNDBAccessToken:               "",
+		MetadataSources:               cloneStringSlice(defaultMetadataSources),
+		AllowDuplicateMetadataImport:  false,
+		BangumiCoverSource:            enums2.MetadataCoverSourceHikarinagi,
+		VNDBCoverSource:               enums2.MetadataCoverSourceHikarinagi,
+		SteamCoverOrientation:         enums2.SteamCoverOrientationPortrait,
+		Theme:                         "light",
+		Language:                      "zh-CN",
+		SidebarOpen:                   true,
+		CloseToTray:                   false,
+		AIProvider:                    "",
+		AIBaseURL:                     "",
+		AIAPIKey:                      "",
+		AIModel:                       "",
+		AISystemPrompt:                string(enums2.DefaultSystemPrompt),
+		MCPEnabled:                    false,
+		MCPPort:                       DefaultMCPPort,
+		CloudBackupEnabled:            false,
+		CloudBackupProvider:           "umbra",
+		BackupPassword:                "",
+		BackupUserID:                  "",
+		CloudSyncEnabled:              false,
+		AutoCloudSyncEnabled:          false,
+		CloudSyncIntervalSec:          60,
+		LastCloudSyncTime:             "",
+		LastCloudSyncStatus:           "idle",
+		LastCloudSyncError:            "",
+		S3Endpoint:                    "",
+		TimeZone:                      "",
+		S3Region:                      "",
+		S3Bucket:                      "",
+		S3AccessKey:                   "",
+		S3SecretKey:                   "",
+		CloudBackupRetention:          5,
+		OneDriveClientID:              "",
+		OneDriveRefreshToken:          "",
+		WebDAVURL:                     "",
+		WebDAVUsername:                "",
+		WebDAVPassword:                "",
+		UmbraBaseURL:                  DefaultUmbraBaseURL,
+		UmbraAuthenticated:            false,
+		LastDBBackupTime:              "",
+		PendingDBRestore:              "",
+		LastFullBackupTime:            "",
+		PendingFullRestore:            "",
+		AutoBackupDB:                  false,
+		AutoBackupGameSave:            false,
+		AutoUploadToCloud:             false,
+		LocalBackupRetention:          10,
+		LocalDBBackupRetention:        5,
+		WindowWidth:                   1230,
+		WindowHeight:                  800,
+		WindowZoomFactor:              1.0,
+		LaunchAtLogin:                 false,
+		RecordActiveTimeOnly:          false, // 默认关闭，向后兼容
+		MuteGameInBackground:          false,
+		ProcessDetectionTimeoutSec:    DefaultProcessDetectionTimeoutSec,
+		CheckUpdateOnStartup:          true, // 默认开启启动时检查更新
+		UpdateCheckURL:                "",
+		LastUpdateCheck:               "",
+		SkipVersion:                   "",
 		// 背景图配置默认值
 		BackgroundImage:             "",
 		BackgroundBlur:              10,   // 默认模糊度
@@ -246,7 +281,8 @@ func LoadConfig() (*AppConfig, error) {
 		MagpiePath:                  "",
 		WineRunnerPath:              "",
 		WinePrefix:                  "",
-		AutoDetectGameProcess:       true, // 默认启用自动检测，保持向后兼容
+		CrossOverRunnerPath:         "",
+		CrossOverBottle:             "",
 		GameLibraryPath:             "",
 		BatchImportScanPreset:       DefaultBatchImportScanPreset,
 		BatchImportHierarchyDepth:   0,
@@ -284,6 +320,7 @@ func LoadConfig() (*AppConfig, error) {
 		return config, err
 	}
 	config.MetadataSources = normalizeMetadataSources(config.MetadataSources)
+	NormalizeMetadataCoverSources(config)
 
 	if config.WindowZoomFactor <= 0 {
 		config.WindowZoomFactor = 1.0
@@ -296,10 +333,20 @@ func LoadConfig() (*AppConfig, error) {
 	config.MCPPort = NormalizeMCPPort(config.MCPPort)
 	config.ScrapedTagLimit = NormalizeScrapedTagLimit(config.ScrapedTagLimit)
 	config.HomeGameCarouselIntervalSec = NormalizeHomeGameCarouselIntervalSec(config.HomeGameCarouselIntervalSec)
+	config.ProcessDetectionTimeoutSec = NormalizeProcessDetectionTimeoutSec(config.ProcessDetectionTimeoutSec)
 	config.GameCardLayout = NormalizeGameCardLayout(config.GameCardLayout)
 	NormalizeBatchImportPreferences(config)
 
 	shouldSaveSanitizedConfig := SanitizeBangumiOAuthConfig(config)
+	if SanitizeHikarinagiOAuthConfig(config) {
+		shouldSaveSanitizedConfig = true
+	}
+	if MigrateLegacyCompatibilityConfig(config) {
+		shouldSaveSanitizedConfig = true
+	}
+	if detectDefaultCrossOverRunnerPath(config) {
+		shouldSaveSanitizedConfig = true
+	}
 	if detectDefaultWineRunnerPath(config) {
 		shouldSaveSanitizedConfig = true
 	}
@@ -331,19 +378,47 @@ func LoadConfig() (*AppConfig, error) {
 	return config, err
 }
 
+// MigrateLegacyCompatibilityConfig splits the previous shared Wine/CrossOver
+// fields when the configured runner clearly belongs to CrossOver.
+func MigrateLegacyCompatibilityConfig(config *AppConfig) bool {
+	if config == nil {
+		return false
+	}
+
+	winePath := strings.TrimSpace(config.WineRunnerPath)
+	if winePath == "" || strings.TrimSpace(config.CrossOverRunnerPath) != "" {
+		return false
+	}
+	normalizedPath := strings.ToLower(filepath.ToSlash(winePath))
+	if !strings.Contains(normalizedPath, "/crossover.app/") {
+		return false
+	}
+
+	config.CrossOverRunnerPath = winePath
+	config.WineRunnerPath = ""
+	if strings.TrimSpace(config.CrossOverBottle) == "" {
+		config.CrossOverBottle = strings.TrimSpace(config.WinePrefix)
+		config.WinePrefix = ""
+	}
+	return true
+}
+
 func SaveConfig(config *AppConfig) error {
 	configPath, err := getConfigPath()
 	if err != nil {
 		return err
 	}
 	config.MetadataSources = normalizeMetadataSources(config.MetadataSources)
+	NormalizeMetadataCoverSources(config)
 	NormalizeProxySettings(config)
 	SanitizeBangumiOAuthConfig(config)
+	SanitizeHikarinagiOAuthConfig(config)
 	SanitizeOneDriveOAuthConfig(config)
 	SanitizeUmbraConfig(config)
 	config.MCPPort = NormalizeMCPPort(config.MCPPort)
 	config.ScrapedTagLimit = NormalizeScrapedTagLimit(config.ScrapedTagLimit)
 	config.HomeGameCarouselIntervalSec = NormalizeHomeGameCarouselIntervalSec(config.HomeGameCarouselIntervalSec)
+	config.ProcessDetectionTimeoutSec = NormalizeProcessDetectionTimeoutSec(config.ProcessDetectionTimeoutSec)
 	config.GameCardLayout = NormalizeGameCardLayout(config.GameCardLayout)
 	NormalizeBatchImportPreferences(config)
 	configCopy := *config
@@ -364,6 +439,14 @@ func IsBangumiStatusPushEnabled(config *AppConfig) bool {
 	return *config.BangumiStatusPushEnabled
 }
 
+func IsHikarinagiStatusPushEnabled(config *AppConfig) bool {
+	if config == nil || config.HikarinagiStatusPushEnabled == nil {
+		return true
+	}
+
+	return *config.HikarinagiStatusPushEnabled
+}
+
 func NormalizeScrapedTagLimit(limit int) int {
 	if limit < -1 {
 		return -1
@@ -379,6 +462,19 @@ func NormalizeHomeGameCarouselIntervalSec(intervalSec int) int {
 		return MinHomeGameCarouselIntervalSec
 	}
 	return intervalSec
+}
+
+func NormalizeProcessDetectionTimeoutSec(timeoutSec int) int {
+	if timeoutSec <= 0 {
+		return DefaultProcessDetectionTimeoutSec
+	}
+	if timeoutSec < MinProcessDetectionTimeoutSec {
+		return MinProcessDetectionTimeoutSec
+	}
+	if timeoutSec > MaxProcessDetectionTimeoutSec {
+		return MaxProcessDetectionTimeoutSec
+	}
+	return timeoutSec
 }
 
 func NormalizeBatchImportPreferences(config *AppConfig) bool {

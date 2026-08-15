@@ -19,7 +19,6 @@ import (
 	"lunabox/internal/version"
 
 	"github.com/google/uuid"
-	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 const (
@@ -360,9 +359,7 @@ func (s *UpdateService) replacePatchesWithFullDownloads(
 }
 
 func (s *UpdateService) emitUpdateProgress(progress UpdateProgress) {
-	if s.ctx != nil {
-		wailsruntime.EventsEmit(s.ctx, "update:progress", progress)
-	}
+	s.runtime.Emit("update:progress", progress)
 }
 
 func runUpdaterPrepare(updaterPath string, taskPath string, workDir string) error {

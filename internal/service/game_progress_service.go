@@ -22,6 +22,7 @@ func NewGameProgressService() *GameProgressService {
 	return &GameProgressService{}
 }
 
+//wails:ignore
 func (s *GameProgressService) Init(ctx context.Context, db *sql.DB, appConfig *appconf.AppConfig) {
 	s.ctx = ctx
 	s.db = db

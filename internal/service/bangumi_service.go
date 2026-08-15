@@ -17,9 +17,9 @@ import (
 	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
 	"lunabox/internal/service/gamehelper"
+	"lunabox/internal/utils/httputils"
 	"lunabox/internal/utils/imageutils"
 	"lunabox/internal/utils/metadata"
-	"lunabox/internal/utils/proxyutils"
 	"lunabox/internal/version"
 	"net"
 	"net/http"
@@ -29,7 +29,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"lunabox/internal/wailsruntime"
 )
 
 const (
@@ -37,7 +37,6 @@ const (
 	bangumiOAuthTokenURL       = "https://bgm.tv/oauth/access_token"
 	bangumiCurrentUserURL      = "https://api.bgm.tv/v0/me"
 	bangumiCollectionAPIFormat = "https://api.bgm.tv/v0/users/-/collections/%s"
-	bangumiUserAgent           = "Saramanda9988/LunaBox/1.10.0 (desktop) (https://github.com/Saramanda9988/LunaBox)"
 
 	bangumiOAuthClientIDEnv     = "LUNABOX_BANGUMI_CLIENT_ID"
 	bangumiOAuthClientSecretEnv = "LUNABOX_BANGUMI_CLIENT_SECRET"
@@ -50,6 +49,7 @@ const (
 	bangumiTokenRefreshSkew  = 1 * time.Minute
 	bangumiHTTPTimeout       = 30 * time.Second
 	bangumiMetadataEventName = "bangumi:auth-status-changed"
+	bangumiStatusSyncEvent   = "bangumi:status-sync-progress"
 )
 
 var errBangumiUnauthorized = errors.New("bangumi unauthorized")
@@ -88,28 +88,40 @@ type bangumiCurrentUser struct {
 	} `json:"avatar"`
 }
 
+type bangumiCollectionPayload struct {
+	Type    *int    `json:"type,omitempty"`
+	Rate    *int    `json:"rate,omitempty"`
+	Comment *string `json:"comment,omitempty"`
+}
+
 type BangumiService struct {
 	ctx          context.Context
 	db           *sql.DB
 	config       *appconf.AppConfig
 	httpClient   *http.Client
-	openURL      func(context.Context, string) error
-	emitEvent    func(context.Context, string, ...interface{})
+	runtime      wailsruntime.Runtime
+	openURL      func(string) error
+	emitEvent    func(string, ...interface{})
 	now          func() time.Time
 	clientID     string
 	clientSecret string
 	mu           sync.Mutex
+	batchSyncMu  sync.Mutex
 }
 
 func NewBangumiService() *BangumiService {
+	runtime := wailsruntime.Unavailable()
 	return &BangumiService{
-		emitEvent:    runtime.EventsEmit,
+		runtime:      runtime,
+		openURL:      runtime.OpenURL,
+		emitEvent:    func(name string, data ...interface{}) { runtime.Emit(name, data...) },
 		now:          time.Now,
 		clientID:     strings.TrimSpace(version.BangumiOAuthClientID),
 		clientSecret: strings.TrimSpace(version.BangumiOAuthClientSecret),
 	}
 }
 
+//wails:ignore
 func (s *BangumiService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
 	s.db = db
@@ -117,7 +129,10 @@ func (s *BangumiService) Init(ctx context.Context, db *sql.DB, config *appconf.A
 	s.clientID = firstNonEmptyString(s.clientID, version.BangumiOAuthClientID)
 	s.clientSecret = firstNonEmptyString(s.clientSecret, version.BangumiOAuthClientSecret)
 	if s.httpClient == nil {
-		client, _, err := proxyutils.NewHTTPClientFromConfig(bangumiHTTPTimeout, config)
+		client, _, err := httputils.NewClient(httputils.ClientOptions{
+			Timeout:     bangumiHTTPTimeout,
+			ProxyConfig: config,
+		})
 		if err != nil {
 			applog.LogWarningf(ctx, "failed to create Bangumi HTTP client with proxy config: %v", err)
 			client = &http.Client{Timeout: bangumiHTTPTimeout}
@@ -127,41 +142,49 @@ func (s *BangumiService) Init(ctx context.Context, db *sql.DB, config *appconf.A
 	if s.now == nil {
 		s.now = time.Now
 	}
-	if s.emitEvent == nil {
-		s.emitEvent = runtime.EventsEmit
+}
+
+//wails:ignore
+func (s *BangumiService) SetRuntime(runtime wailsruntime.Runtime) {
+	if runtime == nil {
+		return
 	}
-	if s.openURL == nil {
-		s.openURL = func(browserCtx context.Context, targetURL string) error {
-			runtime.BrowserOpenURL(browserCtx, targetURL)
-			return nil
-		}
+	s.runtime = runtime
+	s.openURL = runtime.OpenURL
+	s.emitEvent = func(name string, data ...interface{}) {
+		runtime.Emit(name, data...)
 	}
 }
 
+//wails:ignore
 func (s *BangumiService) SetHTTPClient(client *http.Client) {
 	if client != nil {
 		s.httpClient = client
 	}
 }
 
-func (s *BangumiService) SetOpenURLFunc(openURL func(context.Context, string) error) {
+//wails:ignore
+func (s *BangumiService) SetOpenURLFunc(openURL func(string) error) {
 	if openURL != nil {
 		s.openURL = openURL
 	}
 }
 
+//wails:ignore
 func (s *BangumiService) SetNowFunc(now func() time.Time) {
 	if now != nil {
 		s.now = now
 	}
 }
 
+//wails:ignore
 func (s *BangumiService) SetOAuthClientCredentials(clientID, clientSecret string) {
 	s.clientID = strings.TrimSpace(clientID)
 	s.clientSecret = strings.TrimSpace(clientSecret)
 }
 
-func (s *BangumiService) SetEventEmitter(emit func(context.Context, string, ...interface{})) {
+//wails:ignore
+func (s *BangumiService) SetEventEmitter(emit func(string, ...interface{})) {
 	s.emitEvent = emit
 }
 
@@ -210,7 +233,7 @@ func (s *BangumiService) StartAuth() (vo.BangumiAuthStatus, error) {
 	defer session.shutdown()
 
 	authURL := buildBangumiAuthURL(s.clientID, session.redirectURI, session.state)
-	if err := s.openURL(s.ctx, authURL); err != nil {
+	if err := s.openURL(authURL); err != nil {
 		return vo.BangumiAuthStatus{}, fmt.Errorf("打开 Bangumi 授权页面失败: %w", err)
 	}
 
@@ -310,24 +333,32 @@ func (s *BangumiService) fetchMetadataByID(ctx context.Context, sourceID string)
 }
 
 func (s *BangumiService) fetchMetadataByName(ctx context.Context, name string) (metadata.MetadataResult, error) {
+	results, err := s.fetchMetadataCandidatesByName(ctx, name)
+	if err != nil {
+		return metadata.MetadataResult{}, err
+	}
+	return results[0], nil
+}
+
+func (s *BangumiService) fetchMetadataCandidatesByName(ctx context.Context, name string) ([]metadata.MetadataResult, error) {
 	getter := metadata.NewBangumiInfoGetter(gamehelper.MetadataGetterOptions(s.config)...)
 
 	token, err := s.getValidAccessToken(ctx)
 	if err != nil {
-		return metadata.MetadataResult{}, err
+		return nil, err
 	}
 
-	result, err := getter.FetchMetadataByName(name, token)
+	result, err := getter.FetchMetadataCandidatesByName(name, token)
 	if err == nil || !metadata.IsBangumiUnauthorizedError(err) {
 		return result, err
 	}
 
 	refreshedToken, refreshErr := s.refreshAccessToken(ctx)
 	if refreshErr != nil {
-		return metadata.MetadataResult{}, refreshErr
+		return nil, refreshErr
 	}
 
-	return getter.FetchMetadataByName(name, refreshedToken)
+	return getter.FetchMetadataCandidatesByName(name, refreshedToken)
 }
 
 func (s *BangumiService) syncGameStatus(ctx context.Context, game models.Game) error {
@@ -336,6 +367,61 @@ func (s *BangumiService) syncGameStatus(ctx context.Context, game models.Game) e
 	}
 
 	return s.upsertSubjectCollectionStatus(ctx, strings.TrimSpace(game.SourceID), game.Status)
+}
+
+func (s *BangumiService) SyncAllGameStatuses() (vo.RemoteStatusSyncProgress, error) {
+	s.batchSyncMu.Lock()
+	defer s.batchSyncMu.Unlock()
+
+	ctx := s.resolveContext(nil)
+	games, err := loadGamesForRemoteStatusSync(ctx, s.db, enums.Bangumi)
+	progress := vo.RemoteStatusSyncProgress{
+		Provider:        string(enums.Bangumi),
+		Status:          "started",
+		Total:           len(games),
+		FailedGameNames: make([]string, 0),
+	}
+	if err != nil {
+		return s.failStatusSync(progress, err)
+	}
+	s.emitStatusSyncProgress(progress)
+
+	if len(games) == 0 {
+		progress.Status = "done"
+		s.emitStatusSyncProgress(progress)
+		return progress, nil
+	}
+	if _, err := s.getValidAccessToken(ctx); err != nil {
+		return s.failStatusSync(progress, err)
+	}
+
+	for index, game := range games {
+		progress.Status = "running"
+		progress.GameName = game.Name
+		s.emitStatusSyncProgress(progress)
+
+		if err := s.upsertSubjectCollectionStatus(ctx, strings.TrimSpace(game.SourceID), game.Status); err != nil {
+			progress.FailedGames++
+			progress.FailedGameNames = append(progress.FailedGameNames, game.Name)
+			progress.LastError = err.Error()
+			applog.LogWarningf(s.ctx, "failed to sync Bangumi status for game %s (%s): %v", game.Name, game.ID, err)
+		} else {
+			progress.SucceededGames++
+		}
+		progress.Current = index + 1
+		s.emitStatusSyncProgress(progress)
+
+		if index+1 < len(games) {
+			if err := waitForRemoteStatusSync(ctx); err != nil {
+				return s.failStatusSync(progress, err)
+			}
+		}
+	}
+
+	progress.Status = "done"
+	progress.GameName = ""
+	s.emitStatusSyncProgress(progress)
+	return progress, nil
 }
 
 func (s *BangumiService) upsertSubjectCollectionStatus(ctx context.Context, subjectID string, status enums.GameStatus) error {
@@ -362,8 +448,41 @@ func (s *BangumiService) upsertSubjectCollectionStatus(ctx context.Context, subj
 	return s.postSubjectCollection(ctx, subjectID, refreshedToken, collectionType)
 }
 
+func (s *BangumiService) syncGameReview(ctx context.Context, subjectID string, review models.GameReview) error {
+	rate := 0
+	if review.Rating != nil {
+		rate = *review.Rating
+	}
+	comment := review.Content
+	payload := bangumiCollectionPayload{
+		Rate:    &rate,
+		Comment: &comment,
+	}
+
+	token, err := s.getValidAccessToken(ctx)
+	if err != nil {
+		return err
+	}
+	err = s.postSubjectCollectionPayload(ctx, subjectID, token, payload)
+	if !errors.Is(err, errBangumiUnauthorized) {
+		return err
+	}
+
+	refreshedToken, refreshErr := s.refreshAccessToken(ctx)
+	if refreshErr != nil {
+		return refreshErr
+	}
+	return s.postSubjectCollectionPayload(ctx, subjectID, refreshedToken, payload)
+}
+
 func (s *BangumiService) isGameEligibleForStatusPush(game models.Game) bool {
-	return appconf.IsBangumiStatusPushEnabled(s.config) &&
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	authStatus := s.buildAuthStatusLocked()
+	return authStatus.Authorized &&
+		!authStatus.NeedsReauthorization &&
+		appconf.IsBangumiStatusPushEnabled(s.config) &&
 		game.SourceType == enums.Bangumi &&
 		strings.TrimSpace(game.SourceID) != ""
 }
@@ -419,7 +538,7 @@ func (s *BangumiService) refreshAccessTokenLocked(ctx context.Context) (string, 
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", bangumiUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
@@ -574,7 +693,7 @@ func (s *BangumiService) exchangeAuthorizationCode(ctx context.Context, code, re
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", bangumiUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
@@ -610,7 +729,7 @@ func (s *BangumiService) fetchCurrentUser(ctx context.Context, accessToken strin
 		return nil, fmt.Errorf("创建 Bangumi 当前用户请求失败: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("User-Agent", bangumiUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := s.httpClient.Do(req)
@@ -728,9 +847,12 @@ func firstNonEmptyString(values ...string) string {
 }
 
 func (s *BangumiService) postSubjectCollection(ctx context.Context, subjectID, accessToken string, collectionType int) error {
-	payloadBytes, err := json.Marshal(map[string]interface{}{
-		"type": collectionType,
-	})
+	payload := bangumiCollectionPayload{Type: &collectionType}
+	return s.postSubjectCollectionPayload(ctx, subjectID, accessToken, payload)
+}
+
+func (s *BangumiService) postSubjectCollectionPayload(ctx context.Context, subjectID, accessToken string, payload bangumiCollectionPayload) error {
+	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("编码 Bangumi 收藏请求失败: %w", err)
 	}
@@ -745,11 +867,15 @@ func (s *BangumiService) postSubjectCollection(ctx context.Context, subjectID, a
 		return fmt.Errorf("创建 Bangumi 收藏请求失败: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("User-Agent", bangumiUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := s.httpClient.Do(req)
+	resp, err := httputils.DoWithRetry(req.Context(), s.httpClient, req, httputils.RetryPolicy{
+		MaxRetries:    1,
+		FallbackDelay: time.Second,
+		MaxDelay:      30 * time.Second,
+	})
 	if err != nil {
 		return fmt.Errorf("请求 Bangumi 收藏接口失败: %w", err)
 	}
@@ -773,7 +899,24 @@ func (s *BangumiService) emitAuthStatusChanged(status vo.BangumiAuthStatus) {
 	if s.ctx == nil || s.emitEvent == nil {
 		return
 	}
-	s.emitEvent(s.ctx, bangumiMetadataEventName, status)
+	s.emitEvent(bangumiMetadataEventName, status)
+}
+
+func (s *BangumiService) emitStatusSyncProgress(progress vo.RemoteStatusSyncProgress) {
+	if s.ctx == nil || s.emitEvent == nil {
+		return
+	}
+	s.emitEvent(bangumiStatusSyncEvent, progress)
+}
+
+func (s *BangumiService) failStatusSync(
+	progress vo.RemoteStatusSyncProgress,
+	err error,
+) (vo.RemoteStatusSyncProgress, error) {
+	progress.Status = "failed"
+	progress.LastError = err.Error()
+	s.emitStatusSyncProgress(progress)
+	return progress, err
 }
 
 func (s *BangumiService) resolveContext(ctx context.Context) context.Context {

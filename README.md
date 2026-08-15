@@ -1,36 +1,29 @@
+<img src="screenshot/hero.png" alt="LunaBox" />
+
 <div align="center">
 
-<img src="frontend/public/appicon.png" alt="LunaBox Logo" style="width:120px; height:120px; border-radius:16px;" />
-
-# LunaBox
-
-**Lightweight, fast, and feature-rich visual novel management and game statistics tool**
-
 [中文](README.zh-CN.md) | [English](README.md) | [日本語](README.ja.md)
-
-[![Go](https://img.shields.io/badge/Go-1.24-00ADD8?style=flat-square&logo=go)](https://go.dev/)
-[![Wails](https://img.shields.io/badge/Wails-v2-DF0000?style=flat-square)](https://wails.io/)
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://react.dev/)
 
 </div>
 
 <p align="center">
   <a href="https://github.com/Saramanda9988/LunaBox/releases">
-    <img src="https://img.shields.io/github/downloads/Saramanda9988/LunaBox/total?color=369eff&labelColor=black&logo=github&style=flat-square&label=Downloads" />
-  </a>
-  <a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=Eq5DkGu1gs6tL9bUEJFiq46r6czdpQaR&authKey=w1NRtvE8fYAgShdzGFGx4QDaKQyJRypgHOrVMOhxK5cjUbGt4TXu4px2L%2FJem2WN&noverify=0&group_code=1094948837" target="_blank">
-    <img src="https://img.shields.io/badge/QQ-Group-12B7F5?style=flat-square&logo=tencent-qq&logoColor=white&labelColor=black" />
-  </a>
-  <a href="https://t.me/+6YTPdl-6YeM1OGNl" target="_blank">
-    <img src="https://img.shields.io/badge/Telegram-2CA5E0?style=flat-square&logo=telegram&logoColor=white&labelColor=black" />
-  </a>
+    <img src="https://img.shields.io/github/downloads/Saramanda9988/LunaBox/total?color=369eff&labelColor=black&logo=github&style=flat-square&label=Downloads" /></a>
+  <a href="https://github.com/Saramanda9988/LunaBox/stargazers">
+    <img src="https://img.shields.io/github/stars/Saramanda9988/LunaBox?color=369eff&labelColor=black&logo=github&style=flat-square&label=Stars" /></a>
+  <a href="https://github.com/Saramanda9988/LunaBox/releases/latest">
+    <img src="https://img.shields.io/github/v/release/Saramanda9988/LunaBox?color=369eff&labelColor=black&logo=github&style=flat-square&label=Release" /></a>
+</p>
+
+<p align="center">
+  <a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=Eq5DkGu1gs6tL9bUEJFiq46r6czdpQaR&authKey=w1NRtvE8fYAgShdzGFGx4QDaKQyJRypgHOrVMOhxK5cjUbGt4TXu4px2L%2FJem2WN&noverify=0&group_code=1094948837"><img src="screenshot/qq-community.png" alt="Join the LunaBox QQ Group" width="45%" /></a>
+  <a href="https://t.me/+6YTPdl-6YeM1OGNl"><img src="screenshot/telegram-community.png" alt="Join the LunaBox Telegram Group" width="45%" /></a>
 </p>
 
 ## ✨ Features
 
 - **Game category management** - Organize your library with custom categories
 - **Playtime tracking** - Automatically track session time when launching games
-- **Small binary footprint** - Built with Wails, no full browser runtime bundled
 - **Multi-dimensional statistics** - View play data by day/week/month/year and export shareable stat cards
 - **AI insights** - Analyze gameplay data to generate personalized, playful reports, with MCP exposure and CLI skill support for broader data-use scenarios
 - **Convenient data import** - Import from PotatoVN, Playnite, Vnite, and Steam; supports folder batch import and drag-and-drop
@@ -140,61 +133,13 @@ Additional in-app screenshots (located in the `screenshot/` directory):
   </tr>
 </table>
 
-## 🛠️ Tech Stack
-
-| Layer                | Technology                                                                                |
-| -------------------- | ----------------------------------------------------------------------------------------- |
-| **Framework**        | [Wails v2](https://wails.io/)                                                             |
-| **Backend**          | [Go 1.26.3](https://go.dev/)                                                              |
-| **Frontend**         | [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)            |
-| **Database**         | [DuckDB](https://duckdb.org/)                                                             |
-| **Build Tool**       | [Vite](https://vitejs.dev/)                                                               |
-| **Styling**          | [UnoCSS](https://unocss.dev/)                                                             |
-| **Routing**          | [TanStack Router](https://tanstack.com/router)                                            |
-| **State Management** | [Zustand](https://zustand-demo.pmnd.rs/)                                                  |
-| **Charts**           | [Chart.js](https://www.chartjs.org/) + [react-chartjs-2](https://react-chartjs-2.js.org/) |
-
 ## 📦 Installation
 
 ### Download from Releases
 
 Go to the [Releases](https://github.com/Saramanda9988/LunaBox/releases) page and download the latest installer.
 
-### Build from source
-
-#### Prerequisites
-
-- [Go 1.26.3+](https://go.dev/dl/)
-- [Node.js 18+](https://nodejs.org/)
-- [pnpm](https://pnpm.io/)
-- [Wails CLI](https://wails.io/docs/gettingstarted/installation)
-- [msys2](https://www.msys2.org/)
-- [NSIS](https://nsis.sourceforge.io/Main_Page)
-
-```bash
-# Install Wails CLI
-go install github.com/wailsapp/wails/v2/cmd/wails@latest
-```
-
-#### Build steps
-
-```bash
-# Clone project
-git clone https://github.com/Saramanda9988/lunabox.git
-cd lunabox
-
-# Install frontend dependencies
-cd frontend && pnpm install && cd ..
-
-# Run in development mode
-wails dev
-
-# Build production version
-wails build
-
-# Build locally using script (Windows)
-.\scripts\build.bat all 1.0.0-beta
-```
+You can also download a Nightly build from [AutoBuild](https://github.com/Saramanda9988/LunaBox/releases/tag/dev-latest) to try the latest features.
 
 ## 🤝 Contributing
 
@@ -202,12 +147,8 @@ Issues and Pull Requests are welcome.
 
 ## 🗺️ Roadmap
 
-- [x] Improve logging system
-- [ ] Support importing data from ReinaManager
-- [ ] Self-hosted Docker server
 - [ ] IM platform bot plugin
 - [x] Multi-device synchronization
-- [ ] Gallery feature
 - [x] Expose MCP and provide link-based game launch capability for AI
 - [ ] "What to play next" recommendation feature
 - [ ] Support Linux/macOS platform
@@ -246,9 +187,3 @@ Archive extraction support:
 ## 📄 License
 
 This project is licensed under [AGPL v3](LICENSE).
-
-<div align="center">
-
-<img src="screenshot/logo-luna.png" width="150"/>
-
-</div>

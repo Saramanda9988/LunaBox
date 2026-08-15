@@ -8,15 +8,31 @@ on:
 
 jobs:
   build-release:
-    name: Build Release
-    runs-on: ${{ matrix.arch == 'arm64' && 'windows-11-arm' || 'windows-latest' }}
+    name: Windows ${{ matrix.arch }} / ${{ matrix.mode }}
+    runs-on: ${{ matrix.runner }}
     permissions:
       actions: read
       contents: read
     strategy:
+      fail-fast: true
       matrix:
-        arch: [amd64, arm64]
-        mode: [portable, installer]
+        include:
+          - arch: amd64
+            mode: portable
+            runner: windows-2025
+          - arch: arm64
+            mode: portable
+            runner: windows-11-arm
+            msystem: CLANGARM64
+            toolchain: mingw-w64-clang-aarch64-toolchain
+          - arch: amd64
+            mode: installer
+            runner: windows-2025
+          - arch: arm64
+            mode: installer
+            runner: windows-11-arm
+            msystem: CLANGARM64
+            toolchain: mingw-w64-clang-aarch64-toolchain
     
     steps:
       - name: Checkout code
@@ -26,171 +42,72 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: true
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'pnpm'
-          cache-dependency-path: 'frontend/pnpm-lock.yaml'
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
-      - name: Setup Wails
-        run: |
-          $WailsVersion = (go list -m -f "{{.Version}}" github.com/wailsapp/wails/v2).Trim()
-          go install "github.com/wailsapp/wails/v2/cmd/wails@$WailsVersion"
+      - name: Install matching Wails v3 CLI
         shell: pwsh
+        run: |
+          $Version = (go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3).Trim()
+          go install "github.com/wailsapp/wails/v3/cmd/wails3@$Version"
+          $Installed = (& wails3 version 2>&1 | Out-String).Trim()
+          if ($Installed -ne $Version) {
+            throw "wails3 version mismatch: expected $Version, found $Installed"
+          }
 
-      - name: Setup MSYS2 for ARM64 CGO
-        id: msys2
+      - name: Setup ARM64 CGO toolchain
+        id: msys2-arm64
         if: matrix.arch == 'arm64'
         uses: msys2/setup-msys2@v2
         with:
-          msystem: CLANGARM64
+          msystem: ${{ matrix.msystem }}
           path-type: inherit
-          install: mingw-w64-clang-aarch64-toolchain
+          install: ${{ matrix.toolchain }}
+
+      - name: Export ARM64 MSYS2 location
+        if: matrix.arch == 'arm64'
+        shell: pwsh
+        run: |
+          $Location = '${{ steps.msys2-arm64.outputs.msys2-location }}'
+          if ([string]::IsNullOrWhiteSpace($Location)) {
+            throw 'MSYS2 location output is empty.'
+          }
+          "MSYS2_LOCATION=$Location" >> $env:GITHUB_ENV
 
       - name: Install NSIS
         if: matrix.mode == 'installer'
-        run: |
-          choco install nsis -y
-          echo "C:\Program Files (x86)\NSIS" >> $env:GITHUB_PATH
         shell: pwsh
-
-      - name: Configure build architecture
         run: |
-          "GOOS=windows" >> $env:GITHUB_ENV
-          "GOARCH=${{ matrix.arch }}" >> $env:GITHUB_ENV
-          $env:GOOS = "windows"
-          $env:GOARCH = "${{ matrix.arch }}"
-
-          if ("${{ matrix.arch }}" -eq "arm64") {
-            $SourceDir = Join-Path $PWD "lib\winarm64"
-            $BuildLibDir = Join-Path $PWD "build\duckdb\winarm64"
-            $DuckDBDll = Join-Path $SourceDir "duckdb.dll"
-            $DuckDBLib = Join-Path $SourceDir "duckdb.lib"
-
-            if (!(Test-Path $DuckDBDll) -or !(Test-Path $DuckDBLib)) {
-              throw "Win-ARM64 DuckDB dynamic library is missing under lib\winarm64."
-            }
-
-            New-Item -ItemType Directory -Force -Path $BuildLibDir | Out-Null
-            Copy-Item $DuckDBDll -Destination (Join-Path $BuildLibDir "duckdb.dll") -Force
-            Copy-Item $DuckDBLib -Destination (Join-Path $BuildLibDir "duckdb.lib") -Force
-            Copy-Item $DuckDBLib -Destination (Join-Path $BuildLibDir "libduckdb.dll.a") -Force
-
-            $Msys2Location = "${{ steps.msys2.outputs.msys2-location }}"
-            if ([string]::IsNullOrWhiteSpace($Msys2Location)) {
-              throw "MSYS2 location output is empty."
-            }
-
-            $ClangArm64Bin = Join-Path $Msys2Location "clangarm64\bin"
-            $Clang = Join-Path $ClangArm64Bin "clang.exe"
-            $ClangXX = Join-Path $ClangArm64Bin "clang++.exe"
-            if (!(Test-Path $Clang) -or !(Test-Path $ClangXX)) {
-              throw "MSYS2 CLANGARM64 compiler was not found under $ClangArm64Bin."
-            }
-            $TargetTriple = "aarch64-w64-windows-gnu"
-            $ClangTarget = (& $Clang --target=$TargetTriple -dumpmachine).Trim()
-            if ($ClangTarget -notmatch "aarch64|arm64") {
-              throw "MSYS2 CLANGARM64 compiler has unexpected target with --target=$TargetTriple`: $ClangTarget."
-            }
-            Write-Host "Using ARM64 CGO compiler: $Clang --target=$TargetTriple ($ClangTarget)"
-
-            "MSYS2_LOCATION=$Msys2Location" >> $env:GITHUB_ENV
-            "CGO_ENABLED=1" >> $env:GITHUB_ENV
-            "CC=$Clang --target=$TargetTriple" >> $env:GITHUB_ENV
-            "CXX=$ClangXX --target=$TargetTriple" >> $env:GITHUB_ENV
-            "CGO_LDFLAGS=-L$BuildLibDir -lduckdb" >> $env:GITHUB_ENV
-            "GO_BUILD_TAGS=duckdb_use_lib" >> $env:GITHUB_ENV
-            "DUCKDB_DYNAMIC_DLL=$(Join-Path $BuildLibDir "duckdb.dll")" >> $env:GITHUB_ENV
-            $env:MSYS2_LOCATION = $Msys2Location
-            $env:CGO_ENABLED = "1"
-            $env:CC = "$Clang --target=$TargetTriple"
-            $env:CXX = "$ClangXX --target=$TargetTriple"
-            $env:CGO_LDFLAGS = "-L$BuildLibDir -lduckdb"
-            $env:PATH = "$ClangArm64Bin;$BuildLibDir;$env:PATH"
-            go env -w CGO_ENABLED=1 CC="$env:CC" CXX="$env:CXX" CGO_LDFLAGS="$env:CGO_LDFLAGS"
-            go env GOOS GOARCH GOHOSTOS GOHOSTARCH CGO_ENABLED CC CXX CGO_LDFLAGS
-            go test -run "^$" -tags duckdb_use_lib github.com/duckdb/duckdb-go-bindings
-            $ClangArm64Bin >> $env:GITHUB_PATH
-            $BuildLibDir >> $env:GITHUB_PATH
-          }
-        shell: pwsh
-
-      - name: Install frontend dependencies
-        working-directory: ./frontend
-        run: pnpm install
+          choco install nsis --no-progress -y
+          'C:\Program Files (x86)\NSIS' >> $env:GITHUB_PATH
 
       - name: Get version from tag
         id: get_version
         run: |
           $VERSION = "${{ github.ref_name }}" -replace '^v', ''
           echo "VERSION=$VERSION" >> $env:GITHUB_OUTPUT
-          $COMMIT = "${{ github.sha }}".Substring(0,7)
-          echo "COMMIT=$COMMIT" >> $env:GITHUB_OUTPUT
-          $BUILD_TIME = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-          echo "BUILD_TIME=$BUILD_TIME" >> $env:GITHUB_OUTPUT
         shell: pwsh
 
-      - name: Generate build env
-        run: |
-          $ErrorActionPreference = "Stop"
-          $BangumiClientID = $env:LUNABOX_BANGUMI_CLIENT_ID
-          $BangumiClientSecret = $env:LUNABOX_BANGUMI_CLIENT_SECRET
-          $HikarinagiClientID = $env:LUNABOX_HIKARINAGI_CLIENT_ID
-          $HikarinagiClientSecret = $env:LUNABOX_HIKARINAGI_CLIENT_SECRET
-          $TouchGalToken = $env:LUNABOX_TOUCHGAL_TOKEN
-          $UmbraClientID = $env:LUNABOX_UMBRA_CLIENT_ID
-          $UmbraRegistrationToken = $env:LUNABOX_UMBRA_REGISTRATION_TOKEN
-
-          if ([string]::IsNullOrWhiteSpace($BangumiClientID) -xor [string]::IsNullOrWhiteSpace($BangumiClientSecret)) {
-            throw "LUNABOX_BANGUMI_CLIENT_ID and LUNABOX_BANGUMI_CLIENT_SECRET must be configured together."
-          }
-          if ([string]::IsNullOrWhiteSpace($HikarinagiClientID) -xor [string]::IsNullOrWhiteSpace($HikarinagiClientSecret)) {
-            throw "LUNABOX_HIKARINAGI_CLIENT_ID and LUNABOX_HIKARINAGI_CLIENT_SECRET must be configured together."
-          }
-          $UmbraValues = @($UmbraClientID, $UmbraRegistrationToken)
-          $UmbraConfiguredCount = @($UmbraValues | Where-Object { ![string]::IsNullOrWhiteSpace($_) }).Count
-          if ($UmbraConfiguredCount -ne 0 -and $UmbraConfiguredCount -ne 2) {
-            throw "LUNABOX_UMBRA_CLIENT_ID and LUNABOX_UMBRA_REGISTRATION_TOKEN must be configured together."
-          }
-
-          $Lines = @()
-          if (![string]::IsNullOrWhiteSpace($BangumiClientID)) {
-            $Lines += "LUNABOX_BANGUMI_CLIENT_ID=$BangumiClientID"
-            $Lines += "LUNABOX_BANGUMI_CLIENT_SECRET=$BangumiClientSecret"
-          }
-          if (![string]::IsNullOrWhiteSpace($HikarinagiClientID)) {
-            $Lines += "LUNABOX_HIKARINAGI_CLIENT_ID=$HikarinagiClientID"
-            $Lines += "LUNABOX_HIKARINAGI_CLIENT_SECRET=$HikarinagiClientSecret"
-          }
-          if (![string]::IsNullOrWhiteSpace($TouchGalToken)) {
-            $Lines += "LUNABOX_TOUCHGAL_TOKEN=$TouchGalToken"
-          }
-          if ($UmbraConfiguredCount -eq 2) {
-            $Lines += "LUNABOX_UMBRA_CLIENT_ID=$UmbraClientID"
-            $Lines += "LUNABOX_UMBRA_REGISTRATION_TOKEN=$UmbraRegistrationToken"
-          }
-
-          Set-Content -Path ".env.build" -Value $Lines -Encoding utf8
-          Write-Host "Generated .env.build for build-time injection."
-        shell: pwsh
+      - name: Build Portable with script
+        if: matrix.mode == 'portable'
         env:
           LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
           LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
           LUNABOX_HIKARINAGI_CLIENT_ID: ${{ vars.LUNABOX_HIKARINAGI_CLIENT_ID }}
-          LUNABOX_HIKARINAGI_CLIENT_SECRET: ${{ secrets.LUNABOX_HIKARINAGI_CLIENT_SECRET }}
           LUNABOX_TOUCHGAL_TOKEN: ${{ secrets.LUNABOX_TOUCHGAL_TOKEN }}
           LUNABOX_UMBRA_CLIENT_ID: ${{ vars.LUNABOX_UMBRA_CLIENT_ID }}
           LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
-
-      - name: Build Portable with script
-        if: matrix.mode == 'portable'
         run: |
           $ErrorActionPreference = "Stop"
           .\scripts\build.bat "portable" "${{ steps.get_version.outputs.VERSION }}" "${{ matrix.arch }}"
@@ -205,12 +122,21 @@ jobs:
 
       - name: Build Installer Payload with script
         if: matrix.mode == 'installer'
+        env:
+          LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
+          LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
+          LUNABOX_HIKARINAGI_CLIENT_ID: ${{ vars.LUNABOX_HIKARINAGI_CLIENT_ID }}
+          LUNABOX_TOUCHGAL_TOKEN: ${{ secrets.LUNABOX_TOUCHGAL_TOKEN }}
+          LUNABOX_UMBRA_CLIENT_ID: ${{ vars.LUNABOX_UMBRA_CLIENT_ID }}
+          LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
         run: |
           $ErrorActionPreference = "Stop"
           .\scripts\build.bat "installer-payload" "${{ steps.get_version.outputs.VERSION }}" "${{ matrix.arch }}"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          if (!(Test-Path "build/bin/LunaBox.exe") -or !(Test-Path "build/bin/lunacli.exe") -or !(Test-Path "build/bin/LunaBoxUpdater.exe")) {
+          $PayloadDir = "build/windows/payload/${{ matrix.arch }}"
+          if (!(Test-Path "$PayloadDir/LunaBox.exe") -or !(Test-Path "$PayloadDir/lunacli.exe") -or !(Test-Path "build/bin/LunaBoxUpdater.exe")) {
+            Get-ChildItem -Path $PayloadDir -Recurse | ForEach-Object { Write-Host $_.FullName }
             Get-ChildItem -Path "build/bin" -Recurse | ForEach-Object { Write-Host $_.FullName }
             throw "Installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe."
           }
@@ -224,6 +150,7 @@ jobs:
           name: unsigned-lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable
           path: build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip
           if-no-files-found: error
+          retention-days: 1
 
       - name: Sign Portable Artifact
         if: matrix.mode == 'portable'
@@ -292,10 +219,11 @@ jobs:
         with:
           name: unsigned-lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-installer-payload
           path: |
-            build/bin/LunaBox.exe
-            build/bin/lunacli.exe
+            build/windows/payload/${{ matrix.arch }}/LunaBox.exe
+            build/windows/payload/${{ matrix.arch }}/lunacli.exe
             build/bin/LunaBoxUpdater.exe
           if-no-files-found: error
+          retention-days: 1
 
       - name: Sign Installer Payload
         if: matrix.mode == 'installer'
@@ -329,8 +257,9 @@ jobs:
             }
           }
 
-          Copy-Item $SignedGui -Destination "build/bin/LunaBox.exe" -Force
-          Copy-Item $SignedCli -Destination "build/bin/lunacli.exe" -Force
+          $PayloadDir = "build/windows/payload/${{ matrix.arch }}"
+          Copy-Item $SignedGui -Destination "$PayloadDir/LunaBox.exe" -Force
+          Copy-Item $SignedCli -Destination "$PayloadDir/lunacli.exe" -Force
           Copy-Item $SignedUpdater -Destination "build/bin/LunaBoxUpdater.exe" -Force
 
           .\scripts\build.bat "installer-package" "${{ steps.get_version.outputs.VERSION }}" "${{ matrix.arch }}"
@@ -345,8 +274,12 @@ jobs:
           $RuntimeDir = Join-Path $PWD "update-runtime"
           if (Test-Path $RuntimeDir) { Remove-Item $RuntimeDir -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
-          foreach ($Name in @("LunaBox.exe", "lunacli.exe", "LunaBoxUpdater.exe", "duckdb.dll")) {
+          foreach ($Name in @("LunaBoxUpdater.exe", "duckdb.dll")) {
             $Source = Join-Path "build/bin" $Name
+            if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
+          }
+          foreach ($Name in @("LunaBox.exe", "lunacli.exe")) {
+            $Source = Join-Path $PayloadDir $Name
             if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
           }
           if (Test-Path "build/bin/7z") {
@@ -369,6 +302,7 @@ jobs:
           name: unsigned-lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-installer
           path: build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe
           if-no-files-found: error
+          retention-days: 1
 
       - name: Sign Installer Artifact
         if: matrix.mode == 'installer'
@@ -382,15 +316,15 @@ jobs:
           github-artifact-id: ${{ steps.upload-unsigned-installer.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 1200
-          output-artifact-directory: signed
+          output-artifact-directory: signed-installer
 
       - name: Verify signed installer artifact
         if: matrix.mode == 'installer'
         run: |
           $ErrorActionPreference = "Stop"
-          $Artifact = "signed/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe"
+          $Artifact = "signed-installer/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe"
           if (!(Test-Path $Artifact)) {
-            Get-ChildItem -Path signed -Recurse | ForEach-Object { Write-Host $_.FullName }
+            Get-ChildItem -Path signed-installer -Recurse | ForEach-Object { Write-Host $_.FullName }
             throw "Signed installer artifact not found: $Artifact"
           }
         shell: pwsh
@@ -400,12 +334,208 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-installer
-          path: signed/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe
+          path: signed-installer/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe
+          if-no-files-found: error
+
+  build-macos:
+    name: macOS ${{ matrix.arch }} / DMG
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+          - arch: amd64
+            runner: macos-15-intel
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Free disk space for macOS build
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Disk space before cleanup:"
+          df -h /
+
+          developer_dir="$(xcode-select -p)"
+          selected_xcode="$(cd "$developer_dir/../.." && pwd -P)"
+
+          shopt -s nullglob
+          for xcode_app in /Applications/Xcode*.app; do
+            if [[ ! -d "$xcode_app" ]]; then
+              echo "Skipping unavailable Xcode entry: $xcode_app"
+              continue
+            fi
+            resolved_xcode="$(cd "$xcode_app" && pwd -P)"
+            if [[ "$resolved_xcode" != "$selected_xcode" ]]; then
+              sudo rm -rf "$xcode_app"
+            fi
+          done
+
+          while IFS= read -r -d '' platform_dir; do
+            sudo rm -rf "$platform_dir"
+          done < <(
+            find "$developer_dir/Platforms" \
+              -mindepth 1 \
+              -maxdepth 1 \
+              -type d \
+              ! -name 'MacOSX.platform' \
+              -print0
+          )
+
+          sudo rm -rf \
+            /Library/Developer/CoreSimulator \
+            "$HOME/Library/Developer/CoreSimulator" \
+            "$HOME/Library/Android" \
+            "$HOME/.android"
+
+          xcodebuild -version
+          echo "Disk space after cleanup:"
+          df -h /
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install matching Wails v3 CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
+          go install "github.com/wailsapp/wails/v3/cmd/wails3@$version"
+          test "$(wails3 version 2>&1)" = "$version"
+
+      - name: Get version from tag
+        id: get_version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build app bundle and DMG
+        shell: bash
+        env:
+          LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
+          LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
+          LUNABOX_HIKARINAGI_CLIENT_ID: ${{ vars.LUNABOX_HIKARINAGI_CLIENT_ID }}
+          LUNABOX_TOUCHGAL_TOKEN: ${{ secrets.LUNABOX_TOUCHGAL_TOKEN }}
+          LUNABOX_UMBRA_CLIENT_ID: ${{ vars.LUNABOX_UMBRA_CLIENT_ID }}
+          LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
+        run: |
+          set -euo pipefail
+          chmod +x scripts/build.sh
+          ./scripts/build.sh installer '${{ steps.get_version.outputs.VERSION }}' '${{ matrix.arch }}'
+          test -f 'build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-macos-${{ matrix.arch }}.dmg'
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunabox-${{ steps.get_version.outputs.VERSION }}-macos-${{ matrix.arch }}
+          path: build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-macos-${{ matrix.arch }}.dmg
+          if-no-files-found: error
+
+  build-linux:
+    name: Linux amd64 / Packages
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install Linux build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential libayatana-appindicator3-dev libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+
+      - name: Install nFPM
+        shell: bash
+        run: |
+          set -euo pipefail
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+          nfpm --version
+
+      - name: Install matching Wails v3 CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
+          go install "github.com/wailsapp/wails/v3/cmd/wails3@$version"
+          test "$(wails3 version 2>&1)" = "$version"
+
+      - name: Get version from tag
+        id: get_version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Linux packages
+        shell: bash
+        env:
+          LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
+          LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
+          LUNABOX_HIKARINAGI_CLIENT_ID: ${{ vars.LUNABOX_HIKARINAGI_CLIENT_ID }}
+          LUNABOX_TOUCHGAL_TOKEN: ${{ secrets.LUNABOX_TOUCHGAL_TOKEN }}
+          LUNABOX_UMBRA_CLIENT_ID: ${{ vars.LUNABOX_UMBRA_CLIENT_ID }}
+          LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
+        run: |
+          set -euo pipefail
+          chmod +x scripts/build.sh
+          ./scripts/build.sh all '${{ steps.get_version.outputs.VERSION }}' amd64
+          test -f 'build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-linux-amd64-portable.tar.gz'
+          test -f 'build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-linux-amd64.deb'
+          test -f 'build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-linux-amd64.rpm'
+
+      - name: Upload Linux packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunabox-${{ steps.get_version.outputs.VERSION }}-linux-amd64
+          path: |
+            build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-linux-amd64-portable.tar.gz
+            build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-linux-amd64.deb
+            build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-linux-amd64.rpm
           if-no-files-found: error
 
   create-release:
     name: Create GitHub Release
-    needs: build-release
+    needs: [build-release, build-macos, build-linux]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
@@ -430,6 +560,7 @@ jobs:
         with:
           pattern: lunabox-*
           path: ./artifacts
+          merge-multiple: true
 
       - name: Download signed update runtime inputs
         uses: actions/download-artifact@v4
@@ -443,7 +574,8 @@ jobs:
       - name: Prepare release files
         run: |
           mkdir -p release
-          find ./artifacts -type f \( -name "*.zip" -o -name "*.exe" \) -exec cp {} ./release/ \;
+          find ./artifacts -maxdepth 1 -type f \( -name "*.zip" -o -name "*.exe" -o -name "*.dmg" -o -name "*.tar.gz" -o -name "*.deb" -o -name "*.rpm" \) -exec cp {} ./release/ \;
+          test "$(find ./release -maxdepth 1 -type f | wc -l | tr -d ' ')" -eq 9
           ls -lh ./release
 
       - name: Find previous stable release
@@ -545,8 +677,14 @@ jobs:
           echo "" >> release_notes.md
           echo "| 文件 | 说明 |" >> release_notes.md
           echo "|------|------|" >> release_notes.md
-          echo "| \`*-portable.zip\` | 便携版，解压即用，数据存储在程序目录 |" >> release_notes.md
-          echo "| \`*-setup.exe\` | 安装版，标准安装程序，数据存储在 %APPDATA%\\\\LunaBox |" >> release_notes.md
+          echo "| \`*-windows-*-portable.zip\` | Windows 便携版，解压即用，数据存储在程序目录 |" >> release_notes.md
+          echo "| \`*-windows-*-setup.exe\` | Windows 安装版，数据存储在 %APPDATA%\\\\LunaBox |" >> release_notes.md
+          echo "| \`*-macos-*.dmg\` | macOS 磁盘映像，将 LunaBox 拖入 Applications |" >> release_notes.md
+          echo "| \`*-linux-*-portable.tar.gz\` | Linux 便携版，解压后运行 LunaBox |" >> release_notes.md
+          echo "| \`*-linux-*.deb\` | Linux Debian/Ubuntu 安装包 |" >> release_notes.md
+          echo "| \`*-linux-*.rpm\` | Linux Fedora/RHEL/openSUSE 安装包 |" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "Windows 提供 AMD64、ARM64；macOS 提供 Intel AMD64、Apple Silicon ARM64；Linux 提供 AMD64。" >> release_notes.md
           echo "" >> release_notes.md
           echo "### 🔗 相关链接" >> release_notes.md
           echo "" >> release_notes.md

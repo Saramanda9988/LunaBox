@@ -139,7 +139,7 @@ func (v *VniteImporter) ImportSelected(vniteDir string, skipNoPath bool, samePat
 		action := ImportActionCreate
 		existingGameID := ""
 		if conflict, exists := findExistingGameConflict(existingGames, existingNames, existingPaths, gameName, exePath); exists {
-			if conflict.Type != ConflictTypeSamePath || samePathAction != SamePathActionMerge {
+			if conflict.Type != ConflictTypeSamePath || !IsSamePathMergeAction(samePathAction) {
 				result.Skipped++
 				if conflict.Type == ConflictTypeNameAndPath {
 					result.SkippedNames = append(result.SkippedNames, gameName+" (已存在)")
@@ -149,6 +149,9 @@ func (v *VniteImporter) ImportSelected(vniteDir string, skipNoPath bool, samePat
 				continue
 			}
 			action = ImportActionUpdateExisting
+			if samePathAction == SamePathActionMergeSessions {
+				action = ImportActionMergeSessions
+			}
 			existingGameID = conflict.Game.ID
 			game.ID = conflict.Game.ID
 			game.Path = conflict.Game.Path

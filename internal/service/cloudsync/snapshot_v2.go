@@ -59,7 +59,7 @@ func (h *Helper) LoadRemoteManifest(provider cloudprovider.CloudStorageProvider)
 	if err != nil {
 		return Manifest{}, false, err
 	}
-	if m.SchemaVersion > SchemaVersionV2 {
+	if m.SchemaVersion > SchemaVersion {
 		return Manifest{}, true, ErrManifestSchemaTooNew
 	}
 	return m, true, nil
@@ -219,7 +219,7 @@ func (h *Helper) SaveRemoteLibraryFiles(
 			return fmt.Errorf("unknown singleton: %s", name)
 		}
 		file := BucketFile{
-			SchemaVersion: SchemaVersionV2,
+			SchemaVersion: SchemaVersion,
 			BucketKey:     "_singleton/" + name,
 		}
 		switch name {

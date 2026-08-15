@@ -116,7 +116,7 @@ func (r *ReinaManagerImporter) ImportSelected(dbPath string, skipNoPath bool, sa
 		action := ImportActionCreate
 		existingGameID := ""
 		if conflict, exists := findExistingGameConflict(existingGames, existingNames, existingPaths, game.Name, game.Path); exists {
-			if conflict.Type != ConflictTypeSamePath || samePathAction != SamePathActionMerge {
+			if conflict.Type != ConflictTypeSamePath || !IsSamePathMergeAction(samePathAction) {
 				result.Skipped++
 				if conflict.Type == ConflictTypeNameAndPath {
 					result.SkippedNames = append(result.SkippedNames, game.Name+" (已存在)")
@@ -126,6 +126,9 @@ func (r *ReinaManagerImporter) ImportSelected(dbPath string, skipNoPath bool, sa
 				continue
 			}
 			action = ImportActionUpdateExisting
+			if samePathAction == SamePathActionMergeSessions {
+				action = ImportActionMergeSessions
+			}
 			existingGameID = conflict.Game.ID
 			game.ID = conflict.Game.ID
 			game.Path = conflict.Game.Path
@@ -361,6 +364,7 @@ func convertReinaManagerGame(source reinamanager.Game) (models.Game, []models.Pl
 		SavePath:          strings.TrimSpace(source.SavePath),
 		Status:            mapReinaManagerStatus(source.Clear),
 		SourceType:        sourceType,
+		MetadataSources:   collectReinaManagerMetadataSources(source, now),
 		SourceID:          sourceID,
 		CreatedAt:         timeFromUnixOr(source.CreatedAt, now),
 		CachedAt:          now,
@@ -389,6 +393,29 @@ func convertReinaManagerGame(source reinamanager.Game) (models.Game, []models.Pl
 		})
 	}
 	return game, sessions
+}
+
+func collectReinaManagerMetadataSources(game reinamanager.Game, timestamp time.Time) []models.GameMetadataSource {
+	items := make([]models.GameMetadataSource, 0, len(game.Sources))
+	seen := make(map[enums.SourceType]struct{}, len(game.Sources))
+	for sourceName, source := range game.Sources {
+		sourceType := mapReinaManagerSource(sourceName)
+		sourceID := strings.TrimSpace(source.ExternalID)
+		if sourceType == enums.Local || sourceID == "" {
+			continue
+		}
+		if _, exists := seen[sourceType]; exists {
+			continue
+		}
+		seen[sourceType] = struct{}{}
+		items = append(items, models.GameMetadataSource{
+			SourceType: sourceType,
+			SourceID:   sourceID,
+			CachedAt:   timestamp,
+		})
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].SourceType < items[j].SourceType })
+	return items
 }
 
 func pickReinaManagerIdentity(game reinamanager.Game) (enums.SourceType, string) {

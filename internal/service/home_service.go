@@ -9,6 +9,7 @@ import (
 	enums2 "lunabox/internal/common/enums"
 	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
+	"lunabox/internal/service/gamehelper"
 	"time"
 )
 
@@ -24,6 +25,7 @@ func NewHomeService() *HomeService {
 	return &HomeService{}
 }
 
+//wails:ignore
 func (s *HomeService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
 	s.db = db
@@ -61,7 +63,8 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 			FROM play_sessions
 		)
 		SELECT
-			g.id, g.name, 
+			g.id, g.name,
+			COALESCE(g.aliases, '[]') as aliases,
 			COALESCE(g.cover_url, '') as cover_url,
 			COALESCE(g.cover_source_url, '') as cover_source_url,
 			COALESCE(g.company, '') as company, 
@@ -76,6 +79,10 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 			COALESCE(g.wine_args, '') as wine_args,
 			COALESCE(g.wine_prefix, '') as wine_prefix,
 			COALESCE(g.launch_mode, 'normal') as launch_mode,
+			COALESCE(g.steam_launch_id, '') as steam_launch_id,
+			COALESCE(g.steam_launch_kind, '') as steam_launch_kind,
+			COALESCE(g.steam_user_id, '') as steam_user_id,
+			COALESCE(g.steam_launch_options, '') as steam_launch_options,
 			COALESCE(g.status, 'not_started') as status,
 			COALESCE(g.source_type, '') as source_type, 
 			g.cached_at, 
@@ -109,6 +116,7 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 		var status string
 		var sourceType string
 		var launchMode string
+		var aliasesJSON string
 		var lastPlayedAt time.Time
 		var lastPlayedDur int
 		var isPlaying bool
@@ -117,6 +125,7 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 		if err := rows.Scan(
 			&game.ID,
 			&game.Name,
+			&aliasesJSON,
 			&game.CoverURL,
 			&game.CoverSourceURL,
 			&game.Company,
@@ -131,6 +140,10 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 			&game.WineArgs,
 			&game.WinePrefix,
 			&launchMode,
+			&game.SteamLaunchID,
+			&game.SteamLaunchKind,
+			&game.SteamUserID,
+			&game.SteamLaunchOptions,
 			&status,
 			&sourceType,
 			&game.CachedAt,
@@ -147,6 +160,10 @@ func (s *HomeService) GetHomePageData() (vo.HomePageData, error) {
 			&game.MetadataLocked,
 		); err != nil {
 			return data, fmt.Errorf("scan recent played game: %w", err)
+		}
+		game.Aliases, err = gamehelper.DecodeAliases(aliasesJSON)
+		if err != nil {
+			return data, fmt.Errorf("decode recent played game aliases: %w", err)
 		}
 
 		game.Status = enums2.GameStatus(status)

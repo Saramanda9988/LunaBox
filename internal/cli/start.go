@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 	"lunabox/internal/applog"
-	"lunabox/internal/common/enums"
-	"lunabox/internal/common/vo"
 	"lunabox/internal/service/launcher"
 	"path/filepath"
 	goruntime "runtime"
@@ -115,9 +113,9 @@ func newStartCmd(app *CoreApp) *cobra.Command {
 	cmd.Flags().BoolP("le", "l", false, "Start with Locale Emulator")
 	cmd.Flags().BoolP("magpie", "m", false, "Start with Magpie")
 	cmd.Flags().BoolP("admin", "a", false, "Start as administrator")
-	cmd.Flags().String("wine-runner", "", "Override Wine runner on macOS: system, crossover, custom")
-	cmd.Flags().String("wine-args", "", "Override Wine arguments on macOS")
-	cmd.Flags().String("wine-prefix", "", "Override WINEPREFIX or CrossOver bottle on macOS")
+	cmd.Flags().String("wine-runner", "", "Override Wine runner on macOS/Linux: system, crossover, custom")
+	cmd.Flags().String("wine-args", "", "Override Wine arguments on macOS/Linux")
+	cmd.Flags().String("wine-prefix", "", "Override WINEPREFIX or CrossOver bottle on macOS/Linux")
 
 	return cmd
 }
@@ -137,16 +135,11 @@ func resolveGame(w io.Writer, app *CoreApp, query string) (gameID string, gameNa
 		return game.ID, game.Name, nil
 	}
 
-	resp, err := app.GameService.GetGames(vo.GameListRequest{
-		Limit:       50,
-		SearchQuery: query,
-		SortBy:      enums.GameListSortByName,
-		SortOrder:   enums.SortOrderAsc,
-	})
+	// 2. 拉取完整游戏列表，用于短 ID 与别名匹配。
+	games, err := app.GameService.ListAllGames()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get games: %w", err)
 	}
-	games := resp.Games
 
 	queryLower := strings.ToLower(query)
 
@@ -190,14 +183,23 @@ func resolveGame(w io.Writer, app *CoreApp, query string) (gameID string, gameNa
 		}
 	}
 
-	// 5. 模糊匹配（包含查询字符串）
+	// 5. 名称或别名模糊匹配（包含查询字符串）
 	var matches []struct {
 		ID   string
 		Name string
 	}
 
 	for _, g := range games {
-		if strings.Contains(strings.ToLower(g.Name), queryLower) {
+		matched := strings.Contains(strings.ToLower(g.Name), queryLower)
+		if !matched {
+			for _, alias := range g.Aliases {
+				if strings.Contains(strings.ToLower(alias), queryLower) {
+					matched = true
+					break
+				}
+			}
+		}
+		if matched {
 			matches = append(matches, struct {
 				ID   string
 				Name string

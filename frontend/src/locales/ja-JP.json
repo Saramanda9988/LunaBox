@@ -11,7 +11,6 @@
     "add": "追加",
     "manualAdd": "手動追加",
     "back": "戻る",
-    "previousStep": "前のステップに戻る",
     "allStatus": "すべての状態",
     "status": "ステータス",
     "notStarted": "未開始",
@@ -32,18 +31,11 @@
     "selected": "選択済み",
     "unknownDeveloper": "不明な開発元",
     "select": "選択",
-    "find": "検索",
-    "finish": "完了",
-    "reselect": "← 再選択",
     "action": "操作",
     "loading": "読み込み中...",
     "complete": "完了",
     "stop": "照合を停止",
     "toast": {
-      "success": "成功",
-      "error": "エラー",
-      "loadingLabel": "処理中",
-      "notice": "通知",
       "showDetails": "詳細を表示",
       "hideDetails": "詳細を隠す",
       "dismiss": "通知を閉じる"
@@ -53,13 +45,11 @@
       "minutes": "分",
       "hoursShort": "時",
       "minutesShort": "分"
-    }
-  },
-  "modal": {
-    "titles": {
-      "warning": "警告",
-      "info": "お知らせ"
-    }
+    },
+    "backToTop": "トップへ戻る",
+    "unknownError": "不明なエラー",
+    "close": "閉じる",
+    "loadMore": "さらに読み込む"
   },
   "library": {
     "title": "ゲームライブラリ",
@@ -67,10 +57,9 @@
     "emptyState": "ゲームがありません",
     "emptyStateAction": "ゲームを追加して始めましょう",
     "notFound": "一致するゲームが見つかりません",
-    "batchUpdateStatus": "状態を一括更新",
     "setStatus": "状態を設定",
     "batchAddToFilter": "コレクションに一括追加",
-    "batchDelete": "一括削除",
+    "batchImportToSteam": "Steam に一括インポート",
     "addGame": "ゲームを追加",
     "addGameDesc1": "実行ファイルを選択してメタデータを検索",
     "batchImport": "一括インポート",
@@ -79,6 +68,8 @@
     "importPotatoVNDesc": "PotatoVN が出力した ZIP ファイルをインポート",
     "importPlaynite": "Playnite からインポート",
     "importPlayniteDesc": "Playnite が出力した JSON ファイルをインポート",
+    "importYukiHub": "YukiHub からインポート",
+    "importYukiHubDesc": "YukiHub が出力した YKBAK バックアップをインポート",
     "importVnite": "Vnite からインポート",
     "importVniteDesc": "Vnite が出力したローカルDBフォルダをインポート",
     "importReinaManager": "ReinaManager からインポート",
@@ -94,12 +85,16 @@
       "batchDeleteTitle": "ゲームを一括削除",
       "batchDeleteConfirmMsg": "選択した {{count}} 件のゲームを削除しますか？この操作はライブラリから削除しますが、ローカルのゲームファイルは削除しません。",
       "batchDeleteSuccess": "一括削除が完了しました",
-      "batchDeleteFailed": "一括削除に失敗しました"
+      "batchDeleteFailed": "一括削除に失敗しました",
+      "randomGameFailed": "ランダムなゲームを選択できませんでした",
+      "batchSteamImportConfirmMsg": "この {{count}} 件のゲームを Steam に追加しますか？各ゲームに対応する実行ファイルがあることを確認してください。実行ファイルがないゲームはスキップされます。",
+      "batchSteamImportSummary": "インポート成功 {{imported}} 件、スキップ {{skipped}} 件、登録済み {{existing}} 件",
+      "batchSteamImportFailed": "選択したゲームを Steam にインポートできませんでした",
+      "loadGamesFailed": "ゲームの読み込みに失敗しました"
     }
   },
   "filterBar": {
-    "exitBatchSelection": "一括選択を終了",
-    "enterBatchSelection": "一括選択",
+    "randomGame": "ランダムなゲームを開く",
     "filters": "フィルター",
     "status": "ステータス",
     "invert": "反転",
@@ -111,76 +106,81 @@
     "sortDesc": "降順",
     "showSortField": "カバーに並び替え項目を表示",
     "tagFilter": "タグフィルター",
-    "clearTag": "タグをクリア",
     "tagsPlaceholder": "tagに記入してください..."
+  },
+  "filterPresets": {
+    "title": "ゲームフィルタープリセット",
+    "saveCurrent": "現在のフィルターを保存",
+    "name": "プリセット名",
+    "namePlaceholder": "例：プレイしたいストーリーゲーム",
+    "create": "作成",
+    "empty": "保存されたプリセットはありません",
+    "emptyHelp": "フィルタープリセットの使い方を見る",
+    "emptyHelpTitle": "フィルタープリセットの使い方",
+    "emptyHelpMessage": "よく使うフィルターの組み合わせを保存して、次回すぐに適用できます。たとえば、「白髪」「妹系」のキャラクターが登場する「プレイしたい」ゲームが好きなら、それらの条件をまとめて保存しておくことで、次回すぐに絞り込めます。",
+    "includeTagsSummary": "すべてのタグを含む：{{tags}}",
+    "excludeTagsSummary": "いずれかのタグを除外：{{tags}}",
+    "includeStatusSummary": "ステータス：{{status}}",
+    "excludeStatusSummary": "除外ステータス：{{status}}",
+    "delete": "「{{name}}」を削除",
+    "nameRequired": "プリセット名を入力してください",
+    "filterRequired": "タグまたはゲームステータスを1つ以上選択してください",
+    "loadFailed": "フィルタープリセットの読み込みに失敗しました",
+    "createSuccess": "フィルタープリセットを作成しました",
+    "createFailed": "フィルタープリセットの作成に失敗しました"
   },
   "tags": {
     "add": "タグを追加",
     "inputPlaceholder": "タグを入力",
     "addFailed": "タグの追加に失敗しました",
     "deleteFailed": "タグの削除に失敗しました",
-    "deleteScrapedHint": "自動タグを削除しました。メタデータを再取得すると再び表示される場合があります",
-    "revealSpoiler": "クリックしてネタバレタグを表示"
+    "deleteScrapedHint": "自動タグを削除しました。メタデータを再取得すると再び表示される場合があります"
   },
   "gameCard": {
-    "deselect": "選択解除",
-    "select": "選択",
     "startGame": "ゲームを起動",
     "startAsAdmin": "管理者として起動",
-    "launchMode": "起動方法",
+    "launchMode": "一時的な起動方法",
     "normalLaunchDesc": "現在のゲーム起動設定で実行",
     "startWithSteam": "Steam で起動",
     "steamLaunchDesc": "Steam クライアントでこのゲームを起動",
     "adminLaunchDesc": "UAC を表示して管理者権限で実行",
-    "viewDetails": "詳細を見る",
     "startSuccess": "{{name}} の起動に成功しました",
     "startFailedNotLaunched": "{{name}} の起動に失敗しました（起動できませんでした）",
-    "startFailedLog": "{{name}} の起動に失敗しました。ログを確認してください"
+    "startFailedLog": "{{name}} の起動に失敗しました。ログを確認してください",
+    "startWithCompatibility": "互換レイヤーで起動",
+    "compatibilityLaunchDesc": "Wine または CrossOver で Windows ゲームを起動"
   },
   "addGameModal": {
-    "title": "ゲームを追加",
     "chooseImportType": "インポートするゲームの種類を選択してください",
     "localGame": "ローカルゲーム",
     "localGameHint": "このデバイスにインストール済みです。exe を選択してライブラリに追加します。",
     "remoteGame": "Web ゲーム",
     "remoteGameHint": "ローカル exe はまだありません。プレイしたいゲームとして追加します。",
-    "remoteImportHint": "データソース ID で直接インポートするか、ゲーム名でメタデータを検索できます。",
     "orSearchByName": "または名前で検索",
     "selectExecutable": "実行ファイルを選択",
-    "selectExecutablePlaceholder": "実行ファイルを選択してください",
-    "gameNameLabel": "ゲーム名 *",
-    "fetchMetadata": "メタデータを検索",
-    "whichResultExpected": "どの結果が期待したものですか？",
     "fromSource": "{{source}} から",
-    "notMatched": "どれでもない？",
-    "inputManual": "手動入力",
     "searchById": "ID で検索",
-    "dataSourceLabel": "データソース",
-    "gameIdLabel": "ゲーム ID",
     "gameIdPlaceholder": "ゲーム ID を入力してください",
-    "confirm": "確認",
-    "manualFillTitle": "ゲーム情報を手動入力",
-    "coverImageLabel": "カバー画像",
-    "coverImagePlaceholder": "画像 URL を入力またはローカル画像を選択",
-    "coverImageSupportTip": "リモート URL とローカル画像の選択に対応",
-    "developerLabel": "開発元",
-    "summaryLabel": "概要",
     "toast": {
       "openSelectorFailed": "システムセレクターを開けませんでした",
       "fetchMetaFailed": "メタデータの取得に失敗しました。ネットワークまたはトークンの有効性を確認してください",
-      "saveFailed": "ゲームの保存に失敗しました",
-      "fetchByIdFailed": "ID でメタデータを取得できませんでした。ネットワークまたはトークンの有効性を確認してください",
       "selectCoverFailed": "カバー画像の選択に失敗しました",
-      "nameRequired": "ゲーム名を入力してください",
       "saveGameFailed": "ゲームの保存に失敗しました",
       "fetchMetaByIdFailed": "ID でメタデータを取得できませんでした。ネットワークまたはトークンの有効性を確認してください",
       "fillGameName": "ゲーム名を入力してください",
-      "selectExecutableRequired": "起動プログラムを選択してください"
+      "selectExecutableRequired": "起動プログラムを選択してください",
+      "duplicateSource": "{{source}} の結果が複数残っています。誤った候補を削除してからインポートしてください"
     },
     "executablePlaceholder": "実行ファイルを選択してください",
     "gameName": "ゲーム名",
     "searchMeta": "メタデータを検索",
-    "whichResult": "どの結果が期待したものですか？",
+    "whichResult": "期待した結果はどれですか？",
+    "selectionHelp": "候補結果の選択方法を表示",
+    "selectionHelpTitle": "候補結果の選び方",
+    "selectionHelpRemove": "カード右上の閉じるボタンを押して、誤った取得結果を削除します。",
+    "selectionHelpUnique": "データソースごとに正しい結果を一つだけ残します。",
+    "selectionHelpDefault": "インポートするカードを選ぶと、そのソースが既定の表示ソースになり、残したほかの結果もゲームに関連付けられます。",
+    "removeResult": "この {{source}} の結果を削除",
     "goBack": "戻る",
     "noneOfAbove": "どれでもない？",
     "fillManually": "手動入力",
@@ -192,7 +192,9 @@
     "coverPlaceholder": "画像 URL を入力またはローカル画像を選択",
     "coverHint": "リモート URL とローカル画像の選択に対応",
     "developer": "開発元",
-    "summary": "概要"
+    "summary": "概要",
+    "scrollResultsPrev": "前の結果をさらに表示",
+    "scrollResultsNext": "次の結果をさらに表示"
   },
   "batchImportModal": {
     "title": "ゲームライブラリを一括インポート",
@@ -229,11 +231,9 @@
     "manualSelect": "手動選択",
     "startMatching": "メタデータの照合を開始",
     "continueMatching": "メタデータの照合を続行",
-    "retryFailed": "失敗項目を再照合",
     "preferredSource": {
-      "label": "優先データソース",
+      "label": "必須データソース",
       "none": "指定なし",
-      "hint": "指定なしの場合は通常の照合フローで全データソースを試します。未検出は失敗扱いせず、レート制限または連続エラー時に一括照合を停止します。",
       "rateLimitedPause": "{{source}} がレート制限を返したため、照合を停止しました: {{error}}",
       "consecutiveFailurePause": "{{source}} が {{count}} 回連続で失敗したため、照合を停止しました: {{error}}"
     },
@@ -268,14 +268,32 @@
       "importSuccess": "{{count}} 件のゲームをインポートしました",
       "importFailed": "インポートに失敗しました",
       "gameNotFound": "ゲームが見つかりません",
-      "fetchFailed": "取得に失敗しました"
+      "fetchFailed": "取得に失敗しました",
+      "openFolderFailed": "現在のフォルダーを開けませんでした"
+    },
+    "openFolder": "現在のフォルダーを開く",
+    "gamePath": "ゲームパス",
+    "scanMode": {
+      "scanParent": "実行ファイルをスキャン",
+      "scanParentHint": "exe または bat ファイルを含むフォルダーを再帰的に検索し、ランチャーが見つかったフォルダー名を検索名として使用します。",
+      "scanLibraryChild": "実行ファイルをスキャンし、第1階層フォルダー名を使用",
+      "scanLibraryChildHint": "ランチャーを再帰的に検索し、ライブラリ直下の第1階層フォルダー名を検索名として使用します。",
+      "hierarchyChild": "第{{level}}階層のフォルダーをインポート",
+      "hierarchyChildHint": "ランチャーを検索せず、ライブラリ内の第{{level}}階層フォルダーをゲームパスとしてインポートします。実行ファイルは初回起動時に選択します。",
+      "label": "スキャン方法",
+      "hierarchyDepthLabel": "フォルダーのインポート階層",
+      "hierarchyDepthHint": "現在、ライブラリ内の第{{level}}階層フォルダーをインポートします。",
+      "decreaseDepth": "フォルダー階層を浅くする",
+      "hierarchyDepthValue": "{{level}}階層",
+      "increaseDepth": "フォルダー階層を深くする",
+      "button": "スキャンモード"
     }
   },
   "gameImportModal": {
     "playnite": {
       "title": "Playnite からインポート",
       "desc": "Playnite が出力した JSON ファイルを選択",
-      "hint": "Playnite のエクスポートスクリプトで生成したゲームデータファイルに対応",
+      "hint": "LunaBox Exporter 拡張機能が生成したライブラリ JSON ファイルに対応",
       "btn": "JSON ファイルを選択"
     },
     "potatovn": {
@@ -283,6 +301,12 @@
       "desc": "PotatoVN が出力した ZIP ファイルを選択",
       "hint": "data.galgames.json を含む PotatoVN バックアップファイルに対応",
       "btn": "ZIP ファイルを選択"
+    },
+    "yukihub": {
+      "title": "YukiHub からインポート",
+      "desc": "YukiHub が出力した YKBAK バックアップを選択",
+      "hint": "メタデータ、リモートカバー、タグ、プレイ履歴を取り込みます。Android のパスは空欄となり、ゲーム詳細で Windows の起動パスを設定できます。",
+      "btn": "YKBAK ファイルを選択"
     },
     "vnite": {
       "title": "Vnite からインポート",
@@ -302,32 +326,27 @@
       "hint": "Steam Web API Key は不要です。AppID でメタデータを補完します。",
       "btn": "Steam ライブラリをスキャン"
     },
-    "loading": "読み込み中...",
     "willImport": "インポート予定",
     "exists": "既存",
     "samePath": "同じパス",
     "samePathActionTitle": "同じパスのゲームが {{count}} 件見つかりました",
     "samePathSkip": "スキップ",
     "samePathSkipHint": "既存ゲームを保持し、これらの項目はインポートしません。",
+    "samePathMergeSessions": "記録のみ結合",
+    "samePathMergeSessionsHint": "既存のゲーム情報を保持し、プレイ記録のみを結合します。",
     "samePathMerge": "更新して結合",
     "samePathMergeHint": "インポート側のメタデータで既存ゲームを更新し、プレイ記録を結合します。",
     "noPath": "パスなし",
     "skipNoPath": "パスなしゲームをスキップ",
-    "noPathHint": "{{count}} 件のゲームにはローカルパスがありません。オンラインゲームまたは削除済みのゲームの可能性があります。",
-    "noPathHintCheck": "この項目にチェックを入れると、これらのゲームをスキップします。",
-    "noPathHintUncheck": "チェックを外すとこれらのゲームをインポートします（起動パスなし）。",
-    "noGameDataFound": "ゲームデータが見つかりません",
     "gameName": "ゲーム名",
     "developer": "開発元",
     "status": {
       "skipped": "スキップ予定",
       "update": "更新予定"
     },
-    "willSkip": "スキップ予定",
     "newAdd": "新規追加",
     "importCount": "{{count}} 件のゲームをインポート",
     "importing": "インポート中...",
-    "doNotCloseWarning": "時間がかかる場合があります。ウィンドウを閉じないでください",
     "toast": {
       "previewFailed": "インポート内容のプレビューに失敗しました",
       "selectFileFailed": "ファイルの選択に失敗しました",
@@ -359,7 +378,6 @@
     "summary": "概要",
     "noSummary": "概要はありません",
     "noCover": "カバーなし",
-    "addToFav": "コレクションに追加",
     "deleteGame": "ゲームを削除",
     "deleteConfirmMsg": "ゲーム「{{name}}」を削除しますか？この操作はライブラリから削除しますが、ローカルのゲームファイルは削除しません。",
     "confirmDelete": "削除を確認",
@@ -367,7 +385,8 @@
       "stats": "ゲーム統計",
       "launch": "起動設定",
       "backup": "バックアップ",
-      "progress": "プレイ進捗"
+      "progress": "プレイ進捗",
+      "review": "レビュー"
     },
     "toast": {
       "loadDataFailed": "ゲームデータの読み込みに失敗しました",
@@ -389,16 +408,41 @@
       "selectFileFailed": "ファイルの選択に失敗しました"
     }
   },
+  "gameReview": {
+    "title": "少しお待ちを...",
+    "ratingLabel": "個人スコア",
+    "ratingPrompt": "この作品を評価してください",
+    "ratingEmpty": "未評価",
+    "ratingValue": "{{rating}} / 10",
+    "clearRating": "スコアをクリア",
+    "contentLabel": "レビュー内容",
+    "contentPlaceholder": "好きだったところ、プレイした感想、未来の自分へのメモを書きましょう……",
+    "spoilerLabel": "ネタバレを含む",
+    "spoilerHint": "この設定は Hikarinagi へ送信する際に一緒に登録されます。",
+    "syncTo": "{{provider}} に同期",
+    "autoSave": {
+      "hint": "変更内容は自動保存されます",
+      "pending": "自動保存を待っています",
+      "saving": "保存中……",
+      "saved": "自動保存しました",
+      "failed": "自動保存に失敗しました。再編集すると再試行します"
+    },
+    "toast": {
+      "loadFailed": "レビューの読み込みに失敗しました：{{error}}",
+      "synced": "レビューを {{count}} 件のプラットフォームへ投稿しました",
+      "syncPartial": "投稿完了：成功 {{succeeded}} 件、失敗 {{failed}} 件",
+      "syncFailed": "レビューの投稿に失敗しました：{{error}}",
+      "emptySaveResult": "バックエンドから保存結果が返されませんでした"
+    }
+  },
   "gameProgress": {
     "title": "プレイ進捗",
     "hint": "現在の進捗を記録します。AI 要約はここで設定したネタバレ境界を厳守します",
     "newRecord": "新しい記録を追加",
     "latestRecordedAt": "最新の記録日時: {{time}}",
     "addRecord": "記録を追加",
-    "historyTitle": "進捗タイムライン",
     "historyEmpty": "まだ進捗記録がありません。最初の記録を追加すると、ここにプレイ履歴が積み上がります。",
     "noNote": "メモはありません",
-    "recorded": "記録済み",
     "chapter": "現在のチャプター",
     "chapterPlaceholder": "例：第二章 / Chapter 2",
     "route": "現在のルート / キャラクター",
@@ -434,12 +478,8 @@
     "autoBackupEnabled": "自動バックアップが有効です",
     "noLocalBackups": "ローカルバックアップ記録がありません",
     "size": "サイズ: ",
-    "uploadToCloud": "クラウドにアップロード",
-    "restore": "バックアップを復元",
     "cloudBackups": "クラウドバックアップ",
-    "refreshCloudList": "クラウドバックアップ一覧を更新",
     "noCloudBackups": "クラウドバックアップ記録がありません",
-    "restoreFromCloud": "クラウドから復元",
     "cloudNotEnabled": "クラウドバックアップが有効ではありません",
     "cloudConfigHint": "設定ページでクラウドバックアップを構成すると、セーブをクラウド同期できます",
     "modal": {
@@ -471,25 +511,27 @@
     "executableHint": "LunaBox はこの実行ファイルでゲームを起動します。ここには最初に選択した実行ファイルのパスが表示されます",
     "actualProcess": "実際のゲームプロセス",
     "selectProcessFile": "プロセスファイルを選択",
-    "processPlaceholderDarwin": "macOS では Wine の親プロセス全体を監視するため指定不要です",
-    "processHint": "実際に動作しているゲームのプロセス名（.exe 拡張子を含む）を指定します。\n指定しない場合、LunaBox は実行パスの監視を試みます。前回の選択がランチャーだった場合は、ゲーム起動後に表示される選択ダイアログでこのプロセスを手動指定する必要があります。\nここで事前入力しておくと、毎回の起動時に手動選択する手間を省けます。",
-    "processHintDarwin": "macOS では LunaBox がネイティブ App または Wine の親プロセスを監視するため、実際のゲームプロセス指定は不要です。",
+    "selectRunningProcess": "実行中のプロセスを選択",
+    "processPlaceholderDarwin": "macOS / Linux ではランチャーまたは Wine の親プロセスを監視するため指定不要です",
+    "processHint": "実際のゲームプロセス名（.exe 拡張子を含む）を指定します。起動ファイルがランチャーの場合は、ゲームを起動してから「実行中のプロセスを選択」で実際のゲームを指定し、保存後にゲームを再起動してください。",
+    "processHintDarwin": "macOS / Linux では LunaBox がランチャープロセス、Wine の親プロセス、またはネイティブ App を監視するため、実際のゲームプロセス指定は不要です。",
     "launchMode": "既定の起動方法",
     "launchModeNormal": "通常起動",
     "launchModeSteam": "Steam 起動",
-    "launchModeHint": "直接起動ボタンとショートカットはこの方法を使います。メニューの管理者起動は今回のみ有効です。",
-    "launchModeSteamUnavailableHint": "このゲームには利用可能な Steam AppID がないため、通常起動のみ使用できます。",
     "exportShortcut": "起動ショートカットを書き出す",
     "exportShortcutHint": "`.url` ショートカットファイルを書き出します。ダブルクリックすると LunaBox が呼び出され、現在のゲーム設定で起動と監視を行います。",
-    "wineTools": "Wine 起動ツール",
-    "wineRunner": "Wine runner",
+    "compatibilityTools": "互換レイヤーランチャー",
+    "compatibilityToolsSteamHint": "このゲームは Steam 起動を使用するため、互換レイヤーは Proton に固定されます。Proton バージョンと Steam 起動オプションをここで調整できます。",
+    "compatibilityToolsWineHint": "このゲームは通常起動を使用します。利用可能な Wine runner を選択できます。",
+    "compatibilityEngine": "互換レイヤー",
     "wineRunnerNone": "無効",
     "wineRunnerSystem": "システム Wine",
     "wineRunnerCrossover": "CrossOver",
     "wineRunnerCustom": "カスタム",
-    "wineRunnerHint": "macOS で Windows 実行ファイルを起動するには Wine runner が必要です。",
+    "wineRunnerHint": "macOS / Linux で Windows 実行ファイルを起動するには Wine runner が必要です。",
     "wineArgs": "Wine 引数",
     "wineArgsPlaceholder": "例: --no-d3d11 -windowed",
+    "wineArgsHint": "先頭の環境変数に対応します。Steam 形式の起動オプションを使え、%command% はゲーム本体のプレースホルダーとして扱われます。",
     "winePrefix": "Wine prefix",
     "winePrefixPlaceholder": "空欄なら全体設定または Wine の既定値を使用",
     "winePrefixHint": "このゲーム用の WINEPREFIX パスを上書きできます。",
@@ -498,6 +540,36 @@
     "crossoverBottleHint": "CrossOver モードではこの値を CX_BOTTLE として渡します。",
     "openLaunchConfig": "起動設定を開く",
     "enhancementTools": "起動強化ツール",
+    "steamTools": "Steam ランチャー",
+    "steamToolsHint": "Steam の互換ツール設定を読み取り、このゲームに使用する Proton バージョンを指定できます。",
+    "steamLaunchOptions": "Steam 起動オプション",
+    "steamLaunchOptionsHint": "Steam の起動オプション欄へ書き込みます。LunaBox が追加した非 Steam ゲームは shortcuts.vdf に同期されます。通常の Steam ゲームは Steam のプロパティで設定してください。変更後は Steam の再起動を推奨します。",
+    "steamLaunchOptionsPlaceholder": "例: LANG=zh_CN.UTF-8 %command%",
+    "steamLaunchOptionsSave": "Steam に保存",
+    "steamLaunchOptionsSteamRunning": "Steam が実行中です。起動オプションを保存する前に Steam を完全に終了してください。",
+    "steamLaunchOptionsNotReady": "Steam ショートカットの準備ができていません: {{state}}",
+    "steamLaunchOptionsPresets": {
+      "chineseLocale": "中国語 locale を強制",
+      "fullChineseLocale": "完全な中国語 Locale",
+      "protonLog": "Proton ログを有効化"
+    },
+    "steamProton": "Proton バージョン",
+    "steamProtonAuto": "Steam 既定",
+    "steamProtonDefault": "Steam 既定を使用（{{tool}}）",
+    "steamProtonHint": "変更は Steam config.vdf に書き込まれます。Steam 実行中の場合はクライアント再起動後に反映されることがあります。",
+    "steamProtonLoading": "Steam Proton 設定を読み込み中...",
+    "steamProtonError": "Steam Proton 設定の読み込みに失敗しました：{{error}}",
+    "steamProtonNotInstalled": "Linux Steam クライアントが検出されません。",
+    "steamProtonNotAssociated": "このゲームはまだ Steam に関連付けられていません。Steam 起動に切り替えてインポート後に Proton を設定してください。",
+    "steamProtonRefresh": "Steam 設定を更新",
+    "steamProtonLockedHint": "Steam 起動モードでは Steam/Proton が互換レイヤーを管理するため、ここでは Wine やカスタム runner を選択できません。",
+    "steamRestart": "Steam を再起動",
+    "steamRestartConfirmTitle": "設定を反映するために Steam を再起動しますか？",
+    "steamRestartConfirmMessage": "Steam が実行中ですが、LunaBox は設定を書き込み済みです。保存した起動オプションまたは Proton 設定を反映するため、今すぐ Steam を再起動しますか？",
+    "steamProtonPrefix": "Proton Prefix ディレクトリ",
+    "steamProtonPrefixHint": "Steam がこのゲーム用に作成した compatdata/pfx ディレクトリです。空の場合は、先に Steam から一度ゲームを起動してください。",
+    "steamProtonPrefixNotFound": "Proton Prefix はまだ見つかりません。通常は先に Steam から一度起動する必要があります。",
+    "steamProtonPrefixOpen": "ディレクトリを開く",
     "leLabel": "ロケールエミュレーター",
     "leDesc": "日本語環境エミュレーションでゲームを起動し、文字化けや地域制限の問題を解決します。",
     "leNotConfigured": "先に設定画面で LEProc.exe のパスを設定してください",
@@ -508,13 +580,43 @@
       "lePathRequired": "先に設定画面で Locale Emulator のパスを設定してください",
       "magpiePathRequired": "先に設定画面で Magpie のパスを設定してください",
       "shortcutExportSuccess": "起動ショートカットを書き出しました\n{{path}}",
-      "shortcutExportFailed": "起動ショートカットの書き出しに失敗しました: {{error}}"
-    }
+      "shortcutExportFailed": "起動ショートカットの書き出しに失敗しました: {{error}}",
+      "steamProtonSaved": "Steam Proton 設定を保存しました",
+      "steamProtonSaveFailed": "Steam Proton 設定の保存に失敗しました: {{error}}",
+      "steamLaunchOptionsSaved": "Steam 起動オプションを保存しました",
+      "steamLaunchOptionsSaveFailed": "Steam 起動オプションの保存に失敗しました: {{error}}",
+      "steamProtonPrefixOpenFailed": "Proton Prefix ディレクトリを開けませんでした: {{error}}",
+      "steamRestarted": "Steam を再起動しました",
+      "steamRestartFailed": "Steam の再起動に失敗しました: {{error}}"
+    },
+    "launchModeCompatibility": "互換レイヤー起動"
+  },
+  "steamImport": {
+    "title": "Steam に追加",
+    "checkingTitle": "Steam を確認しています",
+    "checkingMessage": "ローカルの Steam ライブラリと現在のアカウントのショートカットを確認しています。",
+    "needsImport": "「{{name}}」は現在の Steam アカウントに追加されていません。LunaBox から非 Steam ゲーム一覧へ追加できます。",
+    "steamRunningTitle": "Steam を終了してください",
+    "steamRunning": "Steam が実行中です。終了時にショートカットファイルが上書きされないよう、システムトレイから完全に終了してから再確認してください。",
+    "steamMissingTitle": "Steam が見つかりません",
+    "steamMissing": "Steam をインストールするか、現在のシステムアカウントから Steam のインストール情報へアクセスできることを確認してください。",
+    "executableRequiredTitle": "ゲームの実行ファイルが必要です",
+    "executableRequired": "非 Steam ゲームの追加には実行ファイルが必要です。このゲームを実際に起動するプログラムを選択してください。",
+    "userUnavailableTitle": "Steam アカウントを識別できません",
+    "userUnavailable": "Steam を起動して対象アカウントへログインし、Steam を終了してから再確認してください。",
+    "readyTitle": "Steam の関連付けを利用できます",
+    "ready": "このゲームは Steam から起動できます。",
+    "unknownState": "Steam から識別できない状態が返されました。しばらくしてから再確認してください。",
+    "localIdentityNote": "ローカルの Steam 関連付けはゲームのメタデータ取得元から独立しており、この端末だけに保存されます。既存のカバー、タグ、メタデータ取得元は維持されます。",
+    "import": "Steam に追加",
+    "retry": "再確認",
+    "selectExecutable": "実行ファイルを選択",
+    "checkFailed": "Steam の状態確認に失敗しました: {{error}}",
+    "importFailed": "Steam への追加に失敗しました: {{error}}",
+    "importSuccess": "ゲームを Steam に追加しました。Steam を起動または再起動してから、もう一度起動してください。"
   },
   "gameStats": {
-    "totalPlayCount": "累計プレイ回数",
     "todayPlayTime": "今日のプレイ時間",
-    "totalPlayTime": "累計プレイ時間",
     "periodStatsLabel": {
       "week": "今週",
       "month": "今月",
@@ -527,11 +629,9 @@
     "chartLabel": "プレイ時間",
     "noPlaySessions": "プレイ記録がありません",
     "duration": "時間:",
-    "deleteRecord": "記録を削除",
     "viewChart": "グラフを表示",
     "viewSessions": "プレイ記録を表示",
     "period": {
-      "day": "日",
       "week": "週",
       "month": "月",
       "year": "年",
@@ -552,10 +652,20 @@
   "addToCategory": {
     "title": "コレクションに追加",
     "gameCount": "{{count}} 件のゲーム",
-    "empty": "コレクションがありません"
+    "empty": "コレクションがありません",
+    "selectedCount": "{{count}} 件選択中",
+    "searchPlaceholder": "コレクションを検索...",
+    "clearSearch": "検索をクリア",
+    "noResults": "一致するコレクションがありません",
+    "creating": "作成中..."
   },
   "gameEdit": {
     "name": "ゲーム名",
+    "aliases": "別名",
+    "aliasPlaceholder": "別名を入力して Enter キーで追加",
+    "aliasHint": "別名もゲームライブラリの検索対象です。複数追加できます。",
+    "addAlias": "別名を追加",
+    "removeAlias": "別名 {{alias}} を削除",
     "cover": "カバー画像",
     "coverPlaceholder": "画像 URL を入力、またはここに画像を貼り付け",
     "selectImage": "画像を選択",
@@ -574,7 +684,6 @@
     "ratingHint": "10 点満点で保存します。空欄の場合は評価なしになります。",
     "releaseDate": "発売日",
     "releaseDateRawHint": "現在の値: {{value}}。日付を選択すると YYYY-MM-DD として保存します。",
-    "path": "起動パス",
     "paths": "ゲームパス",
     "executable": "実行ファイル",
     "gameDirectory": "ゲームディレクトリ",
@@ -588,39 +697,94 @@
     "selectFolder": "フォルダーを選択",
     "savePathHint": "ゲームのセーブディレクトリまたはファイルを指定できます。クラウドバックアップと複数端末同期に使用します",
     "summary": "概要",
-    "sourceType": "データソース種別",
-    "sourceNone": "なし",
-    "sourceLocal": "ローカル",
     "sourceYmgal": "月幕gal",
     "sourceDlsite": "DLsite",
     "sourceTouchGal": "TouchGAL",
     "sourceHikarinagi": "Hikarinagi",
     "sourceErogameScape": "ErogameScape",
-    "sourceId": "データソース ID",
     "sourceIdPlaceholder": "プラットフォーム対応のゲームIDを入力",
     "metadataLock": "メタデータをロック",
     "metadataLockHint": "有効にすると、全量メタデータ更新でこのゲームをスキップし、リモート更新によるタイトル・概要・カバー・開発元・評価・発売日・自動タグの上書きを防ぎます。",
     "isNsfw": "NSFW ゲーム",
     "isNsfwHint": "このゲームをマークし、グローバル設定に従ってカバーをぼかします。",
     "updateFromRemote": "リモートから情報を更新",
-    "updateFromRemoteLocked": "メタデータがロックされています。先に解除してください。"
+    "openSourcePage": "データソースのページを開く",
+    "metadataSources": "メタデータソース",
+    "multipleSources": "全 {{count}} 件",
+    "defaultSource": "デフォルト",
+    "setDefaultSource": "デフォルトに設定",
+    "deleteSource": "メタデータソースを削除",
+    "addSource": "ソースを追加",
+    "noMetadataSources": "メタデータソースが設定されていません",
+    "sourceSaved": "メタデータソースを保存しました",
+    "sourceDeleted": "メタデータソースを削除しました",
+    "defaultSourceSaved": "デフォルトのメタデータソースを更新しました",
+    "sourceOperationFailed": "メタデータソースの操作に失敗しました：{{error}}",
+    "or": "または",
+    "searchMetadataByCurrentName": "現在のゲーム名でもう一度検索",
+    "metadataSearchTitle": "メタデータソースを再選択",
+    "metadataSearchEmpty": "一致するメタデータが見つかりませんでした",
+    "metadataSearchApplySuccess": "メタデータソースとゲーム情報を更新しました",
+    "metadataSearchFailed": "メタデータの検索に失敗しました：{{error}}",
+    "metadataSearchApplyFailed": "メタデータソースとゲーム情報の更新に失敗しました：{{error}}"
+  },
+  "metadataUpdateFields": {
+    "selectAll": "すべての項目を更新",
+    "selectedCount": "{{count}} / {{total}} 項目を選択中",
+    "emptyWarning": "更新する項目を1つ以上選択してください。",
+    "name": {
+      "label": "ゲーム名",
+      "hint": "ローカルの名前をリモートのタイトルで置き換えます"
+    },
+    "aliases": {
+      "label": "ゲームの別名",
+      "hint": "リモートの別名を統合し、手動で追加した別名を保持します"
+    },
+    "cover": {
+      "label": "カバー",
+      "hint": "カバー URL を更新し、更新後に画像をキャッシュします"
+    },
+    "company": {
+      "label": "開発元",
+      "hint": "開発元またはブランド情報を更新します"
+    },
+    "summary": {
+      "label": "概要",
+      "hint": "ローカルの概要をリモートの概要で置き換えます"
+    },
+    "rating": {
+      "label": "評価",
+      "hint": "リモートの評価を更新します"
+    },
+    "release_date": {
+      "label": "発売日",
+      "hint": "発売日を更新します"
+    },
+    "tags": {
+      "label": "自動タグ",
+      "hint": "取得元のタグを置き換え、手動タグを保持します"
+    },
+    "modal": {
+      "singleTitle": "更新する項目を選択",
+      "singleDescription": "選択した項目のみリモートのメタデータで更新し、それ以外のローカル内容は保持します。",
+      "fullTitle": "一括更新する項目を選択",
+      "fullDescription": "一括更新ではロック中のゲームを除外し、選択した項目のみ更新します。",
+      "continue": "続行",
+      "update": "更新を開始"
+    }
   },
   "dragDropImportModal": {
     "toast": {
       "noValidGames": "有効なゲームファイルが検出されませんでした",
       "processFailed": "ドラッグしたファイルの処理に失敗しました"
     },
-    "title": "ドラッグ&ドロップでゲームをインポート",
     "processing": "ドラッグしたファイルを処理中",
-    "fileCount": "合計 {{count}} 件のファイル/フォルダ",
-    "noValidGamesFound": "有効なゲームが検出されませんでした",
-    "enterId": "ID を入力"
+    "fileCount": "合計 {{count}} 件のファイル/フォルダ"
   },
   "home": {
     "title": "ホーム",
     "welcome": "お帰りなさい！",
     "welcomeBack": "お帰りなさい",
-    "todayPlayTime": "今日のプレイ時間",
     "noPlayRecord": "まだプレイ記録がありません",
     "noPlayRecordHint": "ゲームライブラリでゲームを選んで始めましょう",
     "browseLibrary": "ゲームライブラリを閲覧",
@@ -632,14 +796,12 @@
     "gaming": "プレイ中",
     "continueGame": "ゲームを続ける",
     "recentPlayed": "最近プレイ",
-    "openGameDetail": "ゲーム詳細を表示",
     "expandCoverPicker": "カバー選択を展開",
     "collapseCoverPicker": "カバー選択を閉じる",
     "selectGame": "{{name}} に切り替える",
     "scrollRecentPrev": "前の最近プレイを表示",
     "scrollRecentNext": "次の最近プレイを表示",
     "toast": {
-      "launching": "{{name}} を起動中",
       "launchFailed": "ゲームの起動に失敗しました"
     }
   },
@@ -647,7 +809,6 @@
     "launching": "起動中",
     "elapsed": "プレイ時間 {{duration}}",
     "ending": "終了中",
-    "collapse": "プレイ中のゲームを折りたたむ",
     "expand": "プレイ中のゲームを表示",
     "switchGame": "プレイ中のゲームを切り替え（{{count}}）",
     "end": "プレイ記録を終了",
@@ -662,14 +823,9 @@
     "searchPlaceholder": "コレクションを検索...",
     "newCategory": "新しいコレクション",
     "gameCount": "{{count}} 件のゲーム",
-    "editBtnTitle": "コレクションを編集",
-    "deleteBtnTitle": "コレクションを削除",
-    "systemLocked": "システムコレクションは一括削除できません",
     "emojiPicker": {
-      "change": "クリックしてアイコンを変更",
       "title": "アイコンを選択",
-      "clear": "削除",
-      "apply": "アイコンを適用"
+      "clear": "削除"
     },
     "sortOptions": {
       "name": "名前",
@@ -681,8 +837,6 @@
       "addTitle": "新しいコレクション",
       "editTitle": "コレクションを編集",
       "namePlaceholder": "コレクション名",
-      "emojiLabel": "アイコン Emoji（任意）",
-      "emojiPlaceholder": "例: 📁、🎮、❤️",
       "create": "作成"
     },
     "toast": {
@@ -701,7 +855,8 @@
       "batchDeleteFailed": "一括削除に失敗しました",
       "iconUpdated": "アイコンを更新しました",
       "iconUpdateFailed": "アイコンの更新に失敗しました"
-    }
+    },
+    "rename": "名前を変更"
   },
   "settings": {
     "github": "GitHubで見る",
@@ -714,7 +869,6 @@
       "appearance": "外観設定",
       "game": "ゲーム設定",
       "proxy": "プロキシ設定",
-      "download": "ダウンロード設定",
       "cloudBackup": "クラウド設定",
       "autoBackup": "同期とバックアップ",
       "ai": "AI 設定",
@@ -734,47 +888,10 @@
       "manualProxyURLPlaceholder": "例: http://127.0.0.1:7890",
       "manualProxyURLIdle": "手動プロキシは現在有効ではありません。このアドレスは保存されますが有効になりません。"
     },
-    "download": {
-      "proxyMode": "ダウンロードプロキシ",
-      "proxyModeHint": "既定ではシステムプロキシを自動的に使用します。ダウンロードがまだプロキシを通らない場合は、手動モードに切り替えてプロキシ URL を入力してください。",
-      "proxyModeSystem": "システムプロキシに従う",
-      "proxyModeManual": "手動プロキシ",
-      "proxyModeDirect": "直接接続",
-      "proxyModeNote": "Windows ではまずシステムプロキシを読み取ります。PAC または TUN のみの構成を判別できない場合は、手動プロキシに切り替えてください。",
-      "manualProxyURL": "手動プロキシ URL",
-      "manualProxyURLHint": "http://、https://、socks5:// と、127.0.0.1:7890 のようなアドレスをサポートします。",
-      "manualProxyURLPlaceholder": "例: http://127.0.0.1:7890",
-      "selectGameLibraryTitle": "ゲームライブラリフォルダーを選択",
-      "clearGameLibraryPath": "ゲームライブラリフォルダーをクリア",
-      "gameLibraryPath": "ゲームライブラリディレクトリ",
-      "gameLibraryPathHint": "ダウンロードしたゲームはこのディレクトリに展開されます。空欄の場合は ~/Games を使用します",
-      "gameLibraryPathPlaceholder": "例: D:\\Games または /home/user/games",
-      "effectivePath": "ゲームライブラリパス: {{path}}",
-      "defaultPath": "ゲームライブラリパス: ~/Games（デフォルト）",
-      "notificationTest": {
-        "label": "システム通知",
-        "hint": "テスト通知を送信して、ダウンロードの完了・失敗時にシステム通知を受信できることを確認します。",
-        "button": "テスト通知を送信",
-        "sending": "送信中...",
-        "body": "システム通知は正常に動作しています。ダウンロードが完了または失敗すると、LunaBox がここでお知らせします。",
-        "toastSuccess": "テスト通知を送信しました",
-        "toastFailed": "システム通知を利用できないか、送信に失敗しました",
-        "checkAvailability": "システム通知が利用可能か確認",
-        "available": "このシステムは通知に対応しています",
-        "unavailable": "このシステムは通知に対応していないか、確認に失敗しました"
-      },
-      "toast": {
-        "selectFailed": "フォルダーの選択に失敗しました"
-      }
-    },
     "basic": {
-      "bangumiSectionLabel": "Bangumi 認証",
       "bangumiAuthHint": "Bangumiアカウントにログインしてメタデータの更新やその他の機能を有効にしてください。",
-      "bangumiAuthAuthorized": "認証済み",
       "bangumiAuthNeedsReauth": "再接続が必要",
       "bangumiAuthUnauthorized": "未接続",
-      "bangumiAuthIdentityLabel": "接続中のアカウント",
-      "bangumiAuthExpiresLabel": "アクセストークン有効期限",
       "bangumiAuthLastErrorLabel": "直近のエラー",
       "bangumiStatusPushLabel": "ゲーム状態を Bangumi に同期",
       "bangumiStatusPushHint": "有効にすると、LunaBox はローカルのゲーム状態変更を自動的に Bangumi のコレクション状態へ反映します。",
@@ -802,16 +919,73 @@
       "timezoneHint": "ゲーム時間を正しく表示・記録するために使用します。変更後はアプリを再起動してください",
       "timezonePlaceholder": "タイムゾーンを選択してください",
       "closeToTray": "ウィンドウを閉じたときにシステムトレイへ最小化",
-      "launchAtLogin": "自動起動"
+      "launchAtLogin": "自動起動",
+      "selectGameLibraryTitle": "ゲームライブラリフォルダーを選択",
+      "gameLibraryPath": "ゲームライブラリディレクトリ",
+      "gameLibraryPathHint": "ゲームはできるだけこのディレクトリに保存してください。ダウンロードしたゲームもデフォルトでこのディレクトリにインストールされます。",
+      "gameLibraryPathPlaceholder": "例: D:\\Games または /home/user/games",
+      "selectGameLibraryFailed": "フォルダーの選択に失敗しました",
+      "libraryChange": {
+        "title": "ゲームライブラリフォルダーを変更",
+        "affectedGamesDescription": "{{count}} 件のゲームフォルダー位置を更新します",
+        "downloadBlocked": "未完了、一時停止中、または再試行待ちのダウンロードが {{count}} 件あります。確定前に完了または削除するか、位置更新をスキップしてください。",
+        "missingWarning": "新しいフォルダーに {{count}} 件のゲーム内容が見つかりません。位置を同期する前にゲームの移動を完了してください。",
+        "steamWarning": "対象ゲームのうち {{count}} 件が Steam に関連付けられています。Steam ショートカットの再登録が必要になる場合があります。",
+        "previewTitle": "更新予定の位置",
+        "moreChanges": "さらに {{count}} 件のゲームが確認後に同期されます。",
+        "noAffectedRecords": "フォルダー位置の更新が必要なゲームはありません。",
+        "skipPathUpdate": "スキップ",
+        "confirmChange": "変更を確定",
+        "close": "確認画面を閉じる",
+        "scanPaths": "位置更新が必要なゲームをスキャン",
+        "previewFailed": "ゲームライブラリの位置確認に失敗しました",
+        "applyFailed": "ゲームライブラリフォルダーの変更に失敗しました",
+        "changeSuccess": "ゲームライブラリフォルダーを変更し、ゲーム {{games}} 件を更新しました",
+        "changeWithoutSyncSuccess": "ゲームライブラリフォルダーを変更し、既存のゲーム位置を保持しました",
+        "changeWithoutAffectedGamesSuccess": "ゲームライブラリフォルダーを変更しました"
+      },
+      "accountAuthorizationSectionLabel": "アカウント認証",
+      "hikarinagiAuthHint": "Hikarinagi にログインして、ユーザートークンによるメタデータ更新とゲーム状態の同期を有効にします。",
+      "hikarinagiAuthNeedsReauth": "再接続が必要",
+      "hikarinagiAuthUnauthorized": "未接続",
+      "hikarinagiAuthLastErrorLabel": "直近のエラー",
+      "hikarinagiStatusPushLabel": "ゲーム状態を Hikarinagi に同期",
+      "hikarinagiStatusPushHint": "有効にすると、ローカルのゲーム状態変更を Hikarinagi のゲーム項目へ同期します。",
+      "hikarinagiAuthorize": "認証する",
+      "hikarinagiReauthorize": "再認証",
+      "hikarinagiDisconnect": "切断",
+      "hikarinagiAuthReconnectHint": "認証またはトークン更新に失敗した場合は、ここから再認証できます。",
+      "hikarinagiDisconnectConfirmTitle": "Hikarinagi との接続を解除しますか？",
+      "hikarinagiDisconnectConfirmMsg": "LunaBox に保存された Hikarinagi OAuth 資格情報を削除します。再認証するまで、ユーザーメタデータへのアクセスとゲーム状態の同期は停止します。",
+      "hikarinagiAuthSuccess": "Hikarinagi の認証に成功しました",
+      "hikarinagiDisconnectSuccess": "Hikarinagi とのローカル接続を解除しました",
+      "hikarinagiAuthActionFailed": "Hikarinagi 認証操作に失敗しました: {{error}}",
+      "hikarinagiStatusPushFailed": "Hikarinagi への状態同期に失敗しました: {{game}}、{{error}}",
+      "hikarinagiStatusPushFailedUnknownGame": "このゲーム",
+      "hikarinagiStatusPushFailedUnknownReason": "不明なエラー",
+      "bangumiSyncAllLabel": "ライブラリ内の Bangumi ゲーム状態を同期",
+      "bangumiSyncAllConfirmTitle": "Bangumi の全ゲーム状態を同期しますか？",
+      "bangumiSyncAllConfirmMsg": "ライブラリ内の Bangumi ゲーム項目のみを同期します。現在のローカル状態に基づいて、リモートのコレクション状態を順番に更新します。",
+      "hikarinagiSyncAllLabel": "ライブラリ内の Hikarinagi ゲーム状態を同期",
+      "hikarinagiSyncAllConfirmTitle": "Hikarinagi の全ゲーム状態を同期しますか？",
+      "hikarinagiSyncAllConfirmMsg": "ライブラリ内の Hikarinagi ゲーム項目のみを同期します。現在のローカル状態に基づいて、リモートのプレイ状態を順番に更新します。",
+      "remoteStatusSyncStart": "同期を開始",
+      "remoteStatusSyncRunningTitle": "{{provider}} のゲーム状態を同期中",
+      "remoteStatusSyncDoneTitle": "{{provider}} のゲーム状態同期が完了しました",
+      "remoteStatusSyncFailedTitle": "一部の {{provider}} ゲーム状態を同期できませんでした",
+      "remoteStatusSyncPreparing": "ゲーム項目を準備中…",
+      "remoteStatusSyncEmpty": "同期できる {{provider}} ゲーム項目がありません",
+      "remoteStatusSyncSucceeded": "成功",
+      "remoteStatusSyncFailed": "失敗"
     },
     "portableSetup": {
-      "description": "ポータブル版はシステムレジストリに自動で書き込みを行いません。ここから lunabox:// プロトコルの登録と lunacli のユーザー PATH への追加をワンクリックで行えます。すべての変更は HKCU に対してのみ行われ、管理者権限を必要としません。",
-      "descriptionMac": "macOS では lunabox:// スキームはアプリバンドルと LaunchServices によって管理されます。lunacli は管理者権限なしでユーザー用シンボリックリンクとしてインストールできます。",
+      "description": "ポータブル版では lunabox:// を個別に登録する必要があります。ここから現在のユーザー用に登録し、lunacli を PATH に追加できます。管理者権限は必要ありません。",
+      "descriptionMac": "lunabox:// はアプリバンドルと LaunchServices が管理します。ここから lunacli をユーザー用シンボリックリンクとしてインストールできます。",
       "loading": "状態を読み込み中...",
       "statusLabel": "状態",
       "protocolTitle": "lunabox:// プロトコルハンドラー",
-      "protocolHint": "登録すると、ブラウザの lunabox:// リンクやワンクリックインストール/起動リンクからこのアプリを呼び出せるようになります。",
-      "protocolHintMac": "LunaBox.app をインストールすると、macOS がアプリバンドルのメタデータから lunabox:// リンクを管理します。macOS 初版では install リンクに対応し、launch リンクはまだ対応していません。",
+      "protocolHint": "現在の LunaBox.exe にプロトコルを登録します。ポータブル版の場所を移動した場合は再登録してください。",
+      "protocolHintMac": "システムがアプリバンドル情報から lunabox:// を管理するため、手動登録は不要です。",
       "registeredPathLabel": "登録済みパス",
       "currentPathLabel": "現在の実行ファイル",
       "registerProtocol": "プロトコルを登録",
@@ -880,9 +1054,6 @@
       "selectBtn": "選択",
       "clearBtn": "クリア",
       "bgImageHint": "PNG、JPG、JPEG、GIF、WebP、BMP に対応。選択後に必要な範囲を切り抜けます",
-      "preview": "プレビュー",
-      "bgPreviewAlt": "背景プレビュー",
-      "effectPreview": "効果プレビュー",
       "blurLabel": "背景ぼかし度",
       "blurSharp": "鮮明",
       "blurBlurry": "ぼかし",
@@ -893,17 +1064,23 @@
       "toast": {
         "selectFailed": "背景画像の選択に失敗しました: {{error}}",
         "cropFailed": "切り抜き保存に失敗しました: {{error}}"
-      }
+      },
+      "backgroundSection": "背景",
+      "homeSection": "ホーム",
+      "librarySection": "ライブラリ",
+      "gameCardLayout": "ライブラリカードのレイアウト",
+      "gameCardLayoutHint": "横長レイアウトは横長のカバー画像に適しています。縦長では現在のカード比率を維持します。",
+      "gameCardLayout_portrait": "縦型",
+      "gameCardLayout_landscape": "横長"
     },
     "game": {
       "recordActiveOnly": "アクティブプレイ時間のみ記録",
       "recordActiveOnlyHint": "有効にすると、ゲームウィンドウが前面でフォーカスされている場合のみプレイ時間を記録します。放置やバックグラウンド実行時間を除外でき、より正確に統計できます。",
       "warningTitle": "注意:",
-      "warningItem1": "このオプションを有効にすると、ゲームプロセスの完全な稼働時間ではなく（バックグラウンド時間を除いた）時間を記録します",
-      "warningItem2": "既存のプレイ記録にはこの設定は影響しません",
-      "warningItem3": "一部のフルスクリーンゲームではフォーカス検出の精度に影響する場合があります",
-      "autoDetectProcess": "自動プロセス検出",
-      "autoDetectProcessHint": "有効にすると、ランチャープロセスがすぐ終了した際に、LunaBox が実際のゲームプロセスの選択を自動で促します。無効にすると、保存済みのプロセス名または実行ファイルハンドルを直接監視します。単一 exe ゲームや複雑な検出が不要な場面に適しています。",
+      "processDetectionTimeout": "ゲームプロセス検出の待機時間",
+      "processDetectionTimeoutHint": "ゲーム起動後、LunaBox はこの時間内に実際のゲームプロセスを継続して検索します。Steam でのシェーダーコンパイルなど、起動に時間がかかるゲームに適しています。",
+      "processDetectionTimeoutWarning": "必要な場合を除き、この待機時間を変更しないでください。プレイ時間を監視できないゲームでは、待機時間を長くすると検出失敗が遅れ、LunaBox がゲームプロセスを長時間検索し続ける場合があります。",
+      "processDetectionTimeoutMinutes": "{{minutes}} 分",
       "launchTools": "ゲーム起動ツール",
       "lePath": "Locale Emulator パス",
       "lePathPlaceholder": "LEProc.exe のパスを選択",
@@ -912,21 +1089,29 @@
       "magpiePathPlaceholder": "Magpie.exe のパスを選択",
       "magpiePathHint": "設定後、ゲーム編集画面で Magpie の超解像スケーリング起動を有効化できます",
       "wineRunnerPath": "Wine 実行ファイルパス",
-      "wineRunnerPathPlaceholder": "wine または CrossOver bundle 内の bin/wine を選択",
-      "wineRunnerPathHint": "CrossOver の場合は /Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine を選択し、.app 本体は選ばないでください。",
-      "winePrefix": "既定の Wine prefix / bottle",
-      "winePrefixPlaceholder": "システム Wine は prefix パス、CrossOver は bottle 名を入力",
+      "wineRunnerPathPlaceholder": "wine 実行ファイルを選択",
+      "wineRunnerPathHint": "実際の Wine 実行ファイルを選択してください。CrossOver は下の専用設定を使います。",
+      "winePrefix": "既定の Wine prefix",
+      "winePrefixPlaceholder": "システム Wine prefix パス",
       "winePrefixHint": "個別ゲームの起動設定でこの値を上書きできます。",
       "selectBtn": "選択",
       "toast": {
         "leSelectFailed": "Locale Emulator の選択に失敗しました",
         "magpieSelectFailed": "Magpie の選択に失敗しました",
         "wineSelectFailed": "Wine runner の選択に失敗しました"
-      }
+      },
+      "muteInBackground": "バックグラウンドのゲームをミュート",
+      "muteInBackgroundHint": "LunaBox から起動したゲームが前面のフォーカスを失うとミュートし、ゲームに戻ると音声を復元します。",
+      "muteInBackgroundHintMacOS": "LunaBox から起動したゲームが前面のフォーカスを失うとミュートし、ゲームに戻ると音声を復元します。初回使用時に macOS がシステムオーディオ録音の許可を求める場合があります。",
+      "crossoverRunnerPath": "CrossOver 実行ファイルパス",
+      "crossoverRunnerPathPlaceholder": "CrossOver bundle 内の bin/wine を選択",
+      "crossoverRunnerPathHint": "/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine を選択し、.app 本体は選ばないでください。",
+      "crossoverBottle": "既定の CrossOver bottle",
+      "crossoverBottlePlaceholder": "Bottle 名",
+      "crossoverBottleHint": "ゲーム側で bottle が未指定の場合に使用し、CX_BOTTLE として渡します。"
     },
     "metadata": {
       "sourceTitle": "メタデータ取得ソース",
-      "sourceHint": "自動メタデータ検索では、有効化したソースのみを使用します。",
       "sourceHints": {
         "bangumi": "アニメ、音楽、ゲーム分野に特化しています",
         "vndb": "ビジュアルノベル情報の総合データベース",
@@ -939,6 +1124,8 @@
       },
       "allowDuplicateMetadataImport": "同じメタデータ ID のゲームを許可",
       "allowDuplicateMetadataImportHint": "有効にすると、一括インポートと外部インポートで source_type + source_id の重複だけではスキップしません。パス重複は引き続きブロックされます。",
+      "steamPortraitCover": "Steam 縦型カバー",
+      "steamPortraitCoverHint": "有効にすると 600×900 の縦型カバーを優先し、無効にすると Steam ストアの横型ヘッダーを使用します。以降の Steam メタデータ取得に適用されます。",
       "enableTagTranslation": "VNDB タグの中国語訳を表示",
       "enableTagTranslationHint": "有効にすると、詳細画面とタグフィルターで翻訳可能な VNDB タグを中国語で表示します。フィルターと同期には元のタグを使用します。",
       "scrapedTagLimit": "取得タグ数の上限",
@@ -972,20 +1159,29 @@
         "refreshFailed": "全量更新に失敗しました: {{error}}",
         "noRemoteCovers": "ダウンロードが必要なリモートカバーはありません",
         "downloadCoverQueued": "リモートカバーのダウンロードタスクを作成しました",
-        "downloadCoverTaskFailed": "カバーダウンロードタスクの作成に失敗しました",
         "downloadCoverFailed": "カバーダウンロードタスクの作成に失敗しました: {{error}}"
+      },
+      "coverSourceTitle": "カバー画像ホスト",
+      "bangumiCoverSource": "Bangumi カバーソース",
+      "bangumiCoverSourceHint": "Bangumi の元画像 URL または Hikarinagi が提供する Bangumi 画像ホストを使用します。",
+      "vndbCoverSource": "VNDB カバーソース",
+      "vndbCoverSourceHint": "VNDB の元画像 URL または Hikarinagi が提供する VNDB 画像ホストを使用します。",
+      "coverSources": {
+        "original": "元のソース",
+        "hikarinagi": "Hikarinagi 画像ホスト"
       }
     },
     "cloudBackup": {
       "serviceEnableLabel": "クラウドサービスを有効化",
       "serviceEnableHint": "クラウドバックアップのアップロードとクラウド同期を制御します。無効化しても現在のプロバイダー設定や認証状態は保持されます。",
-      "serviceDisabledHint": "クラウドサービスを無効化すると、クラウドへのアップロードとクラウド同期は停止しますが、現在のプロバイダー、認証情報、認証状態は保持されます。",
-      "enableLabel": "クラウドバックアップを有効化",
-      "enableHint": "データをクラウドストレージに同期します",
       "providerLabel": "クラウドストレージプロバイダー",
       "providerS3": "S3 互換ストレージ",
       "providerUmbra": "Umbra",
       "s3Section": "S3 設定",
+      "webdavSection": "WebDAV 設定",
+      "webdavUrlHint": "WebDAV サーバーのアドレス（サブパスを含められます）。バックアップはその配下の LunaBox フォルダーに保存されます。",
+      "webdavUsername": "ユーザー名",
+      "webdavPassword": "パスワード",
       "umbraSection": "Umbra 設定",
       "umbraBaseURL": "サービス URL",
       "umbraBaseURLHint": "Umbra 環境の公開 URL です。API と OAuth のエンドポイントは SDK が自動的に導出します。",
@@ -1002,12 +1198,10 @@
       "setPasswordBtn": "バックアップパスワードを設定",
       "passwordForIdHint": "ユーザー識別子の生成に使用します",
       "passwordWarning": "重要: パスワードは一度しか設定できず、設定後は変更できません。必ず記憶してください",
-      "clientIdUsingDefault": "(自分で用意)",
       "clientIdHint": "OneDrive Client ID の取得と設定方法は",
       "clientIdHintLink": "OneDrive クラウドバックアップ文書",
       "clientIdHint2": "を参照してください。",
       "clientIdChangeHint": "Client ID を変更した場合は再認証が必要です。既存の認証は自動で解除されます。",
-      "clientIdRequiredHint": "先に自分で取得した OneDrive Client ID を入力してください。",
       "authStatusLabel": "認証状態",
       "authorized": "認証済み",
       "revokeAuth": "認証解除",
@@ -1033,21 +1227,14 @@
       "syncIntervalLabel": "同期間隔",
       "syncIntervalUnit": "秒",
       "syncIntervalHint": "自動クラウド同期が有効な場合にのみ適用されます。この間隔でバックグラウンド全量同期を実行します。最小 15 秒、既定値 60 秒です。",
-      "syncStatusLabel": "同期状態",
       "syncStatusIdle": "未同期",
       "syncStatusSyncing": "同期中",
       "syncStatusSuccess": "前回の同期は成功",
       "syncStatusFailed": "前回の同期は失敗",
       "syncNotConfigured": "先にクラウドストレージ設定を完了してください",
       "syncLastTimeLabel": "最終同期時刻:",
-      "syncStrategyLabel": "同期方式:",
-      "syncStrategyValue": "起動時同期 + {{seconds}} 秒ごとの全量同期 + 手動同期",
       "syncNever": "まだ同期していません",
-      "syncNow": "今すぐ同期",
       "syncingNow": "同期中...",
-      "syncScopeHint": "ゲーム、カテゴリ、カテゴリ関連、プレイ記録、進捗履歴、タグ、カバー画像を同期します。",
-      "syncLocalOnlyHint": "v1 では端末ローカルのパス、セーブデータ、その他マシン固有の起動設定は同期しません。",
-      "syncRequiresBackup": "クラウド同期は現在のクラウドストレージ設定を再利用します。先にクラウドバックアップを有効化し、アカウント/保存先設定を完了してください。",
       "toast": {
         "passwordTooShort": "パスワードは6文字以上必要です",
         "passwordMismatch": "2回入力したパスワードが一致しません",
@@ -1055,6 +1242,8 @@
         "setupFailed": "設定に失敗しました: {{error}}",
         "s3TestSuccess": "S3 接続テストに成功しました",
         "s3TestFailed": "S3 接続テストに失敗しました: {{error}}",
+        "webdavTestSuccess": "WebDAV 接続テストに成功しました",
+        "webdavTestFailed": "WebDAV 接続テストに失敗しました: {{error}}",
         "oneDriveTestSuccess": "OneDrive 接続テストに成功しました",
         "oneDriveTestFailed": "OneDrive 接続テストに失敗しました: {{error}}",
         "oneDriveAuthSuccess": "OneDrive 認証に成功しました",
@@ -1075,11 +1264,8 @@
     },
     "autoBackup": {
       "localSection": "ローカルバックアップ",
-      "localSectionHint": "アプリ終了時やゲーム終了時のローカルバックアップ動作を管理します。",
       "cloudBackupSection": "クラウドバックアップ",
-      "cloudBackupSectionHint": "バックアップの自動クラウドアップロードと、クラウド上の保持数を管理します。",
       "cloudSyncSection": "クラウド同期 (Beta)",
-      "cloudSyncSectionHint": "メタデータの手動同期と、自動バックグラウンド同期の利用方針を管理します。",
       "cloudServiceRequiredHint": "先にクラウド設定でクラウドサービスを有効化してください。",
       "cloudSyncConfigRequiredHint": "先にクラウド設定でプロバイダー設定、認証、バックアップパスワードの設定を完了してください。",
       "cloudSyncManualRecommendedHint": "現在は手動同期モードです。必要なときにサイドバーの同期ボタンを使うことで、複数端末の同時書き込みによる競合を減らせます。",
@@ -1125,8 +1311,7 @@
       "mcpEnableHint": "有効化すると、LunaBox GUIのプロセス内でMCPサービスが起動します",
       "mcpPortLabel": "MCP ポート",
       "mcpPortHint": "GUI 内蔵 MCP サービスが待ち受けるローカルポートを設定します。変更後は即時反映を試みます。",
-      "mcpEndpointHint": "現在のエンドポイント: {{endpoint}}",
-      "mcpLocalOnlyHint": "127.0.0.1 のみで待ち受け、LunaBox GUI を起動したままにする必要があります。"
+      "mcpEndpointHint": "現在のエンドポイント: {{endpoint}}"
     },
     "dbBackup": {
       "sectionTitle": "データベースバックアップ",
@@ -1138,13 +1323,8 @@
       "autoBackupEnabled": "自動バックアップが有効です",
       "noLocalBackups": "ローカルバックアップ記録がありません",
       "sizeLabel": "サイズ:",
-      "uploadToCloud": "クラウドにアップロード",
-      "restoreBackup": "このバックアップを復元",
-      "deleteBackup": "バックアップを削除",
       "cloudBackups": "クラウドバックアップ",
-      "refreshCloudList": "クラウドバックアップ一覧を更新",
       "noCloudBackups": "クラウドバックアップ記録がありません",
-      "restoreFromCloud": "クラウドから復元",
       "cloudNotEnabled": "クラウドバックアップが有効ではありません",
       "cloudNotEnabledHint": "上でクラウドバックアップを設定すると、データベースをクラウド同期できます",
       "modal": {
@@ -1262,6 +1442,13 @@
       "importGameFailed": "ゲームとしてのインポートに失敗しました",
       "autoImportFailed": "{{title}} の自動インポートに失敗しました：{{error}}",
       "metadataFailed": "{{title}} はインポートされましたが、メタデータの取得に失敗しました：{{error}}"
+    },
+    "imageTask": {
+      "toastDone": "画像の一括ダウンロードが完了しました",
+      "source": "画像キャッシュ",
+      "unit": "枚",
+      "doneWithError": "画像の一括ダウンロードが完了しました。一部失敗しました",
+      "done": "画像の一括ダウンロードが完了しました"
     }
   },
   "installModal": {
@@ -1282,8 +1469,6 @@
       "year": "年"
     },
     "customRange": "カスタム",
-    "startDate": "開始日",
-    "endDate": "終了日",
     "applyBtn": "適用",
     "resetBtn": "リセット",
     "exportTitle": "テンプレート書き出し",
@@ -1316,15 +1501,10 @@
       "peakWeekday": "ピーク {{day}} · {{duration}}"
     },
     "leaderboard": {
-      "title": "ランキング",
       "fullTitle": "プレイ時間ランキング Top 10",
       "modalTitle": "プレイ時間ランキング Top 20",
       "viewMore": "もっと見る",
-      "rankCol": "順位",
-      "gameCol": "ゲーム",
-      "durationCol": "時間",
       "noData": "データがありません",
-      "noMoreData": "これ以上のランキングデータはありません",
       "countHint": "全 {{count}} 件"
     },
     "heatmap": {
@@ -1334,7 +1514,6 @@
       "less": "少",
       "more": "多",
       "summary": "過去 1 年の活動日数 {{days}} 日",
-      "maxDay": "最長日 {{duration}}",
       "weekdays": {
         "sun": "日",
         "mon": "月",
@@ -1347,8 +1526,7 @@
     },
     "tagDistribution": {
       "title": "タグ分布 Top 10",
-      "empty": "タグデータがありません",
-      "totalLabel": "合計"
+      "empty": "タグデータがありません"
     },
     "charts": {
       "totalTrend": "プレイ時間トレンド",
@@ -1365,7 +1543,6 @@
       "selectTemplate": "テンプレートを選択",
       "selectTemplateHint": "テンプレートを選んで統計データを美しく表示します",
       "openTemplatesDir": "テンプレートディレクトリを開く",
-      "templatePreviewTitle": "テンプレートプレビュー",
       "rendering": "プレビューをレンダリング中...",
       "selectToPreview": "テンプレートを選択してプレビュー",
       "authorPrefix": "作者:",
@@ -1400,18 +1577,11 @@
     "library": "ゲームライブラリ",
     "stats": "統計",
     "categories": "コレクション",
-    "cloudSync": "クラウド同期",
-    "cloudSyncReadyHint": "クラウド同期の準備ができています。必要なときに手動実行できます",
-    "cloudSyncManualRecommendedHint": "現在は手動同期を推奨しています。必要な場合のみ設定で自動同期を追加で有効にしてください。",
-    "cloudSyncManualTag": "手動",
-    "cloudServiceDisabledHint": "クラウドサービスは無効です。先に設定で有効化してください。",
-    "cloudSyncDisabledHint": "先に設定でクラウド同期を有効化し、設定を完了してください",
-    "settings": "設定",
-    "github": "GitHub"
+    "cloudSync": "クラウド同期"
   },
   "processSelectModal": {
     "title": "ゲームプロセスを選択",
-    "desc": "{{launcher}} の終了を検出しました。手動で終了していない場合、インポートした実行ファイルは実際のゲームプロセスではない可能性があります。現在実行中のゲームプロセスを選択してください",
+    "desc": "現在の一覧から実際に動作しているゲームプロセスを選択してください。保存後にゲームを再起動すると、このプロセスが監視されます。",
     "searchPlaceholder": "プロセスを検索...",
     "loading": "読み込み中...",
     "noMatch": "一致するプロセスが見つかりません",
@@ -1473,7 +1643,6 @@
     "excludedStatusGameCount": "合計 {{count}} 件の非{{status}}ゲーム",
     "batchRemoveBtn": "一括削除",
     "addGameBtn": "ゲームを追加",
-    "removeFromCategory": "コレクションから削除",
     "noMatchingGames": "一致するゲームが見つかりません",
     "emptyCategory": "このコレクションにはまだゲームがありません",
     "addFirstGame": "ゲームを追加",
@@ -1491,23 +1660,37 @@
       "noGamesAvailable": "追加できるゲームがありません"
     }
   },
+  "startup": {
+    "errorSubtitle": "起動エラーレポート",
+    "title": "LunaBox の起動に失敗しました",
+    "detail": "メイン画面は起動していません。エラー詳細を確認してください",
+    "copyError": "エラーをコピー",
+    "copied": "コピーしました",
+    "exit": "LunaBox を終了",
+    "unknownError": "エラー詳細を読み取れませんでした。アプリケーションログを確認してください"
+  },
   "addPlaySession": {
     "title": "プレイ記録を追加",
     "desc": "過去のプレイ時間を補完記録することで、総プレイ時間をより正確に統計できます。",
     "date": "日付",
     "selectDate": "日付を選択",
     "startTime": "開始時刻",
-    "endTime": "終了時刻",
     "duration": "プレイ時間",
     "endPreview": "終了予定",
     "submitting": "追加中...",
     "toast": {
-      "endBeforeStart": "終了時刻は開始時刻より後である必要があります",
       "invalidStartTime": "有効な開始時刻を選択してください",
       "zeroDuration": "プレイ時間は 0 より大きい必要があります",
       "futureEnd": "終了時刻は現在時刻より後にできません",
       "success": "プレイ記録の追加に成功しました",
       "failed": "プレイ記録の追加に失敗しました"
+    }
+  },
+  "coverImageDownload": {
+    "toast": {
+      "started": "画像をダウンロードしています。アプリを閉じないでください",
+      "success": "画像のダウンロードに成功しました",
+      "failed": "画像のダウンロードに失敗しました"
     }
   }
 }

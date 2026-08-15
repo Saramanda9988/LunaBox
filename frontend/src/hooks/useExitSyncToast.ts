@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 
 import type { QuitSyncRequest } from "./useAppRuntimeEffects";
 
-import { CreateAndUploadDBBackupForQuit } from "../../wailsjs/go/service/BackupService";
-import { SafeQuit } from "../../wailsjs/go/service/ConfigService";
+import { CreateAndUploadDBBackupForQuit } from "../../bindings/lunabox/internal/service/backupservice";
+import { SafeQuit } from "../../bindings/lunabox/internal/service/configservice";
 
 const EXIT_SYNC_TOAST_ID = "exit-sync";
 const EXIT_SYNC_TIMEOUT_MS = 15000;

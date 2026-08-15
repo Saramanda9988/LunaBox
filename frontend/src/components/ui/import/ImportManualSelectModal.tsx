@@ -1,4 +1,4 @@
-import type { enums, vo } from "../../../../wailsjs/go/models";
+import type { enums, vo } from "../../../../src/bindings/models";
 import { BetterSelect } from "../better/BetterSelect";
 import { GameCoverImage } from "../GameCoverImage";
 import { ModalPortal } from "../ModalPortal";

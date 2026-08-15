@@ -173,7 +173,7 @@ func (p *Provider) listSyncObjects(ctx context.Context, subPath string) ([]strin
 		if !ok || !strings.HasPrefix(recordSubPath, prefix) {
 			continue
 		}
-		keys = append(keys, p.GetCloudPath(p.userID, recordSubPath))
+		keys = append(keys, p.cloudPathForSubPath(recordSubPath))
 	}
 	sort.Strings(keys)
 	return keys, nil

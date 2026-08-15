@@ -61,6 +61,14 @@ type GameListRequest struct {
 	SortOrder     enums.SortOrder      `json:"sort_order"`
 }
 
+type SaveGameFilterPresetRequest struct {
+	Name          string           `json:"name"`
+	Tags          []string         `json:"tags"`
+	ExcludeTags   bool             `json:"exclude_tags"`
+	Status        enums.GameStatus `json:"status"`
+	ExcludeStatus bool             `json:"exclude_status"`
+}
+
 type CategoryGameListRequest struct {
 	CategoryID string `json:"category_id"`
 	GameListRequest

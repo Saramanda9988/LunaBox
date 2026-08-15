@@ -52,6 +52,9 @@
 - MUST SQL 操作封装在 service 内部的私有方法中，避免在多个文件随意拼 SQL。
 - MUST 在 `main.go` 中创建 service 实例并调用 `Init(...)` 完成基础注入（ctx/db/config）。
 - MUST service 间依赖通过 `SetXxxService(...)` 注入（参照 `StartService.SetSessionService`、`ImportService.SetSessionService`），不要直接 new 另一个 service。
+- MUST `Init(...)`、`SetXxxService(...)` 以及测试钩子使用 `//wails:ignore`，避免基础设施方法被生成为前端 API，或让 service 类型被误判为 model。
+- MUST Wails v3 的 application/window 能力通过 `internal/wailsruntime.Runtime` 和 `SetRuntime(...)` 显式注入；不要恢复依赖 `context.Context` 的 v2 风格全局 runtime 调用，也不要在 service 中调用 `application.Get()`。
+- SHOULD 在 Wails v3 正式版 API 稳定前保留这层窄适配器，用它集中隔离 alpha API 变化；正式版升级时再评估是否直接注入更细的 capability interface。
 - SHOULD 避免循环依赖；如果出现循环，优先重构职责或抽出更小的 service。
 
 反例（MUST NOT）：
@@ -67,12 +70,17 @@
 | ------------------ | ------- | --------------------------------------------- | ----------------------- |
 | `nativeWindows`    | Windows | 默认启动，或未命中 Locale Emulator            | `DetectionStaged`       |
 | `localeEmulator`   | Windows | 游戏启用 Locale Emulator 且全局配置了 LE 路径 | `DetectionStaged`       |
+| `steamWindows`     | Windows | 游戏启用 Steam 启动                           | `DetectionSteamDirectory` |
 | `nativeApp`        | macOS   | 启动路径为 `.app`                             | `DetectionLauncherOnly` |
 | `nativeExecutable` | macOS   | 原生 Unix 可执行文件                          | `DetectionLauncherOnly` |
-| `wineSystem`       | macOS   | `.exe`/`.bat` 且 `wine_runner=system/custom`  | `DetectionLauncherOnly` |
-| `wineCrossover`    | macOS   | `.exe`/`.bat` 且 `wine_runner=crossover`      | `DetectionLauncherOnly` |
+| `steamNative`      | macOS   | Steam 原生游戏 AppID                          | `DetectionSteamDirectory` |
+| `wineSystem`       | macOS   | 兼容层启动且 `wine_runner=system/custom`      | `DetectionLauncherOnly` |
+| `wineCrossover`    | macOS   | 兼容层启动且 `wine_runner=crossover`          | `DetectionLauncherOnly` |
+| `steamLinux`       | Linux   | 游戏启用 Steam 启动                           | `DetectionSteamDirectory` |
+| `nativeLinux`      | Linux   | 原生 Linux 可执行文件                         | `DetectionLauncherOnly` |
+| `wineLinux`        | Linux   | `.exe`/`.bat` 且已配置或默认使用 Wine runner  | `DetectionStaged`       |
 
-`DetectionStaged` 保留 Windows 的分阶段进程检测、可见窗口检测和手动选进程流程；`DetectionLauncherOnly` 直接监控 launcher PID，不持久化 wine 宿主进程名，也不触发手动选进程弹窗。macOS 活跃时长按 strategy 提供的 `ActiveTrack` 判定：`.app` 用 bundle path，Wine 用 wine 父 PID 的后代进程，原生可执行文件用 launcher PID。
+`DetectionStaged` 保留 Windows/Linux Wine 的分阶段进程检测与可见窗口检测；检测失败时结束本次监控，用户可在游戏启动配置中选择正在运行的进程，并在下次启动时使用保存的进程名。`DetectionLauncherOnly` 直接监控 launcher PID，不持久化 wine 宿主进程名。macOS Steam 仅支持已安装原生游戏的 AppID 启动，通过安装目录接管实际游戏进程，不写入非 Steam 快捷方式。macOS/Linux 活跃时长按 strategy 提供的 `ActiveTrack` 判定：`.app` 用 bundle path，Wine 用 wine 父 PID 的后代进程，原生可执行文件用 launcher PID。
 
 **配置同步约束（MUST）：**
 
@@ -112,6 +120,7 @@
 | 文件复制、打开目录、查找可执行文件                       | `internal/utils/apputils`      | `CopyFile`、`CopyDir`、`OpenDirectory`、`OpenFileOrFolder`、`FindExecutables`                                             |
 | ZIP / 7z / RAR 等归档处理                                | `internal/utils/archiveutils`  | `ExtractArchive`、`ZipDirectory`、`ZipFileOrDirectory`、`UnzipFile`                                                       |
 | 下载 URL / checksum / 文件名 / archive format / 传输辅助 | `internal/utils/downloadutils` | `ValidateDownloadURL`、`ValidateChecksumFields`、`SanitizeDownloadedFileName`、`BuildExpectedExtractDir`、`NewDownloader` |
+| 标准 HTTP 客户端、429 重试与 `Retry-After` 解析          | `internal/utils/httputils`     | `NewClient`、`DoWithRetry`、`ParseRetryAfter`、`WaitForRetry`                                                             |
 | 封面/背景图落盘与本地路径管理                            | `internal/utils/imageutils`    | `SaveCoverImage`、`DownloadAndSaveCoverImage`、`SaveBackgroundImage`、`CropAndSaveBackgroundImage`                        |
 | 元数据抓取（Bangumi/VNDB/Steam/Ymgal/Hikarinagi）        | `internal/utils/metadata`      | `NewBangumiInfoGetter`、`NewVNDBInfoGetterWithLanguage`、`NewSteamInfoGetterWithLanguage`、`NewYmgalInfoGetter`           |
 | 进程枚举、PID 查询、退出监听                             | `internal/utils/processutils`  | `GetRunningProcesses`、`GetProcessPIDByName`、`WaitForProcessExitAsync`                                                   |

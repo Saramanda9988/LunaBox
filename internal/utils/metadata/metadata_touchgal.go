@@ -31,7 +31,7 @@ var _ Getter = (*TouchGalInfoGetter)(nil)
 
 const (
 	touchGalAPIBaseURL   = "https://developer.touchgal.com/api/v1"
-	touchGalSearchLimit  = "1"
+	touchGalSearchLimit  = "5"
 	touchGalAllowNSFW    = "true"
 	touchGalUniqueIDSize = 8
 )
@@ -154,13 +154,21 @@ func (t TouchGalInfoGetter) FetchMetadata(id string, token string) (MetadataResu
 }
 
 func (t TouchGalInfoGetter) FetchMetadataByName(name string, token string) (MetadataResult, error) {
+	results, err := t.FetchMetadataCandidatesByName(name, token)
+	if err != nil {
+		return MetadataResult{}, err
+	}
+	return results[0], nil
+}
+
+func (t TouchGalInfoGetter) FetchMetadataCandidatesByName(name string, token string) ([]MetadataResult, error) {
 	keyword := strings.TrimSpace(name)
 	if keyword == "" {
-		return MetadataResult{}, errors.New("TouchGAL search keyword is empty")
+		return nil, errors.New("TouchGAL search keyword is empty")
 	}
 	token = resolveTouchGalAPIToken(token)
 	if token == "" {
-		return MetadataResult{}, errors.New("TouchGAL API requires Bearer token")
+		return nil, errors.New("TouchGAL API requires Bearer token")
 	}
 
 	params := url.Values{}
@@ -171,41 +179,79 @@ func (t TouchGalInfoGetter) FetchMetadataByName(name string, token string) (Meta
 
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/games/search?%s", touchGalAPIBaseURL, params.Encode()), nil)
 	if err != nil {
-		return MetadataResult{}, err
+		return nil, err
 	}
 	t.setHeaders(req, token)
 
 	resp, err := doLimitedMetadataRequest(t.client, req, enums.TouchGal)
 	if err != nil {
-		return MetadataResult{}, err
+		return nil, err
 	}
 	defer closeResponseBody(resp.Body)
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return MetadataResult{}, err
+		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return MetadataResult{}, fmt.Errorf("TouchGAL search API returned status: %d, body: %s", resp.StatusCode, strings.TrimSpace(string(bodyBytes)))
+		return nil, fmt.Errorf("TouchGAL search API returned status: %d, body: %s", resp.StatusCode, strings.TrimSpace(string(bodyBytes)))
 	}
 
 	var searchResp touchGalSearchResponse
 	if err := json.Unmarshal(bodyBytes, &searchResp); err != nil {
-		return MetadataResult{}, err
+		return nil, err
 	}
 	if !searchResp.Success {
-		return MetadataResult{}, touchGalAPIError("TouchGAL search API", searchResp.Error)
+		return nil, touchGalAPIError("TouchGAL search API", searchResp.Error)
 	}
 	if len(searchResp.Data.Items) == 0 {
-		return MetadataResult{}, errors.New("no results found")
+		return nil, errors.New("no results found")
 	}
 
-	return t.FetchMetadata(searchResp.Data.Items[0].UniqueID, token)
+	limit := len(searchResp.Data.Items)
+	if limit > metadataSearchCandidateLimit {
+		limit = metadataSearchCandidateLimit
+	}
+	candidateNames := make([][]string, limit)
+	for index := 0; index < limit; index++ {
+		candidateNames[index] = []string{searchResp.Data.Items[index].Name}
+	}
+	indexes := exactMetadataCandidateIndexes(keyword, candidateNames)
+	if len(indexes) == 0 {
+		indexes = []int{0}
+	}
+
+	results := make([]MetadataResult, 0, len(indexes))
+	seenIDs := make(map[string]struct{}, len(indexes))
+	var lastErr error
+	for _, index := range indexes {
+		id := strings.TrimSpace(searchResp.Data.Items[index].UniqueID)
+		if id == "" {
+			continue
+		}
+		if _, exists := seenIDs[id]; exists {
+			continue
+		}
+		result, fetchErr := t.FetchMetadata(id, token)
+		if fetchErr != nil {
+			lastErr = fetchErr
+			continue
+		}
+		seenIDs[id] = struct{}{}
+		results = append(results, result)
+	}
+	if len(results) > 0 {
+		return results, nil
+	}
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, errors.New("no results found")
 }
 
 func (t TouchGalInfoGetter) setHeaders(req *http.Request, token string) {
 	req.Header.Set("Authorization", "Bearer "+strings.TrimSpace(token))
-	req.Header.Set("User-Agent", metadataUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 	req.Header.Set("Accept", "application/json")
 }
 
@@ -220,6 +266,7 @@ func resolveTouchGalAPIToken(token string) string {
 }
 
 func (t TouchGalInfoGetter) convertToMetadataResult(data touchGalGameData) MetadataResult {
+	name := strings.TrimSpace(data.Name)
 	company := ""
 	for _, item := range data.Companies {
 		if strings.TrimSpace(item.Name) != "" {
@@ -229,7 +276,8 @@ func (t TouchGalInfoGetter) convertToMetadataResult(data touchGalGameData) Metad
 	}
 
 	game := models.Game{
-		Name:           strings.TrimSpace(data.Name),
+		Name:           name,
+		Aliases:        normalizeMetadataAliases(name, data.Aliases),
 		CoverURL:       strings.TrimSpace(data.BannerURL),
 		CoverSourceURL: strings.TrimSpace(data.BannerURL),
 		Company:        company,

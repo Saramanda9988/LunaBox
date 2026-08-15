@@ -1,4 +1,4 @@
-//go:build !windows && !darwin
+//go:build !windows && !darwin && !linux
 
 package processutils
 
@@ -22,6 +22,10 @@ func GetProcessPIDByName(processName string) (uint32, error) {
 
 func IsProcessPresentByPID(pid uint32) bool {
 	return false
+}
+
+func GetProcessCommandInfo(pid uint32) (ProcessCommandInfo, error) {
+	return ProcessCommandInfo{}, unsupportedProcessError()
 }
 
 func GetDescendantProcesses(parentPID uint32) ([]ProcessInfo, error) {
@@ -108,5 +112,5 @@ func WaitForProcessExitBySnapshotAsync(pid uint32) (*SnapshotProcessMonitor, <-c
 }
 
 func unsupportedProcessError() error {
-	return fmt.Errorf("process utilities are only supported on Windows")
+	return fmt.Errorf("process utilities are only supported on Windows, macOS and Linux")
 }

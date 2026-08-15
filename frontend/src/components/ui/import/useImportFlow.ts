@@ -3,19 +3,16 @@ import type { TFunction } from "i18next";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import type { service, vo as voTypes } from "../../../../wailsjs/go/models";
+import type { service, vo as voTypes } from "../../../../src/bindings/models";
 import type { ImportRequestOptions, PreferredSourceValue } from "./importFlow";
 import type { ImportCandidate, MatchProgressState } from "./types";
 
-import { enums, vo } from "../../../../wailsjs/go/models";
-import {
-  FetchMetadataByName,
-  FetchMetadataFromWeb,
-} from "../../../../wailsjs/go/service/GameService";
+import { FetchMetadataFromWeb } from "../../../../bindings/lunabox/internal/service/gameservice";
 import {
   BatchImportGames,
   FetchMetadataForCandidateWithPreference,
-} from "../../../../wailsjs/go/service/ImportService";
+} from "../../../../bindings/lunabox/internal/service/importservice";
+import { enums, vo } from "../../../../src/bindings/models";
 import {
   candidatesToImportRequest,
   errorText,
@@ -90,11 +87,11 @@ export function useImportFlow({
   const [isSearching, setIsSearching] = useState(false);
   const [manualId, setManualId] = useState("");
   const [manualSource, setManualSource] = useState<enums.SourceType>(
-    enabledMetadataSources[0] ?? enums.SourceType.BANGUMI,
+    enabledMetadataSources[0] ?? enums.SourceType.Bangumi,
   );
   const selectedManualSource = enabledMetadataSources.includes(manualSource)
     ? manualSource
-    : (enabledMetadataSources[0] ?? enums.SourceType.BANGUMI);
+    : (enabledMetadataSources[0] ?? enums.SourceType.Bangumi);
 
   const shouldMatchCandidate = useCallback((candidate: ImportCandidate) => {
     if (!candidate.isSelected) {
@@ -156,106 +153,72 @@ export function useImportFlow({
         }));
 
         try {
-          if (preferredSource !== NO_PREFERRED_SOURCE) {
-            const matchResult = await FetchMetadataForCandidateWithPreference(
-              candidates[i].searchName,
-              preferredSource,
-            );
-            const results = matchResult?.matches || [];
+          const matchResult = await FetchMetadataForCandidateWithPreference(
+            candidates[i].searchName,
+            preferredSource as enums.SourceType,
+          );
+          const results = matchResult?.matches || [];
 
-            if (!matchResult?.preferred_matched) {
-              const reason
-                = matchResult?.preferred_error
-                  || t("batchImportModal.noMatchResult");
-              const isNoResult = Boolean(matchResult?.preferred_no_result);
+          if (
+            preferredSource !== NO_PREFERRED_SOURCE
+            && !matchResult?.preferred_matched
+          ) {
+            const reason
+              = matchResult?.preferred_error
+                || t("batchImportModal.noMatchResult");
+            const isNoResult = Boolean(matchResult?.preferred_no_result);
 
-              updatedCandidates[i] = {
-                ...updatedCandidates[i],
-                matchedGame: null,
-                matchedTags: [],
-                matchSource: null,
-                matchStatus: isNoResult ? "not_found" : "error",
-                matchError: reason,
-                allMatches: results,
-                metadataDuplicateExistingId: undefined,
-                metadataDuplicateExistingName: undefined,
-              };
+            updatedCandidates[i] = {
+              ...updatedCandidates[i],
+              matchedGame: null,
+              matchedTags: [],
+              matchSource: null,
+              matchStatus: isNoResult ? "not_found" : "error",
+              matchError: reason,
+              allMatches: results,
+              metadataDuplicateExistingId: undefined,
+              metadataDuplicateExistingName: undefined,
+            };
 
-              if (isNoResult) {
-                consecutiveFetchFailures = 0;
-              }
-              else {
-                consecutiveFetchFailures++;
-                if (matchResult?.preferred_rate_limited) {
-                  pauseReason = t(
-                    "batchImportModal.preferredSource.rateLimitedPause",
-                    {
-                      source: preferredSourceLabel,
-                      error: reason,
-                    },
-                  );
-                }
-                else if (
-                  consecutiveFetchFailures
-                  >= PREFERRED_SOURCE_FAILURE_PAUSE_THRESHOLD
-                ) {
-                  pauseReason = t(
-                    "batchImportModal.preferredSource.consecutiveFailurePause",
-                    {
-                      source: preferredSourceLabel,
-                      count: PREFERRED_SOURCE_FAILURE_PAUSE_THRESHOLD,
-                      error: reason,
-                    },
-                  );
-                }
-              }
-
-              setCandidates([...updatedCandidates]);
-              if (pauseReason) {
-                abortMatchRef.current = true;
-                break;
-              }
+            if (isNoResult) {
+              consecutiveFetchFailures = 0;
             }
             else {
-              consecutiveFetchFailures = 0;
-              const bestMatch = pickBestMatch(results, preferredSource);
+              consecutiveFetchFailures++;
+              if (matchResult?.preferred_rate_limited) {
+                pauseReason = t(
+                  "batchImportModal.preferredSource.rateLimitedPause",
+                  {
+                    source: preferredSourceLabel,
+                    error: reason,
+                  },
+                );
+              }
+              else if (
+                consecutiveFetchFailures
+                >= PREFERRED_SOURCE_FAILURE_PAUSE_THRESHOLD
+              ) {
+                pauseReason = t(
+                  "batchImportModal.preferredSource.consecutiveFailurePause",
+                  {
+                    source: preferredSourceLabel,
+                    count: PREFERRED_SOURCE_FAILURE_PAUSE_THRESHOLD,
+                    error: reason,
+                  },
+                );
+              }
+            }
 
-              if (bestMatch && bestMatch.Game) {
-                updatedCandidates[i] = {
-                  ...updatedCandidates[i],
-                  matchedGame: bestMatch.Game,
-                  matchedTags: bestMatch.Tags || [],
-                  matchSource: bestMatch.Source,
-                  matchStatus: "matched",
-                  matchError: "",
-                  allMatches: results,
-                  metadataDuplicateExistingId: undefined,
-                  metadataDuplicateExistingName: undefined,
-                };
-              }
-              else {
-                updatedCandidates[i] = {
-                  ...updatedCandidates[i],
-                  matchedGame: null,
-                  matchedTags: [],
-                  matchSource: null,
-                  matchStatus: "not_found",
-                  matchError: t("batchImportModal.noMatchResult"),
-                  allMatches: results,
-                  metadataDuplicateExistingId: undefined,
-                  metadataDuplicateExistingName: undefined,
-                };
-              }
+            setCandidates([...updatedCandidates]);
+            if (pauseReason) {
+              abortMatchRef.current = true;
+              break;
             }
           }
           else {
-            const results = await FetchMetadataByName(candidates[i].searchName);
-            const bestMatch
-              = results && results.length > 0
-                ? pickBestMatch(results, preferredSource)
-                : null;
-
             consecutiveFetchFailures = 0;
+            const bestMatch = pickBestMatch(results, preferredSource);
+
             if (bestMatch && bestMatch.Game) {
               updatedCandidates[i] = {
                 ...updatedCandidates[i],
@@ -277,7 +240,7 @@ export function useImportFlow({
                 matchSource: null,
                 matchStatus: "not_found",
                 matchError: t("batchImportModal.noMatchResult"),
-                allMatches: results || [],
+                allMatches: results,
                 metadataDuplicateExistingId: undefined,
                 metadataDuplicateExistingName: undefined,
               };
@@ -521,10 +484,11 @@ export function useImportFlow({
       ) {
         setIsSearching(true);
         try {
-          const results = await FetchMetadataByName(
+          const matchResult = await FetchMetadataForCandidateWithPreference(
             candidates[index].searchName,
+            preferredSource as enums.SourceType,
           );
-          setManualMatches(results || []);
+          setManualMatches(matchResult?.matches || []);
         }
         catch (error) {
           console.error("Failed to search:", error);
@@ -534,7 +498,7 @@ export function useImportFlow({
         }
       }
     },
-    [candidates],
+    [candidates, preferredSource],
   );
 
   const selectManualMatch = useCallback(

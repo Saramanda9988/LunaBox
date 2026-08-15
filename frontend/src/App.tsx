@@ -1,14 +1,10 @@
-import type { vo } from "../wailsjs/go/models";
-import type {
-  ProcessSelectData,
-  QuitSyncRequest,
-} from "./hooks/useAppRuntimeEffects";
+import type { vo } from "../src/bindings/models";
+import type { QuitSyncRequest } from "./hooks/useAppRuntimeEffects";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { SafeQuit } from "../wailsjs/go/service/ConfigService";
+import { SafeQuit } from "../bindings/lunabox/internal/service/configservice";
 import { InstallConfirmModal } from "./components/modal/InstallConfirmModal";
-import { ProcessSelectModal } from "./components/modal/ProcessSelectModal";
 import { TimezoneSelectModal } from "./components/modal/TimezoneSelectModal";
 import { UpdateDialog } from "./components/ui/UpdateDialog";
 import { useAppRuntimeEffects } from "./hooks/useAppRuntimeEffects";
@@ -63,9 +59,6 @@ function App() {
     setShowUpdateDialog,
     handleSkipVersion,
   } = useUpdateCheck();
-  const [processSelectData, setProcessSelectData] = useState<ProcessSelectData>(
-    { isOpen: false, gameID: "", launcherExeName: "" },
-  );
   const [installRequest, setInstallRequest]
     = useState<vo.InstallRequest | null>(null);
   const [quitSyncRequest, setQuitSyncRequest]
@@ -111,7 +104,6 @@ function App() {
     config,
     refreshConfig: fetchConfig,
     refreshHomeData: fetchHomeData,
-    setProcessSelectData,
     setInstallRequest,
     setQuitSyncRequest,
     openGameLaunchSettings,
@@ -133,23 +125,6 @@ function App() {
       <TimezoneSelectModal
         isOpen={showTimezoneModal}
         onConfirm={handleTimezoneConfirm}
-      />
-      <ProcessSelectModal
-        isOpen={processSelectData.isOpen}
-        gameID={processSelectData.gameID}
-        launcherExeName={processSelectData.launcherExeName}
-        onClose={() =>
-          setProcessSelectData({
-            isOpen: false,
-            gameID: "",
-            launcherExeName: "",
-          })}
-        onSelected={() =>
-          setProcessSelectData({
-            isOpen: false,
-            gameID: "",
-            launcherExeName: "",
-          })}
       />
       <InstallConfirmModal
         request={installRequest}

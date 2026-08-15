@@ -9,6 +9,7 @@ import "C"
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"os"
 	"os/exec"
@@ -160,6 +161,90 @@ func IsProcessPresentByPID(pid uint32) bool {
 	}
 	err := syscall.Kill(int(pid), 0)
 	return err == nil || err == syscall.EPERM
+}
+
+// GetProcessCommandInfo reads argv and environment from macOS KERN_PROCARGS2.
+// This remains available for Wine processes whose executable image path cannot
+// be resolved through proc_pidpath.
+func GetProcessCommandInfo(pid uint32) (ProcessCommandInfo, error) {
+	if pid == 0 {
+		return ProcessCommandInfo{}, fmt.Errorf("process id is zero")
+	}
+
+	data, err := unix.SysctlRaw("kern.procargs2", int(pid))
+	if err != nil {
+		return ProcessCommandInfo{}, fmt.Errorf("read process arguments for pid %d: %w", pid, err)
+	}
+	info, err := parseKernProcArgs(data)
+	if err != nil {
+		return ProcessCommandInfo{}, fmt.Errorf("parse process arguments for pid %d: %w", pid, err)
+	}
+	return info, nil
+}
+
+func parseKernProcArgs(data []byte) (ProcessCommandInfo, error) {
+	const argcSize = 4
+	if len(data) < argcSize {
+		return ProcessCommandInfo{}, fmt.Errorf("process arguments buffer is too short")
+	}
+
+	argc := int(int32(binary.NativeEndian.Uint32(data[:argcSize])))
+	if argc < 0 {
+		return ProcessCommandInfo{}, fmt.Errorf("invalid argument count: %d", argc)
+	}
+
+	executablePath, offset, ok := readCString(data, argcSize)
+	if !ok {
+		return ProcessCommandInfo{}, fmt.Errorf("executable path is not terminated")
+	}
+	for offset < len(data) && data[offset] == 0 {
+		offset++
+	}
+
+	arguments := make([]string, 0, argc)
+	for len(arguments) < argc {
+		argument, next, terminated := readCString(data, offset)
+		if !terminated {
+			return ProcessCommandInfo{}, fmt.Errorf("argument %d is not terminated", len(arguments))
+		}
+		arguments = append(arguments, argument)
+		offset = next
+	}
+
+	environment := make(map[string]string)
+	for offset < len(data) {
+		if data[offset] == 0 {
+			offset++
+			continue
+		}
+		value, next, terminated := readCString(data, offset)
+		if !terminated {
+			break
+		}
+		offset = next
+		key, envValue, found := strings.Cut(value, "=")
+		if found && key != "" {
+			environment[key] = envValue
+		}
+	}
+
+	return ProcessCommandInfo{
+		ExecutablePath: executablePath,
+		Arguments:      arguments,
+		Environment:    environment,
+	}, nil
+}
+
+func readCString(data []byte, offset int) (string, int, bool) {
+	if offset < 0 || offset >= len(data) {
+		return "", offset, false
+	}
+	for index := offset; index < len(data); index++ {
+		if data[index] == 0 {
+			return string(data[offset:index]), index + 1, true
+		}
+	}
+	return "", offset, false
 }
 
 func GetDescendantProcesses(parentPID uint32) ([]ProcessInfo, error) {

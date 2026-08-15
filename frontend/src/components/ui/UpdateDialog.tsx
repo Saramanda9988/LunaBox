@@ -1,7 +1,8 @@
+import { Browser } from "@wailsio/runtime";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DownloadAndApplyUpdate } from "../../../wailsjs/go/service/UpdateService";
-import { BrowserOpenURL, EventsOn } from "../../../wailsjs/runtime/runtime";
+import { DownloadAndApplyUpdate } from "../../../bindings/lunabox/internal/service/updateservice";
+import { onWailsEvent } from "../../bindings/runtime";
 import { ModalPortal } from "./ModalPortal";
 
 interface UpdateInfo {
@@ -10,7 +11,7 @@ interface UpdateInfo {
   latest_ver: string;
   release_date: string;
   changelog: string[];
-  downloads: Record<string, string>;
+  downloads: Record<string, string | undefined>;
   update_manifest_url: string;
 }
 
@@ -47,7 +48,7 @@ export function UpdateDialog({
   }, [updateInfo]);
 
   useEffect(() => {
-    return EventsOn("update:progress", (value: UpdateProgress) => {
+    return onWailsEvent("update:progress", (value: UpdateProgress) => {
       setProgress(value);
     });
   }, []);
@@ -72,7 +73,7 @@ export function UpdateDialog({
   const handleDownload = (source: string) => {
     const url = updateInfo.downloads[source];
     if (url) {
-      BrowserOpenURL(url);
+      void Browser.OpenURL(url);
     }
   };
 

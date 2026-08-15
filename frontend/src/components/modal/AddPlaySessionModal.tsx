@@ -2,7 +2,7 @@ import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { AddPlaySession } from "../../../wailsjs/go/service/SessionService";
+import { AddPlaySession } from "../../../bindings/lunabox/internal/service/sessionservice";
 import {
   formatDateToYYYYMMDD,
   formatDuration,

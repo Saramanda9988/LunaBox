@@ -3,7 +3,6 @@ package imageutils
 import (
 	"io"
 	"lunabox/internal/utils/apputils"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -81,14 +80,14 @@ func imageExtensionFromContentType(contentType string) (string, bool) {
 	return "", false
 }
 
-func saveHTTPBody(resp *http.Response, destPath string) error {
+func saveHTTPBody(body io.Reader, destPath string) error {
 	destFile, err := os.Create(destPath)
 	if err != nil {
 		return err
 	}
 	defer destFile.Close()
 
-	if _, err := io.Copy(destFile, resp.Body); err != nil {
+	if _, err := io.Copy(destFile, body); err != nil {
 		_ = os.Remove(destPath)
 		return err
 	}

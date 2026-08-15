@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { GetRunningProcesses } from "../../../wailsjs/go/service/GameService";
 import {
-  CancelProcessSelection,
-  NotifyProcessSelected,
-} from "../../../wailsjs/go/service/StartService";
+  GetRunningProcesses,
+  UpdateGameProcessName,
+} from "../../../bindings/lunabox/internal/service/gameservice";
 import { ModalPortal } from "../ui/ModalPortal";
 
 interface ProcessInfo {
@@ -16,7 +15,6 @@ interface ProcessInfo {
 interface ProcessSelectModalProps {
   isOpen: boolean;
   gameID: string;
-  launcherExeName: string;
   onClose: () => void;
   onSelected: (processName: string) => void;
 }
@@ -24,7 +22,6 @@ interface ProcessSelectModalProps {
 export function ProcessSelectModal({
   isOpen,
   gameID,
-  launcherExeName,
   onClose,
   onSelected,
 }: ProcessSelectModalProps) {
@@ -61,18 +58,6 @@ export function ProcessSelectModal({
     p.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  const handleClose = async () => {
-    try {
-      await CancelProcessSelection(gameID);
-    }
-    catch (error) {
-      console.error("Failed to cancel process selection:", error);
-    }
-    finally {
-      onClose();
-    }
-  };
-
   const handleConfirm = async () => {
     if (!selectedProcess) {
       toast.error(t("processSelectModal.toast.selectProcess"));
@@ -80,7 +65,7 @@ export function ProcessSelectModal({
     }
 
     try {
-      await NotifyProcessSelected(gameID, selectedProcess);
+      await UpdateGameProcessName(gameID, selectedProcess);
       toast.success(
         t("processSelectModal.toast.setSuccess", { name: selectedProcess }),
       );
@@ -110,7 +95,7 @@ export function ProcessSelectModal({
                 {t("processSelectModal.title")}
               </h3>
               <p className="text-brand-600 dark:text-brand-400 text-sm leading-relaxed">
-                {t("processSelectModal.desc", { launcher: launcherExeName })}
+                {t("processSelectModal.desc")}
               </p>
             </div>
           </div>
@@ -204,7 +189,7 @@ export function ProcessSelectModal({
           <div className="flex justify-end gap-3 mt-6">
             <button
               type="button"
-              onClick={handleClose}
+              onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100 rounded-lg dark:text-brand-300 dark:hover:bg-brand-700 transition-colors"
             >
               {t("processSelectModal.cancelBtn")}

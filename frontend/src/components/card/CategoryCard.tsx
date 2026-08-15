@@ -1,12 +1,10 @@
-import type { vo } from "../../../wailsjs/go/models";
+import type { vo } from "../../../src/bindings/models";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { EmojiPickerPopover } from "../ui/EmojiPickerPopover";
 
 interface CategoryCardProps {
   category: vo.CategoryVO;
-  onDelete?: (e: React.MouseEvent) => void;
-  onEdit?: (e: React.MouseEvent) => void;
   selectionMode?: boolean;
   selected?: boolean;
   selectionDisabled?: boolean;
@@ -16,8 +14,6 @@ interface CategoryCardProps {
 
 export function CategoryCard({
   category,
-  onDelete,
-  onEdit,
   selectionMode = false,
   selected = false,
   selectionDisabled = false,
@@ -53,7 +49,10 @@ export function CategoryCard({
 
   return (
     <div
-      className={`glass-card flex items-center p-4 bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700 rounded-xl shadow-sm hover:shadow-md transition-all text-left group relative ${selectionMode ? "cursor-pointer" : ""} ${selectionMode && selected ? "ring-2 ring-neutral-500 dark:ring-neutral-400" : ""}`}
+      data-drag-selection-id={
+        selectionMode && !selectionDisabled ? category.id : undefined
+      }
+      className={`glass-card flex items-center p-4 bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700 rounded-xl shadow-sm hover:shadow-md transition-all text-left group relative ${selectionMode ? "cursor-pointer" : ""} ${selectionMode && !selectionDisabled ? "[touch-action:none]" : ""} ${selectionMode && selected ? "ring-2 ring-neutral-500 dark:ring-neutral-400" : ""}`}
       onClick={handleCardClick}
     >
       <EmojiPickerPopover
@@ -63,8 +62,8 @@ export function CategoryCard({
         fallbackIconClass={category.is_system ? "i-mdi-heart" : "i-mdi-folder"}
         onChange={onEmojiChange}
       />
-      <div className="flex-1">
-        <h3 className="font-semibold text-brand-900 dark:text-white group-hover:text-neutral-600 dark:group-hover:text-neutral-400 transition-colors">
+      <div className="min-w-0 flex-1">
+        <h3 className="truncate font-semibold text-brand-900 transition-colors group-hover:text-neutral-600 dark:text-white dark:group-hover:text-neutral-400">
           {category.is_system ? t("categories.favorites") : category.name}
         </h3>
         <p className="text-sm text-brand-500 dark:text-brand-400">
@@ -92,37 +91,6 @@ export function CategoryCard({
             </div>
           )}
         </button>
-      )}
-
-      {!selectionMode && !category.is_system && (
-        <div className="absolute right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {onEdit && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onEdit(e);
-              }}
-              className="p-2 text-brand-400 hover:text-neutral-500"
-            >
-              <div className="i-mdi-pencil text-lg" />
-            </button>
-          )}
-          {onDelete && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onDelete(e);
-              }}
-              className="p-2 text-brand-400 hover:text-error-500"
-            >
-              <div className="i-mdi-delete text-lg" />
-            </button>
-          )}
-        </div>
       )}
     </div>
   );

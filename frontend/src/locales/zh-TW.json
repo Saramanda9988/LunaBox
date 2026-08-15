@@ -11,7 +11,6 @@
     "add": "新增",
     "manualAdd": "手動新增",
     "back": "返回",
-    "previousStep": "返回上一步",
     "allStatus": "全部狀態",
     "status": "狀態",
     "notStarted": "未開始",
@@ -32,18 +31,11 @@
     "selected": "已選",
     "unknownDeveloper": "Unknown Developer",
     "select": "選擇",
-    "find": "查詢",
-    "finish": "完成",
-    "reselect": "← 重新選擇",
     "action": "操作",
     "loading": "載入中...",
     "complete": "完成",
     "stop": "停止匹配",
     "toast": {
-      "success": "成功",
-      "error": "錯誤",
-      "loadingLabel": "處理中",
-      "notice": "通知",
       "showDetails": "展開詳情",
       "hideDetails": "收起詳情",
       "dismiss": "關閉通知"
@@ -53,13 +45,11 @@
       "minutes": "分鐘",
       "hoursShort": "時",
       "minutesShort": "分"
-    }
-  },
-  "modal": {
-    "titles": {
-      "warning": "警告",
-      "info": "提示"
-    }
+    },
+    "backToTop": "返回頂部",
+    "unknownError": "未知錯誤",
+    "close": "關閉",
+    "loadMore": "載入更多"
   },
   "library": {
     "title": "遊戲庫",
@@ -67,10 +57,9 @@
     "emptyState": "暫無遊戲",
     "emptyStateAction": "新增一些遊戲開始吧",
     "notFound": "未找到匹配的遊戲",
-    "batchUpdateStatus": "批次更新狀態",
     "setStatus": "設為狀態",
     "batchAddToFilter": "批次新增到收藏",
-    "batchDelete": "批次刪除",
+    "batchImportToSteam": "批次匯入 Steam",
     "addGame": "新增遊戲",
     "addGameDesc1": "選擇執行檔並搜尋後設資料",
     "batchImport": "批次匯入",
@@ -79,6 +68,8 @@
     "importPotatoVNDesc": "匯入 PotatoVN 匯出的 ZIP 檔案",
     "importPlaynite": "從 Playnite 匯入",
     "importPlayniteDesc": "匯入 Playnite 匯出的 JSON 檔案",
+    "importYukiHub": "從 YukiHub 匯入",
+    "importYukiHubDesc": "匯入 YukiHub 匯出的 YKBAK 備份",
     "importVnite": "從 Vnite 匯入",
     "importVniteDesc": "匯入 Vnite 匯出的本地資料庫目錄",
     "importReinaManager": "從 ReinaManager 匯入",
@@ -94,12 +85,16 @@
       "batchDeleteTitle": "批次刪除遊戲",
       "batchDeleteConfirmMsg": "確定要刪除選中的 {{count}} 個遊戲嗎？此操作將從庫中移除這些遊戲，但不會刪除本地遊戲檔案。",
       "batchDeleteSuccess": "批次刪除成功",
-      "batchDeleteFailed": "批次刪除失敗"
+      "batchDeleteFailed": "批次刪除失敗",
+      "randomGameFailed": "隨機選擇遊戲失敗",
+      "batchSteamImportConfirmMsg": "確定將這 {{count}} 個遊戲新增到 Steam 中嗎？請確保遊戲已有對應的執行檔，否則將被略過。",
+      "batchSteamImportSummary": "成功匯入 {{imported}} 個，略過 {{skipped}} 個，已存在 {{existing}} 個",
+      "batchSteamImportFailed": "選中的遊戲均未能匯入 Steam",
+      "loadGamesFailed": "載入遊戲失敗"
     }
   },
   "filterBar": {
-    "exitBatchSelection": "退出批次選擇",
-    "enterBatchSelection": "批次選擇",
+    "randomGame": "隨機開啟遊戲",
     "filters": "篩選",
     "status": "狀態",
     "invert": "反選",
@@ -111,76 +106,81 @@
     "sortDesc": "降序",
     "showSortField": "封面顯示排序欄位",
     "tagFilter": "標籤篩選",
-    "clearTag": "清空標籤",
     "tagsPlaceholder": "輸入標籤..."
+  },
+  "filterPresets": {
+    "title": "遊戲篩選預設",
+    "saveCurrent": "儲存目前篩選",
+    "name": "預設名稱",
+    "namePlaceholder": "例如：想玩的劇情遊戲",
+    "create": "建立",
+    "empty": "尚未儲存預設",
+    "emptyHelp": "查看篩選預設使用說明",
+    "emptyHelpTitle": "如何使用篩選預設",
+    "emptyHelpMessage": "你可以把一組常用的篩選組合儲存下來，下次快速套用。例如，你喜歡包含「白毛」「妹系」角色且狀態為「想玩」的遊戲，儲存這些組合特徵後，下次就能快速篩選出來了～",
+    "includeTagsSummary": "包含全部標籤：{{tags}}",
+    "excludeTagsSummary": "排除任一標籤：{{tags}}",
+    "includeStatusSummary": "狀態：{{status}}",
+    "excludeStatusSummary": "排除狀態：{{status}}",
+    "delete": "刪除「{{name}}」",
+    "nameRequired": "請輸入預設名稱",
+    "filterRequired": "目前篩選至少需要一個標籤或遊戲狀態",
+    "loadFailed": "讀取篩選預設失敗",
+    "createSuccess": "篩選預設建立成功",
+    "createFailed": "篩選預設建立失敗"
   },
   "tags": {
     "add": "新增標籤",
     "inputPlaceholder": "輸入標籤",
     "addFailed": "新增標籤失敗",
     "deleteFailed": "刪除標籤失敗",
-    "deleteScrapedHint": "已刪除自動標籤；重新獲取後設資料後它可能再次出現",
-    "revealSpoiler": "點選顯示劇透標籤"
+    "deleteScrapedHint": "已刪除自動標籤；重新獲取後設資料後它可能再次出現"
   },
   "gameCard": {
-    "deselect": "取消選擇",
-    "select": "選擇",
     "startGame": "啟動遊戲",
     "startAsAdmin": "管理員啟動",
-    "launchMode": "啟動方式",
+    "launchMode": "臨時啟動方式",
     "normalLaunchDesc": "按目前遊戲啟動設定執行",
     "startWithSteam": "透過 Steam 啟動",
     "steamLaunchDesc": "使用 Steam 用戶端啟動該遊戲",
     "adminLaunchDesc": "觸發 UAC 並以管理員權限執行",
-    "viewDetails": "檢視詳情",
     "startSuccess": "{{name}} 啟動成功",
     "startFailedNotLaunched": "{{name}} 啟動失敗（未能啟動）",
-    "startFailedLog": "{{name}} 啟動失敗, 查詢日誌獲得幫助"
+    "startFailedLog": "{{name}} 啟動失敗, 查詢日誌獲得幫助",
+    "startWithCompatibility": "透過相容層啟動",
+    "compatibilityLaunchDesc": "使用 Wine 或 CrossOver 啟動 Windows 遊戲"
   },
   "addGameModal": {
-    "title": "新增遊戲",
     "chooseImportType": "請選擇要匯入的遊戲型別",
     "localGame": "本地遊戲",
     "localGameHint": "已經安裝在本機，選擇 exe 後新增到遊戲庫。",
     "remoteGame": "網路遊戲",
     "remoteGameHint": "當前沒有本地 exe，先作為想玩的遊戲加入庫。",
-    "remoteImportHint": "可直接通過資料來源 ID 匯入，也可以輸入遊戲名稱搜尋元資訊。",
     "orSearchByName": "或按名稱搜尋",
     "selectExecutable": "選擇啟動程式",
-    "selectExecutablePlaceholder": "請選擇一個可執行程式",
-    "gameNameLabel": "遊戲名稱 *",
-    "fetchMetadata": "搜尋元資訊",
-    "whichResultExpected": "哪個結果是您期望的？",
     "fromSource": "來自 {{source}}",
-    "notMatched": "都不是?",
-    "inputManual": "手動填寫",
     "searchById": "輸入id查詢",
-    "dataSourceLabel": "資料來源",
-    "gameIdLabel": "遊戲 ID",
     "gameIdPlaceholder": "請輸入遊戲 ID",
-    "confirm": "確認",
-    "manualFillTitle": "手動填寫遊戲資訊",
-    "coverImageLabel": "封面圖片",
-    "coverImagePlaceholder": "輸入圖片 URL 或選擇本地圖片",
-    "coverImageSupportTip": "支援遠端 URL 和本地圖片選取",
-    "developerLabel": "開發商",
-    "summaryLabel": "簡介",
     "toast": {
       "openSelectorFailed": "開啟系統選擇器失敗",
       "fetchMetaFailed": "獲取元資訊失敗,請檢查網路或token的有效性",
-      "saveFailed": "儲存遊戲失敗",
-      "fetchByIdFailed": "通過id獲取元資訊失敗, 請檢查網路或token的有效性",
       "selectCoverFailed": "選擇封面圖片失敗",
-      "nameRequired": "請填寫遊戲名稱",
       "saveGameFailed": "儲存遊戲失敗",
       "fetchMetaByIdFailed": "通過id獲取元資訊失敗, 請檢查網路或token的有效性",
       "fillGameName": "請填寫遊戲名稱",
-      "selectExecutableRequired": "請選擇啟動程式"
+      "selectExecutableRequired": "請選擇啟動程式",
+      "duplicateSource": "資料來源 {{source}} 保留了多個結果，請刪除錯誤項後再匯入"
     },
     "executablePlaceholder": "請選擇一個可執行程式",
     "gameName": "遊戲名稱",
     "searchMeta": "搜尋元資訊",
-    "whichResult": "哪個結果是您期望的？",
+    "whichResult": "哪些結果是您期望的？",
+    "selectionHelp": "查看候選結果選擇說明",
+    "selectionHelpTitle": "如何選擇候選結果",
+    "selectionHelpRemove": "點選卡片右上角的關閉按鈕，移除錯誤的擷取結果。",
+    "selectionHelpUnique": "每個資料來源僅保留一個正確結果。",
+    "selectionHelpDefault": "點選準備匯入的卡片，該來源會作為預設顯示來源，其餘保留結果會一併關聯到遊戲。",
+    "removeResult": "移除 {{source}} 的這個結果",
     "goBack": "返回",
     "noneOfAbove": "都不是?",
     "fillManually": "手動填寫",
@@ -192,7 +192,9 @@
     "coverPlaceholder": "輸入圖片 URL 或選擇本地圖片",
     "coverHint": "支援遠端 URL 和本地圖片選取",
     "developer": "開發商",
-    "summary": "簡介"
+    "summary": "簡介",
+    "scrollResultsPrev": "向前查看更多結果",
+    "scrollResultsNext": "向後查看更多結果"
   },
   "batchImportModal": {
     "title": "批次匯入遊戲庫",
@@ -201,7 +203,6 @@
     "btn": {
       "selectDir": "選擇遊戲庫目錄"
     },
-    "options": "選項",
     "scanMode": {
       "label": "掃描方式",
       "button": "掃描模式",
@@ -246,11 +247,9 @@
     "manualSelect": "手動選擇",
     "startMatching": "開始匹配後設資料",
     "continueMatching": "繼續匹配後設資料",
-    "retryFailed": "重新匹配失敗項",
     "preferredSource": {
-      "label": "偏好資料源",
+      "label": "必選資料來源",
       "none": "不指定",
-      "hint": "不指定時會按普通邏輯嘗試所有資料源；指定後此資料源必須成功匹配。未找到不算失敗，限流或連續異常會暫停批次匹配。",
       "rateLimitedPause": "{{source}} 返回限流，已暫停匹配：{{error}}",
       "consecutiveFailurePause": "{{source}} 已連續 {{count}} 次匹配失敗，已暫停匹配：{{error}}"
     },
@@ -285,14 +284,16 @@
       "importSuccess": "成功匯入 {{count}} 個遊戲",
       "importFailed": "匯入失敗",
       "gameNotFound": "未找到遊戲",
-      "fetchFailed": "獲取失敗"
-    }
+      "fetchFailed": "獲取失敗",
+      "openFolderFailed": "開啟目前資料夾失敗"
+    },
+    "openFolder": "開啟目前資料夾"
   },
   "gameImportModal": {
     "playnite": {
       "title": "從 Playnite 匯入",
       "desc": "選擇 Playnite 匯出的 JSON 檔案",
-      "hint": "支援通過 Playnite 匯出指令碼生成的遊戲資料檔案",
+      "hint": "支援 LunaBox Exporter 擴充功能產生的遊戲庫 JSON 檔案",
       "btn": "選擇 JSON 檔案"
     },
     "potatovn": {
@@ -300,6 +301,12 @@
       "desc": "選擇 PotatoVN 匯出的 ZIP 檔案",
       "hint": "支援包含 data.galgames.json 的 PotatoVN 備份檔案",
       "btn": "選擇 ZIP 檔案"
+    },
+    "yukihub": {
+      "title": "從 YukiHub 匯入",
+      "desc": "選擇 YukiHub 匯出的 YKBAK 備份檔案",
+      "hint": "將匯入後設資料、遠端封面、標籤和遊玩記錄；Android 路徑將留空，可在遊戲詳情中設定 Windows 啟動路徑",
+      "btn": "選擇 YKBAK 檔案"
     },
     "vnite": {
       "title": "從 Vnite 匯入",
@@ -319,32 +326,27 @@
       "hint": "不需要 Steam Web API Key，將根據 AppID 補全元資料",
       "btn": "掃描 Steam 庫"
     },
-    "loading": "載入中...",
     "willImport": "將匯入",
     "exists": "已存在",
     "samePath": "相同路徑",
     "samePathActionTitle": "檢測到 {{count}} 個相同路徑遊戲",
     "samePathSkip": "跳過",
     "samePathSkipHint": "保留現有遊戲，不匯入這些項目。",
+    "samePathMergeSessions": "僅合併",
+    "samePathMergeSessionsHint": "僅合併遊玩記錄，保留現有遊戲資訊。",
     "samePathMerge": "更新並合併",
     "samePathMergeHint": "使用匯入側元資料更新現有遊戲，並合併遊玩記錄。",
     "noPath": "無路徑",
     "skipNoPath": "跳過無路徑的遊戲",
-    "noPathHint": "有 {{count}} 個遊戲沒有本地路徑，這些可能是網路遊戲或已刪除的遊戲。",
-    "noPathHintCheck": "勾選此項將跳過這些遊戲。",
-    "noPathHintUncheck": "取消勾選以匯入這些遊戲（不含啟動路徑）。",
-    "noGameDataFound": "未找到遊戲資料",
     "gameName": "遊戲名稱",
     "developer": "開發商",
     "status": {
       "skipped": "將跳過",
       "update": "將更新"
     },
-    "willSkip": "將跳過",
     "newAdd": "新增",
     "importCount": "匯入 {{count}} 個遊戲",
     "importing": "正在匯入...",
-    "doNotCloseWarning": "這可能需要一些時間，請勿關閉視窗",
     "toast": {
       "previewFailed": "預覽匯入內容失敗",
       "selectFileFailed": "選擇檔案失敗",
@@ -376,7 +378,6 @@
     "summary": "簡介",
     "noSummary": "暫無簡介",
     "noCover": "沒有封面",
-    "addToFav": "新增到收藏",
     "deleteGame": "刪除遊戲",
     "deleteConfirmMsg": "確定要刪除遊戲 \"{{name}}\" 嗎？此操作將從庫中移除該遊戲，但不會刪除本地遊戲檔案。",
     "confirmDelete": "確認刪除",
@@ -384,7 +385,8 @@
       "stats": "遊戲統計",
       "launch": "啟動配置",
       "backup": "備份",
-      "progress": "遊玩進度"
+      "progress": "遊玩進度",
+      "review": "評價"
     },
     "toast": {
       "loadDataFailed": "載入遊戲資料失敗",
@@ -406,16 +408,41 @@
       "selectFileFailed": "選擇檔案失敗"
     }
   },
+  "gameReview": {
+    "title": "請先留步...",
+    "ratingLabel": "個人評分",
+    "ratingPrompt": "請發表你對這部作品的評分",
+    "ratingEmpty": "尚未評分",
+    "ratingValue": "{{rating}} / 10",
+    "clearRating": "清除評分",
+    "contentLabel": "評價內容",
+    "contentPlaceholder": "寫下喜歡的部分、遊玩感受，或留給未來自己的記錄……",
+    "spoilerLabel": "包含劇透",
+    "spoilerHint": "此標記會在傳送到 Hikarinagi 時一併提交。",
+    "syncTo": "同步到 {{provider}}",
+    "autoSave": {
+      "hint": "修改後會自動儲存",
+      "pending": "等待自動儲存",
+      "saving": "正在儲存……",
+      "saved": "已自動儲存",
+      "failed": "自動儲存失敗，繼續修改後將重試"
+    },
+    "toast": {
+      "loadFailed": "讀取評價失敗：{{error}}",
+      "synced": "評價已傳送到 {{count}} 個平台",
+      "syncPartial": "傳送完成：成功 {{succeeded}} 個，失敗 {{failed}} 個",
+      "syncFailed": "傳送評價失敗：{{error}}",
+      "emptySaveResult": "後端未回傳儲存結果"
+    }
+  },
   "gameProgress": {
     "title": "遊玩進度",
     "hint": "記錄當前進度，AI 總結將嚴格遵守您設定的劇透邊界",
     "newRecord": "新增記錄",
     "latestRecordedAt": "最近記錄時間：{{time}}",
     "addRecord": "新增記錄",
-    "historyTitle": "遊玩記錄鏈",
     "historyEmpty": "還沒有遊玩記錄。新增第一條後，這裡會開始形成完整的遊玩時間線。",
     "noNote": "沒有填寫備註",
-    "recorded": "已記錄",
     "chapter": "當前章節",
     "chapterPlaceholder": "如：第二章 / Chapter 2",
     "route": "當前角色線 / 路線",
@@ -451,12 +478,8 @@
     "autoBackupEnabled": "自動備份已啟用",
     "noLocalBackups": "暫無本地備份記錄",
     "size": "大小: ",
-    "uploadToCloud": "上傳到雲端",
-    "restore": "恢復備份",
     "cloudBackups": "雲端備份",
-    "refreshCloudList": "重新整理雲端備份列表",
     "noCloudBackups": "暫無雲端備份記錄",
-    "restoreFromCloud": "從雲端恢復",
     "cloudNotEnabled": "雲備份未啟用",
     "cloudConfigHint": "前往設定頁面配置雲備份，將存檔同步到雲端",
     "modal": {
@@ -488,25 +511,57 @@
     "executableHint": "LunaBox 使用此執行檔啟動遊戲。這裡是您一開始選擇的執行檔路徑",
     "actualProcess": "實際遊戲程序",
     "selectProcessFile": "選擇程序檔案",
-    "processPlaceholderDarwin": "macOS 下由 Wine 父程序整體監控，無需指定",
-    "processHint": "指定實際遊戲的程序名稱（包含 .exe 字尾）。\n如果不指定，LunaBox 會嘗試監控可執行路徑。如果之前的選擇是啟動器，您需要在遊戲啟動後彈出的選擇框中手動指定此程序。\n在此處預先填寫可避免每次啟動時手動選擇。",
-    "processHintDarwin": "macOS 下 LunaBox 會監控原生 App 或 Wine 父程序，無需指定實際遊戲程序。",
+    "selectRunningProcess": "選擇執行中的程序",
+    "processPlaceholderDarwin": "macOS / Linux 下由啟動器或 Wine 父程序整體監控，無需指定",
+    "processHint": "指定實際遊戲的程序名稱（包含 .exe 字尾）。如果啟動檔案屬於啟動器，可先啟動遊戲，再透過「選擇執行中的程序」從目前程序列表中指定實際遊戲，儲存後重新啟動遊戲。",
+    "processHintDarwin": "macOS / Linux 下 LunaBox 會監控啟動器程序、Wine 父程序或原生 App，無需指定實際遊戲程序。",
     "launchMode": "預設啟動方式",
     "launchModeNormal": "普通啟動",
     "launchModeSteam": "Steam 啟動",
-    "launchModeHint": "直接點擊啟動按鈕或快捷啟動時會使用此方式；下拉選單中的管理員啟動僅對本次啟動生效。",
-    "launchModeSteamUnavailableHint": "目前遊戲沒有可用的 Steam AppID，因此只能使用普通啟動。",
     "exportShortcut": "匯出快捷啟動方式",
     "exportShortcutHint": "匯出一個 `.url` 快捷方式檔案。雙擊後會喚起 LunaBox，並按當前遊戲配置啟動和監控該遊戲。",
-    "wineTools": "Wine 啟動工具",
-    "wineRunner": "Wine runner",
+    "compatibilityTools": "相容層啟動器",
+    "compatibilityToolsSteamHint": "目前遊戲使用 Steam 啟動，相容層固定為 Proton；可在這裡調整 Proton 版本和 Steam 啟動參數。",
+    "compatibilityToolsWineHint": "目前遊戲使用普通啟動，可選擇可用的 Wine 啟動器。",
+    "compatibilityEngine": "相容層",
+    "steamTools": "Steam 啟動器",
+    "steamToolsHint": "讀取 Steam 的相容工具設定，可為此遊戲指定 Proton 版本。",
+    "steamLaunchOptions": "Steam 啟動參數",
+    "steamLaunchOptionsHint": "寫入 Steam 的「啟動選項」。由 LunaBox 匯入的非 Steam 遊戲會同步到 shortcuts.vdf；原生 Steam 遊戲請在 Steam 內容中設定。修改後建議重啟 Steam。",
+    "steamLaunchOptionsPlaceholder": "例如 LANG=zh_CN.UTF-8 %command%",
+    "steamLaunchOptionsSave": "儲存到 Steam",
+    "steamLaunchOptionsSteamRunning": "Steam 正在執行，請先完全結束 Steam 後再儲存啟動參數。",
+    "steamLaunchOptionsNotReady": "Steam 快捷方式尚未準備好：{{state}}",
+    "steamLaunchOptionsPresets": {
+      "chineseLocale": "強制中文環境",
+      "fullChineseLocale": "完整中文 Locale",
+      "protonLog": "開啟 Proton 日誌"
+    },
+    "steamProton": "Proton 版本",
+    "steamProtonAuto": "Steam 預設",
+    "steamProtonDefault": "繼承 Steam 預設（{{tool}}）",
+    "steamProtonHint": "修改後會寫入 Steam config.vdf，Steam 正在執行時可能需要重啟客戶端後生效。",
+    "steamProtonLoading": "正在讀取 Steam Proton 配置...",
+    "steamProtonError": "Steam Proton 配置讀取失敗：{{error}}",
+    "steamProtonNotInstalled": "未偵測到 Linux Steam 客戶端。",
+    "steamProtonNotAssociated": "此遊戲尚未關聯 Steam，先切換為 Steam 啟動並完成匯入後再設定 Proton。",
+    "steamProtonRefresh": "重新整理 Steam 設定",
+    "steamProtonLockedHint": "Steam 啟動模式下由 Steam/Proton 接管相容層，不能在這裡切換為 Wine 或自訂啟動器。",
+    "steamRestart": "重啟 Steam",
+    "steamRestartConfirmTitle": "重啟 Steam 讓配置生效？",
+    "steamRestartConfirmMessage": "Steam 正在執行，LunaBox 已寫入配置。是否立即重啟 Steam，讓剛儲存的啟動參數或 Proton 設定生效？",
+    "steamProtonPrefix": "Proton Prefix 目錄",
+    "steamProtonPrefixHint": "這裡是 Steam 為此遊戲建立的 compatdata/pfx 目錄；若為空，請先透過 Steam 啟動一次遊戲。",
+    "steamProtonPrefixNotFound": "尚未找到 Proton Prefix；通常需要先透過 Steam 啟動一次遊戲。",
+    "steamProtonPrefixOpen": "開啟目錄",
     "wineRunnerNone": "未啟用",
     "wineRunnerSystem": "系統 Wine",
     "wineRunnerCrossover": "CrossOver",
     "wineRunnerCustom": "自訂",
-    "wineRunnerHint": "Windows 可執行檔在 macOS 上啟動時需要選擇 Wine runner。",
+    "wineRunnerHint": "Windows 可執行檔在 macOS / Linux 上啟動時需要選擇 Wine runner。",
     "wineArgs": "Wine 參數",
     "wineArgsPlaceholder": "例如 --no-d3d11 -windowed",
+    "wineArgsHint": "支援前置環境變數，可沿用 Steam 啟動選項寫法；%command% 會被識別為遊戲本體佔位符。",
     "winePrefix": "Wine prefix",
     "winePrefixPlaceholder": "留空則使用全域預設或 Wine 預設",
     "winePrefixHint": "可為此遊戲覆蓋 WINEPREFIX 路徑。",
@@ -525,13 +580,43 @@
       "lePathRequired": "請先在設定中配置 Locale Emulator 路徑",
       "magpiePathRequired": "請先在設定中配置 Magpie 路徑",
       "shortcutExportSuccess": "快捷啟動方式已匯出\n{{path}}",
-      "shortcutExportFailed": "匯出快捷啟動方式失敗: {{error}}"
-    }
+      "shortcutExportFailed": "匯出快捷啟動方式失敗: {{error}}",
+      "steamProtonSaved": "Steam Proton 設定已儲存",
+      "steamProtonSaveFailed": "儲存 Steam Proton 設定失敗: {{error}}",
+      "steamLaunchOptionsSaved": "Steam 啟動參數已儲存",
+      "steamLaunchOptionsSaveFailed": "儲存 Steam 啟動參數失敗: {{error}}",
+      "steamProtonPrefixOpenFailed": "開啟 Proton Prefix 目錄失敗: {{error}}",
+      "steamRestarted": "Steam 已重啟",
+      "steamRestartFailed": "重啟 Steam 失敗: {{error}}"
+    },
+    "launchModeCompatibility": "相容層啟動"
+  },
+  "steamImport": {
+    "title": "加入 Steam",
+    "checkingTitle": "正在檢查 Steam",
+    "checkingMessage": "正在查詢本機 Steam 遊戲庫和目前帳號的捷徑。",
+    "needsImport": "《{{name}}》尚未加入目前 Steam 帳號。LunaBox 可以將此遊戲寫入 Steam 的非 Steam 遊戲清單。",
+    "steamRunningTitle": "請先結束 Steam",
+    "steamRunning": "Steam 目前正在執行。請從系統匣完整結束 Steam 後重試，以免 Steam 結束時覆蓋捷徑檔案。",
+    "steamMissingTitle": "未偵測到 Steam",
+    "steamMissing": "請先安裝 Steam，或確認目前系統帳號能夠存取 Steam 安裝資訊。",
+    "executableRequiredTitle": "需要遊戲執行檔",
+    "executableRequired": "加入非 Steam 遊戲需要一個執行檔。請選擇此遊戲實際使用的啟動程式。",
+    "userUnavailableTitle": "無法識別 Steam 帳號",
+    "userUnavailable": "請啟動 Steam 並登入目標帳號，接著結束 Steam 後再重試。",
+    "readyTitle": "Steam 關聯可用",
+    "ready": "此遊戲已可透過 Steam 啟動。",
+    "unknownState": "Steam 傳回無法識別的狀態，請稍後重試。",
+    "localIdentityNote": "本機 Steam 關聯與遊戲中繼資料來源彼此獨立，且僅儲存在此裝置。原有封面、標籤和中繼資料來源維持原樣。",
+    "import": "加入 Steam",
+    "retry": "重新檢查",
+    "selectExecutable": "選擇執行檔",
+    "checkFailed": "檢查 Steam 狀態失敗: {{error}}",
+    "importFailed": "加入 Steam 失敗: {{error}}",
+    "importSuccess": "遊戲已加入 Steam。請啟動或重新啟動 Steam，然後再次點擊啟動。"
   },
   "gameStats": {
-    "totalPlayCount": "累計遊戲次數",
     "todayPlayTime": "今日遊戲時長",
-    "totalPlayTime": "累計總時長",
     "periodStatsLabel": {
       "week": "本周",
       "month": "本月",
@@ -544,11 +629,9 @@
     "chartLabel": "遊戲時長",
     "noPlaySessions": "暫無遊玩記錄",
     "duration": "時長:",
-    "deleteRecord": "刪除記錄",
     "viewChart": "查看圖表",
     "viewSessions": "查看遊玩記錄",
     "period": {
-      "day": "日",
       "week": "周",
       "month": "月",
       "year": "年",
@@ -569,10 +652,20 @@
   "addToCategory": {
     "title": "新增到收藏",
     "gameCount": "{{count}} 個遊戲",
-    "empty": "暫無收藏夾"
+    "empty": "暫無收藏夾",
+    "selectedCount": "已選擇 {{count}} 個收藏夾",
+    "searchPlaceholder": "搜尋收藏夾...",
+    "clearSearch": "清除搜尋",
+    "noResults": "找不到符合的收藏夾",
+    "creating": "建立中..."
   },
   "gameEdit": {
     "name": "遊戲名稱",
+    "aliases": "遊戲別名",
+    "aliasPlaceholder": "輸入別名後按 Enter 新增",
+    "aliasHint": "別名會參與遊戲庫搜尋；可設定多個別名。",
+    "addAlias": "新增別名",
+    "removeAlias": "刪除別名 {{alias}}",
     "cover": "封面圖片",
     "coverPlaceholder": "輸入圖片 URL，或在此貼上圖片",
     "selectImage": "選擇圖片",
@@ -591,7 +684,6 @@
     "ratingHint": "按 10 分制儲存，留空表示暫無評分。",
     "releaseDate": "發售日期",
     "releaseDateRawHint": "目前值：{{value}}。選擇日期後會按 YYYY-MM-DD 儲存。",
-    "path": "啟動路徑",
     "paths": "遊戲路徑",
     "executable": "可執行檔案",
     "gameDirectory": "遊戲目錄",
@@ -605,39 +697,94 @@
     "selectFolder": "選擇目錄",
     "savePathHint": "您可以指定遊戲的存檔目錄或檔案，用於雲端備份和多端同步",
     "summary": "簡介",
-    "sourceType": "資料來源型別",
-    "sourceNone": "無",
-    "sourceLocal": "本地",
     "sourceYmgal": "月幕gal",
     "sourceDlsite": "DLsite",
     "sourceTouchGal": "TouchGAL",
     "sourceHikarinagi": "Hikarinagi",
     "sourceErogameScape": "ErogameScape",
-    "sourceId": "資料來源 ID",
     "sourceIdPlaceholder": "輸入平臺對應的遊戲ID",
     "metadataLock": "鎖定後設資料",
     "metadataLockHint": "開啟後，全量後設資料更新會跳過此遊戲，並阻止從遠端覆蓋名稱、簡介、封面、廠商、評分、發售日和自動標籤。",
     "isNsfw": "NSFW 遊戲",
     "isNsfwHint": "標記後，可根據全域遊戲設定自動模糊此遊戲的封面。",
     "updateFromRemote": "從遠端更新資訊",
-    "updateFromRemoteLocked": "後設資料已鎖定，請先解鎖"
+    "openSourcePage": "開啟資料來源網頁",
+    "metadataSources": "中繼資料來源",
+    "multipleSources": "等 {{count}} 個",
+    "defaultSource": "預設",
+    "setDefaultSource": "設為預設",
+    "deleteSource": "刪除中繼資料來源",
+    "addSource": "新增來源",
+    "noMetadataSources": "尚未設定中繼資料來源",
+    "sourceSaved": "中繼資料來源已儲存",
+    "sourceDeleted": "中繼資料來源已刪除",
+    "defaultSourceSaved": "預設中繼資料來源已更新",
+    "sourceOperationFailed": "中繼資料來源操作失敗：{{error}}",
+    "or": "或",
+    "searchMetadataByCurrentName": "依目前遊戲名稱重新搜尋",
+    "metadataSearchTitle": "重新選擇中繼資料來源",
+    "metadataSearchEmpty": "找不到相符的中繼資料",
+    "metadataSearchApplySuccess": "中繼資料來源和遊戲資訊更新成功",
+    "metadataSearchFailed": "搜尋中繼資料失敗：{{error}}",
+    "metadataSearchApplyFailed": "更新中繼資料來源和遊戲資訊失敗：{{error}}"
+  },
+  "metadataUpdateFields": {
+    "selectAll": "更新所有欄位",
+    "selectedCount": "已選擇 {{count}} / {{total}} 個欄位",
+    "emptyWarning": "請至少選擇一個要更新的欄位。",
+    "name": {
+      "label": "遊戲名稱",
+      "hint": "使用遠端條目標題覆蓋本機名稱"
+    },
+    "aliases": {
+      "label": "遊戲別名",
+      "hint": "合併遠端別名並保留手動新增的別名"
+    },
+    "cover": {
+      "label": "封面",
+      "hint": "更新封面位址，並在更新後快取圖片"
+    },
+    "company": {
+      "label": "開發商",
+      "hint": "更新廠商或品牌資訊"
+    },
+    "summary": {
+      "label": "簡介",
+      "hint": "使用遠端簡介覆蓋本機簡介"
+    },
+    "rating": {
+      "label": "評分",
+      "hint": "更新遠端評分"
+    },
+    "release_date": {
+      "label": "發售日期",
+      "hint": "更新發售日期"
+    },
+    "tags": {
+      "label": "自動標籤",
+      "hint": "替換擷取來源標籤，保留手動標籤"
+    },
+    "modal": {
+      "singleTitle": "選擇要更新的欄位",
+      "singleDescription": "僅會從遠端覆蓋勾選的欄位，其餘本機內容會保留。",
+      "fullTitle": "選擇完整更新欄位",
+      "fullDescription": "完整更新會略過已鎖定的遊戲，並僅覆蓋勾選的欄位。",
+      "continue": "繼續",
+      "update": "開始更新"
+    }
   },
   "dragDropImportModal": {
     "toast": {
       "noValidGames": "未檢測到有效的遊戲檔案",
       "processFailed": "處理拖入的檔案失敗"
     },
-    "title": "拖拽匯入遊戲",
     "processing": "正在處理拖入的檔案",
-    "fileCount": "共 {{count}} 個檔案/資料夾",
-    "noValidGamesFound": "未檢測到有效的遊戲",
-    "enterId": "輸入 ID"
+    "fileCount": "共 {{count}} 個檔案/資料夾"
   },
   "home": {
     "title": "首頁",
     "welcome": "歡迎回來！",
     "welcomeBack": "歡迎回來",
-    "todayPlayTime": "今日遊玩時間",
     "noPlayRecord": "還沒有遊玩記錄",
     "noPlayRecordHint": "去遊戲庫選擇一款遊戲開始吧",
     "browseLibrary": "瀏覽遊戲庫",
@@ -649,14 +796,12 @@
     "gaming": "正在遊戲",
     "continueGame": "繼續遊戲",
     "recentPlayed": "最近遊玩",
-    "openGameDetail": "檢視遊戲詳情",
     "expandCoverPicker": "展開封面選擇",
     "collapseCoverPicker": "收起封面選擇",
     "selectGame": "切換到 {{name}}",
     "scrollRecentPrev": "向前查看更多最近遊玩",
     "scrollRecentNext": "向後查看更多最近遊玩",
     "toast": {
-      "launching": "正在啟動 {{name}}",
       "launchFailed": "啟動遊戲失敗"
     }
   },
@@ -664,7 +809,6 @@
     "launching": "正在啟動",
     "elapsed": "已遊玩 {{duration}}",
     "ending": "正在結束",
-    "collapse": "收起正在遊玩的遊戲",
     "expand": "展開正在遊玩的遊戲",
     "switchGame": "切換正在遊玩的遊戲（{{count}}）",
     "end": "結束遊玩",
@@ -679,14 +823,9 @@
     "searchPlaceholder": "搜尋收藏夾...",
     "newCategory": "新建收藏夾",
     "gameCount": "{{count}} 個遊戲",
-    "editBtnTitle": "編輯收藏夾",
-    "deleteBtnTitle": "刪除收藏夾",
-    "systemLocked": "系統收藏夾不可批次刪除",
     "emojiPicker": {
-      "change": "點選更換圖示",
       "title": "選擇圖示",
-      "clear": "移除",
-      "apply": "應用圖示"
+      "clear": "移除"
     },
     "sortOptions": {
       "name": "名稱",
@@ -698,8 +837,6 @@
       "addTitle": "新建收藏夾",
       "editTitle": "編輯收藏夾",
       "namePlaceholder": "收藏夾名稱",
-      "emojiLabel": "圖示 Emoji（可選）",
-      "emojiPlaceholder": "例如：📁、🎮、❤️",
       "create": "建立"
     },
     "toast": {
@@ -718,7 +855,8 @@
       "batchDeleteFailed": "批次刪除失敗",
       "iconUpdated": "圖示更新成功",
       "iconUpdateFailed": "圖示更新失敗"
-    }
+    },
+    "rename": "重新命名"
   },
   "settings": {
     "github": "前往 GitHub 倉庫",
@@ -731,7 +869,6 @@
       "appearance": "外觀設定",
       "game": "遊玩配置",
       "proxy": "代理配置",
-      "download": "下載配置",
       "cloudBackup": "雲配置",
       "autoBackup": "同步與備份",
       "ai": "AI 配置",
@@ -751,47 +888,10 @@
       "manualProxyURLPlaceholder": "例如 http://127.0.0.1:7890",
       "manualProxyURLIdle": "目前未使用手動代理，此地址會儲存但暫不生效。"
     },
-    "download": {
-      "proxyMode": "下載代理",
-      "proxyModeHint": "預設自動跟隨系統代理；如果下載仍未走代理，可切換為手動並填寫代理 URL。",
-      "proxyModeSystem": "自動跟隨系統代理",
-      "proxyModeManual": "手動代理",
-      "proxyModeDirect": "直連，不使用代理",
-      "proxyModeNote": "Windows 下會優先讀取系統代理。PAC 或僅 TUN 的場景如果無法識別，可改為手動代理。",
-      "manualProxyURL": "手動代理 URL",
-      "manualProxyURLHint": "支援 http://、https://、socks5://，也可直接填寫 127.0.0.1:7890 這類地址。",
-      "manualProxyURLPlaceholder": "例如 http://127.0.0.1:7890",
-      "selectGameLibraryTitle": "選擇遊戲庫目錄",
-      "clearGameLibraryPath": "清除遊戲庫目錄",
-      "gameLibraryPath": "遊戲庫目錄",
-      "gameLibraryPathHint": "下載的遊戲將解壓到此目錄。留空則使用 ~/Games",
-      "gameLibraryPathPlaceholder": "例如 D:\\Games 或 /home/user/games",
-      "effectivePath": "遊戲庫路徑：{{path}}",
-      "defaultPath": "遊戲庫路徑：~/Games（預設）",
-      "notificationTest": {
-        "label": "系統通知",
-        "hint": "傳送一則測試通知，確認下載完成或失敗時可以收到系統提醒。",
-        "button": "傳送測試通知",
-        "sending": "傳送中...",
-        "body": "系統通知運作正常。下載任務完成或失敗時，LunaBox 會在這裡提醒你。",
-        "toastSuccess": "測試通知已傳送",
-        "toastFailed": "系統通知無法使用或傳送失敗",
-        "checkAvailability": "檢測系統通知是否可用",
-        "available": "目前系統支援通知",
-        "unavailable": "目前系統不支援通知或檢測失敗"
-      },
-      "toast": {
-        "selectFailed": "選擇目錄失敗"
-      }
-    },
     "basic": {
-      "bangumiSectionLabel": "Bangumi 授權",
       "bangumiAuthHint": "登入 Bangumi 賬號以啟用後設資料重新整理和遊戲狀態同步功能。",
-      "bangumiAuthAuthorized": "已授權",
       "bangumiAuthNeedsReauth": "需要重新連線",
       "bangumiAuthUnauthorized": "未連線",
-      "bangumiAuthIdentityLabel": "已連線賬號",
-      "bangumiAuthExpiresLabel": "訪問令牌過期時間",
       "bangumiAuthLastErrorLabel": "最近錯誤",
       "bangumiStatusPushLabel": "同步遊戲狀態到 Bangumi",
       "bangumiStatusPushHint": "開啟後會在本地修改遊戲狀態時，自動將 Bangumi 條目狀態同步到遠端。",
@@ -819,16 +919,73 @@
       "timezoneHint": "用於正確顯示和記錄遊戲時長,修改後請重啟應用",
       "timezonePlaceholder": "請選擇時區",
       "closeToTray": "關閉視窗時最小化到系統托盤",
-      "launchAtLogin": "開機自啟動"
+      "launchAtLogin": "開機自啟動",
+      "selectGameLibraryTitle": "選擇遊戲庫目錄",
+      "gameLibraryPath": "遊戲庫目錄",
+      "gameLibraryPathHint": "請盡量將您的遊戲都儲存在此目錄中，下載的遊戲也會預設安裝到此目錄",
+      "gameLibraryPathPlaceholder": "例如 D:\\Games 或 /home/user/games",
+      "selectGameLibraryFailed": "選擇目錄失敗",
+      "libraryChange": {
+        "title": "更換遊戲庫目錄",
+        "affectedGamesDescription": "將更新 {{count}} 個遊戲的目錄位址",
+        "downloadBlocked": "有 {{count}} 個下載任務尚未結束、處於暫停狀態或等待重試。確認更換前請先完成或刪除這些任務，也可以跳過位址更新。",
+        "missingWarning": "新目錄中有 {{count}} 個遊戲的對應內容尚未找到。同步位址後，請確認這些遊戲已經移動完成。",
+        "steamWarning": "其中 {{count}} 個遊戲關聯 Steam。同步後可能需要重新登記 Steam 捷徑。",
+        "previewTitle": "將要更新的位址",
+        "moreChanges": "另有 {{count}} 個遊戲將在確認後同步更新。",
+        "noAffectedRecords": "沒有需要更新目錄位址的遊戲。",
+        "skipPathUpdate": "跳過",
+        "confirmChange": "確認更換",
+        "close": "關閉確認視窗",
+        "scanPaths": "掃描需要更新位址的遊戲",
+        "previewFailed": "檢查遊戲庫位址失敗",
+        "applyFailed": "更換遊戲庫目錄失敗",
+        "changeSuccess": "遊戲庫目錄已更換，更新了 {{games}} 個遊戲",
+        "changeWithoutSyncSuccess": "遊戲庫目錄已更換，原有遊戲位址保持原值",
+        "changeWithoutAffectedGamesSuccess": "遊戲庫目錄已更換"
+      },
+      "accountAuthorizationSectionLabel": "帳戶授權",
+      "hikarinagiAuthHint": "登入 Hikarinagi 賬號，以使用使用者令牌重新整理後設資料並同步遊戲狀態。",
+      "hikarinagiAuthNeedsReauth": "需要重新連線",
+      "hikarinagiAuthUnauthorized": "未連線",
+      "hikarinagiAuthLastErrorLabel": "最近錯誤",
+      "hikarinagiStatusPushLabel": "同步遊戲狀態到 Hikarinagi",
+      "hikarinagiStatusPushHint": "開啟後會在本地修改遊戲狀態時，將 Hikarinagi 遊戲條目的遊玩狀態同步到遠端。",
+      "hikarinagiAuthorize": "去授權",
+      "hikarinagiReauthorize": "重新授權",
+      "hikarinagiDisconnect": "斷開",
+      "hikarinagiAuthReconnectHint": "授權或令牌重新整理失敗後，可在此重新授權。",
+      "hikarinagiDisconnectConfirmTitle": "斷開 Hikarinagi 連線？",
+      "hikarinagiDisconnectConfirmMsg": "這會清除 LunaBox 本地儲存的 Hikarinagi OAuth 憑據。重新授權前，使用者後設資料存取和遊戲狀態同步將停止。",
+      "hikarinagiAuthSuccess": "Hikarinagi 授權成功",
+      "hikarinagiDisconnectSuccess": "已斷開本地 Hikarinagi 連線",
+      "hikarinagiAuthActionFailed": "Hikarinagi 授權操作失敗：{{error}}",
+      "hikarinagiStatusPushFailed": "Hikarinagi 狀態同步失敗：{{game}}，{{error}}",
+      "hikarinagiStatusPushFailedUnknownGame": "該遊戲",
+      "hikarinagiStatusPushFailedUnknownReason": "未知錯誤",
+      "bangumiSyncAllLabel": "同步收藏庫中的 Bangumi 遊戲狀態",
+      "bangumiSyncAllConfirmTitle": "同步全部 Bangumi 遊戲狀態？",
+      "bangumiSyncAllConfirmMsg": "只會同步收藏庫中的 Bangumi 遊戲條目。同步會依照目前本機狀態逐條更新遠端收藏狀態。",
+      "hikarinagiSyncAllLabel": "同步收藏庫中的 Hikarinagi 遊戲狀態",
+      "hikarinagiSyncAllConfirmTitle": "同步全部 Hikarinagi 遊戲狀態？",
+      "hikarinagiSyncAllConfirmMsg": "只會同步收藏庫中的 Hikarinagi 遊戲條目。同步會依照目前本機狀態逐條更新遠端遊玩狀態。",
+      "remoteStatusSyncStart": "開始同步",
+      "remoteStatusSyncRunningTitle": "正在同步 {{provider}} 遊戲狀態",
+      "remoteStatusSyncDoneTitle": "{{provider}} 遊戲狀態同步完成",
+      "remoteStatusSyncFailedTitle": "{{provider}} 遊戲狀態同步存在失敗條目",
+      "remoteStatusSyncPreparing": "正在準備遊戲條目…",
+      "remoteStatusSyncEmpty": "收藏庫中沒有可同步的 {{provider}} 遊戲條目",
+      "remoteStatusSyncSucceeded": "成功",
+      "remoteStatusSyncFailed": "失敗"
     },
     "portableSetup": {
-      "description": "便攜版不會自動寫入系統登錄檔，可在這裡一鍵註冊 lunabox:// 協議以及把 lunacli 加入使用者 PATH。所有改動只寫入 HKCU，無需系統管理員權限。",
-      "descriptionMac": "macOS 下 lunabox:// 協議由 App 套件和系統 LaunchServices 管理；lunacli 可安裝為使用者層級符號連結，無需系統管理員權限。",
+      "description": "便攜版需要單獨註冊 lunabox://；可在這裡寫入目前使用者登錄檔並把 lunacli 加入使用者 PATH，無需系統管理員權限。",
+      "descriptionMac": "lunabox:// 由 App 套件與 LaunchServices 管理；可在這裡把 lunacli 安裝為使用者層級符號連結。",
       "loading": "正在讀取狀態...",
       "statusLabel": "狀態",
       "protocolTitle": "lunabox:// 協議處理器",
-      "protocolHint": "註冊後，瀏覽器中的 lunabox:// 連結、一鍵安裝/啟動連結才能喚起本程式。",
-      "protocolHintMac": "將 LunaBox.app 安裝到應用程式目錄後，系統會根據 App 套件資訊管理 lunabox:// 連結。macOS 首版支援 install 連結，launch 連結暫不支援。",
+      "protocolHint": "把協議註冊到目前 LunaBox.exe；移動便攜版目錄後需要重新註冊。",
+      "protocolHintMac": "系統根據 App 套件資訊管理 lunabox://，無需手動寫入登錄檔。",
       "registeredPathLabel": "已註冊路徑",
       "currentPathLabel": "目前執行檔",
       "registerProtocol": "註冊協議",
@@ -904,9 +1061,6 @@
       "selectBtn": "選擇",
       "clearBtn": "清除",
       "bgImageHint": "支援 PNG、JPG、JPEG、GIF、WebP、BMP 格式，選擇後可裁剪所需區域",
-      "preview": "預覽",
-      "bgPreviewAlt": "背景預覽",
-      "effectPreview": "效果預覽",
       "blurLabel": "背景模糊度",
       "blurSharp": "清晰",
       "blurBlurry": "模糊",
@@ -923,11 +1077,10 @@
       "recordActiveOnly": "僅記錄活躍遊玩時長",
       "recordActiveOnlyHint": "啟用後，僅當遊戲視窗處於前臺焦點時才會記錄遊玩時間。這可以更準確地統計實際遊玩時長，排除掛機和後臺執行時間。",
       "warningTitle": "注意：",
-      "warningItem1": "開啟此選項將記錄遊戲程序的非完整執行時間（不包括後臺時間）",
-      "warningItem2": "已有的遊玩記錄不會受到此設定影響",
-      "warningItem3": "某些全屏遊戲可能影響焦點檢測的準確性",
-      "autoDetectProcess": "自動程序檢測",
-      "autoDetectProcessHint": "啟用後，當啟動器程序快速退出時，LunaBox 會自動提示您選擇實際的遊戲程序。停用後，將直接使用已儲存的程序名或可執行程式控制代碼進行監控，適合單exe遊戲或不需要複雜檢測的場景。",
+      "processDetectionTimeout": "遊戲進程偵測等待時間",
+      "processDetectionTimeoutHint": "啟動遊戲後，LunaBox 將在此時間內持續尋找實際遊戲進程。較長時間適合 Steam 編譯著色器等啟動較慢的遊戲。",
+      "processDetectionTimeoutWarning": "非必要情況下請勿隨意修改此等待時間。對於無法監控遊玩時長的遊戲，過長的等待時間會延遲偵測失敗，使 LunaBox 持續尋找遊戲進程。",
+      "processDetectionTimeoutMinutes": "{{minutes}} 分鐘",
       "launchTools": "遊戲啟動工具",
       "lePath": "Locale Emulator 路徑",
       "lePathPlaceholder": "選擇 LEProc.exe 檔案路徑",
@@ -936,21 +1089,29 @@
       "magpiePathPlaceholder": "選擇 Magpie.exe 檔案路徑",
       "magpiePathHint": "設定後可在遊戲編輯介面啟用 Magpie 超解析度縮放啟動",
       "wineRunnerPath": "Wine 可執行檔路徑",
-      "wineRunnerPathPlaceholder": "選擇 wine 或 CrossOver bundle 內的 bin/wine",
-      "wineRunnerPathHint": "CrossOver 請選 /Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine，而不是 .app 本身。",
-      "winePrefix": "預設 Wine prefix / bottle",
-      "winePrefixPlaceholder": "系統 Wine 填 prefix 路徑，CrossOver 填 bottle 名稱",
+      "wineRunnerPathPlaceholder": "選擇 wine 可執行檔",
+      "wineRunnerPathHint": "選擇具體的 Wine 可執行檔。CrossOver 請使用下方單獨配置。",
+      "winePrefix": "預設 Wine prefix",
+      "winePrefixPlaceholder": "系統 Wine prefix 路徑",
       "winePrefixHint": "單個遊戲可在啟動配置中覆蓋此值。",
       "selectBtn": "選擇",
       "toast": {
         "leSelectFailed": "選擇 Locale Emulator 失敗",
         "magpieSelectFailed": "選擇 Magpie 失敗",
         "wineSelectFailed": "選擇 Wine runner 失敗"
-      }
+      },
+      "muteInBackground": "遊戲在後臺時靜音",
+      "muteInBackgroundHint": "啟用後，透過 LunaBox 啟動的遊戲失去前臺焦點時會靜音，返回遊戲時恢復聲音。",
+      "muteInBackgroundHintMacOS": "啟用後，透過 LunaBox 啟動的遊戲失去前臺焦點時會靜音，返回遊戲時恢復聲音。macOS 首次使用時可能要求系統音訊錄製權限。",
+      "crossoverRunnerPath": "CrossOver 可執行檔路徑",
+      "crossoverRunnerPathPlaceholder": "選擇 CrossOver bundle 內的 bin/wine",
+      "crossoverRunnerPathHint": "請選擇 /Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine，而不是 .app 本身。",
+      "crossoverBottle": "預設 CrossOver bottle",
+      "crossoverBottlePlaceholder": "Bottle 名稱",
+      "crossoverBottleHint": "單個遊戲未指定 bottle 時使用此名稱；啟動時作為 CX_BOTTLE 注入。"
     },
     "metadata": {
       "sourceTitle": "後設資料拉取來源",
-      "sourceHint": "獲取遊戲後設資料時，僅會從已啟用的來源中獲取。",
       "sourceHints": {
         "bangumi": "專注於動漫、音樂、遊戲領域",
         "vndb": "視覺小說資訊的綜合資料庫",
@@ -963,6 +1124,8 @@
       },
       "allowDuplicateMetadataImport": "允許匯入相同後設資料 ID 的遊戲",
       "allowDuplicateMetadataImportHint": "開啟後，批次匯入和外部匯入不會因為 source_type + source_id 相同而跳過，僅保留路徑重複攔截。",
+      "steamPortraitCover": "Steam 直版封面",
+      "steamPortraitCoverHint": "開啟時優先取得 600×900 直版封面，關閉時使用 Steam 商店橫版封面；此設定會影響之後進行的 Steam 後設資料刮削。",
       "enableTagTranslation": "顯示 VNDB 標籤中文翻譯",
       "enableTagTranslationHint": "開啟後，詳情頁和標籤篩選會以中文顯示可翻譯的 VNDB 標籤；篩選和同步仍使用原始標籤。",
       "scrapedTagLimit": "刮削 Tag 數量上限",
@@ -996,20 +1159,29 @@
         "refreshFailed": "全量更新失敗：{{error}}",
         "noRemoteCovers": "目前沒有需要下載的遠端封面",
         "downloadCoverQueued": "已建立遠端封面下載任務",
-        "downloadCoverTaskFailed": "建立封面下載任務失敗",
         "downloadCoverFailed": "封面下載任務建立失敗：{{error}}"
+      },
+      "coverSourceTitle": "封面圖床",
+      "bangumiCoverSource": "Bangumi 封面來源",
+      "bangumiCoverSourceHint": "選擇 Bangumi 原始封面網址或 Hikarinagi 提供的 Bangumi 圖床。",
+      "vndbCoverSource": "VNDB 封面來源",
+      "vndbCoverSourceHint": "選擇 VNDB 原始封面網址或 Hikarinagi 提供的 VNDB 圖床。",
+      "coverSources": {
+        "original": "原始來源",
+        "hikarinagi": "Hikarinagi 圖床"
       }
     },
     "cloudBackup": {
       "serviceEnableLabel": "啟用雲服務",
       "serviceEnableHint": "控制雲備份上傳與雲同步能力；關閉後會保留當前的提供商和授權配置",
-      "serviceDisabledHint": "雲服務關閉後，不會執行雲備份上傳或雲同步，但當前提供商、憑證和授權狀態會繼續保留。",
-      "enableLabel": "啟用雲備份",
-      "enableHint": "將您的資料同步到雲端儲存",
       "providerLabel": "雲端儲存提供商",
       "providerS3": "S3 相容儲存",
       "providerUmbra": "Umbra",
       "s3Section": "S3 配置",
+      "webdavSection": "WebDAV 配置",
+      "webdavUrlHint": "WebDAV 服務位址，可包含子目錄；備份資料將存放在該目錄下的 LunaBox 資料夾中。",
+      "webdavUsername": "使用者名稱",
+      "webdavPassword": "密碼",
       "umbraSection": "Umbra 配置",
       "umbraBaseURL": "服務地址",
       "umbraBaseURLHint": "Umbra 部署的公開地址；API 與 OAuth 端點將由 SDK 自動推導。",
@@ -1026,12 +1198,10 @@
       "setPasswordBtn": "設定備份密碼",
       "passwordForIdHint": "用於生成使用者標識",
       "passwordWarning": "重要：密碼只能設定一次，設定後無法修改，請牢記",
-      "clientIdUsingDefault": "(需自行申請)",
       "clientIdHint": "申請和配置 OneDrive Client ID 請參考",
       "clientIdHintLink": "OneDrive 雲備份文件",
       "clientIdHint2": "。",
       "clientIdChangeHint": "修改 Client ID 後需要重新授權；舊授權會被自動清除。",
-      "clientIdRequiredHint": "請先填寫你自己申請的 OneDrive Client ID。",
       "authStatusLabel": "授權狀態",
       "authorized": "已授權",
       "revokeAuth": "取消授權",
@@ -1057,21 +1227,14 @@
       "syncIntervalLabel": "同步間隔",
       "syncIntervalUnit": "秒",
       "syncIntervalHint": "僅在啟用自動雲同步後生效。後臺會按該間隔執行一次全量雲同步，最小 15 秒，預設 60 秒。",
-      "syncStatusLabel": "同步狀態",
       "syncStatusIdle": "未同步",
       "syncStatusSyncing": "同步中",
       "syncStatusSuccess": "最近一次成功",
       "syncStatusFailed": "最近一次失敗",
       "syncNotConfigured": "需要先完成雲端儲存配置",
       "syncLastTimeLabel": "最後同步時間:",
-      "syncStrategyLabel": "同步策略:",
-      "syncStrategyValue": "啟動時同步 + 每 {{seconds}} 秒定時全量同步 + 手動同步",
       "syncNever": "尚未同步",
-      "syncNow": "立即同步",
       "syncingNow": "同步中...",
-      "syncScopeHint": "會同步遊戲、分類、分類歸屬、遊玩記錄、遊玩進度、標籤和封面資源。",
-      "syncLocalOnlyHint": "v1 不同步裝置本地路徑、存檔檔案和其他僅限本機的執行配置。",
-      "syncRequiresBackup": "雲同步依賴當前的雲端儲存配置，請先啟用雲備份並完成賬號/儲存設定。",
       "toast": {
         "passwordTooShort": "密碼長度至少為6位",
         "passwordMismatch": "兩次輸入的密碼不一致",
@@ -1079,6 +1242,8 @@
         "setupFailed": "設定失敗: {{error}}",
         "s3TestSuccess": "S3 連線測試成功",
         "s3TestFailed": "S3 連線測試失敗: {{error}}",
+        "webdavTestSuccess": "WebDAV 連線測試成功",
+        "webdavTestFailed": "WebDAV 連線測試失敗: {{error}}",
         "oneDriveTestSuccess": "OneDrive 連線測試成功",
         "oneDriveTestFailed": "OneDrive 連線測試失敗: {{error}}",
         "oneDriveAuthSuccess": "OneDrive 授權成功",
@@ -1099,11 +1264,8 @@
     },
     "autoBackup": {
       "localSection": "本地備份",
-      "localSectionHint": "管理應用退出和遊戲退出時的本地備份行為。",
       "cloudBackupSection": "雲備份",
-      "cloudBackupSectionHint": "管理備份產物是否自動上傳到雲端，以及雲端備份保留數量。",
       "cloudSyncSection": "雲同步 (Beta)",
-      "cloudSyncSectionHint": "管理資料庫後設資料的手動同步與自動同步策略。",
       "cloudServiceRequiredHint": "需要先在“雲配置”中啟用雲服務。",
       "cloudSyncConfigRequiredHint": "需要先在“雲配置”中完成雲端儲存提供商、授權和備份密碼設定。",
       "cloudSyncManualRecommendedHint": "當前為手動同步模式。推薦在需要時點選側邊欄雲同步按鈕，以降低多端同時寫入導致的衝突機率。",
@@ -1149,8 +1311,7 @@
       "mcpEnableHint": "啟用後會在 LunaBox GUI 程序內啟動 MCP 服務",
       "mcpPortLabel": "MCP 埠",
       "mcpPortHint": "可配置 GUI 內嵌 MCP 服務監聽的本地埠，修改後會立即嘗試切換。",
-      "mcpEndpointHint": "當前端點：{{endpoint}}",
-      "mcpLocalOnlyHint": "僅監聽 127.0.0.1，必須保持 LunaBox GUI 執行。"
+      "mcpEndpointHint": "當前端點：{{endpoint}}"
     },
     "dbBackup": {
       "sectionTitle": "資料庫備份",
@@ -1162,13 +1323,8 @@
       "autoBackupEnabled": "自動備份已啟用",
       "noLocalBackups": "暫無本地備份記錄",
       "sizeLabel": "大小:",
-      "uploadToCloud": "上傳到雲端",
-      "restoreBackup": "恢復此備份",
-      "deleteBackup": "刪除備份",
       "cloudBackups": "雲端備份",
-      "refreshCloudList": "重新整理雲端備份列表",
       "noCloudBackups": "暫無雲端備份記錄",
-      "restoreFromCloud": "從雲端恢復",
       "cloudNotEnabled": "雲備份未啟用",
       "cloudNotEnabledHint": "在上方配置雲備份後，可將資料庫同步到雲端",
       "modal": {
@@ -1286,6 +1442,13 @@
       "importGameFailed": "匯入為遊戲失敗",
       "autoImportFailed": "{{title}} 自動匯入失敗：{{error}}",
       "metadataFailed": "{{title}} 已匯入，但中繼資料取得失敗：{{error}}"
+    },
+    "imageTask": {
+      "toastDone": "批次圖片下載任務完成",
+      "source": "圖片快取",
+      "unit": "張",
+      "doneWithError": "圖片批次下載完成，部分失敗",
+      "done": "圖片批次下載完成"
     }
   },
   "installModal": {
@@ -1306,8 +1469,6 @@
       "year": "年"
     },
     "customRange": "自定義",
-    "startDate": "開始日期",
-    "endDate": "結束日期",
     "applyBtn": "應用",
     "resetBtn": "重置",
     "exportTitle": "美化匯出",
@@ -1340,15 +1501,10 @@
       "peakWeekday": "高峰 {{day}} · {{duration}}"
     },
     "leaderboard": {
-      "title": "排行榜",
       "fullTitle": "遊玩時長排行榜 Top 10",
       "modalTitle": "遊玩時長排行榜 Top 20",
       "viewMore": "查看更多",
-      "rankCol": "排名",
-      "gameCol": "遊戲",
-      "durationCol": "時長",
       "noData": "暫無資料",
-      "noMoreData": "暫無更多排行資料",
       "countHint": "共 {{count}} 項"
     },
     "heatmap": {
@@ -1358,7 +1514,6 @@
       "less": "少",
       "more": "多",
       "summary": "過去一年活躍 {{days}} 天",
-      "maxDay": "單日最長 {{duration}}",
       "weekdays": {
         "sun": "日",
         "mon": "一",
@@ -1371,8 +1526,7 @@
     },
     "tagDistribution": {
       "title": "標籤分佈 Top 10",
-      "empty": "本期間內暫無標籤資料",
-      "totalLabel": "總時長"
+      "empty": "本期間內暫無標籤資料"
     },
     "charts": {
       "totalTrend": "遊玩時長趨勢",
@@ -1389,7 +1543,6 @@
       "selectTemplate": "選擇模板",
       "selectTemplateHint": "選擇一個模板來美化你的統計資料",
       "openTemplatesDir": "開啟模板目錄",
-      "templatePreviewTitle": "模板預覽",
       "rendering": "正在渲染預覽...",
       "selectToPreview": "選擇模板以預覽效果",
       "authorPrefix": "作者:",
@@ -1424,18 +1577,11 @@
     "library": "遊戲庫",
     "stats": "統計",
     "categories": "收藏",
-    "cloudSync": "雲同步",
-    "cloudSyncReadyHint": "雲同步已就緒，可隨時手動執行",
-    "cloudSyncManualRecommendedHint": "當前推薦手動同步；如確有需要，再到設定中額外開啟自動同步",
-    "cloudSyncManualTag": "手動",
-    "cloudServiceDisabledHint": "雲服務已關閉，請先在設定中啟用雲服務",
-    "cloudSyncDisabledHint": "請先在設定中啟用並配置雲同步",
-    "settings": "設定",
-    "github": "GitHub"
+    "cloudSync": "雲同步"
   },
   "processSelectModal": {
     "title": "選擇遊戲程序",
-    "desc": "檢測到 {{launcher}} 已退出，如果你沒有手動退出，代表你匯入遊戲的不是實際的執行程序，請選擇實際執行的遊戲程序",
+    "desc": "請從目前列表中選擇實際執行的遊戲程序。儲存選擇後，重新啟動遊戲即可依此程序監控。",
     "searchPlaceholder": "搜尋程序...",
     "loading": "載入中...",
     "noMatch": "未找到匹配的程序",
@@ -1497,7 +1643,6 @@
     "excludedStatusGameCount": "共 {{count}} 個非 {{status}} 遊戲",
     "batchRemoveBtn": "批次移除",
     "addGameBtn": "新增遊戲",
-    "removeFromCategory": "從收藏夾移除",
     "noMatchingGames": "未找到匹配的遊戲",
     "emptyCategory": "這個收藏夾還沒有遊戲",
     "addFirstGame": "新增遊戲",
@@ -1515,23 +1660,37 @@
       "noGamesAvailable": "沒有可新增的遊戲"
     }
   },
+  "startup": {
+    "errorSubtitle": "啟動錯誤報告",
+    "title": "LunaBox 啟動失敗",
+    "detail": "主介面尚未啟動，請查看錯誤詳情",
+    "copyError": "複製錯誤資訊",
+    "copied": "已複製",
+    "exit": "結束 LunaBox",
+    "unknownError": "無法讀取錯誤詳情，請查看應用程式日誌"
+  },
   "addPlaySession": {
     "title": "新增遊玩記錄",
     "desc": "您可以對過去的遊玩時間進行補充記錄，以更準確地統計總遊玩時長。",
     "date": "日期",
     "selectDate": "選擇日期",
     "startTime": "開始時間",
-    "endTime": "結束時間",
     "duration": "遊玩時長",
     "endPreview": "預計結束",
     "submitting": "新增中...",
     "toast": {
-      "endBeforeStart": "結束時間必須晉於開始時間",
       "invalidStartTime": "請選擇有效的開始時間",
       "zeroDuration": "遊玩時長必須大於0",
       "futureEnd": "結束時間不能晉於當前時間",
       "success": "遊玩記錄新增成功",
       "failed": "新增遊玩記錄失敗"
+    }
+  },
+  "coverImageDownload": {
+    "toast": {
+      "started": "正在嘗試下載圖片，請勿關閉",
+      "success": "圖片下載成功",
+      "failed": "圖片下載失敗"
     }
   }
 }

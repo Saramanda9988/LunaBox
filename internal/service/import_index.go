@@ -48,12 +48,13 @@ type importIndex struct {
 }
 
 type importItem struct {
-	Game        models.Game
-	Tags        []metadata.TagItem
-	Sessions    []models.PlaySession
-	Source      enums.SourceType
-	Action      string
-	CoverLoader func(models.Game) (string, error)
+	Game                    models.Game
+	Tags                    []metadata.TagItem
+	Sessions                []models.PlaySession
+	Source                  enums.SourceType
+	Action                  string
+	UpdateLocalLaunchFields bool
+	CoverLoader             func(models.Game) (string, error)
 }
 
 func normalizeImportPath(path string) string {
@@ -174,13 +175,14 @@ func (s *GameService) listImportGameRefs() ([]importGameRef, error) {
 	}
 	rows, err := s.db.QueryContext(s.ctx, `
 		SELECT
-			id,
-			COALESCE(name, ''),
-			COALESCE(path, ''),
-			COALESCE(source_type, ''),
-			COALESCE(source_id, ''),
-			COALESCE(created_at, cached_at, updated_at, CURRENT_TIMESTAMP)
-		FROM games
+			g.id,
+			COALESCE(g.name, ''),
+			COALESCE(g.path, ''),
+			COALESCE(s.source_type, g.source_type, ''),
+			COALESCE(s.source_id, g.source_id, ''),
+			COALESCE(g.created_at, g.cached_at, g.updated_at, CURRENT_TIMESTAMP)
+		FROM games g
+		LEFT JOIN game_metadata_sources s ON s.game_id = g.id
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("query import game refs: %w", err)
@@ -278,7 +280,7 @@ func (s *ImportService) addImporterItems(items []importer.ImportItem) (importer.
 		if action == "" {
 			action = importer.ImportActionCreate
 		}
-		if action == importer.ImportActionUpdateExisting {
+		if importer.TargetsExistingGame(action) {
 			if item.ExistingGameID == "" {
 				result.Failed++
 				result.FailedNames = append(result.FailedNames, displayName)
@@ -297,36 +299,54 @@ func (s *ImportService) addImporterItems(items []importer.ImportItem) (importer.
 		}
 
 		if !s.allowDuplicateMetadataImport() {
-			if ref, ok := idx.findBySource(source, game.SourceID); ok && (action != importer.ImportActionUpdateExisting || ref.ID != item.ExistingGameID) {
-				result.Skipped++
-				result.SkippedNames = append(result.SkippedNames, displayName+" (元数据已存在: "+ref.Name+")")
+			sourceRefs := append([]models.GameMetadataSource(nil), game.MetadataSources...)
+			if len(sourceRefs) == 0 {
+				sourceRefs = append(sourceRefs, models.GameMetadataSource{SourceType: source, SourceID: game.SourceID})
+			}
+			duplicateFound := false
+			for _, sourceRef := range sourceRefs {
+				if ref, ok := idx.findBySource(sourceRef.SourceType, sourceRef.SourceID); ok && (!importer.TargetsExistingGame(action) || ref.ID != item.ExistingGameID) {
+					result.Skipped++
+					result.SkippedNames = append(result.SkippedNames, displayName+" (元数据已存在: "+ref.Name+")")
+					duplicateFound = true
+					break
+				}
+			}
+			if duplicateFound {
 				continue
 			}
 		}
-		if ref, ok := idx.findByNamePath(game.Name, item.Path); ok && (action != importer.ImportActionUpdateExisting || ref.ID != item.ExistingGameID) {
+		if ref, ok := idx.findByNamePath(game.Name, item.Path); ok && (!importer.TargetsExistingGame(action) || ref.ID != item.ExistingGameID) {
 			result.Skipped++
 			result.SkippedNames = append(result.SkippedNames, displayName+" (已存在: "+ref.Name+")")
 			continue
 		}
 
 		converted := importItem{
-			Game:        game,
-			Tags:        item.Source.Tags,
-			Sessions:    item.Sessions,
-			Source:      source,
-			Action:      action,
-			CoverLoader: item.CoverLoader,
+			Game:                    game,
+			Tags:                    item.Source.Tags,
+			Sessions:                item.Sessions,
+			Source:                  source,
+			Action:                  action,
+			UpdateLocalLaunchFields: item.UpdateLocalLaunchFields,
+			CoverLoader:             item.CoverLoader,
 		}
 		toCommit = append(toCommit, converted)
 		if action == importer.ImportActionCreate {
-			idx.add(importGameRef{
+			baseRef := importGameRef{
 				ID:         game.ID,
 				Name:       game.Name,
 				Path:       game.Path,
 				SourceType: game.SourceType,
 				SourceID:   game.SourceID,
 				CreatedAt:  game.CreatedAt,
-			})
+			}
+			idx.add(baseRef)
+			for _, sourceRef := range game.MetadataSources {
+				baseRef.SourceType = sourceRef.SourceType
+				baseRef.SourceID = sourceRef.SourceID
+				idx.add(baseRef)
+			}
 		}
 	}
 	applog.LogInfof(s.ctx, "addImporterItems: filtered commit_items=%d skipped=%d elapsed=%s", len(toCommit), result.Skipped, time.Since(stepStartedAt))
@@ -454,13 +474,24 @@ func splitImportItemsByAction(items []importItem) ([]importItem, []importItem) {
 	createItems := make([]importItem, 0, len(items))
 	updateItems := make([]importItem, 0)
 	for _, item := range items {
-		if item.Action == importer.ImportActionUpdateExisting {
+		switch item.Action {
+		case importer.ImportActionUpdateExisting:
 			updateItems = append(updateItems, item)
-			continue
+		case importer.ImportActionCreate:
+			createItems = append(createItems, item)
 		}
-		createItems = append(createItems, item)
 	}
 	return createItems, updateItems
+}
+
+func importItemsWithMetadata(items []importItem) []importItem {
+	filtered := make([]importItem, 0, len(items))
+	for _, item := range items {
+		if item.Action != importer.ImportActionMergeSessions {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
 }
 
 func (s *ImportService) addImportedItems(ctx context.Context, conn *sql.Conn, items []importItem) (int, error) {
@@ -488,6 +519,10 @@ func (s *ImportService) addImportedItems(ctx context.Context, conn *sql.Conn, it
 		wine_args TEXT,
 		wine_prefix TEXT,
 		launch_mode TEXT,
+		steam_launch_id TEXT,
+		steam_launch_kind TEXT,
+		steam_user_id TEXT,
+		steam_launch_options TEXT,
 		source_type TEXT,
 		cached_at TIMESTAMPTZ,
 		source_id TEXT,
@@ -546,6 +581,10 @@ func (s *ImportService) addImportedItems(ctx context.Context, conn *sql.Conn, it
 				game.WineArgs,
 				game.WinePrefix,
 				string(game.LaunchMode),
+				game.SteamLaunchID,
+				game.SteamLaunchKind,
+				game.SteamUserID,
+				game.SteamLaunchOptions,
 				string(game.SourceType),
 				game.CachedAt,
 				game.SourceID,
@@ -565,12 +604,16 @@ func (s *ImportService) addImportedItems(ctx context.Context, conn *sql.Conn, it
 
 	if _, err := conn.ExecContext(ctx, `INSERT INTO games (
 		id, name, cover_url, cover_source_url, company, summary, rating, release_date, path, game_directory,
-		save_path, process_name, wine_runner, wine_args, wine_prefix, launch_mode, source_type, cached_at, source_id, created_at, updated_at,
+		save_path, process_name, wine_runner, wine_args, wine_prefix, launch_mode,
+		steam_launch_id, steam_launch_kind, steam_user_id, steam_launch_options,
+		source_type, cached_at, source_id, created_at, updated_at,
 		use_locale_emulator, use_magpie, is_nsfw
 	)
 	SELECT
 		id, name, cover_url, cover_source_url, company, summary, rating, release_date, path, game_directory,
-		save_path, process_name, wine_runner, wine_args, wine_prefix, launch_mode, source_type, cached_at, source_id, created_at, updated_at,
+		save_path, process_name, wine_runner, wine_args, wine_prefix, launch_mode,
+		steam_launch_id, steam_launch_kind, steam_user_id, steam_launch_options,
+		source_type, cached_at, source_id, created_at, updated_at,
 		use_locale_emulator, use_magpie, is_nsfw
 	FROM temp_import_games`); err != nil {
 		return 0, fmt.Errorf("insert imported games from staging: %w", err)
@@ -683,6 +726,153 @@ func (s *ImportService) updateImportedItemMetadata(ctx context.Context, conn *sq
 		WHERE games.id = temp_update_import_games.id
 	`); err != nil {
 		return inserted, fmt.Errorf("update imported game metadata from staging: %w", err)
+	}
+
+	return inserted, nil
+}
+
+func (s *ImportService) upsertImportedItemMetadataSources(ctx context.Context, conn *sql.Conn, items []importItem) (int, error) {
+	count := 0
+	now := time.Now()
+	for _, item := range items {
+		game := item.Game
+		sources := append([]models.GameMetadataSource(nil), game.MetadataSources...)
+		if len(sources) == 0 && game.SourceType != "" && game.SourceType != enums.Local && strings.TrimSpace(game.SourceID) != "" {
+			sources = append(sources, models.GameMetadataSource{SourceType: game.SourceType, SourceID: game.SourceID})
+		}
+		seen := make(map[enums.SourceType]struct{}, len(sources))
+		for _, source := range sources {
+			sourceType, sourceID, normalizeErr := normalizeGameMetadataSource(source.SourceType, source.SourceID)
+			if normalizeErr != nil {
+				continue
+			}
+			if _, exists := seen[sourceType]; exists {
+				continue
+			}
+			seen[sourceType] = struct{}{}
+			cachedAt := source.CachedAt
+			if cachedAt.IsZero() {
+				cachedAt = game.CachedAt
+			}
+			if cachedAt.IsZero() {
+				cachedAt = now
+			}
+			if _, err := conn.ExecContext(ctx, `
+				INSERT INTO game_metadata_sources (
+					game_id, source_type, source_id, cached_at, created_at, updated_at
+				) VALUES (?, ?, ?, ?, ?, ?)
+				ON CONFLICT (game_id, source_type) DO UPDATE SET
+					source_id = EXCLUDED.source_id,
+					cached_at = EXCLUDED.cached_at,
+					updated_at = EXCLUDED.updated_at
+			`, game.ID, string(sourceType), sourceID, cachedAt, now, now); err != nil {
+				return count, fmt.Errorf("upsert imported metadata source %s for %s: %w", sourceType, game.Name, err)
+			}
+			if err := deleteSyncTombstone(ctx, conn, cloudSyncEntityGameMetadataSource, metadataSourceTombstoneID(game.ID, sourceType)); err != nil {
+				return count, err
+			}
+			count++
+		}
+
+		defaultSource := game.SourceType
+		if defaultSource == enums.Local {
+			defaultSource = ""
+		}
+		if defaultSource != "" {
+			for _, source := range sources {
+				if gamehelper.NormalizeMetadataSourceType(source.SourceType) != gamehelper.NormalizeMetadataSourceType(defaultSource) {
+					continue
+				}
+				if _, err := conn.ExecContext(ctx, `
+					UPDATE games SET source_type = ?, source_id = ? WHERE id = ?
+				`, string(defaultSource), strings.TrimSpace(source.SourceID), game.ID); err != nil {
+					return count, fmt.Errorf("set imported default metadata source for %s: %w", game.Name, err)
+				}
+				break
+			}
+		}
+	}
+	return count, nil
+}
+
+func (s *ImportService) updateImportedItemLocalLaunchFields(ctx context.Context, conn *sql.Conn, items []importItem) (int, error) {
+	hasUpdates := false
+	for _, item := range items {
+		if item.UpdateLocalLaunchFields && item.Game.ID != "" {
+			hasUpdates = true
+			break
+		}
+	}
+	if !hasUpdates {
+		return 0, nil
+	}
+
+	if _, err := conn.ExecContext(ctx, `DROP TABLE IF EXISTS temp_update_import_launch_fields`); err != nil {
+		return 0, fmt.Errorf("drop temp_update_import_launch_fields: %w", err)
+	}
+	_, err := conn.ExecContext(ctx, `CREATE TEMP TABLE temp_update_import_launch_fields (
+		id TEXT,
+		path TEXT,
+		game_directory TEXT,
+		process_name TEXT,
+		launch_mode TEXT,
+		steam_launch_id TEXT,
+		steam_launch_kind TEXT,
+		steam_user_id TEXT
+	)`)
+	if err != nil {
+		return 0, fmt.Errorf("create temp_update_import_launch_fields: %w", err)
+	}
+
+	inserted := 0
+	if err := appendImportRows(ctx, conn, "temp_update_import_launch_fields", func(appender *duckdb.Appender) error {
+		for _, item := range items {
+			if !item.UpdateLocalLaunchFields || item.Game.ID == "" {
+				continue
+			}
+			game := item.Game
+			if game.GameDirectory == "" {
+				game.GameDirectory = gamehelper.DefaultGameDirectory(game.Path)
+			}
+			game.LaunchMode = enums.NormalizeLaunchMode(game.LaunchMode)
+			if err := appender.AppendRow(
+				game.ID,
+				game.Path,
+				game.GameDirectory,
+				game.ProcessName,
+				string(game.LaunchMode),
+				game.SteamLaunchID,
+				game.SteamLaunchKind,
+				game.SteamUserID,
+			); err != nil {
+				return fmt.Errorf("append import launch field update %s: %w", game.Name, err)
+			}
+			inserted++
+		}
+		return nil
+	}); err != nil {
+		return inserted, err
+	}
+
+	if inserted == 0 {
+		return 0, nil
+	}
+
+	if _, err := conn.ExecContext(ctx, `
+		UPDATE games
+		SET
+			path = temp_update_import_launch_fields.path,
+			game_directory = temp_update_import_launch_fields.game_directory,
+			process_name = temp_update_import_launch_fields.process_name,
+			launch_mode = temp_update_import_launch_fields.launch_mode,
+			steam_launch_id = temp_update_import_launch_fields.steam_launch_id,
+			steam_launch_kind = temp_update_import_launch_fields.steam_launch_kind,
+			steam_user_id = temp_update_import_launch_fields.steam_user_id
+		FROM temp_update_import_launch_fields
+		WHERE games.id = temp_update_import_launch_fields.id
+		  AND COALESCE(TRIM(games.path), '') = ''
+	`); err != nil {
+		return inserted, fmt.Errorf("update imported game launch fields from staging: %w", err)
 	}
 
 	return inserted, nil
@@ -882,25 +1072,36 @@ func (s *ImportService) deleteImportedItemTombstones(ctx context.Context, conn *
 	count := 0
 	if err := appendImportRows(ctx, conn, "temp_import_tombstones", func(appender *duckdb.Appender) error {
 		for _, item := range items {
-			if item.Game.ID != "" {
-				if err := appender.AppendRow(cloudSyncEntityGame, item.Game.ID); err != nil {
-					return fmt.Errorf("append game tombstone %s: %w", item.Game.ID, err)
+			if item.Action != importer.ImportActionMergeSessions {
+				if item.Game.ID != "" {
+					if err := appender.AppendRow(cloudSyncEntityGame, item.Game.ID); err != nil {
+						return fmt.Errorf("append game tombstone %s: %w", item.Game.ID, err)
+					}
+					count++
 				}
-				count++
-			}
-			for _, tag := range item.Tags {
-				name := strings.TrimSpace(tag.Name)
-				source := strings.TrimSpace(tag.Source)
-				if name == "" {
-					continue
+				for _, tag := range item.Tags {
+					name := strings.TrimSpace(tag.Name)
+					source := strings.TrimSpace(tag.Source)
+					if name == "" {
+						continue
+					}
+					if source == "" {
+						source = "user"
+					}
+					if err := appender.AppendRow(cloudSyncEntityGameTag, tagTombstoneID(item.Game.ID, source, name)); err != nil {
+						return fmt.Errorf("append tag tombstone %s/%s: %w", item.Game.ID, name, err)
+					}
+					count++
 				}
-				if source == "" {
-					source = "user"
+				for _, source := range item.Game.MetadataSources {
+					if source.SourceType == "" || strings.TrimSpace(source.SourceID) == "" {
+						continue
+					}
+					if err := appender.AppendRow(cloudSyncEntityGameMetadataSource, metadataSourceTombstoneID(item.Game.ID, source.SourceType)); err != nil {
+						return fmt.Errorf("append metadata source tombstone %s/%s: %w", item.Game.ID, source.SourceType, err)
+					}
+					count++
 				}
-				if err := appender.AppendRow(cloudSyncEntityGameTag, tagTombstoneID(item.Game.ID, source, name)); err != nil {
-					return fmt.Errorf("append tag tombstone %s/%s: %w", item.Game.ID, name, err)
-				}
-				count++
 			}
 			for _, session := range item.Sessions {
 				if session.ID == "" {
@@ -960,6 +1161,7 @@ func (s *ImportService) commitImportedItems(items []importItem) (int, int, error
 	}()
 
 	createItems, updateItems := splitImportItemsByAction(items)
+	metadataItems := importItemsWithMetadata(items)
 
 	stepStartedAt := time.Now()
 	insertedGames, err := s.addImportedItems(s.ctx, conn, createItems)
@@ -976,7 +1178,21 @@ func (s *ImportService) commitImportedItems(items []importItem) (int, int, error
 	applog.LogInfof(s.ctx, "commitImportedItems: staged and updated games=%d elapsed=%s", updatedGames, time.Since(stepStartedAt))
 
 	stepStartedAt = time.Now()
-	insertedTags, err := s.addImportedItemTags(s.ctx, conn, items)
+	updatedLaunchFields, err := s.updateImportedItemLocalLaunchFields(s.ctx, conn, updateItems)
+	if err != nil {
+		return insertedGames + updatedGames, 0, err
+	}
+	applog.LogInfof(s.ctx, "commitImportedItems: staged local launch field updates=%d elapsed=%s", updatedLaunchFields, time.Since(stepStartedAt))
+
+	stepStartedAt = time.Now()
+	upsertedSources, err := s.upsertImportedItemMetadataSources(s.ctx, conn, metadataItems)
+	if err != nil {
+		return insertedGames + updatedGames, 0, err
+	}
+	applog.LogInfof(s.ctx, "commitImportedItems: upserted metadata sources=%d elapsed=%s", upsertedSources, time.Since(stepStartedAt))
+
+	stepStartedAt = time.Now()
+	insertedTags, err := s.addImportedItemTags(s.ctx, conn, metadataItems)
 	if err != nil {
 		return insertedGames + updatedGames, 0, err
 	}
@@ -1007,8 +1223,8 @@ func (s *ImportService) commitImportedItems(items []importItem) (int, int, error
 		applog.LogInfof(s.ctx, "commitImportedItems: checkpoint completed total=%s", time.Since(startedAt))
 	}
 
-	s.startImportCoverProcessing(items)
-	return insertedGames + updatedGames, insertedSessions, nil
+	s.startImportCoverProcessing(metadataItems)
+	return insertedGames + updatedGames + len(items) - len(metadataItems), insertedSessions, nil
 }
 
 func cleanupImportStagingTables(ctx context.Context, conn *sql.Conn) {
@@ -1023,6 +1239,7 @@ func importStagingTableNames() []string {
 	return []string{
 		"temp_import_games",
 		"temp_update_import_games",
+		"temp_update_import_launch_fields",
 		"temp_import_game_tags",
 		"temp_import_play_sessions",
 		"temp_import_play_sessions_dedup",

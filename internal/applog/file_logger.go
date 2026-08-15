@@ -1,14 +1,14 @@
 package applog
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
-
-	wailslogger "github.com/wailsapp/wails/v2/pkg/logger"
 )
 
 const (
@@ -16,11 +16,11 @@ const (
 	logFileDateLayout      = "2006-01-02"
 	defaultMaxLogSize      = 10 * 1024 * 1024
 	defaultMaxLogBackups   = 5
+	logLevelTrace          = slog.LevelDebug - 4
+	logLevelFatal          = slog.LevelError + 4
 )
 
-var _ wailslogger.Logger = (*FileLogger)(nil)
-
-// FileLogger 为 Wails 提供带时间戳和自动切分能力的日志实现。
+// FileLogger 为应用提供带时间戳和自动切分能力的日志实现。
 type FileLogger struct {
 	mu sync.Mutex
 
@@ -30,6 +30,7 @@ type FileLogger struct {
 
 	maxSize    int64
 	maxBackups int
+	minLevel   slog.Level
 
 	currentDate string
 	currentFile *os.File
@@ -39,12 +40,76 @@ type FileLogger struct {
 	pid int
 }
 
-// NewFileLogger 创建带日期分片和大小轮转能力的文件日志。
-func NewFileLogger(filename string) wailslogger.Logger {
-	return newFileLogger(filename, defaultMaxLogSize, defaultMaxLogBackups)
+// NewFileLogger 创建带等级过滤、日期分片和大小轮转能力的文件日志。
+func NewFileLogger(filename string, minLevel slog.Level) *FileLogger {
+	return newFileLogger(filename, defaultMaxLogSize, defaultMaxLogBackups, minLevel)
 }
 
-func newFileLogger(filename string, maxSize int64, maxBackups int) *FileLogger {
+// Slog 返回供 Wails v3 使用的结构化日志适配器。
+func (l *FileLogger) Slog() *slog.Logger {
+	return slog.New(&fileLogHandler{logger: l})
+}
+
+type fileLogHandler struct {
+	logger *FileLogger
+	attrs  []slog.Attr
+	group  string
+}
+
+func (h *fileLogHandler) Enabled(_ context.Context, level slog.Level) bool {
+	return h.logger.enabled(level)
+}
+
+func (h *fileLogHandler) Handle(_ context.Context, record slog.Record) error {
+	attrs := append([]slog.Attr(nil), h.attrs...)
+	record.Attrs(func(attr slog.Attr) bool {
+		attrs = append(attrs, attr)
+		return true
+	})
+
+	message := record.Message
+	if len(attrs) > 0 {
+		parts := make([]string, 0, len(attrs))
+		for _, attr := range attrs {
+			key := attr.Key
+			if h.group != "" {
+				key = h.group + "." + key
+			}
+			parts = append(parts, fmt.Sprintf("%s=%v", key, attr.Value.Any()))
+		}
+		message += " | " + strings.Join(parts, " ")
+	}
+
+	level := "INFO"
+	switch {
+	case record.Level >= slog.LevelError:
+		level = "ERROR"
+	case record.Level >= slog.LevelWarn:
+		level = "WARN"
+	case record.Level < slog.LevelInfo:
+		level = "DEBUG"
+	}
+	h.logger.write(record.Level, level, message)
+	return nil
+}
+
+func (h *fileLogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	clone := *h
+	clone.attrs = append(append([]slog.Attr(nil), h.attrs...), attrs...)
+	return &clone
+}
+
+func (h *fileLogHandler) WithGroup(name string) slog.Handler {
+	clone := *h
+	if clone.group == "" {
+		clone.group = name
+	} else if name != "" {
+		clone.group += "." + name
+	}
+	return &clone
+}
+
+func newFileLogger(filename string, maxSize int64, maxBackups int, minLevel slog.Level) *FileLogger {
 	ext := filepath.Ext(filename)
 	base := strings.TrimSuffix(filepath.Base(filename), ext)
 	if base == "" {
@@ -60,43 +125,52 @@ func newFileLogger(filename string, maxSize int64, maxBackups int) *FileLogger {
 		ext:        ext,
 		maxSize:    maxSize,
 		maxBackups: maxBackups,
+		minLevel:   minLevel,
 		now:        time.Now,
 		pid:        os.Getpid(),
 	}
 }
 
 func (l *FileLogger) Print(message string) {
-	l.write("PRINT", message)
+	l.write(slog.LevelInfo, "PRINT", message)
 }
 
 func (l *FileLogger) Trace(message string) {
-	l.write("TRACE", message)
+	l.write(logLevelTrace, "TRACE", message)
 }
 
 func (l *FileLogger) Debug(message string) {
-	l.write("DEBUG", message)
+	l.write(slog.LevelDebug, "DEBUG", message)
 }
 
 func (l *FileLogger) Info(message string) {
-	l.write("INFO", message)
+	l.write(slog.LevelInfo, "INFO", message)
 }
 
 func (l *FileLogger) Warning(message string) {
-	l.write("WARN", message)
+	l.write(slog.LevelWarn, "WARN", message)
 }
 
 func (l *FileLogger) Error(message string) {
-	l.write("ERROR", message)
+	l.write(slog.LevelError, "ERROR", message)
 }
 
 func (l *FileLogger) Fatal(message string) {
-	l.write("FATAL", message)
+	l.write(logLevelFatal, "FATAL", message)
 	os.Exit(1)
 }
 
-func (l *FileLogger) write(level, message string) {
+func (l *FileLogger) enabled(level slog.Level) bool {
+	return level >= l.minLevel
+}
+
+func (l *FileLogger) write(level slog.Level, label, message string) {
+	if !l.enabled(level) {
+		return
+	}
+
 	now := l.now()
-	entry := formatLogEntry(now, level, message, l.pid)
+	entry := formatLogEntry(now, label, message, l.pid)
 	entrySize := int64(len(entry))
 
 	l.mu.Lock()

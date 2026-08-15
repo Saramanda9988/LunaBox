@@ -1,27 +1,41 @@
-import type { appconf } from "../../../wailsjs/go/models";
+import type { appconf } from "../../../src/bindings/models";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import {
   SelectGameExecutable,
   SelectWineRunnerExecutable,
-} from "../../../wailsjs/go/service/GameService";
+} from "../../../bindings/lunabox/internal/service/gameservice";
 import { BetterActionInput } from "../ui/better/BetterActionInput";
-import { BetterButton } from "../ui/better/BetterButton";
+import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
+
+const PROCESS_DETECTION_TIMEOUT_SECONDS = [60, 120, 180, 300, 600] as const;
 
 interface GameSettingsPanelProps {
   formData: appconf.AppConfig;
   onChange: (data: appconf.AppConfig) => void;
   goos?: string;
+  backgroundProcessMuteSupported?: boolean;
 }
 
 export function GameSettingsPanel({
   formData,
   onChange,
   goos,
+  backgroundProcessMuteSupported = false,
 }: GameSettingsPanelProps) {
   const { t } = useTranslation();
   const isDarwin = goos === "darwin";
+  const isLinux = goos === "linux";
+  const supportsWineLaunch = isDarwin || isLinux;
+  const processDetectionTimeoutOptions = PROCESS_DETECTION_TIMEOUT_SECONDS.map(
+    seconds => ({
+      value: String(seconds),
+      label: t("settings.game.processDetectionTimeoutMinutes", {
+        minutes: seconds / 60,
+      }),
+    }),
+  );
 
   const handleSelectLocaleEmulatorPath = async () => {
     try {
@@ -54,13 +68,13 @@ export function GameSettingsPanel({
     }
   };
 
-  const handleSelectWineRunnerPath = async () => {
+  const handleSelectCompatibilityRunnerPath = async (
+    field: "wine_runner_path" | "crossover_runner_path",
+  ) => {
     try {
-      const path = await SelectWineRunnerExecutable(
-        formData.wine_runner_path || "",
-      );
+      const path = await SelectWineRunnerExecutable(formData[field] || "");
       if (path) {
-        onChange({ ...formData, wine_runner_path: path } as appconf.AppConfig);
+        onChange({ ...formData, [field]: path } as appconf.AppConfig);
       }
     }
     catch (error) {
@@ -93,43 +107,63 @@ export function GameSettingsPanel({
         </div>
       </div>
 
-      <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
-        <div className="flex items-start gap-2">
-          <span className="i-mdi-alert text-amber-600 dark:text-amber-400 text-lg mt-0.5" />
-          <div className="text-xs text-amber-700 dark:text-amber-300">
-            <p className="font-medium mb-1">
-              {t("settings.game.warningTitle")}
-            </p>
-            <ul className="list-disc list-inside space-y-1 ml-2">
-              <li>{t("settings.game.warningItem1")}</li>
-              <li>{t("settings.game.warningItem2")}</li>
-              <li>{t("settings.game.warningItem3")}</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* Auto Process Detection */}
-      <div className="mt-6 border-t border-brand-200 dark:border-brand-700 pt-6">
-        <div className="space-y-2">
+      {backgroundProcessMuteSupported ? (
+        <div className="mt-6 border-t border-brand-200 dark:border-brand-700 pt-6">
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1 space-y-2">
               <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                {t("settings.game.autoDetectProcess")}
+                {t("settings.game.muteInBackground")}
               </label>
               <p className="text-xs text-brand-500 dark:text-brand-400">
-                {t("settings.game.autoDetectProcessHint")}
+                {t(
+                  isDarwin
+                    ? "settings.game.muteInBackgroundHintMacOS"
+                    : "settings.game.muteInBackgroundHint",
+                )}
               </p>
             </div>
             <BetterSwitch
-              id="auto_detect_game_process"
-              checked={formData.auto_detect_game_process ?? true}
+              id="mute_game_in_background"
+              checked={formData.mute_game_in_background ?? false}
               onCheckedChange={checked =>
                 onChange({
                   ...formData,
-                  auto_detect_game_process: checked,
+                  mute_game_in_background: checked,
                 } as appconf.AppConfig)}
             />
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-6 border-t border-brand-200 dark:border-brand-700 pt-6">
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+            {t("settings.game.processDetectionTimeout")}
+          </label>
+          <BetterSelect
+            name="process_detection_timeout_sec"
+            value={String(formData.process_detection_timeout_sec || 60)}
+            options={processDetectionTimeoutOptions}
+            onChange={value =>
+              onChange({
+                ...formData,
+                process_detection_timeout_sec: Number(value),
+              } as appconf.AppConfig)}
+            className="w-full"
+          />
+          <p className="text-xs text-brand-500 dark:text-brand-400">
+            {t("settings.game.processDetectionTimeoutHint")}
+          </p>
+        </div>
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-900/20">
+          <div className="flex items-start gap-2">
+            <span className="i-mdi-alert mt-0.5 text-lg text-amber-600 dark:text-amber-400" />
+            <div className="text-xs text-amber-700 dark:text-amber-300">
+              <p className="mb-1 font-medium">
+                {t("settings.game.warningTitle")}
+              </p>
+              <p>{t("settings.game.processDetectionTimeoutWarning")}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -141,15 +175,14 @@ export function GameSettingsPanel({
         </div>
 
         <div className="space-y-4">
-          {isDarwin ? (
-            <>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                  {t("settings.game.wineRunnerPath")}
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
+          {supportsWineLaunch ? (
+            <div className="space-y-5">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                    {t("settings.game.wineRunnerPath")}
+                  </label>
+                  <BetterActionInput
                     value={formData.wine_runner_path || ""}
                     onChange={e =>
                       onChange({
@@ -157,40 +190,100 @@ export function GameSettingsPanel({
                         wine_runner_path: e.target.value,
                       } as appconf.AppConfig)}
                     placeholder={t("settings.game.wineRunnerPathPlaceholder")}
-                    className="glass-input flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
+                    className="font-mono"
+                    actions={[
+                      {
+                        ariaLabel: t("settings.game.selectBtn"),
+                        icon: "i-mdi-file-search-outline",
+                        onClick: () =>
+                          handleSelectCompatibilityRunnerPath(
+                            "wine_runner_path",
+                          ),
+                      },
+                    ]}
                   />
-                  <BetterButton
-                    onClick={handleSelectWineRunnerPath}
-                    icon="i-mdi-file"
-                  >
-                    {t("settings.game.selectBtn")}
-                  </BetterButton>
+                  <p className="text-xs text-brand-500 dark:text-brand-400">
+                    {t("settings.game.wineRunnerPathHint")}
+                  </p>
                 </div>
-                <p className="text-xs text-brand-500 dark:text-brand-400">
-                  {t("settings.game.wineRunnerPathHint")}
-                </p>
-              </div>
 
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-                  {t("settings.game.winePrefix")}
-                </label>
-                <input
-                  type="text"
-                  value={formData.wine_prefix || ""}
-                  onChange={e =>
-                    onChange({
-                      ...formData,
-                      wine_prefix: e.target.value,
-                    } as appconf.AppConfig)}
-                  placeholder={t("settings.game.winePrefixPlaceholder")}
-                  className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
-                />
-                <p className="text-xs text-brand-500 dark:text-brand-400">
-                  {t("settings.game.winePrefixHint")}
-                </p>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                    {t("settings.game.winePrefix")}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.wine_prefix || ""}
+                    onChange={e =>
+                      onChange({
+                        ...formData,
+                        wine_prefix: e.target.value,
+                      } as appconf.AppConfig)}
+                    placeholder={t("settings.game.winePrefixPlaceholder")}
+                    className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none font-mono"
+                  />
+                  <p className="text-xs text-brand-500 dark:text-brand-400">
+                    {t("settings.game.winePrefixHint")}
+                  </p>
+                </div>
               </div>
-            </>
+              {isDarwin ? (
+                <div className="space-y-4 border-t border-brand-200 pt-5 dark:border-brand-700">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                      {t("settings.game.crossoverRunnerPath")}
+                    </label>
+                    <BetterActionInput
+                      value={formData.crossover_runner_path || ""}
+                      onChange={e =>
+                        onChange({
+                          ...formData,
+                          crossover_runner_path: e.target.value,
+                        } as appconf.AppConfig)}
+                      placeholder={t(
+                        "settings.game.crossoverRunnerPathPlaceholder",
+                      )}
+                      className="font-mono"
+                      actions={[
+                        {
+                          ariaLabel: t("settings.game.selectBtn"),
+                          icon: "i-mdi-file-search-outline",
+                          onClick: () =>
+                            handleSelectCompatibilityRunnerPath(
+                              "crossover_runner_path",
+                            ),
+                        },
+                      ]}
+                    />
+                    <p className="text-xs text-brand-500 dark:text-brand-400">
+                      {t("settings.game.crossoverRunnerPathHint")}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+                      {t("settings.game.crossoverBottle")}
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.crossover_bottle || ""}
+                      onChange={e =>
+                        onChange({
+                          ...formData,
+                          crossover_bottle: e.target.value,
+                        } as appconf.AppConfig)}
+                      placeholder={t(
+                        "settings.game.crossoverBottlePlaceholder",
+                      )}
+                      className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none font-mono"
+                    />
+                    <p className="text-xs text-brand-500 dark:text-brand-400">
+                      {t("settings.game.crossoverBottleHint")}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           ) : (
             <>
               <div className="space-y-2">

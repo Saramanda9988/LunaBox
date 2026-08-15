@@ -4,22 +4,32 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
+	"time"
 
 	umbrsdk "github.com/Umbrae-Labs/umbra-sdk/umbra-go"
 	"lunabox/internal/service/cloudprovider/batchupload"
+	"lunabox/internal/utils/httputils"
+	"resty.dev/v3"
 )
 
 const (
 	umbraBatchSize            = 50
 	umbraUploadPutConcurrency = 4
+	umbraUploadMaxRetries     = 4
+	umbraUploadRetryDelay     = 500 * time.Millisecond
+	umbraUploadMaxRetryDelay  = 10 * time.Second
+	umbraUploadErrorBodyLimit = 8 * 1024
 )
 
 type preparedUpload struct {
@@ -251,20 +261,74 @@ func (p *Provider) putPresignedFiles(ctx context.Context, prepared []preparedUpl
 }
 
 func (p *Provider) putPresignedFile(ctx context.Context, upload preparedUpload, presignedURL string) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, presignedURL, upload.file)
-	if err != nil {
-		return fmt.Errorf("创建 Umbra 对象存储请求 %s 失败: %w", upload.item.CloudPath, err)
+	baseHTTPClient := p.client.HTTPClient()
+	if baseHTTPClient == nil {
+		return fmt.Errorf("创建 Umbra 对象存储客户端失败 %s: HTTP 客户端为空", upload.item.CloudPath)
 	}
-	req.Header.Set("Content-Type", upload.contentType)
-	req.ContentLength = int64(upload.fileSize)
-	res, err := p.client.HTTPClient().Do(req)
+	// The SDK client has a short API timeout. Object-storage uploads use the
+	// caller's context instead so large files are not capped by that timeout.
+	uploadHTTPClient := *baseHTTPClient
+	uploadHTTPClient.Timeout = 0
+	client, err := httputils.NewRestyClientWithHTTPClient(&uploadHTTPClient, "")
 	if err != nil {
-		return fmt.Errorf("Umbra 对象存储上传失败 %s: %w", upload.item.CloudPath, err)
+		return fmt.Errorf("创建 Umbra 对象存储客户端失败 %s: %w", upload.item.CloudPath, err)
+	}
+
+	// Hiding the file's Close method lets Resty retain and rewind this seekable
+	// body between attempts. The file remains owned by the prepared upload.
+	uploadBody := httputils.NewProgressReadSeeker(upload.file, int64(upload.fileSize), nil)
+	res, err := client.R().
+		SetContext(ctx).
+		SetHeader("Content-Type", upload.contentType).
+		SetBody(uploadBody).
+		SetContentLength(int64(upload.fileSize)).
+		SetResponseDoNotParse(true).
+		SetRetryCount(umbraUploadMaxRetries).
+		SetRetryWaitTime(umbraUploadRetryDelay).
+		SetRetryMaxWaitTime(umbraUploadMaxRetryDelay).
+		AddRetryConditions(
+			resty.RetryConditionStatusTooManyRequests,
+			resty.RetryConditionStatus5XX,
+			retryUmbraObjectStorageRequest,
+		).
+		Put(presignedURL)
+	if err != nil {
+		return fmt.Errorf("Umbra 对象存储上传失败 %s: %w", upload.item.CloudPath, requestErrorCause(err))
+	}
+	if res == nil || res.Body == nil {
+		return fmt.Errorf("Umbra 对象存储上传失败 %s: 响应为空", upload.item.CloudPath)
 	}
 	defer res.Body.Close()
-	_, _ = io.Copy(io.Discard, res.Body)
-	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices {
-		return fmt.Errorf("Umbra 对象存储上传失败 %s: HTTP %d", upload.item.CloudPath, res.StatusCode)
+	responseBody, _ := io.ReadAll(io.LimitReader(res.Body, umbraUploadErrorBodyLimit))
+	if res.StatusCode() < http.StatusOK || res.StatusCode() >= http.StatusMultipleChoices {
+		detail := strings.TrimSpace(string(responseBody))
+		if detail != "" {
+			return fmt.Errorf("Umbra 对象存储上传失败 %s: HTTP %d: %s", upload.item.CloudPath, res.StatusCode(), detail)
+		}
+		return fmt.Errorf("Umbra 对象存储上传失败 %s: HTTP %d", upload.item.CloudPath, res.StatusCode())
 	}
 	return nil
+}
+
+func retryUmbraObjectStorageRequest(res *resty.Response, err error) bool {
+	if httputils.IsRetryableTransportError(err) {
+		return true
+	}
+	if res == nil {
+		return false
+	}
+	switch res.StatusCode() {
+	case http.StatusRequestTimeout, http.StatusTooEarly:
+		return true
+	default:
+		return false
+	}
+}
+
+func requestErrorCause(err error) error {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) && urlErr.Err != nil {
+		return urlErr.Err
+	}
+	return err
 }

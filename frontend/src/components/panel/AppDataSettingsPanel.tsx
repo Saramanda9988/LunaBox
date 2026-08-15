@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import {
   ExportLogsZip,
   OpenDataDirectory,
-} from "../../../wailsjs/go/service/ConfigService";
+} from "../../../bindings/lunabox/internal/service/configservice";
 import { BetterButton } from "../ui/better/BetterButton";
 
 export function AppDataSettingsPanel() {

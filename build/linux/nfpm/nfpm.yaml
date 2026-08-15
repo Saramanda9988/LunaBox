@@ -1,0 +1,45 @@
+name: "lunabox"
+arch: "${GOARCH}"
+platform: "linux"
+version: "${VERSION}"
+section: "utils"
+priority: "optional"
+maintainer: "${MAINTAINER}"
+description: "LunaBox game library manager"
+vendor: "LunaBox"
+homepage: "https://github.com/Saramanda9988/LunaBox"
+license: "MIT"
+release: "1"
+
+contents:
+  - src: "./build/bin/LunaBox"
+    dst: "/usr/bin/LunaBox"
+  - src: "./build/bin/lunacli"
+    dst: "/usr/bin/lunacli"
+  - src: "./build/appicon.png"
+    dst: "/usr/share/icons/hicolor/512x512/apps/io.github.saramanda9988.lunabox.png"
+    file_info:
+      mode: 0644
+  - src: "./build/linux/desktop"
+    dst: "/usr/share/applications/io.github.saramanda9988.lunabox.desktop"
+
+depends:
+  - libgtk-4-1
+  - libwebkitgtk-6.0-4
+  - xdg-utils
+
+overrides:
+  rpm:
+    depends:
+      - gtk4
+      - webkitgtk6.0
+      - xdg-utils
+  archlinux:
+    depends:
+      - gtk4
+      - webkitgtk-6.0
+      - xdg-utils
+
+scripts:
+  postinstall: "./build/linux/nfpm/scripts/postinstall.sh"
+  postremove: "./build/linux/nfpm/scripts/postremove.sh"

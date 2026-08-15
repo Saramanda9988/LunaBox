@@ -6,8 +6,8 @@ import {
   ScheduleFullDataRestore,
   SelectBackupRestorePath,
   SelectBackupSavePath,
-} from "../../../wailsjs/go/service/BackupService";
-import { SafeQuit } from "../../../wailsjs/go/service/ConfigService";
+} from "../../../bindings/lunabox/internal/service/backupservice";
+import { SafeQuit } from "../../../bindings/lunabox/internal/service/configservice";
 import { useAppStore } from "../../store";
 import { formatLocalDateTime } from "../../utils/time";
 import { ConfirmModal } from "../modal/ConfirmModal";
@@ -29,7 +29,7 @@ export function FullDataBackupPanel() {
     title: "",
     message: "",
     type: "info",
-    onConfirm: () => { },
+    onConfirm: () => {},
   });
 
   const handleCreateFullBackup = async () => {
@@ -45,10 +45,14 @@ export function FullDataBackupPanel() {
 
       setIsFullBackingUp(true);
       await CreateFullDataBackup(savePath);
-      toast.success(t("settings.fullDataBackup.toast.exportSuccess", { path: savePath }));
+      toast.success(
+        t("settings.fullDataBackup.toast.exportSuccess", { path: savePath }),
+      );
     }
     catch (err: any) {
-      toast.error(t("settings.fullDataBackup.toast.exportFailed", { error: err }));
+      toast.error(
+        t("settings.fullDataBackup.toast.exportFailed", { error: err }),
+      );
     }
     finally {
       setIsFullBackingUp(false);
@@ -69,7 +73,9 @@ export function FullDataBackupPanel() {
       setConfirmConfig({
         isOpen: true,
         title: t("settings.fullDataBackup.modal.restoreTitle"),
-        message: t("settings.fullDataBackup.modal.restoreMsg", { path: backupPath }),
+        message: t("settings.fullDataBackup.modal.restoreMsg", {
+          path: backupPath,
+        }),
         type: "danger",
         onConfirm: async () => {
           setIsRestoring(true);
@@ -79,14 +85,20 @@ export function FullDataBackupPanel() {
             setTimeout(() => SafeQuit(), 1500);
           }
           catch (err: any) {
-            toast.error(t("settings.fullDataBackup.toast.restoreScheduleFailed", { error: err }));
+            toast.error(
+              t("settings.fullDataBackup.toast.restoreScheduleFailed", {
+                error: err,
+              }),
+            );
             setIsRestoring(false);
           }
         },
       });
     }
     catch (err: any) {
-      toast.error(t("settings.fullDataBackup.toast.selectFileFailed", { error: err }));
+      toast.error(
+        t("settings.fullDataBackup.toast.selectFileFailed", { error: err }),
+      );
     }
   };
 
@@ -101,7 +113,9 @@ export function FullDataBackupPanel() {
               {t("settings.fullDataBackup.hint")}
             </p>
             <p className="text-error-600 dark:text-error-400">
-              <span className="font-medium">{t("settings.fullDataBackup.warningNote")}</span>
+              <span className="font-medium">
+                {t("settings.fullDataBackup.warningNote")}
+              </span>
               {t("settings.fullDataBackup.warningHint")}
             </p>
           </div>
@@ -116,7 +130,9 @@ export function FullDataBackupPanel() {
           >
             {isFullBackingUp && <div className="i-mdi-loading animate-spin" />}
             <div className="i-mdi-export text-xl" />
-            {isFullBackingUp ? t("settings.fullDataBackup.exporting") : t("settings.fullDataBackup.exportBtn")}
+            {isFullBackingUp
+              ? t("settings.fullDataBackup.exporting")
+              : t("settings.fullDataBackup.exportBtn")}
           </button>
 
           <button
@@ -127,14 +143,19 @@ export function FullDataBackupPanel() {
           >
             {isRestoring && <div className="i-mdi-loading animate-spin" />}
             <div className="i-mdi-import text-xl" />
-            {isRestoring ? t("settings.fullDataBackup.importing") : t("settings.fullDataBackup.importBtn")}
+            {isRestoring
+              ? t("settings.fullDataBackup.importing")
+              : t("settings.fullDataBackup.importBtn")}
           </button>
         </div>
 
         {config?.last_full_backup_time && (
           <p className="text-xs text-brand-500 dark:text-brand-400 mt-4">
             {t("settings.fullDataBackup.lastBackup")}
-            {formatLocalDateTime(config.last_full_backup_time, config?.time_zone)}
+            {formatLocalDateTime(
+              config.last_full_backup_time,
+              config?.time_zone,
+            )}
           </p>
         )}
       </div>

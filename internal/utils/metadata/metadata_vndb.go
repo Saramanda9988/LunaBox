@@ -8,6 +8,7 @@ import (
 	"io"
 	"lunabox/internal/common/enums"
 	"lunabox/internal/models"
+	"lunabox/internal/version"
 	"net/http"
 	"strings"
 	"time"
@@ -18,13 +19,15 @@ type VNDBInfoGetter struct {
 	client         *http.Client
 	preferredLangs []string
 	tagLimit       int
+	coverSource    enums.MetadataCoverSource
 }
 
 func NewVNDBInfoGetter(options ...GetterOption) *VNDBInfoGetter {
 	config := newGetterConfig(options)
 	return &VNDBInfoGetter{
-		client:   config.client,
-		tagLimit: config.tagLimit,
+		client:      config.client,
+		tagLimit:    config.tagLimit,
+		coverSource: config.vndbCoverSource,
 	}
 }
 
@@ -34,6 +37,7 @@ func NewVNDBInfoGetterWithLanguage(language string, options ...GetterOption) *VN
 		client:         config.client,
 		preferredLangs: buildVNDBLanguagePreference(language),
 		tagLimit:       config.tagLimit,
+		coverSource:    config.vndbCoverSource,
 	}
 }
 
@@ -43,7 +47,7 @@ var _ BatchGetter = (*VNDBInfoGetter)(nil)
 const vndbAPIURL = "https://api.vndb.org/kana/vn"
 const vndbSearchSort = "searchrank"
 const vndbBatchSize = 100
-const vndbFields = "id, title, titles.lang, titles.title, titles.latin, titles.official, titles.main, image.url, image.sexual, description, rating, released, developers.name, tags.name, tags.rating, tags.spoiler, tags.lie"
+const vndbFields = "id, title, aliases, titles.lang, titles.title, titles.latin, titles.official, titles.main, image.url, image.sexual, description, rating, released, developers.name, tags.name, tags.rating, tags.spoiler, tags.lie"
 
 // VNDB rates cover sexual content from 0 (safe) to 2 (explicit).
 // Treat the midpoint and above as NSFW to avoid marking lightly disputed covers.
@@ -83,6 +87,7 @@ type vndbTitle struct {
 type vndbQueryResult struct {
 	ID          string          `json:"id"`
 	Title       string          `json:"title"`
+	Aliases     []string        `json:"aliases"`
 	Titles      []vndbTitle     `json:"titles"`
 	Image       vndbImage       `json:"image"`
 	Description string          `json:"description"`
@@ -134,7 +139,46 @@ func (v VNDBInfoGetter) FetchMetadataBatch(ids []string, token string) (map[stri
 }
 
 func (v VNDBInfoGetter) FetchMetadataByName(name string, token string) (MetadataResult, error) {
-	return v.queryVNDB([]interface{}{"search", "=", name}, vndbSearchSort)
+	results, err := v.FetchMetadataCandidatesByName(name, token)
+	if err != nil {
+		return MetadataResult{}, err
+	}
+	return results[0], nil
+}
+
+func (v VNDBInfoGetter) FetchMetadataCandidatesByName(name string, token string) ([]MetadataResult, error) {
+	results, err := v.queryVNDBResults([]interface{}{"search", "=", name}, vndbSearchSort, metadataSearchCandidateLimit)
+	if err != nil {
+		return nil, err
+	}
+	if len(results) == 0 {
+		return nil, errors.New("no results found")
+	}
+
+	candidateNames := make([][]string, len(results))
+	for index, result := range results {
+		names := make([]string, 0, len(result.Aliases)+len(result.Titles)*2+1)
+		names = append(names, result.Title)
+		names = append(names, result.Aliases...)
+		for _, title := range result.Titles {
+			names = append(names, title.Title, title.Latin)
+		}
+		candidateNames[index] = names
+	}
+	indexes := exactMetadataCandidateIndexes(name, candidateNames)
+	if len(indexes) == 0 {
+		indexes = []int{0}
+	}
+
+	metadataResults := make([]MetadataResult, 0, len(indexes))
+	for _, index := range indexes {
+		result := results[index]
+		metadataResults = append(metadataResults, MetadataResult{
+			Game: v.convertResultToGame(result),
+			Tags: extractVNDBTags(result.Tags, v.tagLimit),
+		})
+	}
+	return metadataResults, nil
 }
 
 func (v VNDBInfoGetter) queryVNDB(filters []interface{}, sort string) (MetadataResult, error) {
@@ -168,6 +212,7 @@ func (v VNDBInfoGetter) queryVNDBResults(filters []interface{}, sort string, res
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", version.UserAgent())
 
 	resp, err := doLimitedMetadataRequest(v.client, req, enums.VNDB)
 	if err != nil {
@@ -189,6 +234,7 @@ func (v VNDBInfoGetter) queryVNDBResults(filters []interface{}, sort string, res
 
 func (v VNDBInfoGetter) convertResultToGame(result vndbQueryResult) models.Game {
 	displayName := pickVNDBDisplayTitle(result, v.preferredLangs)
+	coverURL := resolveMetadataCoverURL(enums.VNDB, v.coverSource, result.Image.URL)
 	company := ""
 	if len(result.Developers) > 0 {
 		devs := make([]string, 0, len(result.Developers))
@@ -200,8 +246,9 @@ func (v VNDBInfoGetter) convertResultToGame(result vndbQueryResult) models.Game 
 
 	game := models.Game{
 		Name:           displayName,
-		CoverURL:       result.Image.URL,
-		CoverSourceURL: result.Image.URL,
+		Aliases:        buildVNDBAliases(result, displayName),
+		CoverURL:       coverURL,
+		CoverSourceURL: coverURL,
 		Company:        company,
 		Summary:        result.Description,
 		Rating:         normalizeTenPointRating(result.Rating),
@@ -212,6 +259,15 @@ func (v VNDBInfoGetter) convertResultToGame(result vndbQueryResult) models.Game 
 		CachedAt:       time.Now(),
 	}
 	return game
+}
+
+func buildVNDBAliases(result vndbQueryResult, displayName string) []string {
+	titles := make([]string, 0, len(result.Titles)*2+1)
+	titles = append(titles, result.Title)
+	for _, title := range result.Titles {
+		titles = append(titles, title.Title, title.Latin)
+	}
+	return normalizeMetadataAliases(displayName, titles, result.Aliases)
 }
 
 func buildVNDBIDBatchFilters(ids []string) []interface{} {

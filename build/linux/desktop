@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Name=LunaBox
+Comment=LunaBox game library manager
+Exec=/usr/bin/LunaBox %u
+Terminal=false
+Type=Application
+Icon=io.github.saramanda9988.lunabox
+Categories=Utility;Game;
+StartupWMClass=io.github.saramanda9988.lunabox
+MimeType=x-scheme-handler/lunabox;

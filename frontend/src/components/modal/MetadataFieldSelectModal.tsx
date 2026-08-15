@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { enums } from "../../../wailsjs/go/models";
+import { enums } from "../../../src/bindings/models";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 import { ModalPortal } from "../ui/ModalPortal";
 
 export const DEFAULT_METADATA_UPDATE_FIELDS: enums.MetadataUpdateField[] = [
-  enums.MetadataUpdateField.NAME,
-  enums.MetadataUpdateField.COVER,
-  enums.MetadataUpdateField.COMPANY,
-  enums.MetadataUpdateField.SUMMARY,
-  enums.MetadataUpdateField.RATING,
-  enums.MetadataUpdateField.RELEASE_DATE,
-  enums.MetadataUpdateField.TAGS,
+  enums.MetadataUpdateField.MetadataUpdateFieldName,
+  enums.MetadataUpdateField.MetadataUpdateFieldAliases,
+  enums.MetadataUpdateField.MetadataUpdateFieldCover,
+  enums.MetadataUpdateField.MetadataUpdateFieldCompany,
+  enums.MetadataUpdateField.MetadataUpdateFieldSummary,
+  enums.MetadataUpdateField.MetadataUpdateFieldRating,
+  enums.MetadataUpdateField.MetadataUpdateFieldReleaseDate,
+  enums.MetadataUpdateField.MetadataUpdateFieldTags,
 ];
 
 interface MetadataFieldSelectModalProps {

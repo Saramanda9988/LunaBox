@@ -43,36 +43,30 @@ func TestHomeService_GetHomePageData(t *testing.T) {
 	}
 
 	now := time.Now()
+	startOfToday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
-	// Calculate a date that is definitely earlier this week (but not today if possible, or just today)
-	// For simplicity in testing "Weekly", let's just use today and yesterday.
-	// If today is Monday, yesterday was last week.
-	// So we need to be careful with "Weekly" logic test depending on the current day of the week.
-	// However, for a unit test, we can control the input or just rely on the logic that "Today" is part of "This Week".
-
-	// Let's construct specific dates relative to "Now" to ensure they fall into buckets.
-
-	// 1. Session for Game 1: Today, 1 hour ago. Duration 3600s.
-	session1Time := now.Add(-1 * time.Hour)
+	// Use fixed times inside the current calendar day. Relative times such as
+	// now.Add(-time.Hour) cross into yesterday when this test runs after midnight.
+	// 1. Session for Game 1: today at 03:00. Duration 3600s.
+	session1Time := startOfToday.Add(3 * time.Hour)
 	_, err := db.Exec("INSERT INTO play_sessions (id, game_id, start_time, end_time, duration) VALUES (?, ?, ?, ?, ?)",
 		"session-1", game1ID, session1Time, session1Time.Add(time.Hour), 3600)
 	if err != nil {
 		t.Fatalf("Failed to insert session 1: %v", err)
 	}
 
-	// 2. Session for Game 2: Today, 2 hours ago. Duration 1800s.
-	session2Time := now.Add(-2 * time.Hour)
+	// 2. Session for Game 2: today at 02:00. Duration 1800s.
+	session2Time := startOfToday.Add(2 * time.Hour)
 	_, err = db.Exec("INSERT INTO play_sessions (id, game_id, start_time, end_time, duration) VALUES (?, ?, ?, ?, ?)",
 		"session-2", game2ID, session2Time, session2Time.Add(30*time.Minute), 1800)
 	if err != nil {
 		t.Fatalf("Failed to insert session 2: %v", err)
 	}
 
-	// 3. Session for Game 3: Yesterday.
 	isMonday := now.Weekday() == time.Monday
 
-	// Session 3: 3 hours ago today.
-	session3Time := now.Add(-3 * time.Hour)
+	// 3. Session for Game 3: today at 01:00.
+	session3Time := startOfToday.Add(time.Hour)
 	_, err = db.Exec("INSERT INTO play_sessions (id, game_id, start_time, end_time, duration) VALUES (?, ?, ?, ?, ?)",
 		"session-3", game3ID, session3Time, session3Time.Add(20*time.Minute), 1200)
 	if err != nil {
@@ -134,8 +128,8 @@ func TestHomeService_GetHomePageData(t *testing.T) {
 
 	// 3. Weekly Play Time
 	if !isMonday {
-		// Insert a session for yesterday
-		yesterdayTime := now.AddDate(0, 0, -1)
+		// Insert a session for yesterday at 01:00.
+		yesterdayTime := startOfToday.AddDate(0, 0, -1).Add(time.Hour)
 		_, err = db.Exec("INSERT INTO play_sessions (id, game_id, start_time, end_time, duration) VALUES (?, ?, ?, ?, ?)",
 			"session-yesterday", game1ID, yesterdayTime, yesterdayTime.Add(500*time.Second), 500)
 		if err != nil {

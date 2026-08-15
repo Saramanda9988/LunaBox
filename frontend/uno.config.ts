@@ -8,6 +8,12 @@ export default defineConfig({
     presetIcons(),
   ],
 
+  // 启动错误窗通过 main.tsx 动态加载。开发态子窗口首次打开时，
+  // 预扫描该文件可确保专属工具类已经进入初始 UnoCSS 样式表。
+  content: {
+    filesystem: ["src/components/startup/StartupWindow.tsx"],
+  },
+
   rules: [
     [
       "scrollbar-hide",
@@ -34,10 +40,51 @@ export default defineConfig({
         filter: "none",
       },
     ],
+    [
+      "settings-section-render",
+      {
+        "content-visibility": "auto",
+        "contain-intrinsic-size": "auto 56px",
+      },
+    ],
+    [
+      "settings-section-transition",
+      {
+        "transition-property": "grid-template-rows, opacity, visibility",
+      },
+    ],
+    [
+      "account-choice-transition",
+      {
+        "transition-property": "grid-template-columns",
+        "transition-duration": "180ms",
+        "transition-timing-function": "ease",
+      },
+    ],
+    [
+      "account-choice-content-transition",
+      {
+        "transition-property": "opacity",
+        "transition-duration": "100ms",
+        "transition-timing-function": "ease",
+      },
+    ],
   ],
 
   // 自定义 variants - 支持 data-glass 属性
   variants: [
+    // Headless UI transition states
+    (matcher) => {
+      const match = matcher.match(/^data-(closed|enter|leave):(.*)$/);
+      if (!match)
+        return matcher;
+
+      const [, state, utility] = match;
+      return {
+        matcher: utility,
+        selector: selector => `${selector}[data-${state}]`,
+      };
+    },
     // data-glass variant: 当元素或父元素有 data-glass="true" 时生效
     (matcher) => {
       if (!matcher.startsWith("data-glass:"))
@@ -45,7 +92,8 @@ export default defineConfig({
 
       return {
         matcher: matcher.slice(11), // 移除 'data-glass:' 前缀
-        selector: s => `[data-glass="true"] ${s}, ${s}[data-glass="true"]`,
+        selector: s =>
+          `[data-glass="true"] ${s}:not([data-glass="false"] *), ${s}[data-glass="true"]`,
       };
     },
   ],
@@ -53,10 +101,14 @@ export default defineConfig({
   shortcuts: [
     // 玻璃态效果基础类
     {
-      "glass": "backdrop-filter backdrop-blur-20 backdrop-saturate-180",
+      "startup-backdrop":
+        "bg-brand-100 dark:bg-brand-900 ring-1 ring-inset ring-brand-300 dark:ring-brand-700",
+      "glass": "backdrop-filter backdrop-blur-12 backdrop-saturate-180",
       "glass-border": "border border-white/18 dark:border-white/10",
       "glass-text":
         "drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)] drop-shadow-[0_0_8px_rgba(0,0,0,0.2)]",
+      "glass-settings-section":
+        "data-glass:bg-white/8 data-glass:dark:bg-black/12 data-glass:backdrop-blur-8 data-glass:backdrop-saturate-150 data-glass:border data-glass:border-white/20 data-glass:dark:border-white/12",
     },
 
     // 玻璃态层级系统（从不透明到透明）
@@ -82,7 +134,7 @@ export default defineConfig({
           primary:
             "data-glass:bg-neutral-600/70 data-glass:text-white data-glass:hover:bg-neutral-600/90 ",
         };
-        return `data-glass:backdrop-blur-12 data-glass:border data-glass:border-white/30 data-glass:dark:border-white/15 ${colorMap[color] || colorMap.neutral}`;
+        return `data-glass:border data-glass:border-white/30 data-glass:dark:border-white/15 ${colorMap[color] || colorMap.neutral}`;
       },
     ],
 
@@ -90,28 +142,28 @@ export default defineConfig({
     [
       /^glass-card$/,
       () =>
-        "data-glass:bg-white/8 data-glass:dark:bg-black/12 data-glass:backdrop-blur-20 data-glass:backdrop-saturate-180 data-glass:border data-glass:border-white/22 data-glass:dark:border-white/12",
+        "data-glass:bg-white/8 data-glass:dark:bg-black/12 data-glass:backdrop-blur-12 data-glass:backdrop-saturate-180 data-glass:border data-glass:border-white/22 data-glass:dark:border-white/12",
     ],
 
     // 4. glass-panel - 面板容器（较透明，轻量感）
     [
       /^glass-panel$/,
       () =>
-        "data-glass:bg-white/5 data-glass:dark:bg-black/8 data-glass:backdrop-blur-20 data-glass:backdrop-saturate-180 data-glass:border data-glass:border-white/18 data-glass:dark:border-white/10",
+        "data-glass:bg-white/5 data-glass:dark:bg-black/8 data-glass:backdrop-blur-12 data-glass:backdrop-saturate-180 data-glass:border data-glass:border-white/18 data-glass:dark:border-white/10",
     ],
 
     // 5. glass-input - 输入框（最透明，突出内容）
     [
       /^glass-input$/,
       () =>
-        "data-glass:bg-white/3 data-glass:dark:bg-black/5 data-glass:backdrop-blur-16 data-glass:backdrop-saturate-150 data-glass:border data-glass:border-white/25 data-glass:dark:border-white/18",
+        "data-glass:bg-white/8 data-glass:dark:bg-black/10 data-glass:border data-glass:border-white/25 data-glass:dark:border-white/18",
     ],
 
     // 6. glass-btn-none - 透明按钮（仅保留交互反馈）
     [
       /^glass-btn-none$/,
       () =>
-        "data-glass:bg-white/5 data-glass:dark:bg-black/8  data-glass:backdrop-blur-10 data-glass:bg-transparent data-glass:hover:bg-white/10 data-glass:dark:hover:bg-black/12",
+        "data-glass:bg-transparent data-glass:hover:bg-white/10 data-glass:dark:hover:bg-black/12",
     ],
   ],
 

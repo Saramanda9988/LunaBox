@@ -1,4 +1,4 @@
-import type { service } from "../../../wailsjs/go/models";
+import type { service } from "../../../src/bindings/models";
 import { useTranslation } from "react-i18next";
 import { formatFileSize } from "../../utils/size";
 
@@ -10,10 +10,7 @@ const DOWNLOAD_ACTION_BUTTON_NEUTRAL_CLASS
 
 function StatusBadge({ status }: { status: service.DownloadTask["status"] }) {
   const { t } = useTranslation();
-  const map: Record<
-    service.DownloadTask["status"],
-    { cls: string; label: string }
-  > = {
+  const map: Record<string, { cls: string; label: string }> = {
     pending: {
       cls: "bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300",
       label: t("downloads.status.pending", "等待中"),

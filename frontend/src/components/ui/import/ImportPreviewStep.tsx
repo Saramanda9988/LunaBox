@@ -37,6 +37,7 @@ interface ImportPreviewLabels {
   statusNotFound: string;
   statusError: string;
   manualSelect: string;
+  openFolder?: string;
   metadataExists?: (name: string) => string;
   skippedSummary?: (count: number) => string;
   skippedDetails?: string;
@@ -75,6 +76,7 @@ interface ImportPreviewStepProps {
   onUpdateSearchName: (index: number, name: string) => void;
   onUpdateSelectedExe: (index: number, exe: string) => void;
   onManualSelect: (index: number) => void;
+  onOpenFolder?: (path: string) => void;
 }
 
 const EMPTY_SKIPPED_CANDIDATES: ImportCandidate[] = [];
@@ -132,6 +134,7 @@ export function ImportPreviewStep({
   onUpdateSearchName,
   onUpdateSelectedExe,
   onManualSelect,
+  onOpenFolder,
 }: ImportPreviewStepProps) {
   const [showSkippedModal, setShowSkippedModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("");
@@ -379,14 +382,31 @@ export function ImportPreviewStep({
       className: "w-20",
       headerClassName: "text-center",
       cellClassName: "text-center",
-      render: ({ originalIndex }) => (
-        <button
-          type="button"
-          onClick={() => onManualSelect(originalIndex)}
-          className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm transition-colors ${theme.manualButtonClassName}`}
-        >
-          <div className="i-mdi-pencil text-lg" />
-        </button>
+      render: ({ candidate, originalIndex }) => (
+        <div className="inline-flex items-center gap-1">
+          {onOpenFolder && (
+            <button
+              type="button"
+              onClick={() =>
+                onOpenFolder(candidate.gameDirectory || candidate.folderPath)}
+              aria-label={labels.openFolder || "Open current folder"}
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm transition-colors ${theme.manualButtonClassName}`}
+            >
+              <div
+                className="i-mdi-folder-open-outline text-lg"
+                aria-hidden="true"
+              />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onManualSelect(originalIndex)}
+            aria-label={labels.manualSelect}
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm transition-colors ${theme.manualButtonClassName}`}
+          >
+            <div className="i-mdi-pencil text-lg" aria-hidden="true" />
+          </button>
+        </div>
       ),
     },
   ];

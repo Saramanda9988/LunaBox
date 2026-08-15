@@ -10,111 +10,120 @@ import (
 )
 
 // DetectStagedProcess resolves the actual game process behind a Windows launcher.
-// The timing mirrors the existing Windows launch flow: a 5s initial wait and
-// a 15s observation window give launchers time to hand off to the real game.
 func DetectStagedProcess(input StagedProcessDetectionInput, logger DetectionLogger) StagedProcessDetectionResult {
 	launcher := input.Launcher
+	deadline := processDetectionDeadline(input)
+	reliableSavedProcess := HasReliableSavedProcessName(input.SavedProcessName, input.LauncherExeName)
 
-	if HasReliableSavedProcessName(input.SavedProcessName, input.LauncherExeName) {
-		logInfo(logger, "Game %s has saved process_name: %s, will search for it after initial delay", input.GameID, input.SavedProcessName)
+	if reliableSavedProcess {
+		logInfo(logger, "Game %s has saved process_name: %s, will search for it during process detection", input.GameID, input.SavedProcessName)
+	}
 
-		time.Sleep(5 * time.Second)
+	logInfo(logger, "Starting staged detection for game %s until %s, launcher: %s (PID %d)", input.GameID, deadline.Format(time.RFC3339), launcher.Name, launcher.PID)
+	if !waitForProcessDetection(deadline, 5*time.Second, input.Done) {
+		return StagedProcessDetectionResult{}
+	}
 
-		pid, err := processutils.GetProcessPIDByName(input.SavedProcessName)
-		if err != nil {
-			logWarning(logger, "Failed to find saved process %s: %v, falling back to launcher monitoring", input.SavedProcessName, err)
-			if !processutils.IsProcessPresentByPID(launcher.PID) {
-				if detected, ok := detectLaunchedGameProcessWithRetry(input, logger); ok {
-					return resultForExternalProcess(input, detected, true)
+	savedLookupFailureLogged := false
+	launcherExitLogged := false
+	attempt := 0
+	for {
+		attemptLogger := processDetectionAttemptLogger(logger, attempt, 15)
+		if reliableSavedProcess {
+			pid, err := processutils.GetProcessPIDByName(input.SavedProcessName)
+			if err == nil {
+				logInfo(logger, "Found saved process %s with PID %d", input.SavedProcessName, pid)
+				return StagedProcessDetectionResult{
+					ProcessID:           pid,
+					ProcessName:         input.SavedProcessName,
+					CloseLauncherHandle: true,
 				}
-				return promptProcessSelectionResult()
 			}
-			return resultForLauncher(input)
+			if !savedLookupFailureLogged {
+				logWarning(logger, "Saved process %s is not running yet: %v; continuing detection", input.SavedProcessName, err)
+				savedLookupFailureLogged = true
+			}
 		}
 
-		logInfo(logger, "Found saved process %s with PID %d", input.SavedProcessName, pid)
-		return StagedProcessDetectionResult{
-			ProcessID:           pid,
-			ProcessName:         input.SavedProcessName,
-			CloseLauncherHandle: true,
-		}
-	}
-
-	if !input.AutoDetectGameProcess {
-		logInfo(logger, "Auto-detect disabled for game %s, using launcher process: %s (PID %d)", input.GameID, launcher.Name, launcher.PID)
-		return resultForLauncher(input)
-	}
-
-	logInfo(logger, "Starting staged detection for game %s, launcher: %s (PID %d)", input.GameID, launcher.Name, launcher.PID)
-
-	time.Sleep(5 * time.Second)
-
-	if detected, ok := detectVisibleGameProcess(input, logger); ok {
-		return resultForExternalProcess(input, detected, true)
-	}
-
-	if !processutils.IsProcessPresentByPID(launcher.PID) {
-		logInfo(logger, "Launcher %s exited quickly (within 5s), resolving actual game process", input.LauncherExeName)
-		if detected, ok := detectLaunchedGameProcessWithRetry(input, logger); ok {
-			return resultForExternalProcess(input, detected, true)
-		}
-		return promptProcessSelectionResult()
-	}
-
-	logInfo(logger, "Launcher %s still running, entering observation period (15s)", input.LauncherExeName)
-
-	observationPeriod := 15 * time.Second
-	checkInterval := 2 * time.Second
-	observationStart := time.Now()
-
-	for time.Since(observationStart) < observationPeriod {
-		time.Sleep(checkInterval)
-
-		if detected, ok := detectVisibleGameProcess(input, logger); ok {
+		if detected, ok := detectVisibleGameProcess(input, attemptLogger); ok {
+			if attemptLogger == nil {
+				logInfo(logger, "Detected game process for game %s during staged detection: %s (PID %d)", input.GameID, detected.Name, detected.PID)
+			}
 			return resultForExternalProcess(input, detected, true)
 		}
 
 		if !processutils.IsProcessPresentByPID(launcher.PID) {
-			logInfo(logger, "Launcher %s exited during observation period, resolving actual game process", input.LauncherExeName)
-			if detected, ok := detectLaunchedGameProcessWithRetry(input, logger); ok {
+			if !launcherExitLogged {
+				logInfo(logger, "Launcher %s exited during process detection; continuing to scan for the actual game process", input.LauncherExeName)
+				launcherExitLogged = true
+			}
+			if detected, ok := detectLaunchedGameProcess(input, attemptLogger); ok {
+				if attemptLogger == nil {
+					logInfo(logger, "Detected game process for game %s after launcher exit: %s (PID %d)", input.GameID, detected.Name, detected.PID)
+				}
 				return resultForExternalProcess(input, detected, true)
 			}
-			return promptProcessSelectionResult()
+		}
+
+		attempt++
+		if !waitForProcessDetection(deadline, 2*time.Second, input.Done) {
+			break
 		}
 	}
 
-	logInfo(logger, "Launcher %s still running after 20s total, treating it as the game process", input.LauncherExeName)
-	return resultForLauncher(input)
+	if processDetectionCancelled(input.Done) {
+		return StagedProcessDetectionResult{}
+	}
+	if processutils.IsProcessPresentByPID(launcher.PID) {
+		logInfo(logger, "Process detection timed out for game %s; monitoring launcher %s (PID %d)", input.GameID, input.LauncherExeName, launcher.PID)
+		return resultForLauncher(input)
+	}
+	logWarning(logger, "Process detection timed out for game %s after launcher %s exited", input.GameID, input.LauncherExeName)
+	return promptProcessSelectionResult()
 }
 
 func DetectSteamDirectoryProcess(input StagedProcessDetectionInput, logger DetectionLogger) StagedProcessDetectionResult {
-	logInfo(logger, "Starting Steam directory detection for game %s, install dir: %s", input.GameID, input.LaunchDir)
+	deadline := processDetectionDeadline(input)
+	reliableSavedProcess := HasReliableSavedProcessName(input.SavedProcessName, "steam.exe")
+	logInfo(logger, "Starting Steam directory detection for game %s until %s, install dir: %s", input.GameID, deadline.Format(time.RFC3339), input.LaunchDir)
+	if !waitForProcessDetection(deadline, 5*time.Second, input.Done) {
+		return StagedProcessDetectionResult{}
+	}
 
-	time.Sleep(5 * time.Second)
-
-	if HasReliableSavedProcessName(input.SavedProcessName, "steam.exe") {
-		pid, err := processutils.GetProcessPIDByName(input.SavedProcessName)
-		if err == nil {
-			logInfo(logger, "Found saved Steam game process %s with PID %d", input.SavedProcessName, pid)
-			return StagedProcessDetectionResult{
-				ProcessID:           pid,
-				ProcessName:         input.SavedProcessName,
-				CloseLauncherHandle: true,
+	savedLookupFailureLogged := false
+	attempt := 0
+	for {
+		attemptLogger := processDetectionAttemptLogger(logger, attempt, 15)
+		if reliableSavedProcess {
+			pid, err := processutils.GetProcessPIDByName(input.SavedProcessName)
+			if err == nil {
+				logInfo(logger, "Found saved Steam game process %s with PID %d", input.SavedProcessName, pid)
+				return StagedProcessDetectionResult{
+					ProcessID:           pid,
+					ProcessName:         input.SavedProcessName,
+					CloseLauncherHandle: true,
+				}
+			}
+			if !savedLookupFailureLogged {
+				logWarning(logger, "Saved Steam game process %s is not running yet: %v; continuing detection", input.SavedProcessName, err)
+				savedLookupFailureLogged = true
 			}
 		}
-		logWarning(logger, "Failed to find saved Steam game process %s: %v", input.SavedProcessName, err)
-	}
-
-	observationPeriod := 30 * time.Second
-	checkInterval := 2 * time.Second
-	observationStart := time.Now()
-	for time.Since(observationStart) < observationPeriod {
-		if detected, ok := detectVisibleProcessInSteamDir(input, logger); ok {
+		if detected, ok := detectVisibleProcessInSteamDir(input, attemptLogger); ok {
+			if attemptLogger == nil {
+				logInfo(logger, "Detected Steam game process for game %s: %s (PID %d)", input.GameID, detected.Name, detected.PID)
+			}
 			return resultForSteamProcess(input, detected)
 		}
-		time.Sleep(checkInterval)
+		attempt++
+		if !waitForProcessDetection(deadline, 2*time.Second, input.Done) {
+			break
+		}
 	}
 
+	if processDetectionCancelled(input.Done) {
+		return StagedProcessDetectionResult{}
+	}
 	if detected, ok := detectSingleStableProcessInSteamDir(input, logger); ok {
 		return resultForSteamProcess(input, detected)
 	}
@@ -130,22 +139,6 @@ func resultForSteamProcess(input StagedProcessDetectionInput, proc processutils.
 		CloseLauncherHandle: true,
 		PersistProcessName:  ProcessNameForPersistence("", proc.Name),
 	}
-}
-
-// detectLaunchedGameProcessWithRetry re-checks a few times so the exec gap
-// between a launcher exiting and the game process appearing does not
-// immediately fall back to manual selection.
-func detectLaunchedGameProcessWithRetry(input StagedProcessDetectionInput, logger DetectionLogger) (processutils.ProcessInfo, bool) {
-	const attempts = 3
-	for i := 0; i < attempts; i++ {
-		if i > 0 {
-			time.Sleep(1 * time.Second)
-		}
-		if proc, ok := detectLaunchedGameProcess(input, logger); ok {
-			return proc, true
-		}
-	}
-	return processutils.ProcessInfo{}, false
 }
 
 func detectLaunchedGameProcess(input StagedProcessDetectionInput, logger DetectionLogger) (processutils.ProcessInfo, bool) {

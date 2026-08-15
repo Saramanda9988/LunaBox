@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	umbrsdk "github.com/Umbrae-Labs/umbra-sdk/umbra-go"
+	"lunabox/internal/utils/httputils"
 	"lunabox/internal/utils/proxyutils"
 )
 
@@ -20,7 +22,6 @@ type Config struct {
 	BaseURL           string
 	ClientID          string
 	RegistrationToken string
-	UserID            string
 	ProxyConfig       proxyutils.ProxyConfigProvider
 }
 
@@ -39,15 +40,23 @@ var _ interface {
 	GetCloudPath(string, string) string
 } = (*Provider)(nil)
 
-func NewProvider(cfg Config) (*Provider, error) {
+func NewProvider(ctx context.Context, cfg Config) (*Provider, error) {
 	client, _, _, err := newClient(cfg, nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(cfg.UserID) == "" {
-		return nil, fmt.Errorf("Umbra 备份用户 ID 未配置")
+	return newProviderWithClient(ctx, client)
+}
+
+func newProviderWithClient(ctx context.Context, client *umbrsdk.Client) (*Provider, error) {
+	profile, err := client.User.Profile(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("获取 Umbra 用户信息失败: %w", err)
 	}
-	return &Provider{client: client, userID: strings.TrimSpace(cfg.UserID)}, nil
+	if profile.ID == 0 {
+		return nil, fmt.Errorf("Umbra 用户 ID 无效")
+	}
+	return &Provider{client: client, userID: strconv.FormatUint(profile.ID, 10)}, nil
 }
 
 func (p *Provider) UploadFile(ctx context.Context, cloudPath, localPath string) error {
@@ -110,7 +119,7 @@ func (p *Provider) ListObjects(ctx context.Context, prefix string) ([]string, er
 		if !ok || !strings.HasPrefix(recordSubPath, query.prefix) {
 			continue
 		}
-		keys = append(keys, p.GetCloudPath(p.userID, recordSubPath))
+		keys = append(keys, p.cloudPathForSubPath(recordSubPath))
 	}
 	sort.Strings(keys)
 	return keys, nil
@@ -144,8 +153,12 @@ func (p *Provider) TestConnection(ctx context.Context) error {
 
 func (p *Provider) EnsureDir(context.Context, string) error { return nil }
 
-func (p *Provider) GetCloudPath(userID, subPath string) string {
-	return fmt.Sprintf("v1/%s/%s", strings.Trim(userID, "/"), strings.TrimLeft(filepath.ToSlash(subPath), "/"))
+func (p *Provider) GetCloudPath(_ string, subPath string) string {
+	return p.cloudPathForSubPath(subPath)
+}
+
+func (p *Provider) cloudPathForSubPath(subPath string) string {
+	return fmt.Sprintf("v1/%s/%s", p.userID, strings.TrimLeft(filepath.ToSlash(subPath), "/"))
 }
 
 func (p *Provider) addressForCloudPath(cloudPath string) (umbrsdk.BackupAddress, error) {
@@ -160,7 +173,7 @@ func (p *Provider) subPath(cloudPath string) (string, error) {
 	normalized := strings.TrimLeft(filepath.ToSlash(cloudPath), "/")
 	prefix := "v1/" + p.userID + "/"
 	if !strings.HasPrefix(normalized, prefix) {
-		return "", fmt.Errorf("Umbra 云端路径不属于当前用户")
+		return "", fmt.Errorf("Umbra 云端对象键不属于当前账户")
 	}
 	return strings.TrimPrefix(normalized, prefix), nil
 }
@@ -189,7 +202,7 @@ func Authenticate(ctx context.Context, cfg Config, appVersion string, opener Bro
 		if err != nil {
 			return fmt.Errorf("获取 Umbra install ID 路径失败: %w", err)
 		}
-		device, err := umbrsdk.DetectWindowsDeviceMetadata(umbrsdk.WindowsDeviceMetadataOptions{
+		device, err := umbrsdk.DetectDeviceMetadata(umbrsdk.DeviceMetadataOptions{
 			AppVersion:    appVersion,
 			InstallIDPath: installPath,
 		})
@@ -255,7 +268,10 @@ func newClient(cfg Config, opener BrowserOpenerFunc, registration *umbrsdk.Devic
 	if strings.TrimSpace(cfg.ClientID) == "" {
 		return nil, nil, nil, fmt.Errorf("Umbra OAuth Client ID 未注入，请在构建时配置 LUNABOX_UMBRA_CLIENT_ID")
 	}
-	httpClient, _, err := proxyutils.NewHTTPClientFromConfig(60*time.Second, cfg.ProxyConfig)
+	httpClient, _, err := httputils.NewClient(httputils.ClientOptions{
+		Timeout:     60 * time.Second,
+		ProxyConfig: cfg.ProxyConfig,
+	})
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("创建 Umbra HTTP 客户端失败: %w", err)
 	}

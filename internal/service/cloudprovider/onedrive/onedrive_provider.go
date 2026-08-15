@@ -12,7 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"lunabox/internal/utils/httputils"
 	"lunabox/internal/utils/proxyutils"
+	"resty.dev/v3"
 )
 
 // OneDrive 常量
@@ -75,7 +77,10 @@ func NewOneDriveProvider(cfg OneDriveConfig) (*OneDriveProvider, error) {
 		return nil, fmt.Errorf("OneDrive 未授权")
 	}
 
-	client, _, err := proxyutils.NewHTTPClientFromConfig(60*time.Second, cfg.ProxyConfig)
+	client, _, err := httputils.NewClient(httputils.ClientOptions{
+		Timeout:     60 * time.Second,
+		ProxyConfig: cfg.ProxyConfig,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("创建 OneDrive HTTP 客户端失败: %w", err)
 	}
@@ -147,7 +152,10 @@ func ExchangeOneDriveCodeForTokenWithRedirectAndProxy(ctx context.Context, clien
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 
-	client, _, err := proxyutils.NewHTTPClientFromConfig(30*time.Second, proxyConfig)
+	client, _, err := httputils.NewClient(httputils.ClientOptions{
+		Timeout:     30 * time.Second,
+		ProxyConfig: proxyConfig,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -349,19 +357,34 @@ func (p *OneDriveProvider) DownloadFile(ctx context.Context, cloudPath, localPat
 	}
 
 	apiURL := fmt.Sprintf("%s/special/approot:%s:/content", oneDriveAPIBase, cloudPath)
-	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
+	downloadHTTPClient := *p.httpClient
+	downloadHTTPClient.Timeout = 0
+	client, err := httputils.NewRestyClientWithHTTPClient(&downloadHTTPClient, "")
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Authorization", "Bearer "+p.accessToken)
-
-	resp, err := p.httpClient.Do(req)
+	resp, err := client.R().
+		SetContext(ctx).
+		SetAuthToken(p.accessToken).
+		SetResponseDoNotParse(true).
+		SetRetryCount(5).
+		AddRetryConditions(
+			resty.RetryConditionStatusTooManyRequests,
+			resty.RetryConditionStatus5XX,
+			func(response *resty.Response, _ error) bool {
+				return response != nil && response.StatusCode() == http.StatusRequestTimeout
+			},
+		).
+		Get(apiURL)
 	if err != nil {
 		return err
+	}
+	if resp == nil || resp.Body == nil {
+		return fmt.Errorf("下载失败: 响应为空")
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode() >= 400 {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("下载失败: %s", string(body))
 	}

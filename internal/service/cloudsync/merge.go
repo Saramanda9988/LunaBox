@@ -8,6 +8,8 @@ import (
 )
 
 func (h *Helper) MergeSnapshots(local, remote Snapshot, remoteExists bool) Snapshot {
+	ensureLegacyMetadataSources(&local)
+	ensureLegacyMetadataSources(&remote)
 	if !remoteExists {
 		local.RevisionID = uuid.New().String()
 		local.ExportedAt = time.Now()
@@ -73,6 +75,20 @@ func (h *Helper) MergeSnapshots(local, remote Snapshot, remoteExists bool) Snaps
 
 	mergedGameMap := mapGames(merged.Games)
 
+	localMetadataSourceMap := mapMetadataSources(local.MetadataSources)
+	remoteMetadataSourceMap := mapMetadataSources(remote.MetadataSources)
+	localMetadataSourceTombstones := mapTombstones(local.Tombstones, entityGameMetadataSource)
+	remoteMetadataSourceTombstones := mapTombstones(remote.Tombstones, entityGameMetadataSource)
+	for _, id := range unionKeys4(localMetadataSourceMap, remoteMetadataSourceMap, localMetadataSourceTombstones, remoteMetadataSourceTombstones) {
+		if source, ok, deletedAt := mergeMetadataSource(localMetadataSourceMap[id], remoteMetadataSourceMap[id], localMetadataSourceTombstones[id], remoteMetadataSourceTombstones[id]); ok {
+			if _, gameExists := mergedGameMap[source.GameID]; gameExists {
+				merged.MetadataSources = append(merged.MetadataSources, source)
+			}
+		} else if !deletedAt.IsZero() {
+			merged.Tombstones = append(merged.Tombstones, Tombstone{EntityType: entityGameMetadataSource, EntityID: id, DeletedAt: deletedAt})
+		}
+	}
+
 	localProgressMap := mapGameProgresses(local.GameProgresses)
 	remoteProgressMap := mapGameProgresses(remote.GameProgresses)
 	localProgressTombstones := mapTombstones(local.Tombstones, entityGameProgress)
@@ -84,6 +100,20 @@ func (h *Helper) MergeSnapshots(local, remote Snapshot, remoteExists bool) Snaps
 			}
 		} else if !deletedAt.IsZero() {
 			merged.Tombstones = append(merged.Tombstones, Tombstone{EntityType: entityGameProgress, EntityID: id, DeletedAt: deletedAt})
+		}
+	}
+
+	localReviewMap := mapGameReviews(local.GameReviews)
+	remoteReviewMap := mapGameReviews(remote.GameReviews)
+	localReviewTombstones := mapTombstones(local.Tombstones, entityGameReview)
+	remoteReviewTombstones := mapTombstones(remote.Tombstones, entityGameReview)
+	for _, id := range unionKeys4(localReviewMap, remoteReviewMap, localReviewTombstones, remoteReviewTombstones) {
+		if review, ok, deletedAt := mergeGameReview(localReviewMap[id], remoteReviewMap[id], localReviewTombstones[id], remoteReviewTombstones[id]); ok {
+			if _, gameExists := mergedGameMap[review.GameID]; gameExists {
+				merged.GameReviews = append(merged.GameReviews, review)
+			}
+		} else if !deletedAt.IsZero() {
+			merged.Tombstones = append(merged.Tombstones, Tombstone{EntityType: entityGameReview, EntityID: id, DeletedAt: deletedAt})
 		}
 	}
 
@@ -176,9 +206,14 @@ func sortSnapshot(snapshot *Snapshot) {
 	})
 	sort.Slice(snapshot.PlaySessions, func(i, j int) bool { return snapshot.PlaySessions[i].ID < snapshot.PlaySessions[j].ID })
 	sort.Slice(snapshot.GameProgresses, func(i, j int) bool { return snapshot.GameProgresses[i].ID < snapshot.GameProgresses[j].ID })
+	sort.Slice(snapshot.GameReviews, func(i, j int) bool { return snapshot.GameReviews[i].GameID < snapshot.GameReviews[j].GameID })
 	sort.Slice(snapshot.GameTags, func(i, j int) bool {
 		return tagTombstoneID(snapshot.GameTags[i].GameID, snapshot.GameTags[i].Source, snapshot.GameTags[i].Name) <
 			tagTombstoneID(snapshot.GameTags[j].GameID, snapshot.GameTags[j].Source, snapshot.GameTags[j].Name)
+	})
+	sort.Slice(snapshot.MetadataSources, func(i, j int) bool {
+		return metadataSourceTombstoneID(snapshot.MetadataSources[i].GameID, snapshot.MetadataSources[i].SourceType) <
+			metadataSourceTombstoneID(snapshot.MetadataSources[j].GameID, snapshot.MetadataSources[j].SourceType)
 	})
 	sort.Slice(snapshot.Tombstones, func(i, j int) bool {
 		left := snapshot.Tombstones[i].EntityType + "::" + snapshot.Tombstones[i].EntityID
@@ -228,12 +263,56 @@ func mapGameProgresses(items []GameProgress) map[string]GameProgress {
 	return result
 }
 
+func mapGameReviews(items []GameReview) map[string]GameReview {
+	result := make(map[string]GameReview, len(items))
+	for _, item := range items {
+		result[item.GameID] = item
+	}
+	return result
+}
+
 func mapGameTags(items []GameTag) map[string]GameTag {
 	result := make(map[string]GameTag, len(items))
 	for _, item := range items {
 		result[tagTombstoneID(item.GameID, item.Source, item.Name)] = item
 	}
 	return result
+}
+
+func mapMetadataSources(items []MetadataSource) map[string]MetadataSource {
+	result := make(map[string]MetadataSource, len(items))
+	for _, item := range items {
+		result[metadataSourceTombstoneID(item.GameID, item.SourceType)] = item
+	}
+	return result
+}
+
+func ensureLegacyMetadataSources(snapshot *Snapshot) {
+	existing := mapMetadataSources(snapshot.MetadataSources)
+	for i := range snapshot.Games {
+		game := &snapshot.Games[i]
+		if game.SourceType == "" || game.SourceID == "" || game.SourceType == "local" || game.SourceType == "mixed" {
+			continue
+		}
+		key := metadataSourceTombstoneID(game.ID, game.SourceType)
+		if _, ok := existing[key]; ok {
+			continue
+		}
+		createdAt := game.CreatedAt
+		if createdAt.IsZero() {
+			createdAt = game.UpdatedAt
+		}
+		source := MetadataSource{
+			GameID:     game.ID,
+			SourceType: game.SourceType,
+			SourceID:   game.SourceID,
+			CachedAt:   game.UpdatedAt,
+			CreatedAt:  createdAt,
+			UpdatedAt:  game.UpdatedAt,
+		}
+		snapshot.MetadataSources = append(snapshot.MetadataSources, source)
+		existing[key] = source
+	}
 }
 
 func mapCoverAssets(items []CoverAsset) map[string]CoverAsset {
@@ -504,6 +583,48 @@ func mergeGameProgress(local, remote GameProgress, localDeleted, remoteDeleted t
 	return bestRecord, true, time.Time{}
 }
 
+func mergeGameReview(local, remote GameReview, localDeleted, remoteDeleted time.Time) (GameReview, bool, time.Time) {
+	best := Candidate{}
+	hasBest := false
+	bestDeleted := false
+	bestRecord := GameReview{}
+
+	if !local.UpdatedAt.IsZero() {
+		best = Candidate{Timestamp: local.UpdatedAt, Source: 0}
+		bestRecord = local
+		hasBest = true
+	}
+	if !remote.UpdatedAt.IsZero() {
+		candidate := Candidate{Timestamp: remote.UpdatedAt, Source: 1}
+		if !hasBest || compareCandidate(candidate, best) > 0 {
+			best = candidate
+			bestRecord = remote
+			hasBest = true
+			bestDeleted = false
+		}
+	}
+	if !localDeleted.IsZero() {
+		candidate := Candidate{Timestamp: localDeleted, Source: 0, Deleted: true}
+		if !hasBest || compareCandidate(candidate, best) > 0 {
+			best = candidate
+			hasBest = true
+			bestDeleted = true
+		}
+	}
+	if !remoteDeleted.IsZero() {
+		candidate := Candidate{Timestamp: remoteDeleted, Source: 1, Deleted: true}
+		if !hasBest || compareCandidate(candidate, best) > 0 {
+			best = candidate
+			hasBest = true
+			bestDeleted = true
+		}
+	}
+	if !hasBest || bestDeleted {
+		return GameReview{}, false, best.Timestamp
+	}
+	return bestRecord, true, time.Time{}
+}
+
 func mergeGameTag(local, remote GameTag, localDeleted, remoteDeleted time.Time) (GameTag, bool, time.Time) {
 	best := Candidate{}
 	hasBest := false
@@ -541,6 +662,47 @@ func mergeGameTag(local, remote GameTag, localDeleted, remoteDeleted time.Time) 
 	}
 	if !hasBest || bestDeleted {
 		return GameTag{}, false, best.Timestamp
+	}
+	return bestRecord, true, time.Time{}
+}
+
+func mergeMetadataSource(local, remote MetadataSource, localDeleted, remoteDeleted time.Time) (MetadataSource, bool, time.Time) {
+	best := Candidate{}
+	hasBest := false
+	bestDeleted := false
+	bestRecord := MetadataSource{}
+	if !local.UpdatedAt.IsZero() {
+		best = Candidate{Timestamp: local.UpdatedAt, Source: 0}
+		bestRecord = local
+		hasBest = true
+	}
+	if !remote.UpdatedAt.IsZero() {
+		candidate := Candidate{Timestamp: remote.UpdatedAt, Source: 1}
+		if !hasBest || compareCandidate(candidate, best) > 0 {
+			best = candidate
+			bestRecord = remote
+			hasBest = true
+			bestDeleted = false
+		}
+	}
+	if !localDeleted.IsZero() {
+		candidate := Candidate{Timestamp: localDeleted, Source: 0, Deleted: true}
+		if !hasBest || compareCandidate(candidate, best) > 0 {
+			best = candidate
+			hasBest = true
+			bestDeleted = true
+		}
+	}
+	if !remoteDeleted.IsZero() {
+		candidate := Candidate{Timestamp: remoteDeleted, Source: 1, Deleted: true}
+		if !hasBest || compareCandidate(candidate, best) > 0 {
+			best = candidate
+			hasBest = true
+			bestDeleted = true
+		}
+	}
+	if !hasBest || bestDeleted {
+		return MetadataSource{}, false, best.Timestamp
 	}
 	return bestRecord, true, time.Time{}
 }

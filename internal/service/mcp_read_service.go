@@ -41,12 +41,14 @@ func NewMCPReadService() *MCPReadService {
 	return &MCPReadService{}
 }
 
+//wails:ignore
 func (s *MCPReadService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
 	s.db = db
 	s.config = config
 }
 
+//wails:ignore
 func (s *MCPReadService) SetGameService(gameService *GameService) {
 	s.gameService = gameService
 	if gameService != nil {
@@ -54,26 +56,32 @@ func (s *MCPReadService) SetGameService(gameService *GameService) {
 	}
 }
 
+//wails:ignore
 func (s *MCPReadService) SetStartService(startService interface{ StartGameWithTracking(string) (bool, error) }) {
 	s.startService = startService
 }
 
+//wails:ignore
 func (s *MCPReadService) SetSessionService(sessionService *SessionService) {
 	s.sessionService = sessionService
 }
 
+//wails:ignore
 func (s *MCPReadService) SetGameProgressService(progressService *GameProgressService) {
 	s.progressService = progressService
 }
 
+//wails:ignore
 func (s *MCPReadService) SetTagService(tagService *TagService) {
 	s.tagService = tagService
 }
 
+//wails:ignore
 func (s *MCPReadService) SetStatsProvider(provider AIStatsProvider) {
 	s.statsProvider = provider
 }
 
+//wails:ignore
 func (s *MCPReadService) SetMetadataFetcher(fetcher func(name string) ([]vo.GameMetadataFromWebVO, error)) {
 	s.metadataFetcher = fetcher
 }

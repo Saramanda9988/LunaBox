@@ -1,4 +1,4 @@
-import type { vo } from "../../../wailsjs/go/models";
+import type { vo } from "../../../src/bindings/models";
 import { useTranslation } from "react-i18next";
 import { formatDuration } from "../../utils/time";
 import { GameCoverImage } from "../ui/GameCoverImage";

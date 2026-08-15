@@ -1,11 +1,19 @@
 import type { TFunction } from "i18next";
 
-import type { appconf, vo } from "../../wailsjs/go/models";
+import type { appconf, vo } from "../../src/bindings/models";
 
 import { formatLocalDateTime } from "./time";
 
 export function isCloudProviderConfigured(config?: appconf.AppConfig | null) {
-  if (!config?.cloud_backup_enabled || !config.backup_user_id) {
+  if (!config?.cloud_backup_enabled) {
+    return false;
+  }
+
+  if (config.cloud_backup_provider === "umbra") {
+    return Boolean(config.umbra_base_url && config.umbra_authenticated);
+  }
+
+  if (!config.backup_user_id) {
     return false;
   }
 
@@ -13,8 +21,8 @@ export function isCloudProviderConfigured(config?: appconf.AppConfig | null) {
     return Boolean(config.onedrive_refresh_token);
   }
 
-  if (config.cloud_backup_provider === "umbra") {
-    return Boolean(config.umbra_base_url && config.umbra_authenticated);
+  if (config.cloud_backup_provider === "webdav") {
+    return Boolean(config.webdav_url);
   }
 
   return Boolean(config.s3_endpoint && config.s3_access_key);

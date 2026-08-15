@@ -3,6 +3,7 @@ package appconf
 import (
 	"strings"
 
+	enums2 "lunabox/internal/common/enums"
 	"lunabox/internal/utils/proxyutils"
 )
 
@@ -64,6 +65,23 @@ func NormalizeGameCardLayout(layout string) string {
 	default:
 		return DefaultGameCardLayout
 	}
+}
+
+func NormalizeMetadataCoverSource(source enums2.MetadataCoverSource) enums2.MetadataCoverSource {
+	switch strings.ToLower(strings.TrimSpace(string(source))) {
+	case string(enums2.MetadataCoverSourceOriginal):
+		return enums2.MetadataCoverSourceOriginal
+	default:
+		return enums2.MetadataCoverSourceHikarinagi
+	}
+}
+
+func NormalizeMetadataCoverSources(config *AppConfig) {
+	if config == nil {
+		return
+	}
+	config.BangumiCoverSource = NormalizeMetadataCoverSource(config.BangumiCoverSource)
+	config.VNDBCoverSource = NormalizeMetadataCoverSource(config.VNDBCoverSource)
 }
 
 func NormalizeProxySettings(config *AppConfig) bool {

@@ -37,3 +37,7 @@ func findSteamInstallPath() (string, error) {
 
 	return "", fmt.Errorf("未找到有效的 Steam 安装目录")
 }
+
+func shouldUpdateLocalSteamLaunchFields(existingGameConflict) bool {
+	return false
+}

@@ -2,7 +2,7 @@
 
 ## IMPORTANT
 
-- MUST @frontend\wailsjs\go\models.ts 是wailsjs 自动生成的绑定，因为bug每次可能会出现无关change，请无视他的大部分修改，直接使用文件中提供的后端类型
+- MUST `frontend/bindings/` 是 Wails v3 自动生成的绑定，不要手改；业务代码通过具体 service 文件或 `frontend/src/bindings/` 兼容入口使用后端类型，不要依赖可能产生重复导出的 package 聚合 `index.ts`。
 
 ## 路由（@tanstack/react-router）
 
@@ -131,7 +131,7 @@ MUST NOT 在设置页再额外维护一份与 `config`/`draftConfig` 平级的�
 
 ## 与后端交互（Wails）
 
-- MUST 通过 `frontend/wailsjs/` 生成的绑定调用后端服务。
+- MUST 通过 `frontend/bindings/` 生成的具体 service 文件调用后端服务；需要聚合后端类型或 runtime 兼容 API 时使用 `frontend/src/bindings/`。
 - SHOULD 将"后端调用 + 结果归一化/错误提示"封装到 hooks 或 store action 中，避免散落在各页面。
 - SHOULD 对跨页面、跨退出入口共享的运行时事件（如 `app:quit-sync-requested`）统一在应用级 hook 中监听，不要在多个页面重复订阅。
 

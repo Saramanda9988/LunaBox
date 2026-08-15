@@ -76,3 +76,19 @@ func TestAddressRejectsUnsupportedPath(t *testing.T) {
 		t.Fatal("addressForSubPath() expected an error")
 	}
 }
+
+func TestProviderCloudPathUsesServerAccountScope(t *testing.T) {
+	provider := &Provider{userID: "42"}
+	cloudPath := provider.GetCloudPath("legacy-user-id", "database/latest.zip")
+	if cloudPath != "v1/42/database/latest.zip" {
+		t.Fatalf("GetCloudPath() = %q, want %q", cloudPath, "v1/42/database/latest.zip")
+	}
+
+	subPath, err := provider.subPath(cloudPath)
+	if err != nil {
+		t.Fatalf("subPath() error = %v", err)
+	}
+	if subPath != "database/latest.zip" {
+		t.Fatalf("subPath() = %q, want %q", subPath, "database/latest.zip")
+	}
+}

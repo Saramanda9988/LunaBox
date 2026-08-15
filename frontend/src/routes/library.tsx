@@ -1,4 +1,4 @@
-import type { models, vo } from "../../wailsjs/go/models";
+import type { models, service, vo } from "../../src/bindings/models";
 import type { GameCardLayout } from "../components/card/GameCard";
 import type { ImportSource } from "../components/modal/GameImportModal";
 import type { GameStatusFilter } from "../consts/options";
@@ -13,16 +13,25 @@ import {
 } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { enums } from "../../wailsjs/go/models";
 import {
   AddGamesToCategories,
   GetCategories,
-} from "../../wailsjs/go/service/CategoryService";
+} from "../../bindings/lunabox/internal/service/categoryservice";
 import {
   BatchUpdateStatus,
   DeleteGames,
   GetGames,
-} from "../../wailsjs/go/service/GameService";
+} from "../../bindings/lunabox/internal/service/gameservice";
+import {
+  BatchImportGamesToSteam,
+  GetGameSteamStatus,
+} from "../../bindings/lunabox/internal/service/integrationservice";
+import { enums } from "../../src/bindings/models";
+import playniteIconUrl from "../assets/importers/playnite.png";
+import potatovnIconUrl from "../assets/importers/potatovn.png";
+import reinaManagerIconUrl from "../assets/importers/reinamanager.png";
+import vniteIconUrl from "../assets/importers/vnite.png";
+import yukihubIconUrl from "../assets/importers/yukihub.png";
 import {
   getLibraryGameListCache,
   invalidateAllGameLists,
@@ -32,6 +41,7 @@ import {
   useGameCacheStore,
 } from "../cache/gameCache";
 import { FilterBar } from "../components/bar/FilterBar";
+import { GameFilterPresetMenu } from "../components/bar/GameFilterPresetMenu";
 import { TagFilterMenu } from "../components/bar/TagFilterMenu";
 import { VirtualGameGrid } from "../components/grid/VirtualGameGrid";
 import { AddGameModal } from "../components/modal/AddGameModal";
@@ -39,7 +49,9 @@ import { AddToCategoryModal } from "../components/modal/AddToCategoryModal";
 import { BatchImportModal } from "../components/modal/BatchImportModal";
 import { ConfirmModal } from "../components/modal/ConfirmModal";
 import { GameImportModal } from "../components/modal/GameImportModal";
+import { SteamBatchImportModal } from "../components/modal/SteamBatchImportModal";
 import { LibrarySkeleton } from "../components/skeleton/LibrarySkeleton";
+import { BetterButton } from "../components/ui/better/BetterButton";
 import { BetterDropdownMenu } from "../components/ui/better/BetterDropdownMenu";
 import { ScrollToTopButton } from "../components/ui/ScrollToTopButton";
 import { sortOptions, statusOptions } from "../consts/options";
@@ -59,17 +71,54 @@ const WINDOW_BUFFER_SIZE = PAGE_SIZE;
 const WINDOW_REQUEST_SIZE = PAGE_SIZE * 2;
 const WINDOW_KEEP_RADIUS = PAGE_SIZE * 4;
 const LIBRARY_SORT_BY_VALUES = new Set<enums.GameListSortBy>([
-  enums.GameListSortBy.NAME,
-  enums.GameListSortBy.COMPANY,
-  enums.GameListSortBy.LAST_PLAYED_AT,
-  enums.GameListSortBy.CREATED_AT,
-  enums.GameListSortBy.RATING,
-  enums.GameListSortBy.RELEASE_DATE,
+  enums.GameListSortBy.GameListSortByName,
+  enums.GameListSortBy.GameListSortByCompany,
+  enums.GameListSortBy.GameListSortByLastPlayedAt,
+  enums.GameListSortBy.GameListSortByCreatedAt,
+  enums.GameListSortBy.GameListSortByRating,
+  enums.GameListSortBy.GameListSortByReleaseDate,
 ]);
 const LIBRARY_STATUS_VALUES = new Set(
   statusOptions.map(option => option.value),
 );
 const LIBRARY_SCROLL_RESTORATION_ID = "library-scroll";
+const EMPTY_STATE_IMPORT_OPTIONS = [
+  {
+    source: "potatovn",
+    labelKey: "library.importPotatoVN",
+    iconSrc: potatovnIconUrl,
+  },
+  {
+    source: "playnite",
+    labelKey: "library.importPlaynite",
+    iconSrc: playniteIconUrl,
+  },
+  {
+    source: "yukihub",
+    labelKey: "library.importYukiHub",
+    iconSrc: yukihubIconUrl,
+  },
+  {
+    source: "vnite",
+    labelKey: "library.importVnite",
+    iconSrc: vniteIconUrl,
+  },
+  {
+    source: "reinamanager",
+    labelKey: "library.importReinaManager",
+    iconSrc: reinaManagerIconUrl,
+  },
+  {
+    source: "steam",
+    labelKey: "library.importSteam",
+    icon: "i-mdi-steam",
+  },
+] as const satisfies ReadonlyArray<{
+  source: ImportSource;
+  labelKey: string;
+  iconSrc?: string;
+  icon?: string;
+}>;
 
 interface VisibleGameRange {
   endIndex: number;
@@ -156,15 +205,15 @@ function readStoredLibrarySortBy() {
   ) {
     return savedSortBy as enums.GameListSortBy;
   }
-  return enums.GameListSortBy.CREATED_AT;
+  return enums.GameListSortBy.GameListSortByCreatedAt;
 }
 
 function readStoredLibrarySortOrder() {
   const savedSortOrder = readStoredValue(`${LIBRARY_STORAGE_KEY}_sortOrder`);
-  return savedSortOrder === enums.SortOrder.ASC
-    || savedSortOrder === enums.SortOrder.DESC
+  return savedSortOrder === enums.SortOrder.SortOrderAsc
+    || savedSortOrder === enums.SortOrder.SortOrderDesc
     ? (savedSortOrder as enums.SortOrder)
-    : enums.SortOrder.DESC;
+    : enums.SortOrder.SortOrderDesc;
 }
 
 function readStoredLibrarySearchQuery() {
@@ -269,6 +318,7 @@ function LibraryPage() {
   );
   const patchLiveConfig = useAppStore(state => state.patchLiveConfig);
   const fetchHomeData = useAppStore(state => state.fetchHomeData);
+  const platformGOOS = useAppStore(state => state.platformGOOS);
   const handleShowSortFieldChange = useCallback(
     (value: boolean) => {
       void patchLiveConfig({ show_sort_field_on_cover: value });
@@ -277,7 +327,13 @@ function LibraryPage() {
   );
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 250);
   const [batchMode, setBatchMode] = useState(false);
+  const [isOpeningRandomGame, setIsOpeningRandomGame] = useState(false);
   const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
+  const [isBatchImportingToSteam, setIsBatchImportingToSteam] = useState(false);
+  const [isBatchSteamModalOpen, setIsBatchSteamModalOpen] = useState(false);
+  const [isCheckingBatchSteam, setIsCheckingBatchSteam] = useState(false);
+  const [batchSteamStatus, setBatchSteamStatus]
+    = useState<service.SteamLaunchStatus | null>(null);
   const enableTagTranslation = useAppStore(
     state => state.config?.enable_tag_translation ?? true,
   );
@@ -371,6 +427,7 @@ function LibraryPage() {
     selectTag,
     removeTag,
     clearTagFilter,
+    replaceSelectedTags,
   } = useTagGameFilter({
     enableTagTranslation,
     initialSelectedTags: routeTagFilterValue
@@ -413,6 +470,43 @@ function LibraryPage() {
     setSearchQuery(incomingSearchQuery);
   }, [routeSearchQuery]);
 
+  const applyFilterPreset = useCallback(
+    (preset: models.GameFilterPreset) => {
+      replaceSelectedTags(preset.tags || []);
+      setTagFilterInverted(
+        (preset.tags?.length || 0) > 0 && preset.exclude_tags,
+      );
+      setStatusFilter(preset.status || "");
+      setStatusFilterInverted(Boolean(preset.status) && preset.exclude_status);
+      setTagInput("");
+
+      if (preset.status) {
+        window.localStorage.setItem(
+          `${LIBRARY_STORAGE_KEY}_statusFilter`,
+          preset.status,
+        );
+        if (preset.exclude_status) {
+          window.localStorage.setItem(
+            `${LIBRARY_STORAGE_KEY}_statusFilterInverted`,
+            "true",
+          );
+        }
+        else {
+          window.localStorage.removeItem(
+            `${LIBRARY_STORAGE_KEY}_statusFilterInverted`,
+          );
+        }
+      }
+      else {
+        window.localStorage.removeItem(`${LIBRARY_STORAGE_KEY}_statusFilter`);
+        window.localStorage.removeItem(
+          `${LIBRARY_STORAGE_KEY}_statusFilterInverted`,
+        );
+      }
+    },
+    [replaceSelectedTags, setTagInput],
+  );
+
   const queryParams = useMemo(
     () => ({
       search_query: debouncedSearchQuery.trim(),
@@ -442,6 +536,37 @@ function LibraryPage() {
       || Boolean(statusFilter);
   const isEmptyListWaiting
     = total === 0 && (loading || isSearchSettling || loadedQueryKey !== queryKey);
+
+  const handleOpenRandomGame = useCallback(async () => {
+    if (isOpeningRandomGame || total <= 0) {
+      return;
+    }
+
+    setIsOpeningRandomGame(true);
+    try {
+      const randomOffset = Math.floor(Math.random() * total);
+      const response = await GetGames({
+        ...queryParams,
+        limit: 1,
+        offset: randomOffset,
+      } as vo.GameListRequest);
+      const randomGame = response.games?.[0];
+
+      if (!randomGame?.id) {
+        toast.error(t("library.toast.randomGameFailed"));
+        return;
+      }
+
+      await navigate({ to: `/game/${randomGame.id}` });
+    }
+    catch (error) {
+      console.error("Failed to open a random game:", error);
+      toast.error(t("library.toast.randomGameFailed"));
+    }
+    finally {
+      setIsOpeningRandomGame(false);
+    }
+  }, [isOpeningRandomGame, navigate, queryParams, t, total]);
 
   const loadGamesWindow = useCallback(
     async (
@@ -630,29 +755,29 @@ function LibraryPage() {
   };
 
   const statusConfig = {
-    [enums.GameStatus.NOT_STARTED]: {
+    [enums.GameStatus.StatusNotStarted]: {
       label: t("common.notStarted"),
       icon: "i-mdi-clock-outline",
       color: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
     },
-    [enums.GameStatus.WANT_TO_PLAY]: {
+    [enums.GameStatus.StatusWantToPlay]: {
       label: t("common.wantToPlay"),
       icon: "i-mdi-bookmark-outline",
       color: "bg-info-100 text-info-700 dark:bg-info-900 dark:text-info-300",
     },
-    [enums.GameStatus.PLAYING]: {
+    [enums.GameStatus.StatusPlaying]: {
       label: t("common.playing"),
       icon: "i-mdi-gamepad-variant",
       color:
         "bg-neutral-100 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300",
     },
-    [enums.GameStatus.COMPLETED]: {
+    [enums.GameStatus.StatusCompleted]: {
       label: t("common.completed"),
       icon: "i-mdi-trophy",
       color:
         "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
     },
-    [enums.GameStatus.ON_HOLD]: {
+    [enums.GameStatus.StatusOnHold]: {
       label: t("common.onHold"),
       icon: "i-mdi-pause-circle-outline",
       color:
@@ -743,6 +868,86 @@ function LibraryPage() {
     });
   };
 
+  const performBatchImportToSteam = async () => {
+    const gameIds = [...selectedGameIds];
+    if (gameIds.length === 0 || isBatchImportingToSteam)
+      return;
+
+    setIsBatchImportingToSteam(true);
+    try {
+      const result = await BatchImportGamesToSteam(gameIds);
+      const failedItems = result.items.filter(
+        item => Boolean(item.error) || !item.status.ready,
+      );
+      const failedGameIds = failedItems.map(item => item.game_id);
+      const failureStates = new Set(
+        failedItems.map(item => (item.error ? "error" : item.status.state)),
+      );
+
+      if (result.imported_count + result.existing_count > 0) {
+        invalidateAndRefreshLibrary();
+      }
+
+      const summary = t("library.toast.batchSteamImportSummary", {
+        existing: result.existing_count,
+        imported: result.imported_count,
+        skipped: result.failed_count,
+      });
+      if (result.failed_count === 0) {
+        setSelectedGameIds([]);
+        setBatchMode(false);
+        setIsBatchSteamModalOpen(false);
+        toast.success(summary);
+        return;
+      }
+
+      setSelectedGameIds(failedGameIds);
+      if (
+        result.imported_count + result.existing_count === 0
+        && failureStates.size === 1
+        && failureStates.has("steam_running")
+      ) {
+        setBatchSteamStatus(failedItems[0].status);
+        return;
+      }
+
+      setIsBatchSteamModalOpen(false);
+      if (result.imported_count + result.existing_count > 0) {
+        toast.success(summary);
+      }
+      else {
+        toast.error(summary);
+      }
+    }
+    catch (error) {
+      console.error("Failed to batch import games into Steam:", error);
+      setIsBatchSteamModalOpen(false);
+      toast.error(t("library.toast.batchSteamImportFailed"));
+    }
+    finally {
+      setIsBatchImportingToSteam(false);
+    }
+  };
+
+  const handleBatchImportToSteam = () => {
+    if (selectedGameIds.length === 0 || isBatchImportingToSteam)
+      return;
+
+    setIsBatchSteamModalOpen(true);
+    setBatchSteamStatus(null);
+    setIsCheckingBatchSteam(true);
+    void GetGameSteamStatus(selectedGameIds[0])
+      .then(setBatchSteamStatus)
+      .catch((error) => {
+        console.error("Failed to check Steam status:", error);
+        setIsBatchSteamModalOpen(false);
+        toast.error(t("steamImport.checkFailed", { error }));
+      })
+      .finally(() => {
+        setIsCheckingBatchSteam(false);
+      });
+  };
+
   useLayoutEffect(() => {
     currentQueryKeyRef.current = queryKey;
     loadingWindowsRef.current.clear();
@@ -790,7 +995,7 @@ function LibraryPage() {
       data-scroll-restoration-id={LIBRARY_SCROLL_RESTORATION_ID}
       className="h-full w-full overflow-y-auto scrollbar-stable p-8"
     >
-      <div className="mx-auto max-w-8xl space-y-6">
+      <div className="mx-auto flex min-h-full max-w-8xl flex-col gap-6">
         <div className="flex flex-col items-left justify-between">
           <h1 className="text-4xl font-bold text-brand-900 dark:text-white">
             {t("library.title")}
@@ -825,6 +1030,14 @@ function LibraryPage() {
               label: t(opt.label),
             }))}
             storageKey="library"
+            onRandomGame={handleOpenRandomGame}
+            randomGameDisabled={
+              loading
+              || isSearchSettling
+              || loadedQueryKey !== queryKey
+              || total === 0
+            }
+            randomGameLoading={isOpeningRandomGame}
             batchMode={batchMode}
             onBatchModeChange={handleBatchModeChange}
             selectedCount={selectedGameIds.length}
@@ -845,8 +1058,45 @@ function LibraryPage() {
                 onInvertedChange={setTagFilterInverted}
               />
             )}
+            filterPresetMenu={(
+              <GameFilterPresetMenu
+                tags={selectedTags}
+                excludeTags={tagFilterInverted}
+                status={statusFilter}
+                excludeStatus={statusFilterInverted}
+                enableTagTranslation={enableTagTranslation}
+                onApplyPreset={applyFilterPreset}
+              />
+            )}
             batchActions={(
               <>
+                {platformGOOS === "windows" && (
+                  <button
+                    type="button"
+                    aria-label={t("library.batchImportToSteam")}
+                    onClick={handleBatchImportToSteam}
+                    disabled={
+                      selectedGameIds.length === 0 || isBatchImportingToSteam
+                    }
+                    className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
+                          bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
+                          rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300
+                          ${
+                  selectedGameIds.length === 0
+                  || isBatchImportingToSteam
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                  }`}
+                  >
+                    <div
+                      className={`${
+                        isBatchImportingToSteam
+                          ? "i-mdi-loading animate-spin"
+                          : "i-mdi-steam"
+                      } text-lg`}
+                    />
+                  </button>
+                )}
                 {/* 批量更新状态 */}
                 <BetterDropdownMenu
                   title={t("library.setStatus")}
@@ -930,7 +1180,7 @@ function LibraryPage() {
                     key: "potatovn",
                     label: t("library.importPotatoVN"),
                     description: t("library.importPotatoVNDesc"),
-                    iconSrc: "/potatovn.png",
+                    iconSrc: potatovnIconUrl,
                     dividerBefore: true,
                     onClick: () => setImportSource("potatovn"),
                   },
@@ -938,21 +1188,28 @@ function LibraryPage() {
                     key: "playnite",
                     label: t("library.importPlaynite"),
                     description: t("library.importPlayniteDesc"),
-                    iconSrc: "/playnite.png",
+                    iconSrc: playniteIconUrl,
                     onClick: () => setImportSource("playnite"),
+                  },
+                  {
+                    key: "yukihub",
+                    label: t("library.importYukiHub"),
+                    description: t("library.importYukiHubDesc"),
+                    iconSrc: yukihubIconUrl,
+                    onClick: () => setImportSource("yukihub"),
                   },
                   {
                     key: "vnite",
                     label: t("library.importVnite"),
                     description: t("library.importVniteDesc"),
-                    iconSrc: "/vnite.png",
+                    iconSrc: vniteIconUrl,
                     onClick: () => setImportSource("vnite"),
                   },
                   {
                     key: "reinamanager",
                     label: t("library.importReinaManager"),
                     description: t("library.importReinaManagerDesc"),
-                    iconSrc: "/reinamanager.png",
+                    iconSrc: reinaManagerIconUrl,
                     onClick: () => setImportSource("reinamanager"),
                   },
                   {
@@ -977,8 +1234,8 @@ function LibraryPage() {
             />
           </div>
         ) : total === 0 ? (
-          <div className="flex-1 flex items-center justify-center w-full">
-            <div className="flex flex-col items-center justify-center py-20 text-brand-500 dark:text-brand-400">
+          <div className="flex flex-1 items-center justify-center w-full">
+            <div className="flex w-full flex-col items-center justify-center py-20 text-brand-500 dark:text-brand-400">
               {hasActiveGameFilters ? (
                 <>
                   <div className="i-mdi-magnify text-6xl mb-4" />
@@ -991,42 +1248,31 @@ function LibraryPage() {
                   <p className="text-sm mt-2">
                     {t("library.emptyStateAction")}
                   </p>
-                  <div className="flex flex-col gap-3 mt-4">
-                    <button
-                      type="button"
-                      onClick={() => setImportSource("potatovn")}
-                      className="rounded-lg border border-success-600 px-5 py-2.5 text-sm font-medium text-success-600 hover:bg-success-50 focus:outline-none focus:ring-4 focus:ring-success-300 dark:border-success-500 dark:text-success-500 dark:hover:bg-success-900/20"
-                    >
-                      {t("library.importPotatoVN")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setImportSource("playnite")}
-                      className="rounded-lg border border-purple-600 px-5 py-2.5 text-sm font-medium text-purple-600 hover:bg-purple-50 focus:outline-none focus:ring-4 focus:ring-purple-300 dark:border-purple-500 dark:text-purple-500 dark:hover:bg-purple-900/20"
-                    >
-                      {t("library.importPlaynite")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setImportSource("vnite")}
-                      className="rounded-lg border border-sky-600 px-5 py-2.5 text-sm font-medium text-sky-600 hover:bg-sky-50 focus:outline-none focus:ring-4 focus:ring-sky-300 dark:border-sky-500 dark:text-sky-500 dark:hover:bg-sky-900/20"
-                    >
-                      {t("library.importVnite")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setImportSource("reinamanager")}
-                      className="rounded-lg border border-rose-600 px-5 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50 focus:outline-none focus:ring-4 focus:ring-rose-300 dark:border-rose-400 dark:text-rose-300 dark:hover:bg-rose-900/20"
-                    >
-                      {t("library.importReinaManager")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setImportSource("steam")}
-                      className="rounded-lg border border-slate-600 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-300 dark:border-slate-400 dark:text-slate-300 dark:hover:bg-slate-900/20"
-                    >
-                      {t("library.importSteam")}
-                    </button>
+                  <div className="mt-5 grid w-full max-w-lg grid-cols-2 gap-3">
+                    {EMPTY_STATE_IMPORT_OPTIONS.map(option => (
+                      <BetterButton
+                        key={option.source}
+                        variant="secondary"
+                        size="lg"
+                        onClick={() => setImportSource(option.source)}
+                        className="w-full rounded-full border-brand-300/70 bg-brand-100/55 px-5 shadow-sm hover:-translate-y-0.5 hover:border-brand-400 hover:bg-brand-150/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 data-glass:bg-white/8 dark:border-brand-600 dark:bg-brand-800/55 dark:hover:border-brand-500 dark:hover:bg-brand-700/70"
+                      >
+                        {"iconSrc" in option ? (
+                          <img
+                            src={option.iconSrc}
+                            alt=""
+                            aria-hidden="true"
+                            className="h-5 w-5 shrink-0 rounded-md object-cover"
+                          />
+                        ) : (
+                          <span
+                            aria-hidden="true"
+                            className={`${option.icon} shrink-0 text-xl`}
+                          />
+                        )}
+                        <span className="truncate">{t(option.labelKey)}</span>
+                      </BetterButton>
+                    ))}
                   </div>
                 </>
               )}
@@ -1092,6 +1338,19 @@ function LibraryPage() {
         onSave={handleBatchAddToCategory}
         title={t("library.batchAddToFilter")}
         confirmText={t("common.add")}
+      />
+
+      <SteamBatchImportModal
+        isOpen={isBatchSteamModalOpen}
+        selectedCount={selectedGameIds.length}
+        status={batchSteamStatus}
+        isChecking={isCheckingBatchSteam}
+        isImporting={isBatchImportingToSteam}
+        onClose={() => setIsBatchSteamModalOpen(false)}
+        onImport={() => {
+          void performBatchImportToSteam();
+        }}
+        onRetry={handleBatchImportToSteam}
       />
 
       <ConfirmModal

@@ -17,6 +17,7 @@
 | 应用目录、文件复制、打开资源管理器、查找 exe | `internal/utils/apputils` | `GetDataDir`、`CopyFile`、`OpenFileOrFolder`、`FindExecutables` |
 | 压缩与解压 | `internal/utils/archiveutils` | `ExtractArchive`、`ZipDirectory`、`ZipFileOrDirectory`、`UnzipFile` |
 | 下载 URL / checksum / 文件名 / archive format / 传输辅助 | `internal/utils/downloadutils` | `ValidateDownloadURL`、`ValidateChecksumFields`、`SanitizeDownloadedFileName`、`BuildExpectedExtractDir`、`NewDownloader` |
+| 标准 HTTP 客户端、Resty 客户端、上传进度与重试辅助 | `internal/utils/httputils` | `NewClient`、`NewRestyClient`、`NewProgressReadSeeker`、`DoWithRetry` |
 | 封面图/背景图管理 | `internal/utils/imageutils` | `SaveCoverImage`、`DownloadAndSaveCoverImage`、`SaveBackgroundImage` |
 | 游戏元数据抓取 | `internal/utils/metadata` | `NewBangumiInfoGetter`、`NewVNDBInfoGetterWithLanguage`、`NewSteamInfoGetterWithLanguage`、`NewYmgalInfoGetter`、`NewHikarinagiInfoGetter` |
 | 进程查询与退出监听 | `internal/utils/processutils` | `GetRunningProcesses`、`GetProcessPIDByName`、`WaitForProcessExitAsync` |
@@ -128,6 +129,35 @@
 
 ---
 
+## `httputils`
+
+适用场景：创建带应用代理和默认 User-Agent 的标准客户端或 Resty 客户端，为流式上传报告进度，以及兼容仍使用标准客户端的重试请求。
+
+优先复用：
+
+| 函数 | 作用 |
+|------|------|
+| `NewClient(options)` | 创建带代理、超时和默认 User-Agent 的标准客户端 |
+| `NewRestyClient(options)` | 创建具有相同代理、超时和 User-Agent 规则的 Resty 客户端 |
+| `NewRestyClientWithHTTPClient(client, userAgent)` | 使用现有标准客户端创建 Resty 客户端，适合复用 SDK 的 Transport |
+| `NewProgressReadSeeker(source, total, callback)` | 为流式请求报告字节进度，同时保留重试所需的 `Seek` 能力 |
+| `DoWithRetry(ctx, client, req, policy)` | 按策略重试临时 HTTP 响应和传输错误，并在重试前关闭上一次响应体 |
+| `ParseRetryAfter(value, now)` | 解析秒数与 HTTP 日期格式 |
+| `WaitForRetry(ctx, delay)` | 等待指定时长，并响应 `context` 取消 |
+
+注意：
+
+- 请求带有 body 时，自动重试要求 `req.GetBody` 可用。
+- `NewClient` 默认使用 `version.UserAgent()`；请求显式设置的 User-Agent 保持原值。
+- `NewRestyClient` 与 `NewRestyClientWithHTTPClient` 同样使用 `version.UserAgent()`；重试次数和响应状态码由调用方配置。
+- Resty 重试原始流式请求时要求请求体支持 `io.Seeker`；`NewProgressReadSeeker` 会保留该能力，并在回卷时报告新的字节位置。
+- 代理解析仍由 `proxyutils` 负责，普通外部 HTTP 客户端通过 `NewClient` 创建。
+- 默认重试 `408`、`425`、`429`、`500`、`502`、`503`、`504`，以及 `EOF`、超时等临时传输错误；服务端提供 `Retry-After` 时优先采用。
+- 各业务通过 `RetryPolicy` 设置次数、等待时间、可重试状态码、可重试传输错误和尝试前操作。
+- 游戏文件的断点续传与分片并发调整继续由 `downloadutils` 负责。
+
+---
+
 ## `imageutils`
 
 适用场景：封面图、背景图、本地图片 URL 与下载落盘。
@@ -147,6 +177,8 @@
 注意：
 
 - 这些函数会统一写入托管目录并返回 `/local/...` 路径；前后端路径约定要跟随现有模式。
+- 封面与头像下载使用 Resty，并沿用应用代理、`version.UserAgent()`、429 与 5xx 重试配置。
+- `RemoteImageProxyHandler` 继续使用 `downloadutils` 的安全客户端，以保留地址限制、重定向校验和响应大小限制。
 - 背景图保存会清理旧的 `custom_bg_` / `temp_bg_` 文件，不要自行追加第二套清理逻辑。
 
 ---

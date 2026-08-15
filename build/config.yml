@@ -1,0 +1,40 @@
+version: "3"
+
+info:
+  companyName: LunaBox
+  productName: LunaBox
+  productIdentifier: io.github.saramanda9988.lunabox
+  description: LunaBox game library manager
+  copyright: Copyright (c) LunaBox contributors
+  comments: LunaBox game library manager
+  version: 1.11.2
+
+protocols:
+  - scheme: lunabox
+    description: LunaBox Protocol
+
+dev_mode:
+  root_path: .
+  log_level: info
+  debounce: 1000
+  ignore:
+    dir:
+      - .git
+      - node_modules
+      - frontend
+      - bin
+    file:
+      - .DS_Store
+      - .gitignore
+      - .gitkeep
+      - "*_test.go"
+    watched_extension:
+      - "*.go"
+    git_ignore: true
+  executes:
+    - cmd: wails3 build DEV=true
+      type: blocking
+    - cmd: wails3 task dev:frontend
+      type: background
+    - cmd: wails3 task run
+      type: primary

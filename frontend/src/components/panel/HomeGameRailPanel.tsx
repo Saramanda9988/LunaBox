@@ -1,8 +1,8 @@
-import type { models } from "../../../wailsjs/go/models";
+import type { models } from "../../../src/bindings/models";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { enums, vo } from "../../../wailsjs/go/models";
-import { GetGlobalPeriodStats } from "../../../wailsjs/go/service/StatsService";
+import { GetGlobalPeriodStats } from "../../../bindings/lunabox/internal/service/statsservice";
+import { enums, vo } from "../../../src/bindings/models";
 import { useHorizontalRailScrollControls } from "../../hooks/useHorizontalRailScrollControls";
 import { formatDuration } from "../../utils/time";
 import { PlayHeatmap } from "../chart/PlayHeatmap";
@@ -48,7 +48,7 @@ export function HomeGameRailPanel({
     try {
       const data = await GetGlobalPeriodStats(
         new vo.PeriodStatsRequest({
-          dimension: enums.Period.YEAR,
+          dimension: enums.Period.Year,
           start_date: "",
           end_date: "",
         }),

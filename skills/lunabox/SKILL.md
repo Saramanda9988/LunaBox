@@ -82,14 +82,15 @@ lunacli version
 
 Returns version, git commit, build time, build mode.
 
-### Protocol Management
+### Portable Protocol Management
 
 ```bash
 lunacli protocol register [--exe <path>]
 lunacli protocol unregister
 ```
 
-Register or unregister the `lunabox://` URL scheme. Typically not needed for agent use.
+Register or unregister `lunabox://` for a Windows portable build. Installed
+builds receive the association from the Wails installer.
 
 ## Game Resolution
 

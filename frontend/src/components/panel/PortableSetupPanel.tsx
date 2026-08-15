@@ -1,4 +1,4 @@
-import type { service } from "../../../wailsjs/go/models";
+import type { service } from "../../../src/bindings/models";
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
@@ -9,7 +9,7 @@ import {
   RegisterProtocol,
   UnregisterCLIPath,
   UnregisterProtocol,
-} from "../../../wailsjs/go/service/PortableSetupService";
+} from "../../../bindings/lunabox/internal/service/portablesetupservice";
 import { BetterButton } from "../ui/better/BetterButton";
 
 type ActionKey

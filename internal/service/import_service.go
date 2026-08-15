@@ -16,10 +16,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
+	"unicode"
 
 	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"lunabox/internal/wailsruntime"
 )
 
 // ImportResult 导入结果
@@ -48,32 +50,56 @@ type PreviewGame struct {
 }
 
 type ImportService struct {
-	ctx            context.Context
-	db             *sql.DB
-	config         *appconf.AppConfig
-	gameService    *GameService
-	bangumiService *BangumiService
-	sessionService *SessionService
+	ctx               context.Context
+	db                *sql.DB
+	config            *appconf.AppConfig
+	gameService       *GameService
+	bangumiService    *BangumiService
+	hikarinagiService *HikarinagiService
+	sessionService    *SessionService
+	runtime           wailsruntime.Runtime
 }
 
 func NewImportService() *ImportService {
-	return &ImportService{}
+	return &ImportService{runtime: wailsruntime.Unavailable()}
 }
 
-func (s *ImportService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig, gameService *GameService) {
+//wails:ignore
+func (s *ImportService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
 	s.db = db
 	s.config = config
+}
+
+//wails:ignore
+func (s *ImportService) SetRuntime(runtime wailsruntime.Runtime) {
+	if runtime != nil {
+		s.runtime = runtime
+	}
+}
+
+// SetGameService 设置 GameService（用于写入导入的游戏）。
+//
+//wails:ignore
+func (s *ImportService) SetGameService(gameService *GameService) {
 	s.gameService = gameService
 }
 
-// SetSessionService SetStartService 设置 SessionService（用于导入游玩记录）
+// SetSessionService 设置 SessionService（用于导入游玩记录）。
+//
+//wails:ignore
 func (s *ImportService) SetSessionService(sessionService *SessionService) {
 	s.sessionService = sessionService
 }
 
+//wails:ignore
 func (s *ImportService) SetBangumiService(bangumiService *BangumiService) {
 	s.bangumiService = bangumiService
+}
+
+//wails:ignore
+func (s *ImportService) SetHikarinagiService(hikarinagiService *HikarinagiService) {
+	s.hikarinagiService = hikarinagiService
 }
 
 func (s *ImportService) importerDependencies() importer.Dependencies {
@@ -108,9 +134,9 @@ func previewGamesFromImporter(previews []importer.PreviewGame) []PreviewGame {
 
 // SelectZipFile 选择要导入的 ZIP 文件
 func (s *ImportService) SelectZipFile() (string, error) {
-	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+	selection, err := s.runtime.OpenFile(wailsruntime.OpenDialogOptions{
 		Title: "选择 PotatoVN 导出的 ZIP 文件",
-		Filters: []runtime.FileFilter{
+		Filters: []wailsruntime.FileFilter{
 			{
 				DisplayName: "ZIP 文件",
 				Pattern:     "*.zip",
@@ -144,13 +170,53 @@ func (s *ImportService) PreviewImport(zipPath string) ([]PreviewGame, error) {
 	return previewGamesFromImporter(previews), err
 }
 
+// =================== YukiHub 导入功能 ====================
+
+// SelectYukiHubBackup 选择 YukiHub 导出的备份文件。
+func (s *ImportService) SelectYukiHubBackup() (string, error) {
+	selection, err := s.runtime.OpenFile(wailsruntime.OpenDialogOptions{
+		Title: "选择 YukiHub 备份文件",
+		Filters: []wailsruntime.FileFilter{
+			{
+				DisplayName: "YukiHub 备份",
+				Pattern:     "*.ykbak;*.json",
+			},
+		},
+	})
+	return selection, err
+}
+
+// PreviewYukiHubImport 预览 YukiHub 备份中的游戏。
+func (s *ImportService) PreviewYukiHubImport(backupPath string) ([]PreviewGame, error) {
+	previews, err := importer.NewYukiHubImporter(s.importerDependencies()).Preview(backupPath)
+	return previewGamesFromImporter(previews), err
+}
+
+// ImportFromYukiHub 从 YukiHub 备份导入游戏与游玩记录。
+func (s *ImportService) ImportFromYukiHub(backupPath string, skipNoPath bool) (ImportResult, error) {
+	return s.ImportFromYukiHubWithOptions(backupPath, skipNoPath, importer.SamePathActionSkip)
+}
+
+func (s *ImportService) ImportFromYukiHubWithOptions(backupPath string, skipNoPath bool, samePathAction string) (ImportResult, error) {
+	result, err := importer.NewYukiHubImporter(s.importerDependencies()).Import(backupPath, skipNoPath, samePathAction)
+	return ImportResult(result), err
+}
+
+func (s *ImportService) ImportFromYukiHubWithSelection(backupPath string, skipNoPath bool, samePathAction string, selections []vo.ImportSelection) (ImportResult, error) {
+	if len(selections) == 0 {
+		return emptyServiceImportResult(), nil
+	}
+	result, err := importer.NewYukiHubImporter(s.importerDependencies()).ImportSelected(backupPath, skipNoPath, samePathAction, selections)
+	return ImportResult(result), err
+}
+
 // =================== Playnite 导入功能 ====================
 
 // SelectJSONFile 选择要导入的 JSON 文件
 func (s *ImportService) SelectJSONFile() (string, error) {
-	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+	selection, err := s.runtime.OpenFile(wailsruntime.OpenDialogOptions{
 		Title: "选择 Playnite 导出的 JSON 文件",
-		Filters: []runtime.FileFilter{
+		Filters: []wailsruntime.FileFilter{
 			{
 				DisplayName: "JSON 文件",
 				Pattern:     "*.json",
@@ -188,7 +254,7 @@ func (s *ImportService) ImportFromPlayniteWithSelection(jsonPath string, skipNoP
 
 // SelectVniteDirectory 选择 Vnite 导出的数据库目录
 func (s *ImportService) SelectVniteDirectory() (string, error) {
-	selection, err := runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{
+	selection, err := s.runtime.OpenDirectory(wailsruntime.OpenDialogOptions{
 		Title: "选择 Vnite 导出的数据库目录",
 	})
 	return selection, err
@@ -222,9 +288,9 @@ func (s *ImportService) ImportFromVniteWithSelection(vniteDir string, skipNoPath
 
 // SelectReinaManagerDatabase 选择 ReinaManager 导出的 SQLite 数据库备份。
 func (s *ImportService) SelectReinaManagerDatabase() (string, error) {
-	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+	selection, err := s.runtime.OpenFile(wailsruntime.OpenDialogOptions{
 		Title: "选择 ReinaManager 数据库备份",
-		Filters: []runtime.FileFilter{
+		Filters: []wailsruntime.FileFilter{
 			{
 				DisplayName: "SQLite 数据库",
 				Pattern:     "*.db;*.sqlite;*.sqlite3",
@@ -314,7 +380,7 @@ func emptyServiceImportResult() ImportResult {
 
 // SelectLibraryDirectory 选择游戏库目录
 func (s *ImportService) SelectLibraryDirectory() (string, error) {
-	selection, err := runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{
+	selection, err := s.runtime.OpenDirectory(wailsruntime.OpenDialogOptions{
 		Title: "选择游戏库目录",
 	})
 	return selection, err
@@ -548,11 +614,11 @@ func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchIm
 	sources := s.getConfiguredMetadataSearchSources(getterOptions)
 
 	for _, src := range sources {
-		metaResult, err := src.fetchByName(searchName)
-		if err == nil && metaResult.Game.Name != "" {
-			game := metaResult.Game
+		metaResults, err := src.fetchCandidates(searchName)
+		if err == nil && len(metaResults) > 0 && metaResults[0].Game.Name != "" {
+			game := metaResults[0].Game
 			result.MatchedGame = &game
-			result.MatchedTags = metaResult.Tags
+			result.MatchedTags = metaResults[0].Tags
 			result.MatchSource = src.source
 			result.MatchStatus = "matched"
 			return result, nil
@@ -566,9 +632,11 @@ func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchIm
 	return result, nil
 }
 
-// FetchMetadataForCandidateWithPreference fetches metadata for bulk import.
-// The preferred source is authoritative for the candidate: if it is unavailable,
-// rate limited, or returns no result, other sources are not queried.
+const importMetadataNameSimilarityThreshold = 0.75
+
+// FetchMetadataForCandidateWithPreference fetches and filters metadata for bulk import.
+// A configured preferred source is authoritative. Without one, the search name is
+// used as the reference for every enabled source.
 func (s *ImportService) FetchMetadataForCandidateWithPreference(searchName string, preferredSource enums.SourceType) (vo.BatchImportMetadataMatchResult, error) {
 	searchName = strings.TrimSpace(searchName)
 	result := vo.BatchImportMetadataMatchResult{
@@ -589,7 +657,21 @@ func (s *ImportService) FetchMetadataForCandidateWithPreference(searchName strin
 	}
 
 	if result.PreferredSource == "" || result.PreferredSource == enums.Local {
-		result.PreferredSource = sources[0].source
+		fetched := fetchImportMetadataSources(sources, searchName)
+		selected := make([]vo.GameMetadataFromWebVO, 0, len(fetched))
+		for _, sourceResult := range fetched {
+			if sourceResult.sourceErr != nil {
+				result.SourceErrors = append(result.SourceErrors, *sourceResult.sourceErr)
+				applog.LogWarningf(s.ctx, "FetchMetadataForCandidateWithPreference: source %s failed for %s: %s", sourceResult.source, searchName, sourceResult.sourceErr.Error)
+				continue
+			}
+			match, ok := selectBestImportMetadataMatch(sourceResult.matches, []string{searchName}, importMetadataNameSimilarityThreshold)
+			if ok {
+				selected = append(selected, match)
+			}
+		}
+		result.Matches = attachImportMetadataSources(selected)
+		return result, nil
 	}
 
 	preferredGetter, ok := findMetadataSearchSource(sources, result.PreferredSource)
@@ -598,7 +680,7 @@ func (s *ImportService) FetchMetadataForCandidateWithPreference(searchName strin
 		return result, nil
 	}
 
-	preferredMatch, preferredErr := fetchImportMetadataSource(preferredGetter, searchName)
+	preferredMatches, preferredErr := fetchImportMetadataSource(preferredGetter, searchName)
 	if preferredErr != nil {
 		result.PreferredError = preferredErr.Error
 		result.PreferredRateLimited = preferredErr.RateLimited
@@ -607,32 +689,174 @@ func (s *ImportService) FetchMetadataForCandidateWithPreference(searchName strin
 		return result, nil
 	}
 
-	if preferredMatch.Game == (models.Game{}) {
+	preferredMatch, ok := selectBestImportMetadataMatch(preferredMatches, []string{searchName}, 0)
+	if !ok {
 		result.PreferredNoResult = true
 		result.PreferredError = "偏好数据源未找到匹配结果"
 		return result, nil
 	}
 
 	result.PreferredMatched = true
-	result.Matches = append(result.Matches, preferredMatch)
-
+	selected := []vo.GameMetadataFromWebVO{preferredMatch}
+	referenceNames := importMetadataMatchNames(preferredMatch)
+	remainingSources := make([]metadataSearchSource, 0, len(sources)-1)
 	for _, src := range sources {
-		if gamehelper.NormalizeMetadataSourceType(src.source) == result.PreferredSource {
-			continue
-		}
-
-		match, sourceErr := fetchImportMetadataSource(src, searchName)
-		if sourceErr != nil {
-			result.SourceErrors = append(result.SourceErrors, *sourceErr)
-			applog.LogWarningf(s.ctx, "FetchMetadataForCandidateWithPreference: source %s failed for %s: %s", src.source, searchName, sourceErr.Error)
-			continue
-		}
-		if match.Game != (models.Game{}) {
-			result.Matches = append(result.Matches, match)
+		if gamehelper.NormalizeMetadataSourceType(src.source) != result.PreferredSource {
+			remainingSources = append(remainingSources, src)
 		}
 	}
 
+	for _, sourceResult := range fetchImportMetadataSources(remainingSources, searchName) {
+		if sourceResult.sourceErr != nil {
+			result.SourceErrors = append(result.SourceErrors, *sourceResult.sourceErr)
+			applog.LogWarningf(s.ctx, "FetchMetadataForCandidateWithPreference: source %s failed for %s: %s", sourceResult.source, searchName, sourceResult.sourceErr.Error)
+			continue
+		}
+		match, matched := selectBestImportMetadataMatch(sourceResult.matches, referenceNames, importMetadataNameSimilarityThreshold)
+		if matched {
+			selected = append(selected, match)
+		}
+	}
+
+	result.Matches = attachImportMetadataSources(selected)
 	return result, nil
+}
+
+type importMetadataSourceResult struct {
+	source    enums.SourceType
+	matches   []vo.GameMetadataFromWebVO
+	sourceErr *vo.BatchImportMetadataSourceError
+}
+
+func fetchImportMetadataSources(sources []metadataSearchSource, searchName string) []importMetadataSourceResult {
+	results := make([]importMetadataSourceResult, len(sources))
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(len(sources))
+	for index := range sources {
+		go func(index int) {
+			defer waitGroup.Done()
+			matches, sourceErr := fetchImportMetadataSource(sources[index], searchName)
+			results[index] = importMetadataSourceResult{
+				source:    sources[index].source,
+				matches:   matches,
+				sourceErr: sourceErr,
+			}
+		}(index)
+	}
+	waitGroup.Wait()
+	return results
+}
+
+func selectBestImportMetadataMatch(matches []vo.GameMetadataFromWebVO, referenceNames []string, minimumSimilarity float64) (vo.GameMetadataFromWebVO, bool) {
+	bestIndex := -1
+	bestScore := -1.0
+	for index, match := range matches {
+		if strings.TrimSpace(match.Game.SourceID) == "" {
+			continue
+		}
+		score := importMetadataGameNameSimilarity(referenceNames, match.Game)
+		if score > bestScore {
+			bestIndex = index
+			bestScore = score
+		}
+	}
+	if bestIndex < 0 || bestScore < minimumSimilarity {
+		return vo.GameMetadataFromWebVO{}, false
+	}
+	return matches[bestIndex], true
+}
+
+func importMetadataGameNameSimilarity(referenceNames []string, game models.Game) float64 {
+	candidateNames := append([]string{game.Name}, game.Aliases...)
+	bestScore := 0.0
+	for _, referenceName := range referenceNames {
+		for _, candidateName := range candidateNames {
+			score := normalizedImportMetadataNameSimilarity(referenceName, candidateName)
+			if score > bestScore {
+				bestScore = score
+			}
+		}
+	}
+	return bestScore
+}
+
+func importMetadataMatchNames(match vo.GameMetadataFromWebVO) []string {
+	return append([]string{match.Game.Name}, match.Game.Aliases...)
+}
+
+func normalizedImportMetadataNameSimilarity(left string, right string) float64 {
+	leftRunes := []rune(normalizeImportMetadataName(left))
+	rightRunes := []rune(normalizeImportMetadataName(right))
+	if len(leftRunes) == 0 || len(rightRunes) == 0 {
+		return 0
+	}
+	if string(leftRunes) == string(rightRunes) {
+		return 1
+	}
+	maximumLength := len(leftRunes)
+	if len(rightRunes) > maximumLength {
+		maximumLength = len(rightRunes)
+	}
+	return 1 - float64(importMetadataLevenshteinDistance(leftRunes, rightRunes))/float64(maximumLength)
+}
+
+func normalizeImportMetadataName(name string) string {
+	var builder strings.Builder
+	for _, char := range strings.ToLower(strings.TrimSpace(name)) {
+		if unicode.IsLetter(char) || unicode.IsDigit(char) {
+			builder.WriteRune(char)
+		}
+	}
+	return builder.String()
+}
+
+func importMetadataLevenshteinDistance(left []rune, right []rune) int {
+	previous := make([]int, len(right)+1)
+	current := make([]int, len(right)+1)
+	for index := range previous {
+		previous[index] = index
+	}
+	for leftIndex, leftChar := range left {
+		current[0] = leftIndex + 1
+		for rightIndex, rightChar := range right {
+			cost := 0
+			if leftChar != rightChar {
+				cost = 1
+			}
+			deletion := previous[rightIndex+1] + 1
+			insertion := current[rightIndex] + 1
+			substitution := previous[rightIndex] + cost
+			current[rightIndex+1] = min(deletion, insertion, substitution)
+		}
+		previous, current = current, previous
+	}
+	return previous[len(right)]
+}
+
+func attachImportMetadataSources(matches []vo.GameMetadataFromWebVO) []vo.GameMetadataFromWebVO {
+	sources := make([]models.GameMetadataSource, 0, len(matches))
+	seen := make(map[enums.SourceType]struct{}, len(matches))
+	for _, match := range matches {
+		sourceType := gamehelper.NormalizeMetadataSourceType(match.Source)
+		sourceID := strings.TrimSpace(match.Game.SourceID)
+		if sourceType == "" || sourceType == enums.Local || sourceID == "" {
+			continue
+		}
+		if _, exists := seen[sourceType]; exists {
+			continue
+		}
+		seen[sourceType] = struct{}{}
+		sources = append(sources, models.GameMetadataSource{
+			SourceType: sourceType,
+			SourceID:   sourceID,
+			CachedAt:   match.Game.CachedAt,
+		})
+	}
+
+	for index := range matches {
+		matches[index].Game.MetadataSources = append([]models.GameMetadataSource(nil), sources...)
+	}
+	return matches
 }
 
 func findMetadataSearchSource(sources []metadataSearchSource, source enums.SourceType) (metadataSearchSource, bool) {
@@ -645,26 +869,30 @@ func findMetadataSearchSource(sources []metadataSearchSource, source enums.Sourc
 	return metadataSearchSource{}, false
 }
 
-func fetchImportMetadataSource(src metadataSearchSource, searchName string) (vo.GameMetadataFromWebVO, *vo.BatchImportMetadataSourceError) {
-	metaResult, err := src.fetchByName(searchName)
+func fetchImportMetadataSource(src metadataSearchSource, searchName string) ([]vo.GameMetadataFromWebVO, *vo.BatchImportMetadataSourceError) {
+	metaResults, err := src.fetchCandidates(searchName)
 	if err != nil {
 		if isMetadataNoResultError(err) {
-			return vo.GameMetadataFromWebVO{Source: src.source}, nil
+			return nil, nil
 		}
-		return vo.GameMetadataFromWebVO{}, &vo.BatchImportMetadataSourceError{
+		return nil, &vo.BatchImportMetadataSourceError{
 			Source:      src.source,
 			Error:       err.Error(),
 			RateLimited: metadata.IsRateLimitError(err),
 		}
 	}
-	if metaResult.Game == (models.Game{}) {
-		return vo.GameMetadataFromWebVO{Source: src.source}, nil
+	matches := make([]vo.GameMetadataFromWebVO, 0, len(metaResults))
+	for _, metaResult := range metaResults {
+		if gamehelper.IsEmptyGame(metaResult.Game) {
+			continue
+		}
+		matches = append(matches, vo.GameMetadataFromWebVO{
+			Source: src.source,
+			Game:   metaResult.Game,
+			Tags:   metaResult.Tags,
+		})
 	}
-	return vo.GameMetadataFromWebVO{
-		Source: src.source,
-		Game:   metaResult.Game,
-		Tags:   metaResult.Tags,
-	}, nil
+	return matches, nil
 }
 
 func isMetadataNoResultError(err error) bool {
@@ -698,54 +926,87 @@ func (s *ImportService) getConfiguredMetadataSearchSources(getterOptions []metad
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
 					return s.bangumiService.fetchMetadataByName(s.ctx, name)
 				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return s.bangumiService.fetchMetadataCandidatesByName(s.ctx, name)
+				},
 			})
 		case enums.VNDB:
+			getter := metadata.NewVNDBInfoGetterWithLanguage(language, getterOptions...)
 			sources = append(sources, metadataSearchSource{
 				source: enums.VNDB,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return metadata.NewVNDBInfoGetterWithLanguage(language, getterOptions...).FetchMetadataByName(name, vndbToken)
+					return getter.FetchMetadataByName(name, vndbToken)
+				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return metadata.FetchMetadataCandidatesByName(getter, name, vndbToken)
 				},
 			})
 		case enums.Ymgal:
+			getter := metadata.NewYmgalInfoGetter(getterOptions...)
 			sources = append(sources, metadataSearchSource{
 				source: enums.Ymgal,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return metadata.NewYmgalInfoGetter(getterOptions...).FetchMetadataByName(name, "")
+					return getter.FetchMetadataByName(name, "")
+				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return metadata.FetchMetadataCandidatesByName(getter, name, "")
 				},
 			})
 		case enums.Steam:
+			getter := metadata.NewSteamInfoGetterWithLanguage(language, getterOptions...)
 			sources = append(sources, metadataSearchSource{
 				source: enums.Steam,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return metadata.NewSteamInfoGetterWithLanguage(language, getterOptions...).FetchMetadataByName(name, "")
+					return getter.FetchMetadataByName(name, "")
+				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return metadata.FetchMetadataCandidatesByName(getter, name, "")
 				},
 			})
 		case enums.DLsite:
+			getter := metadata.NewDLsiteInfoGetter(getterOptions...)
 			sources = append(sources, metadataSearchSource{
 				source: enums.DLsite,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return metadata.NewDLsiteInfoGetter(getterOptions...).FetchMetadataByName(name, "")
+					return getter.FetchMetadataByName(name, "")
+				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return metadata.FetchMetadataCandidatesByName(getter, name, "")
 				},
 			})
 		case enums.ErogameScape:
+			getter := metadata.NewErogameScapeInfoGetter(getterOptions...)
 			sources = append(sources, metadataSearchSource{
 				source: enums.ErogameScape,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return metadata.NewErogameScapeInfoGetter(getterOptions...).FetchMetadataByName(name, "")
+					return getter.FetchMetadataByName(name, "")
+				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return metadata.FetchMetadataCandidatesByName(getter, name, "")
 				},
 			})
 		case enums.TouchGal:
+			getter := metadata.NewTouchGalInfoGetter(getterOptions...)
 			sources = append(sources, metadataSearchSource{
 				source: enums.TouchGal,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return metadata.NewTouchGalInfoGetter(getterOptions...).FetchMetadataByName(name, "")
+					return getter.FetchMetadataByName(name, "")
+				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return metadata.FetchMetadataCandidatesByName(getter, name, "")
 				},
 			})
 		case enums.Hikarinagi:
+			if s.hikarinagiService == nil {
+				continue
+			}
 			sources = append(sources, metadataSearchSource{
 				source: enums.Hikarinagi,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return metadata.NewHikarinagiInfoGetter(getterOptions...).FetchMetadataByName(name, "")
+					return s.hikarinagiService.fetchMetadataByName(s.ctx, name)
+				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return s.hikarinagiService.fetchMetadataCandidatesByName(s.ctx, name)
 				},
 			})
 		}
@@ -854,11 +1115,22 @@ func (s *ImportService) BatchImportGames(candidates []vo.BatchImportCandidate) (
 		if game.SourceType == "" {
 			game.SourceType = source
 		}
+		sourceRefs := append([]models.GameMetadataSource(nil), game.MetadataSources...)
+		if len(sourceRefs) == 0 && source != "" && source != enums.Local && strings.TrimSpace(game.SourceID) != "" {
+			sourceRefs = append(sourceRefs, models.GameMetadataSource{SourceType: source, SourceID: game.SourceID})
+		}
 		if !s.allowDuplicateMetadataImport() {
-			if sourceRef, exists := idx.findBySource(source, game.SourceID); exists {
-				applog.LogWarningf(s.ctx, "BatchImportGames: source already exists for game %s, skipping: %s/%s", sourceRef.Name, source, game.SourceID)
+			duplicateName := ""
+			for _, metadataSource := range sourceRefs {
+				if sourceRef, exists := idx.findBySource(metadataSource.SourceType, metadataSource.SourceID); exists {
+					duplicateName = sourceRef.Name
+					applog.LogWarningf(s.ctx, "BatchImportGames: source already exists for game %s, skipping: %s/%s", sourceRef.Name, metadataSource.SourceType, metadataSource.SourceID)
+					break
+				}
+			}
+			if duplicateName != "" {
 				result.Skipped++
-				result.SkippedNames = append(result.SkippedNames, gameName+" (元数据已存在: "+sourceRef.Name+")")
+				result.SkippedNames = append(result.SkippedNames, gameName+" (元数据已存在: "+duplicateName+")")
 				continue
 			}
 		}
@@ -870,14 +1142,20 @@ func (s *ImportService) BatchImportGames(candidates []vo.BatchImportCandidate) (
 			Action: importer.ImportActionCreate,
 		}
 		items = append(items, item)
-		idx.add(importGameRef{
+		baseRef := importGameRef{
 			ID:         game.ID,
 			Name:       game.Name,
 			Path:       game.Path,
 			SourceType: game.SourceType,
 			SourceID:   game.SourceID,
 			CreatedAt:  game.CreatedAt,
-		})
+		}
+		idx.add(baseRef)
+		for _, metadataSource := range sourceRefs {
+			baseRef.SourceType = metadataSource.SourceType
+			baseRef.SourceID = metadataSource.SourceID
+			idx.add(baseRef)
+		}
 	}
 	applog.LogInfof(s.ctx, "BatchImportGames: built commit items=%d skipped=%d elapsed=%s", len(items), result.Skipped, time.Since(stepStartedAt))
 

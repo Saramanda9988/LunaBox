@@ -15,7 +15,7 @@ import {
 } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { EndCurrentPlaySession } from "../../../wailsjs/go/service/StartService";
+import { EndCurrentPlaySession } from "../../../bindings/lunabox/internal/service/startservice";
 import { useElapsedSeconds } from "../../hooks/useElapsedSeconds";
 import { isGameRuntimeVisible, useAppStore } from "../../store";
 import { formatDurationCompact } from "../../utils/time";

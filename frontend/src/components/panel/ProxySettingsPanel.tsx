@@ -1,4 +1,4 @@
-import type { appconf } from "../../../wailsjs/go/models";
+import type { appconf } from "../../../src/bindings/models";
 import { useTranslation } from "react-i18next";
 import { BetterSelect } from "../ui/better/BetterSelect";
 

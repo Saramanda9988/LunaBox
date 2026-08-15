@@ -25,6 +25,7 @@ func NewTagService() *TagService {
 	return &TagService{}
 }
 
+//wails:ignore
 func (s *TagService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
 	s.db = db
@@ -224,8 +225,30 @@ func (s *TagService) GetGameIDsByTag(tagName string) ([]string, error) {
 	return ids, rows.Err()
 }
 
-// upsertScrapedTags 删除指定游戏的刮削来源 tag，再批量插入新 tag（保留用户 tag）
+// upsertScrapedTags groups incoming tags by provider and updates each provider independently.
 func (s *TagService) upsertScrapedTags(gameID string, tags []metadata.TagItem) error {
+	bySource := make(map[string][]metadata.TagItem)
+	for _, tag := range tags {
+		source := strings.ToLower(strings.TrimSpace(tag.Source))
+		if source == "" || source == "user" {
+			continue
+		}
+		tag.Source = source
+		bySource[source] = append(bySource[source], tag)
+	}
+	for source, sourceTags := range bySource {
+		if err := s.upsertScrapedTagsForSource(gameID, source, sourceTags); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *TagService) upsertScrapedTagsForSource(gameID string, source string, tags []metadata.TagItem) error {
+	source = strings.ToLower(strings.TrimSpace(source))
+	if source == "" || source == "user" {
+		return fmt.Errorf("invalid scraped tag source: %s", source)
+	}
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -235,8 +258,8 @@ func (s *TagService) upsertScrapedTags(gameID string, tags []metadata.TagItem) e
 	rows, err := tx.QueryContext(s.ctx, `
 		SELECT game_id, source, name
 		FROM game_tags
-		WHERE game_id = ? AND source != 'user'
-	`, gameID)
+		WHERE game_id = ? AND source = ?
+	`, gameID, source)
 	if err != nil {
 		return fmt.Errorf("failed to query existing scraped tags: %w", err)
 	}
@@ -254,10 +277,9 @@ func (s *TagService) upsertScrapedTags(gameID string, tags []metadata.TagItem) e
 	}
 	rows.Close()
 
-	// 删除旧的刮削 tag（保留 source='user'）
 	if _, err := tx.ExecContext(s.ctx, `
-		DELETE FROM game_tags WHERE game_id = ? AND source != 'user'
-	`, gameID); err != nil {
+		DELETE FROM game_tags WHERE game_id = ? AND source = ?
+	`, gameID, source); err != nil {
 		return fmt.Errorf("failed to delete old scraped tags: %w", err)
 	}
 
@@ -265,6 +287,7 @@ func (s *TagService) upsertScrapedTags(gameID string, tags []metadata.TagItem) e
 	incoming := make(map[string]struct{}, len(tags))
 	// 批量插入新 tag
 	for _, t := range tags {
+		t.Source = source
 		id := uuid.New().String()
 		identity := tagTombstoneID(gameID, t.Source, t.Name)
 		incoming[identity] = struct{}{}

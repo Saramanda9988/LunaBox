@@ -4,6 +4,7 @@ type MetadataUpdateField string
 
 const (
 	MetadataUpdateFieldName        MetadataUpdateField = "name"
+	MetadataUpdateFieldAliases     MetadataUpdateField = "aliases"
 	MetadataUpdateFieldCover       MetadataUpdateField = "cover"
 	MetadataUpdateFieldCompany     MetadataUpdateField = "company"
 	MetadataUpdateFieldSummary     MetadataUpdateField = "summary"
@@ -14,6 +15,7 @@ const (
 
 var DefaultMetadataUpdateFields = []MetadataUpdateField{
 	MetadataUpdateFieldName,
+	MetadataUpdateFieldAliases,
 	MetadataUpdateFieldCover,
 	MetadataUpdateFieldCompany,
 	MetadataUpdateFieldSummary,
@@ -27,6 +29,7 @@ var AllMetadataUpdateFields = []struct {
 	TSName string
 }{
 	{MetadataUpdateFieldName, "NAME"},
+	{MetadataUpdateFieldAliases, "ALIASES"},
 	{MetadataUpdateFieldCover, "COVER"},
 	{MetadataUpdateFieldCompany, "COMPANY"},
 	{MetadataUpdateFieldSummary, "SUMMARY"},

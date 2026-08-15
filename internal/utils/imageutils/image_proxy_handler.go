@@ -11,15 +11,22 @@ import (
 	"time"
 )
 
-const remoteImageProxyMaxBytes int64 = 30 * 1024 * 1024
+const (
+	remoteImageProxyMaxBytes     int64 = 30 * 1024 * 1024
+	remoteImageProxyCacheControl       = "public, max-age=31536000, immutable"
+)
+
+type remoteImageProxyClientFactory func(time.Duration, proxyutils.ProxyConfigProvider) (*http.Client, string, error)
 
 type RemoteImageProxyHandler struct {
-	proxyConfig proxyutils.ProxyConfigProvider
+	proxyConfig   proxyutils.ProxyConfigProvider
+	clientFactory remoteImageProxyClientFactory
 }
 
 func NewRemoteImageProxyHandler(proxyConfig proxyutils.ProxyConfigProvider) *RemoteImageProxyHandler {
 	return &RemoteImageProxyHandler{
-		proxyConfig: proxyConfig,
+		proxyConfig:   proxyConfig,
+		clientFactory: downloadutils.NewSecureHTTPClientFromConfig,
 	}
 }
 
@@ -40,7 +47,11 @@ func (h *RemoteImageProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	client, _, err := downloadutils.NewSecureHTTPClientFromConfig(30*time.Second, h.proxyConfig)
+	clientFactory := h.clientFactory
+	if clientFactory == nil {
+		clientFactory = downloadutils.NewSecureHTTPClientFromConfig
+	}
+	client, _, err := clientFactory(30*time.Second, h.proxyConfig)
 	if err != nil {
 		http.Error(w, "failed to create image proxy client", http.StatusInternalServerError)
 		return
@@ -60,10 +71,12 @@ func (h *RemoteImageProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "failed to build image request", http.StatusBadRequest)
 		return
 	}
-	req.Header.Set("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
-	req.Header.Set("User-Agent", "LunaBox")
+	setImageRequestHeaders(req)
+	copyHeader(req.Header, r.Header, "If-None-Match")
+	copyHeader(req.Header, r.Header, "If-Modified-Since")
 	if rangeHeader := strings.TrimSpace(r.Header.Get("Range")); rangeHeader != "" {
 		req.Header.Set("Range", rangeHeader)
+		copyHeader(req.Header, r.Header, "If-Range")
 	}
 
 	resp, err := client.Do(req)
@@ -76,6 +89,11 @@ func (h *RemoteImageProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusNotModified {
+		setRemoteImageProxyCacheHeaders(w.Header(), resp.Header)
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		http.Error(w, fmt.Sprintf("image request failed: status %d", resp.StatusCode), http.StatusBadGateway)
 		return
@@ -94,10 +112,7 @@ func (h *RemoteImageProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	copyHeader(w.Header(), resp.Header, "Content-Length")
 	copyHeader(w.Header(), resp.Header, "Accept-Ranges")
 	copyHeader(w.Header(), resp.Header, "Content-Range")
-	copyHeader(w.Header(), resp.Header, "ETag")
-	copyHeader(w.Header(), resp.Header, "Last-Modified")
-	w.Header().Set("Cache-Control", "public, max-age=3600")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
+	setRemoteImageProxyCacheHeaders(w.Header(), resp.Header)
 
 	if resp.ContentLength < 0 {
 		w.Header().Del("Content-Length")
@@ -113,6 +128,13 @@ func (h *RemoteImageProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		N: remoteImageProxyMaxBytes + 1,
 	}
 	_, _ = io.Copy(w, limitedBody)
+}
+
+func setRemoteImageProxyCacheHeaders(target http.Header, source http.Header) {
+	copyHeader(target, source, "ETag")
+	copyHeader(target, source, "Last-Modified")
+	target.Set("Cache-Control", remoteImageProxyCacheControl)
+	target.Set("X-Content-Type-Options", "nosniff")
 }
 
 func copyHeader(target http.Header, source http.Header, name string) {

@@ -1,4 +1,4 @@
-import type { service } from "../../../../wailsjs/go/models";
+import type { service } from "../../../../src/bindings/models";
 
 interface ImportResultStepLabels {
   success: string;

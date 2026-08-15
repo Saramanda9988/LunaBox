@@ -2,14 +2,22 @@
 
 package focusing
 
+/*
+#cgo darwin LDFLAGS: -framework AppKit
+#include <stdint.h>
+#include <stdlib.h>
+
+uint32_t lunabox_frontmost_process_id(void);
+char *lunabox_frontmost_bundle_path(void);
+*/
+import "C"
+
 import (
-	"net/url"
-	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"unsafe"
 )
 
 // WindowFocusInfo 窗口焦点信息
@@ -119,40 +127,25 @@ func (ft *FocusTracker) isCurrentlyFocused() bool {
 
 // GetForegroundProcessID 返回当前 macOS 前台应用的进程 ID。
 func GetForegroundProcessID() (uint32, bool) {
-	const script = `tell application "System Events" to get unix id of first application process whose frontmost is true`
-
-	out, err := exec.Command("osascript", "-e", script).Output()
-	if err != nil {
+	pid := uint32(C.lunabox_frontmost_process_id())
+	if pid == 0 {
 		return 0, false
 	}
-
-	pid64, err := strconv.ParseUint(strings.TrimSpace(string(out)), 10, 32)
-	if err != nil || pid64 == 0 {
-		return 0, false
-	}
-	return uint32(pid64), true
+	return pid, true
 }
 
 func GetForegroundBundlePath() (string, bool) {
-	const script = `tell application "System Events" to get bundle url of first application process whose frontmost is true`
-
-	out, err := exec.Command("osascript", "-e", script).Output()
-	if err != nil {
+	rawPath := C.lunabox_frontmost_bundle_path()
+	if rawPath == nil {
 		return "", false
 	}
+	defer C.free(unsafe.Pointer(rawPath))
 
-	raw := strings.TrimSpace(string(out))
+	raw := strings.TrimSpace(C.GoString(rawPath))
 	if raw == "" {
 		return "", false
 	}
-	if strings.HasPrefix(raw, "file://") {
-		parsed, err := url.Parse(raw)
-		if err == nil {
-			raw = parsed.Path
-		}
-	}
-	raw = strings.TrimSuffix(raw, "/")
-	return raw, raw != ""
+	return strings.TrimSuffix(raw, "/"), true
 }
 
 func IsBundlePathFocused(bundlePath string) bool {

@@ -1,11 +1,11 @@
-import type { appconf } from "../../../wailsjs/go/models";
+import type { appconf } from "../../../src/bindings/models";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import {
   SaveCroppedBackgroundImage,
   SelectAndCropBackgroundImage,
-} from "../../../wailsjs/go/service/ConfigService";
+} from "../../../bindings/lunabox/internal/service/configservice";
 import { detectImageBrightness } from "../../utils/detectImageBrightness";
 import { ImageCropperModal } from "../modal/ImageCropperModal";
 import { BetterActionInput } from "../ui/better/BetterActionInput";

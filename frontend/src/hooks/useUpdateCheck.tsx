@@ -3,7 +3,7 @@ import { toast } from "react-hot-toast";
 import {
   CheckForUpdatesOnStartup,
   SkipVersion,
-} from "../../wailsjs/go/service/UpdateService";
+} from "../../bindings/lunabox/internal/service/updateservice";
 
 interface UpdateInfo {
   has_update: boolean;
@@ -11,7 +11,7 @@ interface UpdateInfo {
   latest_ver: string;
   release_date: string;
   changelog: string[];
-  downloads: Record<string, string>;
+  downloads: Record<string, string | undefined>;
   update_manifest_url: string;
 }
 

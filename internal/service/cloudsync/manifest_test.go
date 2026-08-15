@@ -209,9 +209,9 @@ func TestEncodeManifestDeterministic(t *testing.T) {
 	}
 }
 
-func TestBuildManifestExposesSchemaV2(t *testing.T) {
+func TestBuildManifestExposesCurrentSchema(t *testing.T) {
 	_, local := buildSampleLocal(t)
-	if local.SchemaVersion != SchemaVersionV2 {
-		t.Errorf("expected schema v%d, got %d", SchemaVersionV2, local.SchemaVersion)
+	if local.SchemaVersion != SchemaVersion {
+		t.Errorf("expected schema v%d, got %d", SchemaVersion, local.SchemaVersion)
 	}
 }

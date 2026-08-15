@@ -1,36 +1,29 @@
+<img src="screenshot/hero.png" alt="LunaBox" />
+
 <div align="center">
 
-<img src="frontend/public/appicon.png" alt="LunaBox Logo" style="width:120px; height:120px; border-radius:16px;" />
-
-# LunaBox
-
-**軽量・高速・高機能なビジュアルノベル管理＆プレイ時間統計ツール**
-
 [中文](README.zh-CN.md) | [English](README.md) | [日本語](README.ja.md)
-
-[![Go](https://img.shields.io/badge/Go-1.24-00ADD8?style=flat-square&logo=go)](https://go.dev/)
-[![Wails](https://img.shields.io/badge/Wails-v2-DF0000?style=flat-square)](https://wails.io/)
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://react.dev/)
 
 </div>
 
 <p align="center">
   <a href="https://github.com/Saramanda9988/LunaBox/releases">
-    <img src="https://img.shields.io/github/downloads/Saramanda9988/LunaBox/total?color=369eff&labelColor=black&logo=github&style=flat-square&label=Downloads" />
-  </a>
-  <a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=Eq5DkGu1gs6tL9bUEJFiq46r6czdpQaR&authKey=w1NRtvE8fYAgShdzGFGx4QDaKQyJRypgHOrVMOhxK5cjUbGt4TXu4px2L%2FJem2WN&noverify=0&group_code=1094948837" target="_blank">
-    <img src="https://img.shields.io/badge/QQ-Group-12B7F5?style=flat-square&logo=tencent-qq&logoColor=white&labelColor=black" />
-  </a>
-  <a href="https://t.me/+6YTPdl-6YeM1OGNl" target="_blank">
-    <img src="https://img.shields.io/badge/Telegram-2CA5E0?style=flat-square&logo=telegram&logoColor=white&labelColor=black" />
-  </a>
+    <img src="https://img.shields.io/github/downloads/Saramanda9988/LunaBox/total?color=369eff&labelColor=black&logo=github&style=flat-square&label=Downloads" /></a>
+  <a href="https://github.com/Saramanda9988/LunaBox/stargazers">
+    <img src="https://img.shields.io/github/stars/Saramanda9988/LunaBox?color=369eff&labelColor=black&logo=github&style=flat-square&label=Stars" /></a>
+  <a href="https://github.com/Saramanda9988/LunaBox/releases/latest">
+    <img src="https://img.shields.io/github/v/release/Saramanda9988/LunaBox?color=369eff&labelColor=black&logo=github&style=flat-square&label=Release" /></a>
+</p>
+
+<p align="center">
+  <a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=Eq5DkGu1gs6tL9bUEJFiq46r6czdpQaR&authKey=w1NRtvE8fYAgShdzGFGx4QDaKQyJRypgHOrVMOhxK5cjUbGt4TXu4px2L%2FJem2WN&noverify=0&group_code=1094948837"><img src="screenshot/qq-community.png" alt="LunaBox QQ グループに参加" width="45%" /></a>
+  <a href="https://t.me/+6YTPdl-6YeM1OGNl"><img src="screenshot/telegram-community.png" alt="LunaBox Telegram グループに参加" width="45%" /></a>
 </p>
 
 ## ✨ 主な機能
 
 - **ゲームカテゴリ管理** - カスタムカテゴリでライブラリを柔軟に整理
 - **プレイ時間トラッキング** - ゲーム起動時にプレイ時間を自動記録
-- **軽量なバイナリサイズ** - Wails ベースで、ブラウザランタイム同梱が不要
 - **多次元統計** - 日/週/月/年などでプレイデータを集計し、統計カードをワンクリックで出力
 - **AI 分析** - プレイデータを分析して、パーソナライズされた楽しいレポートを生成。MCP 公開と CLI skill にも対応し、データ活用シーンを広げます
 - **便利なデータインポート** - PotatoVN、Playnite、Vnite、Steam からの取り込み、フォルダ一括/ドラッグ＆ドロップに対応
@@ -140,61 +133,13 @@
   </tr>
 </table>
 
-## 🛠️ 技術スタック
-
-| レイヤー | 技術 |
-|------|------|
-| **フレームワーク** | [Wails v2](https://wails.io/) |
-| **バックエンド** | [Go 1.26.3](https://go.dev/) |
-| **フロントエンド** | [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/) |
-| **データベース** | [DuckDB](https://duckdb.org/) |
-| **ビルドツール** | [Vite](https://vitejs.dev/) |
-| **スタイル** | [UnoCSS](https://unocss.dev/) |
-| **ルーティング** | [TanStack Router](https://tanstack.com/router) |
-| **状態管理** | [Zustand](https://zustand-demo.pmnd.rs/) |
-| **チャート** | [Chart.js](https://www.chartjs.org/) + [react-chartjs-2](https://react-chartjs-2.js.org/) |
-
 ## 📦 インストール
 
 ### Release からダウンロード
 
 [Releases](https://github.com/Saramanda9988/LunaBox/releases) から最新版インストーラーをダウンロードしてください。
 
-### ソースからビルド
-
-#### 前提環境
-
-- [Go 1.26.3+](https://go.dev/dl/)
-- [Node.js 18+](https://nodejs.org/)
-- [pnpm](https://pnpm.io/)
-- [Wails CLI](https://wails.io/docs/gettingstarted/installation)
-- [msys2](https://www.msys2.org/)
-- [NSIS](https://nsis.sourceforge.io/Main_Page)
-
-```bash
-# Wails CLI をインストール
-go install github.com/wailsapp/wails/v2/cmd/wails@latest
-```
-
-#### ビルド手順
-
-```bash
-# リポジトリをクローン
-git clone https://github.com/Saramanda9988/lunabox.git
-cd lunabox
-
-# フロントエンド依存関係をインストール
-cd frontend && pnpm install && cd ..
-
-# 開発モードで実行
-wails dev
-
-# 本番ビルド
-wails build
-
-# スクリプトでローカルビルド（Windows）
-.\scripts\build.bat all 1.0.0-beta
-```
+[AutoBuild](https://github.com/Saramanda9988/LunaBox/releases/tag/dev-latest) から Nightly ビルドをダウンロードして、最新機能を試すこともできます。
 
 ## 🤝 コントリビューション
 
@@ -202,12 +147,8 @@ Issue と Pull Request を歓迎します。
 
 ## 🗺️ Roadmap
 
-- [x] ログシステムの改善
-- [ ] ReinaManager からのデータ取り込み対応
-- [ ] セルフホスト Docker サーバー
 - [ ] IM プラットフォーム向け Bot プラグイン
 - [x] マルチデバイス同期機能
-- [ ] ギャラリー機能
 - [x] MCP を公開し、AI 向けにリンク起動機能を提供
 - [ ] 「次に何を遊ぶか」レコメンド機能
 - [ ] linux/macOSプラットフォームをサポート
@@ -247,9 +188,3 @@ Issue と Pull Request を歓迎します。
 ## 📄 ライセンス
 
 本プロジェクトは [AGPL v3](LICENSE) ライセンスで公開されています。
-
-<div align="center">
-
-<img src="screenshot/logo-luna.png" width="150"/>
-
-</div>

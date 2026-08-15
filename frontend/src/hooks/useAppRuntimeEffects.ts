@@ -1,22 +1,17 @@
 import type { Dispatch, SetStateAction } from "react";
 
+import { Window } from "@wailsio/runtime";
 import { createElement, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
-import type { appconf, vo } from "../../wailsjs/go/models";
+import type { appconf, vo } from "../../src/bindings/models";
 import type { FetchHomeDataOptions, GameRuntimeChangedEvent } from "../store";
 
-import { ShouldShowMainWindowOnReady } from "../../wailsjs/go/service/ConfigService";
-import { GetPendingInstall } from "../../wailsjs/go/service/DownloadService";
-import { EventsOn, WindowShow } from "../../wailsjs/runtime/runtime";
+import { ShouldShowMainWindowOnReady } from "../../bindings/lunabox/internal/service/configservice";
+import { GetPendingInstall } from "../../bindings/lunabox/internal/service/downloadservice";
+import { onWailsEvent } from "../../src/bindings/runtime";
 import { useAppStore } from "../store";
-
-export type ProcessSelectData = {
-  isOpen: boolean;
-  gameID: string;
-  launcherExeName: string;
-};
 
 export type QuitSyncRequest = {
   reason: string;
@@ -31,11 +26,18 @@ type BangumiStatusPushFailureEvent = {
   error?: string;
 };
 
+type HikarinagiStatusPushFailureEvent = {
+  game_id?: string;
+  game_name?: string;
+  work_id?: string;
+  local_status?: string;
+  error?: string;
+};
+
 type UseAppRuntimeEffectsOptions = {
   config: appconf.AppConfig | null;
   refreshConfig: () => Promise<void>;
   refreshHomeData: (options?: FetchHomeDataOptions) => Promise<void>;
-  setProcessSelectData: Dispatch<SetStateAction<ProcessSelectData>>;
   setInstallRequest: Dispatch<SetStateAction<vo.InstallRequest | null>>;
   setQuitSyncRequest: Dispatch<SetStateAction<QuitSyncRequest | null>>;
   openGameLaunchSettings?: (gameID: string) => void;
@@ -109,7 +111,6 @@ export function useAppRuntimeEffects({
   config,
   refreshConfig,
   refreshHomeData,
-  setProcessSelectData,
   setInstallRequest,
   setQuitSyncRequest,
   openGameLaunchSettings,
@@ -118,6 +119,7 @@ export function useAppRuntimeEffects({
   const applyGameRuntimeEvent = useAppStore(
     state => state.applyGameRuntimeEvent,
   );
+  const initialWindowReadyCheckedRef = useRef(false);
   const skipNextLaunchHomeRefreshRef = useRef(false);
 
   useEffect(() => {
@@ -127,31 +129,11 @@ export function useAppRuntimeEffects({
   }, []);
 
   useEffect(() => {
-    const unsubscribe = EventsOn(
-      "process-select-required",
-      (data: {
-        gameID: string;
-        sessionID: string;
-        launcherExeName: string;
-      }) => {
-        console.warn("Process select required:", data);
-        WindowShow();
-        setProcessSelectData({
-          isOpen: true,
-          gameID: data.gameID,
-          launcherExeName: data.launcherExeName,
-        });
-      },
-    );
-
-    return unsubscribe;
-  }, [setProcessSelectData]);
-
-  useEffect(() => {
-    if (!config) {
+    if (!config || initialWindowReadyCheckedRef.current) {
       return;
     }
 
+    initialWindowReadyCheckedRef.current = true;
     let cancelled = false;
 
     void ShouldShowMainWindowOnReady()
@@ -159,12 +141,12 @@ export function useAppRuntimeEffects({
         if (cancelled || !shouldShow) {
           return;
         }
-        WindowShow();
+        void Window.Show();
       })
       .catch((error) => {
         console.error("Failed to resolve initial window visibility:", error);
         if (!cancelled) {
-          WindowShow();
+          void Window.Show();
         }
       });
 
@@ -174,7 +156,7 @@ export function useAppRuntimeEffects({
       }
 
       setInstallRequest(req);
-      WindowShow();
+      void Window.Show();
     });
 
     return () => {
@@ -183,11 +165,11 @@ export function useAppRuntimeEffects({
   }, [config, setInstallRequest]);
 
   useEffect(() => {
-    const unsubscribe = EventsOn(
+    const unsubscribe = onWailsEvent(
       "install:pending",
       (req: vo.InstallRequest) => {
         setInstallRequest(req);
-        WindowShow();
+        void Window.Show();
       },
     );
 
@@ -195,7 +177,7 @@ export function useAppRuntimeEffects({
   }, [setInstallRequest]);
 
   useEffect(() => {
-    const unsubscribe = EventsOn(
+    const unsubscribe = onWailsEvent(
       "app:quit-sync-requested",
       (payload?: { reason?: string }) => {
         setQuitSyncRequest({
@@ -209,7 +191,7 @@ export function useAppRuntimeEffects({
   }, [setQuitSyncRequest]);
 
   useEffect(() => {
-    const unsubscribe = EventsOn(
+    const unsubscribe = onWailsEvent(
       "protocol-launch:error",
       (payload?: {
         message?: string;
@@ -220,7 +202,7 @@ export function useAppRuntimeEffects({
       }) => {
         const message = payload?.message?.trim() || "快捷启动失败";
         const detail = payload?.detail?.trim();
-        WindowShow();
+        void Window.Show();
         if (
           payload?.kind === "missing-config"
           && payload?.config_key === "wine_runner"
@@ -251,7 +233,7 @@ export function useAppRuntimeEffects({
   }, [openGameLaunchSettings, t]);
 
   useEffect(() => {
-    const unsubscribe = EventsOn("bangumi:auth-status-changed", () => {
+    const unsubscribe = onWailsEvent("bangumi:auth-status-changed", () => {
       void refreshConfig();
     });
 
@@ -259,7 +241,15 @@ export function useAppRuntimeEffects({
   }, [refreshConfig]);
 
   useEffect(() => {
-    const unsubscribe = EventsOn(
+    const unsubscribe = onWailsEvent("hikarinagi:auth-status-changed", () => {
+      void refreshConfig();
+    });
+
+    return unsubscribe;
+  }, [refreshConfig]);
+
+  useEffect(() => {
+    const unsubscribe = onWailsEvent(
       "bangumi:status-push-failed",
       (payload?: BangumiStatusPushFailureEvent) => {
         const gameName
@@ -284,7 +274,32 @@ export function useAppRuntimeEffects({
   }, [t]);
 
   useEffect(() => {
-    const unsubscribe = EventsOn("app:main-window-shown", () => {
+    const unsubscribe = onWailsEvent(
+      "hikarinagi:status-push-failed",
+      (payload?: HikarinagiStatusPushFailureEvent) => {
+        const gameName
+          = payload?.game_name?.trim()
+            || t("settings.basic.hikarinagiStatusPushFailedUnknownGame");
+        const error
+          = payload?.error?.trim()
+            || t("settings.basic.hikarinagiStatusPushFailedUnknownReason");
+        toast.error(
+          t("settings.basic.hikarinagiStatusPushFailed", {
+            game: gameName,
+            error,
+          }),
+          {
+            id: `hikarinagi-status-push-failed-${payload?.game_id || "unknown"}`,
+          },
+        );
+      },
+    );
+
+    return unsubscribe;
+  }, [t]);
+
+  useEffect(() => {
+    const unsubscribe = onWailsEvent("app:main-window-shown", () => {
       void refreshHomeData();
     });
 
@@ -292,7 +307,7 @@ export function useAppRuntimeEffects({
   }, [refreshHomeData]);
 
   useEffect(() => {
-    const unsubscribe = EventsOn("home:refresh-requested", () => {
+    const unsubscribe = onWailsEvent("home:refresh-requested", () => {
       if (skipNextLaunchHomeRefreshRef.current) {
         skipNextLaunchHomeRefreshRef.current = false;
         return;
@@ -305,7 +320,7 @@ export function useAppRuntimeEffects({
   }, [refreshHomeData]);
 
   useEffect(() => {
-    const unsubscribe = EventsOn(
+    const unsubscribe = onWailsEvent(
       "game-runtime:changed",
       (event?: GameRuntimeChangedEvent) => {
         if (!event) {

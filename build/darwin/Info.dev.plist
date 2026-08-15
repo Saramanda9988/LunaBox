@@ -1,68 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-    <dict>
-        <key>CFBundlePackageType</key>
-        <string>APPL</string>
-        <key>CFBundleName</key>
-        <string>{{.Info.ProductName}}</string>
-        <key>CFBundleExecutable</key>
-        <string>{{.OutputFilename}}</string>
-        <key>CFBundleIdentifier</key>
-        <string>com.wails.{{.Name}}</string>
-        <key>CFBundleVersion</key>
-        <string>{{.Info.ProductVersion}}</string>
-        <key>CFBundleGetInfoString</key>
-        <string>{{.Info.Comments}}</string>
-        <key>CFBundleShortVersionString</key>
-        <string>{{.Info.ProductVersion}}</string>
-        <key>CFBundleIconFile</key>
-        <string>iconfile</string>
-        <key>LSMinimumSystemVersion</key>
-        <string>10.13.0</string>
-        <key>NSHighResolutionCapable</key>
-        <string>true</string>
-        <key>NSHumanReadableCopyright</key>
-        <string>{{.Info.Copyright}}</string>
-        {{if .Info.FileAssociations}}
-        <key>CFBundleDocumentTypes</key>
-        <array>
-          {{range .Info.FileAssociations}}
-          <dict>
-            <key>CFBundleTypeExtensions</key>
-            <array>
-              <string>{{.Ext}}</string>
-            </array>
-            <key>CFBundleTypeName</key>
-            <string>{{.Name}}</string>
-            <key>CFBundleTypeRole</key>
-            <string>{{.Role}}</string>
-            <key>CFBundleTypeIconFile</key>
-            <string>{{.IconName}}</string>
-          </dict>
-          {{end}}
-        </array>
-        {{end}}
-        {{if .Info.Protocols}}
-        <key>CFBundleURLTypes</key>
-        <array>
-          {{range .Info.Protocols}}
-            <dict>
-                <key>CFBundleURLName</key>
-                <string>com.wails.{{.Scheme}}</string>
-                <key>CFBundleURLSchemes</key>
-                <array>
-                    <string>{{.Scheme}}</string>
-                </array>
-                <key>CFBundleTypeRole</key>
-                <string>{{.Role}}</string>
-            </dict>
-          {{end}}
-        </array>
-        {{end}}
-        <key>NSAppTransportSecurity</key>
-        <dict>
-            <key>NSAllowsLocalNetworking</key>
-            <true/>
-        </dict>
-    </dict>
+	<dict>
+		<key>CFBundleExecutable</key>
+		<string>LunaBox</string>
+		<key>CFBundleGetInfoString</key>
+		<string>LunaBox game library manager</string>
+		<key>CFBundleIconFile</key>
+		<string>icons</string>
+		<key>CFBundleIdentifier</key>
+		<string>io.github.saramanda9988.lunabox</string>
+		<key>CFBundleName</key>
+		<string>LunaBox</string>
+		<key>CFBundlePackageType</key>
+		<string>APPL</string>
+		<key>CFBundleShortVersionString</key>
+		<string>1.11.2</string>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleURLName</key>
+				<string>wails.com.lunabox</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>lunabox</string>
+				</array>
+			</dict>
+		</array>
+		<key>CFBundleVersion</key>
+		<string>1.11.2</string>
+		<key>LSMinimumSystemVersion</key>
+		<string>12.0.0</string>
+		<key>NSAppTransportSecurity</key>
+		<dict>
+			<key>NSAllowsLocalNetworking</key>
+			<true/>
+		</dict>
+		<key>NSAudioCaptureUsageDescription</key>
+		<string>LunaBox uses system audio access to mute games while they are in the background.</string>
+		<key>NSHighResolutionCapable</key>
+		<string>true</string>
+		<key>NSHumanReadableCopyright</key>
+		<string>Copyright (c) LunaBox contributors</string>
+	</dict>
 </plist>

@@ -1,10 +1,11 @@
-import type { appconf, enums } from "../../../wailsjs/go/models";
+import type { appconf, enums } from "../../../src/bindings/models";
 import type { PreferredSourceValue } from "../ui/import/importFlow";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
-import { ProcessDroppedPathsWithOptions } from "../../../wailsjs/go/service/ImportService";
+import { OpenLocalPath } from "../../../bindings/lunabox/internal/service/gameservice";
+import { ProcessDroppedPathsWithOptions } from "../../../bindings/lunabox/internal/service/importservice";
 import { useAppStore } from "../../store";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import {
@@ -180,6 +181,16 @@ export function DragDropImportModal({
     await runStartMatch(() => setStep("preview"));
   };
 
+  const handleOpenFolder = async (path: string) => {
+    try {
+      await OpenLocalPath(path);
+    }
+    catch (error) {
+      console.error("Failed to open import candidate folder:", error);
+      toast.error(t("batchImportModal.toast.openFolderFailed"));
+    }
+  };
+
   const handleImport = async (matchedOnly = false) => {
     setStep("importing");
     await runImport(
@@ -245,6 +256,7 @@ export function DragDropImportModal({
               statusNotFound: t("batchImportModal.status.notFound"),
               statusError: t("batchImportModal.status.error"),
               manualSelect: t("batchImportModal.manualSelect"),
+              openFolder: t("batchImportModal.openFolder"),
               metadataExists: name =>
                 t("batchImportModal.metadataExists", { name }),
               skippedSummary: count =>
@@ -312,6 +324,7 @@ export function DragDropImportModal({
             onUpdateSearchName={updateSearchName}
             onUpdateSelectedExe={updateSelectedExe}
             onManualSelect={openManualSelect}
+            onOpenFolder={handleOpenFolder}
           />
         )}
 

@@ -34,6 +34,7 @@ type SteamLocalGame struct {
 	StateFlags   int      `json:"state_flags"`
 	Executables  []string `json:"executables"`
 	SelectedExe  string   `json:"selected_exe"`
+	ProtonPrefix string   `json:"proton_prefix"`
 }
 
 type vdfNode struct {
@@ -60,13 +61,19 @@ func (s *SteamImporter) Preview() ([]PreviewGame, error) {
 	previews := make([]PreviewGame, 0, len(games))
 	for _, game := range games {
 		conflict := previewConflict(existingIndex, game.Name, game.InstallDir, string(enums.Steam), game.AppID)
+		exists := conflict.Type != ConflictTypeNone
+		conflictType := conflict.Type
+		if shouldUpdateLocalSteamLaunchFields(conflict) {
+			exists = false
+			conflictType = ConflictTypeNone
+		}
 		previews = append(previews, PreviewGame{
 			Name:         game.Name,
 			SourceType:   string(enums.Steam),
 			SourceID:     game.AppID,
 			Path:         game.InstallDir,
-			Exists:       conflict.Type != ConflictTypeNone,
-			ConflictType: conflict.Type,
+			Exists:       exists,
+			ConflictType: conflictType,
 			ExistingID:   conflict.Game.ID,
 			ExistingName: conflict.Game.Name,
 			AddTime:      time.Now(),
@@ -111,8 +118,13 @@ func (s *SteamImporter) ImportSelected(skipNoPath bool, samePathAction string, s
 		conflict := previewConflict(existingIndex, localGame.Name, localGame.InstallDir, string(enums.Steam), localGame.AppID)
 		action := ImportActionCreate
 		existingGameID := ""
+		updateLocalLaunchFields := false
 		if conflict.Type != ConflictTypeNone {
-			if conflict.Type != ConflictTypeSamePath || samePathAction != SamePathActionMerge {
+			if shouldUpdateLocalSteamLaunchFields(conflict) {
+				action = ImportActionUpdateExisting
+				existingGameID = conflict.Game.ID
+				updateLocalLaunchFields = true
+			} else if conflict.Type != ConflictTypeSamePath || !IsSamePathMergeAction(samePathAction) {
 				result.Skipped++
 				switch conflict.Type {
 				case ConflictTypeSource:
@@ -123,13 +135,17 @@ func (s *SteamImporter) ImportSelected(skipNoPath bool, samePathAction string, s
 					result.SkippedNames = append(result.SkippedNames, localGame.Name+" (路径已存在: "+conflict.Game.Name+")")
 				}
 				continue
+			} else {
+				action = ImportActionUpdateExisting
+				if samePathAction == SamePathActionMergeSessions {
+					action = ImportActionMergeSessions
+				}
+				existingGameID = conflict.Game.ID
 			}
-			action = ImportActionUpdateExisting
-			existingGameID = conflict.Game.ID
 		}
 
 		game, tags := s.fetchSteamGameMetadata(getter, localGame)
-		if action == ImportActionUpdateExisting {
+		if TargetsExistingGame(action) {
 			game.ID = existingGameID
 		}
 
@@ -139,11 +155,12 @@ func (s *SteamImporter) ImportSelected(skipNoPath bool, samePathAction string, s
 			Tags:   tags,
 		}
 		items = append(items, ImportItem{
-			Source:         source,
-			DisplayName:    localGame.Name,
-			Path:           localGame.InstallDir,
-			Action:         action,
-			ExistingGameID: existingGameID,
+			Source:                  source,
+			DisplayName:             localGame.Name,
+			Path:                    localGame.InstallDir,
+			Action:                  action,
+			ExistingGameID:          existingGameID,
+			UpdateLocalLaunchFields: updateLocalLaunchFields,
 		})
 		if action == ImportActionCreate {
 			updateExistingIndexes(existingNames, existingPaths, game, game.Name, localGame.InstallDir)
@@ -210,16 +227,19 @@ func (s *SteamImporter) fetchSteamGameMetadata(getter *metadata.SteamInfoGetter,
 	gameID := uuid.New().String()
 	now := time.Now()
 	game := models.Game{
-		ID:            gameID,
-		Name:          localGame.Name,
-		Path:          localGame.InstallDir,
-		GameDirectory: localGame.InstallDir,
-		LaunchMode:    enums.LaunchModeSteam,
-		SourceType:    enums.Steam,
-		SourceID:      localGame.AppID,
-		CreatedAt:     now,
-		CachedAt:      now,
-		UpdatedAt:     now,
+		ID:              gameID,
+		Name:            localGame.Name,
+		Path:            localGame.InstallDir,
+		GameDirectory:   localGame.InstallDir,
+		LaunchMode:      enums.LaunchModeSteam,
+		SteamLaunchID:   localGame.AppID,
+		SteamLaunchKind: "native",
+		WinePrefix:      localGame.ProtonPrefix,
+		SourceType:      enums.Steam,
+		SourceID:        localGame.AppID,
+		CreatedAt:       now,
+		CachedAt:        now,
+		UpdatedAt:       now,
 	}
 
 	metaResult, err := getter.FetchMetadata(localGame.AppID, "")
@@ -234,6 +254,9 @@ func (s *SteamImporter) fetchSteamGameMetadata(getter *metadata.SteamInfoGetter,
 		game.Path = localGame.InstallDir
 		game.GameDirectory = localGame.InstallDir
 		game.LaunchMode = enums.LaunchModeSteam
+		game.SteamLaunchID = localGame.AppID
+		game.SteamLaunchKind = "native"
+		game.WinePrefix = localGame.ProtonPrefix
 		game.SourceType = enums.Steam
 		game.SourceID = localGame.AppID
 		game.CreatedAt = now
@@ -320,11 +343,28 @@ func readSteamManifest(libraryPath string, manifestPath string) (SteamLocalGame,
 		StateFlags:   stateFlags,
 		Executables:  executables,
 		SelectedExe:  selectedExe,
+		ProtonPrefix: steamLocalProtonPrefix(libraryPath, appID),
 	}, nil
+}
+
+func steamLocalProtonPrefix(libraryPath string, appID string) string {
+	appID = strings.TrimSpace(appID)
+	if appID == "" {
+		return ""
+	}
+	prefix := filepath.Join(libraryPath, "steamapps", "compatdata", appID, "pfx")
+	if info, err := os.Stat(prefix); err == nil && info.IsDir() {
+		return prefix
+	}
+	return ""
 }
 
 func isImportableSteamGame(game SteamLocalGame) bool {
 	if game.StateFlags&steamFullyInstalledFlag == 0 {
+		return false
+	}
+	appID, err := strconv.ParseUint(strings.TrimSpace(game.AppID), 10, 32)
+	if err != nil || appID == 0 {
 		return false
 	}
 	if strings.TrimSpace(game.Name) == "" || strings.TrimSpace(game.InstallDir) == "" {

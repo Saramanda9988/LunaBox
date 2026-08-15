@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -17,6 +18,27 @@ import (
 	"lunabox/internal/applog"
 	"lunabox/internal/service/cloudprovider/batchupload"
 )
+
+func TestNewProviderUsesUmbraProfileID(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/user/profile", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"code": 0,
+			"msg":  "success",
+			"data": umbrsdk.UserProfile{ID: 42, Username: "luna"},
+		})
+	})
+	apiServer := httptest.NewServer(mux)
+	defer apiServer.Close()
+
+	provider, err := newProviderWithClient(context.Background(), newTestUmbraClient(t, apiServer.URL))
+	if err != nil {
+		t.Fatalf("newProviderWithClient() error = %v", err)
+	}
+	if got := provider.GetCloudPath("legacy-user-id", "database/latest.zip"); got != "v1/42/database/latest.zip" {
+		t.Fatalf("GetCloudPath() = %q, want %q", got, "v1/42/database/latest.zip")
+	}
+}
 
 func TestUploadFilesUsesUmbraSyncExchange(t *testing.T) {
 	previousMode := applog.GetMode()
@@ -85,7 +107,7 @@ func TestUploadFilesUsesUmbraSyncExchange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	provider := &Provider{client: client, userID: "user"}
+	provider := &Provider{client: client, userID: "42"}
 
 	tempDir := t.TempDir()
 	items := make([]batchupload.Item, 501)
@@ -95,7 +117,7 @@ func TestUploadFilesUsesUmbraSyncExchange(t *testing.T) {
 			t.Fatal(err)
 		}
 		items[i] = batchupload.Item{
-			CloudPath: fmt.Sprintf("v1/user/sync/library/games/item-%03d.json", i),
+			CloudPath: fmt.Sprintf("v1/42/sync/library/games/item-%03d.json", i),
 			LocalPath: localPath,
 		}
 	}
@@ -132,7 +154,7 @@ func TestUploadFilesRejectsAssetsExceedingAvailableQuota(t *testing.T) {
 	defer apiServer.Close()
 
 	client := newTestUmbraClient(t, apiServer.URL)
-	provider := &Provider{client: client, userID: "user"}
+	provider := &Provider{client: client, userID: "42"}
 	tempDir := t.TempDir()
 	items := make([]batchupload.Item, 0, 2)
 	for i := range 2 {
@@ -141,7 +163,7 @@ func TestUploadFilesRejectsAssetsExceedingAvailableQuota(t *testing.T) {
 			t.Fatal(err)
 		}
 		items = append(items, batchupload.Item{
-			CloudPath: fmt.Sprintf("v1/user/sync/covers/game-%d.webp", i),
+			CloudPath: fmt.Sprintf("v1/42/sync/covers/game-%d.webp", i),
 			LocalPath: localPath,
 		})
 	}
@@ -158,7 +180,58 @@ func TestUploadFilesRejectsAssetsExceedingAvailableQuota(t *testing.T) {
 	}
 }
 
+func TestPutPresignedFileRetriesRateLimitAndReplaysFile(t *testing.T) {
+	var attempts int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("read upload body: %v", err)
+		}
+		if string(body) != "cover-data" {
+			t.Fatalf("upload body on attempt %d = %q, want cover-data", attempts, body)
+		}
+		if attempts == 1 {
+			w.Header().Set("Retry-After", "0")
+			http.Error(w, "<Error><Code>TooManyRequests</Code></Error>", http.StatusTooManyRequests)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	tempDir := t.TempDir()
+	localPath := filepath.Join(tempDir, "cover.webp")
+	if err := os.WriteFile(localPath, []byte("cover-data"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	file, err := os.Open(localPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+
+	client := newTestUmbraClientWithHTTPClient(t, "http://example.invalid", server.Client())
+	provider := &Provider{client: client, userID: "42"}
+	upload := preparedUpload{
+		item:        batchupload.Item{CloudPath: "v1/42/sync/covers/game.webp", LocalPath: localPath},
+		contentType: "image/webp",
+		fileSize:    uint64(len("cover-data")),
+		file:        file,
+	}
+	if err := provider.putPresignedFile(context.Background(), upload, server.URL); err != nil {
+		t.Fatalf("putPresignedFile() error = %v", err)
+	}
+	if attempts != 2 {
+		t.Fatalf("attempts = %d, want 2", attempts)
+	}
+}
+
 func newTestUmbraClient(t *testing.T, baseURL string) *umbrsdk.Client {
+	return newTestUmbraClientWithHTTPClient(t, baseURL, nil)
+}
+
+func newTestUmbraClientWithHTTPClient(t *testing.T, baseURL string, httpClient *http.Client) *umbrsdk.Client {
 	t.Helper()
 	tokenStore := umbrsdk.NewMemoryTokenStore()
 	if err := tokenStore.Save(context.Background(), &umbrsdk.TokenSet{
@@ -176,6 +249,7 @@ func newTestUmbraClient(t *testing.T, baseURL string) *umbrsdk.Client {
 		BaseURL:     baseURL,
 		ClientID:    "client",
 		RedirectURI: "http://127.0.0.1:1420/auth/callback",
+		HTTPClient:  httpClient,
 		TokenStore:  tokenStore,
 		DeviceStore: deviceStore,
 	})

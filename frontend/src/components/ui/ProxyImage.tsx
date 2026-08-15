@@ -1,7 +1,7 @@
 import type { ImgHTMLAttributes } from "react";
 import { useMemo, useState } from "react";
 import { useAppStore } from "../../store";
-import { proxiedImageSrc } from "../../utils/imageProxy";
+import { imageSourceCandidates } from "../../utils/imageProxy";
 
 type ProxyImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src"> & {
   src: string | null | undefined;
@@ -27,21 +27,10 @@ export function ProxyImage({
   );
   const rawSrc = src?.trim() ?? "";
   const rawFallbackSrc = fallbackSrc?.trim() ?? "";
-  const candidates = useMemo(() => {
-    const sources: string[] = [];
-    const addSource = (value: string) => {
-      if (!value)
-        return;
-      const proxyValue = proxiedImageSrc(value);
-      if (proxyValue && !sources.includes(proxyValue))
-        sources.push(proxyValue);
-      if (value !== proxyValue && !sources.includes(value))
-        sources.push(value);
-    };
-    addSource(rawSrc);
-    addSource(rawFallbackSrc);
-    return sources;
-  }, [rawFallbackSrc, rawSrc]);
+  const candidates = useMemo(
+    () => imageSourceCandidates(rawSrc, rawFallbackSrc),
+    [rawFallbackSrc, rawSrc],
+  );
   const candidateSignature = candidates.join("\0");
   const [failureState, setFailureState] = useState({
     signature: candidateSignature,

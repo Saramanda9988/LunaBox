@@ -6,6 +6,7 @@ import (
 	"io"
 	"lunabox/internal/common/enums"
 	"lunabox/internal/models"
+	"lunabox/internal/version"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -60,25 +61,72 @@ func (e ErogameScapeInfoGetter) FetchMetadata(id string, token string) (Metadata
 }
 
 func (e ErogameScapeInfoGetter) FetchMetadataByName(name string, token string) (MetadataResult, error) {
+	results, err := e.FetchMetadataCandidatesByName(name, token)
+	if err != nil {
+		return MetadataResult{}, err
+	}
+	return results[0], nil
+}
+
+func (e ErogameScapeInfoGetter) FetchMetadataCandidatesByName(name string, token string) ([]MetadataResult, error) {
 	keyword := strings.TrimSpace(name)
 	if keyword == "" {
-		return MetadataResult{}, errors.New("erogamescape search name is empty")
+		return nil, errors.New("erogamescape search name is empty")
 	}
 
 	items, err := e.searchByName(keyword)
 	if err != nil {
-		return MetadataResult{}, err
+		return nil, err
 	}
 	if len(items) == 0 {
-		return MetadataResult{}, errors.New("no results found")
+		return nil, errors.New("no results found")
 	}
 
-	best := pickBestErogameScapeSearchItem(items, keyword)
-	if best.ID == "" {
-		return MetadataResult{}, errors.New("no results found")
+	limit := len(items)
+	if limit > metadataSearchCandidateLimit {
+		limit = metadataSearchCandidateLimit
+	}
+	candidateNames := make([][]string, limit)
+	for index := 0; index < limit; index++ {
+		candidateNames[index] = []string{items[index].Name}
+	}
+	indexes := exactMetadataCandidateIndexes(keyword, candidateNames)
+	if len(indexes) == 0 {
+		best := pickBestErogameScapeSearchItem(items[:limit], keyword)
+		for index := 0; index < limit; index++ {
+			if items[index].ID == best.ID {
+				indexes = []int{index}
+				break
+			}
+		}
 	}
 
-	return e.FetchMetadata(best.ID, "")
+	results := make([]MetadataResult, 0, len(indexes))
+	seenIDs := make(map[string]struct{}, len(indexes))
+	var lastErr error
+	for _, index := range indexes {
+		id := items[index].ID
+		if id == "" {
+			continue
+		}
+		if _, exists := seenIDs[id]; exists {
+			continue
+		}
+		result, fetchErr := e.FetchMetadata(id, "")
+		if fetchErr != nil {
+			lastErr = fetchErr
+			continue
+		}
+		seenIDs[id] = struct{}{}
+		results = append(results, result)
+	}
+	if len(results) > 0 {
+		return results, nil
+	}
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, errors.New("no results found")
 }
 
 func NormalizeErogameScapeID(raw string) (string, bool) {
@@ -142,7 +190,7 @@ func (e ErogameScapeInfoGetter) fetchDocument(path string, params url.Values) (*
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", metadataUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 	req.Header.Set("Accept-Language", "ja,en;q=0.8")
 	req.Header.Set("Referer", baseURL)

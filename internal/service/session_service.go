@@ -22,6 +22,7 @@ func NewSessionService() *SessionService {
 	return &SessionService{}
 }
 
+//wails:ignore
 func (s *SessionService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
 	s.db = db

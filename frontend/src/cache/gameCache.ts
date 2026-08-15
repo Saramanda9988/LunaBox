@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { models } from "../../wailsjs/go/models";
+import type { models } from "../../src/bindings/models";
 
 type LibraryGameListCacheEntry = {
   gamesByIndex: Map<number, models.Game>;

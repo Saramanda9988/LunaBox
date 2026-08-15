@@ -2,9 +2,9 @@ import { createRoute } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { enums, vo } from "../../wailsjs/go/models";
-import { AISummarize } from "../../wailsjs/go/service/AiService";
-import { GetGlobalPeriodStats } from "../../wailsjs/go/service/StatsService";
+import { AISummarize } from "../../bindings/lunabox/internal/service/aiservice";
+import { GetGlobalPeriodStats } from "../../bindings/lunabox/internal/service/statsservice";
+import { enums, vo } from "../../src/bindings/models";
 import { StatsToolbar } from "../components/bar/StatsToolbar";
 import { AiSummaryCard } from "../components/card/AiSummaryCard";
 import { DurationLineChart } from "../components/chart/DurationLineChart";
@@ -368,7 +368,7 @@ const StatsContent = memo(({ stats }: StatsContentProps) => {
 function StatsPage() {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
-  const [dimension, setDimension] = useState<enums.Period>(enums.Period.WEEK);
+  const [dimension, setDimension] = useState<enums.Period>(enums.Period.Week);
   const [stats, setStats] = useState<vo.PeriodStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSkeleton, setShowSkeleton] = useState(false);
@@ -452,7 +452,7 @@ function StatsPage() {
       return;
     }
     setCustomDateRange(true);
-    loadStats(enums.Period.WEEK, startDate, endDate);
+    loadStats(enums.Period.Week, startDate, endDate);
   }, [endDate, loadStats, startDate, t]);
 
   const handleResetDateRange = useCallback(() => {

@@ -1,6 +1,7 @@
 package gamehelper
 
 import (
+	"reflect"
 	"strings"
 
 	"lunabox/internal/appconf"
@@ -8,6 +9,13 @@ import (
 	"lunabox/internal/models"
 	"lunabox/internal/utils/metadata"
 )
+
+func IsEmptyGame(game models.Game) bool {
+	if len(game.Aliases) == 0 {
+		game.Aliases = nil
+	}
+	return reflect.DeepEqual(game, models.Game{})
+}
 
 // MetadataUpdateFieldSet is the set of metadata fields to refresh from a remote source.
 type MetadataUpdateFieldSet map[enums2.MetadataUpdateField]struct{}
@@ -27,6 +35,9 @@ func MetadataGetterOptions(config *appconf.AppConfig) []metadata.GetterOption {
 	return []metadata.GetterOption{
 		metadata.WithProxyConfig(config),
 		metadata.WithTagLimit(config.ScrapedTagLimit),
+		metadata.WithBangumiCoverSource(config.BangumiCoverSource),
+		metadata.WithVNDBCoverSource(config.VNDBCoverSource),
+		metadata.WithSteamCoverOrientation(config.SteamCoverOrientation),
 	}
 }
 
@@ -71,6 +82,7 @@ func NormalizeMetadataUpdateFields(fields []enums2.MetadataUpdateField) Metadata
 		normalized := enums2.MetadataUpdateField(strings.ToLower(strings.TrimSpace(string(field))))
 		switch normalized {
 		case enums2.MetadataUpdateFieldName,
+			enums2.MetadataUpdateFieldAliases,
 			enums2.MetadataUpdateFieldCover,
 			enums2.MetadataUpdateFieldCompany,
 			enums2.MetadataUpdateFieldSummary,

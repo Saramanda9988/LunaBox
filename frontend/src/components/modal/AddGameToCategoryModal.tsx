@@ -1,4 +1,4 @@
-import type { models } from "../../../wailsjs/go/models";
+import type { models } from "../../../src/bindings/models";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GameCoverImage } from "../ui/GameCoverImage";

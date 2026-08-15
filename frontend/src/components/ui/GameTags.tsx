@@ -1,4 +1,4 @@
-import type { models } from "../../../wailsjs/go/models";
+import type { models } from "../../../src/bindings/models";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -7,18 +7,20 @@ import {
   AddUserTag,
   DeleteTag,
   GetTagsByGame,
-} from "../../../wailsjs/go/service/TagService";
+} from "../../../bindings/lunabox/internal/service/tagservice";
 import { useAppStore } from "../../store";
 import { getTagDisplayName } from "../../utils/tagTranslation";
 
 interface GameTagsProps {
   gameId: string;
+  initialTags?: models.GameTag[];
   showNSFW?: boolean;
   refreshToken?: number;
 }
 
 export function GameTags({
   gameId,
+  initialTags,
   showNSFW = false,
   refreshToken = 0,
 }: GameTagsProps) {
@@ -27,15 +29,31 @@ export function GameTags({
   const enableTagTranslation = useAppStore(
     state => state.config?.enable_tag_translation ?? true,
   );
-  const [tags, setTags] = useState<models.GameTag[]>([]);
+  const [tags, setTags] = useState<models.GameTag[]>(() => initialTags ?? []);
   const [isAdding, setIsAdding] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const loadedRequestKey = useRef(`${gameId}:${refreshToken}`);
 
   useEffect(() => {
+    const requestKey = `${gameId}:${refreshToken}`;
+    if (loadedRequestKey.current === requestKey) {
+      return;
+    }
+    loadedRequestKey.current = requestKey;
+
+    let isCurrent = true;
     GetTagsByGame(gameId)
-      .then(result => setTags(result ?? []))
+      .then((result) => {
+        if (isCurrent) {
+          setTags(result ?? []);
+        }
+      })
       .catch(() => {});
+
+    return () => {
+      isCurrent = false;
+    };
   }, [gameId, refreshToken]);
 
   useEffect(() => {

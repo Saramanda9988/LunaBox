@@ -1,13 +1,13 @@
-import type { models, vo } from "../../../wailsjs/go/models";
+import type { models, vo } from "../../../src/bindings/models";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { enums } from "../../../wailsjs/go/models";
 import {
   DeletePlaySession,
   GetPlaySessions,
-} from "../../../wailsjs/go/service/SessionService";
-import { GetGameStats } from "../../../wailsjs/go/service/StatsService";
+} from "../../../bindings/lunabox/internal/service/sessionservice";
+import { GetGameStats } from "../../../bindings/lunabox/internal/service/statsservice";
+import { enums } from "../../../src/bindings/models";
 import { useAppStore } from "../../store";
 import {
   formatDuration,
@@ -28,13 +28,13 @@ type ViewMode = "chart" | "sessions";
 
 function getStatsPeriodLabelKey(period: enums.Period) {
   switch (period) {
-    case enums.Period.MONTH:
+    case enums.Period.Month:
       return "gameStats.periodStatsLabel.month";
-    case enums.Period.YEAR:
+    case enums.Period.Year:
       return "gameStats.periodStatsLabel.year";
-    case enums.Period.ALL:
+    case enums.Period.All:
       return "gameStats.periodStatsLabel.all";
-    case enums.Period.WEEK:
+    case enums.Period.Week:
     default:
       return "gameStats.periodStatsLabel.week";
   }
@@ -47,7 +47,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("chart");
   const [timeDimension, setTimeDimension] = useState<enums.Period>(
-    enums.Period.WEEK,
+    enums.Period.Week,
   );
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
@@ -118,7 +118,7 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
   const recentPlayHistory = stats?.recent_play_history || [];
   const chartDurations = recentPlayHistory.map(h => h.duration);
   const hasChartPlayData = chartDurations.some(duration => duration > 0);
-  const isAllTimeline = timeDimension === enums.Period.ALL;
+  const isAllTimeline = timeDimension === enums.Period.All;
   const statsPeriodLabel = t(getStatsPeriodLabelKey(timeDimension));
   const sparseChartPoints = recentPlayHistory.flatMap((history) => {
     const timestamp = parseDateOnlyToLocalTimestamp(history.date);
@@ -263,13 +263,13 @@ export function GameStatsPanel({ gameId }: GameStatsPanelProps) {
             {/* Time Dimension Selector */}
             <SlideButton
               options={[
-                { label: t("gameStats.period.week"), value: enums.Period.WEEK },
+                { label: t("gameStats.period.week"), value: enums.Period.Week },
                 {
                   label: t("gameStats.period.month"),
-                  value: enums.Period.MONTH,
+                  value: enums.Period.Month,
                 },
-                { label: t("gameStats.period.year"), value: enums.Period.YEAR },
-                { label: t("gameStats.period.all"), value: enums.Period.ALL },
+                { label: t("gameStats.period.year"), value: enums.Period.Year },
+                { label: t("gameStats.period.all"), value: enums.Period.All },
               ]}
               value={timeDimension}
               onChange={setTimeDimension}

@@ -139,25 +139,36 @@ type Galgame struct {
 	PrivateComment       bool                           `json:"PrivateComment"`
 }
 
-// GetSourceID 根据 RssType 获取对应的数据源 ID
-func (g *Galgame) GetSourceID() string {
-	if len(g.Ids) == 0 {
+// IDForRssType 返回 Ids 数组中指定数据源槽位的 ID
+func (g *Galgame) IDForRssType(rssType RssType) string {
+	index := int(rssType)
+	if index < 0 || index >= len(g.Ids) {
 		return ""
 	}
+	return strings.TrimSpace(g.Ids[index])
+}
 
-	// 根据 RssType 获取对应位置的 ID
-	index := int(g.RssType)
-	if index < len(g.Ids) && g.Ids[index] != "" {
-		return g.Ids[index]
+// MixedIDs 解析 Mixed 槽位的复合 ID 串（形如 "bgm:586274,vndb:59409,ymgal:56847,steam:null"），
+// 跳过值为 null 的源
+func (g *Galgame) MixedIDs() map[string]string {
+	raw := g.IDForRssType(RssTypeMixed)
+	if raw == "" {
+		return nil
 	}
-
-	// 如果当前源没有 ID，尝试从其他位置获取
-	for _, id := range g.Ids {
-		if id != "" {
-			return id
+	ids := make(map[string]string)
+	for _, pair := range strings.Split(raw, ",") {
+		key, value, found := strings.Cut(pair, ":")
+		if !found {
+			continue
 		}
+		key = strings.ToLower(strings.TrimSpace(key))
+		value = strings.TrimSpace(value)
+		if key == "" || value == "" || strings.EqualFold(value, "null") {
+			continue
+		}
+		ids[key] = value
 	}
-	return ""
+	return ids
 }
 
 // GetDisplayName 获取显示名称，优先中文名
@@ -200,9 +211,16 @@ func (g *Galgame) GetSavePath() string {
 
 // GalgameSource 游戏数据源信息
 type GalgameSource struct {
-	ID         string `json:"Id"`
-	SourceType int    `json:"SourceType"`
-	Path       string `json:"Path"`
+	ID         string               `json:"Id"`
+	SourceType int                  `json:"SourceType"`
+	Path       string               `json:"Path"`
+	Galgames   []GalgameSourceEntry `json:"Galgames"`
+}
+
+// GalgameSourceEntry 记录游戏与 PotatoVN 扫描目录的关联。
+type GalgameSourceEntry struct {
+	Galgame string `json:"Galgame"`
+	Path    string `json:"Path"`
 }
 
 // DataStatus 导出数据状态信息

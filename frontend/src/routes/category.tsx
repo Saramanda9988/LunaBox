@@ -1,19 +1,21 @@
-import type { models, vo } from "../../wailsjs/go/models";
+import type { models, vo } from "../../src/bindings/models";
 import type { GameCardLayout } from "../components/card/GameCard";
 import type { GameStatusFilter } from "../consts/options";
 import { createRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { enums } from "../../wailsjs/go/models";
 import {
   AddGameToCategory,
+  DeleteCategory,
   GetCategoryByID,
   GetCategoryGames,
   RemoveGameFromCategory,
   RemoveGamesFromCategory,
   SearchCategoryGameCandidates,
-} from "../../wailsjs/go/service/CategoryService";
+  UpdateCategory,
+} from "../../bindings/lunabox/internal/service/categoryservice";
+import { enums } from "../../src/bindings/models";
 import {
   getCategoryGameListMetaCache,
   invalidateCategoryGameLists,
@@ -24,8 +26,12 @@ import { FilterBar } from "../components/bar/FilterBar";
 import { TagFilterMenu } from "../components/bar/TagFilterMenu";
 import { VirtualGameGrid } from "../components/grid/VirtualGameGrid";
 import { AddGameToCategoryModal } from "../components/modal/AddGameToCategoryModal";
+import { CategoryModal } from "../components/modal/CategoryModal";
+import { ConfirmModal } from "../components/modal/ConfirmModal";
 import { CategorySkeleton } from "../components/skeleton/CategorySkeleton";
+import { BetterDropdownMenu } from "../components/ui/better/BetterDropdownMenu";
 import { ScrollToTopButton } from "../components/ui/ScrollToTopButton";
+import { CATEGORY_NAME_MAX_LENGTH } from "../consts/category";
 import { sortOptions, statusOptions } from "../consts/options";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { usePageScrollControls } from "../hooks/usePageScrollControls";
@@ -40,12 +46,12 @@ const WINDOW_BUFFER_SIZE = PAGE_SIZE;
 const WINDOW_REQUEST_SIZE = PAGE_SIZE * 2;
 const WINDOW_KEEP_RADIUS = PAGE_SIZE * 4;
 const CATEGORY_SORT_BY_VALUES = new Set<enums.GameListSortBy>([
-  enums.GameListSortBy.NAME,
-  enums.GameListSortBy.COMPANY,
-  enums.GameListSortBy.LAST_PLAYED_AT,
-  enums.GameListSortBy.CREATED_AT,
-  enums.GameListSortBy.RATING,
-  enums.GameListSortBy.RELEASE_DATE,
+  enums.GameListSortBy.GameListSortByName,
+  enums.GameListSortBy.GameListSortByCompany,
+  enums.GameListSortBy.GameListSortByLastPlayedAt,
+  enums.GameListSortBy.GameListSortByCreatedAt,
+  enums.GameListSortBy.GameListSortByRating,
+  enums.GameListSortBy.GameListSortByReleaseDate,
 ]);
 const CATEGORY_STATUS_VALUES = new Set(
   statusOptions.map(option => option.value),
@@ -119,15 +125,15 @@ function readStoredCategorySortBy() {
   ) {
     return savedSortBy as enums.GameListSortBy;
   }
-  return enums.GameListSortBy.CREATED_AT;
+  return enums.GameListSortBy.GameListSortByCreatedAt;
 }
 
 function readStoredCategorySortOrder() {
   const savedSortOrder = readStoredValue(`${CATEGORY_STORAGE_KEY}_sortOrder`);
-  return savedSortOrder === enums.SortOrder.ASC
-    || savedSortOrder === enums.SortOrder.DESC
+  return savedSortOrder === enums.SortOrder.SortOrderAsc
+    || savedSortOrder === enums.SortOrder.SortOrderDesc
     ? (savedSortOrder as enums.SortOrder)
-    : enums.SortOrder.DESC;
+    : enums.SortOrder.SortOrderDesc;
 }
 
 function readStoredCategorySearchQuery() {
@@ -177,6 +183,10 @@ function CategoryDetailPage() {
   const [loadedQueryKey, setLoadedQueryKey] = useState("");
   const [showSkeleton, setShowSkeleton] = useState(false);
   const [isAddGameModalOpen, setIsAddGameModalOpen] = useState(false);
+  const [isEditCategoryModalOpen, setIsEditCategoryModalOpen] = useState(false);
+  const [isDeleteCategoryConfirmOpen, setIsDeleteCategoryConfirmOpen]
+    = useState(false);
+  const [editCategoryName, setEditCategoryName] = useState("");
   const [allGames, setAllGames] = useState<models.Game[]>([]);
   const [candidateSearchQuery, setCandidateSearchQuery] = useState("");
   const [candidateHasMore, setCandidateHasMore] = useState(false);
@@ -458,6 +468,45 @@ function CategoryDetailPage() {
     navigate({ to: "/categories" });
   };
 
+  const openEditCategoryModal = () => {
+    if (!category)
+      return;
+    setEditCategoryName(category.name.slice(0, CATEGORY_NAME_MAX_LENGTH));
+    setIsEditCategoryModalOpen(true);
+  };
+
+  const handleUpdateCategory = async () => {
+    if (!category || !editCategoryName.trim())
+      return;
+    try {
+      await UpdateCategory(category.id, editCategoryName, category.emoji || "");
+      setCategory(current =>
+        current ? { ...current, name: editCategoryName } : current,
+      );
+      setIsEditCategoryModalOpen(false);
+      setEditCategoryName("");
+      toast.success(t("categories.toast.updateSuccess"));
+    }
+    catch (error) {
+      console.error("Failed to update category:", error);
+      toast.error(t("categories.toast.updateFailed"));
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!category)
+      return;
+    try {
+      await DeleteCategory(category.id);
+      toast.success(t("categories.toast.deleteSuccess"));
+      navigate({ to: "/categories" });
+    }
+    catch (error) {
+      console.error("Failed to delete category:", error);
+      toast.error(t("categories.toast.deleteFailed"));
+    }
+  };
+
   const handleRemoveGame = async (gameId: string) => {
     if (!category)
       return;
@@ -729,15 +778,19 @@ function CategoryDetailPage() {
       </button>
 
       <div className="flex flex-col gap-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-4xl font-bold text-brand-900 dark:text-white flex items-center gap-3">
+        <div className="flex items-start justify-between gap-6">
+          <div className="min-w-0 flex-1">
+            <h1 className="flex min-w-0 flex-wrap items-center gap-3 text-4xl font-bold text-brand-900 dark:text-white">
               {(category.emoji || "").trim() && (
-                <span className="text-3xl leading-none">{category.emoji}</span>
+                <span className="shrink-0 text-3xl leading-none">
+                  {category.emoji}
+                </span>
               )}
-              {category.name}
+              <span className="min-w-0 break-words [overflow-wrap:anywhere]">
+                {category.name}
+              </span>
               {category.is_system && (
-                <span className="text-sm bg-neutral-100 text-neutral-800 px-2 py-1 rounded-md dark:bg-neutral-900 dark:text-neutral-300 align-middle">
+                <span className="shrink-0 rounded-md bg-neutral-100 px-2 py-1 align-middle text-sm text-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
                   {t("category.systemTag")}
                 </span>
               )}
@@ -746,6 +799,37 @@ function CategoryDetailPage() {
               {gameCountText}
             </p>
           </div>
+          {!category.is_system && (
+            <BetterDropdownMenu
+              align="end"
+              menuWidth="min-w-[140px]"
+              ariaLabel={t("common.action")}
+              trigger={(
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-brand-200 bg-white text-brand-500 transition-colors hover:bg-brand-100 hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 dark:border-brand-700 dark:bg-brand-800 dark:text-brand-400 dark:hover:bg-brand-700 dark:hover:text-white data-glass:border-transparent data-glass:bg-white/10 data-glass:text-brand-900 data-glass:backdrop-blur-12 data-glass:backdrop-saturate-180 data-glass:hover:bg-white/10 data-glass:hover:text-brand-900 data-glass:dark:bg-black/12 data-glass:dark:text-white data-glass:dark:hover:bg-black/12 data-glass:dark:hover:text-white">
+                  <div
+                    className="i-mdi-dots-horizontal text-2xl"
+                    aria-hidden="true"
+                  />
+                </div>
+              )}
+              items={[
+                {
+                  key: "rename",
+                  label: t("categories.rename"),
+                  icon: "i-mdi-pencil",
+                  onClick: openEditCategoryModal,
+                },
+                {
+                  key: "delete",
+                  label: t("common.delete"),
+                  icon: "i-mdi-delete",
+                  iconColor: "text-error-500 dark:text-error-400",
+                  dividerBefore: true,
+                  onClick: () => setIsDeleteCategoryConfirmOpen(true),
+                },
+              ]}
+            />
+          )}
         </div>
 
         <div ref={toolbarRef}>
@@ -904,6 +988,27 @@ function CategoryDetailPage() {
         onLoadMore={() => loadCandidates(allGames.length, "append")}
         onClose={() => setIsAddGameModalOpen(false)}
         onAddGame={handleAddGameToCategory}
+      />
+
+      <CategoryModal
+        isOpen={isEditCategoryModalOpen}
+        value={editCategoryName}
+        onChange={setEditCategoryName}
+        onClose={() => {
+          setIsEditCategoryModalOpen(false);
+          setEditCategoryName("");
+        }}
+        onSubmit={handleUpdateCategory}
+        mode="edit"
+      />
+
+      <ConfirmModal
+        isOpen={isDeleteCategoryConfirmOpen}
+        title={t("categories.toast.deleteTitle")}
+        message={t("categories.toast.deleteMsg", { name: category.name })}
+        type="danger"
+        onClose={() => setIsDeleteCategoryConfirmOpen(false)}
+        onConfirm={handleDeleteCategory}
       />
 
       <ScrollToTopButton

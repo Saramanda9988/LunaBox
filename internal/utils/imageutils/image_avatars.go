@@ -1,12 +1,15 @@
 package imageutils
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"resty.dev/v3"
 )
 
 // GetAvatarDir returns the managed avatars directory path.
@@ -67,30 +70,37 @@ func DownloadAndSaveAvatarImageWithClient(client *http.Client, imageURL, provide
 		return imageURL, err
 	}
 
+	var restyClient *resty.Client
 	if client == nil {
-		var clientErr error
-		client, clientErr = newSystemImageHTTPClient(30 * time.Second)
-		if clientErr != nil {
-			return imageURL, fmt.Errorf("create avatar image download client: %w", clientErr)
-		}
+		restyClient, err = newSystemImageRestyClient(30 * time.Second)
+	} else {
+		restyClient, err = newImageRestyClientWithHTTPClient(client)
 	}
-	resp, err := client.Get(imageURL)
+	if err != nil {
+		return imageURL, fmt.Errorf("create avatar image download client: %w", err)
+	}
+	resp, err := newImageRequest(context.Background(), restyClient).
+		SetResponseDoNotParse(true).
+		Get(imageURL)
 	if err != nil {
 		return imageURL, err
 	}
+	if resp == nil || resp.Body == nil {
+		return imageURL, fmt.Errorf("avatar image response is empty")
+	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return imageURL, fmt.Errorf("failed to download avatar image: status %d", resp.StatusCode)
+	if resp.StatusCode() != http.StatusOK {
+		return imageURL, fmt.Errorf("failed to download avatar image: status %d", resp.StatusCode())
 	}
 
 	baseName := avatarBaseName(provider, userID)
 	removeFilesWithBaseName(avatarDir, baseName)
 
-	ext := detectImageExtension(resp.Header.Get("Content-Type"), imageURL)
+	ext := detectImageExtension(resp.Header().Get("Content-Type"), imageURL)
 	destFileName := baseName + ext
 	destPath := filepath.Join(avatarDir, destFileName)
-	if err := saveHTTPBody(resp, destPath); err != nil {
+	if err := saveHTTPBody(resp.Body, destPath); err != nil {
 		return imageURL, err
 	}
 

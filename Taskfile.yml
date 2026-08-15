@@ -1,0 +1,84 @@
+version: "3"
+
+vars:
+  APP_NAME: LunaBox
+  BIN_DIR: bin
+  VITE_PORT: '{{.WAILS_VITE_PORT | default "9245"}}'
+
+tasks:
+  build:
+    summary: Builds the development application binary
+    deps:
+      - generate:bindings
+    cmds:
+      - cmd: powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path '{{.BIN_DIR}}' | Out-Null"
+        platforms: [windows]
+      - cmd: mkdir -p "{{.BIN_DIR}}"
+        platforms: [darwin, linux]
+      - cmd: >-
+          powershell -NoProfile -Command '$targetArch = (go env GOARCH).Trim();
+          $resourceFile = "wails_windows_" + $targetArch + ".syso";
+          try {
+            & wails3 generate syso -arch $targetArch -icon build/windows/icon.ico -manifest build/windows/wails.exe.manifest -info build/windows/info.json -out $resourceFile;
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE };
+            & go build -buildvcs=false -o "{{.BIN_DIR}}/{{.APP_NAME}}{{exeExt}}" .;
+            exit $LASTEXITCODE
+          } finally {
+            Remove-Item -LiteralPath $resourceFile -Force -ErrorAction SilentlyContinue
+          }'
+        platforms: [windows]
+      - cmd: go build -buildvcs=false -o "{{.BIN_DIR}}/{{.APP_NAME}}{{exeExt}}" .
+        platforms: [darwin, linux]
+
+  package:
+    summary: Creates the platform release packages through the LunaBox Wails v3 scripts
+    cmds:
+      - cmd: 'scripts\build.bat all "{{.VERSION}}" "{{.ARCH}}"'
+        platforms: [windows]
+      - cmd: './scripts/build.sh installer "{{.VERSION}}" "{{.ARCH}}"'
+        platforms: [darwin]
+      - cmd: './scripts/build.sh all "{{.VERSION}}" "{{.ARCH}}"'
+        platforms: [linux]
+    vars:
+      VERSION: '{{.VERSION | default ""}}'
+      ARCH: '{{.ARCH | default ARCH}}'
+
+  run:
+    summary: Runs the development application binary
+    cmds:
+      - '"./{{.BIN_DIR}}/{{.APP_NAME}}{{exeExt}}"'
+
+  install:frontend:
+    summary: Installs frontend dependencies
+    dir: frontend
+    sources:
+      - package.json
+      - pnpm-lock.yaml
+    generates:
+      - node_modules
+    cmds:
+      - pnpm install
+
+  generate:bindings:
+    summary: Generates Wails v3 TypeScript bindings
+    sources:
+      - "**/*.go"
+      - go.mod
+      - go.sum
+    generates:
+      - frontend/bindings/**/*
+    cmds:
+      - wails3 generate bindings -clean=true -ts
+
+  dev:frontend:
+    summary: Runs the Vite development server
+    dir: frontend
+    deps:
+      - install:frontend
+    cmds:
+      - pnpm dev --port {{.VITE_PORT}} --strictPort
+
+  dev:
+    summary: Runs LunaBox in Wails v3 development mode
+    cmds:
+      - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}

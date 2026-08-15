@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { models } from "../../../wailsjs/go/models";
 import {
   GetGameProgress,
   UpsertGameProgress,
-} from "../../../wailsjs/go/service/GameProgressService";
+} from "../../../bindings/lunabox/internal/service/gameprogressservice";
+import { models } from "../../../src/bindings/models";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { ModalPortal } from "../ui/ModalPortal";
 

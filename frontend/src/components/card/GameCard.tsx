@@ -1,10 +1,10 @@
 import type { TFunction } from "i18next";
-import type { models } from "../../../wailsjs/go/models";
+import type { models } from "../../../src/bindings/models";
 import { useNavigate } from "@tanstack/react-router";
 import { memo, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { enums } from "../../../wailsjs/go/models";
+import { enums } from "../../../src/bindings/models";
 import { useAppStore } from "../../store";
 import { formatLocalDate } from "../../utils/time";
 import { GameCoverImage } from "../ui/GameCoverImage";
@@ -40,21 +40,21 @@ function formatSortFieldValue(
 ): string | null {
   if (
     !sortBy
-    || sortBy === enums.GameListSortBy.NAME
-    || sortBy === enums.GameListSortBy.COMPANY
+    || sortBy === enums.GameListSortBy.GameListSortByName
+    || sortBy === enums.GameListSortBy.GameListSortByCompany
   ) {
     return null;
   }
   switch (sortBy) {
-    case enums.GameListSortBy.LAST_PLAYED_AT:
+    case enums.GameListSortBy.GameListSortByLastPlayedAt:
       return game.last_played_at
         ? formatLocalDate(game.last_played_at)
         : t("common.never");
-    case enums.GameListSortBy.CREATED_AT:
+    case enums.GameListSortBy.GameListSortByCreatedAt:
       return formatLocalDate(game.created_at);
-    case enums.GameListSortBy.RATING:
+    case enums.GameListSortBy.GameListSortByRating:
       return `${(game.rating ?? 0).toFixed(1)}/10.0`;
-    case enums.GameListSortBy.RELEASE_DATE:
+    case enums.GameListSortBy.GameListSortByReleaseDate:
       return game.release_date || t("common.unknownDate");
     default:
       return null;
@@ -135,14 +135,15 @@ function GameCardComponent({
     navigate({ to: `/game/${game.id}` });
   }, [game.id, navigate]);
 
-  const isCompleted = game.status === enums.GameStatus.COMPLETED;
+  const isCompleted = game.status === enums.GameStatus.StatusCompleted;
   const companyDisplay = game.company || t("common.unknownDeveloper");
   const sortFieldText = formatSortFieldValue(game, displaySortField, t);
   const isLandscape = cardLayout === "landscape";
 
   return (
     <div
-      className={`glass-card group relative flex w-full flex-col overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-lg dark:border-brand-700 dark:bg-brand-800 ${selectionMode ? "cursor-pointer" : ""} ${selectionMode && selected ? "ring-2 ring-neutral-500 dark:ring-neutral-400" : ""}`}
+      data-drag-selection-id={selectionMode ? game.id : undefined}
+      className={`glass-card group relative flex w-full flex-col overflow-hidden rounded-xl border border-brand-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-lg dark:border-brand-700 dark:bg-brand-800 ${selectionMode ? "cursor-pointer [touch-action:none]" : ""} ${selectionMode && selected ? "ring-2 ring-neutral-500 dark:ring-neutral-400" : ""}`}
       onClick={selectionMode ? handleToggleSelect : undefined}
     >
       {selectionMode && (
@@ -172,7 +173,7 @@ function GameCardComponent({
             alt={game.name}
             isNSFW={game.is_nsfw}
             className="h-full w-full"
-            imageClassName="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-110"
+            imageClassName="h-full w-full object-cover object-center"
             decoding="async"
             loading="lazy"
           />

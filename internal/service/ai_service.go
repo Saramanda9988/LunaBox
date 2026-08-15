@@ -12,7 +12,7 @@ import (
 	enums2 "lunabox/internal/common/enums"
 	"lunabox/internal/common/vo"
 	"lunabox/internal/utils"
-	"lunabox/internal/utils/proxyutils"
+	"lunabox/internal/utils/httputils"
 	"net/http"
 	"strings"
 	"time"
@@ -29,6 +29,7 @@ func NewAiService() *AiService {
 	return &AiService{}
 }
 
+//wails:ignore
 func (s *AiService) Init(ctx context.Context, db *sql.DB, appConfig *appconf.AppConfig) {
 	s.ctx = ctx
 	s.db = db
@@ -37,6 +38,15 @@ func (s *AiService) Init(ctx context.Context, db *sql.DB, appConfig *appconf.App
 	builder := NewAIStatsBuilder()
 	builder.Init(ctx, db, appConfig)
 	s.stats = builder
+}
+
+// GetPromptPresets 返回内置 AI 提示词，并让 Wails v3 为 PromptType 生成绑定。
+func (s *AiService) GetPromptPresets() []enums2.PromptType {
+	result := make([]enums2.PromptType, 0, len(enums2.Prompts))
+	for _, prompt := range enums2.Prompts {
+		result = append(result, prompt.Value)
+	}
+	return result
 }
 
 // AISummarize 生成AI锐评总结
@@ -178,7 +188,7 @@ func (s *AiService) buildContextPrompt(data *AIStatsData) string {
 	sb.WriteString("=== 游玩数据快照 ===\n\n")
 
 	// 统计摘要
-	sb.WriteString(fmt.Sprintf("本期总览：游玩 %d 次，合计 %.1f 小时（数据范围：%s）\n\n", data.TotalPlayCount, float64(data.TotalPlayDuration)/3600, data.DateRange))
+	sb.WriteString(fmt.Sprintf("本期总览：游玩 %d 次，合计 %s（数据范围：%s）\n\n", data.TotalPlayCount, formatDuration(data.TotalPlayDuration), data.DateRange))
 
 	// 游戏条目
 	if len(data.TopGames) > 0 {
@@ -188,7 +198,7 @@ func (s *AiService) buildContextPrompt(data *AIStatsData) string {
 			if g.Company != "" {
 				sb.WriteString(fmt.Sprintf("（%s）", g.Company))
 			}
-			sb.WriteString(fmt.Sprintf(" — %.1f 小时", float64(g.Duration)/3600))
+			sb.WriteString(fmt.Sprintf(" — %s", formatDuration(g.Duration)))
 			if len(g.Categories) > 0 {
 				sb.WriteString(fmt.Sprintf("  [%s]", strings.Join(g.Categories, " / ")))
 			}
@@ -226,10 +236,10 @@ func (s *AiService) buildContextPrompt(data *AIStatsData) string {
 		sb.WriteString(fmt.Sprintf("最近启动记录（按启动时间倒序，优先用于判断近期实际在玩什么；仅列前 %d 条）：\n", limit))
 		for i := 0; i < limit; i++ {
 			sess := data.RecentSessions[i]
-			sb.WriteString(fmt.Sprintf("%d. 《%s》 — %.1f 小时，%s %02d时启动\n",
+			sb.WriteString(fmt.Sprintf("%d. 《%s》 — %s，%s %02d时启动\n",
 				i+1,
 				sess.GameName,
-				float64(sess.Duration)/3600,
+				formatDuration(sess.Duration),
 				sess.StartTime.Format("2006-01-02"),
 				sess.Hour,
 			))
@@ -292,6 +302,8 @@ func (s *AiService) buildTaskPrompt(data *AIStatsData) string {
 		periodName = "最近7天"
 	case "month":
 		periodName = "最近1个月"
+	case "year":
+		periodName = "最近1年"
 	}
 
 	return fmt.Sprintf(`=== 任务指令 ===
@@ -408,7 +420,10 @@ func (s *AiService) doAPICall(apiURL, model string, messages []vo.Message, tools
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+s.appConfig.AIAPIKey)
 
-	client, _, err := proxyutils.NewHTTPClientFromConfig(90*time.Second, s.appConfig)
+	client, _, err := httputils.NewClient(httputils.ClientOptions{
+		Timeout:     90 * time.Second,
+		ProxyConfig: s.appConfig,
+	})
 	if err != nil {
 		return nil, err
 	}

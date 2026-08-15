@@ -26,17 +26,19 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"lunabox/internal/wailsruntime"
 )
 
 type GameService struct {
-	ctx              context.Context
-	db               *sql.DB
-	config           *appconf.AppConfig
-	tagService       *TagService
-	bangumiService   *BangumiService
-	emitEvent        func(context.Context, string, ...interface{})
-	imageTaskStarter func([]CoverImageDownloadItem) string
+	ctx               context.Context
+	db                *sql.DB
+	config            *appconf.AppConfig
+	tagService        *TagService
+	bangumiService    *BangumiService
+	hikarinagiService *HikarinagiService
+	runtime           wailsruntime.Runtime
+	emitEvent         func(string, ...interface{})
+	imageTaskStarter  func([]CoverImageDownloadItem) string
 }
 
 type CoverImageDownloadItem struct {
@@ -46,46 +48,77 @@ type CoverImageDownloadItem struct {
 }
 
 type metadataSearchSource struct {
-	source      enums2.SourceType
-	fetchByName func(string) (metadata.MetadataResult, error)
+	source                enums2.SourceType
+	fetchByName           func(string) (metadata.MetadataResult, error)
+	fetchCandidatesByName func(string) ([]metadata.MetadataResult, error)
+}
+
+func (s metadataSearchSource) fetchCandidates(name string) ([]metadata.MetadataResult, error) {
+	if s.fetchCandidatesByName != nil {
+		return s.fetchCandidatesByName(name)
+	}
+	result, err := s.fetchByName(name)
+	if err != nil {
+		return nil, err
+	}
+	return []metadata.MetadataResult{result}, nil
 }
 
 func NewGameService() *GameService {
+	runtime := wailsruntime.Unavailable()
 	return &GameService{
-		emitEvent: runtime.EventsEmit,
+		runtime:   runtime,
+		emitEvent: func(name string, data ...interface{}) { runtime.Emit(name, data...) },
 	}
 }
 
+//wails:ignore
 func (s *GameService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
 	s.db = db
 	s.config = config
-	if s.emitEvent == nil {
-		s.emitEvent = runtime.EventsEmit
+}
+
+//wails:ignore
+func (s *GameService) SetRuntime(runtime wailsruntime.Runtime) {
+	if runtime == nil {
+		return
+	}
+	s.runtime = runtime
+	s.emitEvent = func(name string, data ...interface{}) {
+		runtime.Emit(name, data...)
 	}
 }
 
+//wails:ignore
 func (s *GameService) SetTagService(ts *TagService) {
 	s.tagService = ts
 }
 
+//wails:ignore
 func (s *GameService) SetBangumiService(bangumiService *BangumiService) {
 	s.bangumiService = bangumiService
 }
 
+//wails:ignore
+func (s *GameService) SetHikarinagiService(hikarinagiService *HikarinagiService) {
+	s.hikarinagiService = hikarinagiService
+}
+
+//wails:ignore
 func (s *GameService) SetImageDownloadTaskStarter(starter func([]CoverImageDownloadItem) string) {
 	s.imageTaskStarter = starter
 }
 
-func (s *GameService) SetEventEmitter(emit func(context.Context, string, ...interface{})) {
+//wails:ignore
+func (s *GameService) SetEventEmitter(emit func(string, ...interface{})) {
 	s.emitEvent = emit
 }
 
 func (s *GameService) SelectGameExecutable(currentPath string) (string, error) {
-	defaultDirectory, defaultFilename := gamehelper.ExecutableDialogDefaults(currentPath)
-	selection, err := runtime.OpenFileDialog(
-		s.ctx,
-		gamehelper.ExecutableOpenDialogOptions("Select Game Executable", defaultDirectory, defaultFilename),
+	defaultDirectory := gamehelper.ExecutableDialogDirectory(currentPath)
+	selection, err := s.runtime.OpenFile(
+		gamehelper.ExecutableOpenDialogOptions("Select Game Executable", defaultDirectory),
 	)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "failed to open file dialog: %v", err)
@@ -94,10 +127,9 @@ func (s *GameService) SelectGameExecutable(currentPath string) (string, error) {
 }
 
 func (s *GameService) SelectWineRunnerExecutable(currentPath string) (string, error) {
-	defaultDirectory, defaultFilename := gamehelper.ExecutableDialogDefaults(currentPath)
-	selection, err := runtime.OpenFileDialog(
-		s.ctx,
-		gamehelper.WineRunnerOpenDialogOptions("Select Wine Executable", defaultDirectory, defaultFilename),
+	defaultDirectory := gamehelper.ExecutableDialogDirectory(currentPath)
+	selection, err := s.runtime.OpenFile(
+		gamehelper.WineRunnerOpenDialogOptions("Select Compatibility Runner Executable", defaultDirectory),
 	)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "failed to open wine runner dialog: %v", err)
@@ -114,9 +146,9 @@ func (s *GameService) SelectGameDirectory(currentPath string) (string, error) {
 		}
 	}
 
-	selection, err := runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{
-		Title:            "选择游戏目录",
-		DefaultDirectory: defaultDirectory,
+	selection, err := s.runtime.OpenDirectory(wailsruntime.OpenDialogOptions{
+		Title:     "选择游戏目录",
+		Directory: defaultDirectory,
 	})
 	if err != nil {
 		applog.LogErrorf(s.ctx, "failed to open game directory dialog: %v", err)
@@ -147,9 +179,8 @@ func (s *GameService) ResolveExecutablePathForImport(path string) (string, error
 		return normalizedPath, nil
 	}
 
-	selection, err := runtime.OpenFileDialog(
-		s.ctx,
-		gamehelper.ExecutableOpenDialogOptions("选择游戏可执行文件", normalizedPath, ""),
+	selection, err := s.runtime.OpenFile(
+		gamehelper.ExecutableOpenDialogOptions("选择游戏可执行文件", normalizedPath),
 	)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "failed to open import executable dialog: %v", err)
@@ -170,6 +201,9 @@ func (s *GameService) AddGameFromWebMetadata(meta vo.GameMetadataFromWebVO) erro
 }
 
 func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem, fallbackFetchTags bool) error {
+	if err := validateInitialMetadataSources(game.MetadataSources); err != nil {
+		return err
+	}
 	if game.ID == "" {
 		game.ID = uuid.New().String()
 	}
@@ -187,6 +221,8 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 	if game.Status == "" {
 		game.Status = enums2.StatusNotStarted
 	}
+	game.Aliases = gamehelper.NormalizeAliases(game.Aliases)
+	aliasesJSON := gamehelper.EncodeAliases(game.Aliases)
 	game.LaunchMode = enums2.NormalizeLaunchMode(game.LaunchMode)
 	if strings.TrimSpace(game.GameDirectory) == "" {
 		game.GameDirectory = gamehelper.DefaultGameDirectory(game.Path)
@@ -194,7 +230,6 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 	if gamehelper.IsDownloadableCoverURL(game.CoverURL) && strings.TrimSpace(game.CoverSourceURL) == "" {
 		game.CoverSourceURL = strings.TrimSpace(game.CoverURL)
 	}
-
 	// 保存原始封面URL用于后台下载
 	originalCoverURL := ""
 	if gamehelper.IsDownloadableCoverURL(game.CoverURL) {
@@ -213,14 +248,16 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 	}
 
 	query := `INSERT INTO games (
-		id, name, cover_url, cover_source_url, company, summary, rating, release_date, path, game_directory,
-		save_path, process_name, launch_mode, status, source_type, cached_at, source_id, created_at, updated_at,
+		id, name, aliases, cover_url, cover_source_url, company, summary, rating, release_date, path, game_directory,
+		save_path, process_name, launch_mode, steam_launch_id, steam_launch_kind, steam_user_id, steam_launch_options,
+		status, source_type, cached_at, source_id, created_at, updated_at,
 		use_locale_emulator, use_magpie, is_nsfw, metadata_locked, wine_runner, wine_args, wine_prefix
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := s.db.ExecContext(s.ctx, query,
 		game.ID,
 		game.Name,
+		aliasesJSON,
 		game.CoverURL,
 		game.CoverSourceURL,
 		game.Company,
@@ -232,6 +269,10 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 		game.SavePath,
 		game.ProcessName,
 		string(game.LaunchMode),
+		game.SteamLaunchID,
+		game.SteamLaunchKind,
+		game.SteamUserID,
+		game.SteamLaunchOptions,
 		string(game.Status),
 		string(game.SourceType),
 		game.CachedAt,
@@ -249,6 +290,11 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 	if err != nil {
 		applog.LogErrorf(s.ctx, "AddGame: failed to insert game %s: %v", game.Name, err)
 		return err
+	}
+	if err := s.addInitialMetadataSources(game); err != nil {
+		_, _ = s.db.ExecContext(s.ctx, `DELETE FROM game_metadata_sources WHERE game_id = ?`, game.ID)
+		_, _ = s.db.ExecContext(s.ctx, `DELETE FROM games WHERE id = ?`, game.ID)
+		return fmt.Errorf("failed to save game metadata sources: %w", err)
 	}
 
 	if err := deleteSyncTombstone(s.ctx, s.db, cloudSyncEntityGame, game.ID); err != nil {
@@ -315,7 +361,7 @@ func (s *GameService) asyncDownloadCoverImage(gameID, gameName, coverURL string,
 	}
 
 	// 下载并保存图片
-	localPath, err := imageutils.DownloadAndSaveCoverImageWithProxyConfig(coverURL, gameID, s.config)
+	localPath, err := imageutils.DownloadAndSaveCoverImageWithProxyConfigContext(s.ctx, coverURL, gameID, s.config)
 	if err != nil {
 		applog.LogWarningf(s.ctx, "asyncDownloadCoverImage: failed to download cover for %s: %v", gameName, err)
 		if emitToast {
@@ -351,7 +397,7 @@ func (s *GameService) DownloadCoverImage(gameID string, coverURL string) (string
 		return "", fmt.Errorf("cover URL is not a downloadable remote URL")
 	}
 
-	localPath, err := imageutils.DownloadAndSaveCoverImageWithProxyConfig(coverURL, gameID, s.config)
+	localPath, err := imageutils.DownloadAndSaveCoverImageWithProxyConfigContext(s.ctx, coverURL, gameID, s.config)
 	if err != nil {
 		applog.LogWarningf(s.ctx, "DownloadCoverImage: failed to download cover for %s from %s: %v", gameID, coverURL, err)
 		return "", fmt.Errorf("failed to download cover image: %w", err)
@@ -419,7 +465,7 @@ func (s *GameService) emitCoverImageDownloadEvent(gameID, gameName, status, erro
 	if s.ctx == nil || s.emitEvent == nil {
 		return
 	}
-	s.emitEvent(s.ctx, "cover-image:download", map[string]string{
+	s.emitEvent("cover-image:download", map[string]string{
 		"game_id":   gameID,
 		"game_name": gameName,
 		"status":    status,
@@ -497,6 +543,13 @@ func (s *GameService) GetGames(req vo.GameListRequest) (vo.GameListResponse, err
 	return resp, nil
 }
 
+// ListAllGames 返回库中全部游戏（自动分页取完）
+//
+//wails:ignore
+func (s *GameService) ListAllGames() ([]models.Game, error) {
+	return s.listAllGamesInternal()
+}
+
 func (s *GameService) listAllGamesInternal() ([]models.Game, error) {
 	var all []models.Game
 	req := vo.GameListRequest{
@@ -520,7 +573,8 @@ func (s *GameService) listAllGamesInternal() ([]models.Game, error) {
 func (s *GameService) GetGameByID(id string) (models.Game, error) {
 	// FIXME: 这里对于上次游玩时间查询使用了一个子查询，可能存在性能问题，后续可以考虑优化或者在 game 中增加一个 last_played_at 字段来直接存储每个游戏的最近游玩时间
 	query := `SELECT 
-		g.id, g.name, 
+		g.id, g.name,
+		COALESCE(g.aliases, '[]') as aliases,
 		COALESCE(g.cover_url, '') as cover_url,
 		COALESCE(g.cover_source_url, '') as cover_source_url,
 		COALESCE(g.company, '') as company, 
@@ -535,6 +589,10 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		COALESCE(g.wine_args, '') as wine_args,
 		COALESCE(g.wine_prefix, '') as wine_prefix,
 		COALESCE(g.launch_mode, 'normal') as launch_mode,
+		COALESCE(g.steam_launch_id, '') as steam_launch_id,
+		COALESCE(g.steam_launch_kind, '') as steam_launch_kind,
+		COALESCE(g.steam_user_id, '') as steam_user_id,
+		COALESCE(g.steam_launch_options, '') as steam_launch_options,
 		COALESCE(g.status, 'not_started') as status,
 		COALESCE(g.source_type, '') as source_type, 
 		g.cached_at, 
@@ -558,11 +616,13 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 	var sourceType string
 	var status string
 	var launchMode string
+	var aliasesJSON string
 	var lastPlayedAt sql.NullTime
 
 	err := s.db.QueryRowContext(s.ctx, query, id).Scan(
 		&game.ID,
 		&game.Name,
+		&aliasesJSON,
 		&game.CoverURL,
 		&game.CoverSourceURL,
 		&game.Company,
@@ -577,6 +637,10 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		&game.WineArgs,
 		&game.WinePrefix,
 		&launchMode,
+		&game.SteamLaunchID,
+		&game.SteamLaunchKind,
+		&game.SteamUserID,
+		&game.SteamLaunchOptions,
 		&status,
 		&sourceType,
 		&game.CachedAt,
@@ -598,8 +662,16 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 		applog.LogErrorf(s.ctx, "GetGameByID: failed to query game %s: %v", id, err)
 		return models.Game{}, fmt.Errorf("failed to query game: %w", err)
 	}
+	game.Aliases, err = gamehelper.DecodeAliases(aliasesJSON)
+	if err != nil {
+		return models.Game{}, fmt.Errorf("failed to decode game aliases: %w", err)
+	}
 
 	game.SourceType = enums2.SourceType(sourceType)
+	game.MetadataSources, err = s.GetGameMetadataSources(game.ID)
+	if err != nil {
+		return models.Game{}, err
+	}
 	game.Status = enums2.GameStatus(status)
 	game.LaunchMode = enums2.NormalizeLaunchMode(enums2.LaunchMode(launchMode))
 	if lastPlayedAt.Valid {
@@ -616,6 +688,8 @@ func (s *GameService) UpdateGame(game models.Game) error {
 	}
 
 	game.UpdatedAt = time.Now()
+	game.Aliases = gamehelper.NormalizeAliases(game.Aliases)
+	aliasesJSON := gamehelper.EncodeAliases(game.Aliases)
 	game.LaunchMode = enums2.NormalizeLaunchMode(game.LaunchMode)
 	if strings.TrimSpace(game.GameDirectory) == "" {
 		game.GameDirectory = gamehelper.DefaultGameDirectory(game.Path)
@@ -623,9 +697,9 @@ func (s *GameService) UpdateGame(game models.Game) error {
 	if gamehelper.IsDownloadableCoverURL(game.CoverURL) {
 		game.CoverSourceURL = strings.TrimSpace(game.CoverURL)
 	}
-
 	query := `UPDATE games SET 
 		name = ?,
+		aliases = ?,
 		cover_url = ?,
 		cover_source_url = ?,
 		company = ?,
@@ -640,6 +714,10 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		wine_args = ?,
 		wine_prefix = ?,
 		launch_mode = ?,
+		steam_launch_id = ?,
+		steam_launch_kind = ?,
+		steam_user_id = ?,
+		steam_launch_options = ?,
 		status = ?,
 		source_type = ?,
 		cached_at = ?,
@@ -653,6 +731,7 @@ func (s *GameService) UpdateGame(game models.Game) error {
 
 	result, err := s.db.ExecContext(s.ctx, query,
 		game.Name,
+		aliasesJSON,
 		game.CoverURL,
 		game.CoverSourceURL,
 		game.Company,
@@ -667,6 +746,10 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		game.WineArgs,
 		game.WinePrefix,
 		string(game.LaunchMode),
+		game.SteamLaunchID,
+		game.SteamLaunchKind,
+		game.SteamUserID,
+		game.SteamLaunchOptions,
 		string(game.Status),
 		string(game.SourceType),
 		game.CachedAt,
@@ -699,7 +782,7 @@ func (s *GameService) UpdateGame(game models.Game) error {
 		applog.LogWarningf(s.ctx, "UpdateGame: failed to clear game tombstone for %s: %v", game.ID, err)
 	}
 
-	s.pushBangumiStatusAfterLocalSave(previousGame, game)
+	s.pushExternalStatusAfterLocalSave(previousGame, game)
 	return nil
 }
 
@@ -781,6 +864,21 @@ func (s *GameService) deleteGameTx(tx *sql.Tx, id string, deletedAt time.Time) e
 	}
 	tagRows.Close()
 
+	metadataSourceRows, err := tx.QueryContext(s.ctx, "SELECT source_type FROM game_metadata_sources WHERE game_id = ?", id)
+	if err != nil {
+		return fmt.Errorf("failed to query game metadata sources: %w", err)
+	}
+	var metadataSourceIDs []string
+	for metadataSourceRows.Next() {
+		var sourceType string
+		if scanErr := metadataSourceRows.Scan(&sourceType); scanErr != nil {
+			metadataSourceRows.Close()
+			return fmt.Errorf("failed to scan game metadata source identity: %w", scanErr)
+		}
+		metadataSourceIDs = append(metadataSourceIDs, metadataSourceTombstoneID(id, enums2.SourceType(sourceType)))
+	}
+	metadataSourceRows.Close()
+
 	for _, relationID := range relationIDs {
 		if err := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityGameCategory, relationID, deletedAt); err != nil {
 			return err
@@ -801,6 +899,11 @@ func (s *GameService) deleteGameTx(tx *sql.Tx, id string, deletedAt time.Time) e
 			return err
 		}
 	}
+	for _, sourceID := range metadataSourceIDs {
+		if err := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityGameMetadataSource, sourceID, deletedAt); err != nil {
+			return err
+		}
+	}
 	if err := upsertSyncTombstone(s.ctx, tx, cloudSyncEntityGame, id, deletedAt); err != nil {
 		return err
 	}
@@ -817,9 +920,16 @@ func (s *GameService) deleteGameTx(tx *sql.Tx, id string, deletedAt time.Time) e
 		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game_progress for id %s: %v", id, err)
 		return fmt.Errorf("failed to delete game progress: %w", err)
 	}
+	if _, err := tx.ExecContext(s.ctx, "DELETE FROM game_reviews WHERE game_id = ?", id); err != nil {
+		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game_reviews for id %s: %v", id, err)
+		return fmt.Errorf("failed to delete game review: %w", err)
+	}
 	if _, err := tx.ExecContext(s.ctx, "DELETE FROM game_tags WHERE game_id = ?", id); err != nil {
 		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game_tags for id %s: %v", id, err)
 		return fmt.Errorf("failed to delete game tags: %w", err)
+	}
+	if _, err := tx.ExecContext(s.ctx, "DELETE FROM game_metadata_sources WHERE game_id = ?", id); err != nil {
+		return fmt.Errorf("failed to delete game metadata sources: %w", err)
 	}
 	if _, err := tx.ExecContext(s.ctx, "DELETE FROM games WHERE id = ?", id); err != nil {
 		applog.LogErrorf(s.ctx, "DeleteGame: failed to delete game for id %s: %v", id, err)
@@ -831,7 +941,7 @@ func (s *GameService) deleteGameTx(tx *sql.Tx, id string, deletedAt time.Time) e
 
 // SelectSaveFile 选择存档文件
 func (s *GameService) SelectSaveFile() (string, error) {
-	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+	selection, err := s.runtime.OpenFile(wailsruntime.OpenDialogOptions{
 		Title: "选择存档文件",
 	})
 	return selection, err
@@ -839,7 +949,7 @@ func (s *GameService) SelectSaveFile() (string, error) {
 
 // SelectSaveDirectory 选择存档目录
 func (s *GameService) SelectSaveDirectory() (string, error) {
-	selection, err := runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{
+	selection, err := s.runtime.OpenDirectory(wailsruntime.OpenDialogOptions{
 		Title: "选择存档文件夹",
 	})
 	return selection, err
@@ -847,9 +957,9 @@ func (s *GameService) SelectSaveDirectory() (string, error) {
 
 // SelectCoverImage 选择封面图片并保存到 covers 目录
 func (s *GameService) SelectCoverImage(gameID string) (string, error) {
-	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+	selection, err := s.runtime.OpenFile(wailsruntime.OpenDialogOptions{
 		Title: "选择封面图片",
-		Filters: []runtime.FileFilter{
+		Filters: []wailsruntime.FileFilter{
 			{
 				DisplayName: "图片文件",
 				Pattern:     "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp",
@@ -915,9 +1025,9 @@ func (s *GameService) SaveCoverImageDataURL(gameID string, dataURL string) (stri
 
 // SelectCoverImageWithTempID 选择封面图片并使用临时ID保存（用于新增游戏时）
 func (s *GameService) SelectCoverImageWithTempID() (string, error) {
-	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+	selection, err := s.runtime.OpenFile(wailsruntime.OpenDialogOptions{
 		Title: "选择封面图片",
-		Filters: []runtime.FileFilter{
+		Filters: []wailsruntime.FileFilter{
 			{
 				DisplayName: "图片文件",
 				Pattern:     "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp",
@@ -968,11 +1078,11 @@ func (s *GameService) ExportLaunchShortcut(gameID string) (string, error) {
 		}
 	}
 
-	savePath, err := runtime.SaveFileDialog(s.ctx, runtime.SaveDialogOptions{
-		Title:            "导出快捷启动方式",
-		DefaultDirectory: defaultDir,
-		DefaultFilename:  defaultName,
-		Filters: []runtime.FileFilter{
+	savePath, err := s.runtime.SaveFile(wailsruntime.SaveDialogOptions{
+		Title:     "导出快捷启动方式",
+		Directory: defaultDir,
+		Filename:  defaultName,
+		Filters: []wailsruntime.FileFilter{
 			{
 				DisplayName: "Internet Shortcut (*.url)",
 				Pattern:     "*.url",
@@ -1021,8 +1131,11 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 		src := searchSource
 		go func() {
 			defer wg.Done()
-			result, _ := src.fetchByName(name)
-			if result.Game != (models.Game{}) {
+			results, _ := src.fetchCandidates(name)
+			for _, result := range results {
+				if gamehelper.IsEmptyGame(result.Game) {
+					continue
+				}
 				mu.Lock()
 				games = append(games, vo.GameMetadataFromWebVO{Source: src.source, Game: result.Game, Tags: result.Tags})
 				mu.Unlock()
@@ -1136,8 +1249,10 @@ func (s *GameService) fetchMetadataResultBySource(source enums2.SourceType, sour
 		getter := metadata.NewTouchGalInfoGetter(getterOptions...)
 		return getter.FetchMetadata(sourceID, "")
 	case enums2.Hikarinagi:
-		getter := metadata.NewHikarinagiInfoGetter(getterOptions...)
-		return getter.FetchMetadata(sourceID, "")
+		if s.hikarinagiService == nil {
+			return metadata.MetadataResult{}, fmt.Errorf("Hikarinagi 服务未初始化")
+		}
+		return s.hikarinagiService.fetchMetadataByID(s.ctx, sourceID)
 	default:
 		return metadata.MetadataResult{}, fmt.Errorf("unsupported source type: %s", source)
 	}
@@ -1155,7 +1270,17 @@ func (s *GameService) UpdateGameFromRemoteWithFields(gameID string, fields []enu
 	return err
 }
 
+// UpdateGameFromRemoteBySource refreshes a game from one explicitly linked provider.
+func (s *GameService) UpdateGameFromRemoteBySource(gameID string, source enums2.SourceType) error {
+	_, err := s.updateGameMetadataFromRemoteBySource(gameID, source, true, nil)
+	return err
+}
+
 func (s *GameService) updateGameMetadataFromRemote(gameID string, downloadCoverImmediately bool, fields []enums2.MetadataUpdateField) (string, error) {
+	return s.updateGameMetadataFromRemoteBySource(gameID, "", downloadCoverImmediately, fields)
+}
+
+func (s *GameService) updateGameMetadataFromRemoteBySource(gameID string, requestedSource enums2.SourceType, downloadCoverImmediately bool, fields []enums2.MetadataUpdateField) (string, error) {
 	// 获取现有游戏信息
 	existingGame, err := s.GetGameByID(gameID)
 	if err != nil {
@@ -1163,8 +1288,20 @@ func (s *GameService) updateGameMetadataFromRemote(gameID string, downloadCoverI
 	}
 	fieldSet := gamehelper.NormalizeMetadataUpdateFields(fields)
 
-	sourceType := gamehelper.NormalizeMetadataSourceType(existingGame.SourceType)
-	sourceID := strings.TrimSpace(existingGame.SourceID)
+	sourceType := gamehelper.NormalizeMetadataSourceType(requestedSource)
+	if sourceType == "" {
+		sourceType = gamehelper.NormalizeMetadataSourceType(existingGame.SourceType)
+	}
+	sourceID := ""
+	for _, source := range existingGame.MetadataSources {
+		if gamehelper.NormalizeMetadataSourceType(source.SourceType) == sourceType {
+			sourceID = strings.TrimSpace(source.SourceID)
+			break
+		}
+	}
+	if sourceID == "" && sourceType == gamehelper.NormalizeMetadataSourceType(existingGame.SourceType) {
+		sourceID = strings.TrimSpace(existingGame.SourceID)
+	}
 	if existingGame.MetadataLocked {
 		return "", fmt.Errorf("游戏元数据已锁定，请先解锁后再更新")
 	}
@@ -1186,6 +1323,11 @@ func (s *GameService) updateGameMetadataFromRemote(gameID string, downloadCoverI
 	if err != nil {
 		return "", err
 	}
+	_, _ = s.db.ExecContext(s.ctx, `
+		UPDATE game_metadata_sources
+		SET cached_at = ?, updated_at = ?
+		WHERE game_id = ? AND source_type = ?
+	`, time.Now(), time.Now(), gameID, string(sourceType))
 
 	applog.LogInfof(s.ctx, "UpdateGameFromRemote: successfully updated game %s from %s", existingGame.Name, sourceType)
 	return remoteCoverURL, nil
@@ -1198,6 +1340,9 @@ func (s *GameService) applyRemoteMetadataResult(existingGame models.Game, metaRe
 	// 保留本地重要字段，更新远程可获取的字段
 	if fieldSet.Has(enums2.MetadataUpdateFieldName) {
 		existingGame.Name = remoteGame.Name
+	}
+	if fieldSet.Has(enums2.MetadataUpdateFieldAliases) {
+		existingGame.Aliases = gamehelper.MergeAliases(existingGame.Aliases, remoteGame.Aliases)
 	}
 	if fieldSet.Has(enums2.MetadataUpdateFieldCompany) {
 		existingGame.Company = remoteGame.Company
@@ -1233,8 +1378,12 @@ func (s *GameService) applyRemoteMetadataResult(existingGame models.Game, metaRe
 	}
 
 	// 写入 tags（先删除刮削来源的旧 tag，再批量插入新 tag，保留用户 tag）
-	if fieldSet.Has(enums2.MetadataUpdateFieldTags) && s.tagService != nil && len(metaResult.Tags) > 0 {
-		if err := s.tagService.upsertScrapedTags(existingGame.ID, metaResult.Tags); err != nil {
+	if fieldSet.Has(enums2.MetadataUpdateFieldTags) && s.tagService != nil {
+		tagSource := gamehelper.NormalizeMetadataSourceType(remoteGame.SourceType)
+		if tagSource == "" {
+			tagSource = gamehelper.NormalizeMetadataSourceType(existingGame.SourceType)
+		}
+		if err := s.tagService.upsertScrapedTagsForSource(existingGame.ID, string(tagSource), metaResult.Tags); err != nil {
 			applog.LogWarningf(s.ctx, "UpdateGameFromRemote: failed to upsert tags for game %s: %v", existingGame.ID, err)
 		}
 	}
@@ -1249,7 +1398,7 @@ func (s *GameService) emitMetadataRefreshProgress(result vo.MetadataRefreshResul
 	if s.ctx == nil || s.emitEvent == nil {
 		return
 	}
-	s.emitEvent(s.ctx, "metadata:refresh-progress", map[string]interface{}{
+	s.emitEvent("metadata:refresh-progress", map[string]interface{}{
 		"status":            status,
 		"current":           current,
 		"total":             result.TotalGames,
@@ -1553,7 +1702,7 @@ func (s *GameService) BatchUpdateStatus(ids []string, status string) error {
 		return err
 	}
 
-	s.pushBangumiStatusAfterBatch(ids, enums2.GameStatus(status))
+	s.pushExternalStatusAfterBatch(ids, enums2.GameStatus(status))
 	return nil
 }
 
@@ -1585,7 +1734,7 @@ func (s *GameService) getGameStatusSyncSnapshot(gameID string) (models.Game, err
 	return snapshot, nil
 }
 
-func (s *GameService) listGamesForBangumiStatusPush(ids []string) ([]models.Game, error) {
+func (s *GameService) listGamesForExternalStatusPush(ids []string) ([]models.Game, error) {
 	ids = utils.UniqueNonEmptyStrings(ids)
 	if len(ids) == 0 {
 		return nil, nil
@@ -1603,7 +1752,7 @@ func (s *GameService) listGamesForBangumiStatusPush(ids []string) ([]models.Game
 		WHERE id IN (%s)
 	`, placeholders), args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list games for Bangumi status push: %w", err)
+		return nil, fmt.Errorf("failed to list games for external status push: %w", err)
 	}
 	defer rows.Close()
 
@@ -1613,7 +1762,7 @@ func (s *GameService) listGamesForBangumiStatusPush(ids []string) ([]models.Game
 		var sourceType string
 		var status string
 		if err := rows.Scan(&game.ID, &game.Name, &status, &sourceType, &game.SourceID); err != nil {
-			return nil, fmt.Errorf("failed to scan Bangumi status push game: %w", err)
+			return nil, fmt.Errorf("failed to scan external status push game: %w", err)
 		}
 		game.Status = enums2.GameStatus(status)
 		game.SourceType = enums2.SourceType(sourceType)
@@ -1621,47 +1770,59 @@ func (s *GameService) listGamesForBangumiStatusPush(ids []string) ([]models.Game
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed to iterate Bangumi status push games: %w", err)
+		return nil, fmt.Errorf("failed to iterate external status push games: %w", err)
 	}
 
 	return games, nil
 }
 
-func (s *GameService) pushBangumiStatusAfterLocalSave(previousGame models.Game, updatedGame models.Game) {
+func (s *GameService) pushExternalStatusAfterLocalSave(previousGame models.Game, updatedGame models.Game) {
 	if previousGame.Status == updatedGame.Status {
 		return
 	}
-	if s.bangumiService == nil {
-		return
-	}
-	if !s.bangumiService.isGameEligibleForStatusPush(updatedGame) {
-		return
-	}
-
-	if err := s.bangumiService.syncGameStatus(s.ctx, updatedGame); err != nil {
-		s.handleBangumiStatusPushFailure(updatedGame, err)
-	}
+	s.pushExternalStatusForGame(updatedGame)
 }
 
-func (s *GameService) pushBangumiStatusAfterBatch(ids []string, status enums2.GameStatus) {
-	if s.bangumiService == nil {
+func (s *GameService) pushExternalStatusAfterBatch(ids []string, status enums2.GameStatus) {
+	if s.bangumiService == nil && s.hikarinagiService == nil {
 		return
 	}
 
-	games, err := s.listGamesForBangumiStatusPush(ids)
+	games, err := s.listGamesForExternalStatusPush(ids)
 	if err != nil {
-		applog.LogWarningf(s.ctx, "pushBangumiStatusAfterBatch: failed to load games: %v", err)
+		applog.LogWarningf(s.ctx, "pushExternalStatusAfterBatch: failed to load games: %v", err)
 		return
 	}
 
 	for _, game := range games {
-		if !s.bangumiService.isGameEligibleForStatusPush(game) {
-			continue
-		}
 		game.Status = status
-		if err := s.bangumiService.syncGameStatus(s.ctx, game); err != nil {
-			game.Status = status
-			s.handleBangumiStatusPushFailure(game, err)
+		s.pushExternalStatusForGame(game)
+	}
+}
+
+func (s *GameService) pushExternalStatusForGame(game models.Game) {
+	sources, err := s.GetGameMetadataSources(game.ID)
+	if err != nil {
+		applog.LogWarningf(s.ctx, "pushExternalStatusForGame: failed to load metadata sources for %s: %v", game.ID, err)
+		return
+	}
+	for _, source := range sources {
+		target := game
+		target.SourceType = source.SourceType
+		target.SourceID = source.SourceID
+		switch source.SourceType {
+		case enums2.Bangumi:
+			if s.bangumiService != nil && s.bangumiService.isGameEligibleForStatusPush(target) {
+				if err := s.bangumiService.syncGameStatus(s.ctx, target); err != nil {
+					s.handleBangumiStatusPushFailure(target, err)
+				}
+			}
+		case enums2.Hikarinagi:
+			if s.hikarinagiService != nil && s.hikarinagiService.isGameEligibleForStatusPush(target) {
+				if err := s.hikarinagiService.syncGameStatus(s.ctx, target); err != nil {
+					s.handleHikarinagiStatusPushFailure(target, err)
+				}
+			}
 		}
 	}
 }
@@ -1681,10 +1842,31 @@ func (s *GameService) handleBangumiStatusPushFailure(game models.Game, err error
 	}
 
 	if s.ctx != nil && s.emitEvent != nil {
-		s.emitEvent(s.ctx, "bangumi:status-push-failed", vo.BangumiStatusPushFailureEvent{
+		s.emitEvent("bangumi:status-push-failed", vo.BangumiStatusPushFailureEvent{
 			GameID:      game.ID,
 			GameName:    game.Name,
 			SubjectID:   strings.TrimSpace(game.SourceID),
+			LocalStatus: string(game.Status),
+			Error:       err.Error(),
+		})
+	}
+}
+
+func (s *GameService) handleHikarinagiStatusPushFailure(game models.Game, err error) {
+	applog.LogWarningf(
+		s.ctx,
+		"Hikarinagi status push failed for game %s (%s -> %s): %v",
+		game.Name,
+		game.SourceID,
+		game.Status,
+		err,
+	)
+
+	if s.ctx != nil && s.emitEvent != nil {
+		s.emitEvent("hikarinagi:status-push-failed", vo.HikarinagiStatusPushFailureEvent{
+			GameID:      game.ID,
+			GameName:    game.Name,
+			WorkID:      strings.TrimSpace(game.SourceID),
 			LocalStatus: string(game.Status),
 			Error:       err.Error(),
 		})
@@ -1697,11 +1879,21 @@ func (s *GameService) findGameIDBySource(source enums2.SourceType, sourceID stri
 	}
 	var id string
 	err := s.db.QueryRowContext(s.ctx, `
-		SELECT id FROM games
-		WHERE source_type = ? AND source_id = ?
+		SELECT game_id
+		FROM (
+			SELECT s.game_id, g.created_at
+			FROM game_metadata_sources s
+			JOIN games g ON g.id = s.game_id
+			WHERE s.source_type = ? AND s.source_id = ?
+			UNION ALL
+			SELECT g.id AS game_id, g.created_at
+			FROM games g
+			WHERE g.source_type = ? AND g.source_id = ?
+			  AND NOT EXISTS (SELECT 1 FROM game_metadata_sources s WHERE s.game_id = g.id)
+		)
 		ORDER BY created_at DESC
 		LIMIT 1
-	`, string(source), sourceID).Scan(&id)
+	`, string(source), sourceID, string(source), sourceID).Scan(&id)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			applog.LogWarningf(s.ctx, "findGameIDBySource query failed: %v", err)
@@ -1752,54 +1944,87 @@ func (s *GameService) getConfiguredMetadataSearchSources() []metadataSearchSourc
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
 					return s.bangumiService.fetchMetadataByName(s.ctx, name)
 				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return s.bangumiService.fetchMetadataCandidatesByName(s.ctx, name)
+				},
 			})
 		case enums2.VNDB:
+			getter := metadata.NewVNDBInfoGetterWithLanguage(language, getterOptions...)
 			sources = append(sources, metadataSearchSource{
 				source: enums2.VNDB,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return metadata.NewVNDBInfoGetterWithLanguage(language, getterOptions...).FetchMetadataByName(name, vndbToken)
+					return getter.FetchMetadataByName(name, vndbToken)
+				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return metadata.FetchMetadataCandidatesByName(getter, name, vndbToken)
 				},
 			})
 		case enums2.Ymgal:
+			getter := metadata.NewYmgalInfoGetter(getterOptions...)
 			sources = append(sources, metadataSearchSource{
 				source: enums2.Ymgal,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return metadata.NewYmgalInfoGetter(getterOptions...).FetchMetadataByName(name, "")
+					return getter.FetchMetadataByName(name, "")
+				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return metadata.FetchMetadataCandidatesByName(getter, name, "")
 				},
 			})
 		case enums2.Steam:
+			getter := metadata.NewSteamInfoGetterWithLanguage(language, getterOptions...)
 			sources = append(sources, metadataSearchSource{
 				source: enums2.Steam,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return metadata.NewSteamInfoGetterWithLanguage(language, getterOptions...).FetchMetadataByName(name, "")
+					return getter.FetchMetadataByName(name, "")
+				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return metadata.FetchMetadataCandidatesByName(getter, name, "")
 				},
 			})
 		case enums2.DLsite:
+			getter := metadata.NewDLsiteInfoGetter(getterOptions...)
 			sources = append(sources, metadataSearchSource{
 				source: enums2.DLsite,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return metadata.NewDLsiteInfoGetter(getterOptions...).FetchMetadataByName(name, "")
+					return getter.FetchMetadataByName(name, "")
+				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return metadata.FetchMetadataCandidatesByName(getter, name, "")
 				},
 			})
 		case enums2.ErogameScape:
+			getter := metadata.NewErogameScapeInfoGetter(getterOptions...)
 			sources = append(sources, metadataSearchSource{
 				source: enums2.ErogameScape,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return metadata.NewErogameScapeInfoGetter(getterOptions...).FetchMetadataByName(name, "")
+					return getter.FetchMetadataByName(name, "")
+				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return metadata.FetchMetadataCandidatesByName(getter, name, "")
 				},
 			})
 		case enums2.TouchGal:
+			getter := metadata.NewTouchGalInfoGetter(getterOptions...)
 			sources = append(sources, metadataSearchSource{
 				source: enums2.TouchGal,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return metadata.NewTouchGalInfoGetter(getterOptions...).FetchMetadataByName(name, "")
+					return getter.FetchMetadataByName(name, "")
+				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return metadata.FetchMetadataCandidatesByName(getter, name, "")
 				},
 			})
 		case enums2.Hikarinagi:
+			if s.hikarinagiService == nil {
+				continue
+			}
 			sources = append(sources, metadataSearchSource{
 				source: enums2.Hikarinagi,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return metadata.NewHikarinagiInfoGetter(getterOptions...).FetchMetadataByName(name, "")
+					return s.hikarinagiService.fetchMetadataByName(s.ctx, name)
+				},
+				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+					return s.hikarinagiService.fetchMetadataCandidatesByName(s.ctx, name)
 				},
 			})
 		}

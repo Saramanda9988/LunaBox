@@ -1,27 +1,40 @@
-import type { models, vo } from "../../wailsjs/go/models";
+import type { models, service, vo } from "../../src/bindings/models";
 import { createRoute, useNavigate } from "@tanstack/react-router";
+import { Browser } from "@wailsio/runtime";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { enums } from "../../wailsjs/go/models";
 import {
   AddGameToCategory,
   GetCategories,
   GetCategoriesByGame,
   RemoveGameFromCategory,
-} from "../../wailsjs/go/service/CategoryService";
+} from "../../bindings/lunabox/internal/service/categoryservice";
 import {
   DeleteGame,
+  DeleteGameMetadataSource,
   ExportLaunchShortcut,
+  FetchMetadataByName,
   GetGameByID,
+  OpenLocalPath,
   SelectCoverImage,
   SelectGameDirectory,
   SelectGameExecutable,
   SelectSaveDirectory,
   SelectSaveFile,
+  SetDefaultMetadataSource,
   UpdateGame,
+  UpdateGameFromRemoteBySource,
   UpdateGameFromRemoteWithFields,
-} from "../../wailsjs/go/service/GameService";
+  UpsertGameMetadataSource,
+} from "../../bindings/lunabox/internal/service/gameservice";
+import {
+  GetGameSteamStatus,
+  ImportGameToSteam,
+} from "../../bindings/lunabox/internal/service/integrationservice";
+import { GetTagsByGame } from "../../bindings/lunabox/internal/service/tagservice";
+import { enums } from "../../src/bindings/models";
+import { SetGameSteamLaunchOptions } from "../bindings/integration";
 import {
   cacheGameUpdate,
   invalidateAllGameLists,
@@ -34,30 +47,96 @@ import {
   DEFAULT_METADATA_UPDATE_FIELDS,
   MetadataFieldSelectModal,
 } from "../components/modal/MetadataFieldSelectModal";
+import { MetadataSourceSearchModal } from "../components/modal/MetadataSourceSearchModal";
+import { ProcessSelectModal } from "../components/modal/ProcessSelectModal";
+import { SteamImportModal } from "../components/modal/SteamImportModal";
 import { GameBackupPanel } from "../components/panel/GameBackupPanel";
 import { GameEditPanel } from "../components/panel/GameEditPanel";
 import { GameLaunchPanel } from "../components/panel/GameLaunchPanel";
 import { GameProgressPanel } from "../components/panel/GameProgressPanel";
+import { GameReviewPanel } from "../components/panel/GameReviewPanel";
 import { GameStatsPanel } from "../components/panel/GameStatsPanel";
 import { GameDetailSkeleton } from "../components/skeleton/GameDetailSkeleton";
 import { BetterSplitButton } from "../components/ui/better/BetterSplitButton";
 import { GameCoverImage } from "../components/ui/GameCoverImage";
 import { GameTags } from "../components/ui/GameTags";
+import { sourceLabel } from "../components/ui/import/importFlow";
 import { useAppStore } from "../store";
+import { getMetadataSourceURL } from "../utils/metadataSources";
 import { formatLocalDate } from "../utils/time";
 import { Route as rootRoute } from "./__root";
 
 type LaunchMode = enums.LaunchMode | "admin";
+type SteamPendingAction = "save-default" | "launch";
 
 function defaultLaunchModeForGame(game: models.Game): enums.LaunchMode {
-  if (
-    game.launch_mode === enums.LaunchMode.STEAM
-    && game.source_type === enums.SourceType.STEAM
-    && game.source_id
-  ) {
-    return enums.LaunchMode.STEAM;
+  if (game.launch_mode === enums.LaunchMode.LaunchModeSteam) {
+    return enums.LaunchMode.LaunchModeSteam;
   }
-  return enums.LaunchMode.NORMAL;
+  if (game.launch_mode === enums.LaunchMode.LaunchModeCompatibility) {
+    return enums.LaunchMode.LaunchModeCompatibility;
+  }
+  return enums.LaunchMode.LaunchModeNormal;
+}
+
+function gameWithSteamStatus(
+  game: models.Game,
+  status: service.SteamLaunchStatus,
+): models.Game {
+  const protonPrefix = (
+    status as service.SteamLaunchStatus & {
+      proton_prefix?: string;
+    }
+  ).proton_prefix;
+  return {
+    ...game,
+    steam_launch_id: status.launch_id,
+    steam_launch_kind: status.launch_kind,
+    steam_user_id: status.user_id,
+    wine_prefix: game.wine_prefix || protonPrefix || "",
+  } as models.Game;
+}
+
+type GameWithSteamSettings = models.Game & {
+  steam_launch_options?: string;
+};
+
+function mergeSteamSettings(
+  game: models.Game,
+  refreshedGame: models.Game,
+): models.Game {
+  const refreshed = refreshedGame as GameWithSteamSettings;
+  return {
+    ...game,
+    steam_launch_id: refreshedGame.steam_launch_id,
+    steam_launch_kind: refreshedGame.steam_launch_kind,
+    steam_launch_options: refreshed.steam_launch_options || "",
+    steam_user_id: refreshedGame.steam_user_id,
+    use_locale_emulator: refreshedGame.use_locale_emulator,
+    wine_prefix: refreshedGame.wine_prefix,
+  } as GameWithSteamSettings as models.Game;
+}
+
+function gameWithUpdatedMetadataSourceID(
+  game: models.Game,
+  source: enums.SourceType,
+  sourceID: string,
+): models.Game {
+  const shouldBecomeDefault
+    = !game.source_type
+      || game.source_type === enums.SourceType.Local
+      || game.source_type === source;
+
+  return {
+    ...game,
+    source_type: shouldBecomeDefault ? source : game.source_type,
+    source_id: shouldBecomeDefault ? sourceID : game.source_id,
+    metadata_sources: (game.metadata_sources ?? []).map(metadataSource =>
+      metadataSource.source_type === source
+        ? { ...metadataSource, source_id: sourceID }
+        : metadataSource,
+    ),
+  } as models.Game;
 }
 
 function isManagedLocalCoverURL(coverURL: string): boolean {
@@ -99,25 +178,48 @@ function GameDetailPage() {
   );
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isProcessSelectModalOpen, setIsProcessSelectModalOpen]
+    = useState(false);
   const [isMetadataFieldModalOpen, setIsMetadataFieldModalOpen]
     = useState(false);
+  const [isMetadataSearchModalOpen, setIsMetadataSearchModalOpen]
+    = useState(false);
+  const [isApplyingMetadataResult, setIsApplyingMetadataResult]
+    = useState(false);
+  const [metadataSearchResults, setMetadataSearchResults] = useState<
+    vo.GameMetadataFromWebVO[]
+  >([]);
   const [isUpdatingFromRemote, setIsUpdatingFromRemote] = useState(false);
+  const [isSteamModalOpen, setIsSteamModalOpen] = useState(false);
+  const [isCheckingSteam, setIsCheckingSteam] = useState(false);
+  const [isImportingSteam, setIsImportingSteam] = useState(false);
+  const [steamStatus, setSteamStatus]
+    = useState<service.SteamLaunchStatus | null>(null);
   const [selectedMetadataFields, setSelectedMetadataFields] = useState<
     enums.MetadataUpdateField[]
   >(DEFAULT_METADATA_UPDATE_FIELDS);
   const [allCategories, setAllCategories] = useState<vo.CategoryVO[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [initialTags, setInitialTags] = useState<models.GameTag[]>([]);
   const [tagRefreshToken, setTagRefreshToken] = useState(0);
   const [launchMode, setLaunchMode] = useState<LaunchMode>(
-    enums.LaunchMode.NORMAL,
+    enums.LaunchMode.LaunchModeNormal,
   );
   const [coverImageRefreshToken, setCoverImageRefreshToken] = useState(() =>
     Date.now(),
   );
   const isInitialMount = useRef(true);
+  const pendingSteamAction = useRef<SteamPendingAction | null>(null);
   const originalGameData = useRef<models.Game | null>(null);
   const latestGameData = useRef<models.Game | null>(null);
   latestGameData.current = game;
+  const supportsAdminLaunch = platformGOOS === "windows";
+  const supportsSteamLaunch
+    = platformGOOS === "windows"
+      || platformGOOS === "linux"
+      || (platformGOOS === "darwin"
+        && game?.steam_launch_kind === "native"
+        && Boolean(game?.steam_launch_id));
 
   const updateGameState = useCallback(
     (
@@ -144,23 +246,44 @@ function GameDetailPage() {
   };
 
   useEffect(() => {
+    let isCurrent = true;
+
     const loadData = async () => {
       try {
-        const gameData = await GetGameByID(gameId);
+        const gameDataPromise = GetGameByID(gameId);
+        const gameTagsPromise = GetTagsByGame(gameId).catch(() => []);
+        const [gameData, gameTags] = await Promise.all([
+          gameDataPromise,
+          gameTagsPromise,
+        ]);
+        if (!isCurrent) {
+          return;
+        }
+
         updateGameState(gameData);
+        setInitialTags(gameTags ?? []);
         setLaunchMode(defaultLaunchModeForGame(gameData));
         originalGameData.current = gameData;
         isInitialMount.current = false;
       }
       catch (error) {
+        if (!isCurrent) {
+          return;
+        }
         console.error("Failed to load game data:", error);
         toast.error(t("game.toast.loadDataFailed"));
       }
       finally {
-        setIsLoading(false);
+        if (isCurrent) {
+          setIsLoading(false);
+        }
       }
     };
-    loadData();
+    void loadData();
+
+    return () => {
+      isCurrent = false;
+    };
   }, [gameId, t, updateGameState]);
 
   useEffect(() => {
@@ -179,7 +302,7 @@ function GameDetailPage() {
       return;
     }
     setLaunchMode(defaultLaunchModeForGame(game));
-  }, [game?.id, game?.launch_mode, game?.source_type, game?.source_id]);
+  }, [game?.id, game?.launch_mode]);
 
   // 延迟显示骨架屏
   useEffect(() => {
@@ -390,30 +513,163 @@ function GameDetailPage() {
     }
   };
 
+  const refreshGameAfterMetadataSourceChange = async () => {
+    if (!game)
+      return;
+    const updatedGame = await GetGameByID(game.id);
+    updateGameState(updatedGame, { forceListInvalidation: true });
+    originalGameData.current = updatedGame;
+  };
+
+  const handleUpsertMetadataSource = async (
+    source: enums.SourceType,
+    sourceID: string,
+  ) => {
+    if (!game)
+      return;
+    await UpsertGameMetadataSource(game.id, source, sourceID);
+    await refreshGameAfterMetadataSourceChange();
+    toast.success(t("gameEdit.sourceSaved"));
+  };
+
+  const handleDeleteMetadataSource = async (source: enums.SourceType) => {
+    if (!game)
+      return;
+    await DeleteGameMetadataSource(game.id, source);
+    await refreshGameAfterMetadataSourceChange();
+    toast.success(t("gameEdit.sourceDeleted"));
+  };
+
+  const handleSetDefaultMetadataSource = async (source: enums.SourceType) => {
+    if (!game)
+      return;
+    await SetDefaultMetadataSource(game.id, source);
+    await refreshGameAfterMetadataSourceChange();
+    toast.success(t("gameEdit.defaultSourceSaved"));
+  };
+
+  const handleAutoSaveMetadataSource = async (
+    source: enums.SourceType,
+    sourceID: string,
+  ) => {
+    if (!game)
+      return;
+
+    await UpsertGameMetadataSource(game.id, source, sourceID);
+    const latestGame = latestGameData.current;
+    if (!latestGame)
+      return;
+
+    const updatedGame = gameWithUpdatedMetadataSourceID(
+      latestGame,
+      source,
+      sourceID,
+    );
+    if (originalGameData.current) {
+      originalGameData.current = gameWithUpdatedMetadataSourceID(
+        originalGameData.current,
+        source,
+        sourceID,
+      );
+    }
+    updateGameState(updatedGame);
+  };
+
+  const handleSearchMetadataByName = async () => {
+    if (!game)
+      return false;
+
+    setMetadataSearchResults([]);
+    try {
+      const results = await FetchMetadataByName(game.name.trim());
+      setMetadataSearchResults(results || []);
+      setIsMetadataSearchModalOpen(true);
+      return true;
+    }
+    catch (error) {
+      console.error("Failed to search metadata by game name:", error);
+      toast.error(t("gameEdit.metadataSearchFailed", { error }));
+      return false;
+    }
+  };
+
+  const handleSelectMetadataSearchResult = async (
+    result: vo.GameMetadataFromWebVO,
+  ) => {
+    const sourceID = result.Game?.source_id?.trim();
+    if (!game || !sourceID)
+      return;
+
+    const seenSources = new Set<enums.SourceType>();
+    const sourcesToLink: Array<{
+      source: enums.SourceType;
+      sourceID: string;
+    }> = [];
+    for (const item of metadataSearchResults) {
+      const itemSourceID = item.Game?.source_id?.trim();
+      if (!item.Game || !itemSourceID)
+        continue;
+
+      if (seenSources.has(item.Source)) {
+        toast.error(
+          t("addGameModal.toast.duplicateSource", {
+            source: sourceLabel(item.Source, t),
+          }),
+        );
+        return;
+      }
+      seenSources.add(item.Source);
+      sourcesToLink.push({ source: item.Source, sourceID: itemSourceID });
+    }
+    if (sourcesToLink.length === 0)
+      return;
+
+    setIsApplyingMetadataResult(true);
+    try {
+      for (const source of sourcesToLink) {
+        await UpsertGameMetadataSource(game.id, source.source, source.sourceID);
+      }
+      await UpdateGameFromRemoteBySource(game.id, result.Source);
+      await SetDefaultMetadataSource(game.id, result.Source);
+      await refreshGameAfterMetadataSourceChange();
+      setTagRefreshToken(prev => prev + 1);
+      setCoverImageRefreshToken(prev => prev + 1);
+      setIsMetadataSearchModalOpen(false);
+      toast.success(t("gameEdit.metadataSearchApplySuccess"));
+    }
+    catch (error) {
+      console.error("Failed to apply metadata search result:", error);
+      toast.error(t("gameEdit.metadataSearchApplyFailed", { error }));
+    }
+    finally {
+      setIsApplyingMetadataResult(false);
+    }
+  };
+
   const statusConfig = {
-    [enums.GameStatus.NOT_STARTED]: {
+    [enums.GameStatus.StatusNotStarted]: {
       label: t("common.notStarted"),
       icon: "i-mdi-clock-outline",
       color: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
     },
-    [enums.GameStatus.WANT_TO_PLAY]: {
+    [enums.GameStatus.StatusWantToPlay]: {
       label: t("common.wantToPlay"),
       icon: "i-mdi-bookmark-outline",
       color: "bg-info-100 text-info-700 dark:bg-info-900 dark:text-info-300",
     },
-    [enums.GameStatus.PLAYING]: {
+    [enums.GameStatus.StatusPlaying]: {
       label: t("common.playing"),
       icon: "i-mdi-gamepad-variant",
       color:
         "bg-neutral-100 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300",
     },
-    [enums.GameStatus.COMPLETED]: {
+    [enums.GameStatus.StatusCompleted]: {
       label: t("common.completed"),
       icon: "i-mdi-trophy",
       color:
         "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
     },
-    [enums.GameStatus.ON_HOLD]: {
+    [enums.GameStatus.StatusOnHold]: {
       label: t("common.onHold"),
       icon: "i-mdi-pause-circle-outline",
       color:
@@ -421,21 +677,32 @@ function GameDetailPage() {
     },
   };
 
-  const handleStartGame = async (mode: LaunchMode = launchMode) => {
-    if (!game || !game.id)
-      return;
-    if (gameRuntime)
-      return;
+  const performStartGame = async (
+    targetGame: models.Game,
+    mode: LaunchMode,
+  ) => {
+    const effectiveMode
+      = mode === "admin" && !supportsAdminLaunch
+        ? enums.LaunchMode.LaunchModeNormal
+        : mode;
     try {
       const started
-        = mode === "admin"
-          ? await startGame(game, { RunAsAdmin: true })
-          : mode === enums.LaunchMode.STEAM
-            ? await startGame(game, { UseSteam: true })
-            : await startGame(game);
+        = effectiveMode === "admin"
+          ? await startGame(targetGame, { RunAsAdmin: true, UseSteam: false })
+          : effectiveMode === enums.LaunchMode.LaunchModeSteam
+            ? await startGame(targetGame, { UseSteam: true })
+            : mode === enums.LaunchMode.LaunchModeCompatibility
+              ? await startGame(targetGame, {
+                  UseSteam: false,
+                  UseCompatibility: true,
+                })
+              : await startGame(targetGame, {
+                  UseSteam: false,
+                  UseCompatibility: false,
+                });
       if (started) {
         try {
-          const updatedGame = await GetGameByID(game.id);
+          const updatedGame = await GetGameByID(targetGame.id);
           updateGameState(updatedGame);
           originalGameData.current = updatedGame;
         }
@@ -445,18 +712,249 @@ function GameDetailPage() {
         // toast.success(t("gameCard.startSuccess", { name: game.name }));
       }
       else {
-        toast.error(t("gameCard.startFailedNotLaunched", { name: game.name }));
+        toast.error(
+          t("gameCard.startFailedNotLaunched", { name: targetGame.name }),
+        );
       }
     }
     catch (error) {
       console.error("Failed to start game:", error);
-      toast.error(t("gameCard.startFailedLog", { name: game.name }));
+      toast.error(t("gameCard.startFailedLog", { name: targetGame.name }));
     }
   };
 
-  const handleStatusChange = async (newStatus: string) => {
-    if (!game || (game.status || enums.GameStatus.NOT_STARTED) === newStatus)
+  const resolveSteamGame = async (
+    action: SteamPendingAction,
+    targetGame: models.Game = game,
+  ): Promise<models.Game | null> => {
+    pendingSteamAction.current = action;
+    setIsCheckingSteam(true);
+    try {
+      const status = await GetGameSteamStatus(targetGame.id);
+      setSteamStatus(status);
+      if (!status.ready) {
+        setIsSteamModalOpen(true);
+        return null;
+      }
+      return gameWithSteamStatus(targetGame, status);
+    }
+    catch (error) {
+      console.error("Failed to inspect Steam launch status:", error);
+      pendingSteamAction.current = null;
+      toast.error(t("steamImport.checkFailed", { error }));
+      return null;
+    }
+    finally {
+      setIsCheckingSteam(false);
+    }
+  };
+
+  const saveSteamAsDefault = async (targetGame: models.Game) => {
+    const updatedGame = {
+      ...targetGame,
+      launch_mode: enums.LaunchMode.LaunchModeSteam,
+    } as models.Game;
+    try {
+      await UpdateGame(updatedGame);
+      updateGameState(updatedGame);
+      originalGameData.current = updatedGame;
+      setLaunchMode(enums.LaunchMode.LaunchModeSteam);
+    }
+    catch (error) {
+      console.error("Failed to save Steam as default launch mode:", error);
+      toast.error(
+        t("game.toast.saveFailed", { error: (error as Error).message }),
+      );
+    }
+  };
+
+  const steamLaunchOptionsStatusError = (status: service.SteamLaunchStatus) => {
+    switch (status.state) {
+      case "steam_running":
+        return t("gameLaunch.steamLaunchOptionsSteamRunning");
+      case "steam_not_installed":
+        return t("gameLaunch.steamProtonNotInstalled");
+      case "executable_required":
+        return t("steamImport.executableRequired");
+      case "user_unavailable":
+        return t("steamImport.userUnavailable");
+      default:
+        return t("gameLaunch.steamLaunchOptionsNotReady", {
+          state: status.state || "unknown",
+        });
+    }
+  };
+
+  const handleRefreshSteamSettings = async () => {
+    if (!game) {
       return;
+    }
+
+    const refreshedGame = await GetGameByID(game.id);
+    const mergedGame = mergeSteamSettings(game, refreshedGame);
+    updateGameState(mergedGame);
+    originalGameData.current = originalGameData.current
+      ? mergeSteamSettings(originalGameData.current, refreshedGame)
+      : refreshedGame;
+  };
+
+  const handleSaveSteamLaunchOptions = async (launchOptions: string) => {
+    if (!game) {
+      return;
+    }
+
+    const status = await SetGameSteamLaunchOptions(game.id, launchOptions);
+    setSteamStatus(status);
+    if (!status.ready) {
+      throw new Error(steamLaunchOptionsStatusError(status));
+    }
+
+    const refreshedGame = await GetGameByID(game.id);
+    const mergedGame = mergeSteamSettings(game, refreshedGame);
+    updateGameState(mergedGame);
+    originalGameData.current = originalGameData.current
+      ? mergeSteamSettings(originalGameData.current, refreshedGame)
+      : refreshedGame;
+    return status;
+  };
+
+  const handleDefaultLaunchModeChange = async (mode: enums.LaunchMode) => {
+    if (mode !== enums.LaunchMode.LaunchModeSteam) {
+      updateGameState({
+        ...game,
+        launch_mode: mode,
+        wine_runner:
+          mode === enums.LaunchMode.LaunchModeCompatibility
+            ? game.wine_runner === "crossover"
+              ? "crossover"
+              : "system"
+            : game.wine_runner,
+      } as models.Game);
+      return;
+    }
+
+    const steamGame = await resolveSteamGame("save-default");
+    if (!steamGame)
+      return;
+    pendingSteamAction.current = null;
+    await saveSteamAsDefault(steamGame);
+  };
+
+  const handleStartGame = async (mode: LaunchMode = launchMode) => {
+    if (!game || !game.id || gameRuntime)
+      return;
+
+    if (mode === enums.LaunchMode.LaunchModeSteam) {
+      const steamGame = await resolveSteamGame("launch");
+      if (!steamGame)
+        return;
+      pendingSteamAction.current = null;
+      await performStartGame(steamGame, mode);
+      return;
+    }
+
+    await performStartGame(game, mode);
+  };
+
+  const handleRetrySteamStatus = async () => {
+    const action = pendingSteamAction.current;
+    if (!action)
+      return;
+    const steamGame = await resolveSteamGame(action);
+    if (!steamGame)
+      return;
+
+    setIsSteamModalOpen(false);
+    pendingSteamAction.current = null;
+    if (action === "save-default") {
+      await saveSteamAsDefault(steamGame);
+    }
+    else {
+      await performStartGame(steamGame, enums.LaunchMode.LaunchModeSteam);
+    }
+  };
+
+  const handleImportGameToSteam = async () => {
+    const action = pendingSteamAction.current;
+    if (!action)
+      return;
+
+    setIsImportingSteam(true);
+    try {
+      const result = await ImportGameToSteam(game.id);
+      setSteamStatus(result.status);
+      if (!result.status.ready) {
+        return;
+      }
+
+      const steamGame = gameWithSteamStatus(game, result.status);
+      setIsSteamModalOpen(false);
+      pendingSteamAction.current = null;
+      if (action === "save-default") {
+        await saveSteamAsDefault(steamGame);
+      }
+      else {
+        setLaunchMode(enums.LaunchMode.LaunchModeSteam);
+      }
+
+      if (result.imported) {
+        toast.success(t("steamImport.importSuccess"), { duration: 6000 });
+      }
+      else if (action === "launch") {
+        await performStartGame(steamGame, enums.LaunchMode.LaunchModeSteam);
+      }
+    }
+    catch (error) {
+      console.error("Failed to import game into Steam:", error);
+      toast.error(t("steamImport.importFailed", { error }));
+    }
+    finally {
+      setIsImportingSteam(false);
+    }
+  };
+
+  const handleSteamSelectExecutable = async () => {
+    try {
+      const path = await SelectGameExecutable(game.path || "");
+      if (!path)
+        return;
+      const updatedGame = { ...game, path } as models.Game;
+      await UpdateGame(updatedGame);
+      updateGameState(updatedGame);
+      originalGameData.current = updatedGame;
+      const action = pendingSteamAction.current;
+      if (action) {
+        const steamGame = await resolveSteamGame(action, updatedGame);
+        if (!steamGame)
+          return;
+        setIsSteamModalOpen(false);
+        pendingSteamAction.current = null;
+        if (action === "save-default") {
+          await saveSteamAsDefault(steamGame);
+        }
+        else {
+          await performStartGame(steamGame, enums.LaunchMode.LaunchModeSteam);
+        }
+      }
+    }
+    catch (error) {
+      console.error("Failed to select executable for Steam:", error);
+      toast.error(t("game.toast.selectExecutableFailed"));
+    }
+  };
+
+  const handleCloseSteamModal = () => {
+    setIsSteamModalOpen(false);
+    pendingSteamAction.current = null;
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (
+      !game
+      || (game.status || enums.GameStatus.StatusNotStarted) === newStatus
+    ) {
+      return;
+    }
     const updatedGame = { ...game, status: newStatus } as models.Game;
     updateGameState(updatedGame);
     try {
@@ -536,6 +1034,12 @@ function GameDetailPage() {
     }
   };
 
+  const handleRunningProcessSelected = (processName: string) => {
+    if (!game)
+      return;
+    updateGameState({ ...game, process_name: processName } as models.Game);
+  };
+
   const handleExportLaunchShortcut = async () => {
     if (!game)
       return;
@@ -560,6 +1064,25 @@ function GameDetailPage() {
     config?.time_zone,
   ).replaceAll("/", "-");
   const releaseDateText = game.release_date?.trim() || "-";
+  const metadataSources = game.metadata_sources?.length
+    ? game.metadata_sources
+    : game.source_type && game.source_id
+      ? [{ source_type: game.source_type, source_id: game.source_id }]
+      : [];
+  const metadataSourceText = game.source_type
+    ? `${game.source_type}${
+      metadataSources.length > 1
+        ? ` ${t("gameEdit.multipleSources", { count: metadataSources.length })}`
+        : ""
+    }`
+    : "-";
+  const defaultMetadataSource = game.source_type;
+  const metadataSourceURL = getMetadataSourceURL(
+    defaultMetadataSource,
+    metadataSources.find(
+      source => source.source_type === defaultMetadataSource,
+    )?.source_id || game.source_id,
+  );
   const coverImageSrc
     = game.cover_url || game.cover_source_url
       ? buildCoverImageSrc(
@@ -574,28 +1097,44 @@ function GameDetailPage() {
     icon: string;
   }> = [
     {
-      key: enums.LaunchMode.NORMAL,
+      key: enums.LaunchMode.LaunchModeNormal,
       label: t("gameCard.startGame"),
       description: t("gameCard.normalLaunchDesc"),
       icon: "i-mdi-play",
     },
-    {
+  ];
+  if (supportsAdminLaunch) {
+    launchOptions.push({
       key: "admin",
       label: t("gameCard.startAsAdmin"),
       description: t("gameCard.adminLaunchDesc"),
       icon: "i-mdi-shield-account",
-    },
-  ];
-  if (game.source_type === enums.SourceType.STEAM && game.source_id) {
+    });
+  }
+  if (supportsSteamLaunch) {
     launchOptions.splice(1, 0, {
-      key: enums.LaunchMode.STEAM,
+      key: enums.LaunchMode.LaunchModeSteam,
       label: t("gameCard.startWithSteam"),
       description: t("gameCard.steamLaunchDesc"),
       icon: "i-mdi-steam",
     });
   }
+  if (platformGOOS === "darwin") {
+    launchOptions.splice(1, 0, {
+      key: enums.LaunchMode.LaunchModeCompatibility,
+      label: t("gameCard.startWithCompatibility"),
+      description: t("gameCard.compatibilityLaunchDesc"),
+      icon: "i-mdi-application-brackets-outline",
+    });
+  }
+  const selectedLaunchMode
+    = (launchMode === enums.LaunchMode.LaunchModeSteam && !supportsSteamLaunch)
+      || (launchMode === enums.LaunchMode.LaunchModeCompatibility
+        && platformGOOS !== "darwin")
+      ? enums.LaunchMode.LaunchModeNormal
+      : launchMode;
   const selectedLaunchOption
-    = launchOptions.find(option => option.key === launchMode)
+    = launchOptions.find(option => option.key === selectedLaunchMode)
       ?? launchOptions[0];
   const isCurrentGameRunning = Boolean(gameRuntime);
   const isCurrentGameEnding = gameRuntime?.state === "ending";
@@ -615,20 +1154,22 @@ function GameDetailPage() {
       </button>
 
       {/* Header Section */}
-      <div className="grid min-w-0 grid-cols-[15rem_minmax(0,1fr)] items-center gap-6">
-        <div className="relative w-60 overflow-hidden rounded-lg bg-brand-200 shadow-lg dark:bg-brand-800">
+      <div className="grid min-w-0 grid-cols-[15rem_minmax(0,1fr)] items-stretch gap-6">
+        <div className="relative min-h-64 w-60">
           {coverImageSrc ? (
             <GameCoverImage
               src={coverImageSrc}
               fallbackSrc={game.cover_source_url}
               alt={game.name}
+              loading="eager"
+              fetchPriority="high"
               isNSFW={game.is_nsfw}
               revealNSFWOnHover
-              className="w-full"
+              className="absolute left-0 top-1/2 w-full -translate-y-1/2 rounded-lg shadow-lg"
               imageClassName="block h-auto w-full"
             />
           ) : (
-            <div className="w-full h-64 flex items-center justify-center text-brand-400">
+            <div className="flex h-full min-h-64 w-full items-center justify-center text-brand-400">
               {t("game.noCover")}
             </div>
           )}
@@ -654,9 +1195,9 @@ function GameDetailPage() {
                     ? "i-mdi-gamepad-variant"
                     : selectedLaunchOption.icon
                 }
-                selectedKey={launchMode}
+                selectedKey={selectedLaunchMode}
                 options={launchOptions}
-                onClick={() => handleStartGame()}
+                onClick={() => handleStartGame(selectedLaunchMode)}
                 onSelect={setLaunchMode}
                 size="sm"
                 variant="primary"
@@ -670,7 +1211,7 @@ function GameDetailPage() {
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(statusConfig).map(([key, config]) => {
                   const isActive
-                    = (game.status || enums.GameStatus.NOT_STARTED) === key;
+                    = (game.status || enums.GameStatus.StatusNotStarted) === key;
                   return (
                     <button
                       type="button"
@@ -679,7 +1220,7 @@ function GameDetailPage() {
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                         isActive
                           ? `${config.color} ring-2 ring-offset-1 ring-brand-400 dark:ring-offset-brand-900`
-                          : "bg-brand-100 text-brand-500 dark:bg-brand-700 dark:text-brand-400 hover:bg-brand-200 dark:hover:bg-brand-600"
+                          : "bg-brand-150 text-brand-500 dark:bg-brand-700 dark:text-brand-400 hover:bg-brand-200 dark:hover:bg-brand-600"
                       }`}
                     >
                       <div className={`${config.icon} text-base`} />
@@ -687,6 +1228,56 @@ function GameDetailPage() {
                     </button>
                   );
                 })}
+                <div className="ml-2 flex items-center gap-4">
+                  <div className="h-6 w-px bg-brand-200 dark:bg-brand-700" />
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => void Browser.OpenURL(metadataSourceURL)}
+                      disabled={!metadataSourceURL}
+                      aria-label={t("gameEdit.openSourcePage")}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-150 text-brand-500 transition-colors hover:bg-brand-200 hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-brand-700 dark:text-brand-400 dark:hover:bg-brand-600 dark:hover:text-brand-100"
+                    >
+                      <span
+                        className="i-mdi-open-in-new text-base"
+                        aria-hidden="true"
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const path = game.game_directory || game.path;
+                        if (!path)
+                          return;
+                        try {
+                          await OpenLocalPath(path);
+                        }
+                        catch {
+                          toast.error(t("gameEdit.openPathFailed"));
+                        }
+                      }}
+                      disabled={!game.game_directory && !game.path}
+                      aria-label={t("gameEdit.openInExplorer")}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-150 text-brand-500 transition-colors hover:bg-brand-200 hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-brand-700 dark:text-brand-400 dark:hover:bg-brand-600 dark:hover:text-brand-100"
+                    >
+                      <span
+                        className="i-mdi-folder-open-outline text-base"
+                        aria-hidden="true"
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={openCategoryModal}
+                      aria-label={t("addToCategory.title")}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-150 text-brand-500 transition-colors hover:bg-brand-200 hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 dark:bg-brand-700 dark:text-brand-400 dark:hover:bg-brand-600 dark:hover:text-brand-100"
+                    >
+                      <span
+                        className="i-mdi-folder-plus-outline text-base"
+                        aria-hidden="true"
+                      />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -694,7 +1285,7 @@ function GameDetailPage() {
           <div className="grid min-w-0 grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-sm text-brand-750 dark:text-brand-400">
             <div className="min-w-0">
               <div className="font-semibold mb-1">{t("game.dataSource")}</div>
-              <div className="break-words">{game.source_type}</div>
+              <div className="break-words">{metadataSourceText}</div>
             </div>
             <div className="min-w-0">
               <div className="font-semibold mb-1">{t("game.developer")}</div>
@@ -735,7 +1326,9 @@ function GameDetailPage() {
 
           <div className="mt-3 min-w-0">
             <GameTags
+              key={gameId}
               gameId={gameId}
+              initialTags={initialTags}
               showNSFW={config?.show_nsfw_tags}
               refreshToken={tagRefreshToken}
             />
@@ -745,37 +1338,33 @@ function GameDetailPage() {
 
       {/* Tabs */}
       <div className="border-b border-brand-200 dark:border-brand-700">
-        <div className="flex justify-between items-center">
+        <div className="flex items-center">
           <nav className="-mb-px flex space-x-8">
-            {["stats", "edit", "launch", "backup", "progress"].map(tab => (
-              <button
-                type="button"
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`
+            {["stats", "edit", "launch", "backup", "progress", "review"].map(
+              tab => (
+                <button
+                  type="button"
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`
                   whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
                   ${
-              activeTab === tab
-                ? "border-neutral-500 text-brand-700 dark:text-neutral-400"
-                : "border-transparent text-brand-700 hover:text-brand-750 hover:border-brand-300 dark:text-brand-400 dark:hover:text-brand-300"
-              }
+                activeTab === tab
+                  ? "border-neutral-500 text-brand-700 dark:text-neutral-400"
+                  : "border-transparent text-brand-700 hover:text-brand-750 hover:border-brand-300 dark:text-brand-400 dark:hover:text-brand-300"
+                }
                 `}
-              >
-                {tab === "stats" && t("game.tabs.stats")}
-                {tab === "edit" && t("common.edit")}
-                {tab === "launch" && t("game.tabs.launch")}
-                {tab === "backup" && t("game.tabs.backup")}
-                {tab === "progress" && t("game.tabs.progress")}
-              </button>
-            ))}
+                >
+                  {tab === "stats" && t("game.tabs.stats")}
+                  {tab === "edit" && t("common.edit")}
+                  {tab === "launch" && t("game.tabs.launch")}
+                  {tab === "backup" && t("game.tabs.backup")}
+                  {tab === "progress" && t("game.tabs.progress")}
+                  {tab === "review" && t("game.tabs.review")}
+                </button>
+              ),
+            )}
           </nav>
-          <button
-            type="button"
-            onClick={openCategoryModal}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-100 text-brand-750 hover:text-brand-200 dark:bg-brand-900 dark:text-brand-400 dark:hover:text-brand-700 transition-colors"
-          >
-            <div className="i-mdi-folder-plus-outline text-lg" />
-          </button>
         </div>
       </div>
 
@@ -795,6 +1384,11 @@ function GameDetailPage() {
           onCoverImageChanged={() =>
             setCoverImageRefreshToken(prev => prev + 1)}
           onUpdateFromRemote={handleOpenUpdateFromRemote}
+          onUpsertMetadataSource={handleUpsertMetadataSource}
+          onDeleteMetadataSource={handleDeleteMetadataSource}
+          onSetDefaultMetadataSource={handleSetDefaultMetadataSource}
+          onAutoSaveMetadataSource={handleAutoSaveMetadataSource}
+          onSearchMetadataByName={handleSearchMetadataByName}
         />
       )}
 
@@ -804,7 +1398,11 @@ function GameDetailPage() {
           config={config || undefined}
           goos={platformGOOS}
           onGameChange={updateGameState}
+          onLaunchModeChange={handleDefaultLaunchModeChange}
+          onRefreshSteamSettings={handleRefreshSteamSettings}
+          onSaveSteamLaunchOptions={handleSaveSteamLaunchOptions}
           onSelectProcessExecutable={handleSelectProcessExecutable}
+          onSelectRunningProcess={() => setIsProcessSelectModalOpen(true)}
           onExportShortcut={handleExportLaunchShortcut}
         />
       )}
@@ -814,6 +1412,8 @@ function GameDetailPage() {
       )}
 
       {activeTab === "progress" && <GameProgressPanel gameId={gameId} />}
+
+      {activeTab === "review" && game && <GameReviewPanel game={game} />}
 
       <ConfirmModal
         isOpen={isDeleteModalOpen}
@@ -833,6 +1433,13 @@ function GameDetailPage() {
         onSave={handleSaveCategories}
       />
 
+      <ProcessSelectModal
+        isOpen={isProcessSelectModalOpen}
+        gameID={gameId}
+        onClose={() => setIsProcessSelectModalOpen(false)}
+        onSelected={handleRunningProcessSelected}
+      />
+
       <MetadataFieldSelectModal
         isOpen={isMetadataFieldModalOpen}
         title={t("metadataUpdateFields.modal.singleTitle")}
@@ -842,6 +1449,30 @@ function GameDetailPage() {
         isSubmitting={isUpdatingFromRemote}
         onClose={() => setIsMetadataFieldModalOpen(false)}
         onConfirm={handleUpdateFromRemote}
+      />
+
+      <MetadataSourceSearchModal
+        isOpen={isMetadataSearchModalOpen}
+        results={metadataSearchResults}
+        isApplying={isApplyingMetadataResult}
+        onClose={() => setIsMetadataSearchModalOpen(false)}
+        onSelect={result => void handleSelectMetadataSearchResult(result)}
+        onRemove={index =>
+          setMetadataSearchResults(current =>
+            current.filter((_, resultIndex) => resultIndex !== index),
+          )}
+      />
+
+      <SteamImportModal
+        isOpen={isSteamModalOpen}
+        gameName={game.name}
+        status={steamStatus}
+        isChecking={isCheckingSteam}
+        isImporting={isImportingSteam}
+        onClose={handleCloseSteamModal}
+        onImport={handleImportGameToSteam}
+        onRetry={handleRetrySteamStatus}
+        onSelectExecutable={handleSteamSelectExecutable}
       />
     </div>
   );

@@ -50,7 +50,7 @@ func TestDownloadServiceEmitGameImported(t *testing.T) {
 
 	var emittedName string
 	var emittedPayload map[string]string
-	downloadService.emitEvent = func(_ context.Context, name string, data ...interface{}) {
+	downloadService.emitEvent = func(name string, data ...interface{}) {
 		emittedName = name
 		if len(data) != 1 {
 			t.Fatalf("event payload count: got %d, want 1", len(data))
@@ -75,7 +75,7 @@ func TestDownloadServiceEmitGameImported(t *testing.T) {
 func TestImportWithPrefetchedMetadataDoesNotWaitForPendingResult(t *testing.T) {
 	downloadService := NewDownloadService()
 	downloadService.ctx = context.Background()
-	downloadService.emitEvent = func(context.Context, string, ...interface{}) {}
+	downloadService.emitEvent = func(string, ...interface{}) {}
 	task := &DownloadTask{ID: "task-1", Request: vo.InstallRequest{Title: "Test Game"}}
 	results := make(chan downloadMetadataResult, 1)
 	imports := make(chan *vo.GameMetadataFromWebVO, 2)
@@ -124,7 +124,7 @@ func TestImportWithPrefetchedMetadataReportsReadyFetchFailure(t *testing.T) {
 	close(results)
 
 	var emittedName string
-	downloadService.emitEvent = func(_ context.Context, name string, _ ...interface{}) {
+	downloadService.emitEvent = func(name string, _ ...interface{}) {
 		emittedName = name
 	}
 	importCalls := 0

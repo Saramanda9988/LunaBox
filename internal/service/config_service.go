@@ -6,41 +6,60 @@ import (
 	"fmt"
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
-	"lunabox/internal/autostart"
 	"lunabox/internal/utils/apputils"
 	"lunabox/internal/utils/archiveutils"
 	"lunabox/internal/utils/imageutils"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"lunabox/internal/wailsruntime"
 )
 
 type ConfigService struct {
 	ctx                       context.Context
 	db                        *sql.DB
 	config                    *appconf.AppConfig
+	configMu                  sync.RWMutex
+	saveConfig                func(*appconf.AppConfig) error
+	downloadService           *DownloadService
+	runtime                   wailsruntime.Runtime
 	quitHandler               func() // 安全退出回调
 	configUpdateHook          func(appconf.AppConfig) error
 	suppressInitialWindowShow bool
+	pendingGameLibrarySource  string
 }
 
 func NewConfigService() *ConfigService {
-	return &ConfigService{}
+	return &ConfigService{
+		runtime:    wailsruntime.Unavailable(),
+		saveConfig: appconf.SaveConfig,
+	}
 }
 
+//wails:ignore
 func (s *ConfigService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
 	s.db = db
 	s.config = config
 }
 
+//wails:ignore
+func (s *ConfigService) SetRuntime(runtime wailsruntime.Runtime) {
+	if runtime != nil {
+		s.runtime = runtime
+	}
+}
+
 func (s *ConfigService) GetAppConfig() (appconf.AppConfig, error) {
+	s.configMu.RLock()
+	defer s.configMu.RUnlock()
 	return *s.config, nil
 }
 
+//wails:ignore
 func (s *ConfigService) SetSuppressInitialWindowShow(suppress bool) {
 	s.suppressInitialWindowShow = suppress
 }
@@ -59,7 +78,7 @@ func (s *ConfigService) ShouldShowMainWindowOnReady() bool {
 
 // SelectDirectory 打开目录选择对话框
 func (s *ConfigService) SelectDirectory(title string) (string, error) {
-	selection, err := runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{
+	selection, err := s.runtime.OpenDirectory(wailsruntime.OpenDialogOptions{
 		Title: title,
 	})
 	if err != nil {
@@ -95,10 +114,10 @@ func (s *ConfigService) ExportLogsZip() (string, error) {
 
 	timestamp := time.Now().Format("2006-01-02T15-04-05")
 	defaultFileName := fmt.Sprintf("lunabox_logs_%s.zip", timestamp)
-	selection, err := runtime.SaveFileDialog(s.ctx, runtime.SaveDialogOptions{
-		Title:           "导出日志 ZIP",
-		DefaultFilename: defaultFileName,
-		Filters: []runtime.FileFilter{
+	selection, err := s.runtime.SaveFile(wailsruntime.SaveDialogOptions{
+		Title:    "导出日志 ZIP",
+		Filename: defaultFileName,
+		Filters: []wailsruntime.FileFilter{
 			{
 				DisplayName: "ZIP 压缩包 (*.zip)",
 				Pattern:     "*.zip",
@@ -137,9 +156,9 @@ func (s *ConfigService) ExportLogsZip() (string, error) {
 
 // SelectBackgroundImage 打开文件选择对话框选择背景图片，并保存到应用目录
 func (s *ConfigService) SelectBackgroundImage() (string, error) {
-	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+	selection, err := s.runtime.OpenFile(wailsruntime.OpenDialogOptions{
 		Title: "选择背景图片",
-		Filters: []runtime.FileFilter{
+		Filters: []wailsruntime.FileFilter{
 			{DisplayName: "图片文件", Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp"},
 		},
 	})
@@ -163,9 +182,9 @@ func (s *ConfigService) SelectBackgroundImage() (string, error) {
 
 // SelectAndCropBackgroundImage 打开文件选择对话框选择背景图片，复制到临时目录并返回 /local/ 路径供前端裁剪
 func (s *ConfigService) SelectAndCropBackgroundImage() (string, error) {
-	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+	selection, err := s.runtime.OpenFile(wailsruntime.OpenDialogOptions{
 		Title: "选择背景图片",
-		Filters: []runtime.FileFilter{
+		Filters: []wailsruntime.FileFilter{
 			{DisplayName: "图片文件", Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp"},
 		},
 	})
@@ -205,6 +224,12 @@ func (s *ConfigService) SaveCroppedBackgroundImage(srcPath string, x, y, width, 
 }
 
 func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
+	s.configMu.Lock()
+	defer s.configMu.Unlock()
+	return s.updateAppConfigLocked(newConfig)
+}
+
+func (s *ConfigService) updateAppConfigLocked(newConfig appconf.AppConfig) error {
 	if newConfig.Theme == "" || newConfig.Language == "" {
 		applog.LogErrorf(s.ctx, "invalid config")
 		return fmt.Errorf("invalid config")
@@ -212,8 +237,10 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 
 	appconf.SanitizeOneDriveOAuthConfig(&newConfig)
 	appconf.SanitizeBangumiOAuthConfig(&newConfig)
+	appconf.SanitizeHikarinagiOAuthConfig(&newConfig)
 	appconf.SanitizeUmbraConfig(&newConfig)
 	newConfig.MCPPort = appconf.NormalizeMCPPort(newConfig.MCPPort)
+	newConfig.ProcessDetectionTimeoutSec = appconf.NormalizeProcessDetectionTimeoutSec(newConfig.ProcessDetectionTimeoutSec)
 
 	var previousConfig appconf.AppConfig
 	if s.config != nil {
@@ -225,18 +252,18 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 		previousLaunchAtLogin = s.config.LaunchAtLogin
 	}
 
-	shouldSyncLaunchAtLogin := newConfig.LaunchAtLogin != previousLaunchAtLogin || newConfig.LaunchAtLogin
+	shouldSyncLaunchAtLogin := newConfig.LaunchAtLogin != previousLaunchAtLogin
 	if shouldSyncLaunchAtLogin {
-		if err := autostart.Sync(newConfig.LaunchAtLogin); err != nil {
+		if err := s.runtime.SetAutostart(newConfig.LaunchAtLogin); err != nil {
 			applog.LogErrorf(s.ctx, "failed to sync launch-at-login: %v", err)
 			return fmt.Errorf("同步开机自启动失败: %w", err)
 		}
 	}
 
-	err := appconf.SaveConfig(&newConfig)
+	err := s.saveConfig(&newConfig)
 	if err != nil {
 		if shouldSyncLaunchAtLogin {
-			if rollbackErr := autostart.Sync(previousLaunchAtLogin); rollbackErr != nil {
+			if rollbackErr := s.runtime.SetAutostart(previousLaunchAtLogin); rollbackErr != nil {
 				applog.LogErrorf(s.ctx, "failed to rollback launch-at-login after save error: %v", rollbackErr)
 			}
 		}
@@ -250,14 +277,14 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 
 	if s.configUpdateHook != nil {
 		if err := s.configUpdateHook(newConfig); err != nil {
-			if saveErr := appconf.SaveConfig(&previousConfig); saveErr != nil {
+			if saveErr := s.saveConfig(&previousConfig); saveErr != nil {
 				applog.LogErrorf(s.ctx, "failed to rollback config file after update hook error: %v", saveErr)
 			}
 			if s.config != nil {
 				*s.config = previousConfig
 			}
 			if shouldSyncLaunchAtLogin {
-				if rollbackErr := autostart.Sync(previousLaunchAtLogin); rollbackErr != nil {
+				if rollbackErr := s.runtime.SetAutostart(previousLaunchAtLogin); rollbackErr != nil {
 					applog.LogErrorf(s.ctx, "failed to rollback launch-at-login after update hook error: %v", rollbackErr)
 				}
 			}
@@ -271,11 +298,30 @@ func (s *ConfigService) UpdateAppConfig(newConfig appconf.AppConfig) error {
 	return nil
 }
 
+// SetDownloadService 注入下载任务协调能力。
+//
+//wails:ignore
+func (s *ConfigService) SetDownloadService(downloadService *DownloadService) {
+	s.downloadService = downloadService
+}
+
+// SetConfigSaverForTest 替换配置持久化函数，供服务测试隔离真实配置文件。
+//
+//wails:ignore
+func (s *ConfigService) SetConfigSaverForTest(save func(*appconf.AppConfig) error) {
+	if save != nil {
+		s.saveConfig = save
+	}
+}
+
 // SetQuitHandler 设置安全退出回调
+//
+//wails:ignore
 func (s *ConfigService) SetQuitHandler(handler func()) {
 	s.quitHandler = handler
 }
 
+//wails:ignore
 func (s *ConfigService) SetConfigUpdateHook(hook func(appconf.AppConfig) error) {
 	s.configUpdateHook = hook
 }

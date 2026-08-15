@@ -4,7 +4,7 @@ import {
   FilterExistingTagNames,
   GetGameIDsByTag,
   SearchTagsInLibrary,
-} from "../../wailsjs/go/service/TagService";
+} from "../../bindings/lunabox/internal/service/tagservice";
 import {
   filterTagNamesByDisplayQuery,
   findRawTagNamesByTranslatedQuery,
@@ -153,6 +153,18 @@ export function useTagGameFilter({
     onManualTagChange?.();
   }, [onManualTagChange]);
 
+  const replaceSelectedTags = useCallback(
+    (tags: string[]) => {
+      const next = [...new Set(tags.map(tag => tag.trim()).filter(Boolean))];
+      setSelectedTags(next);
+      setTagInput("");
+      setTagSuggestions([]);
+      void updateTagGameIds(next);
+      onManualTagChange?.();
+    },
+    [onManualTagChange, updateTagGameIds],
+  );
+
   return {
     selectedTags,
     tagInput,
@@ -162,5 +174,6 @@ export function useTagGameFilter({
     selectTag,
     removeTag,
     clearTagFilter,
+    replaceSelectedTags,
   };
 }

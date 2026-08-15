@@ -24,7 +24,7 @@ func BuildManifestFromBuckets(
 		revisionID = uuid.New().String()
 	}
 	m := Manifest{
-		SchemaVersion: SchemaVersionV2,
+		SchemaVersion: SchemaVersion,
 		RevisionID:    revisionID,
 		ExportedAt:    exportedAt.UTC(),
 		DeviceID:      deviceID,
@@ -254,10 +254,22 @@ func latestUpdatedAtInBucket(entityKey string, bc *BucketContent) time.Time {
 				latest = p.UpdatedAt
 			}
 		}
+	case EntityKeyGameReviews:
+		for _, review := range bc.GameReviews {
+			if review.UpdatedAt.After(latest) {
+				latest = review.UpdatedAt
+			}
+		}
 	case EntityKeyGameTags:
 		for _, t := range bc.GameTags {
 			if t.UpdatedAt.After(latest) {
 				latest = t.UpdatedAt
+			}
+		}
+	case EntityKeyGameMetadataSources:
+		for _, source := range bc.MetadataSources {
+			if source.UpdatedAt.After(latest) {
+				latest = source.UpdatedAt
 			}
 		}
 	case EntityKeyGameCategories:

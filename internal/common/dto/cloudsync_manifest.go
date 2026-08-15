@@ -30,13 +30,15 @@ type CloudSyncBucketFile struct {
 	SchemaVersion int    `json:"schema_version"`
 	BucketKey     string `json:"bucket_key"`
 	// Items 字段在不同实体类型下使用具体的具名字段以保持类型安全
-	Games          []CloudSyncGame         `json:"games,omitempty"`
-	PlaySessions   []CloudSyncPlaySession  `json:"play_sessions,omitempty"`
-	GameProgresses []CloudSyncGameProgress `json:"game_progresses,omitempty"`
-	GameTags       []CloudSyncGameTag      `json:"game_tags,omitempty"`
-	GameCategories []CloudSyncRelation     `json:"game_categories,omitempty"`
-	Categories     []CloudSyncCategory     `json:"categories,omitempty"`
-	Tombstones     []CloudSyncTombstone    `json:"tombstones,omitempty"`
+	Games           []CloudSyncGame               `json:"games,omitempty"`
+	PlaySessions    []CloudSyncPlaySession        `json:"play_sessions,omitempty"`
+	GameProgresses  []CloudSyncGameProgress       `json:"game_progresses,omitempty"`
+	GameReviews     []CloudSyncGameReview         `json:"game_reviews,omitempty"`
+	GameTags        []CloudSyncGameTag            `json:"game_tags,omitempty"`
+	MetadataSources []CloudSyncGameMetadataSource `json:"game_metadata_sources,omitempty"`
+	GameCategories  []CloudSyncRelation           `json:"game_categories,omitempty"`
+	Categories      []CloudSyncCategory           `json:"categories,omitempty"`
+	Tombstones      []CloudSyncTombstone          `json:"tombstones,omitempty"`
 }
 
 // CloudSyncCoverRef 是 manifest 中对一个封面文件的引用。

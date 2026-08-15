@@ -4,10 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
-	"lunabox/internal/utils/proxyutils"
+	"lunabox/internal/utils/httputils"
 	"net/http"
 	goruntime "runtime"
 	"strings"
@@ -16,8 +15,9 @@ import (
 
 	"lunabox/internal/version"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"golang.org/x/mod/semver"
+	"lunabox/internal/wailsruntime"
+	"resty.dev/v3"
 )
 
 // UpdateInfo 版本信息结构
@@ -46,6 +46,7 @@ type UpdateService struct {
 	config      *ConfigService
 	quitHandler func()
 	applyMu     sync.Mutex
+	runtime     wailsruntime.Runtime
 }
 
 // 默认更新检查 URL 列表（按优先级排序）
@@ -57,15 +58,29 @@ var defaultUpdateURLs = []string{
 const defaultUpdateReleaseRepository = "Saramanda9988/LunaBox"
 
 func NewUpdateService(quitHandlers ...func()) *UpdateService {
-	service := &UpdateService{}
+	service := &UpdateService{runtime: wailsruntime.Unavailable()}
 	if len(quitHandlers) > 0 {
 		service.quitHandler = quitHandlers[0]
 	}
 	return service
 }
 
-func (s *UpdateService) Init(ctx context.Context, configService *ConfigService) {
+//wails:ignore
+func (s *UpdateService) Init(ctx context.Context) {
 	s.ctx = ctx
+}
+
+//wails:ignore
+func (s *UpdateService) SetRuntime(runtime wailsruntime.Runtime) {
+	if runtime != nil {
+		s.runtime = runtime
+	}
+}
+
+// SetConfigService 设置 ConfigService（用于读取和更新应用配置）。
+//
+//wails:ignore
+func (s *UpdateService) SetConfigService(configService *ConfigService) {
 	s.config = configService
 }
 
@@ -176,34 +191,30 @@ func (s *UpdateService) getUpdateURLs(customURL string) []string {
 
 // fetchUpdateInfo 从指定 URL 获取版本信息
 func (s *UpdateService) fetchUpdateInfo(url string, appConfig *appconf.AppConfig) (*UpdateInfo, error) {
-	req, err := http.NewRequest("GET", url, nil)
+	client, _, err := httputils.NewRestyClient(httputils.ClientOptions{
+		Timeout:     10 * time.Second,
+		ProxyConfig: appConfig,
+	})
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.R().
+		SetRetryCount(3).
+		AddRetryConditions(
+			resty.RetryConditionStatusTooManyRequests,
+			resty.RetryConditionStatus5XX,
+		).
+		Get(url)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Set("User-Agent", "LunaBox-Updater/1.0")
-
-	client, _, err := proxyutils.NewHTTPClientFromConfig(10*time.Second, appConfig)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+	if resp.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode())
 	}
 
 	var info UpdateInfo
-	if err := json.Unmarshal(body, &info); err != nil {
+	if err := json.Unmarshal(resp.Bytes(), &info); err != nil {
 		return nil, err
 	}
 
@@ -236,10 +247,9 @@ func (s *UpdateService) SkipVersion(ver string) error {
 	return s.config.UpdateAppConfig(appConfig)
 }
 
-// OpenDownloadURL 打开下载页面（已废弃，请在前端使用 runtime.BrowserOpenURL）
+// OpenDownloadURL 打开下载页面（已废弃，请在前端使用 @wailsio/runtime 的 Browser.OpenURL）。
 func (s *UpdateService) OpenDownloadURL(url string) error {
-	runtime.BrowserOpenURL(s.ctx, url)
-	return nil
+	return s.runtime.OpenURL(url)
 }
 
 // compareVersions 比较两个版本号

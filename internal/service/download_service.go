@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"lunabox/internal/wailsruntime"
 )
 
 const (
@@ -95,37 +95,53 @@ type DownloadService struct {
 	db             *sql.DB
 	config         *appconf.AppConfig
 	gameService    *GameService
-	emitEvent      func(context.Context, string, ...interface{})
+	runtime        wailsruntime.Runtime
+	emitEvent      func(string, ...interface{})
 	mu             sync.RWMutex
 	tasks          map[string]*DownloadTask
 	pendingInstall *vo.InstallRequest // 从 lunabox:// URI 传入的待安装请求，在 GUI 就绪前暂存
 }
 
 func NewDownloadService() *DownloadService {
+	runtime := wailsruntime.Unavailable()
 	return &DownloadService{
 		tasks:     make(map[string]*DownloadTask),
-		emitEvent: runtime.EventsEmit,
+		runtime:   runtime,
+		emitEvent: func(name string, data ...interface{}) { runtime.Emit(name, data...) },
 	}
 }
 
+//wails:ignore
 func (s *DownloadService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
 	s.db = db
 	s.config = config
-	if s.emitEvent == nil {
-		s.emitEvent = runtime.EventsEmit
-	}
 	if err := s.loadTasksFromDB(); err != nil {
 		applog.LogErrorf(s.ctx, "failed to load download tasks from db: %v", err)
 	}
 }
 
+//wails:ignore
+func (s *DownloadService) SetRuntime(runtime wailsruntime.Runtime) {
+	if runtime == nil {
+		return
+	}
+	s.runtime = runtime
+	s.emitEvent = func(name string, data ...interface{}) {
+		runtime.Emit(name, data...)
+	}
+}
+
 // SetGameService 注入游戏服务（用于下载完成后预抓取元数据）
+//
+//wails:ignore
 func (s *DownloadService) SetGameService(gameService *GameService) {
 	s.gameService = gameService
 }
 
 // SetPendingInstall 在 Wails 启动前由 main.go 调用，暂存待安装请求
+//
+//wails:ignore
 func (s *DownloadService) SetPendingInstall(req *vo.InstallRequest) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -348,6 +364,42 @@ func (s *DownloadService) GetDownloadTasks() []DownloadTask {
 	return result
 }
 
+func (s *DownloadService) libraryChangeBlockingTaskCount() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	count := 0
+	for _, task := range s.tasks {
+		if task.Request.DownloadSource == imageDownloadSource {
+			continue
+		}
+		switch task.Status {
+		case DownloadStatusPending, DownloadStatusDownloading, DownloadStatusExtracting, DownloadStatusPaused, DownloadStatusError:
+			count++
+		}
+	}
+	return count
+}
+
+func (s *DownloadService) rebaseCompletedTaskPaths(oldRoot string, newRoot string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	updated := 0
+	for _, task := range s.tasks {
+		if task.Status != DownloadStatusDone || strings.TrimSpace(task.FilePath) == "" {
+			continue
+		}
+		newPath, matches := rebaseLibraryPath(task.FilePath, oldRoot, newRoot)
+		if !matches {
+			continue
+		}
+		task.FilePath = newPath
+		updated++
+	}
+	return updated
+}
+
 func (s *DownloadService) CheckDownloadImportStates(requests []vo.DownloadImportStateRequest) ([]vo.DownloadImportState, error) {
 	states := make([]vo.DownloadImportState, 0, len(requests))
 	if len(requests) == 0 {
@@ -514,7 +566,7 @@ func (s *DownloadService) emitProgress(task *DownloadTask) {
 	if s.ctx == nil {
 		return
 	}
-	runtime.EventsEmit(s.ctx, "download:progress", DownloadProgressEvent{
+	s.runtime.Emit("download:progress", DownloadProgressEvent{
 		ID:         task.ID,
 		Request:    task.Request,
 		Status:     task.Status,
@@ -531,7 +583,7 @@ func (s *DownloadService) emitGameImported(taskID string) {
 	if s.ctx == nil || s.emitEvent == nil {
 		return
 	}
-	s.emitEvent(s.ctx, downloadGameImportedEvent, map[string]string{
+	s.emitEvent(downloadGameImportedEvent, map[string]string{
 		"task_id": taskID,
 	})
 }
@@ -548,7 +600,7 @@ func (s *DownloadService) emitDownloadTaskError(eventName string, task *Download
 	if s.ctx == nil || s.emitEvent == nil || task == nil || err == nil {
 		return
 	}
-	s.emitEvent(s.ctx, eventName, map[string]string{
+	s.emitEvent(eventName, map[string]string{
 		"task_id":     task.ID,
 		"title":       strings.TrimSpace(task.Request.Title),
 		"meta_source": strings.TrimSpace(task.Request.MetaSource),
@@ -641,7 +693,7 @@ func (s *DownloadService) runCoverImageDownloadTask(ctx context.Context, task *D
 		default:
 		}
 
-		if ok := s.downloadAndUpdateCoverImage(item); ok {
+		if ok := s.downloadAndUpdateCoverImage(ctx, item); ok {
 			success++
 		} else {
 			failedItems = append(failedItems, item)
@@ -677,11 +729,11 @@ func (s *DownloadService) runCoverImageDownloadTask(ctx context.Context, task *D
 	applog.LogInfof(s.ctx, "Cover image batch download complete: %s success=%d failed=%d", task.ID, success, len(failedItems))
 }
 
-func (s *DownloadService) downloadAndUpdateCoverImage(item CoverImageDownloadItem) bool {
+func (s *DownloadService) downloadAndUpdateCoverImage(ctx context.Context, item CoverImageDownloadItem) bool {
 	if strings.TrimSpace(item.GameID) == "" || strings.TrimSpace(item.CoverURL) == "" {
 		return false
 	}
-	localPath, err := imageutils.DownloadAndSaveCoverImageWithProxyConfig(item.CoverURL, item.GameID, s.config)
+	localPath, err := imageutils.DownloadAndSaveCoverImageWithProxyConfigContext(ctx, item.CoverURL, item.GameID, s.config)
 	if err != nil {
 		applog.LogWarningf(s.ctx, "cover image batch download failed for %s: %v", item.GameName, err)
 		return false
@@ -924,7 +976,7 @@ func (s *DownloadService) fetchMetadataForTask(task *DownloadTask) (*vo.GameMeta
 
 	applog.LogInfof(s.ctx, "fetch metadata success for download task %s: %s", task.ID, metaResult.Game.Name)
 	if s.ctx != nil && s.emitEvent != nil {
-		s.emitEvent(s.ctx, "download:metadata-prefetched", map[string]interface{}{
+		s.emitEvent("download:metadata-prefetched", map[string]interface{}{
 			"task_id":     task.ID,
 			"meta_source": string(metaSource),
 			"meta_id":     metaID,
@@ -1049,6 +1101,7 @@ func (s *DownloadService) importDownloadedGame(task *DownloadTask, importPath st
 
 	if metadata != nil {
 		mergeMetadataIntoGame(&game, metadata.Game)
+		game.MetadataSources = append([]models.GameMetadataSource(nil), metadata.Game.MetadataSources...)
 		game.Path = importPath
 	}
 
@@ -1115,6 +1168,23 @@ func (s *DownloadService) updateExistingGame(gameID string, gamePath string, gam
 		if err := s.gameService.UpdateGame(game); err != nil {
 			applog.LogWarningf(s.ctx, "failed to update existing game %s: %v", gameID, err)
 			return err
+		}
+	}
+	if metaSource != enums2.Local && strings.TrimSpace(metaID) != "" {
+		if err := s.gameService.UpsertGameMetadataSource(gameID, metaSource, metaID); err != nil {
+			return err
+		}
+	}
+	if metadata != nil {
+		for _, source := range metadata.Game.MetadataSources {
+			if err := s.gameService.UpsertGameMetadataSource(gameID, source.SourceType, source.SourceID); err != nil {
+				return err
+			}
+		}
+		if metadata.Game.SourceType != "" && metadata.Game.SourceType != enums2.Local && strings.TrimSpace(metadata.Game.SourceID) != "" {
+			if err := s.gameService.UpsertGameMetadataSource(gameID, metadata.Game.SourceType, metadata.Game.SourceID); err != nil {
+				return err
+			}
 		}
 	}
 

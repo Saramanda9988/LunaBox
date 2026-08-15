@@ -3,23 +3,26 @@ package dto
 import "time"
 
 type CloudSyncSnapshot struct {
-	SchemaVersion  int                     `json:"schema_version"`
-	RevisionID     string                  `json:"revision_id"`
-	ExportedAt     time.Time               `json:"exported_at"`
-	DeviceID       string                  `json:"device_id"`
-	Games          []CloudSyncGame         `json:"games"`
-	Categories     []CloudSyncCategory     `json:"categories"`
-	GameCategories []CloudSyncRelation     `json:"game_categories"`
-	PlaySessions   []CloudSyncPlaySession  `json:"play_sessions"`
-	GameProgresses []CloudSyncGameProgress `json:"game_progresses"`
-	GameTags       []CloudSyncGameTag      `json:"game_tags"`
-	Tombstones     []CloudSyncTombstone    `json:"tombstones"`
-	Covers         []CloudSyncCoverAsset   `json:"covers"`
+	SchemaVersion   int                           `json:"schema_version"`
+	RevisionID      string                        `json:"revision_id"`
+	ExportedAt      time.Time                     `json:"exported_at"`
+	DeviceID        string                        `json:"device_id"`
+	Games           []CloudSyncGame               `json:"games"`
+	Categories      []CloudSyncCategory           `json:"categories"`
+	GameCategories  []CloudSyncRelation           `json:"game_categories"`
+	PlaySessions    []CloudSyncPlaySession        `json:"play_sessions"`
+	GameProgresses  []CloudSyncGameProgress       `json:"game_progresses"`
+	GameReviews     []CloudSyncGameReview         `json:"game_reviews"`
+	GameTags        []CloudSyncGameTag            `json:"game_tags"`
+	MetadataSources []CloudSyncGameMetadataSource `json:"game_metadata_sources"`
+	Tombstones      []CloudSyncTombstone          `json:"tombstones"`
+	Covers          []CloudSyncCoverAsset         `json:"covers"`
 }
 
 type CloudSyncGame struct {
 	ID             string    `json:"id"`
 	Name           string    `json:"name"`
+	Aliases        []string  `json:"aliases,omitempty"`
 	CoverSourceURL string    `json:"cover_source_url,omitempty"`
 	Company        string    `json:"company"`
 	Summary        string    `json:"summary"`
@@ -31,11 +34,19 @@ type CloudSyncGame struct {
 	WineRunner     string    `json:"wine_runner,omitempty"`
 	WineArgs       string    `json:"wine_args,omitempty"`
 	WinePrefix     string    `json:"wine_prefix,omitempty"`
-	LaunchMode     string    `json:"launch_mode,omitempty"`
 	IsNSFW         bool      `json:"is_nsfw"`
 	MetadataLocked bool      `json:"metadata_locked"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+type CloudSyncGameMetadataSource struct {
+	GameID     string    `json:"game_id"`
+	SourceType string    `json:"source_type"`
+	SourceID   string    `json:"source_id"`
+	CachedAt   time.Time `json:"cached_at"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 type CloudSyncCategory struct {
@@ -70,6 +81,15 @@ type CloudSyncGameProgress struct {
 	ProgressNote    string    `json:"progress_note"`
 	SpoilerBoundary string    `json:"spoiler_boundary"`
 	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+type CloudSyncGameReview struct {
+	GameID    string    `json:"game_id"`
+	Rating    *int      `json:"rating"`
+	Content   string    `json:"content"`
+	IsSpoiler bool      `json:"is_spoiler"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type CloudSyncGameTag struct {

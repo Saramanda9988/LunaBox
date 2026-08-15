@@ -12,10 +12,8 @@ import (
 	"lunabox/internal/utils/apputils"
 )
 
-// PortableSetupService exposes the lunabox:// protocol and lunacli PATH
-// registration helpers to the frontend. It only meaningfully operates on
-// Windows; on other platforms (or in installer builds) the GetStatus call
-// still works and returns a disabled state.
+// PortableSetupService exposes setup helpers needed only by portable builds.
+// Packaged builds receive their custom URL protocol association from Wails.
 type PortableSetupService struct {
 	ctx context.Context
 }
@@ -24,6 +22,7 @@ func NewPortableSetupService() *PortableSetupService {
 	return &PortableSetupService{}
 }
 
+//wails:ignore
 func (s *PortableSetupService) Init(ctx context.Context) {
 	s.ctx = ctx
 }
@@ -56,8 +55,7 @@ type PortableSetupStatus struct {
 	CLI            PortableCLIStatus      `json:"cli"`
 }
 
-// GetStatus returns the current registration state for the protocol handler
-// and the lunacli PATH entry.
+// GetStatus returns the portable protocol and lunacli registration state.
 func (s *PortableSetupService) GetStatus() (PortableSetupStatus, error) {
 	status := PortableSetupStatus{
 		BuildMode:  apputils.GetBuildMode(),
@@ -82,7 +80,7 @@ func (s *PortableSetupService) GetStatus() (PortableSetupStatus, error) {
 	} else {
 		registeredExe, err := protocol.GetRegisteredURLSchemeExe()
 		if err != nil {
-			return status, fmt.Errorf("query protocol status: %w", err)
+			return status, fmt.Errorf("query portable protocol status: %w", err)
 		}
 		status.Protocol.RegisteredPath = registeredExe
 		status.Protocol.Registered = registeredExe != ""
@@ -116,25 +114,32 @@ func (s *PortableSetupService) GetStatus() (PortableSetupStatus, error) {
 	return status, nil
 }
 
-// RegisterProtocol writes (or refreshes) the lunabox:// handler so it points
-// at the currently running executable.
+// RegisterProtocol writes the lunabox:// association required by a Windows
+// portable build. Installed builds are managed by Wails during packaging.
 func (s *PortableSetupService) RegisterProtocol() (PortableSetupStatus, error) {
+	if !apputils.IsPortableMode() {
+		return PortableSetupStatus{}, fmt.Errorf("安装版协议由 Wails 安装程序管理")
+	}
 	if runtime.GOOS == "darwin" {
 		return s.GetStatus()
 	}
-	if err := protocol.RegisterURLScheme(""); err != nil {
-		return PortableSetupStatus{}, fmt.Errorf("register protocol: %w", err)
+	if err := protocol.RegisterPortableURLScheme(""); err != nil {
+		return PortableSetupStatus{}, fmt.Errorf("register portable protocol: %w", err)
 	}
 	return s.GetStatus()
 }
 
-// UnregisterProtocol removes the lunabox:// handler.
+// UnregisterProtocol removes the current-user association created for a
+// Windows portable build.
 func (s *PortableSetupService) UnregisterProtocol() (PortableSetupStatus, error) {
+	if !apputils.IsPortableMode() {
+		return PortableSetupStatus{}, fmt.Errorf("安装版协议由 Wails 安装程序管理")
+	}
 	if runtime.GOOS == "darwin" {
 		return s.GetStatus()
 	}
-	if err := protocol.UnregisterURLScheme(); err != nil {
-		return PortableSetupStatus{}, fmt.Errorf("unregister protocol: %w", err)
+	if err := protocol.UnregisterPortableURLScheme(); err != nil {
+		return PortableSetupStatus{}, fmt.Errorf("unregister portable protocol: %w", err)
 	}
 	return s.GetStatus()
 }

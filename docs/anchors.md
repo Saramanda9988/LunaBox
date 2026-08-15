@@ -12,7 +12,8 @@
 | 退出前云同步 / 退出提示                        | `frontend/src/hooks/useExitSyncToast.ts`            |
 | UnoCSS 配置                                    | `frontend/uno.config.ts`                            |
 | 全局样式（仅全局不可避免项）                   | `frontend/src/style.css`                            |
-| Wails 绑定（自动生成，勿手改）                 | `frontend/wailsjs/`                                 |
+| Wails v3 绑定（自动生成，勿手改）              | `frontend/bindings/`                                |
+| Wails 绑定与 runtime 兼容入口                  | `frontend/src/bindings/`                            |
 | 工具函数                                       | `frontend/src/utils/`                               |
 | 时间处理函数                                   | `frontend/src/utils/time.ts`                        |
 | 可复用 UI 组件                                 | `frontend/src/components/ui/`                       |

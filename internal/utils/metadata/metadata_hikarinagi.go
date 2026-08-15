@@ -8,6 +8,7 @@ import (
 	"io"
 	"lunabox/internal/common/enums"
 	"lunabox/internal/models"
+	"lunabox/internal/utils"
 	"lunabox/internal/version"
 	"net/http"
 	"net/url"
@@ -16,13 +17,22 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/labstack/gommon/log"
 )
 
 const (
 	hikarinagiAPIBaseURL = "https://www.hikarinagi.org/api/v3/open"
+	hikarinagiPageAPIURL = "https://www.hikarinagi.org/api/pages"
 	hikarinagiTokenURL   = "https://id.hikarinagi.org/oidc/token"
 	hikarinagiScope      = "catalog:read"
 )
+
+var ErrHikarinagiUnauthorized = errors.New("hikarinagi unauthorized")
+
+func IsHikarinagiUnauthorizedError(err error) bool {
+	return errors.Is(err, ErrHikarinagiUnauthorized)
+}
 
 type HikarinagiInfoGetter struct {
 	client   *http.Client
@@ -80,6 +90,7 @@ type hikarinagiGame struct {
 	ID          int64             `json:"id"`
 	OriginTitle string            `json:"origin_title"`
 	TransTitle  *string           `json:"trans_title"`
+	Aliases     []string          `json:"aliases"`
 	Covers      []hikarinagiCover `json:"covers"`
 	ReleaseDate *string           `json:"release_date"`
 	OriginIntro *string           `json:"origin_intro"`
@@ -101,6 +112,29 @@ type hikarinagiSearchData struct {
 	Items []hikarinagiSearchHit `json:"items"`
 }
 
+type hikarinagiProducer struct {
+	Name string `json:"name"`
+}
+
+type hikarinagiProducerRelation struct {
+	Role     string             `json:"role"`
+	Producer hikarinagiProducer `json:"producer"`
+}
+
+type hikarinagiRateStats struct {
+	Average *float64 `json:"average"`
+}
+
+type hikarinagiPageData struct {
+	Producers []hikarinagiProducerRelation `json:"producers"`
+	RateStats hikarinagiRateStats          `json:"rate_stats"`
+}
+
+type hikarinagiPageMetadata struct {
+	Company string
+	Rating  float64
+}
+
 func NormalizeHikarinagiID(id string) (string, bool) {
 	normalized := strings.TrimSpace(id)
 	parsed, err := strconv.ParseInt(normalized, 10, 64)
@@ -110,13 +144,16 @@ func NormalizeHikarinagiID(id string) (string, bool) {
 	return strconv.FormatInt(parsed, 10), true
 }
 
-func (h HikarinagiInfoGetter) FetchMetadata(id string, _ string) (MetadataResult, error) {
+func (h HikarinagiInfoGetter) FetchMetadata(id string, accessToken string) (MetadataResult, error) {
 	normalizedID, ok := NormalizeHikarinagiID(id)
 	if !ok {
 		return MetadataResult{}, fmt.Errorf("invalid Hikarinagi ID format: %s", id)
 	}
 
-	bodyBytes, err := h.doAuthorizedGet(fmt.Sprintf("%s/galgames/%s", hikarinagiAPIBaseURL, url.PathEscape(normalizedID)))
+	bodyBytes, err := h.doAuthorizedGet(
+		fmt.Sprintf("%s/galgames/%s", hikarinagiAPIBaseURL, url.PathEscape(normalizedID)),
+		accessToken,
+	)
 	if err != nil {
 		return MetadataResult{}, err
 	}
@@ -132,51 +169,105 @@ func (h HikarinagiInfoGetter) FetchMetadata(id string, _ string) (MetadataResult
 		return MetadataResult{}, errors.New("Hikarinagi API returned no game data")
 	}
 
-	return h.convertToMetadataResult(envelope.Data), nil
+	result := h.convertToMetadataResult(envelope.Data)
+	pageMetadata, err := h.fetchPageMetadata(normalizedID)
+	if err != nil {
+		log.Warnf("failed to fetch Hikarinagi page metadata for game %s: %v", normalizedID, err)
+	} else {
+		result.Game.Company = pageMetadata.Company
+		result.Game.Rating = pageMetadata.Rating
+	}
+	return result, nil
 }
 
-func (h HikarinagiInfoGetter) FetchMetadataByName(name string, _ string) (MetadataResult, error) {
+func (h HikarinagiInfoGetter) FetchMetadataByName(name string, accessToken string) (MetadataResult, error) {
+	results, err := h.FetchMetadataCandidatesByName(name, accessToken)
+	if err != nil {
+		return MetadataResult{}, err
+	}
+	return results[0], nil
+}
+
+func (h HikarinagiInfoGetter) FetchMetadataCandidatesByName(name string, accessToken string) ([]MetadataResult, error) {
 	keyword := strings.TrimSpace(name)
 	if keyword == "" {
-		return MetadataResult{}, errors.New("Hikarinagi search keyword is empty")
+		return nil, errors.New("Hikarinagi search keyword is empty")
 	}
 
 	params := url.Values{}
 	params.Set("q", keyword)
 	params.Add("types", "galgame")
 	params.Set("page", "1")
-	params.Set("page_size", "1")
-	bodyBytes, err := h.doAuthorizedGet(fmt.Sprintf("%s/search?%s", hikarinagiAPIBaseURL, params.Encode()))
+	params.Set("page_size", strconv.Itoa(metadataSearchCandidateLimit))
+	bodyBytes, err := h.doAuthorizedGet(fmt.Sprintf("%s/search?%s", hikarinagiAPIBaseURL, params.Encode()), accessToken)
 	if err != nil {
-		return MetadataResult{}, err
+		return nil, err
 	}
 
 	var envelope hikarinagiEnvelope[hikarinagiSearchData]
 	if err := json.Unmarshal(bodyBytes, &envelope); err != nil {
-		return MetadataResult{}, fmt.Errorf("decode Hikarinagi search response: %w", err)
+		return nil, fmt.Errorf("decode Hikarinagi search response: %w", err)
 	}
 	if !envelope.Success {
-		return MetadataResult{}, hikarinagiEnvelopeError("Hikarinagi search API", envelope.Message, envelope.Error, envelope.RequestID)
+		return nil, hikarinagiEnvelopeError("Hikarinagi search API", envelope.Message, envelope.Error, envelope.RequestID)
 	}
 	if len(envelope.Data.Items) == 0 {
-		return MetadataResult{}, errors.New("no results found")
+		return nil, errors.New("no results found")
 	}
 
-	hit := envelope.Data.Items[0]
-	if hit.Type != "galgame" || hit.ID <= 0 {
-		return MetadataResult{}, errors.New("no results found")
+	hits := make([]hikarinagiSearchHit, 0, metadataSearchCandidateLimit)
+	candidateNames := make([][]string, 0, metadataSearchCandidateLimit)
+	for _, hit := range envelope.Data.Items {
+		if len(hits) >= metadataSearchCandidateLimit {
+			break
+		}
+		if hit.Type != "galgame" || hit.ID <= 0 {
+			continue
+		}
+		names := []string{hit.Title}
+		if hit.Subtitle != nil {
+			names = append(names, *hit.Subtitle)
+		}
+		hits = append(hits, hit)
+		candidateNames = append(candidateNames, names)
 	}
-	result, err := h.FetchMetadata(strconv.FormatInt(hit.ID, 10), "")
-	if err != nil {
-		return MetadataResult{}, err
+	if len(hits) == 0 {
+		return nil, errors.New("no results found")
 	}
-	if hit.Developer != nil {
-		result.Game.Company = strings.TrimSpace(*hit.Developer)
+	indexes := exactMetadataCandidateIndexes(keyword, candidateNames)
+	if len(indexes) == 0 {
+		indexes = []int{0}
 	}
-	if result.Game.CoverURL == "" && hit.Cover != nil {
-		result.Game.CoverURL = strings.TrimSpace(hit.Cover.URL)
+
+	results := make([]MetadataResult, 0, len(indexes))
+	seenIDs := make(map[int64]struct{}, len(indexes))
+	var lastErr error
+	for _, index := range indexes {
+		hit := hits[index]
+		if _, exists := seenIDs[hit.ID]; exists {
+			continue
+		}
+		result, fetchErr := h.FetchMetadata(strconv.FormatInt(hit.ID, 10), accessToken)
+		if fetchErr != nil {
+			lastErr = fetchErr
+			continue
+		}
+		if result.Game.Company == "" && hit.Developer != nil {
+			result.Game.Company = strings.TrimSpace(*hit.Developer)
+		}
+		if result.Game.CoverURL == "" && hit.Cover != nil {
+			result.Game.CoverURL = strings.TrimSpace(hit.Cover.URL)
+		}
+		seenIDs[hit.ID] = struct{}{}
+		results = append(results, result)
 	}
-	return result, nil
+	if len(results) > 0 {
+		return results, nil
+	}
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, errors.New("no results found")
 }
 
 func (h HikarinagiInfoGetter) getAccessToken() (string, error) {
@@ -207,7 +298,7 @@ func (h HikarinagiInfoGetter) getAccessToken() (string, error) {
 	req.SetBasicAuth(clientID, clientSecret)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", metadataUserAgent)
+	req.Header.Set("User-Agent", version.UserAgent())
 
 	resp, err := h.client.Do(req)
 	if err != nil {
@@ -253,31 +344,25 @@ func (h HikarinagiInfoGetter) invalidateAccessToken() {
 	hikarinagiTokenCache.expiresAt = time.Time{}
 }
 
-func (h HikarinagiInfoGetter) doAuthorizedGet(reqURL string) ([]byte, error) {
+func (h HikarinagiInfoGetter) doAuthorizedGet(reqURL, providedToken string) ([]byte, error) {
+	providedToken = strings.TrimSpace(providedToken)
+	if providedToken != "" {
+		return h.doGetWithToken(reqURL, providedToken)
+	}
+
 	for attempt := 0; attempt < 2; attempt++ {
 		accessToken, err := h.getAccessToken()
 		if err != nil {
 			return nil, fmt.Errorf("get Hikarinagi access token: %w", err)
 		}
 
-		req, err := http.NewRequest(http.MethodGet, reqURL, nil)
-		if err != nil {
-			return nil, fmt.Errorf("create Hikarinagi API request: %w", err)
-		}
-		req.Header.Set("Authorization", "Bearer "+accessToken)
-		req.Header.Set("Accept", "application/json")
-		req.Header.Set("User-Agent", metadataUserAgent)
-
-		statusCode, _, bodyBytes, err := doLimitedMetadataRequestBody(h.client, req, enums.Hikarinagi)
-		if err != nil {
-			return nil, err
-		}
-		if statusCode == http.StatusUnauthorized && attempt == 0 {
+		bodyBytes, err := h.doGetWithToken(reqURL, accessToken)
+		if errors.Is(err, ErrHikarinagiUnauthorized) && attempt == 0 {
 			h.invalidateAccessToken()
 			continue
 		}
-		if statusCode != http.StatusOK {
-			return nil, fmt.Errorf("Hikarinagi API returned status: %d, body: %s", statusCode, strings.TrimSpace(string(bodyBytes)))
+		if err != nil {
+			return nil, err
 		}
 		return bodyBytes, nil
 	}
@@ -285,10 +370,82 @@ func (h HikarinagiInfoGetter) doAuthorizedGet(reqURL string) ([]byte, error) {
 	return nil, errors.New("Hikarinagi API authorization failed after token refresh")
 }
 
+func (h HikarinagiInfoGetter) doGetWithToken(reqURL, accessToken string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create Hikarinagi API request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", version.UserAgent())
+
+	statusCode, _, bodyBytes, err := doLimitedMetadataRequestBody(h.client, req, enums.Hikarinagi)
+	if err != nil {
+		return nil, err
+	}
+	if statusCode == http.StatusUnauthorized {
+		return nil, fmt.Errorf("%w: %s", ErrHikarinagiUnauthorized, strings.TrimSpace(string(bodyBytes)))
+	}
+	if statusCode != http.StatusOK {
+		return nil, fmt.Errorf("Hikarinagi API returned status: %d, body: %s", statusCode, strings.TrimSpace(string(bodyBytes)))
+	}
+	return bodyBytes, nil
+}
+
+func (h HikarinagiInfoGetter) fetchPageMetadata(id string) (hikarinagiPageMetadata, error) {
+	req, err := http.NewRequest(
+		http.MethodGet,
+		fmt.Sprintf("%s/galgames/%s", hikarinagiPageAPIURL, url.PathEscape(id)),
+		nil,
+	)
+	if err != nil {
+		return hikarinagiPageMetadata{}, fmt.Errorf("create Hikarinagi page data request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", version.UserAgent())
+
+	statusCode, _, bodyBytes, err := doLimitedMetadataRequestBody(h.client, req, enums.Hikarinagi)
+	if err != nil {
+		return hikarinagiPageMetadata{}, fmt.Errorf("request Hikarinagi page data: %w", err)
+	}
+	if statusCode != http.StatusOK {
+		return hikarinagiPageMetadata{}, fmt.Errorf("Hikarinagi page data API returned status: %d, body: %s", statusCode, strings.TrimSpace(string(bodyBytes)))
+	}
+
+	var pageData hikarinagiPageData
+	if err := json.Unmarshal(bodyBytes, &pageData); err != nil {
+		return hikarinagiPageMetadata{}, fmt.Errorf("decode Hikarinagi page data response: %w", err)
+	}
+	return convertHikarinagiPageData(pageData), nil
+}
+
+func convertHikarinagiPageData(pageData hikarinagiPageData) hikarinagiPageMetadata {
+	developers := make([]string, 0, len(pageData.Producers))
+	for _, relation := range pageData.Producers {
+		if !strings.EqualFold(strings.TrimSpace(relation.Role), "DEVELOPER") {
+			continue
+		}
+		developers = append(developers, strings.TrimSpace(relation.Producer.Name))
+	}
+
+	rating := 0.0
+	if pageData.RateStats.Average != nil {
+		rating = normalizeTenPointRating(*pageData.RateStats.Average)
+	}
+	return hikarinagiPageMetadata{
+		Company: strings.Join(utils.UniqueNonEmptyStrings(developers), " / "),
+		Rating:  rating,
+	}
+}
+
 func (h HikarinagiInfoGetter) convertToMetadataResult(data hikarinagiGame) MetadataResult {
 	name := strings.TrimSpace(data.OriginTitle)
 	if data.TransTitle != nil && strings.TrimSpace(*data.TransTitle) != "" {
 		name = strings.TrimSpace(*data.TransTitle)
+	}
+	titleVariants := []string{data.OriginTitle}
+	if data.TransTitle != nil {
+		titleVariants = append(titleVariants, *data.TransTitle)
 	}
 	summary := ""
 	if data.TransIntro != nil && strings.TrimSpace(*data.TransIntro) != "" {
@@ -304,6 +461,7 @@ func (h HikarinagiInfoGetter) convertToMetadataResult(data hikarinagiGame) Metad
 	coverURL := bestHikarinagiCoverURL(data.Covers)
 	game := models.Game{
 		Name:           name,
+		Aliases:        normalizeMetadataAliases(name, titleVariants, data.Aliases),
 		CoverURL:       coverURL,
 		CoverSourceURL: coverURL,
 		Summary:        summary,

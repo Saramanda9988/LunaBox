@@ -1,36 +1,29 @@
+<img src="screenshot/hero.png" alt="LunaBox" />
+
 <div align="center">
 
-<img src="frontend/public/appicon.png" alt="LunaBox Logo" style="width:120px; height:120px; border-radius:16px;" />
-
-# LunaBox
-
-**轻量、快速、功能丰富的视觉小说管理与游玩统计工具**
-
 [中文](README.zh-CN.md) | [English](README.md) | [日本語](README.ja.md)
-
-[![Go](https://img.shields.io/badge/Go-1.24-00ADD8?style=flat-square&logo=go)](https://go.dev/)
-[![Wails](https://img.shields.io/badge/Wails-v2-DF0000?style=flat-square)](https://wails.io/)
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://react.dev/)
 
 </div>
 
 <p align="center">
   <a href="https://github.com/Saramanda9988/LunaBox/releases">
-    <img src="https://img.shields.io/github/downloads/Saramanda9988/LunaBox/total?color=369eff&labelColor=black&logo=github&style=flat-square&label=Downloads" />
-  </a>
-  <a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=Eq5DkGu1gs6tL9bUEJFiq46r6czdpQaR&authKey=w1NRtvE8fYAgShdzGFGx4QDaKQyJRypgHOrVMOhxK5cjUbGt4TXu4px2L%2FJem2WN&noverify=0&group_code=1094948837" target="_blank">
-    <img src="https://img.shields.io/badge/QQ-Group-12B7F5?style=flat-square&logo=tencent-qq&logoColor=white&labelColor=black" />
-  </a>
-  <a href="https://t.me/+6YTPdl-6YeM1OGNl" target="_blank">
-    <img src="https://img.shields.io/badge/Telegram-2CA5E0?style=flat-square&logo=telegram&logoColor=white&labelColor=black" />
-  </a>
+    <img src="https://img.shields.io/github/downloads/Saramanda9988/LunaBox/total?color=369eff&labelColor=black&logo=github&style=flat-square&label=Downloads" /></a>
+  <a href="https://github.com/Saramanda9988/LunaBox/stargazers">
+    <img src="https://img.shields.io/github/stars/Saramanda9988/LunaBox?color=369eff&labelColor=black&logo=github&style=flat-square&label=Stars" /></a>
+  <a href="https://github.com/Saramanda9988/LunaBox/releases/latest">
+    <img src="https://img.shields.io/github/v/release/Saramanda9988/LunaBox?color=369eff&labelColor=black&logo=github&style=flat-square&label=Release" /></a>
+</p>
+
+<p align="center">
+  <a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=Eq5DkGu1gs6tL9bUEJFiq46r6czdpQaR&authKey=w1NRtvE8fYAgShdzGFGx4QDaKQyJRypgHOrVMOhxK5cjUbGt4TXu4px2L%2FJem2WN&noverify=0&group_code=1094948837"><img src="screenshot/qq-community.png" alt="加入 LunaBox QQ 群" width="45%" /></a>
+  <a href="https://t.me/+6YTPdl-6YeM1OGNl"><img src="screenshot/telegram-community.png" alt="加入 LunaBox Telegram 群" width="45%" /></a>
 </p>
 
 ## ✨ 特性
 
 - **游戏分类管理** - 自定义分类，灵活管理游戏库
 - **游玩时长追踪** - 启动游戏自动追踪游玩时长
-- **较小的包体积** - 基于 Wails 构建，无需携带完整浏览器内核
 - **多维度统计** - 支持按日/周/月/年等多维度统计游玩数据，一键导出统计卡片分享保存
 - **AI 分析** - AI 分析游玩数据，生成个性化趣味报告，支持mcp暴露与cli-skill能力，丰富数据使用场景
 - **便捷的数据导入** - 支持从 PotatoVN, Playnite，Vnite，Steam 中导入数据，支持选择文件夹批量导入/拖动导入游戏
@@ -140,61 +133,13 @@
   </tr>
 </table>
 
-## 🛠️ 技术栈
-
-| 层级         | 技术                                                                                      |
-| ------------ | ----------------------------------------------------------------------------------------- |
-| **框架**     | [Wails v2](https://wails.io/)                                                             |
-| **后端**     | [Go 1.26.3](https://go.dev/)                                                              |
-| **前端**     | [React 18](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)            |
-| **数据库**   | [DuckDB](https://duckdb.org/)                                                             |
-| **构建工具** | [Vite](https://vitejs.dev/)                                                               |
-| **样式**     | [UnoCSS](https://unocss.dev/)                                                             |
-| **路由**     | [TanStack Router](https://tanstack.com/router)                                            |
-| **状态管理** | [Zustand](https://zustand-demo.pmnd.rs/)                                                  |
-| **图表**     | [Chart.js](https://www.chartjs.org/) + [react-chartjs-2](https://react-chartjs-2.js.org/) |
-
 ## 📦 安装
 
 ### 从 Release 下载
 
 前往 [Releases](https://github.com/Saramanda9988/LunaBox/releases) 页面下载最新版本的安装包。
 
-### 从源码构建
-
-#### 前置要求
-
-- [Go 1.26.3+](https://go.dev/dl/)
-- [Node.js 18+](https://nodejs.org/)
-- [pnpm](https://pnpm.io/)
-- [Wails CLI](https://wails.io/docs/gettingstarted/installation)
-- [msys2](https://www.msys2.org/)
-- [NSIS](https://nsis.sourceforge.io/Main_Page)
-
-```bash
-# 安装 Wails CLI
-go install github.com/wailsapp/wails/v2/cmd/wails@latest
-```
-
-#### 构建步骤
-
-```bash
-# 克隆项目
-git clone https://github.com/Saramanda9988/lunabox.git
-cd lunabox
-
-# 安装前端依赖
-cd frontend && pnpm install && cd ..
-
-# 开发模式运行
-wails dev
-
-# 构建生产版本
-wails build
-
-# 使用脚本进行本地构建版本(windows环境)
-.\scripts\build.bat all 1.0.0-beta
-```
+您也可以在 [AutoBuild](https://github.com/Saramanda9988/LunaBox/releases/tag/dev-latest) 中下载 Nightly 版本，以体验最新的功能
 
 ## 🤝 贡献
 
@@ -202,17 +147,9 @@ wails build
 
 ## 🗺️ RoadMap
 
-- [x] 完善日志系统
-
-- [ ] 支持从ReinaManager中导入数据
-
-- [ ] 自部署 docker 服务端
-
 - [ ] im 平台机器人插件
 
 - [x] 实现多端同步功能
-
-- [ ] 画廊功能
 
 - [x] mcp暴露，提供link启动游戏功能，为ai提供能力
 
@@ -255,9 +192,3 @@ wails build
 ## 📄 开源协议
 
 本项目采用 [AGPL v3](LICENSE) 协议开源。
-
-<div align="center">
-
-<img src="screenshot/logo-luna.png" width="150"/>
-
-</div>

@@ -2,19 +2,22 @@ import type {
   appconf,
   enums as enumTypes,
   vo,
-} from "../../../wailsjs/go/models";
+} from "../../../src/bindings/models";
 import type { MetadataRefreshProgress } from "../modal/MetadataRefreshProgressModal";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
-import { enums } from "../../../wailsjs/go/models";
 import {
   RefreshAllGamesMetadataWithFields,
   RefreshGamesMetadataWithFields,
   StartRemoteCoverImageDownloadTask,
-} from "../../../wailsjs/go/service/GameService";
-import { EventsOn } from "../../../wailsjs/runtime/runtime";
-import { normalizeEnabledMetadataSources } from "../../utils/metadataSources";
+} from "../../../bindings/lunabox/internal/service/gameservice";
+import { enums } from "../../../src/bindings/models";
+import { onWailsEvent } from "../../../src/bindings/runtime";
+import {
+  getMetadataSourceIcon,
+  normalizeEnabledMetadataSources,
+} from "../../utils/metadataSources";
 import { ConfirmModal } from "../modal/ConfirmModal";
 import {
   DEFAULT_METADATA_UPDATE_FIELDS,
@@ -23,6 +26,7 @@ import {
 import { MetadataRefreshProgressModal } from "../modal/MetadataRefreshProgressModal";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterNumberInput } from "../ui/better/BetterNumberInput";
+import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 
 interface MetadataSettingsPanelProps {
@@ -103,9 +107,19 @@ export function MetadataSettingsPanel({
       ? Math.max(-1, formData.scraped_tag_limit)
       : DEFAULT_SCRAPED_TAG_LIMIT;
   const isTagLimitUnlimited = scrapedTagLimit < 0;
+  const coverSourceOptions = [
+    {
+      value: enums.MetadataCoverSource.MetadataCoverSourceHikarinagi,
+      label: t("settings.metadata.coverSources.hikarinagi"),
+    },
+    {
+      value: enums.MetadataCoverSource.MetadataCoverSourceOriginal,
+      label: t("settings.metadata.coverSources.original"),
+    },
+  ];
 
   useEffect(() => {
-    const unsubscribe = EventsOn(
+    const unsubscribe = onWailsEvent(
       "metadata:refresh-progress",
       (evt: MetadataRefreshProgress) => {
         setRefreshProgress({
@@ -126,52 +140,52 @@ export function MetadataSettingsPanel({
     icon: string;
   }> = [
     {
-      value: enums.SourceType.BANGUMI,
+      value: enums.SourceType.Bangumi,
       label: "Bangumi",
       hint: t("settings.metadata.sourceHints.bangumi"),
-      icon: "/bangumi-logo.png",
+      icon: getMetadataSourceIcon(enums.SourceType.Bangumi) ?? "",
     },
     {
       value: enums.SourceType.VNDB,
       label: "VNDB",
       hint: t("settings.metadata.sourceHints.vndb"),
-      icon: "/vndb-logo.svg",
+      icon: getMetadataSourceIcon(enums.SourceType.VNDB) ?? "",
     },
     {
-      value: enums.SourceType.HIKARINAGI,
+      value: enums.SourceType.Hikarinagi,
       label: "Hikarinagi",
       hint: t("settings.metadata.sourceHints.hikarinagi"),
-      icon: "/hikarinagi.png",
+      icon: getMetadataSourceIcon(enums.SourceType.Hikarinagi) ?? "",
     },
     {
-      value: enums.SourceType.STEAM,
+      value: enums.SourceType.Steam,
       label: "Steam",
       hint: t("settings.metadata.sourceHints.steam"),
-      icon: "/steam-logo.png",
+      icon: getMetadataSourceIcon(enums.SourceType.Steam) ?? "",
     },
     {
-      value: enums.SourceType.DLSITE,
+      value: enums.SourceType.DLsite,
       label: "DLsite",
       hint: t("settings.metadata.sourceHints.dlsite"),
-      icon: "/dlsite-logo.png",
+      icon: getMetadataSourceIcon(enums.SourceType.DLsite) ?? "",
     },
     {
-      value: enums.SourceType.TOUCHGAL,
+      value: enums.SourceType.TouchGal,
       label: "TouchGAL",
       hint: t("settings.metadata.sourceHints.touchgal"),
-      icon: "/touchgal-logo.webp",
+      icon: getMetadataSourceIcon(enums.SourceType.TouchGal) ?? "",
     },
     {
-      value: enums.SourceType.YMGAL,
+      value: enums.SourceType.Ymgal,
       label: "Ymgal",
       hint: t("settings.metadata.sourceHints.ymgal"),
-      icon: "/ymgal-logo.png",
+      icon: getMetadataSourceIcon(enums.SourceType.Ymgal) ?? "",
     },
     {
-      value: enums.SourceType.EROGAMESCAPE,
+      value: enums.SourceType.ErogameScape,
       label: "ErogameScape",
       hint: t("settings.metadata.sourceHints.erogamescape"),
-      icon: "/erogamescape-logo.png",
+      icon: getMetadataSourceIcon(enums.SourceType.ErogameScape) ?? "",
     },
   ];
 
@@ -361,6 +375,87 @@ export function MetadataSettingsPanel({
               />
             </div>
           ))}
+        </div>
+
+        <div className="block text-sm font-semibold text-brand-700 dark:text-brand-300">
+          {t("settings.metadata.coverSourceTitle")}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+              {t("settings.metadata.bangumiCoverSource")}
+            </label>
+            <BetterSelect
+              name="bangumi_cover_source"
+              value={
+                formData.bangumi_cover_source
+                || enums.MetadataCoverSource.MetadataCoverSourceHikarinagi
+              }
+              onChange={value =>
+                onChange({
+                  ...formData,
+                  bangumi_cover_source: value as enumTypes.MetadataCoverSource,
+                } as appconf.AppConfig)}
+              options={coverSourceOptions}
+            />
+            <p className="text-xs text-brand-500 dark:text-brand-400">
+              {t("settings.metadata.bangumiCoverSourceHint")}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+              {t("settings.metadata.vndbCoverSource")}
+            </label>
+            <BetterSelect
+              name="vndb_cover_source"
+              value={
+                formData.vndb_cover_source
+                || enums.MetadataCoverSource.MetadataCoverSourceHikarinagi
+              }
+              onChange={value =>
+                onChange({
+                  ...formData,
+                  vndb_cover_source: value as enumTypes.MetadataCoverSource,
+                } as appconf.AppConfig)}
+              options={coverSourceOptions}
+            />
+            <p className="text-xs text-brand-500 dark:text-brand-400">
+              {t("settings.metadata.vndbCoverSourceHint")}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1 space-y-2">
+              <label
+                htmlFor="steam-portrait-cover"
+                className="block cursor-pointer text-sm font-medium text-brand-700 dark:text-brand-300"
+              >
+                {t("settings.metadata.steamPortraitCover")}
+              </label>
+              <p className="text-xs text-brand-500 dark:text-brand-400">
+                {t("settings.metadata.steamPortraitCoverHint")}
+              </p>
+            </div>
+            <BetterSwitch
+              id="steam-portrait-cover"
+              checked={
+                formData.steam_cover_orientation
+                !== enums.SteamCoverOrientation.SteamCoverOrientationLandscape
+              }
+              onCheckedChange={checked =>
+                onChange({
+                  ...formData,
+                  steam_cover_orientation: checked
+                    ? enums.SteamCoverOrientation.SteamCoverOrientationPortrait
+                    : enums.SteamCoverOrientation
+                      .SteamCoverOrientationLandscape,
+                } as appconf.AppConfig)}
+            />
+          </div>
         </div>
 
         <div className="space-y-2">

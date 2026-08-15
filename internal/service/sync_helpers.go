@@ -4,16 +4,19 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"lunabox/internal/common/enums"
 	"time"
 )
 
 const (
-	cloudSyncEntityGame         = "game"
-	cloudSyncEntityCategory     = "category"
-	cloudSyncEntityGameCategory = "game_category"
-	cloudSyncEntityPlaySession  = "play_session"
-	cloudSyncEntityGameProgress = "game_progress"
-	cloudSyncEntityGameTag      = "game_tag"
+	cloudSyncEntityGame               = "game"
+	cloudSyncEntityCategory           = "category"
+	cloudSyncEntityGameCategory       = "game_category"
+	cloudSyncEntityPlaySession        = "play_session"
+	cloudSyncEntityGameProgress       = "game_progress"
+	cloudSyncEntityGameReview         = "game_review"
+	cloudSyncEntityGameTag            = "game_tag"
+	cloudSyncEntityGameMetadataSource = "game_metadata_source"
 
 	systemFavoritesCategoryID   = "system:favorites"
 	systemFavoritesCategoryName = "最喜欢的游戏"
@@ -57,4 +60,8 @@ func relationTombstoneID(gameID, categoryID string) string {
 
 func tagTombstoneID(gameID, source, name string) string {
 	return gameID + "::" + source + "::" + name
+}
+
+func metadataSourceTombstoneID(gameID string, source enums.SourceType) string {
+	return gameID + "::" + string(source)
 }

@@ -1,11 +1,11 @@
-import type { appconf } from "../../../wailsjs/go/models";
+import type { appconf } from "../../../src/bindings/models";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import {
   CheckForUpdates,
   SkipVersion,
-} from "../../../wailsjs/go/service/UpdateService";
+} from "../../../bindings/lunabox/internal/service/updateservice";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 import { UpdateDialog } from "../ui/UpdateDialog";
@@ -21,7 +21,7 @@ interface UpdateInfo {
   latest_ver: string;
   release_date: string;
   changelog: string[];
-  downloads: Record<string, string>;
+  downloads: Record<string, string | undefined>;
   update_manifest_url: string;
 }
 

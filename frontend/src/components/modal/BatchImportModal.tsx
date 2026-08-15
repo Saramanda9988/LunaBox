@@ -1,4 +1,4 @@
-import type { appconf, enums } from "../../../wailsjs/go/models";
+import type { appconf, enums } from "../../../src/bindings/models";
 import type {
   BatchScanPreset,
   PreferredSourceValue,
@@ -6,10 +6,11 @@ import type {
 import { useCallback, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
+import { OpenLocalPath } from "../../../bindings/lunabox/internal/service/gameservice";
 import {
   ScanLibraryDirectoryWithOptions,
   SelectLibraryDirectory,
-} from "../../../wailsjs/go/service/ImportService";
+} from "../../../bindings/lunabox/internal/service/importservice";
 import { useAppStore } from "../../store";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterDropdownMenu } from "../ui/better/BetterDropdownMenu";
@@ -153,6 +154,16 @@ export function BatchImportModal({
   const handleStartMatch = async () => {
     setStep("match");
     await runStartMatch(() => setStep("preview"));
+  };
+
+  const handleOpenFolder = async (path: string) => {
+    try {
+      await OpenLocalPath(path);
+    }
+    catch (error) {
+      console.error("Failed to open import candidate folder:", error);
+      toast.error(t("batchImportModal.toast.openFolderFailed"));
+    }
   };
 
   const handleImport = async (matchedOnly = false) => {
@@ -379,6 +390,7 @@ export function BatchImportModal({
               statusNotFound: t("batchImportModal.status.notFound"),
               statusError: t("batchImportModal.status.error"),
               manualSelect: t("batchImportModal.manualSelect"),
+              openFolder: t("batchImportModal.openFolder"),
               metadataExists: name =>
                 t("batchImportModal.metadataExists", { name }),
               skippedSummary: count =>
@@ -446,6 +458,7 @@ export function BatchImportModal({
             onUpdateSearchName={updateSearchName}
             onUpdateSelectedExe={updateSelectedExe}
             onManualSelect={openManualSelect}
+            onOpenFolder={handleOpenFolder}
           />
         )}
 

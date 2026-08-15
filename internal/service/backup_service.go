@@ -25,13 +25,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"lunabox/internal/wailsruntime"
 )
 
 type BackupService struct {
-	ctx    context.Context
-	db     *sql.DB
-	config *appconf.AppConfig
+	ctx     context.Context
+	db      *sql.DB
+	config  *appconf.AppConfig
+	runtime wailsruntime.Runtime
 
 	umbraAuthMu      sync.Mutex
 	umbraAuthSession *umbraAuthSession
@@ -50,14 +51,32 @@ var (
 	duckDBExportCopyPattern        = regexp.MustCompile(`(?i)^COPY\s+"?([A-Za-z_][A-Za-z0-9_]*)"?\s+FROM\s+'`)
 )
 
-func NewBackupService() *BackupService {
-	return &BackupService{}
+func duckDBPathLiteral(path string) string {
+	normalizedPath := filepath.ToSlash(path)
+	return "'" + strings.ReplaceAll(normalizedPath, "'", "''") + "'"
 }
 
+func importDuckDBDatabase(db *sql.DB, importDir string) error {
+	_, err := db.Exec(fmt.Sprintf("IMPORT DATABASE %s", duckDBPathLiteral(importDir)))
+	return err
+}
+
+func NewBackupService() *BackupService {
+	return &BackupService{runtime: wailsruntime.Unavailable()}
+}
+
+//wails:ignore
 func (s *BackupService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
 	s.db = db
 	s.config = config
+}
+
+//wails:ignore
+func (s *BackupService) SetRuntime(runtime wailsruntime.Runtime) {
+	if runtime != nil {
+		s.runtime = runtime
+	}
 }
 
 func ConfigureBackupServiceQuitSyncDBBackupHooks(s *BackupService, onStart func(), onLocalCreated func(), onFinish func()) {
@@ -138,10 +157,10 @@ func (s *BackupService) SelectBackupSavePath() (string, error) {
 	timestamp := time.Now().Format("2006-01-02T15-04-05")
 	defaultFileName := fmt.Sprintf("lunabox_full_%s.zip", timestamp)
 
-	selection, err := runtime.SaveFileDialog(s.ctx, runtime.SaveDialogOptions{
-		Title:           "选择全量备份保存位置",
-		DefaultFilename: defaultFileName,
-		Filters: []runtime.FileFilter{
+	selection, err := s.runtime.SaveFile(wailsruntime.SaveDialogOptions{
+		Title:    "选择全量备份保存位置",
+		Filename: defaultFileName,
+		Filters: []wailsruntime.FileFilter{
 			{
 				DisplayName: "ZIP 压缩包 (*.zip)",
 				Pattern:     "*.zip",
@@ -156,9 +175,9 @@ func (s *BackupService) SelectBackupSavePath() (string, error) {
 
 // SelectBackupRestorePath 选择要恢复的全量备份文件
 func (s *BackupService) SelectBackupRestorePath() (string, error) {
-	selection, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+	selection, err := s.runtime.OpenFile(wailsruntime.OpenDialogOptions{
 		Title: "选择要恢复的全量备份文件",
-		Filters: []runtime.FileFilter{
+		Filters: []wailsruntime.FileFilter{
 			{
 				DisplayName: "ZIP 压缩包 (*.zip)",
 				Pattern:     "*.zip",
@@ -216,6 +235,15 @@ func (s *BackupService) TestOneDriveConnection(config appconf.AppConfig) error {
 	return cloudprovider.TestConnection(s.ctx, cloudprovider.ProviderOneDrive, &config)
 }
 
+// TestWebDAVConnection 测试 WebDAV 连接
+func (s *BackupService) TestWebDAVConnection(config appconf.AppConfig) error {
+	if err := cloudprovider.TestConnection(s.ctx, cloudprovider.ProviderWebDAV, &config); err != nil {
+		applog.LogErrorf(s.ctx, "TestWebDAVConnection: connection test failed: %v", err)
+		return fmt.Errorf("连接测试失败: %w", err)
+	}
+	return nil
+}
+
 // StartUmbraAuth 启动 Umbra OAuth 与设备注册流程。
 // OAuth client ID 与安装令牌由发行构建注入，不接受用户手动填写。
 func (s *BackupService) StartUmbraAuth(config appconf.AppConfig) error {
@@ -241,15 +269,13 @@ func (s *BackupService) StartUmbraAuth(config appconf.AppConfig) error {
 		BaseURL:           config.UmbraBaseURL,
 		ClientID:          version.UmbraOAuthClientID,
 		RegistrationToken: version.UmbraRegistrationToken,
-		UserID:            config.BackupUserID,
 		ProxyConfig:       &config,
 	}, version.Version, func(_ context.Context, url string) error {
-		runtime.BrowserOpenURL(s.ctx, url)
-		return nil
+		return s.runtime.OpenURL(url)
 	})
 	if !errors.Is(err, context.Canceled) {
-		runtime.WindowUnminimise(s.ctx)
-		runtime.WindowShow(s.ctx)
+		s.runtime.RestoreWindow()
+		s.runtime.ShowWindow()
 	}
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
@@ -278,7 +304,6 @@ func (s *BackupService) LogoutUmbra(config appconf.AppConfig) error {
 	return umbraprovider.Logout(s.ctx, umbraprovider.Config{
 		BaseURL:     config.UmbraBaseURL,
 		ClientID:    version.UmbraOAuthClientID,
-		UserID:      config.BackupUserID,
 		ProxyConfig: &config,
 	})
 }
@@ -288,7 +313,6 @@ func (s *BackupService) GetUmbraUserProfile(config appconf.AppConfig) (*vo.Umbra
 	profile, err := umbraprovider.GetUserProfile(s.ctx, umbraprovider.Config{
 		BaseURL:     config.UmbraBaseURL,
 		ClientID:    version.UmbraOAuthClientID,
-		UserID:      config.BackupUserID,
 		ProxyConfig: &config,
 	})
 	if err != nil {
@@ -321,8 +345,7 @@ func (s *BackupService) StartOneDriveAuth(clientID string) (string, error) {
 	}
 
 	code, redirectURI, err := onedrive.StartOneDriveAuthFlow(s.ctx, effectiveClientID, 5*time.Minute, func(url string) error {
-		runtime.BrowserOpenURL(s.ctx, url)
-		return nil
+		return s.runtime.OpenURL(url)
 	})
 	if err != nil {
 		applog.LogErrorf(s.ctx, "StartOneDriveAuth: failed to get auth code: %v", err)
@@ -385,9 +408,7 @@ func exportDuckDBDatabaseSnapshot(ctx context.Context, db *sql.DB, dbExportDir s
 	// EXPORT DATABASE so they cannot leak into load.sql.
 	cleanupImportStagingTables(ctx, conn)
 
-	exportPath := strings.ReplaceAll(dbExportDir, "\\", "/")
-	exportPath = strings.ReplaceAll(exportPath, "'", "''")
-	if _, err := conn.ExecContext(ctx, fmt.Sprintf("EXPORT DATABASE '%s'", exportPath)); err != nil {
+	if _, err := conn.ExecContext(ctx, fmt.Sprintf("EXPORT DATABASE %s", duckDBPathLiteral(dbExportDir))); err != nil {
 		return fmt.Errorf("导出数据库失败: %w", err)
 	}
 
@@ -772,7 +793,7 @@ func (s *BackupService) DeleteBackup(backupPath string) error {
 
 // UploadGameBackupToCloud 上传游戏存档到云端（参数改为 backupPath）
 func (s *BackupService) UploadGameBackupToCloud(gameID string, backupPath string) error {
-	if s.config.BackupUserID == "" {
+	if !cloudprovider.HasRequiredBackupUserID(s.config) {
 		return fmt.Errorf("备份用户 ID 未设置")
 	}
 	if !isValidCloudPathSegment(gameID) {
@@ -814,7 +835,7 @@ func (s *BackupService) UploadGameBackupToCloud(gameID string, backupPath string
 
 // GetCloudGameBackups 获取云端游戏备份列表
 func (s *BackupService) GetCloudGameBackups(gameID string) ([]vo.CloudBackupItem, error) {
-	if s.config.BackupUserID == "" {
+	if !cloudprovider.HasRequiredBackupUserID(s.config) {
 		return nil, fmt.Errorf("备份用户 ID 未设置")
 	}
 	if !isValidCloudPathSegment(gameID) {
@@ -961,6 +982,17 @@ func (s *BackupService) cleanupOldCloudBackups(gameID string) {
 
 // CreateDBBackup 创建数据库备份（包含 covers 文件夹）
 func (s *BackupService) CreateDBBackup() (*vo.DBBackupInfo, error) {
+	return s.createDBBackup(s.ctx)
+}
+
+// CreateDBBackupForShutdown 使用独立上下文创建退出阶段的数据库备份。
+//
+//wails:ignore
+func (s *BackupService) CreateDBBackupForShutdown() (*vo.DBBackupInfo, error) {
+	return s.createDBBackup(context.Background())
+}
+
+func (s *BackupService) createDBBackup(ctx context.Context) (*vo.DBBackupInfo, error) {
 	backupDir, err := s.GetDBBackupDir()
 	if err != nil {
 		return nil, err
@@ -982,7 +1014,7 @@ func (s *BackupService) CreateDBBackup() (*vo.DBBackupInfo, error) {
 	}
 
 	// 导出数据库
-	if err := exportDuckDBDatabaseSnapshot(s.ctx, s.db, dbExportDir); err != nil {
+	if err := exportDuckDBDatabaseSnapshot(ctx, s.db, dbExportDir); err != nil {
 		os.RemoveAll(packDir)
 		return nil, err
 	}
@@ -991,7 +1023,7 @@ func (s *BackupService) CreateDBBackup() (*vo.DBBackupInfo, error) {
 	coversSourceDir := filepath.Join(dataDir, "covers")
 	if _, err := os.Stat(coversSourceDir); err == nil {
 		if err := apputils.CopyDir(coversSourceDir, coversDestDir); err != nil {
-			applog.LogWarningf(s.ctx, "CreateDBBackup: failed to copy covers: %v", err)
+			applog.LogWarningf(ctx, "CreateDBBackup: failed to copy covers: %v", err)
 			// 封面复制失败不影响整体备份，继续执行
 		}
 	}
@@ -1201,7 +1233,7 @@ func (s *BackupService) ScheduleFullDataRestore(backupPath string) error {
 
 // UploadDBBackupToCloud 上传数据库备份到云端
 func (s *BackupService) UploadDBBackupToCloud(backupPath string) error {
-	if s.config.BackupUserID == "" {
+	if !cloudprovider.HasRequiredBackupUserID(s.config) {
 		return fmt.Errorf("备份用户 ID 未设置")
 	}
 
@@ -1237,7 +1269,7 @@ func (s *BackupService) UploadDBBackupToCloud(backupPath string) error {
 
 // GetCloudDBBackups 获取云端数据库备份列表
 func (s *BackupService) GetCloudDBBackups() ([]vo.CloudBackupItem, error) {
-	if s.config.BackupUserID == "" {
+	if !cloudprovider.HasRequiredBackupUserID(s.config) {
 		return nil, fmt.Errorf("备份用户 ID 未设置")
 	}
 
@@ -1340,7 +1372,7 @@ func (s *BackupService) createAndUploadDBBackup(trackQuitSync bool) (*vo.DBBacku
 	}
 
 	// 只有在启用云备份、配置完整且开启数据库自动上传时才上传
-	if s.config.CloudBackupEnabled && s.config.BackupUserID != "" && s.config.AutoUploadDBToCloud {
+	if s.config.AutoUploadDBToCloud && cloudprovider.IsConfigured(s.config) {
 		if err := s.UploadDBBackupToCloud(backup.Path); err != nil {
 			return backup, fmt.Errorf("本地备份成功，但云端上传失败: %w", err)
 		}
@@ -1424,8 +1456,7 @@ func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
 			return false, fmt.Errorf("打开数据库失败: %w", err)
 		}
 
-		importPath := strings.ReplaceAll(dbImportDir, "\\", "/")
-		_, err = db.Exec(fmt.Sprintf("IMPORT DATABASE '%s'", importPath))
+		err = importDuckDBDatabase(db, dbImportDir)
 		db.Close()
 		if err != nil {
 			return false, fmt.Errorf("导入数据库失败: %w", err)
@@ -1541,8 +1572,7 @@ func ExecuteDBRestore(config *appconf.AppConfig) (bool, error) {
 		return false, fmt.Errorf("打开数据库失败: %w", err)
 	}
 
-	importPath := strings.ReplaceAll(dbImportDir, "\\", "/")
-	_, err = db.Exec(fmt.Sprintf("IMPORT DATABASE '%s'", importPath))
+	err = importDuckDBDatabase(db, dbImportDir)
 	db.Close()
 
 	if err != nil {

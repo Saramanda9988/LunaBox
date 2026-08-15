@@ -5,19 +5,24 @@ import type {
   enums,
   launcher,
   models,
+  service,
   vo,
-} from "../wailsjs/go/models";
+} from "../src/bindings/models";
 
 import {
+  ApplyGameLibraryPathChange,
   GetAppConfig,
   UpdateAppConfig,
-} from "../wailsjs/go/service/ConfigService";
-import { GetHomePageData } from "../wailsjs/go/service/HomeService";
+} from "../bindings/lunabox/internal/service/configservice";
+import { GetHomePageData } from "../bindings/lunabox/internal/service/homeservice";
 import {
   StartGameWithOptions,
   StartGameWithTracking,
-} from "../wailsjs/go/service/StartService";
-import { GetGOOS } from "../wailsjs/go/service/VersionService";
+} from "../bindings/lunabox/internal/service/startservice";
+import {
+  GetGOOS,
+  SupportsBackgroundProcessMute,
+} from "../bindings/lunabox/internal/service/versionservice";
 import { normalizeEnabledMetadataSources } from "./utils/metadataSources";
 
 type AISummaryCache = {
@@ -92,6 +97,27 @@ function getVisibleGameRuntimes(gameRuntimes: GameRuntimeMap) {
   return Object.values(gameRuntimes).filter(isGameRuntimeVisible);
 }
 
+function isSameSessionStateRegression(
+  currentRuntime: GameRuntimeInfo | undefined,
+  eventSessionId: string | undefined,
+  nextState: GameRuntimeState,
+) {
+  if (
+    !currentRuntime?.sessionId
+    || !eventSessionId
+    || currentRuntime.sessionId !== eventSessionId
+  ) {
+    return false;
+  }
+
+  return (
+    (nextState === "launching"
+      && (currentRuntime.state === "playing"
+        || currentRuntime.state === "ending"))
+      || (nextState === "playing" && currentRuntime.state === "ending")
+  );
+}
+
 function pickGameRuntime(
   gameRuntimes: GameRuntimeMap,
   preferredGameId: string,
@@ -130,6 +156,7 @@ type AppState = {
   draftConfig: appconf.AppConfig | null;
   enabledMetadataSources: enums.SourceType[];
   platformGOOS: string;
+  backgroundProcessMuteSupported: boolean;
   isLoading: boolean;
   gameRuntimes: GameRuntimeMap;
   activeGameRuntimeId: string;
@@ -141,9 +168,13 @@ type AppState = {
   selectNextGameRuntime: () => void;
   startGame: (
     game: models.Game,
-    options?: launcher.LaunchOptions,
+    options?: Partial<launcher.LaunchOptions>,
   ) => Promise<boolean>;
   patchLiveConfig: (patch: Partial<appconf.AppConfig>) => Promise<void>;
+  applyGameLibraryPathChange: (
+    newPath: string,
+    syncPaths: boolean,
+  ) => Promise<service.GameLibraryPathChangeResult>;
   applyCloudSyncStatus: (status: vo.CloudSyncStatus) => void;
   setDraftConfig: (config: appconf.AppConfig) => void;
   resetDraftConfig: () => void;
@@ -176,6 +207,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   draftConfig: null,
   enabledMetadataSources: normalizeEnabledMetadataSources(undefined),
   platformGOOS: "",
+  backgroundProcessMuteSupported: false,
   isLoading: false,
   gameRuntimes: {},
   activeGameRuntimeId: "",
@@ -204,14 +236,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   fetchConfig: async () => {
     try {
-      const config = await GetAppConfig();
+      const loadedConfig = await GetAppConfig();
+      const sidebarOpen = get().config
+        ? get().isSidebarOpen
+        : loadedConfig.sidebar_open;
+      const config = withSidebarState(loadedConfig, sidebarOpen);
       set({
         config,
         draftConfig: { ...config },
         enabledMetadataSources: normalizeEnabledMetadataSources(
           config.metadata_sources,
         ),
-        isSidebarOpen: config.sidebar_open,
+        isSidebarOpen: sidebarOpen,
       });
     }
     catch (error) {
@@ -220,8 +256,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   fetchPlatformGOOS: async () => {
     try {
-      const goos = await GetGOOS();
-      set({ platformGOOS: goos });
+      const [goos, backgroundProcessMuteSupported] = await Promise.all([
+        GetGOOS(),
+        SupportsBackgroundProcessMute(),
+      ]);
+      set({ platformGOOS: goos, backgroundProcessMuteSupported });
     }
     catch (error) {
       console.error("Failed to fetch platform GOOS:", error);
@@ -269,6 +308,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     set((currentState) => {
       const currentRuntime = currentState.gameRuntimes[gameId];
+      if (
+        isSameSessionStateRegression(currentRuntime, event.session_id, state)
+      ) {
+        return currentState;
+      }
       const nextRuntime: GameRuntimeInfo = {
         activeSeconds:
           typeof event.active_seconds === "number"
@@ -361,7 +405,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       return runtimeSelectionPatch(state.gameRuntimes, nextRuntime.gameId);
     });
   },
-  startGame: async (game: models.Game, options?: launcher.LaunchOptions) => {
+  startGame: async (
+    game: models.Game,
+    options?: Partial<launcher.LaunchOptions>,
+  ) => {
     const gameId = game.id;
     if (!gameId) {
       return false;
@@ -423,7 +470,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     try {
       const started = options
-        ? await StartGameWithOptions(gameId, options)
+        ? await StartGameWithOptions(gameId, options as launcher.LaunchOptions)
         : await StartGameWithTracking(gameId);
 
       if (!started) {
@@ -481,6 +528,25 @@ export const useAppStore = create<AppState>((set, get) => ({
       });
       console.error("Failed to patch live config:", error);
     }
+  },
+  applyGameLibraryPathChange: async (newPath, syncPaths) => {
+    const result = await ApplyGameLibraryPathChange(newPath, syncPaths);
+    set(state => ({
+      config: state.config
+        ? ({
+            ...state.config,
+            game_library_path: result.new_configured_path,
+          } as appconf.AppConfig)
+        : null,
+      draftConfig: state.draftConfig
+        ? ({
+            ...state.draftConfig,
+            game_library_path: result.new_configured_path,
+          } as appconf.AppConfig)
+        : null,
+    }));
+    await get().fetchHomeData({ showLoading: false, syncRuntime: false });
+    return result;
   },
   applyCloudSyncStatus: (status: vo.CloudSyncStatus) => {
     set((state) => {

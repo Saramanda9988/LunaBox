@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 	"lunabox/internal/common/enums"
+	"lunabox/internal/utils/httputils"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -235,36 +235,38 @@ func doLimitedMetadataRequest(client *http.Client, req *http.Request, source Met
 		maxRetries = policy.MaxRateLimitRetries
 	}
 
-	currentReq := req
-	for attempt := 0; attempt <= maxRetries; attempt++ {
-		if err := sharedMetadataRateLimiter.Acquire(currentReq.Context(), source); err != nil {
-			return nil, fmt.Errorf("%s metadata rate limit wait failed: %w", source, err)
-		}
-
-		resp, err := client.Do(currentReq)
-		if err != nil {
-			return nil, err
-		}
-		if resp.StatusCode != http.StatusTooManyRequests {
-			return resp, nil
-		}
-
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		closeResponseBody(resp.Body)
-		if attempt >= maxRetries {
-			return nil, fmt.Errorf("%s metadata request remained rate limited after %d retries: status %d, body: %s", source, maxRetries, resp.StatusCode, strings.TrimSpace(string(bodyBytes)))
-		}
-		if err := waitForMetadataRateLimitBackoff(currentReq.Context(), source, resp.Header.Get("Retry-After"), attempt); err != nil {
-			return nil, err
-		}
-		retryReq, err := cloneMetadataRequest(currentReq)
-		if err != nil {
-			return nil, err
-		}
-		currentReq = retryReq
+	resp, err := httputils.DoWithRetry(req.Context(), client, req, httputils.RetryPolicy{
+		MaxRetries: maxRetries,
+		RetryableStatus: func(statusCode int) bool {
+			return statusCode == http.StatusTooManyRequests
+		},
+		BeforeAttempt: func(ctx context.Context, _ int) error {
+			if err := sharedMetadataRateLimiter.Acquire(ctx, source); err != nil {
+				return fmt.Errorf("%s metadata rate limit wait failed: %w", source, err)
+			}
+			return nil
+		},
+		RetryDelay: func(resp *http.Response, retryIndex int) time.Duration {
+			return metadataRateLimitRetryDelay(source, resp.Header.Get("Retry-After"), retryIndex)
+		},
+		Wait: func(ctx context.Context, delay time.Duration) error {
+			if err := sharedMetadataRateLimiter.wait(ctx, delay); err != nil {
+				return fmt.Errorf("%s metadata retry wait failed: %w", source, err)
+			}
+			return nil
+		},
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, fmt.Errorf("%s metadata request remained rate limited after %d retries", source, maxRetries)
+	if resp.StatusCode != http.StatusTooManyRequests {
+		return resp, nil
+	}
+
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	closeResponseBody(resp.Body)
+	return nil, fmt.Errorf("%s metadata request remained rate limited after %d retries: status %d, body: %s", source, maxRetries, resp.StatusCode, strings.TrimSpace(string(bodyBytes)))
 }
 
 func doLimitedMetadataRequestBody(client *http.Client, req *http.Request, source MetadataSource) (int, http.Header, []byte, error) {
@@ -282,7 +284,7 @@ func doLimitedMetadataRequestBody(client *http.Client, req *http.Request, source
 }
 
 func metadataRateLimitRetryDelay(source MetadataSource, retryAfter string, retryIndex int) time.Duration {
-	serverDelay := parseRetryAfter(retryAfter)
+	serverDelay, _ := httputils.ParseRetryAfter(retryAfter, sharedMetadataRateLimiter.now())
 	policy, ok := sharedMetadataRateLimiter.Policy(source)
 	if !ok {
 		return serverDelay
@@ -325,30 +327,8 @@ func waitForMetadataRateLimitRetry(ctx context.Context, source MetadataSource, r
 	return waitForMetadataRateLimitBackoff(ctx, source, retryAfter, 0)
 }
 
-func parseRetryAfter(value string) time.Duration {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return 0
-	}
-
-	if seconds, err := strconv.Atoi(value); err == nil {
-		if seconds <= 0 {
-			return 0
-		}
-		return time.Duration(seconds) * time.Second
-	}
-
-	retryAt, err := http.ParseTime(value)
-	if err != nil {
-		return 0
-	}
-	delay := time.Until(retryAt)
-	if delay <= 0 {
-		return 0
-	}
-	return delay
-}
-
+// cloneMetadataRequest supports Ymgal token refresh and successful responses
+// that carry a rate-limit code in the response body.
 func cloneMetadataRequest(req *http.Request) (*http.Request, error) {
 	if req == nil {
 		return nil, errors.New("metadata HTTP request is nil")
@@ -365,7 +345,7 @@ func cloneMetadataRequest(req *http.Request) (*http.Request, error) {
 
 	body, err := req.GetBody()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("recreate metadata request body: %w", err)
 	}
 	cloned.Body = body
 	return cloned, nil

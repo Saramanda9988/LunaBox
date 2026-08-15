@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { enums, models } from "../../../wailsjs/go/models";
+import type { enums, models } from "../../../src/bindings/models";
 import type { GameCardLayout } from "../card/GameCard";
 import { useElementScrollRestoration } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -12,6 +12,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useDragSelection } from "../../hooks/useDragSelection";
 import { findScrollParent } from "../../utils/scroll";
 import { GameCard } from "../card/GameCard";
 
@@ -135,6 +136,12 @@ export function VirtualGameGrid({
   const scrollEntry = useElementScrollRestoration({
     id: scrollRestorationId,
   });
+  const dragSelectionHandlers = useDragSelection({
+    enabled: selectionMode,
+    onSelectChange,
+    selectedIds: selectedGameIds,
+    surfaceRef: measureRef,
+  });
 
   useLayoutEffect(() => {
     const element = measureRef.current;
@@ -251,7 +258,7 @@ export function VirtualGameGrid({
   );
 
   return (
-    <div ref={measureRef} className="w-full">
+    <div ref={measureRef} className="w-full" {...dragSelectionHandlers}>
       <div
         className="relative w-full"
         style={{ height: virtualizer.getTotalSize() }}

@@ -1,0 +1,156 @@
+name: Sync GitHub Release to Gitee
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: GitHub Release tag to sync, for example v1.11.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-gitee-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  sync-release:
+    name: Sync Release to Gitee
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GITEE_OWNER: ${{ vars.GITEE_OWNER || 'rin066' }}
+      GITEE_REPO: ${{ vars.GITEE_REPO || 'luna-box' }}
+      GITEE_TARGET_COMMITISH: ${{ vars.GITEE_TARGET_COMMITISH || 'main' }}
+
+    steps:
+      - name: Read GitHub Release metadata
+        id: github-release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          metadata="$(gh release view "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json tagName,name,body,isDraft,isPrerelease)"
+
+          if [[ "$(jq -r '.isDraft' <<< "$metadata")" == "true" ]]; then
+            echo "GitHub Release $RELEASE_TAG is still a draft." >&2
+            exit 1
+          fi
+
+          actual_tag="$(jq -r '.tagName' <<< "$metadata")"
+          release_name="$(jq -r '.name // empty' <<< "$metadata")"
+          prerelease="$(jq -r '.isPrerelease' <<< "$metadata")"
+
+          if [[ -z "$release_name" ]]; then
+            release_name="$actual_tag"
+          fi
+
+          delimiter="release_metadata_$(date +%s%N)_$RANDOM"
+          {
+            echo "tag=$actual_tag"
+            echo "prerelease=$prerelease"
+            echo "name<<$delimiter"
+            printf '%s\n' "$release_name"
+            echo "$delimiter"
+            echo "body<<$delimiter"
+            jq -r '.body // ""' <<< "$metadata"
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Download GitHub Release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.github-release.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p release
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --dir release
+
+          mapfile -t assets < <(find release -maxdepth 1 -type f -printf '%f\n' | sort)
+          if (( ${#assets[@]} == 0 )); then
+            echo "GitHub Release $RELEASE_TAG has no downloadable assets." >&2
+            exit 1
+          fi
+
+          printf 'Downloaded %d asset(s):\n' "${#assets[@]}"
+          printf '  %s\n' "${assets[@]}"
+
+      - name: Publish Gitee Release
+        uses: YuZhiYuanOrg/release-sync@e488cbd2a0673f7bc85f83744e82ca09f544633b # v1.0.0
+        with:
+          platforms: gitee
+          tag: ${{ steps.github-release.outputs.tag }}
+          release-name: ${{ steps.github-release.outputs.name }}
+          release-body: ${{ steps.github-release.outputs.body }}
+          prerelease: ${{ steps.github-release.outputs.prerelease }}
+          gitee-token: ${{ secrets.GITEE_TOKEN }}
+          gitee-owner: ${{ env.GITEE_OWNER }}
+          gitee-repo: ${{ env.GITEE_REPO }}
+          gitee-target-commitish: ${{ env.GITEE_TARGET_COMMITISH }}
+          asset-files: release/*
+
+      - name: Verify Gitee Release assets
+        shell: bash
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          RELEASE_TAG: ${{ steps.github-release.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          response_file="$(mktemp)"
+          curl --silent --show-error --fail-with-body \
+            --retry 3 \
+            --retry-all-errors \
+            --get \
+            --data-urlencode "access_token=$GITEE_TOKEN" \
+            --header "Accept: application/json" \
+            --header "User-Agent: LunaBox Release Sync" \
+            --output "$response_file" \
+            "https://gitee.com/api/v5/repos/$GITEE_OWNER/$GITEE_REPO/releases/tags/$RELEASE_TAG"
+
+          mapfile -t local_assets < <(find release -maxdepth 1 -type f -printf '%f\n' | sort)
+          verification_failed=false
+
+          for asset_name in "${local_assets[@]}"; do
+            local_size="$(stat --format='%s' "release/$asset_name")"
+            remote_size="$(jq -r --arg name "$asset_name" \
+              'first(.assets[]? | select(.name == $name) | .size) // empty' \
+              "$response_file")"
+
+            if [[ -z "$remote_size" ]]; then
+              echo "Missing Gitee asset: $asset_name" >&2
+              verification_failed=true
+              continue
+            fi
+
+            if [[ "$remote_size" != "$local_size" ]]; then
+              echo "Gitee asset size mismatch: $asset_name (local $local_size, remote $remote_size)" >&2
+              verification_failed=true
+            fi
+          done
+
+          if [[ "$verification_failed" == "true" ]]; then
+            exit 1
+          fi
+
+          printf 'Verified %d Gitee asset(s).\n' "${#local_assets[@]}"
+          {
+            echo "### Gitee Release sync completed"
+            echo
+            echo "Tag: \`$RELEASE_TAG\`"
+            echo
+            echo "Assets verified: ${#local_assets[@]}"
+            echo
+            echo "https://gitee.com/$GITEE_OWNER/$GITEE_REPO/releases"
+          } >> "$GITHUB_STEP_SUMMARY"

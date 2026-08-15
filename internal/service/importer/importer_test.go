@@ -7,6 +7,7 @@ import (
 	"lunabox/internal/common/enums"
 	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
+	"lunabox/internal/models/playnite"
 	"lunabox/internal/models/potatovn"
 	"lunabox/internal/models/reinamanager"
 	"lunabox/internal/models/vnite"
@@ -15,6 +16,75 @@ import (
 	"testing"
 	"time"
 )
+
+func TestPlayniteImportPreservesExporterFields(t *testing.T) {
+	exportedAt := time.Date(2026, 7, 28, 4, 5, 6, 0, time.UTC)
+	exportedGames := []playnite.PlayniteGame{
+		{
+			ID:              "playnite-game-id",
+			Name:            "Playnite Game",
+			Company:         "Moon Studio",
+			Rating:          8.7,
+			ReleaseDate:     "2025-03-04",
+			Path:            `D:\SteamLibrary\steamapps\common\Playnite Game`,
+			GameDirectory:   `D:\SteamLibrary\steamapps\common\Playnite Game`,
+			ProcessName:     "playnite-game.exe",
+			Status:          string(enums.StatusPlaying),
+			SourceType:      string(enums.Steam),
+			SourceID:        "123456",
+			LaunchMode:      string(enums.LaunchModeSteam),
+			SteamLaunchID:   "123456",
+			SteamLaunchKind: "native",
+			Tags:            []string{"Visual Novel", "Drama", "visual novel"},
+			CachedAt:        exportedAt,
+			CreatedAt:       exportedAt,
+		},
+	}
+
+	data, err := json.Marshal(exportedGames)
+	if err != nil {
+		t.Fatalf("marshal Playnite export: %v", err)
+	}
+	jsonPath := filepath.Join(t.TempDir(), "lunabox-playnite.json")
+	if err := os.WriteFile(jsonPath, data, 0o600); err != nil {
+		t.Fatalf("write Playnite export: %v", err)
+	}
+
+	var committed []ImportItem
+	deps := Dependencies{
+		ListGames: func() ([]models.Game, error) {
+			return nil, nil
+		},
+		AddItems: func(items []ImportItem) (ImportResult, error) {
+			committed = items
+			return ImportResult{Success: len(items)}, nil
+		},
+	}
+
+	result, err := NewPlayniteImporter(deps).Import(jsonPath, true, SamePathActionSkip)
+	if err != nil {
+		t.Fatalf("import Playnite export: %v", err)
+	}
+	if result.Success != 1 || len(committed) != 1 {
+		t.Fatalf("expected one imported item, got result=%+v items=%d", result, len(committed))
+	}
+
+	game := committed[0].Source.Game
+	if game.GameDirectory != exportedGames[0].GameDirectory || game.ProcessName != exportedGames[0].ProcessName {
+		t.Fatalf("unexpected launch fields: %+v", game)
+	}
+	if game.Status != enums.StatusPlaying {
+		t.Fatalf("expected playing status, got %q", game.Status)
+	}
+	if game.LaunchMode != enums.LaunchModeSteam || game.SteamLaunchID != "123456" || game.SteamLaunchKind != "native" {
+		t.Fatalf("unexpected Steam launch fields: %+v", game)
+	}
+	if len(committed[0].Source.Tags) != 2 ||
+		committed[0].Source.Tags[0].Name != "Visual Novel" ||
+		committed[0].Source.Tags[1].Name != "Drama" {
+		t.Fatalf("unexpected imported tags: %+v", committed[0].Source.Tags)
+	}
+}
 
 func TestPotatoVNConvertToGameImportsLaunchFields(t *testing.T) {
 	exePath := `D:\Games\potato\bin\game.exe`
@@ -57,6 +127,200 @@ func TestPotatoVNConvertToGameImportsLaunchFields(t *testing.T) {
 	}
 	if game.Rating != 8.5 {
 		t.Fatalf("expected rating 8.5, got %f", game.Rating)
+	}
+}
+
+func TestPickPotatoVNIdentity(t *testing.T) {
+	testCases := []struct {
+		name       string
+		galgame    potatovn.Galgame
+		sourceType enums.SourceType
+		sourceID   string
+	}{
+		{
+			name: "mixed prefers bangumi",
+			galgame: potatovn.Galgame{
+				RssType: potatovn.RssTypeMixed,
+				Ids:     []string{"59409", "586274", "bgm:586274,vndb:59409,ymgal:56847,steam:null", "", "379362", "56847", "", ""},
+			},
+			sourceType: enums.Bangumi,
+			sourceID:   "586274",
+		},
+		{
+			name: "mixed falls back to vndb when bangumi missing",
+			galgame: potatovn.Galgame{
+				RssType: potatovn.RssTypeMixed,
+				Ids:     []string{"22899", "", "bgm:null,vndb:22899,ymgal:null,steam:null", "", "377779", "", "", ""},
+			},
+			sourceType: enums.VNDB,
+			sourceID:   "22899",
+		},
+		{
+			name: "mixed parses composite string when slots empty",
+			galgame: potatovn.Galgame{
+				RssType: potatovn.RssTypeMixed,
+				Ids:     []string{"", "", "bgm:null,vndb:null,ymgal:null,steam:972160", "", "379363", "", "", ""},
+			},
+			sourceType: enums.Steam,
+			sourceID:   "972160",
+		},
+		{
+			name: "potatovn cloud id is never picked",
+			galgame: potatovn.Galgame{
+				RssType: potatovn.RssTypeMixed,
+				Ids:     []string{"", "", "", "", "379365", "", "", ""},
+			},
+			sourceType: enums.Local,
+			sourceID:   "",
+		},
+		{
+			name: "non-mixed uses own slot",
+			galgame: potatovn.Galgame{
+				RssType: potatovn.RssTypeBangumi,
+				Ids:     []string{"59409", "586274", "", "", "", "", "", ""},
+			},
+			sourceType: enums.Bangumi,
+			sourceID:   "586274",
+		},
+		{
+			name: "non-mixed with empty own slot falls back by priority",
+			galgame: potatovn.Galgame{
+				RssType: potatovn.RssTypeBangumi,
+				Ids:     []string{"59409", "", "", "", "379362", "", "", ""},
+			},
+			sourceType: enums.VNDB,
+			sourceID:   "59409",
+		},
+		{
+			name:       "no ids",
+			galgame:    potatovn.Galgame{RssType: potatovn.RssTypeMixed},
+			sourceType: enums.Local,
+			sourceID:   "",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			sourceType, sourceID := pickPotatoVNIdentity(testCase.galgame)
+			if sourceType != testCase.sourceType || sourceID != testCase.sourceID {
+				t.Fatalf("expected %s/%s, got %s/%s", testCase.sourceType, testCase.sourceID, sourceType, sourceID)
+			}
+		})
+	}
+}
+
+func TestPotatoVNConvertToGameUsesMixedIdentity(t *testing.T) {
+	galgame := potatovn.Galgame{
+		Name:    potatovn.LockableProperty[string]{Value: "Mixed Game"},
+		RssType: potatovn.RssTypeMixed,
+		Ids:     []string{"3770", "12280", "bgm:12280,vndb:3770,ymgal:13457,steam:null", "", "377783", "13457", "", ""},
+	}
+
+	game, _ := NewPotatoVNImporter(Dependencies{}).convertToGame(galgame, "", "")
+
+	if game.SourceType != enums.Bangumi || game.SourceID != "12280" {
+		t.Fatalf("expected Bangumi identity for mixed game, got %s/%s", game.SourceType, game.SourceID)
+	}
+	if len(game.MetadataSources) != 3 {
+		t.Fatalf("expected three concrete metadata sources, got %+v", game.MetadataSources)
+	}
+	for _, source := range game.MetadataSources {
+		if source.SourceType == "mixed" {
+			t.Fatalf("mixed source leaked into imported game: %+v", game.MetadataSources)
+		}
+	}
+}
+
+func TestPotatoVNDirectoryOnlyGameIsImportable(t *testing.T) {
+	gameDirectory := `D:\Games\potato-directory`
+	gameUUID := "46c43637-1758-4491-9667-23721cb8ac9f"
+	galgame := potatovn.Galgame{
+		Uuid: gameUUID,
+		Name: potatovn.LockableProperty[string]{Value: "Directory Game"},
+	}
+	tempDir := t.TempDir()
+	data, err := json.Marshal([]potatovn.Galgame{galgame})
+	if err != nil {
+		t.Fatalf("marshal galgame: %v", err)
+	}
+	zipPath := filepath.Join(tempDir, "potatovn.zip")
+	zipFile, err := os.Create(zipPath)
+	if err != nil {
+		t.Fatalf("create zip: %v", err)
+	}
+	zipWriter := zip.NewWriter(zipFile)
+	entry, err := zipWriter.Create("data.galgames.json")
+	if err != nil {
+		t.Fatalf("create zip entry: %v", err)
+	}
+	if _, err := entry.Write(data); err != nil {
+		t.Fatalf("write zip entry: %v", err)
+	}
+	sourcesData, err := json.Marshal([]potatovn.GalgameSource{
+		{
+			ID:   "source-id",
+			Path: `D:\Games`,
+			Galgames: []potatovn.GalgameSourceEntry{
+				{
+					Galgame: gameUUID,
+					Path:    gameDirectory,
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal galgame sources: %v", err)
+	}
+	sourcesEntry, err := zipWriter.Create("data.galgameSources.json")
+	if err != nil {
+		t.Fatalf("create galgame sources zip entry: %v", err)
+	}
+	if _, err := sourcesEntry.Write(sourcesData); err != nil {
+		t.Fatalf("write galgame sources zip entry: %v", err)
+	}
+	if err := zipWriter.Close(); err != nil {
+		t.Fatalf("close zip writer: %v", err)
+	}
+	if err := zipFile.Close(); err != nil {
+		t.Fatalf("close zip file: %v", err)
+	}
+
+	var committed []ImportItem
+	deps := Dependencies{
+		ListGames: func() ([]models.Game, error) {
+			return nil, nil
+		},
+		AddItems: func(items []ImportItem) (ImportResult, error) {
+			committed = items
+			return ImportResult{Success: len(items)}, nil
+		},
+	}
+	importer := NewPotatoVNImporter(deps)
+
+	previews, err := importer.Preview(zipPath)
+	if err != nil {
+		t.Fatalf("Preview returned error: %v", err)
+	}
+	if len(previews) != 1 {
+		t.Fatalf("expected one preview, got %d", len(previews))
+	}
+	if !previews[0].HasPath || previews[0].Path != gameDirectory {
+		t.Fatalf("expected directory path %q to be importable, got preview=%+v", gameDirectory, previews[0])
+	}
+
+	result, err := importer.Import(zipPath, true, SamePathActionSkip)
+	if err != nil {
+		t.Fatalf("Import returned error: %v", err)
+	}
+	if result.Success != 1 || result.Skipped != 0 {
+		t.Fatalf("expected one imported game without skips, got result=%+v", result)
+	}
+	if len(committed) != 1 {
+		t.Fatalf("expected one committed item, got %d", len(committed))
+	}
+	game := committed[0].Source.Game
+	if game.Path != gameDirectory || game.GameDirectory != gameDirectory {
+		t.Fatalf("expected directory-only paths to be preserved, got path=%q directory=%q", game.Path, game.GameDirectory)
 	}
 }
 
@@ -137,39 +401,52 @@ func TestPotatoVNImportSamePathMergeTargetsExistingGame(t *testing.T) {
 		t.Fatalf("close zip file: %v", err)
 	}
 
-	var committed []ImportItem
-	deps := Dependencies{
-		ListGames: func() ([]models.Game, error) {
-			return []models.Game{existingGame}, nil
-		},
-		AddItems: func(items []ImportItem) (ImportResult, error) {
-			committed = items
-			sessionsImported := 0
-			if len(items) > 0 {
-				sessionsImported = len(items[0].Sessions)
-			}
-			return ImportResult{Success: len(items), SessionsImported: sessionsImported}, nil
-		},
+	testCases := []struct {
+		name           string
+		samePathAction string
+		importAction   string
+	}{
+		{name: "update metadata and merge sessions", samePathAction: SamePathActionMerge, importAction: ImportActionUpdateExisting},
+		{name: "merge sessions only", samePathAction: SamePathActionMergeSessions, importAction: ImportActionMergeSessions},
 	}
 
-	result, err := NewPotatoVNImporter(deps).Import(zipPath, true, SamePathActionMerge)
-	if err != nil {
-		t.Fatalf("Import returned error: %v", err)
-	}
-	if result.Skipped != 0 || result.Success != 1 {
-		t.Fatalf("expected one merged success without skips, got result=%+v", result)
-	}
-	if len(committed) != 1 {
-		t.Fatalf("expected one committed item, got %d", len(committed))
-	}
-	if committed[0].Action != ImportActionUpdateExisting {
-		t.Fatalf("expected update action, got %q", committed[0].Action)
-	}
-	if committed[0].ExistingGameID != existingGame.ID || committed[0].Source.Game.ID != existingGame.ID {
-		t.Fatalf("expected existing game id %q, got item=%+v", existingGame.ID, committed[0])
-	}
-	if len(committed[0].Sessions) != 1 || committed[0].Sessions[0].GameID != existingGame.ID {
-		t.Fatalf("expected session to target existing game, got %+v", committed[0].Sessions)
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			var committed []ImportItem
+			deps := Dependencies{
+				ListGames: func() ([]models.Game, error) {
+					return []models.Game{existingGame}, nil
+				},
+				AddItems: func(items []ImportItem) (ImportResult, error) {
+					committed = items
+					sessionsImported := 0
+					if len(items) > 0 {
+						sessionsImported = len(items[0].Sessions)
+					}
+					return ImportResult{Success: len(items), SessionsImported: sessionsImported}, nil
+				},
+			}
+
+			result, err := NewPotatoVNImporter(deps).Import(zipPath, true, testCase.samePathAction)
+			if err != nil {
+				t.Fatalf("Import returned error: %v", err)
+			}
+			if result.Skipped != 0 || result.Success != 1 {
+				t.Fatalf("expected one merged success without skips, got result=%+v", result)
+			}
+			if len(committed) != 1 {
+				t.Fatalf("expected one committed item, got %d", len(committed))
+			}
+			if committed[0].Action != testCase.importAction {
+				t.Fatalf("expected action %q, got %q", testCase.importAction, committed[0].Action)
+			}
+			if committed[0].ExistingGameID != existingGame.ID || committed[0].Source.Game.ID != existingGame.ID {
+				t.Fatalf("expected existing game id %q, got item=%+v", existingGame.ID, committed[0])
+			}
+			if len(committed[0].Sessions) != 1 || committed[0].Sessions[0].GameID != existingGame.ID {
+				t.Fatalf("expected session to target existing game, got %+v", committed[0].Sessions)
+			}
+		})
 	}
 }
 
@@ -419,6 +696,11 @@ func TestReinaManagerMixedMappingUsesMergedFieldsAndBangumiIdentity(t *testing.T
 
 	if game.SourceType != enums.Bangumi || game.SourceID != "12345" {
 		t.Fatalf("expected Bangumi identity for mixed game, got %s/%s", game.SourceType, game.SourceID)
+	}
+	if len(game.MetadataSources) != 2 ||
+		game.MetadataSources[0].SourceType != enums.Bangumi ||
+		game.MetadataSources[1].SourceType != enums.VNDB {
+		t.Fatalf("expected independent Bangumi and VNDB sources, got %+v", game.MetadataSources)
 	}
 	if game.Name != "Bangumi 中文名" || game.CoverURL != "https://example.com/bgm.jpg" {
 		t.Fatalf("unexpected mixed basic fields: name=%q cover=%q", game.Name, game.CoverURL)

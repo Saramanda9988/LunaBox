@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
-import type { appconf } from "../../wailsjs/go/models";
+import type { appconf } from "../../src/bindings/models";
 
 import {
   DEFAULT_APP_ZOOM,

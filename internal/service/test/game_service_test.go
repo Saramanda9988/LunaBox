@@ -8,6 +8,7 @@ import (
 	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
 	"lunabox/internal/service"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -119,6 +120,136 @@ func TestGameService_GetGameByID(t *testing.T) {
 			t.Error("期望返回错误，但没有错误")
 		}
 	})
+}
+
+func TestGameService_ManagesMultipleMetadataSources(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	gameService := service.NewGameService()
+	gameService.Init(context.Background(), db, &appconf.AppConfig{})
+	game := createTestGame()
+	game.ID = "multi-source-game"
+	if err := addGameViaMetadata(gameService, game); err != nil {
+		t.Fatalf("add game: %v", err)
+	}
+
+	if err := gameService.UpsertGameMetadataSource(game.ID, enums.Bangumi, "101"); err != nil {
+		t.Fatalf("add Bangumi source: %v", err)
+	}
+	if err := gameService.UpsertGameMetadataSource(game.ID, enums.Hikarinagi, "hikari-202"); err != nil {
+		t.Fatalf("add Hikarinagi source: %v", err)
+	}
+	if err := gameService.SetDefaultMetadataSource(game.ID, enums.Hikarinagi); err != nil {
+		t.Fatalf("set default source: %v", err)
+	}
+
+	saved, err := gameService.GetGameByID(game.ID)
+	if err != nil {
+		t.Fatalf("get game: %v", err)
+	}
+	if len(saved.MetadataSources) != 2 {
+		t.Fatalf("expected two metadata sources, got %d", len(saved.MetadataSources))
+	}
+	if saved.SourceType != enums.Hikarinagi || saved.SourceID != "hikari-202" {
+		t.Fatalf("unexpected default source: %s/%s", saved.SourceType, saved.SourceID)
+	}
+	if err := gameService.UpsertGameMetadataSource(game.ID, enums.Hikarinagi, "hikari-303"); err != nil {
+		t.Fatalf("update default source ID: %v", err)
+	}
+	saved, err = gameService.GetGameByID(game.ID)
+	if err != nil {
+		t.Fatalf("get game after default source ID update: %v", err)
+	}
+	if saved.SourceID != "hikari-303" {
+		t.Fatalf("default source ID projection was not updated: %s", saved.SourceID)
+	}
+
+	if err := gameService.DeleteGameMetadataSource(game.ID, enums.Hikarinagi); err != nil {
+		t.Fatalf("delete default source: %v", err)
+	}
+	saved, err = gameService.GetGameByID(game.ID)
+	if err != nil {
+		t.Fatalf("get game after deletion: %v", err)
+	}
+	if len(saved.MetadataSources) != 1 || saved.SourceType != enums.Bangumi || saved.SourceID != "101" {
+		t.Fatalf("unexpected fallback source after deletion: %#v", saved)
+	}
+
+	var tombstoneCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sync_tombstones WHERE entity_type = 'game_metadata_source' AND entity_id = ?`, game.ID+"::hikarinagi").Scan(&tombstoneCount); err != nil {
+		t.Fatalf("query metadata source tombstone: %v", err)
+	}
+	if tombstoneCount != 1 {
+		t.Fatalf("expected one metadata source tombstone, got %d", tombstoneCount)
+	}
+}
+
+func TestGameService_RejectsDuplicateInitialMetadataSources(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	gameService := service.NewGameService()
+	gameService.Init(context.Background(), db, &appconf.AppConfig{})
+	game := createTestGame()
+	game.ID = "duplicate-initial-source-game"
+	game.SourceType = enums.Bangumi
+	game.SourceID = "101"
+	game.MetadataSources = []models.GameMetadataSource{
+		{SourceType: enums.Bangumi, SourceID: "101"},
+		{SourceType: enums.Bangumi, SourceID: "202"},
+	}
+
+	err := addGameViaMetadata(gameService, game)
+	if err == nil {
+		t.Fatal("expected duplicate metadata sources to be rejected")
+	}
+	if !strings.Contains(err.Error(), "bangumi 元数据记录存在多个") {
+		t.Fatalf("unexpected duplicate source error: %v", err)
+	}
+
+	var count int
+	if queryErr := db.QueryRow(`SELECT COUNT(*) FROM games WHERE id = ?`, game.ID).Scan(&count); queryErr != nil {
+		t.Fatalf("query rejected game: %v", queryErr)
+	}
+	if count != 0 {
+		t.Fatalf("rejected game was persisted: %d", count)
+	}
+}
+
+func TestGameService_PersistsInitialMetadataSourcesWithSelectedDefault(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	gameService := service.NewGameService()
+	gameService.Init(context.Background(), db, &appconf.AppConfig{})
+	game := createTestGame()
+	game.ID = "selected-default-source-game"
+	game.Name = "来自 Hikarinagi 的主体元数据"
+	game.SourceType = enums.Hikarinagi
+	game.SourceID = "202"
+	game.MetadataSources = []models.GameMetadataSource{
+		{SourceType: enums.Bangumi, SourceID: "101"},
+		{SourceType: enums.Hikarinagi, SourceID: "202"},
+	}
+
+	if err := addGameViaMetadata(gameService, game); err != nil {
+		t.Fatalf("add game with initial metadata sources: %v", err)
+	}
+
+	saved, err := gameService.GetGameByID(game.ID)
+	if err != nil {
+		t.Fatalf("get saved game: %v", err)
+	}
+	if saved.Name != game.Name {
+		t.Fatalf("unexpected saved metadata: %q", saved.Name)
+	}
+	if saved.SourceType != enums.Hikarinagi || saved.SourceID != "202" {
+		t.Fatalf("unexpected selected default source: %s/%s", saved.SourceType, saved.SourceID)
+	}
+	if len(saved.MetadataSources) != 2 {
+		t.Fatalf("expected all metadata sources to be saved, got %+v", saved.MetadataSources)
+	}
 }
 
 func TestGameService_AddGameFromWebMetadataPersistsLaunchFields(t *testing.T) {
@@ -312,6 +443,34 @@ func TestGameService_GetGames(t *testing.T) {
 		}
 		if resp.Games[0].Name != "Alpha One" {
 			t.Fatalf("期望按名称升序返回 Alpha One, 实际 %s", resp.Games[0].Name)
+		}
+	})
+
+	t.Run("别名参与搜索", func(t *testing.T) {
+		newDB, newCleanup := setupTestDB(t)
+		defer newCleanup()
+
+		newService := service.NewGameService()
+		newService.Init(context.Background(), newDB, &appconf.AppConfig{})
+
+		game := createTestGame()
+		game.ID = "alias-search"
+		game.Name = "素晴らしき日々～不連続存在～"
+		game.Aliases = []string{" 素晴日 ", "SubaHibi", "subahibi"}
+		if err := addGameViaMetadata(newService, game); err != nil {
+			t.Fatalf("添加带别名的游戏失败: %v", err)
+		}
+
+		resp, err := newService.GetGames(vo.GameListRequest{SearchQuery: "素晴日"})
+		if err != nil {
+			t.Fatalf("按别名搜索失败: %v", err)
+		}
+		if resp.Total != 1 || len(resp.Games) != 1 || resp.Games[0].ID != game.ID {
+			t.Fatalf("别名搜索结果异常: total=%d games=%+v", resp.Total, resp.Games)
+		}
+		wantAliases := []string{"素晴日", "SubaHibi"}
+		if !reflect.DeepEqual(resp.Games[0].Aliases, wantAliases) {
+			t.Fatalf("别名归一化异常: got=%#v want=%#v", resp.Games[0].Aliases, wantAliases)
 		}
 	})
 

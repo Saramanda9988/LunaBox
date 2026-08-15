@@ -10,7 +10,7 @@ export interface DropdownMenuItem {
   description?: string;
   /** UnoCSS / MDI 图标类名，例如 "i-mdi-gamepad-variant" */
   icon?: string;
-  /** 图片图标路径，例如 "/potatovn.png" */
+  /** 图片资源 URL，例如通过静态 import 获取的图片地址 */
   iconSrc?: string;
   /** 图标颜色类名，例如 "text-success-500" */
   iconColor?: string;
@@ -29,6 +29,7 @@ export interface DropdownMenuItem {
 interface BetterDropdownMenuProps {
   trigger: ReactNode;
   items: DropdownMenuItem[];
+  ariaLabel?: string;
   align?: "start" | "end";
   menuWidth?: string;
   title?: string;
@@ -39,6 +40,7 @@ interface BetterDropdownMenuProps {
 export function BetterDropdownMenu({
   trigger,
   items,
+  ariaLabel,
   align = "end",
   menuWidth = "min-w-[180px]",
   title,
@@ -47,7 +49,12 @@ export function BetterDropdownMenu({
 }: BetterDropdownMenuProps) {
   return (
     <Menu as="div" className="relative inline-block">
-      <MenuButton disabled={disabled} as="div" className="cursor-pointer">
+      <MenuButton
+        disabled={disabled}
+        as="div"
+        className="cursor-pointer"
+        aria-label={ariaLabel}
+      >
         {trigger}
       </MenuButton>
 

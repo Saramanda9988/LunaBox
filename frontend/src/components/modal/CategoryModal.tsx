@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { CATEGORY_NAME_MAX_LENGTH } from "../../consts/category";
 import { ModalPortal } from "../ui/ModalPortal";
 
 interface CategoryModalProps {
@@ -29,6 +30,7 @@ export function CategoryModal({
       : t("categories.modal.editTitle");
   const submitText
     = mode === "add" ? t("categories.modal.create") : t("common.save");
+  const characterCountText = `${value.length}/${CATEGORY_NAME_MAX_LENGTH}`;
 
   return (
     <ModalPortal>
@@ -37,22 +39,30 @@ export function CategoryModal({
           <h3 className="text-xl font-bold text-brand-900 dark:text-white mb-4">
             {title}
           </h3>
-          <input
-            type="text"
-            value={value}
-            onChange={e => onChange(e.target.value)}
-            placeholder={t("categories.modal.namePlaceholder")}
-            className="w-full p-2 border border-brand-300 rounded-lg mb-4 dark:bg-brand-700 dark:border-brand-600 dark:text-white focus:ring-2 focus:ring-neutral-500"
-            autoFocus
-          />
+          <div className="relative mb-4">
+            <input
+              type="text"
+              value={value}
+              onChange={e => onChange(e.target.value)}
+              maxLength={CATEGORY_NAME_MAX_LENGTH}
+              placeholder={t("categories.modal.namePlaceholder")}
+              className="w-full rounded-lg border border-brand-300 p-2 pr-16 focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+              autoFocus
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs tabular-nums text-brand-400 dark:text-brand-500">
+              {characterCountText}
+            </span>
+          </div>
           <div className="flex justify-end gap-2">
             <button
+              type="button"
               onClick={onClose}
               className="px-4 py-2 text-brand-700 hover:bg-brand-100 rounded-lg dark:text-brand-300 dark:hover:bg-brand-700"
             >
               {t("common.cancel")}
             </button>
             <button
+              type="button"
               onClick={onSubmit}
               disabled={!value.trim()}
               className="px-4 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"

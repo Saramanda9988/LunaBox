@@ -43,10 +43,12 @@ func NewMCPServerService() *MCPServerService {
 	return &MCPServerService{}
 }
 
+//wails:ignore
 func (s *MCPServerService) Init(ctx context.Context) {
 	s.ctx = ctx
 }
 
+//wails:ignore
 func (s *MCPServerService) SetReadService(readService *MCPReadService) {
 	s.readService = readService
 }
