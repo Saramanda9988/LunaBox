@@ -86,19 +86,9 @@ jobs:
           - arch: amd64
             mode: portable
             runner: windows-2025
-          - arch: arm64
-            mode: portable
-            runner: windows-11-arm
-            msystem: CLANGARM64
-            toolchain: mingw-w64-clang-aarch64-toolchain
           - arch: amd64
             mode: installer
             runner: windows-2025
-          - arch: arm64
-            mode: installer
-            runner: windows-11-arm
-            msystem: CLANGARM64
-            toolchain: mingw-w64-clang-aarch64-toolchain
 
     steps:
       - name: Checkout code
@@ -123,25 +113,6 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
-
-      - name: Setup ARM64 CGO toolchain
-        id: msys2-arm64
-        if: matrix.arch == 'arm64'
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: ${{ matrix.msystem }}
-          path-type: inherit
-          install: ${{ matrix.toolchain }}
-
-      - name: Export ARM64 MSYS2 location
-        if: matrix.arch == 'arm64'
-        shell: pwsh
-        run: |
-          $Location = '${{ steps.msys2-arm64.outputs.msys2-location }}'
-          if ([string]::IsNullOrWhiteSpace($Location)) {
-            throw 'MSYS2 location output is empty.'
-          }
-          "MSYS2_LOCATION=$Location" >> $env:GITHUB_ENV
 
       - name: Install NSIS
         if: matrix.mode == 'installer'
@@ -471,6 +442,7 @@ jobs:
             --output ./release
             --version "$VERSION"
             --repository "$GITHUB_REPOSITORY"
+            --architectures amd64
           )
           if [ -n "$PREVIOUS_VERSION" ]; then
             ARGS+=(

@@ -64,6 +64,48 @@ func TestRunBuildsValidatedManifestAndFullFallbacks(t *testing.T) {
 	}
 }
 
+func TestRunBuildsOnlySelectedArchitectures(t *testing.T) {
+	t.Parallel()
+
+	inputRoot := t.TempDir()
+	outputDir := t.TempDir()
+	version := "2.0.0-test"
+	for _, mode := range []string{"portable", "installer"} {
+		channel := fmt.Sprintf("windows-amd64-%s", mode)
+		dir := filepath.Join(inputRoot, fmt.Sprintf("update-runtime-%s-%s", version, channel))
+		writeRuntimeFixture(t, dir)
+	}
+
+	if err := run(options{
+		inputRoot:     inputRoot,
+		outputDir:     outputDir,
+		version:       version,
+		repository:    "example/LunaBox",
+		architectures: "amd64",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	manifestPath := filepath.Join(outputDir, "LunaBox-2.0.0-test-update-manifest.json")
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest updateutils.ReleaseManifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if len(manifest.Channels) != 2 {
+		t.Fatalf("got %d channels, want 2", len(manifest.Channels))
+	}
+	for _, mode := range []string{"portable", "installer"} {
+		name := fmt.Sprintf("windows-amd64-%s", mode)
+		if _, ok := manifest.Channels[name]; !ok {
+			t.Fatalf("channel %s is missing", name)
+		}
+	}
+}
+
 func TestBuildPatchUsesUpdaterCompatibleZstdFormat(t *testing.T) {
 	if _, err := exec.LookPath("zstd"); err != nil {
 		t.Skip("zstd CLI is not installed")

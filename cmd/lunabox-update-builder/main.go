@@ -25,6 +25,7 @@ type options struct {
 	version         string
 	previousVersion string
 	repository      string
+	architectures   string
 }
 
 type managedFileSpec struct {
@@ -50,6 +51,7 @@ func main() {
 	flag.StringVar(&opts.version, "version", "", "target version")
 	flag.StringVar(&opts.previousVersion, "previous-version", "", "previous stable version")
 	flag.StringVar(&opts.repository, "repository", "", "GitHub owner/repository")
+	flag.StringVar(&opts.architectures, "architectures", "amd64,arm64", "comma-separated Windows architectures to publish")
 	flag.Parse()
 
 	if err := run(opts); err != nil {
@@ -71,7 +73,11 @@ func run(opts options) error {
 		Version:       opts.version,
 		Channels:      make(map[string]updateutils.ReleaseChannel),
 	}
-	for _, arch := range []string{"amd64", "arm64"} {
+	architectures, err := parseArchitectures(opts.architectures)
+	if err != nil {
+		return err
+	}
+	for _, arch := range architectures {
 		for _, mode := range []string{"portable", "installer"} {
 			channelName := fmt.Sprintf("windows-%s-%s", arch, mode)
 			inputDir := filepath.Join(opts.inputRoot, fmt.Sprintf("update-runtime-%s-%s", opts.version, channelName))
@@ -104,6 +110,28 @@ func run(opts options) error {
 	}
 	fmt.Printf("generated %s with %d channels\n", manifestPath, len(manifest.Channels))
 	return nil
+}
+
+func parseArchitectures(value string) ([]string, error) {
+	if strings.TrimSpace(value) == "" {
+		return []string{"amd64", "arm64"}, nil
+	}
+
+	allowed := map[string]bool{"amd64": true, "arm64": true}
+	seen := make(map[string]bool)
+	architectures := make([]string, 0, 2)
+	for _, item := range strings.Split(value, ",") {
+		arch := strings.TrimSpace(item)
+		if !allowed[arch] {
+			return nil, fmt.Errorf("unsupported architecture %q", arch)
+		}
+		if seen[arch] {
+			continue
+		}
+		seen[arch] = true
+		architectures = append(architectures, arch)
+	}
+	return architectures, nil
 }
 
 func buildChannel(opts options, channelName string, mode string, inputDir string) (updateutils.ReleaseChannel, error) {
