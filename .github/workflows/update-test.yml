@@ -151,6 +151,26 @@ jobs:
             throw "Portable artifact not found: $Artifact"
           }
 
+          $ExtractDir = 'build/signing/portable-package'
+          if (Test-Path -LiteralPath $ExtractDir) {
+            Remove-Item -LiteralPath $ExtractDir -Recurse -Force
+          }
+          Expand-Archive -LiteralPath $Artifact -DestinationPath $ExtractDir -Force
+          $PayloadDir = (Get-ChildItem -Path $ExtractDir -Filter 'LunaBox.exe' -Recurse | Select-Object -First 1).Directory.FullName
+          if ([string]::IsNullOrWhiteSpace($PayloadDir)) {
+            throw 'Portable artifact does not contain LunaBox.exe.'
+          }
+
+          $SigningDir = 'build/signing/test-portable-payload'
+          New-Item -ItemType Directory -Force -Path $SigningDir | Out-Null
+          foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe')) {
+            $Source = Join-Path $PayloadDir $Name
+            if (!(Test-Path -LiteralPath $Source)) {
+              throw "Portable artifact is missing $Name."
+            }
+            Copy-Item -LiteralPath $Source -Destination $SigningDir -Force
+          }
+
       - name: Build installer payload
         if: matrix.mode == 'installer'
         shell: pwsh
@@ -186,7 +206,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-lunabox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-portable
-          path: build/bin/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-portable.zip
+          path: build/signing/test-portable-payload/
           if-no-files-found: error
           retention-days: 1
 
@@ -198,48 +218,56 @@ jobs:
           organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
           project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
           signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG || 'test-signing' }}
-          artifact-configuration-slug: ${{ vars.SIGNPATH_PORTABLE_ARTIFACT_CONFIGURATION_SLUG || 'github-portable' }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_TEST_INSTALLER_PAYLOAD_ARTIFACT_CONFIGURATION_SLUG || 'github-test-installer-payload-v3' }}
           github-artifact-id: ${{ steps.upload-unsigned-portable.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 1200
-          output-artifact-directory: signed
+          output-artifact-directory: signed-portable-payload
 
       - name: Verify signed portable artifact
         if: matrix.mode == 'portable'
         shell: pwsh
         run: |
-          $ErrorActionPreference = "Stop"
-          $Artifact = "signed/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-portable.zip"
-          if (!(Test-Path $Artifact)) {
-            Get-ChildItem -Path signed -Recurse | ForEach-Object { Write-Host $_.FullName }
-            throw "Signed portable artifact not found: $Artifact"
-          }
-
-          $ExtractDir = Join-Path $env:RUNNER_TEMP "lunabox-signed-portable"
-          if (Test-Path $ExtractDir) { Remove-Item $ExtractDir -Recurse -Force }
-          Expand-Archive -Path $Artifact -DestinationPath $ExtractDir -Force
-          $PayloadDir = (Get-ChildItem $ExtractDir -Filter "LunaBox.exe" -Recurse | Select-Object -First 1).Directory.FullName
-          if ([string]::IsNullOrWhiteSpace($PayloadDir)) {
-            throw "Signed portable archive does not contain LunaBox.exe."
-          }
-          foreach ($Name in @("LunaBox.exe", "lunacli.exe", "LunaBoxUpdater.exe")) {
-            $Path = Join-Path $PayloadDir $Name
-            if (!(Test-Path $Path)) { throw "Signed portable archive is missing $Name." }
-            $Signature = Get-AuthenticodeSignature $Path
-            if ($Signature.Status -ne "Valid") {
+          $ErrorActionPreference = 'Stop'
+          $UnsignedArtifact = 'build/bin/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-portable.zip'
+          $SignedPayloadDir = 'signed-portable-payload'
+          foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe')) {
+            $SignedFile = Join-Path $SignedPayloadDir $Name
+            if (!(Test-Path -LiteralPath $SignedFile)) {
+              Get-ChildItem -Path $SignedPayloadDir -Recurse | ForEach-Object { Write-Host $_.FullName }
+              throw "Signed portable payload is missing $Name."
+            }
+            $Signature = Get-AuthenticodeSignature $SignedFile
+            if ($Signature.Status -ne 'Valid') {
               throw "$Name does not have a valid Authenticode signature: $($Signature.Status)"
             }
           }
 
-          $RuntimeDir = Join-Path $PWD "update-runtime"
+          $ExtractDir = Join-Path $env:RUNNER_TEMP 'lunabox-signed-portable'
+          if (Test-Path $ExtractDir) { Remove-Item $ExtractDir -Recurse -Force }
+          Expand-Archive -LiteralPath $UnsignedArtifact -DestinationPath $ExtractDir -Force
+          $PayloadDir = (Get-ChildItem $ExtractDir -Filter 'LunaBox.exe' -Recurse | Select-Object -First 1).Directory.FullName
+          if ([string]::IsNullOrWhiteSpace($PayloadDir)) {
+            throw 'Portable artifact does not contain LunaBox.exe.'
+          }
+          foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe')) {
+            Copy-Item -LiteralPath (Join-Path $SignedPayloadDir $Name) -Destination $PayloadDir -Force
+          }
+
+          New-Item -ItemType Directory -Force -Path 'signed' | Out-Null
+          $Artifact = 'signed/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-portable.zip'
+          if (Test-Path -LiteralPath $Artifact) { Remove-Item -LiteralPath $Artifact -Force }
+          Compress-Archive -LiteralPath $PayloadDir -DestinationPath $Artifact -CompressionLevel Optimal
+
+          $RuntimeDir = Join-Path $PWD 'update-runtime'
           if (Test-Path $RuntimeDir) { Remove-Item $RuntimeDir -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
-          foreach ($Name in @("LunaBox.exe", "lunacli.exe", "LunaBoxUpdater.exe", "duckdb.dll")) {
+          foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe', 'duckdb.dll')) {
             $Source = Join-Path $PayloadDir $Name
             if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
           }
-          if (Test-Path (Join-Path $PayloadDir "7z")) {
-            Copy-Item (Join-Path $PayloadDir "7z") -Destination $RuntimeDir -Recurse -Force
+          if (Test-Path (Join-Path $PayloadDir '7z')) {
+            Copy-Item (Join-Path $PayloadDir '7z') -Destination $RuntimeDir -Recurse -Force
           }
 
       - name: Upload portable artifact
