@@ -73,17 +73,33 @@ jobs:
           echo "previous_version=$PREVIOUS_VERSION" >> "$GITHUB_OUTPUT"
 
   build-prerelease:
-    name: Build Test Release
+    name: Windows ${{ matrix.arch }} / ${{ matrix.mode }}
     needs: prepare
-    runs-on: ${{ matrix.arch == 'arm64' && 'windows-11-arm' || 'windows-latest' }}
+    runs-on: ${{ matrix.runner }}
     permissions:
       actions: read
       contents: read
     strategy:
+      fail-fast: true
       matrix:
-        arch: [amd64, arm64]
-        mode: [portable, installer]
-    
+        include:
+          - arch: amd64
+            mode: portable
+            runner: windows-2025
+          - arch: arm64
+            mode: portable
+            runner: windows-11-arm
+            msystem: CLANGARM64
+            toolchain: mingw-w64-clang-aarch64-toolchain
+          - arch: amd64
+            mode: installer
+            runner: windows-2025
+          - arch: arm64
+            mode: installer
+            runner: windows-11-arm
+            msystem: CLANGARM64
+            toolchain: mingw-w64-clang-aarch64-toolchain
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -94,208 +110,107 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: true
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'pnpm'
-          cache-dependency-path: 'frontend/pnpm-lock.yaml'
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
-      - name: Setup Wails
-        run: |
-          $WailsVersion = (go list -m -f "{{.Version}}" github.com/wailsapp/wails/v2).Trim()
-          go install "github.com/wailsapp/wails/v2/cmd/wails@$WailsVersion"
-        shell: pwsh
-
-      - name: Setup MSYS2 for ARM64 CGO
-        id: msys2
+      - name: Setup ARM64 CGO toolchain
+        id: msys2-arm64
         if: matrix.arch == 'arm64'
         uses: msys2/setup-msys2@v2
         with:
-          msystem: CLANGARM64
+          msystem: ${{ matrix.msystem }}
           path-type: inherit
-          install: mingw-w64-clang-aarch64-toolchain
+          install: ${{ matrix.toolchain }}
+
+      - name: Export ARM64 MSYS2 location
+        if: matrix.arch == 'arm64'
+        shell: pwsh
+        run: |
+          $Location = '${{ steps.msys2-arm64.outputs.msys2-location }}'
+          if ([string]::IsNullOrWhiteSpace($Location)) {
+            throw 'MSYS2 location output is empty.'
+          }
+          "MSYS2_LOCATION=$Location" >> $env:GITHUB_ENV
 
       - name: Install NSIS
         if: matrix.mode == 'installer'
-        run: |
-          choco install nsis -y
-          echo "C:\Program Files (x86)\NSIS" >> $env:GITHUB_PATH
         shell: pwsh
-
-      - name: Configure build architecture
         run: |
-          "GOOS=windows" >> $env:GITHUB_ENV
-          "GOARCH=${{ matrix.arch }}" >> $env:GITHUB_ENV
-          $env:GOOS = "windows"
-          $env:GOARCH = "${{ matrix.arch }}"
+          choco install nsis --no-progress -y
+          'C:\Program Files (x86)\NSIS' >> $env:GITHUB_PATH
 
-          if ("${{ matrix.arch }}" -eq "arm64") {
-            $SourceDir = Join-Path $PWD "lib\winarm64"
-            $BuildLibDir = Join-Path $PWD "build\duckdb\winarm64"
-            $DuckDBDll = Join-Path $SourceDir "duckdb.dll"
-            $DuckDBLib = Join-Path $SourceDir "duckdb.lib"
-
-            if (!(Test-Path $DuckDBDll) -or !(Test-Path $DuckDBLib)) {
-              throw "Win-ARM64 DuckDB dynamic library is missing under lib\winarm64."
-            }
-
-            New-Item -ItemType Directory -Force -Path $BuildLibDir | Out-Null
-            Copy-Item $DuckDBDll -Destination (Join-Path $BuildLibDir "duckdb.dll") -Force
-            Copy-Item $DuckDBLib -Destination (Join-Path $BuildLibDir "duckdb.lib") -Force
-            Copy-Item $DuckDBLib -Destination (Join-Path $BuildLibDir "libduckdb.dll.a") -Force
-
-            $Msys2Location = "${{ steps.msys2.outputs.msys2-location }}"
-            if ([string]::IsNullOrWhiteSpace($Msys2Location)) {
-              throw "MSYS2 location output is empty."
-            }
-
-            $ClangArm64Bin = Join-Path $Msys2Location "clangarm64\bin"
-            $Clang = Join-Path $ClangArm64Bin "clang.exe"
-            $ClangXX = Join-Path $ClangArm64Bin "clang++.exe"
-            if (!(Test-Path $Clang) -or !(Test-Path $ClangXX)) {
-              throw "MSYS2 CLANGARM64 compiler was not found under $ClangArm64Bin."
-            }
-            $TargetTriple = "aarch64-w64-windows-gnu"
-            $ClangTarget = (& $Clang --target=$TargetTriple -dumpmachine).Trim()
-            if ($ClangTarget -notmatch "aarch64|arm64") {
-              throw "MSYS2 CLANGARM64 compiler has unexpected target with --target=$TargetTriple`: $ClangTarget."
-            }
-            Write-Host "Using ARM64 CGO compiler: $Clang --target=$TargetTriple ($ClangTarget)"
-
-            "MSYS2_LOCATION=$Msys2Location" >> $env:GITHUB_ENV
-            "CGO_ENABLED=1" >> $env:GITHUB_ENV
-            "CC=$Clang --target=$TargetTriple" >> $env:GITHUB_ENV
-            "CXX=$ClangXX --target=$TargetTriple" >> $env:GITHUB_ENV
-            "CGO_LDFLAGS=-L$BuildLibDir -lduckdb" >> $env:GITHUB_ENV
-            "GO_BUILD_TAGS=duckdb_use_lib" >> $env:GITHUB_ENV
-            "DUCKDB_DYNAMIC_DLL=$(Join-Path $BuildLibDir "duckdb.dll")" >> $env:GITHUB_ENV
-            $env:MSYS2_LOCATION = $Msys2Location
-            $env:CGO_ENABLED = "1"
-            $env:CC = "$Clang --target=$TargetTriple"
-            $env:CXX = "$ClangXX --target=$TargetTriple"
-            $env:CGO_LDFLAGS = "-L$BuildLibDir -lduckdb"
-            $env:PATH = "$ClangArm64Bin;$BuildLibDir;$env:PATH"
-            go env -w CGO_ENABLED=1 CC="$env:CC" CXX="$env:CXX" CGO_LDFLAGS="$env:CGO_LDFLAGS"
-            go env GOOS GOARCH GOHOSTOS GOHOSTARCH CGO_ENABLED CC CXX CGO_LDFLAGS
-            go test -run "^$" -tags duckdb_use_lib github.com/duckdb/duckdb-go-bindings
-            $ClangArm64Bin >> $env:GITHUB_PATH
-            $BuildLibDir >> $env:GITHUB_PATH
-          }
+      - name: Install matching Wails v3 CLI
         shell: pwsh
-
-      - name: Install frontend dependencies
-        working-directory: ./frontend
-        run: pnpm install
-
-      - name: Generate version info
-        id: version_info
         run: |
-          $VERSION = "${{ needs.prepare.outputs.version }}"
-          $COMMIT = "${{ github.sha }}".Substring(0,7)
-          $BUILD_TIME = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-
-          echo "VERSION=$VERSION" >> $env:GITHUB_OUTPUT
-          echo "COMMIT=$COMMIT" >> $env:GITHUB_OUTPUT
-          echo "BUILD_TIME=$BUILD_TIME" >> $env:GITHUB_OUTPUT
-          Write-Host "Test Version: $VERSION"
-        shell: pwsh
-
-      - name: Generate build env
-        run: |
-          $ErrorActionPreference = "Stop"
-          $BangumiClientID = $env:LUNABOX_BANGUMI_CLIENT_ID
-          $BangumiClientSecret = $env:LUNABOX_BANGUMI_CLIENT_SECRET
-          $HikarinagiClientID = $env:LUNABOX_HIKARINAGI_CLIENT_ID
-          $HikarinagiClientSecret = $env:LUNABOX_HIKARINAGI_CLIENT_SECRET
-          $TouchGalToken = $env:LUNABOX_TOUCHGAL_TOKEN
-          $UmbraClientID = $env:LUNABOX_UMBRA_CLIENT_ID
-          $UmbraRegistrationToken = $env:LUNABOX_UMBRA_REGISTRATION_TOKEN
-
-          if ([string]::IsNullOrWhiteSpace($BangumiClientID) -xor [string]::IsNullOrWhiteSpace($BangumiClientSecret)) {
-            throw "LUNABOX_BANGUMI_CLIENT_ID and LUNABOX_BANGUMI_CLIENT_SECRET must be configured together."
-          }
-          if ([string]::IsNullOrWhiteSpace($HikarinagiClientID) -xor [string]::IsNullOrWhiteSpace($HikarinagiClientSecret)) {
-            throw "LUNABOX_HIKARINAGI_CLIENT_ID and LUNABOX_HIKARINAGI_CLIENT_SECRET must be configured together."
-          }
-          $UmbraValues = @($UmbraClientID, $UmbraRegistrationToken)
-          $UmbraConfiguredCount = @($UmbraValues | Where-Object { ![string]::IsNullOrWhiteSpace($_) }).Count
-          if ($UmbraConfiguredCount -ne 0 -and $UmbraConfiguredCount -ne 2) {
-            throw "LUNABOX_UMBRA_CLIENT_ID and LUNABOX_UMBRA_REGISTRATION_TOKEN must be configured together."
+          $Version = (go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3).Trim()
+          go install "github.com/wailsapp/wails/v3/cmd/wails3@$Version"
+          $Installed = (& wails3 version 2>&1 | Out-String).Trim()
+          if ($Installed -ne $Version) {
+            throw "wails3 version mismatch: expected $Version, found $Installed"
           }
 
-          $Lines = @()
-          if (![string]::IsNullOrWhiteSpace($BangumiClientID)) {
-            $Lines += "LUNABOX_BANGUMI_CLIENT_ID=$BangumiClientID"
-            $Lines += "LUNABOX_BANGUMI_CLIENT_SECRET=$BangumiClientSecret"
-          }
-          if (![string]::IsNullOrWhiteSpace($HikarinagiClientID)) {
-            $Lines += "LUNABOX_HIKARINAGI_CLIENT_ID=$HikarinagiClientID"
-            $Lines += "LUNABOX_HIKARINAGI_CLIENT_SECRET=$HikarinagiClientSecret"
-          }
-          if (![string]::IsNullOrWhiteSpace($TouchGalToken)) {
-            $Lines += "LUNABOX_TOUCHGAL_TOKEN=$TouchGalToken"
-          }
-          if ($UmbraConfiguredCount -eq 2) {
-            $Lines += "LUNABOX_UMBRA_CLIENT_ID=$UmbraClientID"
-            $Lines += "LUNABOX_UMBRA_REGISTRATION_TOKEN=$UmbraRegistrationToken"
-          }
-
-          Set-Content -Path ".env.build" -Value $Lines -Encoding utf8
-          Write-Host "Generated .env.build for build-time injection."
+      - name: Build portable package
+        if: matrix.mode == 'portable'
         shell: pwsh
         env:
           LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
           LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
           LUNABOX_HIKARINAGI_CLIENT_ID: ${{ vars.LUNABOX_HIKARINAGI_CLIENT_ID }}
-          LUNABOX_HIKARINAGI_CLIENT_SECRET: ${{ secrets.LUNABOX_HIKARINAGI_CLIENT_SECRET }}
           LUNABOX_TOUCHGAL_TOKEN: ${{ secrets.LUNABOX_TOUCHGAL_TOKEN }}
           LUNABOX_UMBRA_CLIENT_ID: ${{ vars.LUNABOX_UMBRA_CLIENT_ID }}
           LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
-
-      - name: Build Portable with script
-        if: matrix.mode == 'portable'
         run: |
-          $ErrorActionPreference = "Stop"
-          .\scripts\build.bat "portable" "${{ steps.version_info.outputs.VERSION }}" "${{ matrix.arch }}"
+          $ErrorActionPreference = 'Stop'
+          .\scripts\build.bat portable '${{ needs.prepare.outputs.version }}' '${{ matrix.arch }}'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $Artifact = "build/bin/LunaBox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip"
-          if (!(Test-Path $Artifact)) {
-            Get-ChildItem -Path "build/bin" -Recurse | ForEach-Object { Write-Host $_.FullName }
-            throw "Build artifact not found: $Artifact"
+          $Artifact = 'build/bin/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-portable.zip'
+          if (!(Test-Path -LiteralPath $Artifact)) {
+            throw "Portable artifact not found: $Artifact"
           }
-        shell: pwsh
 
-      - name: Build Installer Payload with script
+      - name: Build installer payload
         if: matrix.mode == 'installer'
+        shell: pwsh
+        env:
+          LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
+          LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
+          LUNABOX_HIKARINAGI_CLIENT_ID: ${{ vars.LUNABOX_HIKARINAGI_CLIENT_ID }}
+          LUNABOX_TOUCHGAL_TOKEN: ${{ secrets.LUNABOX_TOUCHGAL_TOKEN }}
+          LUNABOX_UMBRA_CLIENT_ID: ${{ vars.LUNABOX_UMBRA_CLIENT_ID }}
+          LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
         run: |
-          $ErrorActionPreference = "Stop"
-          .\scripts\build.bat "installer-payload" "${{ steps.version_info.outputs.VERSION }}" "${{ matrix.arch }}"
+          $ErrorActionPreference = 'Stop'
+          .\scripts\build.bat installer-payload '${{ needs.prepare.outputs.version }}' '${{ matrix.arch }}'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          if (!(Test-Path "build/bin/LunaBox.exe") -or !(Test-Path "build/bin/lunacli.exe") -or !(Test-Path "build/bin/LunaBoxUpdater.exe")) {
-            Get-ChildItem -Path "build/bin" -Recurse | ForEach-Object { Write-Host $_.FullName }
-            throw "Installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe."
+          $PayloadDir = 'build/windows/payload/${{ matrix.arch }}'
+          if (!(Test-Path -LiteralPath "$PayloadDir/LunaBox.exe") -or !(Test-Path -LiteralPath "$PayloadDir/lunacli.exe") -or !(Test-Path -LiteralPath 'build/bin/LunaBoxUpdater.exe')) {
+            throw 'Installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe.'
           }
-        shell: pwsh
 
-      - name: Upload Unsigned Portable Artifact
+      - name: Upload unsigned portable artifact
         id: upload-unsigned-portable
         if: matrix.mode == 'portable'
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-lunabox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-portable
-          path: build/bin/LunaBox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip
+          name: unsigned-lunabox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-portable
+          path: build/bin/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-portable.zip
           if-no-files-found: error
+          retention-days: 1
 
-      - name: Sign Portable Artifact
+      - name: Sign portable artifact
         if: matrix.mode == 'portable'
         uses: signpath/github-action-submit-signing-request@v2
         with:
@@ -311,9 +226,10 @@ jobs:
 
       - name: Verify signed portable artifact
         if: matrix.mode == 'portable'
+        shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $Artifact = "signed/LunaBox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip"
+          $Artifact = "signed/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-portable.zip"
           if (!(Test-Path $Artifact)) {
             Get-ChildItem -Path signed -Recurse | ForEach-Object { Write-Host $_.FullName }
             throw "Signed portable artifact not found: $Artifact"
@@ -345,29 +261,29 @@ jobs:
           if (Test-Path (Join-Path $PayloadDir "7z")) {
             Copy-Item (Join-Path $PayloadDir "7z") -Destination $RuntimeDir -Recurse -Force
           }
-        shell: pwsh
 
-      - name: Upload Portable Artifact
+      - name: Upload portable artifact
         if: matrix.mode == 'portable'
         uses: actions/upload-artifact@v4
         with:
-          name: lunabox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-portable
-          path: signed/LunaBox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip
+          name: lunabox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-portable
+          path: signed/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-portable.zip
           if-no-files-found: error
 
-      - name: Upload Unsigned Installer Payload
+      - name: Upload unsigned installer payload
         id: upload-unsigned-installer-payload
         if: matrix.mode == 'installer'
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-lunabox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-installer-payload
+          name: unsigned-lunabox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-installer-payload
           path: |
-            build/bin/LunaBox.exe
-            build/bin/lunacli.exe
+            build/windows/payload/${{ matrix.arch }}/LunaBox.exe
+            build/windows/payload/${{ matrix.arch }}/lunacli.exe
             build/bin/LunaBoxUpdater.exe
           if-no-files-found: error
+          retention-days: 1
 
-      - name: Sign Installer Payload
+      - name: Sign installer payload
         if: matrix.mode == 'installer'
         uses: signpath/github-action-submit-signing-request@v2
         with:
@@ -381,16 +297,17 @@ jobs:
           wait-for-completion-timeout-in-seconds: 1200
           output-artifact-directory: signed-payload
 
-      - name: Build Installer from signed payload
+      - name: Build installer from signed payload
         if: matrix.mode == 'installer'
+        shell: pwsh
         run: |
-          $ErrorActionPreference = "Stop"
-          $SignedGui = "signed-payload/LunaBox.exe"
-          $SignedCli = "signed-payload/lunacli.exe"
-          $SignedUpdater = "signed-payload/LunaBoxUpdater.exe"
-          if (!(Test-Path $SignedGui) -or !(Test-Path $SignedCli) -or !(Test-Path $SignedUpdater)) {
+          $ErrorActionPreference = 'Stop'
+          $SignedGui = 'signed-payload/LunaBox.exe'
+          $SignedCli = 'signed-payload/lunacli.exe'
+          $SignedUpdater = 'signed-payload/LunaBoxUpdater.exe'
+          if (!(Test-Path -LiteralPath $SignedGui) -or !(Test-Path -LiteralPath $SignedCli) -or !(Test-Path -LiteralPath $SignedUpdater)) {
             Get-ChildItem -Path signed-payload -Recurse | ForEach-Object { Write-Host $_.FullName }
-            throw "Signed installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe."
+            throw 'Signed installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe.'
           }
           foreach ($Path in @($SignedGui, $SignedCli, $SignedUpdater)) {
             $Signature = Get-AuthenticodeSignature $Path
@@ -399,15 +316,16 @@ jobs:
             }
           }
 
-          Copy-Item $SignedGui -Destination "build/bin/LunaBox.exe" -Force
-          Copy-Item $SignedCli -Destination "build/bin/lunacli.exe" -Force
-          Copy-Item $SignedUpdater -Destination "build/bin/LunaBoxUpdater.exe" -Force
+          $PayloadDir = 'build/windows/payload/${{ matrix.arch }}'
+          Copy-Item -LiteralPath $SignedGui -Destination "$PayloadDir/LunaBox.exe" -Force
+          Copy-Item -LiteralPath $SignedCli -Destination "$PayloadDir/lunacli.exe" -Force
+          Copy-Item -LiteralPath $SignedUpdater -Destination 'build/bin/LunaBoxUpdater.exe' -Force
 
-          .\scripts\build.bat "installer-package" "${{ steps.version_info.outputs.VERSION }}" "${{ matrix.arch }}"
+          .\scripts\build.bat installer-package '${{ needs.prepare.outputs.version }}' '${{ matrix.arch }}'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $Artifact = "build/bin/LunaBox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe"
-          if (!(Test-Path $Artifact)) {
+          $Artifact = 'build/bin/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-setup.exe'
+          if (!(Test-Path -LiteralPath $Artifact)) {
             Get-ChildItem -Path "build/bin" -Recurse | ForEach-Object { Write-Host $_.FullName }
             throw "Installer artifact not found: $Artifact"
           }
@@ -415,32 +333,36 @@ jobs:
           $RuntimeDir = Join-Path $PWD "update-runtime"
           if (Test-Path $RuntimeDir) { Remove-Item $RuntimeDir -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
-          foreach ($Name in @("LunaBox.exe", "lunacli.exe", "LunaBoxUpdater.exe", "duckdb.dll")) {
+          foreach ($Name in @("LunaBoxUpdater.exe", "duckdb.dll")) {
             $Source = Join-Path "build/bin" $Name
+            if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
+          }
+          foreach ($Name in @("LunaBox.exe", "lunacli.exe")) {
+            $Source = Join-Path $PayloadDir $Name
             if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
           }
           if (Test-Path "build/bin/7z") {
             Copy-Item "build/bin/7z" -Destination $RuntimeDir -Recurse -Force
           }
-        shell: pwsh
 
       - name: Upload update runtime input
         uses: actions/upload-artifact@v4
         with:
-          name: update-runtime-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-${{ matrix.mode }}
+          name: update-runtime-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-${{ matrix.mode }}
           path: update-runtime/
           if-no-files-found: error
 
-      - name: Upload Unsigned Installer Artifact
+      - name: Upload unsigned installer
         id: upload-unsigned-installer
         if: matrix.mode == 'installer'
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-lunabox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-installer
-          path: build/bin/LunaBox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe
+          name: unsigned-lunabox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-installer
+          path: build/bin/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-setup.exe
           if-no-files-found: error
+          retention-days: 1
 
-      - name: Sign Installer Artifact
+      - name: Sign installer
         if: matrix.mode == 'installer'
         uses: signpath/github-action-submit-signing-request@v2
         with:
@@ -452,25 +374,25 @@ jobs:
           github-artifact-id: ${{ steps.upload-unsigned-installer.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 1200
-          output-artifact-directory: signed
+          output-artifact-directory: signed-installer
 
-      - name: Verify signed installer artifact
+      - name: Verify signed installer
         if: matrix.mode == 'installer'
+        shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $Artifact = "signed/LunaBox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe"
+          $Artifact = "signed-installer/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-setup.exe"
           if (!(Test-Path $Artifact)) {
-            Get-ChildItem -Path signed -Recurse | ForEach-Object { Write-Host $_.FullName }
+            Get-ChildItem -Path signed-installer -Recurse | ForEach-Object { Write-Host $_.FullName }
             throw "Signed installer artifact not found: $Artifact"
           }
-        shell: pwsh
 
-      - name: Upload Installer Artifact
+      - name: Upload installer
         if: matrix.mode == 'installer'
         uses: actions/upload-artifact@v4
         with:
-          name: lunabox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-installer
-          path: signed/LunaBox-${{ steps.version_info.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe
+          name: lunabox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-installer
+          path: signed-installer/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-setup.exe
           if-no-files-found: error
 
   create-prerelease:
