@@ -254,30 +254,17 @@ export function UpdateDialog({
                 </div>
               )}
 
-              <div className="flex gap-2">
-                {updateInfo.downloads.github && (
-                  <button
-                    type="button"
-                    onClick={() => handleDownload("github")}
-                    disabled={isUpdating}
-                    className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-neutral-600 hover:bg-neutral-700 rounded-lg transition-colors flex items-center justify-center gap-2"
-                  >
-                    <span className="i-mdi-github text-lg" />
-                    {t("updateDialog.githubDownload")}
-                  </button>
-                )}
-                {updateInfo.downloads.gitee && (
-                  <button
-                    type="button"
-                    onClick={() => handleDownload("gitee")}
-                    disabled={isUpdating}
-                    className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-neutral-600 hover:bg-neutral-700 rounded-lg transition-colors flex items-center justify-center gap-2"
-                  >
-                    <span className="i-mdi-cloud-download text-lg" />
-                    {t("updateDialog.giteeDownload")}
-                  </button>
-                )}
-              </div>
+              {updateInfo.downloads.gitee && (
+                <button
+                  type="button"
+                  onClick={() => handleDownload("gitee")}
+                  disabled={isUpdating}
+                  className="w-full px-4 py-2.5 text-sm font-medium text-white bg-neutral-600 hover:bg-neutral-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  <span className="i-mdi-cloud-download text-lg" />
+                  {t("updateDialog.giteeDownload")}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleSkip}
