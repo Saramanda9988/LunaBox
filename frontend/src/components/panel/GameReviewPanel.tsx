@@ -293,6 +293,7 @@ export function GameReviewPanel({ game }: GameReviewPanelProps) {
   const canSyncHikarinagi
     = Boolean(auth[modelEnums.SourceType.Hikarinagi])
       && gameHasProvider(game, modelEnums.SourceType.Hikarinagi);
+  const hasReviewContent = content.trim().length > 0;
   const autoSaveLabel
     = autoSaveStatus === "pending"
       ? t("gameReview.autoSave.pending")
@@ -409,6 +410,7 @@ export function GameReviewPanel({ game }: GameReviewPanelProps) {
                   autoSaveStatus === "saving"
                   || syncingProvider !== null
                   || !canSyncBangumi
+                  || !hasReviewContent
                 }
                 onClick={() =>
                   handleProviderSync(modelEnums.SourceType.Bangumi)}
@@ -423,6 +425,7 @@ export function GameReviewPanel({ game }: GameReviewPanelProps) {
                   autoSaveStatus === "saving"
                   || syncingProvider !== null
                   || !canSyncHikarinagi
+                  || !hasReviewContent
                 }
                 onClick={() =>
                   handleProviderSync(modelEnums.SourceType.Hikarinagi)}
