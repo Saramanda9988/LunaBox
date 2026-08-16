@@ -492,28 +492,33 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
           TAG: ${{ needs.prepare.outputs.tag }}
         run: |
+          SOURCE_FILE="sync/version-test.json"
+          SOURCE_VERSION="$(jq -r '.version // empty' "$SOURCE_FILE")"
+          if [ "$SOURCE_VERSION" != "$VERSION" ]; then
+            echo "$SOURCE_FILE version $SOURCE_VERSION does not match release version $VERSION" >&2
+            exit 1
+          fi
+
           RELEASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
           MANIFEST_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/LunaBox-${VERSION}-update-manifest.json"
-          jq -n \
-            --arg version "$VERSION" \
-            --arg release_date "$(date -u +%F)" \
+          jq \
             --arg release_url "$RELEASE_URL" \
             --arg manifest_url "$MANIFEST_URL" \
-            '{
-              version: $version,
-              release_date: $release_date,
-              changelog: ["LunaBox 应用内更新测试版本"],
-              downloads: {github: $release_url},
-              update_manifest_url: $manifest_url
-            }' > "release/LunaBox-${VERSION}-version.json"
+            '.downloads.github = $release_url | .update_manifest_url = $manifest_url' \
+            "$SOURCE_FILE" > "release/LunaBox-${VERSION}-version.json"
           jq empty "release/LunaBox-${VERSION}-version.json"
 
       - name: Get commit messages
         id: get_commits
+        env:
+          PREVIOUS_TAG: ${{ needs.prepare.outputs.previous_tag }}
         run: |
-          # 获取最近5个提交的信息
           echo "COMMITS<<EOF" >> $GITHUB_OUTPUT
-          git log --pretty=format:"- %s (%h)" -n 5 >> $GITHUB_OUTPUT
+          if [ -n "$PREVIOUS_TAG" ]; then
+            git log --pretty=format:"- %s (%h)" "${PREVIOUS_TAG}..${GITHUB_SHA}" >> $GITHUB_OUTPUT
+          else
+            git log --pretty=format:"- %s (%h)" -n 5 "$GITHUB_SHA" >> $GITHUB_OUTPUT
+          fi
           echo "" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
@@ -549,7 +554,7 @@ jobs:
 
           正式 Cloudflare \`version.json\` 不会被此工作流修改。
 
-          ### 最近提交
+          ### 版本提交
 
           ${{ steps.get_commits.outputs.COMMITS }}
           

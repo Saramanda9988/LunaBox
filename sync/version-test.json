@@ -1,9 +1,13 @@
 {
-  "version": "2.0.0-test.1",
-  "release_date": "2026-07-24",
-  "changelog": ["应用内更新测试版本 A"],
+  "version": "2.0.0-test.2",
+  "release_date": "2026-08-17",
+  "changelog": [
+    "优化更新提示窗口的下载按钮布局",
+    "修复云同步开关状态未即时应用到侧栏入口的问题",
+    "修复游戏评价为空时仍可同步至 Bangumi 或 Hikarinagi 的问题"
+  ],
   "downloads": {
-    "github": "https://github.com/Saramanda9988/LunaBox/releases/tag/v2.0.0-test.1"
+    "github": "https://github.com/Saramanda9988/LunaBox/releases/tag/v2.0.0-test.2"
   },
-  "update_manifest_url": "https://github.com/Saramanda9988/LunaBox/releases/download/v2.0.0-test.1/LunaBox-2.0.0-test.1-update-manifest.json"
+  "update_manifest_url": "https://github.com/Saramanda9988/LunaBox/releases/download/v2.0.0-test.2/LunaBox-2.0.0-test.2-update-manifest.json"
 }
