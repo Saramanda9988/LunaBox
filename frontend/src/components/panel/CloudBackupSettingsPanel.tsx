@@ -23,11 +23,13 @@ import { BetterSwitch } from "../ui/better/BetterSwitch";
 interface CloudBackupSettingsProps {
   formData: appconf.AppConfig;
   onChange: (data: appconf.AppConfig) => void;
+  onServiceEnabledChange: (enabled: boolean) => void;
 }
 
 export function CloudBackupSettingsPanel({
   formData,
   onChange,
+  onServiceEnabledChange,
 }: CloudBackupSettingsProps) {
   const { t } = useTranslation();
   const [testingS3, setTestingS3] = useState(false);
@@ -377,11 +379,7 @@ export function CloudBackupSettingsPanel({
           <BetterSwitch
             id="cloud_backup_enabled"
             checked={formData.cloud_backup_enabled || false}
-            onCheckedChange={checked =>
-              onChange({
-                ...formData,
-                cloud_backup_enabled: checked,
-              } as appconf.AppConfig)}
+            onCheckedChange={onServiceEnabledChange}
           />
         </div>
       </div>

@@ -234,6 +234,8 @@ function SettingsPage() {
           <CloudBackupSettingsPanel
             formData={draftConfig}
             onChange={handleDraftChange}
+            onServiceEnabledChange={enabled =>
+              void patchLiveConfig({ cloud_backup_enabled: enabled })}
           />
         </CollapsibleSection>
 
