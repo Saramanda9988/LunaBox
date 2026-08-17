@@ -1,8 +1,9 @@
 import { Browser } from "@wailsio/runtime";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DownloadAndApplyUpdate } from "../../../bindings/lunabox/internal/service/updateservice";
 import { onWailsEvent } from "../../bindings/runtime";
+import { formatFileSize } from "../../utils/size";
 import { ModalPortal } from "./ModalPortal";
 
 interface UpdateInfo {
@@ -30,6 +31,11 @@ interface UpdateDialogProps {
   onSkip: (version: string) => void;
 }
 
+interface DownloadSample {
+  downloaded: number;
+  timestamp: number;
+}
+
 export function UpdateDialog({
   updateInfo,
   onClose,
@@ -39,7 +45,9 @@ export function UpdateDialog({
   const [isVisible, setIsVisible] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [progress, setProgress] = useState<UpdateProgress | null>(null);
+  const [downloadSpeed, setDownloadSpeed] = useState(0);
   const [updateError, setUpdateError] = useState("");
+  const downloadSampleRef = useRef<DownloadSample | null>(null);
 
   useEffect(() => {
     if (updateInfo?.has_update) {
@@ -49,6 +57,31 @@ export function UpdateDialog({
 
   useEffect(() => {
     return onWailsEvent("update:progress", (value: UpdateProgress) => {
+      if (value.phase === "downloading") {
+        const timestamp = performance.now();
+        const previousSample = downloadSampleRef.current;
+        if (
+          previousSample
+          && value.downloaded >= previousSample.downloaded
+          && timestamp > previousSample.timestamp
+        ) {
+          const elapsedSeconds = (timestamp - previousSample.timestamp) / 1000;
+          setDownloadSpeed(
+            (value.downloaded - previousSample.downloaded) / elapsedSeconds,
+          );
+        }
+        else {
+          setDownloadSpeed(0);
+        }
+        downloadSampleRef.current = {
+          downloaded: value.downloaded,
+          timestamp,
+        };
+      }
+      else {
+        downloadSampleRef.current = null;
+        setDownloadSpeed(0);
+      }
       setProgress(value);
     });
   }, []);
@@ -83,6 +116,8 @@ export function UpdateDialog({
     }
     setIsUpdating(true);
     setUpdateError("");
+    setDownloadSpeed(0);
+    downloadSampleRef.current = null;
     setProgress({
       phase: "downloading",
       downloaded: 0,
@@ -113,9 +148,7 @@ export function UpdateDialog({
       case "ready":
         return t("updateDialog.restarting");
       default:
-        return t("updateDialog.downloading", {
-          percent: progress?.percent ?? 0,
-        });
+        return t("updateDialog.downloading");
     }
   })();
 
@@ -203,45 +236,55 @@ export function UpdateDialog({
 
             {/* Actions */}
             <div className="space-y-2">
-              {updateInfo.update_manifest_url && (
-                <button
-                  type="button"
-                  onClick={handleInAppUpdate}
-                  disabled={isUpdating}
-                  className="w-full px-4 py-2.5 text-sm font-medium text-white bg-accent-600 hover:bg-accent-700 disabled:cursor-wait disabled:opacity-70 rounded-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  <span
-                    className={`${isUpdating ? "i-mdi-loading animate-spin" : "i-mdi-update"} text-lg`}
-                  />
-                  {isUpdating ? progressText : t("updateDialog.updateNow")}
-                </button>
-              )}
-
               {isUpdating && progress && (
-                <div className="space-y-1.5 rounded-lg border border-accent-200 bg-accent-50/70 p-3 dark:border-accent-700 dark:bg-accent-900/20">
-                  <div className="flex items-center justify-between gap-3 text-xs text-accent-700 dark:text-accent-300">
+                <div className="space-y-2 px-0.5 py-1">
+                  <div className="flex items-center justify-between gap-3 text-xs text-brand-600 dark:text-brand-300">
                     <span className="truncate">{progressText}</span>
                     {progress.phase === "downloading" && (
-                      <span className="shrink-0 font-mono">
+                      <span className="shrink-0 font-mono font-medium text-brand-800 dark:text-brand-100">
                         {progress.percent}
                         %
                       </span>
                     )}
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-accent-100 dark:bg-accent-950/60">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-brand-200 dark:bg-brand-700">
                     <div
-                      className={`h-full rounded-full bg-accent-500 transition-all ${progress.phase !== "downloading" ? "animate-pulse" : ""}`}
+                      className={`h-full rounded-full bg-accent-500 transition-all duration-300 ${progress.phase !== "downloading" ? "animate-pulse" : ""}`}
                       style={{
                         width: `${progress.phase === "downloading" ? Math.max(2, progress.percent) : 100}%`,
                       }}
                     />
                   </div>
-                  {progress.file && (
-                    <p className="truncate text-xs text-brand-500 dark:text-brand-400">
-                      {progress.file}
-                    </p>
-                  )}
+                  <div className="flex items-center justify-between gap-3 text-xs text-brand-500 dark:text-brand-400">
+                    <span className="min-w-0 truncate">
+                      {progress.file ?? ""}
+                    </span>
+                    {progress.phase === "downloading" && (
+                      <span className="shrink-0 tabular-nums">
+                        {t("updateDialog.currentSpeed", {
+                          speed: `${formatFileSize(downloadSpeed)}/s`,
+                        })}
+                      </span>
+                    )}
+                  </div>
                 </div>
+              )}
+
+              {updateInfo.update_manifest_url && (
+                <button
+                  type="button"
+                  onClick={handleInAppUpdate}
+                  disabled={isUpdating}
+                  aria-busy={isUpdating}
+                  className="w-full px-4 py-2.5 text-sm font-medium text-white bg-accent-600 hover:bg-accent-700 disabled:cursor-wait disabled:opacity-70 rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  <span
+                    className={`${isUpdating ? "i-mdi-loading animate-spin" : "i-mdi-update"} text-lg`}
+                  />
+                  {isUpdating
+                    ? t("updateDialog.downloadingButton")
+                    : t("updateDialog.updateNow")}
+                </button>
               )}
 
               {updateError && (
