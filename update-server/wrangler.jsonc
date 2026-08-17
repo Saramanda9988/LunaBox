@@ -6,18 +6,43 @@
   "observability": {
     "enabled": true
   },
-  "r2_buckets": [
-    {
-      "binding": "UPDATE_BUCKET",
-      "bucket_name": "lunabox-updates"
+
+  "env": {
+    "test": {
+      "name": "lunabox-update-server-test",
+      "workers_dev": true,
+      "r2_buckets": [
+        {
+          "binding": "UPDATE_BUCKET",
+          "bucket_name": "lunabox-updates-test"
+        }
+      ],
+      "d1_databases": [
+        {
+          "binding": "UPDATE_DB",
+          "database_name": "lunabox-updates-test",
+          "database_id": "REPLACE_WITH_TEST_D1_DATABASE_ID",
+          "migrations_dir": "migrations"
+        }
+      ]
+    },
+    "production": {
+      "name": "lunabox-update-server",
+      "workers_dev": true,
+      "r2_buckets": [
+        {
+          "binding": "UPDATE_BUCKET",
+          "bucket_name": "lunabox-updates"
+        }
+      ],
+      "d1_databases": [
+        {
+          "binding": "UPDATE_DB",
+          "database_name": "lunabox-updates",
+          "database_id": "REPLACE_WITH_PRODUCTION_D1_DATABASE_ID",
+          "migrations_dir": "migrations"
+        }
+      ]
     }
-  ],
-  "d1_databases": [
-    {
-      "binding": "UPDATE_DB",
-      "database_name": "lunabox-updates",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
-      "migrations_dir": "migrations"
-    }
-  ]
+  }
 }
