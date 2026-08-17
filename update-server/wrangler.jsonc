@@ -1,48 +1,47 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "lunabox-update-server",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-08-17",
-  "observability": {
-    "enabled": true
-  },
-
-  "env": {
-    "test": {
-      "name": "lunabox-update-server-test",
-      "workers_dev": true,
-      "r2_buckets": [
-        {
-          "binding": "UPDATE_BUCKET",
-          "bucket_name": "lunabox-updates-test"
-        }
-      ],
-      "d1_databases": [
-        {
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "lunabox-update-server",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-08-17",
+	"observability": {
+		"enabled": true
+	},
+	"env": {
+		"test": {
+			"name": "lunabox-update-server-test",
+			"workers_dev": true,
+			"r2_buckets": [
+				{
+          "bucket_name": "lunabox-updates-test",
+          "binding": "UPDATE_BUCKET"
+				}
+			],
+			"d1_databases": [
+				{
           "binding": "UPDATE_DB",
           "database_name": "lunabox-updates-test",
-          "database_id": "REPLACE_WITH_TEST_D1_DATABASE_ID",
-          "migrations_dir": "migrations"
-        }
-      ]
-    },
-    "production": {
-      "name": "lunabox-update-server",
-      "workers_dev": true,
-      "r2_buckets": [
-        {
-          "binding": "UPDATE_BUCKET",
-          "bucket_name": "lunabox-updates"
-        }
-      ],
-      "d1_databases": [
-        {
-          "binding": "UPDATE_DB",
-          "database_name": "lunabox-updates",
-          "database_id": "REPLACE_WITH_PRODUCTION_D1_DATABASE_ID",
-          "migrations_dir": "migrations"
-        }
-      ]
-    }
-  }
+          "database_id": "1a790194-fcf9-4a5a-9673-fb1bed8fefff",
+					"migrations_dir": "migrations"
+				}
+			]
+		},
+		"production": {
+			"name": "lunabox-update-server",
+			"workers_dev": true,
+			"r2_buckets": [
+				{
+					"binding": "UPDATE_BUCKET",
+					"bucket_name": "lunabox-updates"
+				}
+			],
+			"d1_databases": [
+				{
+					"binding": "UPDATE_DB",
+					"database_name": "lunabox-updates",
+					"database_id": "REPLACE_WITH_PRODUCTION_D1_DATABASE_ID",
+					"migrations_dir": "migrations"
+				}
+			]
+		}
+	}
 }
