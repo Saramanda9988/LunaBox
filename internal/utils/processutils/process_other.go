@@ -52,6 +52,14 @@ func StartProcessElevated(file string, args []string, dir string) (*StartedProce
 	return nil, unsupportedProcessError()
 }
 
+func StartProcessHidden(file string, args []string, dir string) (*StartedProcess, error) {
+	return nil, unsupportedProcessError()
+}
+
+func StartProcessElevatedHidden(file string, args []string, dir string) (*StartedProcess, error) {
+	return nil, unsupportedProcessError()
+}
+
 func CloseProcessHandle(processHandle uintptr) error {
 	return unsupportedProcessError()
 }

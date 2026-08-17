@@ -6,6 +6,9 @@ on:
       - 'v*.*.*'  # 例如: v1.0.0, v1.2.3
   workflow_dispatch:
 
+env:
+  LUNABOX_UPDATE_SERVICE_URL: ${{ vars.UPDATE_PUBLIC_BASE_URL }}
+
 jobs:
   build-release:
     name: Windows ${{ matrix.arch }} / ${{ matrix.mode }}
@@ -43,6 +46,9 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+          cache-dependency-path: |
+            go.sum
+            updater/go.sum
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -403,6 +409,9 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+          cache-dependency-path: |
+            go.sum
+            updater/go.sum
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -466,6 +475,9 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+          cache-dependency-path: |
+            go.sum
+            updater/go.sum
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -550,6 +562,9 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            updater/go.sum
 
       - name: Get version from tag
         id: get_version
@@ -582,6 +597,11 @@ jobs:
         id: previous_release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.UPDATE_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.UPDATE_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ vars.UPDATE_S3_REGION || 'auto' }}
+          UPDATE_S3_BUCKET: ${{ vars.UPDATE_S3_BUCKET }}
+          UPDATE_S3_ENDPOINT: ${{ vars.UPDATE_S3_ENDPOINT }}
         run: |
           CURRENT_TAG="$GITHUB_REF_NAME"
           PREVIOUS_TAG="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 30 --json tagName,isDraft,isPrerelease --jq "[.[] | select(.isDraft == false and .isPrerelease == false and .tagName != \"$CURRENT_TAG\")][0].tagName // \"\"")"
@@ -591,10 +611,13 @@ jobs:
 
           mkdir -p previous-update-assets
           if [ -n "$PREVIOUS_TAG" ]; then
-            gh release download "$PREVIOUS_TAG" \
-              --repo "$GITHUB_REPOSITORY" \
-              --pattern "LunaBox-${PREVIOUS_VERSION}-windows-*-LunaBox.exe.zst" \
-              --dir previous-update-assets || true
+            aws s3 cp \
+              "s3://${UPDATE_S3_BUCKET}/releases/${PREVIOUS_VERSION}/" \
+              ./previous-update-assets/ \
+              --recursive \
+              --exclude "*" \
+              --include "LunaBox-${PREVIOUS_VERSION}-windows-*-LunaBox.exe.zst" \
+              --endpoint-url "$UPDATE_S3_ENDPOINT" || true
           fi
 
       - name: Install Zstandard CLI
@@ -603,20 +626,75 @@ jobs:
           sudo apt-get install -y zstd
 
       - name: Generate full and delta update assets
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+          PREVIOUS_VERSION: ${{ steps.previous_release.outputs.version }}
+          UPDATE_PUBLIC_BASE_URL: ${{ vars.UPDATE_PUBLIC_BASE_URL }}
         run: |
+          test -n "$UPDATE_PUBLIC_BASE_URL"
+          ASSET_BASE_URL="${UPDATE_PUBLIC_BASE_URL%/}/v1/releases/${VERSION}/assets"
           ARGS=(
-            --input-root ./update-runtime-artifacts
-            --previous-root ./previous-update-assets
-            --output ./release
-            --version "${{ steps.get_version.outputs.VERSION }}"
-            --repository "$GITHUB_REPOSITORY"
+            --input-root "$GITHUB_WORKSPACE/update-runtime-artifacts"
+            --previous-root "$GITHUB_WORKSPACE/previous-update-assets"
+            --output "$GITHUB_WORKSPACE/update-assets"
+            --version "$VERSION"
+            --asset-base-url "$ASSET_BASE_URL"
+            --event-url "${UPDATE_PUBLIC_BASE_URL%/}/v1/events"
           )
-          if [ -n "${{ steps.previous_release.outputs.version }}" ]; then
-            ARGS+=(--previous-version "${{ steps.previous_release.outputs.version }}")
+          if [ -n "$PREVIOUS_VERSION" ]; then
+            ARGS+=(--previous-version "$PREVIOUS_VERSION")
           fi
-          go run ./cmd/lunabox-update-builder "${ARGS[@]}"
-          jq empty "release/LunaBox-${{ steps.get_version.outputs.VERSION }}-update-manifest.json"
-          ls -lh ./release
+          go -C updater run ./cmd/lunabox-update-builder "${ARGS[@]}"
+          jq empty "update-assets/LunaBox-${VERSION}-update-manifest.json"
+          ls -lh ./update-assets
+
+      - name: Generate update version source
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+          UPDATE_PUBLIC_BASE_URL: ${{ vars.UPDATE_PUBLIC_BASE_URL }}
+        run: |
+          SOURCE_FILE="sync/version.json"
+          SOURCE_VERSION="$(jq -r '.version // empty' "$SOURCE_FILE")"
+          if [ "$SOURCE_VERSION" != "$VERSION" ]; then
+            echo "$SOURCE_FILE version $SOURCE_VERSION does not match release version $VERSION" >&2
+            exit 1
+          fi
+          RELEASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/tag/v${VERSION}"
+          MANIFEST_URL="${UPDATE_PUBLIC_BASE_URL%/}/v1/releases/${VERSION}/manifest"
+          jq \
+            --arg release_url "$RELEASE_URL" \
+            --arg manifest_url "$MANIFEST_URL" \
+            '.downloads.github = $release_url | .update_manifest_url = $manifest_url' \
+            "$SOURCE_FILE" > update-assets/version.json
+          jq empty update-assets/version.json
+
+      - name: Upload update assets to S3
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.UPDATE_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.UPDATE_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ vars.UPDATE_S3_REGION || 'auto' }}
+          UPDATE_S3_BUCKET: ${{ vars.UPDATE_S3_BUCKET }}
+          UPDATE_S3_ENDPOINT: ${{ vars.UPDATE_S3_ENDPOINT }}
+        run: |
+          test -n "$UPDATE_S3_BUCKET"
+          test -n "$UPDATE_S3_ENDPOINT"
+          PREFIX="s3://${UPDATE_S3_BUCKET}/releases/${VERSION}"
+          aws s3 cp ./update-assets "$PREFIX/" \
+            --recursive \
+            --exclude "*" \
+            --include "*.zst" \
+            --include "*.zsdiff" \
+            --cache-control "public,max-age=31536000,immutable" \
+            --endpoint-url "$UPDATE_S3_ENDPOINT"
+          aws s3 cp "update-assets/LunaBox-${VERSION}-update-manifest.json" "$PREFIX/manifest.json" \
+            --content-type "application/json" \
+            --cache-control "public,max-age=31536000,immutable" \
+            --endpoint-url "$UPDATE_S3_ENDPOINT"
+          aws s3 cp update-assets/version.json "$PREFIX/version.json" \
+            --content-type "application/json" \
+            --cache-control "public,max-age=31536000,immutable" \
+            --endpoint-url "$UPDATE_S3_ENDPOINT"
 
       - name: Generate release notes
         id: release_notes
@@ -703,3 +781,16 @@ jobs:
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish stable update channel
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.UPDATE_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.UPDATE_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ vars.UPDATE_S3_REGION || 'auto' }}
+          UPDATE_S3_BUCKET: ${{ vars.UPDATE_S3_BUCKET }}
+          UPDATE_S3_ENDPOINT: ${{ vars.UPDATE_S3_ENDPOINT }}
+        run: |
+          aws s3 cp update-assets/version.json "s3://${UPDATE_S3_BUCKET}/channels/stable/version.json" \
+            --content-type "application/json" \
+            --cache-control "public,max-age=60" \
+            --endpoint-url "$UPDATE_S3_ENDPOINT"

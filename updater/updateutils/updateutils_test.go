@@ -30,6 +30,22 @@ func TestNormalizeManagedPath(t *testing.T) {
 	}
 }
 
+func TestReleaseManifestRejectsInsecureEventURL(t *testing.T) {
+	t.Parallel()
+
+	manifest := ReleaseManifest{
+		SchemaVersion: ManifestSchemaVersion,
+		Version:       "2.0.0",
+		EventURL:      "http://updates.example.com/v1/events",
+		Channels: map[string]ReleaseChannel{
+			"windows-amd64-portable": {},
+		},
+	}
+	if _, err := manifest.Validate("windows-amd64-portable"); err == nil || !strings.Contains(err.Error(), "event url") {
+		t.Fatalf("expected insecure event URL rejection, got %v", err)
+	}
+}
+
 func TestPrepareZstdPatchAndFullFallback(t *testing.T) {
 	t.Parallel()
 

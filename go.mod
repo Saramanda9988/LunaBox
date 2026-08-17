@@ -13,7 +13,6 @@ require (
 	github.com/gen2brain/webp v0.5.5
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
-	github.com/klauspost/compress v1.18.4
 	github.com/labstack/gommon v0.4.2
 	github.com/mattn/go-runewidth v0.0.19
 	github.com/mattn/go-sqlite3 v1.14.48
@@ -25,8 +24,11 @@ require (
 	golang.org/x/mod v0.35.0
 	golang.org/x/sys v0.45.0
 	golift.io/xtractr v0.3.0
+	lunabox/updater v0.0.0
 	resty.dev/v3 v3.0.0-rc.3
 )
+
+replace lunabox/updater => ./updater
 
 require (
 	github.com/adrg/xdg v0.5.3 // indirect
@@ -38,6 +40,7 @@ require (
 	github.com/duckdb/duckdb-go-bindings/lib/linux-arm64 v0.3.5 // indirect
 	github.com/duckdb/duckdb-go-bindings/lib/windows-amd64 v0.3.5 // indirect
 	github.com/ebitengine/purego v0.8.3 // indirect
+	github.com/klauspost/compress v1.18.4 // indirect
 	github.com/onsi/gomega v1.34.1 // indirect
 	github.com/tetratelabs/wazero v1.9.0 // indirect
 )

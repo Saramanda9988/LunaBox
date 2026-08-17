@@ -11,7 +11,7 @@ frontend/dist
 .DS_Store
 frontend/package.json.md5
 *.db
-go.sum
+/go.sum
 appconf.json
 .vscode
 *.db.wal

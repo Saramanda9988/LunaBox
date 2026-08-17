@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"lunabox/internal/utils/updateutils"
+	"lunabox/updater/updateutils"
 )
 
 func main() {

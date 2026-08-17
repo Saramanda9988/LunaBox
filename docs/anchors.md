@@ -33,3 +33,6 @@
 | 工具函数                          | `internal/utils/`（分 `apputils` / `archiveutils` / `downloadutils` / `imageutils` / `metadata` / `processutils` / `proxyutils` / `timerutils` 等） |
 | 工具函数索引                      | `docs/backend-utils.md`                                                                                                                             |
 | Windows API 封装参考              | `internal/utils/processutils/process_windows.go`                                                                                                    |
+| 客户端更新协调                    | `internal/updateclient/`                                                                                                                            |
+| 独立更新器与更新资产生成器        | `updater/`                                                                                                                                          |
+| Cloudflare 更新服务               | `update-server/`                                                                                                                                    |

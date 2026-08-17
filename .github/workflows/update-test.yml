@@ -18,6 +18,9 @@ concurrency:
   group: test-update-${{ inputs.version }}
   cancel-in-progress: false
 
+env:
+  LUNABOX_UPDATE_SERVICE_URL: ${{ vars.UPDATE_PUBLIC_BASE_URL }}
+
 jobs:
   prepare:
     name: Validate Test Release
@@ -101,6 +104,9 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+          cache-dependency-path: |
+            go.sum
+            updater/go.sum
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -418,6 +424,9 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            updater/go.sum
 
       - name: Generate version info
         id: version_info
@@ -451,15 +460,21 @@ jobs:
       - name: Download previous update baseline
         if: needs.prepare.outputs.previous_tag != ''
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PREVIOUS_TAG: ${{ needs.prepare.outputs.previous_tag }}
           PREVIOUS_VERSION: ${{ needs.prepare.outputs.previous_version }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.UPDATE_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.UPDATE_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ vars.UPDATE_S3_REGION || 'auto' }}
+          UPDATE_S3_BUCKET: ${{ vars.UPDATE_S3_BUCKET }}
+          UPDATE_S3_ENDPOINT: ${{ vars.UPDATE_S3_ENDPOINT }}
         run: |
           mkdir -p previous-update-assets
-          gh release download "$PREVIOUS_TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --pattern "LunaBox-${PREVIOUS_VERSION}-windows-*-LunaBox.exe.zst" \
-            --dir previous-update-assets
+          aws s3 cp \
+            "s3://${UPDATE_S3_BUCKET}/releases/${PREVIOUS_VERSION}/" \
+            ./previous-update-assets/ \
+            --recursive \
+            --exclude "*" \
+            --include "LunaBox-${PREVIOUS_VERSION}-windows-*-LunaBox.exe.zst" \
+            --endpoint-url "$UPDATE_S3_ENDPOINT"
 
       - name: Install Zstandard CLI
         run: |
@@ -470,27 +485,32 @@ jobs:
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
           PREVIOUS_VERSION: ${{ needs.prepare.outputs.previous_version }}
+          UPDATE_PUBLIC_BASE_URL: ${{ vars.UPDATE_PUBLIC_BASE_URL }}
         run: |
+          test -n "$UPDATE_PUBLIC_BASE_URL"
+          ASSET_BASE_URL="${UPDATE_PUBLIC_BASE_URL%/}/v1/releases/${VERSION}/assets"
           ARGS=(
-            --input-root ./update-runtime-artifacts
-            --output ./release
+            --input-root "$GITHUB_WORKSPACE/update-runtime-artifacts"
+            --output "$GITHUB_WORKSPACE/update-assets"
             --version "$VERSION"
-            --repository "$GITHUB_REPOSITORY"
+            --asset-base-url "$ASSET_BASE_URL"
+            --event-url "${UPDATE_PUBLIC_BASE_URL%/}/v1/events"
             --architectures amd64
           )
           if [ -n "$PREVIOUS_VERSION" ]; then
             ARGS+=(
-              --previous-root ./previous-update-assets
+              --previous-root "$GITHUB_WORKSPACE/previous-update-assets"
               --previous-version "$PREVIOUS_VERSION"
             )
           fi
-          go run ./cmd/lunabox-update-builder "${ARGS[@]}"
-          jq empty "release/LunaBox-${VERSION}-update-manifest.json"
+          go -C updater run ./cmd/lunabox-update-builder "${ARGS[@]}"
+          jq empty "update-assets/LunaBox-${VERSION}-update-manifest.json"
 
       - name: Generate test version source
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
           TAG: ${{ needs.prepare.outputs.tag }}
+          UPDATE_PUBLIC_BASE_URL: ${{ vars.UPDATE_PUBLIC_BASE_URL }}
         run: |
           SOURCE_FILE="sync/version-test.json"
           SOURCE_VERSION="$(jq -r '.version // empty' "$SOURCE_FILE")"
@@ -500,13 +520,41 @@ jobs:
           fi
 
           RELEASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
-          MANIFEST_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/LunaBox-${VERSION}-update-manifest.json"
+          MANIFEST_URL="${UPDATE_PUBLIC_BASE_URL%/}/v1/releases/${VERSION}/manifest"
           jq \
             --arg release_url "$RELEASE_URL" \
             --arg manifest_url "$MANIFEST_URL" \
             '.downloads.github = $release_url | .update_manifest_url = $manifest_url' \
-            "$SOURCE_FILE" > "release/LunaBox-${VERSION}-version.json"
-          jq empty "release/LunaBox-${VERSION}-version.json"
+            "$SOURCE_FILE" > "update-assets/version.json"
+          jq empty "update-assets/version.json"
+
+      - name: Upload update assets to S3
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.UPDATE_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.UPDATE_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ vars.UPDATE_S3_REGION || 'auto' }}
+          UPDATE_S3_BUCKET: ${{ vars.UPDATE_S3_BUCKET }}
+          UPDATE_S3_ENDPOINT: ${{ vars.UPDATE_S3_ENDPOINT }}
+        run: |
+          test -n "$UPDATE_S3_BUCKET"
+          test -n "$UPDATE_S3_ENDPOINT"
+          PREFIX="s3://${UPDATE_S3_BUCKET}/releases/${VERSION}"
+          aws s3 cp ./update-assets "$PREFIX/" \
+            --recursive \
+            --exclude "*" \
+            --include "*.zst" \
+            --include "*.zsdiff" \
+            --cache-control "public,max-age=31536000,immutable" \
+            --endpoint-url "$UPDATE_S3_ENDPOINT"
+          aws s3 cp "update-assets/LunaBox-${VERSION}-update-manifest.json" "$PREFIX/manifest.json" \
+            --content-type "application/json" \
+            --cache-control "public,max-age=31536000,immutable" \
+            --endpoint-url "$UPDATE_S3_ENDPOINT"
+          aws s3 cp update-assets/version.json "$PREFIX/version.json" \
+            --content-type "application/json" \
+            --cache-control "public,max-age=31536000,immutable" \
+            --endpoint-url "$UPDATE_S3_ENDPOINT"
 
       - name: Get commit messages
         id: get_commits
@@ -528,8 +576,9 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
           TAG: ${{ needs.prepare.outputs.tag }}
           PREVIOUS_TAG: ${{ needs.prepare.outputs.previous_tag }}
+          UPDATE_PUBLIC_BASE_URL: ${{ vars.UPDATE_PUBLIC_BASE_URL }}
         run: |
-          VERSION_SOURCE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/LunaBox-${VERSION}-version.json"
+          VERSION_SOURCE_URL="${UPDATE_PUBLIC_BASE_URL%/}/v1/releases/${VERSION}/version"
           if [ -n "$PREVIOUS_TAG" ]; then
             UPDATE_KIND="已尝试生成从 ${PREVIOUS_TAG} 到 ${TAG} 的 LunaBox.exe delta；详细结果以 update manifest 中是否包含 patch 为准。"
           else

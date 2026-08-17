@@ -5,13 +5,14 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
 
-	"lunabox/internal/utils/updateutils"
+	"lunabox/updater/updateutils"
 
 	"github.com/klauspost/compress/zstd"
 )
@@ -25,6 +26,8 @@ type options struct {
 	version         string
 	previousVersion string
 	repository      string
+	assetBaseURL    string
+	eventURL        string
 	architectures   string
 }
 
@@ -51,6 +54,8 @@ func main() {
 	flag.StringVar(&opts.version, "version", "", "target version")
 	flag.StringVar(&opts.previousVersion, "previous-version", "", "previous stable version")
 	flag.StringVar(&opts.repository, "repository", "", "GitHub owner/repository")
+	flag.StringVar(&opts.assetBaseURL, "asset-base-url", "", "HTTPS base URL for published update assets")
+	flag.StringVar(&opts.eventURL, "event-url", "", "optional HTTPS endpoint for update telemetry")
 	flag.StringVar(&opts.architectures, "architectures", "amd64,arm64", "comma-separated Windows architectures to publish")
 	flag.Parse()
 
@@ -61,8 +66,23 @@ func main() {
 }
 
 func run(opts options) error {
-	if opts.inputRoot == "" || opts.outputDir == "" || opts.version == "" || opts.repository == "" {
-		return fmt.Errorf("--input-root, --output, --version, and --repository are required")
+	if opts.inputRoot == "" || opts.outputDir == "" || opts.version == "" {
+		return fmt.Errorf("--input-root, --output, and --version are required")
+	}
+	if strings.TrimSpace(opts.assetBaseURL) == "" && strings.TrimSpace(opts.repository) == "" {
+		return fmt.Errorf("--asset-base-url or --repository is required")
+	}
+	if strings.TrimSpace(opts.assetBaseURL) != "" {
+		parsedBaseURL, err := url.Parse(strings.TrimSpace(opts.assetBaseURL))
+		if err != nil || parsedBaseURL.Scheme != "https" || parsedBaseURL.Host == "" {
+			return fmt.Errorf("--asset-base-url must be an absolute HTTPS URL")
+		}
+	}
+	if strings.TrimSpace(opts.eventURL) != "" {
+		parsedEventURL, err := url.Parse(strings.TrimSpace(opts.eventURL))
+		if err != nil || parsedEventURL.Scheme != "https" || parsedEventURL.Host == "" {
+			return fmt.Errorf("--event-url must be an absolute HTTPS URL")
+		}
 	}
 	if err := os.MkdirAll(opts.outputDir, 0755); err != nil {
 		return err
@@ -71,6 +91,7 @@ func run(opts options) error {
 	manifest := updateutils.ReleaseManifest{
 		SchemaVersion: updateutils.ManifestSchemaVersion,
 		Version:       opts.version,
+		EventURL:      strings.TrimSpace(opts.eventURL),
 		Channels:      make(map[string]updateutils.ReleaseChannel),
 	}
 	architectures, err := parseArchitectures(opts.architectures)
@@ -181,7 +202,7 @@ func buildChannel(opts options, channelName string, mode string, inputDir string
 			TargetSHA256:  targetSHA,
 			TargetSize:    targetSize,
 			Full: updateutils.Artifact{
-				URL:         releaseURL(opts.repository, opts.version, fullName),
+				URL:         assetURL(opts, fullName),
 				Size:        fullSize,
 				SHA256:      fullSHA,
 				Compression: updateutils.ArtifactCompressionZstd,
@@ -274,7 +295,7 @@ func buildPatch(opts options, channelName string, targetPath string, fullSize in
 	}
 	return &updateutils.PatchArtifact{
 		Artifact: updateutils.Artifact{
-			URL:         releaseURL(opts.repository, opts.version, patchName),
+			URL:         assetURL(opts, patchName),
 			Size:        patchSize,
 			SHA256:      patchSHA,
 			Compression: updateutils.ArtifactCompressionZstd,
@@ -357,6 +378,13 @@ func findFileRecursively(root string, name string) (string, error) {
 
 func releaseURL(repository string, version string, fileName string) string {
 	return fmt.Sprintf("https://github.com/%s/releases/download/v%s/%s", strings.Trim(repository, "/"), strings.TrimPrefix(version, "v"), fileName)
+}
+
+func assetURL(opts options, fileName string) string {
+	if strings.TrimSpace(opts.assetBaseURL) != "" {
+		return strings.TrimRight(strings.TrimSpace(opts.assetBaseURL), "/") + "/" + fileName
+	}
+	return releaseURL(opts.repository, opts.version, fileName)
 }
 
 func assetPathName(managedPath string) string {

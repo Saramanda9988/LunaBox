@@ -118,6 +118,9 @@ func updateInstallMetadata(buildMode string, version string) error {
 }
 
 func configureRestartCommand(command *exec.Cmd) error {
-	command.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP}
+	command.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow:    true,
+		CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.CREATE_NO_WINDOW,
+	}
 	return nil
 }

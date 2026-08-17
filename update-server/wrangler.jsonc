@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lunabox-update-server",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-17",
+  "observability": {
+    "enabled": true
+  },
+  "r2_buckets": [
+    {
+      "binding": "UPDATE_BUCKET",
+      "bucket_name": "lunabox-updates"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "UPDATE_DB",
+      "database_name": "lunabox-updates",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

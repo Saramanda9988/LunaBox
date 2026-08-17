@@ -13,6 +13,7 @@ var (
 	GitCommit                   = "unknown"              // Git commit hash
 	BuildTime                   = "unknown"              // 构建时间
 	BuildMode                   = "portable"             // 构建模式：portable 或 installer
+	UpdateServiceURL            = ""                     // 更新服务根地址，由正式构建注入
 	BangumiOAuthClientID        = ""                     // Bangumi OAuth Client ID
 	BangumiOAuthClientSecret    = ""                     // Bangumi OAuth Client Secret
 	HikarinagiOAuthClientID     = "hkn_r3H8xRovRYSSbwP0" // Hikarinagi public/native OAuth Client ID

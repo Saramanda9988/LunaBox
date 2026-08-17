@@ -9,8 +9,19 @@ import (
 	"path/filepath"
 	"testing"
 
-	"lunabox/internal/utils/updateutils"
+	"lunabox/updater/updateutils"
 )
+
+func TestAssetURLUsesConfiguredBaseURL(t *testing.T) {
+	t.Parallel()
+
+	got := assetURL(options{
+		assetBaseURL: "https://updates.example.com/releases/2.0.0/",
+	}, "LunaBox.exe.zst")
+	if got != "https://updates.example.com/releases/2.0.0/LunaBox.exe.zst" {
+		t.Fatalf("unexpected asset URL: %s", got)
+	}
+}
 
 func TestRunBuildsValidatedManifestAndFullFallbacks(t *testing.T) {
 	t.Parallel()

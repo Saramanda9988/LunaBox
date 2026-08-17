@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"lunabox/internal/appconf"
 	"lunabox/internal/applog"
+	"lunabox/internal/updateclient"
 	"lunabox/internal/utils/httputils"
 	"net/http"
 	goruntime "runtime"
@@ -82,6 +83,18 @@ func (s *UpdateService) SetRuntime(runtime wailsruntime.Runtime) {
 //wails:ignore
 func (s *UpdateService) SetConfigService(configService *ConfigService) {
 	s.config = configService
+	if s.ctx == nil || configService == nil {
+		return
+	}
+	appConfig, err := configService.GetAppConfig()
+	if err != nil {
+		return
+	}
+	go func() {
+		if err := updateclient.ReportPendingResult(s.ctx, &appConfig, version.UserAgent()); err != nil {
+			applog.LogWarningf(s.ctx, "Failed to report pending update result: %v", err)
+		}
+	}()
 }
 
 // CheckForUpdates 手动检查更新（忽略跳过版本设置，总是检查最新版本）
@@ -139,7 +152,7 @@ func (s *UpdateService) checkUpdates(isAutoCheck bool) (*UpdateCheckResult, erro
 		applog.LogWarningf(s.ctx, "[UpdateService] failed to fetch update info from all sources: %v", lastErr)
 		return nil, fmt.Errorf("[UpdateService] failed to fetch update info from all sources: %w", lastErr)
 	}
-	if appConfig.UpdateCheckURL == "" && goruntime.GOOS == "windows" {
+	if appConfig.UpdateCheckURL == "" && goruntime.GOOS == "windows" && strings.TrimSpace(updateInfo.UpdateManifestURL) == "" {
 		versionWithoutPrefix := strings.TrimPrefix(strings.TrimSpace(updateInfo.Version), "v")
 		updateInfo.UpdateManifestURL = fmt.Sprintf(
 			"https://github.com/%s/releases/download/v%s/LunaBox-%s-update-manifest.json",
@@ -186,7 +199,13 @@ func (s *UpdateService) getUpdateURLs(customURL string) []string {
 	if customURL != "" {
 		return []string{customURL}
 	}
-	return defaultUpdateURLs
+	serviceURL := strings.TrimRight(strings.TrimSpace(version.UpdateServiceURL), "/")
+	if serviceURL == "" {
+		return defaultUpdateURLs
+	}
+	urls := make([]string, 0, len(defaultUpdateURLs)+1)
+	urls = append(urls, serviceURL+"/v1/channels/stable")
+	return append(urls, defaultUpdateURLs...)
 }
 
 // fetchUpdateInfo 从指定 URL 获取版本信息

@@ -37,6 +37,7 @@ var managedPaths = map[string]struct{}{
 type ReleaseManifest struct {
 	SchemaVersion int                       `json:"schema_version"`
 	Version       string                    `json:"version"`
+	EventURL      string                    `json:"event_url,omitempty"`
 	Channels      map[string]ReleaseChannel `json:"channels"`
 }
 
@@ -101,6 +102,12 @@ func (m ReleaseManifest) Validate(channelName string) (ReleaseChannel, error) {
 	}
 	if strings.TrimSpace(m.Version) == "" {
 		return ReleaseChannel{}, fmt.Errorf("update manifest version is required")
+	}
+	if strings.TrimSpace(m.EventURL) != "" {
+		parsedEventURL, err := url.Parse(strings.TrimSpace(m.EventURL))
+		if err != nil || parsedEventURL.Scheme != "https" || parsedEventURL.Host == "" {
+			return ReleaseChannel{}, fmt.Errorf("update event url must use https")
+		}
 	}
 	channel, ok := m.Channels[channelName]
 	if !ok {

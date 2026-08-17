@@ -168,6 +168,11 @@ if [[ -n "${LUNABOX_TOUCHGAL_TOKEN:-}" ]]; then
     TOUCHGAL_TOKEN_STATUS="enabled"
 fi
 
+LDFLAGS_UPDATE_SERVICE=""
+if [[ -n "${LUNABOX_UPDATE_SERVICE_URL:-}" ]]; then
+    LDFLAGS_UPDATE_SERVICE=" $(ldflag_set 'lunabox/internal/version.UpdateServiceURL' "$LUNABOX_UPDATE_SERVICE_URL")"
+fi
+
 LDFLAGS_UMBRA=""
 UMBRA_REGISTRATION_STATUS="disabled"
 if [[ -n "${LUNABOX_UMBRA_CLIENT_ID:-}" ]]; then
@@ -182,7 +187,7 @@ elif [[ -n "${LUNABOX_UMBRA_REGISTRATION_TOKEN:-}" ]]; then
     exit 1
 fi
 
-LDFLAGS_BASE="-s -w $(ldflag_set 'lunabox/internal/version.Version' "$VERSION") $(ldflag_set 'lunabox/internal/version.GitCommit' "$GIT_COMMIT") $(ldflag_set 'lunabox/internal/version.BuildTime' "$BUILD_TIME")$LDFLAGS_BANGUMI$LDFLAGS_HIKARINAGI$LDFLAGS_TOUCHGAL$LDFLAGS_UMBRA"
+LDFLAGS_BASE="-s -w $(ldflag_set 'lunabox/internal/version.Version' "$VERSION") $(ldflag_set 'lunabox/internal/version.GitCommit' "$GIT_COMMIT") $(ldflag_set 'lunabox/internal/version.BuildTime' "$BUILD_TIME")$LDFLAGS_UPDATE_SERVICE$LDFLAGS_BANGUMI$LDFLAGS_HIKARINAGI$LDFLAGS_TOUCHGAL$LDFLAGS_UMBRA"
 LDFLAGS_PORTABLE="$LDFLAGS_BASE $(ldflag_set 'lunabox/internal/version.BuildMode' 'portable')"
 LDFLAGS_INSTALLER="$LDFLAGS_BASE $(ldflag_set 'lunabox/internal/version.BuildMode' 'installer')"
 

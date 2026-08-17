@@ -211,10 +211,15 @@ set "LDFLAGS_BANGUMI="
 set "LDFLAGS_HIKARINAGI="
 set "LDFLAGS_TOUCHGAL="
 set "LDFLAGS_UMBRA="
+set "LDFLAGS_UPDATE_SERVICE="
 set "BANGUMI_OAUTH_STATUS=disabled"
 set "HIKARINAGI_OAUTH_STATUS=disabled"
 set "TOUCHGAL_TOKEN_STATUS=disabled"
 set "UMBRA_REGISTRATION_STATUS=disabled"
+
+if defined LUNABOX_UPDATE_SERVICE_URL (
+    set "LDFLAGS_UPDATE_SERVICE= -X 'lunabox/internal/version.UpdateServiceURL=!LUNABOX_UPDATE_SERVICE_URL!'"
+)
 
 if defined LUNABOX_BANGUMI_CLIENT_ID (
     if not defined LUNABOX_BANGUMI_CLIENT_SECRET (
@@ -256,7 +261,7 @@ if defined LUNABOX_UMBRA_CLIENT_ID (
     exit /b 1
 )
 
-set "LDFLAGS_BASE=-s -w -X 'lunabox/internal/version.Version=%VERSION%' -X 'lunabox/internal/version.GitCommit=%GIT_COMMIT%' -X 'lunabox/internal/version.BuildTime=%BUILD_TIME%'!LDFLAGS_BANGUMI!!LDFLAGS_HIKARINAGI!!LDFLAGS_TOUCHGAL!!LDFLAGS_UMBRA!"
+set "LDFLAGS_BASE=-s -w -X 'lunabox/internal/version.Version=%VERSION%' -X 'lunabox/internal/version.GitCommit=%GIT_COMMIT%' -X 'lunabox/internal/version.BuildTime=%BUILD_TIME%'!LDFLAGS_UPDATE_SERVICE!!LDFLAGS_BANGUMI!!LDFLAGS_HIKARINAGI!!LDFLAGS_TOUCHGAL!!LDFLAGS_UMBRA!"
 set "LDFLAGS_PORTABLE=!LDFLAGS_BASE! -X 'lunabox/internal/version.BuildMode=portable'"
 set "LDFLAGS_INSTALLER=!LDFLAGS_BASE! -X 'lunabox/internal/version.BuildMode=installer'"
 set "LDFLAGS_GUI_PORTABLE=!LDFLAGS_PORTABLE! -H windowsgui"
@@ -405,7 +410,7 @@ echo.
 exit /b 0
 
 :build_updater
-powershell -NoProfile -Command "$ErrorActionPreference = 'Stop'; & go build -trimpath -buildvcs=false -ldflags '-s -w' -o 'build\bin\LunaBoxUpdater.exe' ./cmd/lunabox-updater; exit $LASTEXITCODE"
+powershell -NoProfile -Command "$ErrorActionPreference = 'Stop'; & go -C updater build -trimpath -buildvcs=false -ldflags '-s -w -H=windowsgui' -o '..\build\bin\LunaBoxUpdater.exe' ./cmd/lunabox-updater; exit $LASTEXITCODE"
 if errorlevel 1 exit /b 1
 exit /b 0
 

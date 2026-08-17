@@ -31,6 +31,7 @@ const (
 	MAX_PATH                          = 260
 	ERROR_ELEVATION_REQUIRED          = syscall.Errno(740)
 	SEE_MASK_NOCLOSEPROCESS           = 0x00000040
+	SW_HIDE                           = 0
 	SW_SHOWNORMAL                     = 1
 )
 
@@ -100,12 +101,24 @@ type windowEnumState struct {
 // StartProcess starts an executable through ShellExecuteEx so Windows can honor
 // UAC elevation manifests while still returning a process handle for tracking.
 func StartProcess(file string, args []string, dir string) (*StartedProcess, error) {
-	started, err := startProcessWithVerb("open", file, args, dir)
+	started, err := startProcessWithVerb("open", file, args, dir, SW_SHOWNORMAL)
 	if err == nil {
 		return started, nil
 	}
 	if err == ERROR_ELEVATION_REQUIRED {
-		return startProcessWithVerb("runas", file, args, dir)
+		return startProcessWithVerb("runas", file, args, dir, SW_SHOWNORMAL)
+	}
+	return nil, err
+}
+
+// StartProcessHidden starts an executable without showing a console window.
+func StartProcessHidden(file string, args []string, dir string) (*StartedProcess, error) {
+	started, err := startProcessWithVerb("open", file, args, dir, SW_HIDE)
+	if err == nil {
+		return started, nil
+	}
+	if err == ERROR_ELEVATION_REQUIRED {
+		return startProcessWithVerb("runas", file, args, dir, SW_HIDE)
 	}
 	return nil, err
 }
@@ -117,10 +130,16 @@ func StartProcessWithEnv(file string, args []string, dir string, env []string) (
 // StartProcessElevated starts an executable with the Windows "runas" verb,
 // prompting for UAC elevation when required.
 func StartProcessElevated(file string, args []string, dir string) (*StartedProcess, error) {
-	return startProcessWithVerb("runas", file, args, dir)
+	return startProcessWithVerb("runas", file, args, dir, SW_SHOWNORMAL)
 }
 
-func startProcessWithVerb(verb string, file string, args []string, dir string) (*StartedProcess, error) {
+// StartProcessElevatedHidden starts an elevated executable without showing a
+// console window. The Windows UAC consent dialog remains visible.
+func StartProcessElevatedHidden(file string, args []string, dir string) (*StartedProcess, error) {
+	return startProcessWithVerb("runas", file, args, dir, SW_HIDE)
+}
+
+func startProcessWithVerb(verb string, file string, args []string, dir string, show int32) (*StartedProcess, error) {
 	file = strings.TrimSpace(file)
 	if file == "" {
 		return nil, fmt.Errorf("executable path is empty")
@@ -163,7 +182,7 @@ func startProcessWithVerb(verb string, file string, args []string, dir string) (
 		File:       filePtr,
 		Parameters: parametersPtr,
 		Directory:  directoryPtr,
-		Show:       SW_SHOWNORMAL,
+		Show:       show,
 	}
 
 	ret, _, callErr := procShellExecuteEx.Call(uintptr(unsafe.Pointer(&info)))
