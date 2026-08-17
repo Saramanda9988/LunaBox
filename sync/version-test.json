@@ -1,13 +1,14 @@
 {
-  "version": "2.0.0-test.2",
+  "version": "2.0.0-test.3",
   "release_date": "2026-08-17",
   "changelog": [
-    "优化更新提示窗口的下载按钮布局",
-    "修复云同步开关状态未即时应用到侧栏入口的问题",
-    "修复游戏评价为空时仍可同步至 Bangumi 或 Hikarinagi 的问题"
+    "优化更新下载与安装过程，避免弹出终端窗口",
+    "将客户端更新逻辑迁移至独立模块，并将更新器拆分为独立 Go module",
+    "新增基于 Cloudflare Workers、R2 与 D1 的更新服务，支持更新资产分发与结果统计",
+    "调整测试更新发布任务：GitHub Release 保留签名安装包，增量更新资产上传至 S3 兼容存储"
   ],
   "downloads": {
-    "github": "https://github.com/Saramanda9988/LunaBox/releases/tag/v2.0.0-test.2"
+    "github": "https://github.com/Saramanda9988/LunaBox/releases/tag/v2.0.0-test.3"
   },
-  "update_manifest_url": "https://github.com/Saramanda9988/LunaBox/releases/download/v2.0.0-test.2/LunaBox-2.0.0-test.2-update-manifest.json"
+  "update_manifest_url": "https://github.com/Saramanda9988/LunaBox/releases/download/v2.0.0-test.3/LunaBox-2.0.0-test.3-update-manifest.json"
 }
