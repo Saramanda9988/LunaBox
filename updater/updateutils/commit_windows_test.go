@@ -9,7 +9,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-func TestConfigureRestartCommandHidesConsole(t *testing.T) {
+func TestConfigureRestartCommandShowsGUIWithoutConsole(t *testing.T) {
 	command := exec.Command("LunaBox.exe")
 	if err := configureRestartCommand(command); err != nil {
 		t.Fatal(err)
@@ -18,8 +18,8 @@ func TestConfigureRestartCommandHidesConsole(t *testing.T) {
 	if command.SysProcAttr == nil {
 		t.Fatal("expected Windows process attributes")
 	}
-	if !command.SysProcAttr.HideWindow {
-		t.Fatal("expected restart window to be hidden")
+	if command.SysProcAttr.HideWindow {
+		t.Fatal("expected restart to preserve the GUI window visibility")
 	}
 	if command.SysProcAttr.CreationFlags&windows.CREATE_NO_WINDOW == 0 {
 		t.Fatal("expected restart to use CREATE_NO_WINDOW")

@@ -118,8 +118,9 @@ func updateInstallMetadata(buildMode string, version string) error {
 }
 
 func configureRestartCommand(command *exec.Cmd) error {
+	// HideWindow must remain false because STARTUPINFO would otherwise override
+	// Wails' first ShowWindow call with SW_HIDE.
 	command.SysProcAttr = &syscall.SysProcAttr{
-		HideWindow:    true,
 		CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.CREATE_NO_WINDOW,
 	}
 	return nil
