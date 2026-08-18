@@ -38,7 +38,7 @@
 				{
 					"binding": "UPDATE_DB",
 					"database_name": "lunabox-updates",
-					"database_id": "REPLACE_WITH_PRODUCTION_D1_DATABASE_ID",
+					"database_id": "b0629a51-df13-48f8-836e-6b6e99650ed5",
 					"migrations_dir": "migrations"
 				}
 			]
