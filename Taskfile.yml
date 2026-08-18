@@ -28,7 +28,11 @@ tasks:
           }'
         platforms: [windows]
       - cmd: go build -buildvcs=false -o "{{.BIN_DIR}}/{{.APP_NAME}}{{exeExt}}" .
-        platforms: [darwin, linux]
+        platforms: [darwin]
+      - cmd: ./scripts/patch-wails-linux-tray.sh
+        platforms: [linux]
+      - cmd: go build -buildvcs=false -o "{{.BIN_DIR}}/{{.APP_NAME}}{{exeExt}}" .
+        platforms: [linux]
 
   package:
     summary: Creates the platform release packages through the LunaBox Wails v3 scripts
@@ -68,6 +72,8 @@ tasks:
     generates:
       - frontend/bindings/**/*
     cmds:
+      - cmd: ./scripts/patch-wails-linux-tray.sh
+        platforms: [linux]
       - wails3 generate bindings -clean=true -ts
 
   dev:frontend:
@@ -81,4 +87,6 @@ tasks:
   dev:
     summary: Runs LunaBox in Wails v3 development mode
     cmds:
+      - cmd: ./scripts/patch-wails-linux-tray.sh
+        platforms: [linux]
       - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}

@@ -38,7 +38,7 @@ func TestBuildHikarinagiAuthURLUsesPublicClientPKCE(t *testing.T) {
 	if query.Get("code_challenge") != expectedChallenge {
 		t.Fatalf("PKCE challenge 不符合预期")
 	}
-	for _, scope := range []string{"openid", "catalog:read", "user:read", "status:write", "offline_access"} {
+	for _, scope := range []string{"openid", "catalog:full", "user:read", "status:write", "offline_access"} {
 		if !strings.Contains(" "+query.Get("scope")+" ", " "+scope+" ") {
 			t.Fatalf("授权请求缺少 scope %q: %q", scope, query.Get("scope"))
 		}

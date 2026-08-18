@@ -598,6 +598,8 @@
     "needsImport": "\"{{name}}\" has not been added to the current Steam account. LunaBox can add it to Steam's non-Steam game list.",
     "steamRunningTitle": "Exit Steam first",
     "steamRunning": "Steam is currently running. Fully exit it from the system tray before retrying so it cannot overwrite the shortcuts file while closing.",
+    "restartRequiredTitle": "Steam restart required",
+    "restartRequired": "Steam is currently running. LunaBox will close Steam, write the non-Steam shortcut, then start Steam again.",
     "steamMissingTitle": "Steam was not detected",
     "steamMissing": "Install Steam first, or confirm that the current system account can access the Steam installation.",
     "executableRequiredTitle": "Game executable required",
@@ -609,11 +611,12 @@
     "unknownState": "Steam returned an unrecognized state. Try again later.",
     "localIdentityNote": "The local Steam association is independent from the game's metadata source and stays on this device. Existing cover art, tags, and metadata source remain unchanged.",
     "import": "Add to Steam",
+    "importAndRestart": "Import and restart Steam",
     "retry": "Check again",
     "selectExecutable": "Select executable",
     "checkFailed": "Failed to check Steam status: {{error}}",
     "importFailed": "Failed to add the game to Steam: {{error}}",
-    "importSuccess": "The game was added to Steam. Start or restart Steam, then click launch again."
+    "importSuccess": "The game was added to Steam. After Steam finishes restarting, click launch again."
   },
   "gameStats": {
     "todayPlayTime": "Today's Play Time",

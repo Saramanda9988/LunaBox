@@ -18,6 +18,7 @@ import (
 	"lunabox/internal/utils/imageutils"
 	metadatautils "lunabox/internal/utils/metadata"
 	"os"
+	pathpkg "path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -248,10 +249,11 @@ func (s *DownloadService) CancelDownload(taskID string) error {
 
 	if status == DownloadStatusPaused {
 		destPath := ""
+		extractPath := ""
 		if path, err := s.getTaskDestPath(task.Request); err == nil {
 			destPath = path
+			extractPath, _ = s.getTaskExtractPath(task.Request, destPath)
 		}
-		extractPath := downloadutils.BuildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
 		extractStagingPath := downloadTaskExtractStagingPath(extractPath, task.ID)
 		// 暂停中的任务从未重命名到最终路径，destPath 不属于它
 		s.cancelTaskAndCleanup(task, downloadTaskPartialCleanupPaths(destPath, extractStagingPath)...)
@@ -473,7 +475,7 @@ func (s *DownloadService) DeleteDownloadTask(taskID string) error {
 	// 已完成任务的文件是用户的游戏数据，保留。
 	if ok && status != DownloadStatusDone && request.DownloadSource != imageDownloadSource {
 		if destPath, err := s.getTaskDestPath(request); err == nil {
-			extractPath := downloadutils.BuildExpectedExtractDir(destPath, request.FileName, request.ArchiveFormat, request.Title)
+			extractPath, _ := s.getTaskExtractPath(request, destPath)
 			extractStagingPath := downloadTaskExtractStagingPath(extractPath, taskID)
 			if downloadCompleted {
 				s.cleanupDownloadArtifacts(downloadTaskCleanupPaths(destPath, extractStagingPath)...)
@@ -986,7 +988,7 @@ func (s *DownloadService) fetchMetadataForTask(task *DownloadTask) (*vo.GameMeta
 	return &metaResult, nil
 }
 
-func (s *DownloadService) handleDownloadedFile(downloadedPath string, fileName string, archiveFormat string, title string, taskID string) (string, bool, error) {
+func (s *DownloadService) handleDownloadedFile(downloadedPath string, extractDir string, fileName string, archiveFormat string, title string, taskID string, stripTopLevel bool) (string, bool, error) {
 	format := downloadutils.NormalizeArchiveFormat(archiveFormat)
 	if format == "none" {
 		return downloadedPath, false, nil
@@ -995,16 +997,13 @@ func (s *DownloadService) handleDownloadedFile(downloadedPath string, fileName s
 		return "", false, fmt.Errorf("unsupported archive_format: %s", archiveFormat)
 	}
 
-	baseName := downloadutils.TrimArchiveSuffixByFormat(strings.TrimSpace(fileName), format)
-	baseName = downloadutils.SanitizeFileName(baseName)
-	if baseName == "" {
-		baseName = downloadutils.SanitizeFileName(title)
+	if strings.TrimSpace(extractDir) == "" {
+		extractDir = downloadutils.BuildExpectedExtractDir(downloadedPath, fileName, format, title)
 	}
-	if baseName == "" {
-		baseName = "game"
+	if strings.TrimSpace(extractDir) == "" {
+		return "", false, fmt.Errorf("resolve extract dir")
 	}
 
-	extractDir := filepath.Join(filepath.Dir(downloadedPath), baseName)
 	extractStagingDir := downloadTaskExtractStagingPath(extractDir, taskID)
 	if err := os.RemoveAll(extractStagingDir); err != nil {
 		return "", false, fmt.Errorf("reset extract staging dir: %w", err)
@@ -1036,7 +1035,11 @@ func (s *DownloadService) handleDownloadedFile(downloadedPath string, fileName s
 		applog.LogWarningf(s.ctx, "failed to delete source archive after unzip: %v", err)
 	}
 
-	if collapsed, ok := collapseSingleRootDirectory(finalExtractDir); ok {
+	if stripTopLevel {
+		collapsed, ok := collapseSingleRootDirectory(finalExtractDir)
+		if !ok {
+			return finalExtractDir, false, nil
+		}
 		finalExtractDir = collapsed
 	}
 
@@ -1392,7 +1395,10 @@ func (s *DownloadService) prepareDownloadExecution(task *DownloadTask) (string, 
 	if err != nil {
 		return "", "", nil, fmt.Errorf("resolve download path: %w", err)
 	}
-	extractPath := downloadutils.BuildExpectedExtractDir(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title)
+	extractPath, err := s.getTaskExtractPath(task.Request, destPath)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("resolve extract path: %w", err)
+	}
 
 	resumeOffset := s.inspectResumeOffset(task, destPath)
 	config := downloadutils.TransferConfig{ProxyConfig: s.config}
@@ -1469,7 +1475,7 @@ func (s *DownloadService) postProcessDownloadedTask(task *DownloadTask, destPath
 		return "", false, true, nil
 	}
 
-	finalPath, manualExtractRequired, err := s.handleDownloadedFile(destPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title, task.ID)
+	finalPath, manualExtractRequired, err := s.handleDownloadedFile(destPath, extractPath, task.Request.FileName, task.Request.ArchiveFormat, task.Request.Title, task.ID, task.Request.StripTopLevel)
 	if err != nil {
 		if s.isTaskCancelled(task) {
 			s.cancelTaskAndCleanup(task, downloadTaskCleanupPaths(destPath, extractStagingPath)...)
@@ -1585,7 +1591,26 @@ func collapseSingleRootDirectory(dir string) (string, bool) {
 		return "", false
 	}
 
-	return filepath.Join(dir, only.Name()), true
+	nestedRoot := filepath.Join(dir, only.Name())
+	if gamehelper.IsMacAppBundlePath(nestedRoot) {
+		return nestedRoot, true
+	}
+
+	nestedEntries, err := os.ReadDir(nestedRoot)
+	if err != nil {
+		return "", false
+	}
+	for _, nestedEntry := range nestedEntries {
+		src := filepath.Join(nestedRoot, nestedEntry.Name())
+		dst := filepath.Join(dir, nestedEntry.Name())
+		if err := os.Rename(src, dst); err != nil {
+			return "", false
+		}
+	}
+	if err := os.Remove(nestedRoot); err != nil {
+		return "", false
+	}
+	return dir, true
 }
 
 func downloadTaskExtractStagingPath(extractPath string, taskID string) string {
@@ -1638,6 +1663,79 @@ func (s *DownloadService) getDownloadDir() (string, error) {
 	return dir, os.MkdirAll(dir, 0755)
 }
 
+func (s *DownloadService) getTaskExtractPath(req vo.InstallRequest, destPath string) (string, error) {
+	baseDir := filepath.Dir(destPath)
+	if customPath, ok, err := resolveInstallSubdir(baseDir, req.InstallSubdir); err != nil {
+		return "", err
+	} else if ok {
+		return customPath, nil
+	}
+	return downloadutils.BuildExpectedExtractDir(destPath, req.FileName, req.ArchiveFormat, req.Title), nil
+}
+
+func resolveInstallSubdir(baseDir string, installSubdir string) (string, bool, error) {
+	trimmed := strings.TrimSpace(installSubdir)
+	if trimmed == "" {
+		return "", false, nil
+	}
+	if strings.ContainsRune(trimmed, '\x00') {
+		return "", false, fmt.Errorf("must not contain NUL bytes")
+	}
+
+	normalized := strings.ReplaceAll(trimmed, "\\", "/")
+	if strings.HasPrefix(normalized, "/") {
+		return "", false, fmt.Errorf("must be relative path")
+	}
+
+	segments := strings.Split(normalized, "/")
+	safeSegments := make([]string, 0, len(segments))
+	for _, segment := range segments {
+		trimmedSegment := strings.TrimSpace(segment)
+		if trimmedSegment == "" || trimmedSegment == "." {
+			continue
+		}
+		if trimmedSegment == ".." {
+			return "", false, fmt.Errorf("must not escape game library")
+		}
+		safeSegment := strings.TrimSpace(downloadutils.SanitizeFileName(trimmedSegment))
+		if safeSegment == "" || safeSegment == "." || safeSegment == ".." {
+			return "", false, fmt.Errorf("contains invalid path segment")
+		}
+		safeSegments = append(safeSegments, safeSegment)
+	}
+	if len(safeSegments) == 0 {
+		return "", false, fmt.Errorf("must not be empty")
+	}
+
+	cleanRelative := pathpkg.Clean(strings.Join(safeSegments, "/"))
+	if cleanRelative == "." || strings.HasPrefix(cleanRelative, "../") || cleanRelative == ".." {
+		return "", false, fmt.Errorf("must not escape game library")
+	}
+
+	cleanBase := strings.TrimSpace(baseDir)
+	if cleanBase == "" {
+		cleanBase = "."
+	}
+	baseAbs, err := filepath.Abs(cleanBase)
+	if err != nil {
+		return "", false, fmt.Errorf("normalize game library path: %w", err)
+	}
+
+	candidateAbs, err := filepath.Abs(filepath.Join(baseAbs, filepath.FromSlash(cleanRelative)))
+	if err != nil {
+		return "", false, fmt.Errorf("normalize install_subdir: %w", err)
+	}
+	rel, err := filepath.Rel(baseAbs, candidateAbs)
+	if err != nil {
+		return "", false, fmt.Errorf("validate install_subdir: %w", err)
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		return "", false, fmt.Errorf("must not escape game library")
+	}
+
+	return candidateAbs, true, nil
+}
+
 func validateInstallRequest(req vo.InstallRequest) error {
 	if strings.TrimSpace(req.URL) == "" {
 		return fmt.Errorf("missing url")
@@ -1659,6 +1757,9 @@ func validateInstallRequest(req vo.InstallRequest) error {
 
 	if _, _, err := resolveExecutablePathFromRequest("", req.StartupPath); err != nil {
 		return fmt.Errorf("invalid startup_path: %w", err)
+	}
+	if _, _, err := resolveInstallSubdir(".", req.InstallSubdir); err != nil {
+		return fmt.Errorf("invalid install_subdir: %w", err)
 	}
 
 	if req.Size <= 0 {

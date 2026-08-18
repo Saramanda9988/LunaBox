@@ -56,7 +56,7 @@ func TestGameReviewServiceSaveAndSync(t *testing.T) {
 		switch r.URL.Path {
 		case "/v0/users/-/collections/42":
 			w.WriteHeader(http.StatusNoContent)
-		case "/api/v3/open/user/me/rates/galgames/84":
+		case "/v3/user/me/rates/galgames/84":
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = io.WriteString(w, `{"success":true,"data":{}}`)
 		default:
@@ -111,7 +111,7 @@ func TestGameReviewServiceSaveAndSync(t *testing.T) {
 	if bangumiBody["rate"] != float64(9) || bangumiBody["comment"] != "值得体验" {
 		t.Fatalf("unexpected Bangumi review payload: %+v", bangumiBody)
 	}
-	hikarinagiBody := requestBodies["/api/v3/open/user/me/rates/galgames/84"]
+	hikarinagiBody := requestBodies["/v3/user/me/rates/galgames/84"]
 	if hikarinagiBody["rate"] != float64(9) || hikarinagiBody["rate_content"] != "值得体验" || hikarinagiBody["is_spoiler"] != true || hikarinagiBody["time_to_finish_minutes"] != float64(62) {
 		t.Fatalf("unexpected Hikarinagi review payload: %+v", hikarinagiBody)
 	}

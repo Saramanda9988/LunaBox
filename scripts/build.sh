@@ -201,6 +201,8 @@ LINUX_PORTABLE_STAGING="build/linux/portable/LunaBox-${VERSION}-linux-${TARGET_A
 LINUX_PORTABLE_PATH="$BIN_DIR/LunaBox-${VERSION}-linux-${TARGET_ARCH}-portable.tar.gz"
 LINUX_DEB_PATH="$BIN_DIR/LunaBox-${VERSION}-linux-${TARGET_ARCH}.deb"
 LINUX_RPM_PATH="$BIN_DIR/LunaBox-${VERSION}-linux-${TARGET_ARCH}.rpm"
+LINUX_SEVENZIP_SOURCE="lib/linux${TARGET_ARCH}/7z/7zz"
+LINUX_SEVENZIP_PACKAGE_PATH="$BIN_DIR/7zz"
 # The checked-in 7zz is a universal Mach-O binary (x86_64 + arm64).
 MAC_SEVENZIP_SOURCE="lib/macarm64/7z/7zz"
 
@@ -232,6 +234,14 @@ if [[ "$EXPECTED_WAILS_VERSION" != "$ACTUAL_WAILS_VERSION" ]]; then
     exit 1
 fi
 
+if [[ "$HOST_OS" == "Linux" ]]; then
+    ./scripts/patch-wails-linux-tray.sh
+    if [[ ! -f "$LINUX_SEVENZIP_SOURCE" ]]; then
+        echo "ERROR: Missing $LINUX_SEVENZIP_SOURCE"
+        exit 1
+    fi
+fi
+
 echo "========================================"
 if [[ "$HOST_OS" == "Linux" ]]; then
     echo "LunaBox Wails v3 Linux Build"
@@ -248,7 +258,8 @@ echo "Bangumi OAuth Injection: $BANGUMI_OAUTH_STATUS"
 echo "Hikarinagi OAuth Injection: $HIKARINAGI_OAUTH_STATUS"
 echo "TouchGAL Token Injection: $TOUCHGAL_TOKEN_STATUS"
 echo "Umbra Registration Token Injection: $UMBRA_REGISTRATION_STATUS"
-if [[ -f "$MAC_SEVENZIP_SOURCE" ]]; then echo "Bundled 7zz: $MAC_SEVENZIP_SOURCE"; fi
+if [[ "$HOST_OS" == "Linux" && -f "$LINUX_SEVENZIP_SOURCE" ]]; then echo "Bundled 7zz: $LINUX_SEVENZIP_SOURCE"; fi
+if [[ "$HOST_OS" == "Darwin" && -f "$MAC_SEVENZIP_SOURCE" ]]; then echo "Bundled 7zz: $MAC_SEVENZIP_SOURCE"; fi
 echo "========================================"
 echo
 
@@ -275,6 +286,48 @@ if [[ "$HOST_OS" == "Linux" ]]; then
         chmod 755 "$APP_BINARY" "$CLI_BINARY"
     }
 
+    stage_linux_sevenzip() {
+        local target="$1"
+        mkdir -p "$(dirname "$target")"
+        cp "$LINUX_SEVENZIP_SOURCE" "$target"
+        chmod 755 "$target"
+    }
+
+    strip_top_level() {
+        local path="${1%/}"
+        local top_level="${path##*/}"
+
+        case "$top_level" in
+            ""|.|..|-*|*/*|*\\*|*$'\n'*|*$'\r'*)
+                echo "ERROR: Unsafe archive top-level directory: $top_level" >&2
+                exit 1
+                ;;
+        esac
+
+        printf '%s\n' "$top_level"
+    }
+
+    verify_tar_top_level() {
+        local archive_path="$1"
+        local top_level="$2"
+        local entry clean_entry
+
+        while IFS= read -r entry; do
+            clean_entry="${entry#./}"
+            case "$clean_entry" in
+                ""|/*|../*|*/../*|*/..|*$'\n'*|*$'\r'*)
+                    echo "ERROR: Unsafe tar entry in $archive_path: $entry" >&2
+                    exit 1
+                    ;;
+                "$top_level"|"$top_level"/*) ;;
+                *)
+                    echo "ERROR: Tar entry is outside $top_level: $entry" >&2
+                    exit 1
+                    ;;
+            esac
+        done < <(tar -tzf "$archive_path")
+    }
+
     if [[ "$BUILD_MODE" == "portable" || "$BUILD_MODE" == "all" ]]; then
         echo "[1/3] Creating Linux portable package..."
         build_linux_binaries "$LDFLAGS_PORTABLE"
@@ -284,13 +337,17 @@ if [[ "$HOST_OS" == "Linux" ]]; then
         cp "$APP_BINARY" "$LINUX_PORTABLE_STAGING/LunaBox"
         cp "$CLI_BINARY" "$LINUX_PORTABLE_STAGING/lunacli"
         cp build/appicon.png "$LINUX_PORTABLE_STAGING/appicon.png"
-        tar -C "$(dirname "$LINUX_PORTABLE_STAGING")" -czf "$LINUX_PORTABLE_PATH" "$(basename "$LINUX_PORTABLE_STAGING")"
+        stage_linux_sevenzip "$LINUX_PORTABLE_STAGING/bin/7zz"
+        portable_top_level="$(strip_top_level "$LINUX_PORTABLE_STAGING")"
+        tar -C "$(dirname "$LINUX_PORTABLE_STAGING")" -czf "$LINUX_PORTABLE_PATH" "$portable_top_level"
+        verify_tar_top_level "$LINUX_PORTABLE_PATH" "$portable_top_level"
     fi
 
     if [[ "$BUILD_MODE" == "installer" || "$BUILD_MODE" == "all" ]]; then
         echo "[2/3] Creating Linux deb and rpm packages..."
         build_linux_binaries "$LDFLAGS_INSTALLER"
         rm -f "$LINUX_DEB_PATH" "$LINUX_RPM_PATH"
+        stage_linux_sevenzip "$LINUX_SEVENZIP_PACKAGE_PATH"
         export VERSION GOARCH="$TARGET_ARCH" MAINTAINER="${MAINTAINER:-LunaBox contributors}"
         nfpm pkg --config build/linux/nfpm/nfpm.yaml --packager deb --target "$LINUX_DEB_PATH"
         nfpm pkg --config build/linux/nfpm/nfpm.yaml --packager rpm --target "$LINUX_RPM_PATH"

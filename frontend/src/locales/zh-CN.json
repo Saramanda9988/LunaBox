@@ -598,6 +598,8 @@
     "needsImport": "《{{name}}》尚未添加到当前 Steam 账号。LunaBox 可以将该游戏写入 Steam 的非 Steam 游戏列表。",
     "steamRunningTitle": "请先退出 Steam",
     "steamRunning": "Steam 当前正在运行。请从托盘完整退出 Steam 后重试，避免 Steam 退出时覆盖快捷方式文件。",
+    "restartRequiredTitle": "需要重启 Steam",
+    "restartRequired": "Steam 当前正在运行。LunaBox 会先关闭 Steam，写入非 Steam 游戏快捷方式，然后重新启动 Steam。",
     "steamMissingTitle": "未检测到 Steam",
     "steamMissing": "请先安装 Steam，或确认当前系统账号能够访问 Steam 安装信息。",
     "executableRequiredTitle": "需要游戏可执行程序",
@@ -609,11 +611,12 @@
     "unknownState": "Steam 返回了无法识别的状态，请稍后重试。",
     "localIdentityNote": "本机 Steam 关联与游戏元数据来源相互独立，并且仅保存在此设备。原有封面、标签和元数据来源保持原样。",
     "import": "添加到 Steam",
+    "importAndRestart": "导入并重启 Steam",
     "retry": "重新检查",
     "selectExecutable": "选择可执行程序",
     "checkFailed": "检查 Steam 状态失败: {{error}}",
     "importFailed": "添加到 Steam 失败: {{error}}",
-    "importSuccess": "游戏已添加到 Steam。请启动或重新启动 Steam，然后再次点击启动。"
+    "importSuccess": "游戏已添加到 Steam。Steam 重启完成后，可再次点击启动。"
   },
   "gameStats": {
     "todayPlayTime": "今日游戏时长",

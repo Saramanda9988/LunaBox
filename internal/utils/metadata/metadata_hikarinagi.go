@@ -22,10 +22,10 @@ import (
 )
 
 const (
-	hikarinagiAPIBaseURL = "https://www.hikarinagi.org/api/v3/open"
+	hikarinagiAPIBaseURL = "https://api.hikarinagi.org/v3"
 	hikarinagiPageAPIURL = "https://www.hikarinagi.org/api/pages"
 	hikarinagiTokenURL   = "https://id.hikarinagi.org/oidc/token"
-	hikarinagiScope      = "catalog:read"
+	hikarinagiScope      = "catalog:full"
 )
 
 var ErrHikarinagiUnauthorized = errors.New("hikarinagi unauthorized")
@@ -97,6 +97,11 @@ type hikarinagiGame struct {
 	TransIntro  *string           `json:"trans_intro"`
 	NSFW        bool              `json:"nsfw"`
 	Tags        []hikarinagiTag   `json:"tags"`
+	Rating      hikarinagiRating  `json:"rating"`
+}
+
+type hikarinagiRating struct {
+	Score *float64 `json:"score"`
 }
 
 type hikarinagiSearchHit struct {
@@ -175,7 +180,9 @@ func (h HikarinagiInfoGetter) FetchMetadata(id string, accessToken string) (Meta
 		log.Warnf("failed to fetch Hikarinagi page metadata for game %s: %v", normalizedID, err)
 	} else {
 		result.Game.Company = pageMetadata.Company
-		result.Game.Rating = pageMetadata.Rating
+		if result.Game.Rating == 0 {
+			result.Game.Rating = pageMetadata.Rating
+		}
 	}
 	return result, nil
 }
@@ -459,6 +466,10 @@ func (h HikarinagiInfoGetter) convertToMetadataResult(data hikarinagiGame) Metad
 	}
 
 	coverURL := bestHikarinagiCoverURL(data.Covers)
+	rating := 0.0
+	if data.Rating.Score != nil {
+		rating = normalizeTenPointRating(*data.Rating.Score)
+	}
 	game := models.Game{
 		Name:           name,
 		Aliases:        normalizeMetadataAliases(name, titleVariants, data.Aliases),
@@ -466,6 +477,7 @@ func (h HikarinagiInfoGetter) convertToMetadataResult(data hikarinagiGame) Metad
 		CoverSourceURL: coverURL,
 		Summary:        summary,
 		ReleaseDate:    releaseDate,
+		Rating:         rating,
 		IsNSFW:         data.NSFW,
 		SourceType:     enums.Hikarinagi,
 		SourceID:       strconv.FormatInt(data.ID, 10),

@@ -29,7 +29,7 @@ func TestHikarinagiServiceSyncAllGameStatuses(t *testing.T) {
 
 	var requestCount int32
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasPrefix(r.URL.Path, "/api/v3/open/user/me/rates/galgames/") {
+		if !strings.HasPrefix(r.URL.Path, "/v3/user/me/rates/galgames/") {
 			t.Fatalf("未预期的请求路径: %s", r.URL.Path)
 		}
 		if r.Header.Get("User-Agent") == "" {
@@ -96,7 +96,7 @@ func TestGameServicePushesStatusToEveryLinkedProvider(t *testing.T) {
 		case "/v0/users/-/collections/42":
 			atomic.AddInt32(&bangumiCalls, 1)
 			w.WriteHeader(http.StatusNoContent)
-		case "/api/v3/open/user/me/rates/galgames/84":
+		case "/v3/user/me/rates/galgames/84":
 			atomic.AddInt32(&hikarinagiCalls, 1)
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = io.WriteString(w, `{"success":true,"data":{"status":"COMPLETED"}}`)
@@ -165,7 +165,7 @@ func TestGameServiceSkipsUnauthorizedProviderWithoutAffectingOtherProvider(t *te
 		case "/v0/users/-/collections/42":
 			atomic.AddInt32(&bangumiCalls, 1)
 			w.WriteHeader(http.StatusNoContent)
-		case "/api/v3/open/user/me/rates/galgames/84":
+		case "/v3/user/me/rates/galgames/84":
 			atomic.AddInt32(&hikarinagiCalls, 1)
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = io.WriteString(w, `{"success":true,"data":{"status":"COMPLETED"}}`)
@@ -262,7 +262,7 @@ func TestHikarinagiServiceRefreshesRotatingTokenAndPushesMappedStatus(t *testing
 					atomic.AddInt32(&tokenRefreshCalls, 1)
 					w.Header().Set("Content-Type", "application/json")
 					_, _ = io.WriteString(w, `{"access_token":"access-new","refresh_token":"refresh-new","expires_in":3600,"token_type":"Bearer"}`)
-				case "/api/v3/open/user/me/rates/galgames/42":
+				case "/v3/user/me/rates/galgames/42":
 					if got := r.Header.Get("Authorization"); got != "Bearer access-new" {
 						t.Fatalf("期望刷新后的 access token，实际为 %q", got)
 					}

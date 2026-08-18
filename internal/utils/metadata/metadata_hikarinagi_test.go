@@ -59,16 +59,16 @@ func TestHikarinagiGetterUsesClientCredentialsAndCachesToken(t *testing.T) {
 			if req.Form.Get("grant_type") != "client_credentials" || req.Form.Get("scope") != hikarinagiScope {
 				t.Fatalf("unexpected token form: %#v", req.Form)
 			}
-			return response(`{"access_token":"test-access-token","token_type":"Bearer","expires_in":3600,"scope":"catalog:read"}`)
-		case strings.Contains(req.URL.Path, "/open/search"):
+			return response(`{"access_token":"test-access-token","token_type":"Bearer","expires_in":3600,"scope":"catalog:full"}`)
+		case strings.Contains(req.URL.Path, "/v3/search"):
 			assertHikarinagiBearerToken(t, req)
 			if req.URL.Query().Get("q") != "CLANNAD" || req.URL.Query().Get("types") != "galgame" {
 				t.Fatalf("unexpected search query: %s", req.URL.RawQuery)
 			}
 			return response(`{"success":true,"data":{"items":[{"type":"galgame","id":371,"title":"CLANNAD","subtitle":null,"developer":"Key","cover":null}],"meta":{"page":1,"page_size":1,"total_items":1,"item_count":1,"total_pages":1}},"request_id":"req-search"}`)
-		case strings.HasSuffix(req.URL.Path, "/open/galgames/371"):
+		case strings.HasSuffix(req.URL.Path, "/v3/galgames/371"):
 			assertHikarinagiBearerToken(t, req)
-			return response(`{"success":true,"data":{"id":371,"origin_title":"CLANNAD","trans_title":"克兰娜德","covers":[{"url":"https://example.com/low.jpg","width":600,"height":800,"sexual":0,"violence":0,"votes":1},{"url":"https://example.com/best.jpg","width":600,"height":800,"sexual":0,"violence":0,"votes":9}],"release_date":"2004-04-28T00:00:00.000Z","origin_intro":"origin","trans_intro":"translated","nsfw":false,"tags":[{"name":"泣きゲー","likes":20},{"name":"学园","likes":10}]},"request_id":"req-detail"}`)
+			return response(`{"success":true,"data":{"id":371,"origin_title":"CLANNAD","trans_title":"克兰娜德","covers":[{"url":"https://example.com/low.jpg","width":600,"height":800,"sexual":0,"violence":0,"votes":1},{"url":"https://example.com/best.jpg","width":600,"height":800,"sexual":0,"violence":0,"votes":9}],"release_date":"2004-04-28T00:00:00.000Z","origin_intro":"origin","trans_intro":"translated","nsfw":false,"tags":[{"name":"泣きゲー","likes":20},{"name":"学园","likes":10}],"rating":{"total":6,"score":9.1,"count":{"9":5,"10":1}}},"request_id":"req-detail"}`)
 		case strings.HasSuffix(req.URL.Path, "/api/pages/galgames/371"):
 			return response(`{"producers":[{"role":"DEVELOPER","producer":{"name":"Key"}}],"rate_stats":{"average":9.2}}`)
 		default:
@@ -88,7 +88,7 @@ func TestHikarinagiGetterUsesClientCredentialsAndCachesToken(t *testing.T) {
 	if result.Game.CoverURL != "https://example.com/best.jpg" || result.Game.ReleaseDate != "2004-04-28" {
 		t.Fatalf("unexpected cover/date: %#v", result.Game)
 	}
-	if result.Game.Rating != 9.2 {
+	if result.Game.Rating != 9.1 {
 		t.Fatalf("Rating = %v", result.Game.Rating)
 	}
 	if result.Game.SourceType != enums.Hikarinagi || result.Game.SourceID != "371" {
@@ -120,7 +120,7 @@ func TestHikarinagiGetterFetchMetadataIncludesPageMetadata(t *testing.T) {
 		}
 
 		switch {
-		case strings.HasSuffix(req.URL.Path, "/open/galgames/14792"):
+		case strings.HasSuffix(req.URL.Path, "/v3/galgames/14792"):
 			if got := req.Header.Get("Authorization"); got != "Bearer user-access-token" {
 				t.Fatalf("Authorization = %q", got)
 			}

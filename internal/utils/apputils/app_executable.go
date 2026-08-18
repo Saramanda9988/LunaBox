@@ -65,6 +65,15 @@ func isLaunchableEntry(entry os.DirEntry) bool {
 		}
 		info, err := entry.Info()
 		return err == nil && info.Mode().Perm()&0111 != 0
+	case "linux":
+		if entry.IsDir() {
+			return false
+		}
+		if strings.HasSuffix(lowerName, ".exe") || strings.HasSuffix(lowerName, ".bat") {
+			return true
+		}
+		info, err := entry.Info()
+		return err == nil && info.Mode().Perm()&0111 != 0
 	default:
 		if entry.IsDir() {
 			return false

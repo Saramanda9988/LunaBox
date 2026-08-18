@@ -280,14 +280,16 @@ func (s *lifecycleState) ConfigureTray(showStartupErrorPreview func()) {
 	tray.SetTooltip("LunaBox")
 	if goruntime.GOOS == "darwin" {
 		tray.SetTemplateIcon(darwinTrayIcon)
+	} else if goruntime.GOOS == "linux" {
+		tray.SetIcon(appIcon)
+		tray.OnClick(s.ShowMainWindow)
+		tray.OnDoubleClick(s.ShowMainWindow)
 	} else {
 		// Wails v3 alpha passes a complete ICO container to an API that expects
 		// one image resource. Use the extracted 32x32 ICO frame for the tray.
 		tray.SetIcon(windowsTrayIcon)
-		if goruntime.GOOS == "windows" {
-			tray.OnClick(s.ShowMainWindow)
-			tray.OnDoubleClick(s.ShowMainWindow)
-		}
+		tray.OnClick(s.ShowMainWindow)
+		tray.OnDoubleClick(s.ShowMainWindow)
 	}
 	s.trayAvailable.Store(true)
 }

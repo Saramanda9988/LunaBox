@@ -36,13 +36,13 @@ const (
 	hikarinagiOAuthIssuer       = "https://id.hikarinagi.org/oidc"
 	hikarinagiOAuthAuthorizeURL = hikarinagiOAuthIssuer + "/auth"
 	hikarinagiOAuthTokenURL     = hikarinagiOAuthIssuer + "/token"
-	hikarinagiCurrentUserURL    = "https://www.hikarinagi.org/api/v3/open/user/me"
-	hikarinagiGameRateURLFormat = "https://www.hikarinagi.org/api/v3/open/user/me/rates/galgames/%s"
+	hikarinagiCurrentUserURL    = "https://api.hikarinagi.org/v3/user/me"
+	hikarinagiGameRateURLFormat = "https://api.hikarinagi.org/v3/user/me/rates/galgames/%s"
 	hikarinagiSiteURL           = "https://www.hikarinagi.org/"
 	hikarinagiImageBaseURL      = "https://imagesp.yurari.moe/"
 
 	hikarinagiOAuthClientIDEnv = "LUNABOX_HIKARINAGI_CLIENT_ID"
-	hikarinagiOAuthScopes      = "openid catalog:read user:read status:write offline_access"
+	hikarinagiOAuthScopes      = "openid catalog:full user:read status:write offline_access"
 
 	hikarinagiOAuthCallbackPort = 14791
 	hikarinagiOAuthCallbackPath = "/callback"

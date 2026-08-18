@@ -1637,6 +1637,16 @@ export class InstallRequest {
     "startup_path": string;
 
     /**
+     * 安装子目录（可选；相对于游戏库根目录）
+     */
+    "install_subdir": string;
+
+    /**
+     * 解压后是否折叠单一顶层目录（可选，默认 false）
+     */
+    "strip_top_level": boolean;
+
+    /**
      * 游戏标题（fallback 展示用）
      */
     "title": string;
@@ -1689,6 +1699,12 @@ export class InstallRequest {
         }
         if (!("startup_path" in $$source)) {
             this["startup_path"] = "";
+        }
+        if (!("install_subdir" in $$source)) {
+            this["install_subdir"] = "";
+        }
+        if (!("strip_top_level" in $$source)) {
+            this["strip_top_level"] = false;
         }
         if (!("title" in $$source)) {
             this["title"] = "";

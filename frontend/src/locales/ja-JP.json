@@ -598,6 +598,8 @@
     "needsImport": "「{{name}}」は現在の Steam アカウントに追加されていません。LunaBox から非 Steam ゲーム一覧へ追加できます。",
     "steamRunningTitle": "Steam を終了してください",
     "steamRunning": "Steam が実行中です。終了時にショートカットファイルが上書きされないよう、システムトレイから完全に終了してから再確認してください。",
+    "restartRequiredTitle": "Steam の再起動が必要です",
+    "restartRequired": "Steam が実行中です。LunaBox が Steam を終了し、非 Steam ゲームのショートカットを書き込んでから Steam を再起動します。",
     "steamMissingTitle": "Steam が見つかりません",
     "steamMissing": "Steam をインストールするか、現在のシステムアカウントから Steam のインストール情報へアクセスできることを確認してください。",
     "executableRequiredTitle": "ゲームの実行ファイルが必要です",
@@ -609,11 +611,12 @@
     "unknownState": "Steam から識別できない状態が返されました。しばらくしてから再確認してください。",
     "localIdentityNote": "ローカルの Steam 関連付けはゲームのメタデータ取得元から独立しており、この端末だけに保存されます。既存のカバー、タグ、メタデータ取得元は維持されます。",
     "import": "Steam に追加",
+    "importAndRestart": "追加して Steam を再起動",
     "retry": "再確認",
     "selectExecutable": "実行ファイルを選択",
     "checkFailed": "Steam の状態確認に失敗しました: {{error}}",
     "importFailed": "Steam への追加に失敗しました: {{error}}",
-    "importSuccess": "ゲームを Steam に追加しました。Steam を起動または再起動してから、もう一度起動してください。"
+    "importSuccess": "ゲームを Steam に追加しました。Steam の再起動が完了したら、もう一度起動してください。"
   },
   "gameStats": {
     "todayPlayTime": "今日のプレイ時間",

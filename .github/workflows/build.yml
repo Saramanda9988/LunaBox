@@ -65,6 +65,11 @@ jobs:
           go install "github.com/wailsapp/wails/v3/cmd/wails3@$version"
           test "$(wails3 version 2>&1)" = "$version"
 
+      - name: Patch Wails Linux tray support
+        if: runner.os == 'Linux'
+        shell: bash
+        run: ./scripts/patch-wails-linux-tray.sh
+
       - name: Install frontend dependencies
         working-directory: ./frontend
         run: pnpm install

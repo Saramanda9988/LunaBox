@@ -9,6 +9,7 @@ interface SteamImportModalProps {
   status: service.SteamLaunchStatus | null;
   isChecking: boolean;
   isImporting: boolean;
+  canRestartSteam?: boolean;
   onClose: () => void;
   onImport: () => void;
   onRetry: () => void;
@@ -21,6 +22,7 @@ export function SteamImportModal({
   status,
   isChecking,
   isImporting,
+  canRestartSteam = false,
   onClose,
   onImport,
   onRetry,
@@ -45,8 +47,16 @@ export function SteamImportModal({
     },
     steam_running: {
       icon: "i-mdi-steam",
-      title: t("steamImport.steamRunningTitle"),
-      message: t("steamImport.steamRunning"),
+      title: t(
+        canRestartSteam
+          ? "steamImport.restartRequiredTitle"
+          : "steamImport.steamRunningTitle",
+      ),
+      message: t(
+        canRestartSteam
+          ? "steamImport.restartRequired"
+          : "steamImport.steamRunning",
+      ),
     },
     steam_not_installed: {
       icon: "i-mdi-alert-circle-outline",
@@ -132,7 +142,21 @@ export function SteamImportModal({
               </BetterButton>
             )}
 
-            {(state === "steam_running" || state === "user_unavailable") && (
+            {state === "steam_running" && canRestartSteam && (
+              <BetterButton
+                variant="primary"
+                icon="i-mdi-restart"
+                isLoading={isImporting}
+                onClick={onImport}
+              >
+                {t("steamImport.importAndRestart")}
+              </BetterButton>
+            )}
+
+            {(
+              (state === "steam_running" && !canRestartSteam)
+              || state === "user_unavailable"
+            ) && (
               <BetterButton
                 variant="primary"
                 icon="i-mdi-refresh"

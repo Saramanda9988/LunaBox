@@ -45,7 +45,7 @@ func ParseAction(rawURL string) (string, error) {
 }
 
 // ParseURL parses a lunabox://install URI into an InstallRequest.
-// Supports: lunabox://install?url=...&file_name=...&archive_format=...&checksum_algo=...&checksum=...&expires_at=...
+// Supports: lunabox://install?url=...&file_name=...&archive_format=...&checksum_algo=...&checksum=...&expires_at=...&install_subdir=...&strip_top_level=...
 func ParseURL(rawURL string) (*vo.InstallRequest, error) {
 	return ParseInstallURL(rawURL)
 }
@@ -66,6 +66,7 @@ func ParseInstallURL(rawURL string) (*vo.InstallRequest, error) {
 		FileName:       q.Get("file_name"),
 		ArchiveFormat:  downloadutils.NormalizeArchiveFormat(q.Get("archive_format")),
 		StartupPath:    q.Get("startup_path"),
+		InstallSubdir:  q.Get("install_subdir"),
 		Title:          q.Get("title"),
 		DownloadSource: q.Get("download_source"),
 		MetaSource:     q.Get("source"),
@@ -78,6 +79,14 @@ func ParseInstallURL(rawURL string) (*vo.InstallRequest, error) {
 	}
 	if req.MetaSource == "" {
 		req.MetaSource = q.Get("meta_source")
+	}
+	stripTopLevelValue := strings.TrimSpace(q.Get("strip_top_level"))
+	if stripTopLevelValue != "" {
+		stripTopLevel, err := strconv.ParseBool(stripTopLevelValue)
+		if err != nil {
+			return nil, fmt.Errorf("invalid strip_top_level: %w", err)
+		}
+		req.StripTopLevel = stripTopLevel
 	}
 
 	if req.URL == "" {

@@ -16,6 +16,10 @@ contents:
     dst: "/usr/bin/LunaBox"
   - src: "./build/bin/lunacli"
     dst: "/usr/bin/lunacli"
+  - src: "./build/bin/7zz"
+    dst: "/usr/lib/lunabox/7zz"
+    file_info:
+      mode: 0755
   - src: "./build/appicon.png"
     dst: "/usr/share/icons/hicolor/512x512/apps/io.github.saramanda9988.lunabox.png"
     file_info:

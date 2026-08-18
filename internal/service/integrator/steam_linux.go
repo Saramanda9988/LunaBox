@@ -117,6 +117,9 @@ func importSteamPlatformShortcut(ctx context.Context, game models.Game) (SteamRe
 		}
 		return resolved, nil
 	}
+	if resolved.Status.State == SteamLaunchStateSteamRunning {
+		return importSteamPlatformShortcutWithRestart(ctx, game, resolved)
+	}
 	if resolved.Status.State != SteamLaunchStateNeedsImport {
 		return resolved, nil
 	}
@@ -152,10 +155,7 @@ func importSteamPlatformShortcut(ctx context.Context, game models.Game) (SteamRe
 		resolved.Status.UserID = userID
 		resolved.Status.ProtonPrefix = findSteamProtonPrefix(steamRoot, steamShortcutCompatdataIDs(appID)...)
 		if isSteamRunning() {
-			resolved.Status.State = SteamLaunchStateSteamRunning
-			resolved.Status.Ready = false
-			resolved.Status.SteamRunning = true
-			return resolved, nil
+			return importSteamPlatformShortcutWithRestart(ctx, game, resolved)
 		}
 		shortcuts.SetLaunchOptions(executable, resolved.Status.LaunchID, game.SteamLaunchOptions)
 		backupPath, err := saveSteamShortcutFile(shortcutsPath, shortcuts, original, hasOriginal)
@@ -172,9 +172,7 @@ func importSteamPlatformShortcut(ctx context.Context, game models.Game) (SteamRe
 		return SteamResult{}, fmt.Errorf("append Steam shortcut: %w", err)
 	}
 	if isSteamRunning() {
-		resolved.Status.State = SteamLaunchStateSteamRunning
-		resolved.Status.SteamRunning = true
-		return resolved, nil
+		return importSteamPlatformShortcutWithRestart(ctx, game, resolved)
 	}
 
 	backupPath, err := saveSteamShortcutFile(
@@ -201,6 +199,36 @@ func importSteamPlatformShortcut(ctx context.Context, game models.Game) (SteamRe
 	resolved.BackupPath = backupPath
 	_ = importSteamShortcutArtwork(steamRoot, userID, appID, game)
 	return resolved, nil
+}
+
+func importSteamPlatformShortcutWithRestart(ctx context.Context, game models.Game, resolved SteamResult) (SteamResult, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	steamRoot, err := findSteamRoot()
+	if err != nil {
+		return resolved, nil
+	}
+	if err := stopSteamClient(ctx, steamRoot); err != nil {
+		return SteamResult{}, err
+	}
+
+	result, importErr := importSteamPlatformShortcut(ctx, game)
+	restartErr := startSteamClient(ctx, steamRoot)
+	if result.Status.SteamInstalled {
+		result.Status.SteamRunning = restartErr == nil
+	}
+	if importErr != nil && restartErr != nil {
+		return result, fmt.Errorf("导入 Steam 快捷方式失败并且重启 Steam 失败: %w", errors.Join(importErr, restartErr))
+	}
+	if importErr != nil {
+		return result, importErr
+	}
+	if restartErr != nil {
+		return result, fmt.Errorf("游戏已导入 Steam，但重启 Steam 失败: %w", restartErr)
+	}
+	return result, nil
 }
 
 func setSteamPlatformLaunchOptions(ctx context.Context, game models.Game) (SteamResult, error) {

@@ -375,13 +375,72 @@ func isImportableSteamGame(game SteamLocalGame) bool {
 	}
 
 	name := strings.ToLower(strings.TrimSpace(game.Name))
-	if game.AppID == "228980" ||
-		strings.Contains(name, "steamworks common redistributables") ||
-		strings.Contains(name, "redistributable") ||
+	if isSteamRuntimeOrCompatibilityTool(game.AppID, name) ||
 		strings.Contains(name, "dedicated server") {
 		return false
 	}
 	return true
+}
+
+func isSteamRuntimeOrCompatibilityTool(appID string, normalizedName string) bool {
+	appID = strings.TrimSpace(appID)
+	if appID != "" {
+		if _, ok := steamRuntimeAndCompatibilityToolAppIDs[appID]; ok {
+			return true
+		}
+	}
+
+	name := strings.ToLower(strings.TrimSpace(normalizedName))
+	if name == "" {
+		return false
+	}
+	return strings.Contains(name, "steamworks common redistributables") ||
+		strings.Contains(name, "redistributable") ||
+		strings.HasPrefix(name, "steam linux runtime") ||
+		isProtonCompatibilityToolName(name)
+}
+
+func isProtonCompatibilityToolName(name string) bool {
+	name = strings.ToLower(strings.TrimSpace(name))
+	if name == "proton" {
+		return true
+	}
+	for _, prefix := range []string{
+		"proton experimental",
+		"proton hotfix",
+		"proton battleye runtime",
+		"proton easyanticheat runtime",
+	} {
+		if strings.HasPrefix(name, prefix) {
+			return true
+		}
+	}
+	version, ok := strings.CutPrefix(name, "proton ")
+	if !ok || version == "" {
+		return false
+	}
+	return version[0] >= '0' && version[0] <= '9'
+}
+
+var steamRuntimeAndCompatibilityToolAppIDs = map[string]struct{}{
+	"228980":  {}, // Steamworks Common Redistributables
+	"858280":  {}, // Proton 3.7
+	"961940":  {}, // Proton 3.16
+	"1054830": {}, // Proton 4.2
+	"1070560": {}, // Steam Linux Runtime
+	"1113280": {}, // Proton 4.11
+	"1161040": {}, // Proton BattlEye Runtime
+	"1245040": {}, // Proton 5.0
+	"1391110": {}, // Steam Linux Runtime 2.0 (soldier)
+	"1420170": {}, // Proton 5.13
+	"1493710": {}, // Proton Experimental
+	"1580130": {}, // Proton 6.3
+	"1628350": {}, // Steam Linux Runtime 3.0 (sniper)
+	"1826330": {}, // Proton EasyAntiCheat Runtime
+	"1887720": {}, // Proton 7.0
+	"2180100": {}, // Proton Hotfix
+	"2348590": {}, // Proton 8.0
+	"2805730": {}, // Proton 9.0
 }
 
 func steamExecutableExcludeKeywords() []string {

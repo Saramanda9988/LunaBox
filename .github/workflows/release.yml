@@ -513,6 +513,10 @@ jobs:
           go install "github.com/wailsapp/wails/v3/cmd/wails3@$version"
           test "$(wails3 version 2>&1)" = "$version"
 
+      - name: Patch Wails Linux tray support
+        shell: bash
+        run: ./scripts/patch-wails-linux-tray.sh
+
       - name: Get version from tag
         id: get_version
         shell: bash

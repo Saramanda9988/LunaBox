@@ -109,3 +109,33 @@ func TestDefaultSteamImportedLaunchModeLinuxUsesSteamLaunch(t *testing.T) {
 		t.Fatalf("expected Steam launch mode on Linux, got %q", got)
 	}
 }
+
+func TestIsImportableSteamGameRejectsRuntimeAndCompatibilityTools(t *testing.T) {
+	installDir := t.TempDir()
+	makeGame := func(appID string, name string) SteamLocalGame {
+		return SteamLocalGame{
+			AppID:      appID,
+			Name:       name,
+			InstallDir: installDir,
+			StateFlags: steamFullyInstalledFlag,
+		}
+	}
+
+	rejected := []SteamLocalGame{
+		makeGame("228980", "Steamworks Common Redistributables"),
+		makeGame("2805730", "Some Renamed Proton Tool"),
+		makeGame("123456", "Steam Linux Runtime 3.0 (sniper)"),
+		makeGame("123457", "Proton 9.0"),
+		makeGame("123458", "Proton Experimental"),
+		makeGame("123459", "Proton BattlEye Runtime"),
+	}
+	for _, game := range rejected {
+		if isImportableSteamGame(game) {
+			t.Fatalf("expected %s/%s to be rejected", game.AppID, game.Name)
+		}
+	}
+
+	if !isImportableSteamGame(makeGame("123460", "Proton Bus Simulator")) {
+		t.Fatal("expected ordinary game name containing Proton to remain importable")
+	}
+}
