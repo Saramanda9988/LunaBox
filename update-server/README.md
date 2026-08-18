@@ -6,17 +6,20 @@ Cloudflare Worker update service backed by R2 and D1.
 
 ```text
 channels/<channel>/version.json
+releases/<version>/version.json
 releases/<version>/manifest.json
 releases/<version>/<asset>
 ```
 
 Versioned release objects are immutable. A channel document is published last
-and points clients to the selected version manifest.
+and identifies the release whose manifest URL clients derive. `/version.json`
+is an alias for the stable channel document.
 
 ## API
 
 ```text
 GET  /health
+GET  /version.json
 GET  /v1/channels/<channel>
 GET  /v1/releases/<version>/manifest
 GET  /v1/releases/<version>/version

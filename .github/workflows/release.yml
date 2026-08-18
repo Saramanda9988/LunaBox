@@ -651,7 +651,6 @@ jobs:
       - name: Generate update version source
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
-          UPDATE_PUBLIC_BASE_URL: ${{ vars.UPDATE_PUBLIC_BASE_URL }}
         run: |
           SOURCE_FILE="sync/version.json"
           SOURCE_VERSION="$(jq -r '.version // empty' "$SOURCE_FILE")"
@@ -659,13 +658,7 @@ jobs:
             echo "$SOURCE_FILE version $SOURCE_VERSION does not match release version $VERSION" >&2
             exit 1
           fi
-          RELEASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/tag/v${VERSION}"
-          MANIFEST_URL="${UPDATE_PUBLIC_BASE_URL%/}/v1/releases/${VERSION}/manifest"
-          jq \
-            --arg release_url "$RELEASE_URL" \
-            --arg manifest_url "$MANIFEST_URL" \
-            '.downloads.github = $release_url | .update_manifest_url = $manifest_url' \
-            "$SOURCE_FILE" > update-assets/version.json
+          cp "$SOURCE_FILE" update-assets/version.json
           jq empty update-assets/version.json
 
       - name: Upload update assets to S3

@@ -9,6 +9,7 @@ import (
 	"lunabox/internal/updateclient"
 	"lunabox/internal/utils/httputils"
 	"net/http"
+	"net/url"
 	goruntime "runtime"
 	"strings"
 	"sync"
@@ -55,8 +56,6 @@ var defaultUpdateURLs = []string{
 	"https://lunabox.pages.dev/version.json",   // 主地址
 	"https://4update.netlify.app/version.json", // Netlify 备份（用户可修改）
 }
-
-const defaultUpdateReleaseRepository = "Saramanda9988/LunaBox"
 
 func NewUpdateService(quitHandlers ...func()) *UpdateService {
 	service := &UpdateService{runtime: wailsruntime.Unavailable()}
@@ -152,16 +151,6 @@ func (s *UpdateService) checkUpdates(isAutoCheck bool) (*UpdateCheckResult, erro
 		applog.LogWarningf(s.ctx, "[UpdateService] failed to fetch update info from all sources: %v", lastErr)
 		return nil, fmt.Errorf("[UpdateService] failed to fetch update info from all sources: %w", lastErr)
 	}
-	if appConfig.UpdateCheckURL == "" && goruntime.GOOS == "windows" && strings.TrimSpace(updateInfo.UpdateManifestURL) == "" {
-		versionWithoutPrefix := strings.TrimPrefix(strings.TrimSpace(updateInfo.Version), "v")
-		updateInfo.UpdateManifestURL = fmt.Sprintf(
-			"https://github.com/%s/releases/download/v%s/LunaBox-%s-update-manifest.json",
-			defaultUpdateReleaseRepository,
-			versionWithoutPrefix,
-			versionWithoutPrefix,
-		)
-	}
-
 	// 更新最后检查时间
 	s.updateLastCheckTime()
 
@@ -170,6 +159,12 @@ func (s *UpdateService) checkUpdates(isAutoCheck bool) (*UpdateCheckResult, erro
 	hasUpdate, err := compareVersions(currentVer, updateInfo.Version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compare versions: %w", err)
+	}
+	if appConfig.UpdateCheckURL == "" && goruntime.GOOS == "windows" && strings.TrimSpace(updateInfo.UpdateManifestURL) == "" {
+		updateInfo.UpdateManifestURL, err = buildOfficialUpdateManifestURL(version.UpdateServiceURL, updateInfo.Version)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build update manifest url: %w", err)
+		}
 	}
 
 	// 只有自动检查时才检查跳过版本（手动检查时 SkipVersion 已被清空）
@@ -204,8 +199,21 @@ func (s *UpdateService) getUpdateURLs(customURL string) []string {
 		return defaultUpdateURLs
 	}
 	urls := make([]string, 0, len(defaultUpdateURLs)+1)
-	urls = append(urls, serviceURL+"/v1/channels/stable")
+	urls = append(urls, serviceURL+"/version.json")
 	return append(urls, defaultUpdateURLs...)
+}
+
+func buildOfficialUpdateManifestURL(serviceURL string, releaseVersion string) (string, error) {
+	serviceURL = strings.TrimRight(strings.TrimSpace(serviceURL), "/")
+	if serviceURL == "" {
+		return "", nil
+	}
+	normalizedVersion, err := normalizeComparableVersion(releaseVersion)
+	if err != nil {
+		return "", err
+	}
+	versionWithoutPrefix := strings.TrimPrefix(normalizedVersion, "v")
+	return serviceURL + "/v1/releases/" + url.PathEscape(versionWithoutPrefix) + "/manifest", nil
 }
 
 // fetchUpdateInfo 从指定 URL 获取版本信息

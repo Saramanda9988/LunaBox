@@ -39,6 +39,9 @@ async function route(context: RouteContext): Promise<Response> {
   if (request.method === "GET" && url.pathname === "/health")
     return json({ status: "ok" });
 
+  if (request.method === "GET" && url.pathname === "/version.json")
+    return serveObject(context, channelObjectKey("stable"), "public, max-age=60");
+
   const channelMatch = url.pathname.match(/^\/v1\/channels\/([^/]+)$/);
   if (request.method === "GET" && channelMatch)
     return serveObject(context, channelObjectKey(decodeURIComponent(channelMatch[1])), "public, max-age=60");
