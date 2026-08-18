@@ -65,7 +65,10 @@ var ipcHTTPServer *http.Server
 var remoteImageProxyHTTPServer *http.Server
 var sessionEndHook *sessionend.Hook
 
-const remoteImageProxyHTTPAddr = "127.0.0.1:23680"
+const (
+	applicationUniqueID      = "io.github.saramanda9988.lunabox"
+	remoteImageProxyHTTPAddr = "127.0.0.1:23680"
+)
 
 type lifecycleState struct {
 	ctxMu  sync.RWMutex
@@ -491,6 +494,7 @@ func runGUI(appLogger *applog.FileLogger, applicationLogLevel slog.Level, launch
 	guiRuntime := wailsruntime.Unavailable()
 	var startupReady atomic.Bool
 	var startupFailed atomic.Bool
+	var secondInstanceLaunchPending atomic.Bool
 	startupDone := make(chan struct{})
 
 	initBoundServices := func(ctx context.Context) {
@@ -734,6 +738,17 @@ func runGUI(appLogger *applog.FileLogger, applicationLogLevel slog.Level, launch
 		Icon:        applicationIcon,
 		Logger:      appLogger.Slog(),
 		LogLevel:    applicationLogLevel,
+		SingleInstance: &application.SingleInstanceOptions{
+			UniqueID: applicationUniqueID,
+			OnSecondInstanceLaunch: func(_ application.SecondInstanceData) {
+				appLogger.Info("second application launch received")
+				secondInstanceLaunchPending.Store(true)
+				if startupReady.Load() {
+					secondInstanceLaunchPending.Store(false)
+					appState.ShowMainWindow()
+				}
+			},
+		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 			Middleware: func(next http.Handler) http.Handler {
@@ -1064,7 +1079,7 @@ func runGUI(appLogger *applog.FileLogger, applicationLogLevel slog.Level, launch
 			startupReady.Store(true)
 			close(startupDone)
 			startupWindow.Close()
-			if !launchedByAutostart || strings.TrimSpace(config.TimeZone) == "" {
+			if secondInstanceLaunchPending.Swap(false) || !launchedByAutostart || strings.TrimSpace(config.TimeZone) == "" {
 				appState.ShowMainWindow()
 			}
 		}()
