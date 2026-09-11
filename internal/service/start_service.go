@@ -14,6 +14,7 @@ import (
 	launcherpkg "lunabox/internal/service/launcher"
 	"lunabox/internal/utils/audioutils"
 	"lunabox/internal/utils/processutils"
+	"lunabox/internal/utils/saveprobe"
 	"lunabox/internal/utils/timerutils"
 	"os"
 	"os/exec"
@@ -72,6 +73,8 @@ type StartService struct {
 
 	activeSessions   map[string]*activePlaySession
 	activeSessionsMu sync.Mutex
+	saveProbes       map[string]*saveprobe.Collector
+	saveProbesMu     sync.Mutex
 }
 
 type launchedProcess struct {
@@ -102,6 +105,7 @@ type activePlaySession struct {
 	finalOnce sync.Once
 	// activeSeconds 由活跃窗口计时回调更新，供 15 秒心跳持久化读取。
 	activeSeconds   atomic.Int64
+	processID       atomic.Uint32
 	audioMu         sync.Mutex
 	audioPID        uint32
 	audioMuted      bool
@@ -120,6 +124,7 @@ func boolPtr(value bool) *bool {
 func NewStartService() *StartService {
 	return &StartService{
 		activeSessions: make(map[string]*activePlaySession),
+		saveProbes:     make(map[string]*saveprobe.Collector),
 		runtime:        wailsruntime.Unavailable(),
 		// activeTimeTracker 将在 Init 时创建
 	}
@@ -136,6 +141,9 @@ func (s *StartService) Init(ctx context.Context, db *sql.DB, config *appconf.App
 	s.activeTimeTracker.SetFocusUpdateHandler(s.handleFocusUpdate)
 	if s.activeSessions == nil {
 		s.activeSessions = make(map[string]*activePlaySession)
+	}
+	if s.saveProbes == nil {
+		s.saveProbes = make(map[string]*saveprobe.Collector)
 	}
 }
 
@@ -434,6 +442,7 @@ func (s *StartService) detectAndMonitorProcess(session *activePlaySession, launc
 		return
 	}
 
+	session.processID.Store(result.ProcessID)
 	s.emitGameRuntimePlaying(session, "process-detected")
 	s.startGameFocusTracking(sessionID, gameID, result.ProcessID, plan.ActiveTrack)
 
@@ -466,6 +475,7 @@ func (s *StartService) closeLauncherHandle(launcher launchedProcess) {
 }
 
 func (s *StartService) monitorLauncherOnly(session *activePlaySession, launcher launchedProcess, plan launcherpkg.LaunchPlan) {
+	session.processID.Store(launcher.PID)
 	s.emitGameRuntimePlaying(session, "launcher-monitoring")
 	s.startGameFocusTracking(session.sessionID, session.gameID, launcher.PID, plan.ActiveTrack)
 	var handoff *processHandoffState
@@ -669,6 +679,7 @@ func (s *StartService) continueMonitoringSuccessor(session *activePlaySession, s
 
 	handoff.handoffs++
 	applog.LogInfof(s.ctx, "Game %s process hand-off #%d: continuing session with %s (PID %d)", session.gameID, handoff.handoffs, successor.Name, successor.PID)
+	session.processID.Store(successor.PID)
 
 	// 只换绑已存在的追踪，不新建：若会话在此期间被结束，新建的追踪将无人回收。
 	s.restoreSessionAudio(session)
@@ -703,7 +714,9 @@ func (s *StartService) finalizePlaySessionOnce(session *activePlaySession, reaso
 	startTime := session.startTime
 
 	close(session.done)
+	session.processID.Store(0)
 	s.unregisterActiveSession(gameID, sessionID)
+	s.stopSavePathProbeAfterSession(gameID)
 	s.restoreSessionAudio(session)
 
 	// 确保停止追踪（无论如何都要执行）
@@ -786,6 +799,148 @@ func (s *StartService) EndCurrentPlaySession(gameID string) error {
 
 	s.finalizePlaySession(session, "manual-ended")
 	return nil
+}
+
+type SavePathProbeStatus struct {
+	GameID    string `json:"game_id"`
+	SessionID string `json:"session_id"`
+	ProcessID uint32 `json:"process_id"`
+	StartedAt string `json:"started_at"`
+}
+
+func (s *StartService) IsSavePathProbeSupported() bool {
+	return saveprobe.Supported()
+}
+
+func (s *StartService) StartSavePathProbe(gameID string) (SavePathProbeStatus, error) {
+	gameID = strings.TrimSpace(gameID)
+	if gameID == "" {
+		return SavePathProbeStatus{}, fmt.Errorf("game id is required")
+	}
+	if !saveprobe.Supported() {
+		return SavePathProbeStatus{}, saveprobe.ErrUnsupported
+	}
+
+	session := s.getActiveSession(gameID)
+	if session == nil {
+		return SavePathProbeStatus{}, fmt.Errorf("请先通过 LunaBox 启动并监控该游戏")
+	}
+	processID := session.processID.Load()
+	if processID == 0 {
+		return SavePathProbeStatus{}, fmt.Errorf("游戏进程仍在识别中，请稍后再开始探测")
+	}
+
+	s.saveProbesMu.Lock()
+	if s.saveProbes[gameID] != nil {
+		s.saveProbesMu.Unlock()
+		return SavePathProbeStatus{}, fmt.Errorf("该游戏的存档位置探测正在进行")
+	}
+	s.saveProbesMu.Unlock()
+
+	gameDirectory := strings.TrimSpace(session.game.GameDirectory)
+	if gameDirectory == "" {
+		gameDirectory = filepath.Dir(session.game.Path)
+	}
+	collector, err := saveprobe.Start(gameDirectory)
+	if err != nil {
+		return SavePathProbeStatus{}, fmt.Errorf("启动存档位置探测失败: %w", err)
+	}
+	if s.getActiveSession(gameID) != session || session.processID.Load() == 0 {
+		_, _ = collector.Stop()
+		return SavePathProbeStatus{}, fmt.Errorf("游戏已结束，存档位置探测已停止")
+	}
+
+	s.saveProbesMu.Lock()
+	if existing := s.saveProbes[gameID]; existing != nil {
+		s.saveProbesMu.Unlock()
+		_, _ = collector.Stop()
+		return SavePathProbeStatus{}, fmt.Errorf("该游戏的存档位置探测正在进行")
+	}
+	s.saveProbes[gameID] = collector
+	s.saveProbesMu.Unlock()
+	applog.LogInfof(s.ctx, "Save path probe started for game %s with process %d", gameID, processID)
+
+	return SavePathProbeStatus{
+		GameID:    gameID,
+		SessionID: session.sessionID,
+		ProcessID: processID,
+		StartedAt: time.Now().Format(time.RFC3339),
+	}, nil
+}
+
+func (s *StartService) StopSavePathProbe(gameID string) (saveprobe.Result, error) {
+	gameID = strings.TrimSpace(gameID)
+	if gameID == "" {
+		return saveprobe.Result{}, fmt.Errorf("game id is required")
+	}
+
+	s.saveProbesMu.Lock()
+	collector := s.saveProbes[gameID]
+	delete(s.saveProbes, gameID)
+	s.saveProbesMu.Unlock()
+	if collector == nil {
+		return saveprobe.Result{}, fmt.Errorf("该游戏当前没有存档位置探测任务")
+	}
+
+	result, err := collector.Stop()
+	if err != nil {
+		return result, fmt.Errorf("结束存档位置探测失败: %w", err)
+	}
+	applog.LogInfof(
+		s.ctx,
+		"Save path probe finished for game %s: directory_events=%d candidates=%d",
+		gameID,
+		result.ObservedEvents,
+		len(result.Candidates),
+	)
+	return result, nil
+}
+
+func (s *StartService) CancelSavePathProbe(gameID string) error {
+	gameID = strings.TrimSpace(gameID)
+	if gameID == "" {
+		return nil
+	}
+	s.saveProbesMu.Lock()
+	collector := s.saveProbes[gameID]
+	delete(s.saveProbes, gameID)
+	s.saveProbesMu.Unlock()
+	if collector == nil {
+		return nil
+	}
+	_, err := collector.Stop()
+	if err != nil {
+		return fmt.Errorf("取消存档位置探测失败: %w", err)
+	}
+	return nil
+}
+
+func (s *StartService) stopSavePathProbeAfterSession(gameID string) {
+	s.saveProbesMu.Lock()
+	collector := s.saveProbes[gameID]
+	delete(s.saveProbes, gameID)
+	s.saveProbesMu.Unlock()
+	if collector == nil {
+		return
+	}
+	go func() {
+		if _, err := collector.Stop(); err != nil {
+			applog.LogWarningf(s.ctx, "Failed to stop save path probe after game %s exited: %v", gameID, err)
+		}
+	}()
+}
+
+func (s *StartService) stopAllSavePathProbes() {
+	s.saveProbesMu.Lock()
+	probes := s.saveProbes
+	s.saveProbes = make(map[string]*saveprobe.Collector)
+	s.saveProbesMu.Unlock()
+
+	for gameID, collector := range probes {
+		if _, err := collector.Stop(); err != nil {
+			applog.LogWarningf(s.ctx, "Failed to stop save path probe during shutdown for game %s: %v", gameID, err)
+		}
+	}
 }
 
 func (s *StartService) registerActiveSession(sessionID string, gameID string, startTime time.Time, game models.Game) *activePlaySession {
@@ -1060,6 +1215,10 @@ func (s *StartService) updateGameProcessName(gameID string, processName string) 
 func (s *StartService) CleanupPendingSessions() {
 	activeSessions := s.activeSessionSnapshot()
 	activeDurations := make(map[string]int)
+	for _, session := range activeSessions {
+		session.processID.Store(0)
+	}
+	s.stopAllSavePathProbes()
 
 	// 停止所有活跃时间追踪
 	if s.activeTimeTracker != nil {

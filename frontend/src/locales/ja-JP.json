@@ -726,6 +726,8 @@
     "savePathPlaceholder": "セーブパスを設定してください",
     "selectFolder": "フォルダーを選択",
     "savePathHint": "ゲームのセーブディレクトリまたはファイルを指定できます。クラウドバックアップと複数端末同期に使用します",
+    "probeSavePath": "セーブ場所を検出",
+    "savePathProbeReadyHint": "ゲームを実行中です。レーダーボタンで手動セーブ中に書き込まれた場所を検出できます。",
     "summary": "概要",
     "sourceYmgal": "月幕gal",
     "sourceDlsite": "DLsite",
@@ -1672,6 +1674,53 @@
     "stats": "統計",
     "categories": "コレクション",
     "cloudSync": "クラウド同期"
+  },
+  "savePathProbe": {
+    "title": "セーブ場所を検出",
+    "description": "《{{name}}》の手動セーブ中に書き込まれたファイルを観察し、候補を表示します。",
+    "steps": {
+      "startTitle": "観察を開始",
+      "startDescription": "ゲームフォルダーと一般的なセーブ先を再帰的に監視します。",
+      "saveTitle": "ゲーム内で手動セーブ",
+      "saveDescription": "新しいセーブを作成するか既存のセーブを上書きし、保存表示が終わるまで待ちます。",
+      "finishTitle": "終了して分析",
+      "finishDescription": "LunaBox に戻って検出を終了し、実際の書き込みイベントからファイルまたはフォルダーを選びます。"
+    },
+    "analyzing": "ファイル活動を分析中",
+    "listening": "ゲームの書き込みを観察中",
+    "listeningHint": "ゲームに切り替えて手動セーブを一度行い、保存完了後にここへ戻ってください。",
+    "elapsed": "観察時間 {{seconds}} 秒",
+    "resultsTitle": "{{count}} 件の候補を検出",
+    "eventSummary": "フォルダー監視で関連ファイルイベントを {{observed}} 件検出しました",
+    "sources": "フォルダー監視",
+    "noCandidates": "信頼できる候補を検出できませんでした",
+    "noEventsHint": "監視中に関連するファイル変更を検出できませんでした。ゲーム内でセーブが完了したことを確認してください。",
+    "noCandidatesHint": "終了時やチェックポイントでのみセーブするゲームもあります。その動作に合わせて再度検出してください。",
+    "start": "検出を開始",
+    "finish": "検出を終了",
+    "useSelected": "選択した場所を使用",
+    "fileCount": "関連ファイル {{count}} 件",
+    "writeCount": "書き込み {{count}} 回",
+    "confidence": {
+      "high": "信頼度 高",
+      "medium": "信頼度 中",
+      "low": "信頼度 低"
+    },
+    "signals": {
+      "frequent_writes": "複数回の書き込み",
+      "recent_change": "直前に更新",
+      "related_files": "同じ場所の関連ファイル",
+      "save_like_extension": "セーブ系の形式",
+      "user_data_location": "ユーザーデータ領域",
+      "game_directory": "ゲームディレクトリ",
+      "directory_change": "フォルダー変更イベント",
+      "incidental_activity": "一時的な活動"
+    },
+    "toast": {
+      "startFailed": "検出を開始できませんでした。ゲームフォルダーと実行状態を確認してください",
+      "stopFailed": "検出を終了できませんでした",
+      "pathSelected": "セーブ場所を更新しました"
+    }
   },
   "processSelectModal": {
     "title": "ゲームプロセスを選択",

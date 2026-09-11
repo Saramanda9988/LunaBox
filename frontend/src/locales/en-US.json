@@ -726,6 +726,8 @@
     "savePathPlaceholder": "Please set the save path",
     "selectFolder": "Select Directory",
     "savePathHint": "You can specify the game's save directory or file for cloud backup and cross-device sync",
+    "probeSavePath": "Detect save location",
+    "savePathProbeReadyHint": "The game is running. Use the radar button to detect files written during a manual save.",
     "summary": "Summary",
     "sourceYmgal": "Ymgal",
     "sourceDlsite": "DLsite",
@@ -1672,6 +1674,53 @@
     "stats": "Statistics",
     "categories": "Collections",
     "cloudSync": "Cloud Sync"
+  },
+  "savePathProbe": {
+    "title": "Detect Save Location",
+    "description": "Observe files written by {{name}} during one manual save and rank the likely locations.",
+    "steps": {
+      "startTitle": "Begin observing",
+      "startDescription": "Start temporary recursive directory monitoring for the game folder and common save locations.",
+      "saveTitle": "Save manually in the game",
+      "saveDescription": "Create a new save or overwrite an existing one, then wait for the in-game save indicator to finish.",
+      "finishTitle": "Finish and analyze",
+      "finishDescription": "Return to LunaBox, finish detection, and choose a file or folder found in the recorded writes."
+    },
+    "analyzing": "Analyzing file activity",
+    "listening": "Observing game writes",
+    "listeningHint": "Switch to the game and complete one manual save, then return here after saving finishes.",
+    "elapsed": "Observed for {{seconds}} seconds",
+    "resultsTitle": "Found {{count}} candidate locations",
+    "eventSummary": "Directory monitoring captured {{observed}} relevant file events",
+    "sources": "Directory monitor",
+    "noCandidates": "No credible candidate was observed",
+    "noEventsHint": "No relevant file changes were received during monitoring. Make sure the game completed a save.",
+    "noCandidatesHint": "Some games write saves only on exit or at checkpoints. Run detection again while triggering that save behavior.",
+    "start": "Start Detection",
+    "finish": "Finish Detection",
+    "useSelected": "Use Selected Location",
+    "fileCount": "{{count}} related files",
+    "writeCount": "{{count}} writes",
+    "confidence": {
+      "high": "High confidence",
+      "medium": "Medium confidence",
+      "low": "Lower confidence"
+    },
+    "signals": {
+      "frequent_writes": "Repeated writes",
+      "recent_change": "Just modified",
+      "related_files": "Related files",
+      "save_like_extension": "Save-like format",
+      "user_data_location": "User data location",
+      "game_directory": "Game directory",
+      "directory_change": "Directory change event",
+      "incidental_activity": "Temporary activity"
+    },
+    "toast": {
+      "startFailed": "Detection could not start. Check that the game directory is valid and the game is running.",
+      "stopFailed": "Detection could not finish",
+      "pathSelected": "Save location updated"
+    }
   },
   "processSelectModal": {
     "title": "Select Game Process",

@@ -36,6 +36,8 @@ interface GameEditFormProps {
   onSelectGameDirectory: () => void;
   onSelectSaveDirectory: (rootPath: string) => void;
   onSelectSaveFile: (rootPath: string) => void;
+  onProbeSavePath: () => void;
+  savePathProbeAvailable: boolean;
   onSelectCoverImage: () => void;
   onCoverImageChanged?: () => void;
   onUpdateFromRemote?: () => void;
@@ -381,6 +383,8 @@ export function GameEditPanel({
   onSelectGameDirectory,
   onSelectSaveDirectory,
   onSelectSaveFile,
+  onProbeSavePath,
+  savePathProbeAvailable,
   onSelectCoverImage,
   onCoverImageChanged,
   onUpdateFromRemote,
@@ -1021,6 +1025,12 @@ export function GameEditPanel({
                 onClick: () => onSelectSaveFile(game.game_directory || ""),
               },
               {
+                ariaLabel: t("gameEdit.probeSavePath"),
+                disabled: !savePathProbeAvailable,
+                icon: "i-mdi-radar",
+                onClick: onProbeSavePath,
+              },
+              {
                 ariaLabel: t("gameEdit.openInExplorer"),
                 disabled: !game.save_path,
                 icon: "i-mdi-folder-open-outline",
@@ -1037,8 +1047,10 @@ export function GameEditPanel({
               },
             ]}
           />
-          <p className="mt-1 text-xs text-brand-500">
-            {t("gameEdit.savePathHint")}
+          <p className="mt-1 text-xs text-brand-500 dark:text-brand-400">
+            {savePathProbeAvailable
+              ? t("gameEdit.savePathProbeReadyHint")
+              : t("gameEdit.savePathHint")}
           </p>
         </div>
 

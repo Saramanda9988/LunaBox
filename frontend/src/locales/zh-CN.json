@@ -726,6 +726,8 @@
     "savePathPlaceholder": "请设置存档路径",
     "selectFolder": "选择目录",
     "savePathHint": "您可以指定游戏的存档目录或文件，用于云端备份和多端同步",
+    "probeSavePath": "探测存档位置",
+    "savePathProbeReadyHint": "游戏正在运行，可以通过右侧雷达按钮探测本次存档活动写入的位置。",
     "summary": "简介",
     "sourceYmgal": "月幕gal",
     "sourceDlsite": "DLsite",
@@ -1672,6 +1674,53 @@
     "stats": "统计",
     "categories": "收藏",
     "cloudSync": "云同步"
+  },
+  "savePathProbe": {
+    "title": "探测存档位置",
+    "description": "观察《{{name}}》在一次手动存档期间写入的文件，并给出候选位置。",
+    "steps": {
+      "startTitle": "开始观察",
+      "startDescription": "启动临时目录变更监听，递归观察游戏目录与常见存档目录。",
+      "saveTitle": "在游戏中手动存档",
+      "saveDescription": "建议新建一个存档或覆盖已有存档，等待游戏内的保存提示结束。",
+      "finishTitle": "结束并分析",
+      "finishDescription": "返回 LunaBox 点击结束探测，然后从真实写入事件中选择存档文件或目录。"
+    },
+    "analyzing": "正在分析文件活动",
+    "listening": "正在观察游戏写入",
+    "listeningHint": "请切换到游戏并完成一次手动存档，保存完成后返回此处。",
+    "elapsed": "已观察 {{seconds}} 秒",
+    "resultsTitle": "发现 {{count}} 个候选位置",
+    "eventSummary": "目录监听捕获 {{observed}} 条相关文件事件",
+    "sources": "目录监听",
+    "noCandidates": "本次观察没有发现可信候选项",
+    "noEventsHint": "监听期间没有收到相关文件变更，请确认游戏已完成一次保存。",
+    "noCandidatesHint": "部分游戏仅在退出或检查点写入存档，可以重新探测并触发相应保存行为。",
+    "start": "开始探测",
+    "finish": "结束探测",
+    "useSelected": "使用所选位置",
+    "fileCount": "{{count}} 个相关文件",
+    "writeCount": "写入 {{count}} 次",
+    "confidence": {
+      "high": "高可信度",
+      "medium": "中等可信度",
+      "low": "较低可信度"
+    },
+    "signals": {
+      "frequent_writes": "多次写入",
+      "recent_change": "刚刚修改",
+      "related_files": "同目录多文件",
+      "save_like_extension": "存档类格式",
+      "user_data_location": "用户数据目录",
+      "game_directory": "游戏目录",
+      "directory_change": "目录变更事件",
+      "incidental_activity": "临时活动"
+    },
+    "toast": {
+      "startFailed": "启动探测失败，请确认游戏目录有效且游戏正在运行",
+      "stopFailed": "结束探测失败",
+      "pathSelected": "存档位置已更新"
+    }
   },
   "processSelectModal": {
     "title": "选择游戏进程",

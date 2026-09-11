@@ -51,6 +51,7 @@ import {
 } from "../components/modal/MetadataFieldSelectModal";
 import { MetadataSourceSearchModal } from "../components/modal/MetadataSourceSearchModal";
 import { ProcessSelectModal } from "../components/modal/ProcessSelectModal";
+import { SavePathProbeModal } from "../components/modal/SavePathProbeModal";
 import { SteamImportModal } from "../components/modal/SteamImportModal";
 import { GameBackupPanel } from "../components/panel/GameBackupPanel";
 import { GameEditPanel } from "../components/panel/GameEditPanel";
@@ -188,6 +189,8 @@ function GameDetailPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isProcessSelectModalOpen, setIsProcessSelectModalOpen]
+    = useState(false);
+  const [isSavePathProbeModalOpen, setIsSavePathProbeModalOpen]
     = useState(false);
   const [isMetadataFieldModalOpen, setIsMetadataFieldModalOpen]
     = useState(false);
@@ -1539,6 +1542,10 @@ function GameDetailPage() {
           onSelectGameDirectory={handleSelectGameDirectory}
           onSelectSaveDirectory={handleSelectSaveDirectory}
           onSelectSaveFile={handleSelectSaveFile}
+          onProbeSavePath={() => setIsSavePathProbeModalOpen(true)}
+          savePathProbeAvailable={
+            platformGOOS === "windows" && gameRuntime?.state === "playing"
+          }
           onSelectCoverImage={handleSelectCoverImage}
           onCoverImageChanged={() =>
             setCoverImageRefreshToken(prev => prev + 1)}
@@ -1598,6 +1605,17 @@ function GameDetailPage() {
         onClose={() => setIsProcessSelectModalOpen(false)}
         onSelected={handleRunningProcessSelected}
       />
+
+      {isSavePathProbeModalOpen && (
+        <SavePathProbeModal
+          isOpen
+          gameID={gameId}
+          gameName={game.name}
+          onClose={() => setIsSavePathProbeModalOpen(false)}
+          onSelect={path =>
+            updateGameState({ ...game, save_path: path } as models.Game)}
+        />
+      )}
 
       <MetadataFieldSelectModal
         isOpen={isMetadataFieldModalOpen}

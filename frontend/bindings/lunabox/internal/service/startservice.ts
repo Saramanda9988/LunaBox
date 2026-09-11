@@ -11,6 +11,17 @@ import * as vo$0 from "../common/vo/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as launcher$0 from "./launcher/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as saveprobe$0 from "../utils/saveprobe/models.js";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as $models from "./models.js";
+
+export function CancelSavePathProbe(gameID: string): $CancellablePromise<void> {
+    return $Call.ByID(3932270405, gameID);
+}
 
 /**
  * CleanupPendingSessions 清理所有待定的游戏会话。
@@ -35,6 +46,10 @@ export function HandleProtocolLaunch(req: vo$0.ProtocolLaunchRequest): $Cancella
     return $Call.ByID(3180632300, req);
 }
 
+export function IsSavePathProbeSupported(): $CancellablePromise<boolean> {
+    return $Call.ByID(2545865675);
+}
+
 /**
  * StartGameWithOptions 使用指定选项启动游戏
  * 供 CLI 调用，支持覆盖 LE 和 Magpie 设置
@@ -50,3 +65,19 @@ export function StartGameWithOptions(gameID: string, options: launcher$0.LaunchO
 export function StartGameWithTracking(gameID: string): $CancellablePromise<boolean> {
     return $Call.ByID(59990884, gameID);
 }
+
+export function StartSavePathProbe(gameID: string): $CancellablePromise<$models.SavePathProbeStatus> {
+    return $Call.ByID(2452647129, gameID).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
+export function StopSavePathProbe(gameID: string): $CancellablePromise<saveprobe$0.Result> {
+    return $Call.ByID(3482946607, gameID).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
+// Private type creation functions
+const $$createType0 = $models.SavePathProbeStatus.createFrom;
+const $$createType1 = saveprobe$0.Result.createFrom;

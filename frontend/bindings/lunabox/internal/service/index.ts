@@ -70,6 +70,7 @@ export {
     PortableProtocolStatus,
     PortableSetupStatus,
     PreviewGame,
+    SavePathProbeStatus,
     StartupFailure,
     SteamBatchImportItemResult,
     SteamBatchImportResult,

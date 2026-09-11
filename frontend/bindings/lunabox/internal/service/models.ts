@@ -773,6 +773,39 @@ export class PreviewGame {
     }
 }
 
+export class SavePathProbeStatus {
+    "game_id": string;
+    "session_id": string;
+    "process_id": number;
+    "started_at": string;
+
+    /** Creates a new SavePathProbeStatus instance. */
+    constructor($$source: Partial<SavePathProbeStatus> = {}) {
+        if (!("game_id" in $$source)) {
+            this["game_id"] = "";
+        }
+        if (!("session_id" in $$source)) {
+            this["session_id"] = "";
+        }
+        if (!("process_id" in $$source)) {
+            this["process_id"] = 0;
+        }
+        if (!("started_at" in $$source)) {
+            this["started_at"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SavePathProbeStatus instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SavePathProbeStatus {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SavePathProbeStatus($$parsedSource as Partial<SavePathProbeStatus>);
+    }
+}
+
 /**
  * StartupFailure contains the diagnostic message shown when LunaBox cannot
  * create its main window.
