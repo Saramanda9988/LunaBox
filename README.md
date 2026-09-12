@@ -11,6 +11,7 @@
     <img src="https://img.shields.io/github/downloads/Saramanda9988/LunaBox/total?color=369eff&labelColor=black&logo=github&style=flat-square&label=Downloads" /></a>
   <a href="https://github.com/Saramanda9988/LunaBox/stargazers">
     <img src="https://img.shields.io/github/stars/Saramanda9988/LunaBox?color=369eff&labelColor=black&logo=github&style=flat-square&label=Stars" /></a>
+<a href="https://app.fossa.com/projects/git%2Bgithub.com%2FSaramanda9988%2FLunaBox?ref=badge_shield" alt="FOSSA Status"><img src="https://app.fossa.com/api/projects/git%2Bgithub.com%2FSaramanda9988%2FLunaBox.svg?type=shield"/></a>
   <a href="https://github.com/Saramanda9988/LunaBox/releases/latest">
     <img src="https://img.shields.io/github/v/release/Saramanda9988/LunaBox?color=369eff&labelColor=black&logo=github&style=flat-square&label=Release" /></a>
 </p>
@@ -187,3 +188,6 @@ Archive extraction support:
 ## 📄 License
 
 This project is licensed under [AGPL v3](LICENSE).
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FSaramanda9988%2FLunaBox.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FSaramanda9988%2FLunaBox?ref=badge_large)
