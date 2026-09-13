@@ -122,6 +122,33 @@ changed |= replace_once(
 )
 
 # Keep this in the existing Linux patch entry point so dev, packaging and CI
+# get the NVIDIA compatibility default before any WebKit process starts.
+# In WebKitGTK 2.52, zero workers means GPU painting on the main thread.
+# Scope this to that runtime series: newer Skia engines change this mechanism.
+changed |= replace_once(
+    application_linux_go,
+    '''\t\t_ = os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
+\t}
+}
+
+func isNVIDIAGPU() bool {
+''',
+    '''\t\t_ = os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
+\t}
+\t// LunaBox patch: avoid NVIDIA EGL crashes in SkiaGPUWorker TLS teardown.
+\t// WebKitGTK 2.52 keeps GPU painting enabled with zero worker threads.
+\tif runtime.GOARCH == "amd64" && isNVIDIAGPU() &&
+\t\tC.webkit_get_major_version() == 2 && C.webkit_get_minor_version() == 52 &&
+\t\tos.Getenv("WEBKIT_SKIA_GPU_PAINTING_THREADS") == "" {
+\t\t_ = os.Setenv("WEBKIT_SKIA_GPU_PAINTING_THREADS", "0")
+\t}
+}
+
+func isNVIDIAGPU() bool {
+''',
+)
+
+# Keep this in the existing Linux patch entry point so dev, packaging and CI
 # all configure WebKit before the first page is loaded. Feature APIs are public
 # since WebKitGTK 2.42; older libraries retain their existing behaviour.
 changed |= replace_once(
@@ -492,6 +519,8 @@ systemtray_text = read_source(systemtray_go)
 linux_text = read_source(linux_go)
 required_snippets = [
     (application_linux_go, read_source(application_linux_go), 'runtime.GOARCH != "amd64"'),
+    (application_linux_go, read_source(application_linux_go), 'C.webkit_get_minor_version() == 52'),
+    (application_linux_go, read_source(application_linux_go), 'os.Setenv("WEBKIT_SKIA_GPU_PAINTING_THREADS", "0")'),
     (linux_cgo_go, read_source(linux_cgo_go), 'C.lunabox_configure_rendering_cadence(settings)'),
     (systemtray_go, systemtray_text, 'runtime.GOOS != "linux"'),
     (linux_go, linux_text, 'tooltip:        s.tooltip'),
