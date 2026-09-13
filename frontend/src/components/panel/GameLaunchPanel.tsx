@@ -902,11 +902,14 @@ export function GameLaunchPanel({
                       },
                     ]}
                   />
+                  <p className="text-xs leading-relaxed text-brand-500 dark:text-brand-400">
+                    {t("gameLaunch.steamLaunchOptionsHint")}
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     {steamLaunchOptionPresets.map(preset => (
                       <BetterButton
                         key={preset.key}
-                        variant="ghost"
+                        variant="secondary"
                         size="sm"
                         icon="i-mdi-plus-circle-outline"
                         onClick={() =>
@@ -918,9 +921,6 @@ export function GameLaunchPanel({
                       </BetterButton>
                     ))}
                   </div>
-                  <p className="text-xs leading-relaxed text-brand-500 dark:text-brand-400">
-                    {t("gameLaunch.steamLaunchOptionsHint")}
-                  </p>
                 </div>
 
                 {supportsSteamCompatibility && (
@@ -984,9 +984,11 @@ export function GameLaunchPanel({
                           {steamProtonPrefixPath
                             || t("gameLaunch.steamProtonPrefixNotFound")}
                         </p>
-                        <p className="mt-1 text-xs leading-relaxed text-brand-500 dark:text-brand-400">
-                          {t("gameLaunch.steamProtonPrefixHint")}
-                        </p>
+                        {steamProtonPrefixPath && (
+                          <p className="mt-1 text-xs leading-relaxed text-brand-500 dark:text-brand-400">
+                            {t("gameLaunch.steamProtonPrefixHint")}
+                          </p>
+                        )}
                       </div>
                       <BetterButton
                         variant="secondary"
