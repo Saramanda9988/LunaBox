@@ -103,7 +103,7 @@ export function MetadataSearchResultsStep({
           </PopoverButton>
           <PopoverPanel
             anchor="bottom start"
-            className="z-[9999] mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-brand-200 bg-white p-4 shadow-xl focus:outline-none dark:border-brand-700 dark:bg-brand-800 data-glass:bg-white/90 data-glass:backdrop-blur-20 data-glass:dark:bg-brand-900/90 [--anchor-gap:8px]"
+            className="z-[9000] mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-brand-200 bg-white p-4 shadow-xl focus:outline-none dark:border-brand-700 dark:bg-brand-800 data-glass:bg-white/90 data-glass:backdrop-blur-20 data-glass:dark:bg-brand-900/90 [--anchor-gap:8px]"
           >
             <h3 className="text-sm font-semibold text-brand-900 dark:text-white">
               {t("addGameModal.selectionHelpTitle")}

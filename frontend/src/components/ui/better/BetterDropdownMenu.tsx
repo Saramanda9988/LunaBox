@@ -61,7 +61,7 @@ export function BetterDropdownMenu({
       <MenuItems
         portal
         anchor={align === "end" ? "bottom end" : "bottom start"}
-        className={`z-[9999] mt-1.5 ${menuWidth} origin-top-right rounded-xl bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700 shadow-xl focus:outline-none p-1.5 [--anchor-gap:6px]`}
+        className={`z-[9000] mt-1.5 ${menuWidth} origin-top-right rounded-xl bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700 focus:outline-none p-1.5 [--anchor-gap:6px]`}
       >
         {title && (
           <div className="px-2 pb-1 pt-0.5 text-xs font-medium text-brand-400 dark:text-brand-500">

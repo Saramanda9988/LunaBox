@@ -158,7 +158,7 @@ export function BetterNumberWheelPicker({
     <div
       aria-disabled={disabled}
       className={[
-        "glass-input overflow-hidden rounded-xl border border-brand-200 bg-brand-50/75 p-3 shadow-sm",
+        "glass-input overflow-hidden rounded-xl border border-brand-200 bg-brand-50/75 p-3",
         "dark:border-brand-700 dark:bg-brand-900/35",
         "[&_li[data-rwp-option]]:text-xl [&_li[data-rwp-option]]:font-semibold [&_li[data-rwp-option]]:tabular-nums [&_li[data-rwp-option]]:text-brand-500/45",
         "dark:[&_li[data-rwp-option]]:text-brand-400/35",

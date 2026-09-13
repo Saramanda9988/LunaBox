@@ -1,5 +1,6 @@
 import type { appconf } from "../../../src/bindings/models";
 import { useTranslation } from "react-i18next";
+import { BetterInput } from "../ui/better/BetterInput";
 import { BetterSelect } from "../ui/better/BetterSelect";
 
 interface ProxySettingsPanelProps {
@@ -58,7 +59,7 @@ export function ProxySettingsPanel({
             "仅在选择手动代理时生效。支持 http://、https://、socks5://，也可直接填写 127.0.0.1:7890。",
           )}
         </p>
-        <input
+        <BetterInput
           type="text"
           value={formData.network_proxy_url || ""}
           onChange={e =>
@@ -70,7 +71,6 @@ export function ProxySettingsPanel({
             "settings.proxy.manualProxyURLPlaceholder",
             "例如 http://127.0.0.1:7890",
           )}
-          className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
         />
         {proxyMode !== "manual" && (
           <p className="text-xs text-brand-400 dark:text-brand-500">

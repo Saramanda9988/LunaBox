@@ -6,6 +6,7 @@ import {
   SelectWineRunnerExecutable,
 } from "../../../bindings/lunabox/internal/service/gameservice";
 import { BetterActionInput } from "../ui/better/BetterActionInput";
+import { BetterInput } from "../ui/better/BetterInput";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 
@@ -215,7 +216,7 @@ export function GameSettingsPanel({
                   <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
                     {t("settings.game.winePrefix")}
                   </label>
-                  <input
+                  <BetterInput
                     type="text"
                     value={formData.wine_prefix || ""}
                     onChange={e =>
@@ -224,7 +225,7 @@ export function GameSettingsPanel({
                         wine_prefix: e.target.value,
                       } as appconf.AppConfig)}
                     placeholder={t("settings.game.winePrefixPlaceholder")}
-                    className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none font-mono"
+                    className="font-mono"
                   />
                   <p className="text-xs text-brand-500 dark:text-brand-400">
                     {t("settings.game.winePrefixHint")}
@@ -334,7 +335,7 @@ export function GameSettingsPanel({
                     <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
                       {t("settings.game.crossoverBottle")}
                     </label>
-                    <input
+                    <BetterInput
                       type="text"
                       value={formData.crossover_bottle || ""}
                       onChange={e =>
@@ -345,7 +346,7 @@ export function GameSettingsPanel({
                       placeholder={t(
                         "settings.game.crossoverBottlePlaceholder",
                       )}
-                      className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none font-mono"
+                      className="font-mono"
                     />
                     <p className="text-xs text-brand-500 dark:text-brand-400">
                       {t("settings.game.crossoverBottleHint")}

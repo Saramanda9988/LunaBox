@@ -24,6 +24,7 @@ export {
     DownloadImportState,
     DownloadImportStateRequest,
     GameDetailStats,
+    GameGuideDocument,
     GameListRequest,
     GameListResponse,
     GameMetadataFromWebVO,

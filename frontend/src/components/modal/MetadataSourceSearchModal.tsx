@@ -27,7 +27,7 @@ export function MetadataSourceSearchModal({
 
   return (
     <ModalPortal>
-      <div className="absolute inset-0 z-[10000] flex items-center justify-center bg-black/50 p-6 backdrop-blur-sm">
+      <div className="absolute inset-0 z-[8500] flex items-center justify-center bg-black/50 p-6 backdrop-blur-sm">
         <div
           className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl dark:bg-brand-800"
           role="dialog"

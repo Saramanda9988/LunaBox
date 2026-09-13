@@ -9,6 +9,7 @@ import {
 import { appZoomOptions, languageOptions } from "../../consts/options";
 import { GameLibraryPathChangeModal } from "../modal/GameLibraryPathChangeModal";
 import { BetterActionInput } from "../ui/better/BetterActionInput";
+import { BetterInput } from "../ui/better/BetterInput";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 import { BangumiAccountSettings } from "./BangumiAccountSettings";
@@ -286,12 +287,11 @@ export function BasicSettingsPanel({
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
           VNDB Access Token
         </label>
-        <input
+        <BetterInput
           type="text"
           name="vndb_access_token"
           value={formData.vndb_access_token || ""}
           onChange={handleChange}
-          className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
         />
       </div>
 
@@ -376,7 +376,6 @@ export function BasicSettingsPanel({
           }}
           placeholder={t("settings.basic.gameLibraryPathPlaceholder")}
           className="text-sm"
-          containerClassName="shadow-sm"
           actions={[
             {
               ariaLabel: t("settings.basic.selectGameLibraryTitle"),

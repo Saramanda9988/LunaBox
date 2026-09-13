@@ -25,7 +25,7 @@ const variantClasses: Record<ButtonVariant, string> = {
     "border border-brand-200 bg-brand-150 text-brand-700 hover:bg-brand-200 "
     + "dark:border-brand-700 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600",
   primary:
-    "border border-neutral-600 bg-neutral-600 text-white shadow-sm hover:bg-neutral-700 "
+    "border border-neutral-600 bg-neutral-600 text-white hover:bg-neutral-700 "
     + "dark:border-neutral-600 dark:bg-neutral-600 dark:hover:bg-neutral-700",
   danger:
     "border border-error-500 bg-error-500 text-white hover:bg-error-600 "

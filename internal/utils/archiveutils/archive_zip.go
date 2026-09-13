@@ -65,9 +65,15 @@ func ExtractZip(zipReader *zip.ReadCloser, destDir string) error {
 	return extractZipFiles(zipReader.File, destDir)
 }
 
-// UnzipForRestore 解压文件用于恢复（与 UnzipFile 相同，保留兼容性）
+// UnzipForRestore 解压文件用于恢复，并保留归档中记录的修改时间。
 func UnzipForRestore(src, dest string) error {
-	return UnzipFile(src, dest)
+	reader, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+
+	return extractZipFilesForRestore(reader.File, dest)
 }
 
 func createZipArchive(target string, writeEntries func(*zip.Writer) error) (int64, error) {
@@ -167,6 +173,64 @@ func extractZipFile(file *zip.File, cleanTarget string) error {
 
 	_, err = io.Copy(dstFile, srcFile)
 	return err
+}
+
+func extractZipFilesForRestore(files []*zip.File, destDir string) error {
+	cleanTarget, err := filepath.Abs(filepath.Clean(destDir))
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		if err := extractZipFileForRestore(file, cleanTarget); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func extractZipFileForRestore(file *zip.File, cleanTarget string) error {
+	cleanPath, err := safeJoinWithinBase(cleanTarget, file.Name)
+	if err != nil {
+		return err
+	}
+
+	if file.FileInfo().IsDir() {
+		if err := os.MkdirAll(cleanPath, file.Mode()); err != nil {
+			return err
+		}
+		return os.Chtimes(cleanPath, file.ModTime(), file.ModTime())
+	}
+
+	if err := os.MkdirAll(filepath.Dir(cleanPath), 0755); err != nil {
+		return err
+	}
+
+	dstFile, err := os.OpenFile(cleanPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+	if err != nil {
+		return err
+	}
+
+	srcFile, err := file.Open()
+	if err != nil {
+		dstFile.Close()
+		return err
+	}
+
+	_, copyErr := io.Copy(dstFile, srcFile)
+	closeSourceErr := srcFile.Close()
+	closeDestErr := dstFile.Close()
+	if copyErr != nil {
+		return copyErr
+	}
+	if closeSourceErr != nil {
+		return closeSourceErr
+	}
+	if closeDestErr != nil {
+		return closeDestErr
+	}
+	return os.Chtimes(cleanPath, file.ModTime(), file.ModTime())
 }
 
 func safeJoinWithinBase(baseDir, relativePath string) (string, error) {

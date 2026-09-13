@@ -1,7 +1,8 @@
 type TFunc = (key: string) => string;
 
 /**
- * 将秒数格式化为本地化时间字符串 (X小时Y分钟Z秒 / X hours Y minutes Z seconds)
+ * 将秒数格式化为本地化时间字符串。分钟及以上的时长仅显示到分钟，
+ * 少于一分钟时保留秒数。(X小时Y分钟 / X hours Y minutes)
  * @param seconds - 秒数
  * @param t - 可选的 i18n t 函数；不传时输出中文（向后兼容）
  */
@@ -17,15 +18,10 @@ export function formatDuration(seconds: number, t?: TFunc): string {
     if (minutes > 0) {
       result.push(`${minutes}${minStr}`);
     }
-    if (remainingSeconds > 0) {
-      result.push(`${remainingSeconds}${secondStr}`);
-    }
     return result.join("");
   }
   if (minutes > 0) {
-    return remainingSeconds > 0
-      ? `${minutes}${minStr}${remainingSeconds}${secondStr}`
-      : `${minutes}${minStr}`;
+    return `${minutes}${minStr}`;
   }
   return `${remainingSeconds}${secondStr}`;
 }

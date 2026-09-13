@@ -6,6 +6,7 @@ import {
 } from "../../utils/cloudSync";
 import { BetterNumberInput } from "../ui/better/BetterNumberInput";
 import { BetterSelect } from "../ui/better/BetterSelect";
+import { BetterTimeWheelInput } from "../ui/better/BetterTimeWheelInput";
 import { SettingSwitchRow } from "../ui/SettingSwitchRow";
 
 interface AutoBackupSettingsProps {
@@ -104,16 +105,16 @@ export function AutoBackupSettingsPanel({
                     {t("settings.autoBackup.scheduleDailyTimeHint")}
                   </p>
                 </div>
-                <input
+                <BetterTimeWheelInput
                   id="scheduled_db_backup_time"
-                  type="time"
                   value={formData.scheduled_db_backup_time || "03:00"}
-                  onChange={event =>
+                  actionLabel={t("settings.autoBackup.scheduleDailyTime")}
+                  onChange={value =>
                     onChange({
                       ...formData,
-                      scheduled_db_backup_time: event.target.value,
+                      scheduled_db_backup_time: value,
                     } as appconf.AppConfig)}
-                  className="glass-input h-9 w-32 shrink-0 rounded-lg border border-brand-300 bg-white px-3 text-sm font-medium tabular-nums text-brand-900 shadow-sm outline-none focus:border-neutral-500 focus:ring-2 focus:ring-neutral-500/30 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+                  className="w-36 shrink-0"
                 />
               </div>
             ) : (
@@ -202,12 +203,12 @@ export function AutoBackupSettingsPanel({
             </div>
             <BetterNumberInput
               id="local_db_backup_retention"
-              min={0}
-              value={formData.local_db_backup_retention || 5}
+              min={1}
+              value={Math.max(1, formData.local_db_backup_retention)}
               onValueChange={value =>
                 onChange({
                   ...formData,
-                  local_db_backup_retention: value,
+                  local_db_backup_retention: Math.max(1, value),
                 } as appconf.AppConfig)}
               size="sm"
               className="shrink-0"

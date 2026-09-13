@@ -24,6 +24,7 @@ import { BetterActionInput } from "../ui/better/BetterActionInput";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterDataTable } from "../ui/better/BetterDataTable";
 import { BetterDrawer } from "../ui/better/BetterDrawer";
+import { BetterInput } from "../ui/better/BetterInput";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 
@@ -237,7 +238,7 @@ function ReleaseDatePicker({
       />
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-[9999] mt-2 w-[22rem] max-w-[calc(100vw-2rem)] rounded-xl border border-brand-200 bg-white p-3 shadow-xl focus:outline-none dark:border-brand-700 dark:bg-brand-800 data-glass:bg-white/90 data-glass:backdrop-blur-20 data-glass:dark:bg-brand-900/90">
+        <div className="absolute left-0 top-full z-[9000] mt-2 w-[22rem] max-w-[calc(100vw-2rem)] rounded-xl border border-brand-200 bg-white p-3 shadow-xl focus:outline-none dark:border-brand-700 dark:bg-brand-800 data-glass:bg-white/90 data-glass:backdrop-blur-20 data-glass:dark:bg-brand-900/90">
           <div className="space-y-3">
             <div className="grid h-9 grid-cols-[4rem_1fr_4rem] items-center">
               <div className="flex items-center gap-1">
@@ -432,8 +433,11 @@ export function GameEditPanel({
   const remoteCoverURL = isRemoteCoverURL(game.cover_url)
     ? game.cover_url
     : game.cover_source_url || "";
+  const remoteCoverSourceURL = game.cover_source_url || "";
   const canDownloadCover
     = isRemoteCoverURL(remoteCoverURL) && !isDownloadingCover;
+  const canDownloadCoverSource
+    = isRemoteCoverURL(remoteCoverSourceURL) && !isDownloadingCover;
   const executableDisplayPath = getExecutableDisplayPath(
     game.path,
     game.game_directory,
@@ -690,18 +694,18 @@ export function GameEditPanel({
     }
   };
 
-  const handleDownloadCover = async () => {
-    if (!isRemoteCoverURL(remoteCoverURL))
+  const handleDownloadCover = async (coverURL: string) => {
+    if (!isRemoteCoverURL(coverURL))
       return;
 
     setIsDownloadingCover(true);
     try {
-      const coverUrl = await DownloadCoverImage(game.id, remoteCoverURL);
+      const coverUrl = await DownloadCoverImage(game.id, coverURL);
       if (coverUrl) {
         onGameChange({
           ...game,
           cover_url: coverUrl,
-          cover_source_url: remoteCoverURL,
+          cover_source_url: coverURL,
         } as models.Game);
         onCoverImageChanged?.();
       }
@@ -723,12 +727,11 @@ export function GameEditPanel({
           <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
             {t("gameEdit.name")}
           </label>
-          <input
+          <BetterInput
             type="text"
             value={game.name}
             onChange={e =>
               onGameChange({ ...game, name: e.target.value } as models.Game)}
-            className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
           />
         </div>
 
@@ -754,9 +757,10 @@ export function GameEditPanel({
               </span>
             ))}
             {isAddingAlias ? (
-              <input
+              <BetterInput
                 ref={aliasInputRef}
                 type="text"
+                variant="unstyled"
                 value={aliasDraft}
                 onChange={event => setAliasDraft(event.target.value)}
                 onKeyDown={handleAliasKeyDown}
@@ -806,7 +810,7 @@ export function GameEditPanel({
                 icon: isDownloadingCover
                   ? "i-mdi-loading animate-spin"
                   : "i-mdi-download",
-                onClick: handleDownloadCover,
+                onClick: () => handleDownloadCover(remoteCoverURL),
               },
             ]}
           />
@@ -819,8 +823,7 @@ export function GameEditPanel({
           <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
             {t("gameEdit.coverSource")}
           </label>
-          <input
-            type="text"
+          <BetterActionInput
             value={game.cover_source_url || ""}
             onChange={e =>
               onGameChange({
@@ -828,7 +831,16 @@ export function GameEditPanel({
                 cover_source_url: e.target.value,
               } as models.Game)}
             placeholder={t("gameEdit.coverSourcePlaceholder")}
-            className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
+            actions={[
+              {
+                ariaLabel: t("gameEdit.downloadCover"),
+                disabled: !canDownloadCoverSource,
+                icon: isDownloadingCover
+                  ? "i-mdi-loading animate-spin"
+                  : "i-mdi-download",
+                onClick: () => handleDownloadCover(remoteCoverSourceURL),
+              },
+            ]}
           />
           <p className="mt-1 text-xs text-brand-500">
             {t("gameEdit.coverSourceHint")}
@@ -839,7 +851,7 @@ export function GameEditPanel({
           <label className="block text-sm font-medium text-brand-700 dark:text-brand-300 mb-1">
             {t("gameEdit.developer")}
           </label>
-          <input
+          <BetterInput
             type="text"
             value={game.company}
             onChange={e =>
@@ -847,7 +859,6 @@ export function GameEditPanel({
                 ...game,
                 company: e.target.value,
               } as models.Game)}
-            className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
           />
         </div>
 
@@ -857,8 +868,9 @@ export function GameEditPanel({
               {t("gameEdit.rating")}
             </label>
             <div className="flex items-center gap-2">
-              <input
+              <BetterInput
                 type="number"
+                fullWidth={false}
                 min={0}
                 max={10}
                 step={0.1}
@@ -876,7 +888,7 @@ export function GameEditPanel({
                   } as models.Game);
                 }}
                 placeholder={t("gameEdit.ratingPlaceholder")}
-                className="glass-input min-w-0 flex-1 px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none"
+                className="min-w-0 flex-1"
               />
               <span className="shrink-0 text-sm text-brand-500 dark:text-brand-400">
                 / 10
@@ -1277,12 +1289,12 @@ export function GameEditPanel({
                     option => !configuredSourceTypes.has(option.value),
                   )}
                 />
-                <input
+                <BetterInput
                   type="text"
                   value={sourceDraftID}
                   onChange={event => setSourceDraftID(event.target.value)}
                   placeholder={t("gameEdit.sourceIdPlaceholder")}
-                  className="glass-input min-w-0 rounded-md border border-brand-300 bg-white px-3 py-2 text-brand-900 outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+                  className="min-w-0"
                 />
                 <BetterButton
                   variant="secondary"

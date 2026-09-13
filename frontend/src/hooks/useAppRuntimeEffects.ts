@@ -34,6 +34,11 @@ type HikarinagiStatusPushFailureEvent = {
   error?: string;
 };
 
+type ScheduledDBBackupEvent = {
+  status?: "started" | "completed" | "failed";
+  error?: string;
+};
+
 type UseAppRuntimeEffectsOptions = {
   config: appconf.AppConfig | null;
   refreshConfig: () => Promise<void>;
@@ -305,6 +310,40 @@ export function useAppRuntimeEffects({
 
     return unsubscribe;
   }, [refreshHomeData]);
+
+  useEffect(() => {
+    const unsubscribe = onWailsEvent(
+      "database-backup:scheduled",
+      (event?: ScheduledDBBackupEvent) => {
+        const toastID = "scheduled-database-backup";
+        if (event?.status === "started") {
+          toast.loading(t("settings.autoBackup.scheduledDbBackupStarted"), {
+            duration: Infinity,
+            id: toastID,
+          });
+          return;
+        }
+
+        if (event?.status === "completed") {
+          toast.success(t("settings.autoBackup.scheduledDbBackupCompleted"), {
+            id: toastID,
+          });
+          return;
+        }
+
+        if (event?.status === "failed") {
+          toast.error(
+            t("settings.autoBackup.scheduledDbBackupFailed", {
+              error: event.error || t("settings.autoBackup.unknownError"),
+            }),
+            { id: toastID },
+          );
+        }
+      },
+    );
+
+    return unsubscribe;
+  }, [t]);
 
   useEffect(() => {
     const unsubscribe = onWailsEvent("home:refresh-requested", () => {

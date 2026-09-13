@@ -56,13 +56,15 @@ export function AppDataSettingsPanel() {
 
   return (
     <div className="space-y-5">
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-          {t("settings.appData.logsTitle")}
-        </label>
-        <p className="text-xs text-brand-500 dark:text-brand-400">
-          {t("settings.appData.logsHint")}
-        </p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex-1 space-y-2">
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+            {t("settings.appData.logsTitle")}
+          </label>
+          <p className="text-xs text-brand-500 dark:text-brand-400">
+            {t("settings.appData.logsHint")}
+          </p>
+        </div>
         <BetterButton
           type="button"
           variant="primary"
@@ -76,13 +78,15 @@ export function AppDataSettingsPanel() {
         </BetterButton>
       </div>
 
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
-          {t("settings.appData.dataDirTitle")}
-        </label>
-        <p className="text-xs text-brand-500 dark:text-brand-400">
-          {t("settings.appData.dataDirHint")}
-        </p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex-1 space-y-2">
+          <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
+            {t("settings.appData.dataDirTitle")}
+          </label>
+          <p className="text-xs text-brand-500 dark:text-brand-400">
+            {t("settings.appData.dataDirHint")}
+          </p>
+        </div>
         <BetterButton
           type="button"
           variant="secondary"

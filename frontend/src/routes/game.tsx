@@ -14,9 +14,12 @@ import {
   BatchUpdateStatus,
   DeleteGame,
   DeleteGameMetadataSource,
+  ExportCoverImage,
   ExportLaunchShortcut,
   FetchMetadataByName,
+  FindGameGuideDocuments,
   GetGameByID,
+  OpenGameGuideDocument,
   OpenLocalPath,
   SelectCoverImage,
   SelectGameDirectory,
@@ -45,6 +48,7 @@ import {
 } from "../cache/gameCache";
 import { AddToCategoryModal } from "../components/modal/AddToCategoryModal";
 import { ConfirmModal } from "../components/modal/ConfirmModal";
+import { GameGuideDocumentModal } from "../components/modal/GameGuideDocumentModal";
 import {
   DEFAULT_METADATA_UPDATE_FIELDS,
   MetadataFieldSelectModal,
@@ -60,7 +64,9 @@ import { GameReviewPanel } from "../components/panel/GameReviewPanel";
 import { GameStatsPanel } from "../components/panel/GameStatsPanel";
 import { GameDetailSkeleton } from "../components/skeleton/GameDetailSkeleton";
 import { BetterDropdownMenu } from "../components/ui/better/BetterDropdownMenu";
+import { BetterImageViewer } from "../components/ui/better/BetterImageViewer";
 import { BetterSplitButton } from "../components/ui/better/BetterSplitButton";
+import { BetterTooltip } from "../components/ui/better/BetterTooltip";
 import { GameCoverImage } from "../components/ui/GameCoverImage";
 import { GameTags } from "../components/ui/GameTags";
 import { sourceLabel } from "../components/ui/import/importFlow";
@@ -187,6 +193,12 @@ function GameDetailPage() {
   );
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isGameGuideModalOpen, setIsGameGuideModalOpen] = useState(false);
+  const [isLoadingGameGuideDocuments, setIsLoadingGameGuideDocuments]
+    = useState(false);
+  const [gameGuideDocuments, setGameGuideDocuments] = useState<
+    vo.GameGuideDocument[]
+  >([]);
   const [isProcessSelectModalOpen, setIsProcessSelectModalOpen]
     = useState(false);
   const [isMetadataFieldModalOpen, setIsMetadataFieldModalOpen]
@@ -220,6 +232,7 @@ function GameDetailPage() {
   const [coverImageRefreshToken, setCoverImageRefreshToken] = useState(() =>
     Date.now(),
   );
+  const [isCoverViewerOpen, setIsCoverViewerOpen] = useState(false);
   const isInitialMount = useRef(true);
   const pendingSteamAction = useRef<SteamPendingAction | null>(null);
   const originalGameData = useRef<models.Game | null>(null);
@@ -1081,6 +1094,46 @@ function GameDetailPage() {
     }
   };
 
+  const handleOpenGameGuideDocuments = async () => {
+    if (!game)
+      return;
+
+    setIsLoadingGameGuideDocuments(true);
+    try {
+      const documents = await FindGameGuideDocuments(game.id);
+      if (documents.length === 0) {
+        toast.error(t("gameEdit.guideDocumentsEmpty"));
+        return;
+      }
+      if (documents.length === 1) {
+        await OpenGameGuideDocument(game.id, documents[0].relative_path);
+        return;
+      }
+      setGameGuideDocuments(documents);
+      setIsGameGuideModalOpen(true);
+    }
+    catch (error) {
+      console.error("Failed to open game guide document:", error);
+      toast.error(t("gameEdit.guideDocumentsFailed"));
+    }
+    finally {
+      setIsLoadingGameGuideDocuments(false);
+    }
+  };
+
+  const handleOpenGameGuideDocument = async (
+    document: vo.GameGuideDocument,
+  ) => {
+    try {
+      await OpenGameGuideDocument(gameId, document.relative_path);
+    }
+    catch (error) {
+      console.error("Failed to open game guide document:", error);
+      toast.error(t("gameEdit.openGuideFailed"));
+      throw error;
+    }
+  };
+
   const handleSaveCategories = async (newSelectedIds: string[]) => {
     const currentIds = selectedCategoryIds;
 
@@ -1153,6 +1206,20 @@ function GameDetailPage() {
     catch (error) {
       console.error("Failed to export launch shortcut:", error);
       toast.error(t("gameLaunch.toast.shortcutExportFailed", { error }));
+    }
+  };
+
+  const handleSaveCoverImage = async () => {
+    if (!game) {
+      return;
+    }
+
+    try {
+      await ExportCoverImage(game.id);
+    }
+    catch (error) {
+      console.error("Failed to save cover image:", error);
+      toast.error(t("game.toast.saveFailed", { error }));
     }
   };
 
@@ -1276,17 +1343,24 @@ function GameDetailPage() {
       <div className="grid min-w-0 grid-cols-[15rem_minmax(0,1fr)] items-stretch gap-6">
         <div className="relative min-h-64 w-60">
           {coverImageSrc ? (
-            <GameCoverImage
-              src={coverImageSrc}
-              fallbackSrc={game.cover_source_url}
-              alt={game.name}
-              loading="eager"
-              fetchPriority="high"
-              isNSFW={game.is_nsfw}
-              revealNSFWOnHover
-              className="absolute left-0 top-1/2 w-full -translate-y-1/2 rounded-lg shadow-lg"
-              imageClassName="block h-auto w-full"
-            />
+            <button
+              type="button"
+              onClick={() => setIsCoverViewerOpen(true)}
+              aria-label={t("game.imageViewer.open", { name: game.name })}
+              className="absolute left-0 top-1/2 w-full -translate-y-1/2 cursor-zoom-in rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-brand-900"
+            >
+              <GameCoverImage
+                src={coverImageSrc}
+                fallbackSrc={game.cover_source_url}
+                alt={game.name}
+                loading="eager"
+                fetchPriority="high"
+                isNSFW={game.is_nsfw}
+                revealNSFWOnHover
+                className="rounded-lg shadow-lg"
+                imageClassName="block h-auto w-full"
+              />
+            </button>
           ) : (
             <div className="flex h-full min-h-64 w-full items-center justify-center text-brand-400">
               {t("game.noCover")}
@@ -1351,89 +1425,118 @@ function GameDetailPage() {
                   <div className="h-6 w-px bg-brand-200 dark:bg-brand-700" />
                   <div className="flex items-center gap-1.5">
                     {hasMultipleMetadataSourceLinks ? (
-                      <BetterDropdownMenu
-                        align="start"
-                        menuWidth="min-w-[240px]"
-                        title={t("gameEdit.openSourcePage")}
-                        ariaLabel={t("gameEdit.chooseSourcePage")}
-                        trigger={(
-                          <div className="flex h-8 items-center justify-center gap-0.5 rounded-full bg-brand-150 px-2 text-brand-500 transition-colors hover:bg-brand-200 hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 dark:bg-brand-700 dark:text-brand-400 dark:hover:bg-brand-600 dark:hover:text-brand-100">
-                            <span
-                              className="i-mdi-open-in-new text-base"
-                              aria-hidden="true"
-                            />
-                            <span
-                              className="i-mdi-chevron-down text-sm"
-                              aria-hidden="true"
-                            />
-                          </div>
-                        )}
-                        items={metadataSourceLinks.map(source => ({
-                          key: source.source,
-                          label: sourceLabel(source.source, t),
-                          description:
-                            source.source === defaultMetadataSource
-                              ? t("gameEdit.defaultSourceEntry", {
-                                  id: source.sourceID,
-                                })
-                              : t("gameEdit.sourceEntry", {
-                                  id: source.sourceID,
-                                }),
-                          iconSrc: getMetadataSourceIcon(
-                            source.source,
-                            "compact",
-                          ),
-                          onClick: () => void Browser.OpenURL(source.url),
-                        }))}
-                      />
+                      <BetterTooltip content={t("gameEdit.chooseSourcePage")}>
+                        <BetterDropdownMenu
+                          align="start"
+                          menuWidth="min-w-[240px]"
+                          title={t("gameEdit.openSourcePage")}
+                          ariaLabel={t("gameEdit.chooseSourcePage")}
+                          trigger={(
+                            <div className="flex h-8 items-center justify-center gap-0.5 rounded-full bg-brand-150 px-2 text-brand-500 transition-colors hover:bg-brand-200 hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 dark:bg-brand-700 dark:text-brand-400 dark:hover:bg-brand-600 dark:hover:text-brand-100">
+                              <span
+                                className="i-mdi-open-in-new text-base"
+                                aria-hidden="true"
+                              />
+                              <span
+                                className="i-mdi-chevron-down text-sm"
+                                aria-hidden="true"
+                              />
+                            </div>
+                          )}
+                          items={metadataSourceLinks.map(source => ({
+                            key: source.source,
+                            label: sourceLabel(source.source, t),
+                            description:
+                              source.source === defaultMetadataSource
+                                ? t("gameEdit.defaultSourceEntry", {
+                                    id: source.sourceID,
+                                  })
+                                : t("gameEdit.sourceEntry", {
+                                    id: source.sourceID,
+                                  }),
+                            iconSrc: getMetadataSourceIcon(
+                              source.source,
+                              "compact",
+                            ),
+                            onClick: () => void Browser.OpenURL(source.url),
+                          }))}
+                        />
+                      </BetterTooltip>
                     ) : (
+                      <BetterTooltip content={t("gameEdit.openSourcePage")}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void Browser.OpenURL(defaultMetadataSourceURL)}
+                          disabled={!defaultMetadataSourceURL}
+                          aria-label={t("gameEdit.openSourcePage")}
+                          className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-150 text-brand-500 transition-colors hover:bg-brand-200 hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-brand-700 dark:text-brand-400 dark:hover:bg-brand-600 dark:hover:text-brand-100"
+                        >
+                          <span
+                            className="i-mdi-open-in-new text-base"
+                            aria-hidden="true"
+                          />
+                        </button>
+                      </BetterTooltip>
+                    )}
+                    <BetterTooltip content={t("gameEdit.openInExplorer")}>
                       <button
                         type="button"
-                        onClick={() =>
-                          void Browser.OpenURL(defaultMetadataSourceURL)}
-                        disabled={!defaultMetadataSourceURL}
-                        aria-label={t("gameEdit.openSourcePage")}
+                        onClick={async () => {
+                          const path = game.game_directory || game.path;
+                          if (!path)
+                            return;
+                          try {
+                            await OpenLocalPath(path);
+                          }
+                          catch {
+                            toast.error(t("gameEdit.openPathFailed"));
+                          }
+                        }}
+                        disabled={!game.game_directory && !game.path}
+                        aria-label={t("gameEdit.openInExplorer")}
                         className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-150 text-brand-500 transition-colors hover:bg-brand-200 hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-brand-700 dark:text-brand-400 dark:hover:bg-brand-600 dark:hover:text-brand-100"
                       >
                         <span
-                          className="i-mdi-open-in-new text-base"
+                          className="i-mdi-folder-open-outline text-base"
                           aria-hidden="true"
                         />
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const path = game.game_directory || game.path;
-                        if (!path)
-                          return;
-                        try {
-                          await OpenLocalPath(path);
+                    </BetterTooltip>
+                    <BetterTooltip content={t("gameEdit.openGuide")}>
+                      <button
+                        type="button"
+                        onClick={() => void handleOpenGameGuideDocuments()}
+                        disabled={
+                          isLoadingGameGuideDocuments
+                          || (!game.game_directory && !game.path)
                         }
-                        catch {
-                          toast.error(t("gameEdit.openPathFailed"));
-                        }
-                      }}
-                      disabled={!game.game_directory && !game.path}
-                      aria-label={t("gameEdit.openInExplorer")}
-                      className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-150 text-brand-500 transition-colors hover:bg-brand-200 hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-brand-700 dark:text-brand-400 dark:hover:bg-brand-600 dark:hover:text-brand-100"
-                    >
-                      <span
-                        className="i-mdi-folder-open-outline text-base"
-                        aria-hidden="true"
-                      />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={openCategoryModal}
-                      aria-label={t("addToCategory.title")}
-                      className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-150 text-brand-500 transition-colors hover:bg-brand-200 hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 dark:bg-brand-700 dark:text-brand-400 dark:hover:bg-brand-600 dark:hover:text-brand-100"
-                    >
-                      <span
-                        className="i-mdi-folder-plus-outline text-base"
-                        aria-hidden="true"
-                      />
-                    </button>
+                        aria-label={t("gameEdit.openGuide")}
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-150 text-brand-500 transition-colors hover:bg-brand-200 hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-brand-700 dark:text-brand-400 dark:hover:bg-brand-600 dark:hover:text-brand-100"
+                      >
+                        <span
+                          className={`text-base ${
+                            isLoadingGameGuideDocuments
+                              ? "i-mdi-loading animate-spin"
+                              : "i-mdi-text-box-search-outline"
+                          }`}
+                          aria-hidden="true"
+                        />
+                      </button>
+                    </BetterTooltip>
+                    <BetterTooltip content={t("addToCategory.title")}>
+                      <button
+                        type="button"
+                        onClick={openCategoryModal}
+                        aria-label={t("addToCategory.title")}
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-150 text-brand-500 transition-colors hover:bg-brand-200 hover:text-brand-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 dark:bg-brand-700 dark:text-brand-400 dark:hover:bg-brand-600 dark:hover:text-brand-100"
+                      >
+                        <span
+                          className="i-mdi-folder-plus-outline text-base"
+                          aria-hidden="true"
+                        />
+                      </button>
+                    </BetterTooltip>
                   </div>
                 </div>
               </div>
@@ -1592,6 +1695,13 @@ function GameDetailPage() {
         onSave={handleSaveCategories}
       />
 
+      <GameGuideDocumentModal
+        isOpen={isGameGuideModalOpen}
+        documents={gameGuideDocuments}
+        onClose={() => setIsGameGuideModalOpen(false)}
+        onOpen={handleOpenGameGuideDocument}
+      />
+
       <ProcessSelectModal
         isOpen={isProcessSelectModalOpen}
         gameID={gameId}
@@ -1634,6 +1744,26 @@ function GameDetailPage() {
         onRetry={handleRetrySteamStatus}
         onSelectExecutable={handleSteamSelectExecutable}
       />
+
+      {isCoverViewerOpen && (
+        <BetterImageViewer
+          key={coverImageSrc}
+          isOpen={isCoverViewerOpen}
+          src={coverImageSrc}
+          fallbackSrc={game.cover_source_url}
+          title={game.name}
+          alt={game.name}
+          onClose={() => setIsCoverViewerOpen(false)}
+          onSave={handleSaveCoverImage}
+          labels={{
+            close: t("game.imageViewer.close"),
+            reset: t("game.imageViewer.reset"),
+            save: t("game.imageViewer.save"),
+            zoomIn: t("game.imageViewer.zoomIn"),
+            zoomOut: t("game.imageViewer.zoomOut"),
+          }}
+        />
+      )}
     </div>
   );
 }

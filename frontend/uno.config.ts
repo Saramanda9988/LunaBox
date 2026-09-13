@@ -54,6 +54,16 @@ export default defineConfig({
       },
     ],
     [
+      "app-toast-stack-item",
+      {
+        "position": "absolute",
+        "width": "100%",
+        "transition-property": "transform, height, opacity",
+        "transition-duration": "500ms, 180ms, 280ms",
+        "transition-timing-function": "cubic-bezier(.22,1,.36,1)",
+      },
+    ],
+    [
       "account-choice-transition",
       {
         "transition-property": "grid-template-columns",
@@ -101,6 +111,10 @@ export default defineConfig({
   shortcuts: [
     // 玻璃态效果基础类
     {
+      "app-toast-card":
+        "relative flex w-full flex-col text-brand-900 dark:text-brand-50",
+      "app-toast-stack-surface":
+        "h-full overflow-hidden rounded-2xl border border-brand-200/90 bg-white text-brand-900 shadow-lg shadow-brand-900/8 dark:border-brand-700/70 dark:bg-brand-800 dark:text-brand-50 dark:shadow-black/25 data-glass:bg-white/85 data-glass:dark:bg-brand-800/85 data-glass:backdrop-blur-xl motion-reduce:transition-none",
       "startup-backdrop":
         "bg-brand-100 dark:bg-brand-900 ring-1 ring-inset ring-brand-300 dark:ring-brand-700",
       "glass": "backdrop-filter backdrop-blur-12 backdrop-saturate-180",
@@ -170,6 +184,10 @@ export default defineConfig({
   theme: {
     animation: {
       counts: {
+        "app-toast-enter": "1",
+        "app-toast-leave": "1",
+        "app-toast-progress": "1",
+        "tooltip-enter": "1",
         "playing-island-marquee": "infinite",
         "playing-island-enter": "1",
         "playing-island-leave": "1",
@@ -177,6 +195,10 @@ export default defineConfig({
         "playing-island-content-out": "1",
       },
       durations: {
+        "app-toast-enter": "450ms",
+        "app-toast-leave": "280ms",
+        "app-toast-progress": "4000ms",
+        "tooltip-enter": "120ms",
         "playing-island-marquee": "8s",
         "playing-island-enter": "360ms",
         "playing-island-leave": "220ms",
@@ -184,6 +206,14 @@ export default defineConfig({
         "playing-island-content-out": "220ms",
       },
       keyframes: {
+        "app-toast-enter":
+          "{0%{opacity:0;transform:translate3d(0,var(--app-toast-enter-y),0) scale(.96)}100%{opacity:1;transform:translate3d(0,0,0) scale(1)}}",
+        "app-toast-leave":
+          "{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(0,var(--app-toast-leave-y),0) scale(.96)}}",
+        "app-toast-progress":
+          "{0%{stroke-dashoffset:0}100%{stroke-dashoffset:100}}",
+        "tooltip-enter":
+          "{0%{opacity:0;transform:scale(.96)}100%{opacity:1;transform:scale(1)}}",
         "playing-island-marquee":
           "{0%,16%{transform:translateX(0)}84%,100%{transform:translateX(-50%)}}",
         "playing-island-enter":
@@ -196,6 +226,19 @@ export default defineConfig({
           "{0%{opacity:1;filter:blur(0)}100%{opacity:0;filter:blur(2px)}}",
       },
       properties: {
+        "app-toast-enter": {
+          "animation-fill-mode": "both",
+        },
+        "app-toast-leave": {
+          "animation-fill-mode": "both",
+        },
+        "app-toast-progress": {
+          "animation-fill-mode": "forwards",
+        },
+        "tooltip-enter": {
+          "animation-fill-mode": "both",
+          "transform-origin": "center",
+        },
         "playing-island-enter": {
           "animation-fill-mode": "both",
           "transform-origin": "center",
@@ -212,6 +255,10 @@ export default defineConfig({
         },
       },
       timingFns: {
+        "app-toast-enter": "cubic-bezier(.22,1,.36,1)",
+        "app-toast-leave": "cubic-bezier(.4,0,1,1)",
+        "app-toast-progress": "linear",
+        "tooltip-enter": "cubic-bezier(.16,1,.3,1)",
         "playing-island-enter": "cubic-bezier(.16,1,.3,1)",
         "playing-island-leave": "cubic-bezier(.4,0,1,1)",
         "playing-island-content-in": "cubic-bezier(.2,.9,.18,1)",

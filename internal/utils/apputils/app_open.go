@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 // OpenDirectory 使用系统文件管理器打开指定目录
@@ -25,6 +26,39 @@ func OpenDirectory(dir string) error {
 		cmd = exec.Command("open", dir)
 	default:
 		cmd = exec.Command("xdg-open", dir)
+	}
+
+	return cmd.Start()
+}
+
+// OpenFile 使用系统默认应用打开指定文件。
+func OpenFile(path string) error {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return os.ErrInvalid
+	}
+
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+
+	info, err := os.Stat(absPath)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return OpenDirectory(absPath)
+	}
+
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("explorer", absPath)
+	case "darwin":
+		cmd = exec.Command("open", absPath)
+	default:
+		cmd = exec.Command("xdg-open", absPath)
 	}
 
 	return cmd.Start()

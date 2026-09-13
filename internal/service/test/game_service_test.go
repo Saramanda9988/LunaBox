@@ -8,6 +8,8 @@ import (
 	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
 	"lunabox/internal/service"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -120,6 +122,59 @@ func TestGameService_GetGameByID(t *testing.T) {
 			t.Error("期望返回错误，但没有错误")
 		}
 	})
+}
+
+func TestGameService_FindGameGuideDocuments(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	directory := t.TempDir()
+	if err := os.Mkdir(filepath.Join(directory, "guide"), 0755); err != nil {
+		t.Fatalf("创建子目录失败: %v", err)
+	}
+	for _, relativePath := range []string{
+		"README.TXT",
+		"guide/route.md",
+		"guide/manual.PDF",
+		"guide/notes.docx",
+		"game.exe",
+	} {
+		if err := os.WriteFile(filepath.Join(directory, relativePath), []byte("test"), 0644); err != nil {
+			t.Fatalf("创建测试文件 %s 失败: %v", relativePath, err)
+		}
+	}
+
+	gameService := service.NewGameService()
+	gameService.Init(context.Background(), db, &appconf.AppConfig{})
+	game := createTestGame()
+	game.ID = "guide-document-test"
+	game.GameDirectory = directory
+	if err := addGameViaMetadata(gameService, game); err != nil {
+		t.Fatalf("添加测试游戏失败: %v", err)
+	}
+
+	documents, err := gameService.FindGameGuideDocuments(game.ID)
+	if err != nil {
+		t.Fatalf("查找说明文档失败: %v", err)
+	}
+
+	got := make([]string, len(documents))
+	for index, document := range documents {
+		got[index] = document.RelativePath
+	}
+	want := []string{
+		"guide/manual.PDF",
+		"guide/notes.docx",
+		"guide/route.md",
+		"README.TXT",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("说明文档 = %v, 期望 %v", got, want)
+	}
+
+	if err := gameService.OpenGameGuideDocument(game.ID, "../README.TXT"); err == nil {
+		t.Error("目录外的说明文档路径应被拒绝")
+	}
 }
 
 func TestGameService_ManagesMultipleMetadataSources(t *testing.T) {

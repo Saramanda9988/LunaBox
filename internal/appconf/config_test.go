@@ -167,6 +167,26 @@ func TestNormalizeScrapedTagLimitAllowsZeroAndUnlimited(t *testing.T) {
 	}
 }
 
+func TestNormalizeLocalDBBackupRetention(t *testing.T) {
+	tests := []struct {
+		name      string
+		retention int
+		want      int
+	}{
+		{name: "zero uses default", retention: 0, want: DefaultLocalDBBackupRetention},
+		{name: "negative uses default", retention: -1, want: DefaultLocalDBBackupRetention},
+		{name: "configured value remains", retention: 8, want: 8},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NormalizeLocalDBBackupRetention(tt.retention); got != tt.want {
+				t.Fatalf("expected %d, got %d", tt.want, got)
+			}
+		})
+	}
+}
+
 func TestNormalizeProcessDetectionTimeoutSec(t *testing.T) {
 	tests := []struct {
 		name       string

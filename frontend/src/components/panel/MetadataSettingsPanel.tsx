@@ -29,6 +29,7 @@ import {
 } from "../modal/MetadataFieldSelectModal";
 import { MetadataRefreshProgressModal } from "../modal/MetadataRefreshProgressModal";
 import { BetterButton } from "../ui/better/BetterButton";
+import { BetterInput } from "../ui/better/BetterInput";
 import { BetterNumberInput } from "../ui/better/BetterNumberInput";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
@@ -507,7 +508,7 @@ export function MetadataSettingsPanel({
           >
             {t("settings.metadata.erogameScapeBaseURL")}
           </label>
-          <input
+          <BetterInput
             id="erogamescape-base-url"
             type="url"
             name="erogamescape_base_url"
@@ -518,7 +519,6 @@ export function MetadataSettingsPanel({
                 erogamescape_base_url: event.target.value,
               } as appconf.AppConfig)}
             placeholder="https://erogamescape.org/~ap2/ero/toukei_kaiseki"
-            className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
           />
           <p className="text-xs text-brand-500 dark:text-brand-400">
             {t("settings.metadata.erogameScapeBaseURLHint")}

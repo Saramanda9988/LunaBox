@@ -21,6 +21,7 @@ import {
 import { ConfirmModal } from "../modal/ConfirmModal";
 import { BetterActionInput } from "../ui/better/BetterActionInput";
 import { BetterButton } from "../ui/better/BetterButton";
+import { BetterInput } from "../ui/better/BetterInput";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 
@@ -1041,12 +1042,12 @@ export function GameLaunchPanel({
                     <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
                       {t("gameLaunch.wineArgs")}
                     </label>
-                    <input
+                    <BetterInput
                       type="text"
                       value={game.wine_args || ""}
                       onChange={e => handleWineArgsChange(e.target.value)}
                       placeholder={t("gameLaunch.wineArgsPlaceholder")}
-                      className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md bg-white dark:bg-brand-700 text-brand-900 dark:text-white focus:ring-2 focus:ring-neutral-500 outline-none font-mono"
+                      className="font-mono"
                     />
                     <div className="flex flex-wrap gap-2">
                       {wineArgsPresets.map(preset => (

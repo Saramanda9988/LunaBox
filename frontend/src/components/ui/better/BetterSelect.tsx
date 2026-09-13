@@ -35,7 +35,7 @@ export function BetterSelect({
   const buttonClasses = `glass-card relative w-full px-3 py-2 pr-10
                      text-left cursor-pointer
                      border border-brand-300 dark:border-brand-600
-                     rounded-md shadow-sm
+                     rounded-md
                      bg-white dark:bg-brand-700
                      text-brand-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-neutral-500
@@ -60,10 +60,10 @@ export function BetterSelect({
         {/* Options Dropdown */}
         <ListboxOptions
           anchor="bottom start"
-          className="absolute z-[9999] mt-1 max-h-60 w-[var(--button-width)] overflow-auto
+          className="absolute z-[9000] mt-1 max-h-60 w-[var(--button-width)] overflow-auto
                      bg-white dark:bg-brand-800
                      border border-brand-300 dark:border-brand-600
-                     rounded-md shadow-lg
+                     rounded-md
                      py-1
                      focus:outline-none
                      [--anchor-gap:4px]"

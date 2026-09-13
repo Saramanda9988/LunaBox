@@ -768,7 +768,7 @@ export function FilterBar({
                       </PopoverButton>
                       <PopoverPanel
                         anchor="bottom start"
-                        className="z-[9999] mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-brand-200 bg-white px-3 py-2 text-xs font-normal leading-5 text-brand-600 shadow-xl focus:outline-none dark:border-brand-700 dark:bg-brand-800 dark:text-brand-300 data-glass:bg-white/90 data-glass:backdrop-blur-20 data-glass:dark:bg-brand-900/90 [--anchor-gap:8px]"
+                        className="z-[9000] mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-brand-200 bg-white px-3 py-2 text-xs font-normal leading-5 text-brand-600 shadow-xl focus:outline-none dark:border-brand-700 dark:bg-brand-800 dark:text-brand-300 data-glass:bg-white/90 data-glass:backdrop-blur-20 data-glass:dark:bg-brand-900/90 [--anchor-gap:8px]"
                       >
                         {t("filterBar.secondarySortHelp")}
                       </PopoverPanel>

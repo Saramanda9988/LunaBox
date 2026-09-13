@@ -1086,6 +1086,38 @@ export class GameDetailStats {
     }
 }
 
+/**
+ * GameGuideDocument 是游戏安装目录中可供打开的说明文档。
+ */
+export class GameGuideDocument {
+    "name": string;
+    "relative_path": string;
+    "extension": string;
+
+    /** Creates a new GameGuideDocument instance. */
+    constructor($$source: Partial<GameGuideDocument> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("relative_path" in $$source)) {
+            this["relative_path"] = "";
+        }
+        if (!("extension" in $$source)) {
+            this["extension"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new GameGuideDocument instance from a string or object.
+     */
+    static createFrom($$source: any = {}): GameGuideDocument {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new GameGuideDocument($$parsedSource as Partial<GameGuideDocument>);
+    }
+}
+
 export class GameListRequest {
     "limit": number;
     "offset": number;

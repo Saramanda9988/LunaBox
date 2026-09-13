@@ -57,6 +57,13 @@ type GameListResponse struct {
 	HasMore bool          `json:"has_more"`
 }
 
+// GameGuideDocument 是游戏安装目录中可供打开的说明文档。
+type GameGuideDocument struct {
+	Name         string `json:"name"`
+	RelativePath string `json:"relative_path"`
+	Extension    string `json:"extension"`
+}
+
 type DownloadImportState struct {
 	TaskID   string `json:"task_id"`
 	Imported bool   `json:"imported"`

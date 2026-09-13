@@ -7,7 +7,12 @@ interface BetterSwitchProps {
   disabled?: boolean;
 }
 
-export function BetterSwitch({ id, checked, onCheckedChange, disabled }: BetterSwitchProps) {
+export function BetterSwitch({
+  id,
+  checked,
+  onCheckedChange,
+  disabled,
+}: BetterSwitchProps) {
   return (
     <Switch.Root
       id={id}
@@ -23,7 +28,7 @@ export function BetterSwitch({ id, checked, onCheckedChange, disabled }: BetterS
     >
       <Switch.Thumb
         className={`
-          block w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-100 translate-x-0.5
+          block w-5 h-5 bg-white rounded-full transition-transform duration-100 translate-x-0.5
           ${checked ? "translate-x-5.5" : "translate-x-0.5"}
         `}
       />

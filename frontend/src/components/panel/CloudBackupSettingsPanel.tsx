@@ -17,6 +17,7 @@ import {
 import { GetAppConfig } from "../../../bindings/lunabox/internal/service/configservice";
 import { formatFileSize } from "../../utils/size";
 import { PasswordInputModal } from "../modal/PasswordInputModal";
+import { BetterInput } from "../ui/better/BetterInput";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 
@@ -449,13 +450,12 @@ export function CloudBackupSettingsPanel({
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
               S3 Endpoint
             </label>
-            <input
+            <BetterInput
               type="text"
               name="s3_endpoint"
               value={formData.s3_endpoint || ""}
               onChange={handleChange}
               placeholder="https://s3.example.com"
-              className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -463,26 +463,24 @@ export function CloudBackupSettingsPanel({
               <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
                 Region
               </label>
-              <input
+              <BetterInput
                 type="text"
                 name="s3_region"
                 value={formData.s3_region || ""}
                 onChange={handleChange}
                 placeholder="us-east-1"
-                className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               />
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
                 Bucket
               </label>
-              <input
+              <BetterInput
                 type="text"
                 name="s3_bucket"
                 value={formData.s3_bucket || ""}
                 onChange={handleChange}
                 placeholder="lunabox-backup"
-                className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               />
             </div>
           </div>
@@ -490,24 +488,22 @@ export function CloudBackupSettingsPanel({
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
               Access Key
             </label>
-            <input
+            <BetterInput
               type="text"
               name="s3_access_key"
               value={formData.s3_access_key || ""}
               onChange={handleChange}
-              className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
             />
           </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
               Secret Key
             </label>
-            <input
+            <BetterInput
               type="password"
               name="s3_secret_key"
               value={formData.s3_secret_key || ""}
               onChange={handleChange}
-              className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
             />
           </div>
           <div className="flex justify-end">
@@ -534,13 +530,12 @@ export function CloudBackupSettingsPanel({
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
               URL
             </label>
-            <input
+            <BetterInput
               type="text"
               name="webdav_url"
               value={formData.webdav_url || ""}
               onChange={handleChange}
               placeholder="https://dav.example.com/remote.php/dav/files/user"
-              className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
             />
             <p className="text-xs text-brand-500 dark:text-brand-400">
               {t("settings.cloudBackup.webdavUrlHint")}
@@ -551,24 +546,22 @@ export function CloudBackupSettingsPanel({
               <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
                 {t("settings.cloudBackup.webdavUsername")}
               </label>
-              <input
+              <BetterInput
                 type="text"
                 name="webdav_username"
                 value={formData.webdav_username || ""}
                 onChange={handleChange}
-                className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               />
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
                 {t("settings.cloudBackup.webdavPassword")}
               </label>
-              <input
+              <BetterInput
                 type="password"
                 name="webdav_password"
                 value={formData.webdav_password || ""}
                 onChange={handleChange}
-                className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
               />
             </div>
           </div>
@@ -615,13 +608,13 @@ export function CloudBackupSettingsPanel({
             <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
               Client ID
             </label>
-            <input
+            <BetterInput
               type="text"
               name="onedrive_client_id"
               value={formData.onedrive_client_id || ""}
               onChange={handleChange}
               placeholder="your-app-client-id"
-              className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 font-mono text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+              className="font-mono"
             />
             <p className="text-xs text-brand-500 dark:text-brand-400">
               {t("settings.cloudBackup.clientIdHint")}
@@ -901,14 +894,14 @@ export function CloudBackupSettingsPanel({
               >
                 {t("settings.cloudBackup.umbraBaseURL")}
               </label>
-              <input
+              <BetterInput
                 id="umbra_base_url"
                 type="url"
                 name="umbra_base_url"
                 value={formData.umbra_base_url || ""}
                 onChange={handleChange}
                 placeholder="https://umbra.example.com"
-                className="glass-input w-full rounded-md border border-brand-300 px-3 py-2 font-mono text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:border-brand-600 dark:bg-brand-700 dark:text-white"
+                className="font-mono"
               />
               <p className="text-xs text-brand-500 dark:text-brand-400">
                 {t("settings.cloudBackup.umbraBaseURLHint")}

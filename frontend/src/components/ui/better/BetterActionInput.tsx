@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes } from "react";
 import { forwardRef } from "react";
+import { BetterTooltip } from "./BetterTooltip";
 
 export interface BetterActionInputAction extends Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
@@ -62,22 +63,23 @@ export const BetterActionInput = forwardRef<
         } = action;
 
         return (
-          <button
-            key={ariaLabel}
-            type="button"
-            disabled={disabled || actionDisabled}
-            aria-label={ariaLabel}
-            className={[
-              "inline-flex h-10 w-10 shrink-0 items-center justify-center",
-              "bg-transparent text-brand-500 transition-colors duration-200",
-              "hover:text-brand-900 focus-visible:text-brand-900 focus-visible:outline-none",
-              "disabled:cursor-not-allowed disabled:opacity-50",
-              "dark:text-brand-400 dark:hover:text-brand-100 dark:focus-visible:text-brand-100",
-            ].join(" ")}
-            {...buttonProps}
-          >
-            <span className={`${icon} text-xl`} aria-hidden="true" />
-          </button>
+          <BetterTooltip key={ariaLabel} content={ariaLabel}>
+            <button
+              type="button"
+              disabled={disabled || actionDisabled}
+              aria-label={ariaLabel}
+              className={[
+                "inline-flex h-10 w-10 shrink-0 items-center justify-center",
+                "bg-transparent text-brand-500 transition-colors duration-200",
+                "hover:text-brand-900 focus-visible:text-brand-900 focus-visible:outline-none",
+                "disabled:cursor-not-allowed disabled:opacity-50",
+                "dark:text-brand-400 dark:hover:text-brand-100 dark:focus-visible:text-brand-100",
+              ].join(" ")}
+              {...buttonProps}
+            >
+              <span className={`${icon} text-xl`} aria-hidden="true" />
+            </button>
+          </BetterTooltip>
         );
       })}
     </div>

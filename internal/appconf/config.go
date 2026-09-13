@@ -28,7 +28,6 @@ var allowedMetadataSourceSet = map[string]struct{}{
 	string(enums2.DLsite):     {},
 	string(enums2.TouchGal):   {},
 	string(enums2.Hikarinagi): {},
-
 	string(enums2.ErogameScape): {},
 }
 
@@ -52,6 +51,7 @@ const DefaultScheduledDBBackupIntervalMinutes = 60
 const MinScheduledDBBackupIntervalMinutes = 15
 const MaxScheduledDBBackupIntervalMinutes = 10080
 const DefaultScheduledDBBackupTime = "03:00"
+const DefaultLocalDBBackupRetention = 5
 
 // AppConfig 应用配置结构体
 type AppConfig struct {
@@ -287,7 +287,7 @@ func LoadConfig() (*AppConfig, error) {
 		ScheduledDBBackupTime:            DefaultScheduledDBBackupTime,
 
 		LocalBackupRetention:       10,
-		LocalDBBackupRetention:     5,
+		LocalDBBackupRetention:     DefaultLocalDBBackupRetention,
 		WindowWidth:                1230,
 		WindowHeight:               800,
 		WindowMaximised:            false,
@@ -376,6 +376,10 @@ func LoadConfig() (*AppConfig, error) {
 	NormalizeBatchImportPreferences(config)
 
 	shouldSaveSanitizedConfig := SanitizeErogameScapeConfig(config)
+	if normalizedRetention := NormalizeLocalDBBackupRetention(config.LocalDBBackupRetention); config.LocalDBBackupRetention != normalizedRetention {
+		config.LocalDBBackupRetention = normalizedRetention
+		shouldSaveSanitizedConfig = true
+	}
 	if NormalizeScheduledDBBackup(config) {
 		shouldSaveSanitizedConfig = true
 	}
@@ -466,6 +470,7 @@ func SaveConfig(config *AppConfig) error {
 	config.ProcessDetectionTimeoutSec = NormalizeProcessDetectionTimeoutSec(config.ProcessDetectionTimeoutSec)
 	config.GameCardLayout = NormalizeGameCardLayout(config.GameCardLayout)
 	NormalizeBatchImportPreferences(config)
+	config.LocalDBBackupRetention = NormalizeLocalDBBackupRetention(config.LocalDBBackupRetention)
 	NormalizeScheduledDBBackup(config)
 	configCopy := *config
 	configCopy.BackupPassword = ""
@@ -491,68 +496,6 @@ func IsHikarinagiStatusPushEnabled(config *AppConfig) bool {
 	}
 
 	return *config.HikarinagiStatusPushEnabled
-}
-
-func NormalizeScrapedTagLimit(limit int) int {
-	if limit < -1 {
-		return -1
-	}
-	return limit
-}
-
-func NormalizeHomeGameCarouselIntervalSec(intervalSec int) int {
-	if intervalSec <= 0 {
-		return DefaultHomeGameCarouselIntervalSec
-	}
-	if intervalSec < MinHomeGameCarouselIntervalSec {
-		return MinHomeGameCarouselIntervalSec
-	}
-	return intervalSec
-}
-
-func NormalizeProcessDetectionTimeoutSec(timeoutSec int) int {
-	if timeoutSec <= 0 {
-		return DefaultProcessDetectionTimeoutSec
-	}
-	if timeoutSec < MinProcessDetectionTimeoutSec {
-		return MinProcessDetectionTimeoutSec
-	}
-	if timeoutSec > MaxProcessDetectionTimeoutSec {
-		return MaxProcessDetectionTimeoutSec
-	}
-	return timeoutSec
-}
-
-func NormalizeBatchImportPreferences(config *AppConfig) bool {
-	if config == nil {
-		return false
-	}
-
-	changed := false
-	switch config.BatchImportScanPreset {
-	case "scan_parent", "scan_library_child", "hierarchy_child":
-	default:
-		config.BatchImportScanPreset = DefaultBatchImportScanPreset
-		changed = true
-	}
-
-	if config.BatchImportHierarchyDepth < 0 {
-		config.BatchImportHierarchyDepth = 0
-		changed = true
-	}
-	if config.BatchImportHierarchyDepth > MaxBatchImportHierarchyDepth {
-		config.BatchImportHierarchyDepth = MaxBatchImportHierarchyDepth
-		changed = true
-	}
-
-	if config.BatchImportPreferredSource != "" {
-		if _, ok := allowedMetadataSourceSet[config.BatchImportPreferredSource]; !ok {
-			config.BatchImportPreferredSource = ""
-			changed = true
-		}
-	}
-
-	return changed
 }
 
 func (config *AppConfig) NetworkProxyConfig() (string, string) {

@@ -41,7 +41,7 @@ export function BetterEdgeIconButton({
       type={type}
       className={[
         "flex shrink-0 items-center justify-center",
-        "border border-white/30 text-brand-700 opacity-75 shadow-lg",
+        "border border-white/30 text-brand-700 opacity-75",
         surfaceClassName,
         blurClassName,
         "transition-all duration-200 hover:opacity-100 active:scale-95",

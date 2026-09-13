@@ -140,7 +140,7 @@ export function BetterNumberInput({
         className={[
           "glass-input group inline-flex items-stretch overflow-hidden",
           controlSizeClass,
-          "border border-brand-300 bg-white shadow-sm transition-all duration-200",
+          "border border-brand-300 bg-white transition-all duration-200",
           "focus-within:border-neutral-500 focus-within:ring-2 focus-within:ring-neutral-500/30",
           "dark:border-brand-600 dark:bg-brand-700",
           disabled ? "cursor-not-allowed opacity-60" : "",

@@ -73,7 +73,7 @@ export function BetterDrawer({
       >
         <DialogPanel
           transition
-          className={`pointer-events-auto flex flex-col overflow-hidden border-brand-200 bg-white/96 shadow-2xl shadow-black/20 backdrop-blur-20 transition-[transform,opacity] duration-300 ease-[cubic-bezier(.22,1,.36,1)] data-closed:opacity-95 data-leave:duration-200 data-leave:ease-in dark:border-brand-700 dark:bg-brand-800/96 motion-reduce:duration-0 ${PLACEMENT_CLASSES[placement]} ${className}`}
+          className={`pointer-events-auto flex flex-col overflow-hidden border-brand-200 bg-white/96 backdrop-blur-20 transition-[transform,opacity] duration-300 ease-[cubic-bezier(.22,1,.36,1)] data-closed:opacity-95 data-leave:duration-200 data-leave:ease-in dark:border-brand-700 dark:bg-brand-800/96 motion-reduce:duration-0 ${PLACEMENT_CLASSES[placement]} ${className}`}
         >
           {placement === "bottom" && (
             <div

@@ -9,6 +9,7 @@ import {
 import { detectImageBrightness } from "../../utils/detectImageBrightness";
 import { ImageCropperModal } from "../modal/ImageCropperModal";
 import { BetterActionInput } from "../ui/better/BetterActionInput";
+import { BetterInput } from "../ui/better/BetterInput";
 import { BetterNumberInput } from "../ui/better/BetterNumberInput";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { SettingSwitchRow } from "../ui/SettingSwitchRow";
@@ -217,8 +218,9 @@ export function BackgroundSettingsPanel({
                 px
               </span>
             </div>
-            <input
+            <BetterInput
               type="range"
+              variant="unstyled"
               min="0"
               max="30"
               step="1"
@@ -243,8 +245,9 @@ export function BackgroundSettingsPanel({
                 %
               </span>
             </div>
-            <input
+            <BetterInput
               type="range"
+              variant="unstyled"
               min="0.3"
               max="1"
               step="0.05"

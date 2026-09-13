@@ -1,6 +1,7 @@
 import type { appconf } from "../../../src/bindings/models";
 import { useTranslation } from "react-i18next";
 import { enums } from "../../../src/bindings/models";
+import { BetterInput } from "../ui/better/BetterInput";
 import { BetterSelect } from "../ui/better/BetterSelect";
 import { BetterSwitch } from "../ui/better/BetterSwitch";
 
@@ -66,39 +67,36 @@ export function AISettingsPanel({ formData, onChange }: AISettingsProps) {
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
           API Base URL
         </label>
-        <input
+        <BetterInput
           type="text"
           name="ai_base_url"
           value={formData.ai_base_url || ""}
           onChange={handleChange}
           placeholder="https://api.openai.com/v1"
-          className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
         />
       </div>
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
           API Key
         </label>
-        <input
+        <BetterInput
           type="password"
           name="ai_api_key"
           value={formData.ai_api_key || ""}
           onChange={handleChange}
           placeholder="sk-..."
-          className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
         />
       </div>
       <div className="space-y-2">
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
           {t("settings.ai.modelLabel")}
         </label>
-        <input
+        <BetterInput
           type="text"
           name="ai_model"
           value={formData.ai_model || ""}
           onChange={handleChange}
           placeholder="gpt-3.5-turbo"
-          className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white"
         />
       </div>
       <div className="space-y-2">
@@ -193,13 +191,12 @@ export function AISettingsPanel({ formData, onChange }: AISettingsProps) {
           <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
             {t("settings.ai.tavilyKeyLabel")}
           </label>
-          <input
+          <BetterInput
             type="password"
             name="tavily_api_key"
             value={formData.tavily_api_key || ""}
             onChange={handleChange}
             placeholder="tvly-..."
-            className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm"
           />
           <p className="text-xs text-brand-500 dark:text-brand-400">
             {t("settings.ai.tavilyKeyHint")}
@@ -239,14 +236,13 @@ export function AISettingsPanel({ formData, onChange }: AISettingsProps) {
         <label className="block text-sm font-medium text-brand-700 dark:text-brand-300">
           {t("settings.ai.mcpPortLabel")}
         </label>
-        <input
+        <BetterInput
           type="number"
           name="mcp_port"
           min={1}
           max={65535}
           value={effectiveMCPPort}
           onChange={handleMCPPortChange}
-          className="glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm"
         />
         <p className="text-xs text-brand-500 dark:text-brand-400">
           {t("settings.ai.mcpPortHint")}

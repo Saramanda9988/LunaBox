@@ -363,7 +363,7 @@ export function BetterDateRangePicker({
 
       <PopoverPanel
         anchor={panelAnchor}
-        className="z-[9999] mt-2 w-auto max-w-[calc(100vw-2rem)] overflow-auto rounded-xl border border-brand-200 bg-white p-3 shadow-xl focus:outline-none dark:border-brand-700 dark:bg-brand-800 data-glass:bg-white/90 data-glass:backdrop-blur-20 data-glass:dark:bg-brand-900/90 [--anchor-gap:8px]"
+        className="z-[9000] mt-2 w-auto max-w-[calc(100vw-2rem)] overflow-auto rounded-xl border border-brand-200 bg-white p-3 focus:outline-none dark:border-brand-700 dark:bg-brand-800 data-glass:bg-white/90 data-glass:backdrop-blur-20 data-glass:dark:bg-brand-900/90 [--anchor-gap:8px]"
       >
         {({ close }: { close: () => void }) => (
           <div className="space-y-3">

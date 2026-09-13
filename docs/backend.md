@@ -87,6 +87,8 @@
 **配置同步约束（MUST）：**
 
 - 新增或修改 `internal/appconf.AppConfig` 字段时，除了 `LoadConfig/SaveConfig` 外，还必须同步检查 `internal/service/config_service.go` 的 `UpdateAppConfig(...)`。
+- `internal/appconf/config.go` 仅保留配置结构、默认值、读写与配置访问方法；所有以 `Normalize` 命名的配置规范化函数必须定义在 `internal/appconf/normalize.go`。
+- 新增配置规范化规则时，必须复用 `normalize.go` 中已有的公共函数，或在该文件新增函数；`LoadConfig(...)` 与 `SaveConfig(...)` 需在合适位置调用该规则，保证内存配置与写入文件使用相同的有效值。
 - `UpdateAppConfig(...)` 负责把前端提交的新配置写回运行中的 in-memory config；漏字段会导致：
   - 配置文件已更新，但当前进程仍使用旧值
   - 设置页回显不稳定

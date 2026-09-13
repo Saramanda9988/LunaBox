@@ -1,6 +1,7 @@
 import type { service } from "../../../src/bindings/models";
 import { useTranslation } from "react-i18next";
 import { formatFileSize } from "../../utils/size";
+import { BetterTooltip } from "../ui/better/BetterTooltip";
 
 const IMAGE_DOWNLOAD_SOURCE = "cover-image-batch";
 const DOWNLOAD_ACTION_BUTTON_CLASS
@@ -85,6 +86,18 @@ export function DownloadCard({
     = task.request.download_source === IMAGE_DOWNLOAD_SOURCE;
   const manualExtractRequired
     = task.status === "done" && task.error === "manual_extract_required";
+  const importActionLabel = imported
+    ? t("downloads.imported", "已导入")
+    : importing
+      ? t("downloads.importing", "导入中...")
+      : t("downloads.importAsGame", "导入为游戏");
+  const copyURLLabel = t("downloads.copyURL", "复制下载地址");
+  const openFolderLabel = t("downloads.openFolder", "打开所在文件夹");
+  const pauseLabel = t("downloads.pause", "暂停下载");
+  const resumeLabel = t("downloads.resume", "继续下载");
+  const retryLabel = t("downloads.retry", "重试下载");
+  const cancelLabel = t("downloads.cancel", "取消下载");
+  const deleteLabel = t("downloads.delete", "删除记录");
 
   return (
     <div className="glass-card flex flex-col gap-3 rounded-xl border border-brand-200 bg-white/90 p-4 shadow-sm transition-all duration-300 hover:shadow-md dark:border-brand-700 dark:bg-brand-800/80">
@@ -107,104 +120,114 @@ export function DownloadCard({
             {task.status === "done"
               && task.file_path
               && !isImageDownloadTask && (
+              <BetterTooltip content={importActionLabel}>
+                <button
+                  type="button"
+                  onClick={() => onImportAsGame(task.id)}
+                  disabled={importing || imported}
+                  aria-label={importActionLabel}
+                  className={`${DOWNLOAD_ACTION_BUTTON_CLASS} ${
+                    imported
+                      ? "text-success-600 disabled:opacity-70 dark:text-success-300"
+                      : DOWNLOAD_ACTION_BUTTON_NEUTRAL_CLASS
+                  }`}
+                >
+                  <span
+                    className={`text-xl ${
+                      importing
+                        ? "i-mdi-loading animate-spin"
+                        : imported
+                          ? "i-mdi-check-circle-outline"
+                          : "i-mdi-gamepad-variant-outline"
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+              </BetterTooltip>
+            )}
+            <BetterTooltip content={copyURLLabel}>
               <button
                 type="button"
-                onClick={() => onImportAsGame(task.id)}
-                disabled={importing || imported}
-                aria-label={
-                  imported
-                    ? t("downloads.imported", "已导入")
-                    : importing
-                      ? t("downloads.importing", "导入中...")
-                      : t("downloads.importAsGame", "导入为游戏")
-                }
-                className={`${DOWNLOAD_ACTION_BUTTON_CLASS} ${
-                  imported
-                    ? "text-success-600 disabled:opacity-70 dark:text-success-300"
-                    : DOWNLOAD_ACTION_BUTTON_NEUTRAL_CLASS
-                }`}
+                onClick={() => onCopyURL(task.request.url)}
+                disabled={!task.request.url}
+                aria-label={copyURLLabel}
+                className={`${DOWNLOAD_ACTION_BUTTON_CLASS} ${DOWNLOAD_ACTION_BUTTON_NEUTRAL_CLASS}`}
+              >
+                <span className="i-mdi-link text-xl" aria-hidden="true" />
+              </button>
+            </BetterTooltip>
+            <BetterTooltip content={openFolderLabel}>
+              <button
+                type="button"
+                onClick={() => onOpenFolder(task.id)}
+                disabled={!canOpenFolder}
+                aria-label={openFolderLabel}
+                className={`${DOWNLOAD_ACTION_BUTTON_CLASS} ${DOWNLOAD_ACTION_BUTTON_NEUTRAL_CLASS}`}
               >
                 <span
-                  className={`text-xl ${
-                    importing
-                      ? "i-mdi-loading animate-spin"
-                      : imported
-                        ? "i-mdi-check-circle-outline"
-                        : "i-mdi-gamepad-variant-outline"
-                  }`}
+                  className="i-mdi-folder-open-outline text-xl"
                   aria-hidden="true"
                 />
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => onCopyURL(task.request.url)}
-              disabled={!task.request.url}
-              aria-label={t("downloads.copyURL", "复制下载地址")}
-              className={`${DOWNLOAD_ACTION_BUTTON_CLASS} ${DOWNLOAD_ACTION_BUTTON_NEUTRAL_CLASS}`}
-            >
-              <span className="i-mdi-link text-xl" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onOpenFolder(task.id)}
-              disabled={!canOpenFolder}
-              aria-label={t("downloads.openFolder", "打开所在文件夹")}
-              className={`${DOWNLOAD_ACTION_BUTTON_CLASS} ${DOWNLOAD_ACTION_BUTTON_NEUTRAL_CLASS}`}
-            >
-              <span
-                className="i-mdi-folder-open-outline text-xl"
-                aria-hidden="true"
-              />
-            </button>
+            </BetterTooltip>
             {task.status === "downloading" && !isImageDownloadTask && (
-              <button
-                type="button"
-                onClick={() => onPause(task.id)}
-                aria-label={t("downloads.pause", "暂停下载")}
-                className={`${DOWNLOAD_ACTION_BUTTON_CLASS} text-warning-600 hover:bg-warning-100 dark:text-warning-300 dark:hover:bg-warning-900/40 data-glass:hover:bg-warning-500/15`}
-              >
-                <span className="i-mdi-pause text-xl" aria-hidden="true" />
-              </button>
+              <BetterTooltip content={pauseLabel}>
+                <button
+                  type="button"
+                  onClick={() => onPause(task.id)}
+                  aria-label={pauseLabel}
+                  className={`${DOWNLOAD_ACTION_BUTTON_CLASS} text-warning-600 hover:bg-warning-100 dark:text-warning-300 dark:hover:bg-warning-900/40 data-glass:hover:bg-warning-500/15`}
+                >
+                  <span className="i-mdi-pause text-xl" aria-hidden="true" />
+                </button>
+              </BetterTooltip>
             )}
             {isPaused && !isImageDownloadTask && (
-              <button
-                type="button"
-                onClick={() => onResume(task.id)}
-                aria-label={t("downloads.resume", "继续下载")}
-                className={`${DOWNLOAD_ACTION_BUTTON_CLASS} text-success-600 hover:bg-success-100 dark:text-success-300 dark:hover:bg-success-900/40 data-glass:hover:bg-success-500/15`}
-              >
-                <span className="i-mdi-play text-xl" aria-hidden="true" />
-              </button>
+              <BetterTooltip content={resumeLabel}>
+                <button
+                  type="button"
+                  onClick={() => onResume(task.id)}
+                  aria-label={resumeLabel}
+                  className={`${DOWNLOAD_ACTION_BUTTON_CLASS} text-success-600 hover:bg-success-100 dark:text-success-300 dark:hover:bg-success-900/40 data-glass:hover:bg-success-500/15`}
+                >
+                  <span className="i-mdi-play text-xl" aria-hidden="true" />
+                </button>
+              </BetterTooltip>
             )}
             {isError && (
-              <button
-                type="button"
-                onClick={() => onRetry(task.id)}
-                aria-label={t("downloads.retry", "重试下载")}
-                className={`${DOWNLOAD_ACTION_BUTTON_CLASS} text-info-600 hover:bg-info-100 dark:text-info-300 dark:hover:bg-info-900/40 data-glass:hover:bg-info-500/15`}
-              >
-                <span className="i-mdi-refresh text-xl" aria-hidden="true" />
-              </button>
+              <BetterTooltip content={retryLabel}>
+                <button
+                  type="button"
+                  onClick={() => onRetry(task.id)}
+                  aria-label={retryLabel}
+                  className={`${DOWNLOAD_ACTION_BUTTON_CLASS} text-info-600 hover:bg-info-100 dark:text-info-300 dark:hover:bg-info-900/40 data-glass:hover:bg-info-500/15`}
+                >
+                  <span className="i-mdi-refresh text-xl" aria-hidden="true" />
+                </button>
+              </BetterTooltip>
             )}
             {canCancel ? (
-              <button
-                type="button"
-                onClick={() => onCancel(task.id)}
-                aria-label={t("downloads.cancel", "取消下载")}
-                className={`${DOWNLOAD_ACTION_BUTTON_CLASS} text-error-500 hover:bg-error-100 dark:text-error-400 dark:hover:bg-error-900/40 data-glass:hover:bg-error-500/15`}
-              >
-                <span className="i-mdi-close text-xl" aria-hidden="true" />
-              </button>
+              <BetterTooltip content={cancelLabel}>
+                <button
+                  type="button"
+                  onClick={() => onCancel(task.id)}
+                  aria-label={cancelLabel}
+                  className={`${DOWNLOAD_ACTION_BUTTON_CLASS} text-error-500 hover:bg-error-100 dark:text-error-400 dark:hover:bg-error-900/40 data-glass:hover:bg-error-500/15`}
+                >
+                  <span className="i-mdi-close text-xl" aria-hidden="true" />
+                </button>
+              </BetterTooltip>
             ) : (
-              <button
-                type="button"
-                onClick={() => onDelete(task.id)}
-                aria-label={t("downloads.delete", "删除记录")}
-                className={`${DOWNLOAD_ACTION_BUTTON_CLASS} text-error-500 hover:bg-error-100 dark:text-error-400 dark:hover:bg-error-900/40 data-glass:hover:bg-error-500/15`}
-              >
-                <span className="i-mdi-delete text-xl" aria-hidden="true" />
-              </button>
+              <BetterTooltip content={deleteLabel}>
+                <button
+                  type="button"
+                  onClick={() => onDelete(task.id)}
+                  aria-label={deleteLabel}
+                  className={`${DOWNLOAD_ACTION_BUTTON_CLASS} text-error-500 hover:bg-error-100 dark:text-error-400 dark:hover:bg-error-900/40 data-glass:hover:bg-error-500/15`}
+                >
+                  <span className="i-mdi-delete text-xl" aria-hidden="true" />
+                </button>
+              </BetterTooltip>
             )}
           </div>
         </div>

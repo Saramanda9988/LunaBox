@@ -34,7 +34,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   primary:
     "bg-neutral-600 text-white hover:bg-neutral-700 "
     + "dark:bg-neutral-600 dark:hover:bg-neutral-700 "
-    + "border border-neutral-600 shadow-sm",
+    + "border border-neutral-600",
   danger:
     "bg-error-500 text-white hover:bg-error-600 "
     + "dark:bg-error-600 dark:hover:bg-error-700 "
@@ -148,8 +148,8 @@ export function BetterSplitButton<Key extends string = string>({
 
       <MenuItems
         className={[
-          "absolute z-[9999] min-w-full w-max max-w-[min(22rem,calc(100vw-2rem))] rounded-xl",
-          "border border-brand-200 bg-white p-1.5 shadow-xl focus:outline-none dark:border-brand-700 dark:bg-brand-800",
+          "absolute z-[9000] min-w-full w-max max-w-[min(22rem,calc(100vw-2rem))] rounded-xl",
+          "border border-brand-200 bg-white p-1.5 focus:outline-none dark:border-brand-700 dark:bg-brand-800",
           menuAlign === "right" ? "right-0" : "left-0",
           menuPlacement === "top"
             ? "bottom-full mb-1.5 origin-bottom"

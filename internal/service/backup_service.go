@@ -1,6 +1,7 @@
 package service
 
 import (
+	"archive/zip"
 	"bufio"
 	"context"
 	"database/sql"
@@ -48,6 +49,14 @@ type BackupService struct {
 	onQuitSyncDBBackupStart        func()
 	onQuitSyncDBBackupLocalCreated func()
 	onQuitSyncDBBackupFinish       func()
+}
+
+const scheduledDBBackupEvent = "database-backup:scheduled"
+
+type scheduledDBBackupEventPayload struct {
+	Status string `json:"status"`
+	Name   string `json:"name,omitempty"`
+	Error  string `json:"error,omitempty"`
 }
 
 type umbraAuthSession struct {
@@ -828,8 +837,12 @@ func (s *BackupService) UploadGameBackupToCloud(gameID string, backupPath string
 		return fmt.Errorf("备份文件不存在: %s", backupPath)
 	}
 
-	timestamp := time.Now().Format("2006-01-02T15-04-05")
-	cloudPath := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s/%s.zip", gameID, timestamp))
+	sourceModifiedAt, err := latestZipEntryModTime(backupPath)
+	if err != nil {
+		return fmt.Errorf("读取备份源存档修改时间失败: %w", err)
+	}
+	cloudFileName := cloudGameBackupFileName(time.Now(), sourceModifiedAt)
+	cloudPath := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s/%s", gameID, cloudFileName))
 
 	// 确保文件夹存在 (OneDrive 需要)
 	folderPath := provider.GetCloudPath(s.config.BackupUserID, fmt.Sprintf("saves/%s", gameID))
@@ -944,7 +957,7 @@ func (s *BackupService) RestoreFromCloud(cloudKey string, gameID string) error {
 	defer os.RemoveAll(tempDir)
 
 	// 解压到临时目录
-	if err := archiveutils.UnzipFile(localPath, tempDir); err != nil {
+	if err := archiveutils.UnzipForRestore(localPath, tempDir); err != nil {
 		return fmt.Errorf("解压备份失败: %w", err)
 	}
 
@@ -964,6 +977,9 @@ func (s *BackupService) RestoreFromCloud(cloudKey string, gameID string) error {
 		if err := apputils.CopyFile(srcFile, savePath); err != nil {
 			return fmt.Errorf("恢复文件失败: %w", err)
 		}
+		if err := copyFileModTime(srcFile, savePath); err != nil {
+			return fmt.Errorf("恢复文件修改时间失败: %w", err)
+		}
 	} else {
 		// 恢复整个目录
 		if err := os.MkdirAll(savePath, 0755); err != nil {
@@ -971,6 +987,9 @@ func (s *BackupService) RestoreFromCloud(cloudKey string, gameID string) error {
 		}
 		if err := apputils.CopyDir(tempDir, savePath); err != nil {
 			return fmt.Errorf("恢复目录失败: %w", err)
+		}
+		if err := copyTreeModTimes(tempDir, savePath); err != nil {
+			return fmt.Errorf("恢复存档修改时间失败: %w", err)
 		}
 	}
 
@@ -999,7 +1018,7 @@ func (s *BackupService) recordSyncedCloudGameBackup(gameID, cloudKey, backupPath
 			return err
 		}
 	}
-	if backupTime, ok := cloudBackupTimeFromName(filepath.Base(cloudKey)); ok {
+	if backupTime, ok := cloudGameBackupSourceTimeFromName(filepath.Base(cloudKey)); ok {
 		_ = os.Chtimes(localBackupPath, backupTime, backupTime)
 	}
 
@@ -1034,14 +1053,14 @@ func (s *BackupService) lastSyncedCloudGameBackup(gameID string) string {
 	return strings.TrimSpace(string(data))
 }
 
-func shouldRestoreCloudGameBackup(latest vo.CloudBackupItem, latestLocalTime time.Time, lastSyncedKey string) bool {
+func shouldRestoreCloudGameBackup(latest vo.CloudBackupItem, cloudSourceTime, latestLocalTime time.Time, lastSyncedKey string) bool {
 	if latest.Key == "" || latest.Key == lastSyncedKey {
 		return false
 	}
 	if latestLocalTime.IsZero() {
 		return true
 	}
-	return latest.CreatedAt.After(latestLocalTime)
+	return cloudSourceTime.After(latestLocalTime)
 }
 
 func latestPathModTime(path string) (time.Time, error) {
@@ -1061,7 +1080,19 @@ func latestPathModTime(path string) (time.Time, error) {
 	return latest, err
 }
 
-// RestoreLatestCloudGameBackupIfNewer restores the newest cloud save when it is newer than the local backup history.
+func (s *BackupService) latestGameLaunchTime(gameID string) (time.Time, error) {
+	var lastLaunchTime sql.NullTime
+	err := s.db.QueryRowContext(s.ctx, "SELECT MAX(start_time) FROM play_sessions WHERE game_id = ?", gameID).Scan(&lastLaunchTime)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if !lastLaunchTime.Valid {
+		return time.Time{}, nil
+	}
+	return lastLaunchTime.Time, nil
+}
+
+// RestoreLatestCloudGameBackupIfNewer restores the cloud save with the newest source modification time when it is newer than the local save, backup history, and latest game launch.
 //
 //wails:ignore
 func (s *BackupService) RestoreLatestCloudGameBackupIfNewer(gameID string) (bool, error) {
@@ -1091,8 +1122,15 @@ func (s *BackupService) RestoreLatestCloudGameBackupIfNewer(gameID string) (bool
 	if len(localBackups) > 0 && localBackups[0].CreatedAt.After(latestLocalTime) {
 		latestLocalTime = localBackups[0].CreatedAt
 	}
-	latest := cloudBackups[0]
-	if !shouldRestoreCloudGameBackup(latest, latestLocalTime, s.lastSyncedCloudGameBackup(gameID)) {
+	lastLaunchTime, err := s.latestGameLaunchTime(gameID)
+	if err != nil {
+		return false, fmt.Errorf("读取最近游戏启动时间失败: %w", err)
+	}
+	if lastLaunchTime.After(latestLocalTime) {
+		latestLocalTime = lastLaunchTime
+	}
+	latest, sourceModifiedAt := newestCloudGameBackupBySourceTime(cloudBackups)
+	if !shouldRestoreCloudGameBackup(latest, sourceModifiedAt, latestLocalTime, s.lastSyncedCloudGameBackup(gameID)) {
 		return false, nil
 	}
 
@@ -1193,11 +1231,10 @@ func (s *BackupService) createDBBackup(ctx context.Context) (*vo.DBBackupInfo, e
 	}
 
 	s.config.LastDBBackupTime = time.Now().Format(time.RFC3339)
-	retention := s.config.LocalDBBackupRetention
-	if retention <= 0 {
-		retention = 10
+	retention := appconf.NormalizeLocalDBBackupRetention(s.config.LocalDBBackupRetention)
+	if err := s.cleanupOldDBBackups(retention); err != nil {
+		applog.LogWarningf(ctx, "CreateDBBackup: failed to remove expired database backups: %v", err)
 	}
-	s.cleanupOldDBBackups(retention)
 
 	return &vo.DBBackupInfo{
 		Path:      backupPath,
@@ -1267,15 +1304,37 @@ func (s *BackupService) DeleteDBBackup(backupPath string) error {
 	return os.Remove(backupPath)
 }
 
-// cleanupOldDBBackups 清理旧的数据库备份
-func (s *BackupService) cleanupOldDBBackups(retention int) {
+// EnforceLocalDBBackupRetention removes database backups exceeding the configured retention count.
+//
+//wails:ignore
+func (s *BackupService) EnforceLocalDBBackupRetention() error {
+	s.dbBackupMu.Lock()
+	defer s.dbBackupMu.Unlock()
+
+	retention := appconf.NormalizeLocalDBBackupRetention(s.config.LocalDBBackupRetention)
+	return s.cleanupOldDBBackups(retention)
+}
+
+// cleanupOldDBBackups 清理旧的数据库备份。调用方需持有 dbBackupMu。
+func (s *BackupService) cleanupOldDBBackups(retention int) error {
 	status, err := s.GetDBBackups()
-	if err != nil || len(status.Backups) <= retention {
-		return
+	if err != nil {
+		return fmt.Errorf("获取数据库备份列表失败: %w", err)
 	}
-	for i := retention; i < len(status.Backups); i++ {
-		os.Remove(status.Backups[i].Path)
+	if len(status.Backups) <= retention {
+		return nil
 	}
+	return removeDBBackupFiles(status.Backups[retention:])
+}
+
+func removeDBBackupFiles(backups []vo.DBBackupInfo) error {
+	var removeErrors []error
+	for _, backup := range backups {
+		if err := os.Remove(backup.Path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			removeErrors = append(removeErrors, fmt.Errorf("删除备份 %s 失败: %w", backup.Name, err))
+		}
+	}
+	return errors.Join(removeErrors...)
 }
 
 // ========== 全量数据本地备份方法 ==========
@@ -1622,10 +1681,22 @@ func (s *BackupService) StartScheduledDBBackups() {
 					continue
 				}
 
-				if _, err := s.CreateAndUploadDBBackup(); err != nil {
+				s.runtime.Emit(scheduledDBBackupEvent, scheduledDBBackupEventPayload{Status: "started"})
+				backup, err := s.CreateAndUploadDBBackup()
+				if err != nil {
 					applog.LogWarningf(s.ctx, "BackupService.StartScheduledDBBackups: database backup failed: %v", err)
-				} else if err := appconf.SaveConfig(s.config); err != nil {
-					applog.LogWarningf(s.ctx, "BackupService.StartScheduledDBBackups: save backup timestamp failed: %v", err)
+					s.runtime.Emit(scheduledDBBackupEvent, scheduledDBBackupEventPayload{
+						Status: "failed",
+						Error:  err.Error(),
+					})
+				} else {
+					s.runtime.Emit(scheduledDBBackupEvent, scheduledDBBackupEventPayload{
+						Status: "completed",
+						Name:   backup.Name,
+					})
+					if err := appconf.SaveConfig(s.config); err != nil {
+						applog.LogWarningf(s.ctx, "BackupService.StartScheduledDBBackups: save backup timestamp failed: %v", err)
+					}
 				}
 				nextBackup = nextScheduledDBBackupAfterAttempt(time.Now().In(scheduledDBBackupLocation(s.config)), s.config)
 			}
@@ -1691,6 +1762,107 @@ func (s *BackupService) createAndUploadDBBackup(trackQuitSync bool) (*vo.DBBacku
 
 // ========== 辅助方法 ==========
 
+const (
+	cloudBackupTimestampFormat     = "2006-01-02T15-04-05"
+	cloudGameBackupSourceSeparator = "__source_"
+)
+
+func cloudGameBackupFileName(createdAt, sourceModifiedAt time.Time) string {
+	return fmt.Sprintf(
+		"%s%s%s.zip",
+		createdAt.In(time.Local).Format(cloudBackupTimestampFormat),
+		cloudGameBackupSourceSeparator,
+		sourceModifiedAt.In(time.Local).Format(cloudBackupTimestampFormat),
+	)
+}
+
+func cloudBackupTimesFromName(name string) (createdAt, sourceModifiedAt time.Time, hasSourceTime, ok bool) {
+	stem := strings.TrimSuffix(filepath.Base(name), ".zip")
+	createdText, sourceText, hasSourceTime := strings.Cut(stem, cloudGameBackupSourceSeparator)
+	createdAt, err := time.ParseInLocation(cloudBackupTimestampFormat, createdText, time.Local)
+	if err != nil {
+		return time.Time{}, time.Time{}, false, false
+	}
+	if !hasSourceTime {
+		return createdAt, createdAt, false, true
+	}
+
+	sourceModifiedAt, err = time.ParseInLocation(cloudBackupTimestampFormat, sourceText, time.Local)
+	if err != nil {
+		return time.Time{}, time.Time{}, false, false
+	}
+	return createdAt, sourceModifiedAt, true, true
+}
+
+func cloudGameBackupSourceTimeFromName(name string) (time.Time, bool) {
+	_, sourceModifiedAt, _, ok := cloudBackupTimesFromName(name)
+	return sourceModifiedAt, ok
+}
+
+func latestZipEntryModTime(backupPath string) (time.Time, error) {
+	reader, err := zip.OpenReader(backupPath)
+	if err != nil {
+		return time.Time{}, err
+	}
+	defer reader.Close()
+
+	var latest time.Time
+	for _, file := range reader.File {
+		if file.FileInfo().IsDir() {
+			continue
+		}
+		if file.ModTime().After(latest) {
+			latest = file.ModTime()
+		}
+	}
+	if !latest.IsZero() {
+		return latest, nil
+	}
+
+	info, err := os.Stat(backupPath)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return info.ModTime(), nil
+}
+
+func newestCloudGameBackupBySourceTime(backups []vo.CloudBackupItem) (vo.CloudBackupItem, time.Time) {
+	var latest vo.CloudBackupItem
+	var latestSourceTime time.Time
+	for _, backup := range backups {
+		sourceModifiedAt, ok := cloudGameBackupSourceTimeFromName(backup.Name)
+		if !ok {
+			continue
+		}
+		if sourceModifiedAt.After(latestSourceTime) || (sourceModifiedAt.Equal(latestSourceTime) && backup.CreatedAt.After(latest.CreatedAt)) {
+			latest = backup
+			latestSourceTime = sourceModifiedAt
+		}
+	}
+	return latest, latestSourceTime
+}
+
+func copyFileModTime(sourcePath, targetPath string) error {
+	info, err := os.Stat(sourcePath)
+	if err != nil {
+		return err
+	}
+	return os.Chtimes(targetPath, info.ModTime(), info.ModTime())
+}
+
+func copyTreeModTimes(sourceRoot, targetRoot string) error {
+	return filepath.Walk(sourceRoot, func(sourcePath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		relPath, err := filepath.Rel(sourceRoot, sourcePath)
+		if err != nil || relPath == "." {
+			return err
+		}
+		return os.Chtimes(filepath.Join(targetRoot, relPath), info.ModTime(), info.ModTime())
+	})
+}
+
 // parseCloudBackupItems 解析云端备份列表
 func (s *BackupService) parseCloudBackupItems(keys []string, prefix string) []vo.CloudBackupItem {
 	var items []vo.CloudBackupItem
@@ -1698,19 +1870,21 @@ func (s *BackupService) parseCloudBackupItems(keys []string, prefix string) []vo
 		if strings.HasSuffix(key, "latest.zip") {
 			continue
 		}
-		name := filepath.Base(key)
-		displayName := name
-		name = strings.TrimPrefix(name, prefix)
-		name = strings.TrimSuffix(name, ".zip")
-		t, err := time.ParseInLocation("2006-01-02T15-04-05", name, time.Local)
-		if err != nil {
+		fileName := filepath.Base(key)
+		displayName := fileName
+		name := strings.TrimPrefix(fileName, prefix)
+		createdAt, _, hasSourceTime, ok := cloudBackupTimesFromName(name)
+		if !ok {
 			continue
+		}
+		if hasSourceTime {
+			displayName = fmt.Sprintf("%s.zip", createdAt.Format(cloudBackupTimestampFormat))
 		}
 
 		items = append(items, vo.CloudBackupItem{
 			Key:       key,
 			Name:      displayName,
-			CreatedAt: t,
+			CreatedAt: createdAt,
 		})
 	}
 
@@ -1721,9 +1895,8 @@ func (s *BackupService) parseCloudBackupItems(keys []string, prefix string) []vo
 }
 
 func cloudBackupTimeFromName(name string) (time.Time, bool) {
-	trimmed := strings.TrimSuffix(filepath.Base(name), ".zip")
-	parsed, err := time.ParseInLocation("2006-01-02T15-04-05", trimmed, time.Local)
-	return parsed, err == nil
+	createdAt, _, _, ok := cloudBackupTimesFromName(name)
+	return createdAt, ok
 }
 
 // ========== 全量数据恢复（启动时调用）==========

@@ -47,6 +47,75 @@ func NormalizeScheduledDBBackup(config *AppConfig) bool {
 	return changed
 }
 
+func NormalizeScrapedTagLimit(limit int) int {
+	if limit < -1 {
+		return -1
+	}
+	return limit
+}
+
+func NormalizeLocalDBBackupRetention(retention int) int {
+	if retention < 1 {
+		return DefaultLocalDBBackupRetention
+	}
+	return retention
+}
+
+func NormalizeHomeGameCarouselIntervalSec(intervalSec int) int {
+	if intervalSec <= 0 {
+		return DefaultHomeGameCarouselIntervalSec
+	}
+	if intervalSec < MinHomeGameCarouselIntervalSec {
+		return MinHomeGameCarouselIntervalSec
+	}
+	return intervalSec
+}
+
+func NormalizeProcessDetectionTimeoutSec(timeoutSec int) int {
+	if timeoutSec <= 0 {
+		return DefaultProcessDetectionTimeoutSec
+	}
+	if timeoutSec < MinProcessDetectionTimeoutSec {
+		return MinProcessDetectionTimeoutSec
+	}
+	if timeoutSec > MaxProcessDetectionTimeoutSec {
+		return MaxProcessDetectionTimeoutSec
+	}
+	return timeoutSec
+}
+
+func NormalizeBatchImportPreferences(config *AppConfig) bool {
+	if config == nil {
+		return false
+	}
+
+	changed := false
+	switch config.BatchImportScanPreset {
+	case "scan_parent", "scan_library_child", "hierarchy_child":
+	default:
+		config.BatchImportScanPreset = DefaultBatchImportScanPreset
+		changed = true
+	}
+
+	if config.BatchImportHierarchyDepth < 0 {
+		config.BatchImportHierarchyDepth = 0
+		changed = true
+	}
+	if config.BatchImportHierarchyDepth > MaxBatchImportHierarchyDepth {
+		config.BatchImportHierarchyDepth = MaxBatchImportHierarchyDepth
+		changed = true
+	}
+
+	if config.BatchImportPreferredSource != "" {
+		if _, ok := allowedMetadataSourceSet[config.BatchImportPreferredSource]; !ok {
+			config.BatchImportPreferredSource = ""
+			changed = true
+		}
+	}
+
+	return changed
+}
+
 func normalizeMetadataSources(sources []string) []string {
 	if len(sources) == 0 {
 		return cloneStringSlice(defaultMetadataSources)

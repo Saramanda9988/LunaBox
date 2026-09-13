@@ -100,6 +100,12 @@ MUST NOT 在设置页再额外维护一份与 `config`/`draftConfig` 平级的�
   - `frontend/src/components/ui/BetterSwitch.tsx`（Radix 封装）
 - 新增可复用组件放在 `frontend/src/components/ui/`。
 
+## 模态层
+
+- MUST 在 `frontend/src/components/modal/` 中通过 `ModalPortal` 渲染模态层；复用 `ImportModalContainer` 等已调用 `ModalPortal` 的容器也满足此要求。
+- 全屏图片查看器等位于 `frontend/src/components/ui/` 的模态组件同样 MUST 调用 `ModalPortal`。
+- `ModalPortal` 挂载在根布局中位于 `TopBar` 下方的 `#app-modal-root`，模态背景与内容层 MUST 使用 `absolute inset-0`，不得使用覆盖整个视口的 `fixed inset-0`，以保留顶部栏和窗口控制区域。
+
 ---
 
 ## 暗黑模式与玻璃态（Glass）

@@ -24,6 +24,7 @@ import (
 	"lunabox/internal/utils/processutils"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -807,6 +808,114 @@ func (s *GameService) GetGameByID(id string) (models.Game, error) {
 	return game, nil
 }
 
+var gameGuideDocumentExtensions = map[string]struct{}{
+	".txt":  {},
+	".pdf":  {},
+	".md":   {},
+	".doc":  {},
+	".docx": {},
+}
+
+// FindGameGuideDocuments 递归查找游戏目录中的说明文档。
+func (s *GameService) FindGameGuideDocuments(gameID string) ([]vo.GameGuideDocument, error) {
+	directory, err := s.gameGuideDirectory(gameID)
+	if err != nil {
+		return nil, err
+	}
+
+	documents := make([]vo.GameGuideDocument, 0)
+	err = filepath.WalkDir(directory, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() || !entry.Type().IsRegular() {
+			return nil
+		}
+
+		extension := strings.ToLower(filepath.Ext(entry.Name()))
+		if _, supported := gameGuideDocumentExtensions[extension]; !supported {
+			return nil
+		}
+
+		relativePath, err := filepath.Rel(directory, path)
+		if err != nil {
+			return fmt.Errorf("计算说明文档相对路径失败: %w", err)
+		}
+		documents = append(documents, vo.GameGuideDocument{
+			Name:         entry.Name(),
+			RelativePath: filepath.ToSlash(relativePath),
+			Extension:    extension,
+		})
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("扫描游戏说明文档失败: %w", err)
+	}
+
+	sort.Slice(documents, func(i, j int) bool {
+		return strings.ToLower(documents[i].RelativePath) < strings.ToLower(documents[j].RelativePath)
+	})
+	return documents, nil
+}
+
+// OpenGameGuideDocument 使用系统默认应用打开指定的游戏说明文档。
+func (s *GameService) OpenGameGuideDocument(gameID string, relativePath string) error {
+	relativePath = filepath.FromSlash(strings.TrimSpace(relativePath))
+	if relativePath == "" || filepath.IsAbs(relativePath) || relativePath == "." || relativePath == ".." || strings.HasPrefix(relativePath, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("说明文档路径无效")
+	}
+
+	documents, err := s.FindGameGuideDocuments(gameID)
+	if err != nil {
+		return err
+	}
+	for _, document := range documents {
+		if filepath.FromSlash(document.RelativePath) != relativePath {
+			continue
+		}
+
+		directory, err := s.gameGuideDirectory(gameID)
+		if err != nil {
+			return err
+		}
+		if err := apputils.OpenFile(filepath.Join(directory, relativePath)); err != nil {
+			applog.LogErrorf(s.ctx, "failed to open game guide document %s: %v", relativePath, err)
+			return fmt.Errorf("打开游戏说明文档失败: %w", err)
+		}
+		return nil
+	}
+
+	return fmt.Errorf("未找到指定的游戏说明文档")
+}
+
+func (s *GameService) gameGuideDirectory(gameID string) (string, error) {
+	game, err := s.GetGameByID(gameID)
+	if err != nil {
+		return "", err
+	}
+
+	directory := strings.TrimSpace(game.GameDirectory)
+	if directory == "" {
+		directory = gamehelper.DefaultGameDirectory(game.Path)
+	}
+	if directory == "" {
+		return "", fmt.Errorf("游戏目录为空")
+	}
+
+	directory, err = filepath.Abs(directory)
+	if err != nil {
+		return "", fmt.Errorf("解析游戏目录失败: %w", err)
+	}
+	info, err := os.Stat(directory)
+	if err != nil {
+		return "", fmt.Errorf("读取游戏目录失败: %w", err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("游戏目录无效")
+	}
+	return directory, nil
+}
+
 func (s *GameService) UpdateGame(game models.Game) error {
 	var previousGame models.Game
 	err := dbutils.WithDuckDBWriteLock(s.db, func() error {
@@ -1200,6 +1309,101 @@ func (s *GameService) SelectCoverImageWithTempID() (string, error) {
 	}
 
 	return coverPath, nil
+}
+
+// ExportCoverImage opens a save dialog and copies the game's cover image to the selected location.
+func (s *GameService) ExportCoverImage(gameID string) (string, error) {
+	game, err := s.GetGameByID(gameID)
+	if err != nil {
+		return "", fmt.Errorf("加载游戏失败: %w", err)
+	}
+
+	coverPath, cleanup, err := s.coverExportSource(game)
+	if err != nil {
+		return "", err
+	}
+	defer cleanup()
+
+	defaultName := strings.TrimSpace(downloadutils.SanitizeFileName(game.Name))
+	if defaultName == "" {
+		defaultName = strings.TrimSpace(game.ID)
+	}
+	if defaultName == "" {
+		defaultName = "cover"
+	}
+
+	ext := strings.ToLower(filepath.Ext(coverPath))
+	if ext == "" {
+		ext = ".png"
+	}
+	defaultName += ext
+
+	savePath, err := s.runtime.SaveFile(wailsruntime.SaveDialogOptions{
+		Title:    "另存封面图片",
+		Filename: defaultName,
+		Filters: []wailsruntime.FileFilter{
+			{
+				DisplayName: "图片文件",
+				Pattern:     "*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp;*.avif",
+			},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("打开保存对话框失败: %w", err)
+	}
+	if strings.TrimSpace(savePath) == "" {
+		return "", nil
+	}
+	if filepath.Ext(savePath) == "" {
+		savePath += ext
+	}
+
+	if err := apputils.CopyFile(coverPath, savePath); err != nil {
+		return "", fmt.Errorf("保存封面图片失败: %w", err)
+	}
+	return savePath, nil
+}
+
+func (s *GameService) coverExportSource(game models.Game) (string, func(), error) {
+	coverURL := strings.TrimSpace(game.CoverURL)
+	if coverURL == "" || strings.HasPrefix(coverURL, "/local/covers/") || strings.HasPrefix(coverURL, "http://wails.localhost") {
+		coverPath, _, err := imageutils.FindManagedCoverFile(game.ID)
+		if err != nil {
+			return "", nil, fmt.Errorf("获取本地封面图片失败: %w", err)
+		}
+		if coverPath != "" {
+			return coverPath, func() {}, nil
+		}
+	}
+
+	if coverURL != "" && !strings.HasPrefix(coverURL, "http://") && !strings.HasPrefix(coverURL, "https://") {
+		if info, err := os.Stat(coverURL); err == nil && !info.IsDir() {
+			return coverURL, func() {}, nil
+		}
+	}
+
+	if coverURL == "" || (!strings.HasPrefix(coverURL, "http://") && !strings.HasPrefix(coverURL, "https://")) {
+		coverURL = strings.TrimSpace(game.CoverSourceURL)
+	}
+	if !strings.HasPrefix(coverURL, "http://") && !strings.HasPrefix(coverURL, "https://") {
+		return "", nil, errors.New("没有可保存的封面图片")
+	}
+
+	temporaryID := fmt.Sprintf("export_%d", time.Now().UnixNano())
+	if _, err := imageutils.DownloadAndSaveCoverImageWithProxyConfigContext(s.ctx, coverURL, temporaryID, s.config); err != nil {
+		return "", nil, fmt.Errorf("下载封面图片失败: %w", err)
+	}
+	coverPath, _, err := imageutils.FindManagedCoverFile(temporaryID)
+	if err != nil {
+		return "", nil, fmt.Errorf("读取临时封面图片失败: %w", err)
+	}
+	if coverPath == "" {
+		return "", nil, errors.New("未找到可保存的封面图片")
+	}
+
+	return coverPath, func() {
+		_ = imageutils.RemoveManagedCover(temporaryID)
+	}, nil
 }
 
 // ExportLaunchShortcut exports a per-game .url shortcut that re-enters LunaBox via protocol.
