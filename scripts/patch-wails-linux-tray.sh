@@ -39,22 +39,26 @@ fi
 
 systemtray_go="$module_dir/pkg/application/systemtray.go"
 linux_go="$module_dir/pkg/application/systemtray_linux.go"
+linux_cgo_go="$module_dir/pkg/application/linux_cgo.go"
+application_linux_go="$module_dir/pkg/application/application_linux.go"
 
-for path in "$systemtray_go" "$linux_go"; do
+for path in "$systemtray_go" "$linux_go" "$linux_cgo_go" "$application_linux_go"; do
     if [[ ! -f "$path" || -L "$path" ]]; then
         echo "ERROR: Wails source file not found: $path" >&2
         exit 1
     fi
 done
 
-chmod u+w "$systemtray_go" "$linux_go"
+chmod u+w "$systemtray_go" "$linux_go" "$linux_cgo_go" "$application_linux_go"
 
-python3 - "$systemtray_go" "$linux_go" <<'PY'
+python3 - "$systemtray_go" "$linux_go" "$linux_cgo_go" "$application_linux_go" <<'PY'
 from pathlib import Path
 import sys
 
 systemtray_go = Path(sys.argv[1])
 linux_go = Path(sys.argv[2])
+linux_cgo_go = Path(sys.argv[3])
+application_linux_go = Path(sys.argv[4])
 
 
 def read_source(path: Path) -> str:
@@ -94,6 +98,67 @@ def replace_if_present(path: Path, old: str, new: str) -> bool:
 
 
 changed = False
+
+# Wails applies its NVIDIA workaround in package init, before main() can set
+# runtime defaults. Keep WebKitGTK's GPU renderer available on amd64 instead
+# of forcing hardware acceleration off. An explicit environment override still
+# takes precedence; arm64 keeps the upstream workaround and LunaBox safe mode.
+changed |= replace_once(
+    application_linux_go,
+    '''\t"regexp"
+''',
+    '''\t"regexp"
+\t"runtime"
+''',
+)
+changed |= replace_once(
+    application_linux_go,
+    '''\tif os.Getenv("WEBKIT_DISABLE_DMABUF_RENDERER") == "" && isNVIDIAGPU() {
+''',
+    '''\t// LunaBox patch: amd64 uses the default GPU renderer; set
+\t// WEBKIT_DISABLE_DMABUF_RENDERER=1 to opt back into the NVIDIA workaround.
+\tif os.Getenv("WEBKIT_DISABLE_DMABUF_RENDERER") == "" && isNVIDIAGPU() && runtime.GOARCH != "amd64" {
+''',
+)
+
+# Keep this in the existing Linux patch entry point so dev, packaging and CI
+# all configure WebKit before the first page is loaded. Feature APIs are public
+# since WebKitGTK 2.42; older libraries retain their existing behaviour.
+changed |= replace_once(
+    linux_cgo_go,
+    '''#include "linux_cgo.h"
+''',
+    '''#include "linux_cgo.h"
+
+// LunaBox patch: allow native display cadence on amd64 Linux.
+static void lunabox_configure_rendering_cadence(WebKitSettings *settings) {
+#if WEBKIT_CHECK_VERSION(2, 42, 0) && defined(__x86_64__)
+    const char *prefer60 = g_getenv("LUNABOX_WEBKIT_PREFER_60FPS");
+    if (prefer60 && !g_strcmp0(prefer60, "1"))
+        return;
+
+    WebKitFeatureList *features = webkit_settings_get_all_features();
+    for (gsize i = 0; i < webkit_feature_list_get_length(features); i++) {
+        WebKitFeature *feature = webkit_feature_list_get(features, i);
+        if (!g_strcmp0(webkit_feature_get_identifier(feature), "PreferPageRenderingUpdatesNear60FPS")) {
+            webkit_settings_set_feature_enabled(settings, feature, FALSE);
+            break;
+        }
+    }
+    webkit_feature_list_unref(features);
+#endif
+}
+''',
+)
+
+changed |= replace_once(
+    linux_cgo_go,
+    '''\tsettings := C.webkit_settings_new()
+''',
+    '''\tsettings := C.webkit_settings_new()
+\tC.lunabox_configure_rendering_cadence(settings)
+''',
+)
 
 changed |= replace_if_present(
     systemtray_go,
@@ -426,6 +491,8 @@ changed |= replace_once(
 systemtray_text = read_source(systemtray_go)
 linux_text = read_source(linux_go)
 required_snippets = [
+    (application_linux_go, read_source(application_linux_go), 'runtime.GOARCH != "amd64"'),
+    (linux_cgo_go, read_source(linux_cgo_go), 'C.lunabox_configure_rendering_cadence(settings)'),
     (systemtray_go, systemtray_text, 'runtime.GOOS != "linux"'),
     (linux_go, linux_text, 'tooltip:        s.tooltip'),
     (linux_go, linux_text, 'func (s *linuxSystemTray) setTooltip(tooltipText string)'),
@@ -448,4 +515,4 @@ else:
     print("already patched")
 PY
 
-echo "Wails Linux tray patch applied for $module_version"
+echo "Wails Linux tray, GPU renderer and rendering cadence patches applied for $module_version"

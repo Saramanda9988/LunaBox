@@ -44,6 +44,8 @@ function HomePage() {
   const fetchHomeData = useAppStore(state => state.fetchHomeData);
   const isLoading = useAppStore(state => state.isLoading);
   const config = useAppStore(state => state.config);
+  const backgroundBlur = config?.background_blur ?? 10;
+  const backgroundOpacity = config?.background_opacity ?? 0.85;
   const startGame = useAppStore(state => state.startGame);
   const hasVisibleGameRuntime = useAppStore(state =>
     Object.values(state.gameRuntimes).some(isGameRuntimeVisible),
@@ -435,29 +437,43 @@ function HomePage() {
       >
         {/* 仅在未启用自定义背景或未选择隐藏游戏封面时显示 */}
         {showGameBackground && (
-          <div className="absolute inset-0">
-            {(selectedGame.cover_url || selectedGame.cover_source_url) && (
-              <ProxyImage
-                src={selectedGameCoverSrc}
-                fallbackSrc={selectedGame.cover_source_url}
-                alt=""
-                isNSFW={selectedGame.is_nsfw}
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            )}
-            {previousBackgroundUrl
-              && previousBackgroundUrl !== selectedGameCoverSrc && (
-              <ProxyImage
-                src={previousBackgroundUrl}
-                alt=""
-                isNSFW={selectedGame.is_nsfw}
-                className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1200ms] ease-in-out ${
-                  isBackgroundCrossfading ? "opacity-100" : "opacity-0"
-                }`}
-              />
-            )}
-            {/* 整体柔和毛玻璃遮罩，使用统一不透明度替代复杂的渐变叠加以保持暗黑模式下的干净通透 */}
-            <div className="absolute inset-0 backdrop-blur-lg bg-white/50 dark:bg-black/60" />
+          <div className="absolute inset-0 overflow-hidden">
+            {/* 与全局背景使用相同的滤镜；外扩三倍模糊半径，避免裁剪边缘露底。 */}
+            <div
+              className="absolute"
+              style={{
+                inset: -3 * backgroundBlur,
+                filter: `blur(${backgroundBlur}px)`,
+              }}
+            >
+              {(selectedGame.cover_url || selectedGame.cover_source_url) && (
+                <ProxyImage
+                  src={selectedGameCoverSrc}
+                  fallbackSrc={selectedGame.cover_source_url}
+                  alt=""
+                  isNSFW={selectedGame.is_nsfw}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              )}
+              {previousBackgroundUrl
+                && previousBackgroundUrl !== selectedGameCoverSrc && (
+                <ProxyImage
+                  src={previousBackgroundUrl}
+                  alt=""
+                  isNSFW={selectedGame.is_nsfw}
+                  className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1200ms] ease-in-out ${
+                    isBackgroundCrossfading ? "opacity-100" : "opacity-0"
+                  }`}
+                />
+              )}
+            </div>
+            {/* 与全局背景的主内容区保持相同的底色与遮罩透明度。 */}
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundColor: `rgba(var(--main-bg-rgb), ${backgroundOpacity})`,
+              }}
+            />
             <div
               className="absolute inset-0 opacity-[0.08] transition-colors duration-[1400ms] ease-in-out dark:opacity-[0.12]"
               style={heroAccentStyle}
