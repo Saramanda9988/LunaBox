@@ -1532,6 +1532,7 @@
     "importAsGame": "ゲームとしてインポート",
     "importing": "インポート中...",
     "imported": "インポート済み",
+    "currentSpeed": "現在の速度 {{speed}}",
     "dateGroup": {
       "today": "今日",
       "yesterday": "昨日",

@@ -1532,6 +1532,7 @@
     "importAsGame": "Import as game",
     "importing": "Importing...",
     "imported": "Imported",
+    "currentSpeed": "Current speed {{speed}}",
     "dateGroup": {
       "today": "Today",
       "yesterday": "Yesterday",

@@ -1,4 +1,5 @@
 import type { service } from "../../../src/bindings/models";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatFileSize } from "../../utils/size";
 import { BetterTooltip } from "../ui/better/BetterTooltip";
@@ -8,6 +9,11 @@ const DOWNLOAD_ACTION_BUTTON_CLASS
   = "flex size-9 shrink-0 items-center justify-center rounded-full border-0 bg-transparent transition-[color,background-color,transform] duration-150 hover:scale-105 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/60 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100 disabled:active:scale-100";
 const DOWNLOAD_ACTION_BUTTON_NEUTRAL_CLASS
   = "text-brand-600 hover:bg-brand-100 hover:text-brand-900 disabled:hover:bg-transparent dark:text-brand-300 dark:hover:bg-brand-700/70 dark:hover:text-white dark:disabled:hover:bg-transparent data-glass:hover:bg-white/15 data-glass:dark:hover:bg-black/20";
+
+interface DownloadSample {
+  downloaded: number;
+  timestamp: number;
+}
 
 function StatusBadge({ status }: { status: service.DownloadTask["status"] }) {
   const { t } = useTranslation();
@@ -84,6 +90,8 @@ export function DownloadCard({
   const canOpenFolder = !!task.file_path;
   const isImageDownloadTask
     = task.request.download_source === IMAGE_DOWNLOAD_SOURCE;
+  const [downloadSpeed, setDownloadSpeed] = useState(0);
+  const downloadSampleRef = useRef<DownloadSample | null>(null);
   const manualExtractRequired
     = task.status === "done" && task.error === "manual_extract_required";
   const importActionLabel = imported
@@ -98,6 +106,34 @@ export function DownloadCard({
   const retryLabel = t("downloads.retry", "重试下载");
   const cancelLabel = t("downloads.cancel", "取消下载");
   const deleteLabel = t("downloads.delete", "删除记录");
+
+  useEffect(() => {
+    if (task.status !== "downloading" || isImageDownloadTask) {
+      downloadSampleRef.current = null;
+      setDownloadSpeed(0);
+      return;
+    }
+
+    const timestamp = performance.now();
+    const previousSample = downloadSampleRef.current;
+    if (
+      previousSample
+      && task.downloaded >= previousSample.downloaded
+      && timestamp > previousSample.timestamp
+    ) {
+      const elapsedSeconds = (timestamp - previousSample.timestamp) / 1000;
+      setDownloadSpeed(
+        (task.downloaded - previousSample.downloaded) / elapsedSeconds,
+      );
+    }
+    else {
+      setDownloadSpeed(0);
+    }
+    downloadSampleRef.current = {
+      downloaded: task.downloaded,
+      timestamp,
+    };
+  }, [isImageDownloadTask, task.downloaded, task.status]);
 
   return (
     <div className="glass-card flex flex-col gap-3 rounded-xl border border-brand-200 bg-white/90 p-4 shadow-sm transition-all duration-300 hover:shadow-md dark:border-brand-700 dark:bg-brand-800/80">
@@ -254,6 +290,14 @@ export function DownloadCard({
                 `${task.downloaded}${task.total > 0 ? ` / ${task.total}` : ""} ${t("downloads.imageTask.unit", "张")}`
               ) : (
                 <>
+                  {task.status === "downloading" && (
+                    <>
+                      {t("downloads.currentSpeed", {
+                        speed: `${formatFileSize(downloadSpeed)}/s`,
+                      })}
+                      {" · "}
+                    </>
+                  )}
                   {formatFileSize(task.downloaded)}
                   {task.total > 0 ? ` / ${formatFileSize(task.total)}` : ""}
                 </>

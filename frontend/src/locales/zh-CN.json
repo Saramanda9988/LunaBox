@@ -1532,6 +1532,7 @@
     "importAsGame": "导入为游戏",
     "importing": "导入中...",
     "imported": "已导入",
+    "currentSpeed": "当前速度 {{speed}}",
     "dateGroup": {
       "today": "今天",
       "yesterday": "昨天",
