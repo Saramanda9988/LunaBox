@@ -763,6 +763,12 @@ function GameDetailPage() {
       color:
         "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
     },
+    [enums.GameStatus.StatusDropped]: {
+      label: t("common.dropped"),
+      icon: "i-mdi-delete-outline",
+      color:
+        "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300",
+    },
   };
 
   const performStartGame = async (

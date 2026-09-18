@@ -27,7 +27,7 @@ type Game struct {
 	SteamLaunchKind    string               `json:"steam_launch_kind"` // 本机关联类型：native 或 shortcut
 	SteamUserID        string               `json:"steam_user_id"`     // 非 Steam 快捷方式所属的 Steam account ID
 	SteamLaunchOptions string               `json:"steam_launch_options"`
-	Status             enums.GameStatus     `json:"status"`      // 游戏状态: not_started, want_to_play, playing, completed, on_hold
+	Status             enums.GameStatus     `json:"status"`      // 游戏状态: not_started, want_to_play, playing, completed, on_hold, dropped
 	SourceType         enums.SourceType     `json:"source_type"` // 默认元数据来源
 	MetadataSources    []GameMetadataSource `json:"metadata_sources"`
 	CachedAt           time.Time            `json:"cached_at"`

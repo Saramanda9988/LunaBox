@@ -89,7 +89,7 @@ export class Game {
     "steam_launch_options": string;
 
     /**
-     * 游戏状态: not_started, want_to_play, playing, completed, on_hold
+     * 游戏状态: not_started, want_to_play, playing, completed, on_hold, dropped
      */
     "status": enums$0.GameStatus;
 

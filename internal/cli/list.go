@@ -67,6 +67,8 @@ func newListCmd(app *CoreApp) *cobra.Command {
 					statusIcon = "✓"
 				case enums.StatusOnHold:
 					statusIcon = "○"
+				case enums.StatusDropped:
+					statusIcon = "✗"
 				}
 
 				// Calculate available width for name

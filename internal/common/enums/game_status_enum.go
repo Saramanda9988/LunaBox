@@ -8,6 +8,7 @@ const (
 	StatusPlaying    GameStatus = "playing"      // 游玩中
 	StatusCompleted  GameStatus = "completed"    // 已通关
 	StatusOnHold     GameStatus = "on_hold"      // 搁置
+	StatusDropped    GameStatus = "dropped"      // 抛弃
 )
 
 var AllGameStatuses = []struct {
@@ -19,4 +20,5 @@ var AllGameStatuses = []struct {
 	{StatusPlaying, "PLAYING"},
 	{StatusCompleted, "COMPLETED"},
 	{StatusOnHold, "ON_HOLD"},
+	{StatusDropped, "DROPPED"},
 }

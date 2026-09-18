@@ -18,6 +18,7 @@
     "playing": "プレイ中",
     "completed": "クリア済み",
     "onHold": "保留中",
+    "dropped": "中止",
     "name": "名前",
     "company": "ゲーム会社",
     "lastPlayedAt": "最終プレイ",
