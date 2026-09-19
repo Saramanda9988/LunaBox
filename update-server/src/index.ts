@@ -90,7 +90,11 @@ async function route(context: RouteContext): Promise<Response> {
 }
 
 async function serveAdminAsset(context: RouteContext): Promise<Response> {
-  const response = await context.env.ASSETS.fetch(context.request);
+  let response = await context.env.ASSETS.fetch(context.request);
+  if (response.status === 404 && acceptsHTML(context.request)) {
+    const indexURL = new URL("/admin/", context.request.url);
+    response = await context.env.ASSETS.fetch(new Request(indexURL, context.request));
+  }
   const headers = new Headers(response.headers);
   headers.set("content-security-policy", "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
   headers.set("referrer-policy", "no-referrer");
@@ -103,6 +107,10 @@ async function serveAdminAsset(context: RouteContext): Promise<Response> {
     statusText: response.statusText,
     headers,
   });
+}
+
+function acceptsHTML(request: Request): boolean {
+  return request.method === "GET" && (request.headers.get("accept") ?? "").includes("text/html");
 }
 
 async function serveObject(context: RouteContext, key: string, cacheControl: string): Promise<Response> {

@@ -14,7 +14,6 @@ import {
 } from "antd";
 import {
   BarChartOutlined,
-  CloudServerOutlined,
   DashboardOutlined,
   LogoutOutlined,
   ReloadOutlined,
@@ -31,13 +30,37 @@ const Dashboard = lazy(async () => {
   return { default: module.Dashboard };
 });
 
+const VersionStatistics = lazy(async () => {
+  const module = await import("./components/VersionStatistics");
+  return { default: module.VersionStatistics };
+});
+
 const ReleaseDetail = lazy(async () => {
   const module = await import("./components/ReleaseDetail");
   return { default: module.ReleaseDetail };
 });
 
-function selectedVersionFromURL(): string | null {
-  return new URLSearchParams(window.location.search).get("version");
+type AdminRoute =
+  | { page: "dashboard" }
+  | { page: "releases" }
+  | { page: "release-detail"; version: string };
+
+function routeFromURL(): AdminRoute {
+  const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
+  if (pathname === "/admin/releases")
+    return { page: "releases" };
+
+  const detailMatch = pathname.match(/^\/admin\/releases\/([^/]+)$/);
+  if (detailMatch) {
+    try {
+      return { page: "release-detail", version: decodeURIComponent(detailMatch[1]) };
+    }
+    catch {
+      return { page: "releases" };
+    }
+  }
+
+  return { page: "dashboard" };
 }
 
 export default function App() {
@@ -71,7 +94,7 @@ function AppContent() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(Boolean(token));
   const [error, setError] = useState("");
-  const [selectedVersion, setSelectedVersion] = useState<string | null>(selectedVersionFromURL);
+  const [route, setRoute] = useState<AdminRoute>(routeFromURL);
   const [collapsed, setCollapsed] = useState(false);
 
   const signOut = useCallback(() => {
@@ -79,7 +102,7 @@ function AppContent() {
     setToken("");
     setData(null);
     setError("");
-    setSelectedVersion(null);
+    setRoute({ page: "dashboard" });
     history.replaceState(null, "", "/admin/");
   }, []);
 
@@ -98,7 +121,7 @@ function AppContent() {
         clearToken();
         setToken("");
         setData(null);
-        setSelectedVersion(null);
+        setRoute({ page: "dashboard" });
         history.replaceState(null, "", "/admin/");
       }
       setError(reason instanceof Error ? reason.message : "控制台数据读取失败");
@@ -114,7 +137,7 @@ function AppContent() {
   }, [load, token]);
 
   useEffect(() => {
-    const onPopState = () => setSelectedVersion(selectedVersionFromURL());
+    const onPopState = () => setRoute(routeFromURL());
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
@@ -125,24 +148,27 @@ function AppContent() {
     setLoading(true);
   }, []);
 
-  const openVersion = useCallback((version: string) => {
-    const url = new URL(window.location.href);
-    url.searchParams.set("version", version);
-    history.pushState(null, "", url);
-    setSelectedVersion(version);
+  const navigate = useCallback((nextRoute: AdminRoute) => {
+    const pathname = nextRoute.page === "dashboard"
+      ? "/admin/"
+      : nextRoute.page === "releases"
+        ? "/admin/releases"
+        : `/admin/releases/${encodeURIComponent(nextRoute.version)}`;
+    history.pushState(null, "", pathname);
+    setRoute(nextRoute);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  const closeVersion = useCallback(() => {
-    history.pushState(null, "", "/admin/");
-    setSelectedVersion(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, []);
+  const openVersion = useCallback((version: string) => {
+    navigate({ page: "release-detail", version });
+  }, [navigate]);
+
+  const closeVersion = useCallback(() => navigate({ page: "releases" }), [navigate]);
 
   if (!token || !data)
     return <LoginView loading={loading} error={error} onSubmit={authenticate} />;
 
-  const selectedMenuKey = selectedVersion ? "releases" : "dashboard";
+  const selectedMenuKey = route.page === "dashboard" ? "dashboard" : "releases";
   return (
     <Layout className="app-layout">
       <Layout.Sider
@@ -167,26 +193,15 @@ function AppContent() {
           selectedKeys={[selectedMenuKey]}
           items={[
             { key: "dashboard", icon: <DashboardOutlined />, label: "首页大盘" },
-            { key: "releases", icon: <BarChartOutlined />, label: "版本详情" },
+            { key: "releases", icon: <BarChartOutlined />, label: "版本更新统计" },
           ]}
           onClick={({ key }) => {
             if (key === "dashboard")
-              closeVersion();
-            else if (data.versions[0])
-              openVersion(data.versions[0].version);
+              navigate({ page: "dashboard" });
+            else
+              navigate({ page: "releases" });
           }}
         />
-        <div className="sider-footer">
-          <Flex align="center" gap={8}>
-            <CloudServerOutlined style={{ color: designToken.colorSuccess }} />
-            {collapsed ? null : (
-              <div>
-                <Typography.Text>数据服务在线</Typography.Text>
-                <Typography.Text type="secondary">Cloudflare Worker</Typography.Text>
-              </div>
-            )}
-          </Flex>
-        </div>
       </Layout.Sider>
 
       <Layout>
@@ -202,11 +217,11 @@ function AppContent() {
         </Layout.Header>
         <Layout.Content className="app-content">
           <Suspense fallback={<Skeleton active paragraph={{ rows: 10 }} />}>
-            {selectedVersion ? (
-              <ReleaseDetail token={token} version={selectedVersion} onBack={closeVersion} onUnauthorized={signOut} />
-            ) : (
-              <Dashboard data={data} onOpenVersion={openVersion} />
-            )}
+            {route.page === "release-detail"
+              ? <ReleaseDetail token={token} version={route.version} onBack={closeVersion} onUnauthorized={signOut} />
+              : route.page === "releases"
+                ? <VersionStatistics data={data} onOpenVersion={openVersion} />
+                : <Dashboard data={data} />}
           </Suspense>
         </Layout.Content>
       </Layout>

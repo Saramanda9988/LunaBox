@@ -29,6 +29,8 @@ GET  /v1/stats/releases/<version>
 GET  /v1/admin/dashboard
 GET  /v1/admin/releases/<version>
 GET  /admin
+GET  /admin/releases
+GET  /admin/releases/<version>
 ```
 
 The statistics and dashboard API endpoints require
@@ -36,10 +38,11 @@ The statistics and dashboard API endpoints require
 keeps it in the current browser tab's session storage.
 
 The React and Ant Design dashboard shows successful update events, anonymous
-installation counts, failures, asset request volume, a 30-day update chart,
-per-version telemetry, and patch source-to-target relationships read from each
-R2 release manifest. A release detail view supports filtering events by status,
-channel, architecture, build mode, failure code, and failure reason.
+installation counts, failures, asset request volume, and a 30-day update chart.
+The version statistics page lists per-version telemetry and opens each release
+detail from its table action. Release details include patch source-to-target
+relationships read from R2 manifests and event filters for status, channel,
+architecture, build mode, failure code, and failure reason.
 
 Clients persist a random installation UUID under the LunaBox local cache and
 include it in update telemetry. No machine identifier or local path is sent.
