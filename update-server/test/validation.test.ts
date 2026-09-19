@@ -50,4 +50,36 @@ describe("update events", () => {
       build_mode: "portable",
     })).toThrow("invalid event_type");
   });
+
+  it("keeps a normalized failure reason", () => {
+    const event = parseUpdateEvent({
+      event_id: "event_12345678",
+      event_type: "install_failed",
+      target_version: "2.0.0",
+      channel: "windows-amd64-portable",
+      architecture: "amd64",
+      build_mode: "portable",
+      failure_code: "prepare_failed",
+      failure_reason: "signature_invalid",
+    });
+
+    expect(event.failure_code).toBe("prepare_failed");
+    expect(event.failure_reason).toBe("signature_invalid");
+  });
+
+  it("drops a free-form failure reason without rejecting the event", () => {
+    const event = parseUpdateEvent({
+      event_id: "event_12345678",
+      event_type: "install_failed",
+      target_version: "2.0.0",
+      channel: "windows-amd64-portable",
+      architecture: "amd64",
+      build_mode: "portable",
+      failure_code: "prepare_failed",
+      failure_reason: "verify Authenticode signature for C:\\Users\\alice\\LunaBox.exe",
+    });
+
+    expect(event.failure_code).toBe("prepare_failed");
+    expect(event.failure_reason).toBeUndefined();
+  });
 });

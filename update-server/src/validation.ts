@@ -8,6 +8,35 @@ export const UPDATE_EVENT_TYPES = [
 
 export type UpdateEventType = (typeof UPDATE_EVENT_TYPES)[number];
 
+// Normalized failure categories. Every reason is a fixed identifier so that the
+// raw error message (which carries local absolute paths) never leaves the user
+// machine. Keep in sync with FailureKind in updater/updateutils/failure.go and
+// the client-only reasons in internal/updateclient/failure.go.
+export const FAILURE_REASONS = [
+  "unknown",
+  "task_invalid",
+  "artifact_invalid",
+  "artifact_decode_failed",
+  "source_mismatch",
+  "patch_apply_failed",
+  "signature_invalid",
+  "staging_failed",
+  "prepared_marker_invalid",
+  "wait_process_failed",
+  "target_replace_failed",
+  "journal_failed",
+  "rollback_failed",
+  "restart_failed",
+  "updater_not_started",
+  "uac_cancelled",
+  "access_denied",
+  "updater_missing",
+  "launch_failed",
+  "fallback_download_failed",
+] as const;
+
+export type FailureReason = (typeof FAILURE_REASONS)[number];
+
 export interface UpdateEvent {
   event_id: string;
   transaction_id?: string;
@@ -21,6 +50,7 @@ export interface UpdateEvent {
   artifact?: string;
   transferred_bytes?: number;
   failure_code?: string;
+  failure_reason?: FailureReason;
   client_time?: string;
 }
 
@@ -106,8 +136,21 @@ export function parseUpdateEvent(value: unknown): UpdateEvent {
     artifact: optionalAsset(event.artifact),
     transferred_bytes: transferredBytes,
     failure_code: optionalIdentifier(event.failure_code),
+    failure_reason: optionalFailureReason(event.failure_reason),
     client_time: optionalTimestamp(event.client_time),
   };
+}
+
+// A reason outside the allowlist is dropped rather than rejecting the event: a
+// client newer than this Worker must not lose its whole failure report, and the
+// allowlist guarantees no free-form text is ever stored.
+function optionalFailureReason(value: unknown): FailureReason | undefined {
+  if (value === undefined || value === null || value === "")
+    return undefined;
+  const normalized = String(value);
+  return (FAILURE_REASONS as readonly string[]).includes(normalized)
+    ? normalized as FailureReason
+    : undefined;
 }
 
 function optionalIdentifier(value: unknown): string | undefined {

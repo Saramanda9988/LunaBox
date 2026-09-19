@@ -110,6 +110,7 @@ export const ADMIN_HTML = `<!doctype html>
     .failure-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
     .failure-row:last-child { border-bottom: 0; }
     .failure-code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .failure-reason { margin-left: 8px; color: var(--ink-muted); font-family: Consolas, monospace; font-size: 12px; }
     .failure-count { font-family: Consolas, monospace; color: var(--signal); font-weight: 700; }
     .wide-panel { margin-top: 20px; }
     .panel-tools { display: flex; align-items: center; gap: 12px; }
@@ -350,6 +351,12 @@ export const ADMIN_SCRIPT = String.raw`(() => {
       const code = document.createElement("span");
       code.className = "failure-code";
       code.textContent = row.code;
+      if (row.reason) {
+        const reason = document.createElement("span");
+        reason.className = "failure-reason";
+        reason.textContent = row.reason;
+        code.append(reason);
+      }
       const count = document.createElement("span");
       count.className = "failure-count";
       count.textContent = formatNumber(row.count);

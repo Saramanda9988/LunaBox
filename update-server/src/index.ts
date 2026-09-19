@@ -161,8 +161,8 @@ async function acceptEvent(context: RouteContext): Promise<Response> {
     INSERT OR IGNORE INTO update_events (
       event_id, transaction_id, installation_id, event_type,
       current_version, target_version, channel, architecture, build_mode,
-      artifact, transferred_bytes, failure_code, client_time
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      artifact, transferred_bytes, failure_code, failure_reason, client_time
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     event.event_id,
     event.transaction_id ?? null,
@@ -176,6 +176,7 @@ async function acceptEvent(context: RouteContext): Promise<Response> {
     event.artifact ?? null,
     event.transferred_bytes ?? null,
     event.failure_code ?? null,
+    event.failure_reason ?? null,
     event.client_time ?? null,
   ).run();
 
@@ -204,10 +205,12 @@ async function releaseStats(context: RouteContext, version: string): Promise<Res
       ORDER BY asset
     `).bind(version),
     context.env.UPDATE_DB.prepare(`
-      SELECT COALESCE(failure_code, 'unknown') AS failure_code, COUNT(*) AS count
+      SELECT COALESCE(failure_code, 'unknown') AS failure_code,
+        COALESCE(failure_reason, '') AS failure_reason,
+        COUNT(*) AS count
       FROM update_events
       WHERE target_version = ? AND event_type = 'install_failed'
-      GROUP BY failure_code
+      GROUP BY COALESCE(failure_code, 'unknown'), COALESCE(failure_reason, '')
       ORDER BY count DESC
       LIMIT 20
     `).bind(version),

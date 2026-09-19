@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"lunabox/internal/applog"
 	"lunabox/internal/updateclient"
 	"lunabox/internal/version"
 )
@@ -62,6 +63,8 @@ func (s *UpdateService) DownloadAndApplyUpdate(manifestURL string) (*UpdateApply
 		},
 	})
 	if err != nil {
+		// The raw message stays local: it can contain the user's install path.
+		applog.LogErrorf(s.ctx, "apply update failed: %v", err)
 		return nil, err
 	}
 	response := &UpdateApplyResult{

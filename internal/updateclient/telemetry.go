@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"lunabox/internal/appconf"
+	"lunabox/internal/applog"
 	"lunabox/internal/utils/apputils"
 	"lunabox/internal/utils/downloadutils"
 	"lunabox/updater/updateutils"
@@ -34,7 +35,10 @@ type telemetryEvent struct {
 	Artifact         string `json:"artifact,omitempty"`
 	TransferredBytes int64  `json:"transferred_bytes,omitempty"`
 	FailureCode      string `json:"failure_code,omitempty"`
-	ClientTime       string `json:"client_time"`
+	// FailureReason is a normalized category. The raw error message stays in the
+	// local log because it contains local absolute paths.
+	FailureReason string `json:"failure_reason,omitempty"`
+	ClientTime    string `json:"client_time"`
 }
 
 type pendingUpdate struct {
@@ -162,13 +166,25 @@ func ReportPendingResult(ctx context.Context, config *appconf.AppConfig, userAge
 
 	eventType := "install_success"
 	failureCode := ""
+	failureReason := ""
 	if !result.Success {
 		eventType = "install_failed"
 		failureCode = "updater_failed"
+		failureReason = string(result.FailureKind)
+		if failureReason == "" {
+			failureReason = string(updateutils.FailureKindUnknown)
+		}
+	}
+	if result.Error != "" {
+		applog.LogErrorf(ctx, "update commit failed: %s", result.Error)
+	}
+	if result.Warning != "" {
+		applog.LogWarningf(ctx, "update commit warning: %s", result.Warning)
 	}
 	event := newTelemetryEvent(eventType, state.TransactionID, state.CurrentVersion, state.TargetVersion, state.Channel, state.BuildMode)
 	event.EventID = state.EventID
 	event.FailureCode = failureCode
+	event.FailureReason = failureReason
 	if err := reportEvent(ctx, config, userAgent, state.EventURL, event); err != nil {
 		return err
 	}

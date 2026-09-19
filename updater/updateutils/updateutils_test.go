@@ -190,6 +190,8 @@ func TestPrepareRejectsWrongPatchSource(t *testing.T) {
 	})
 	if err := Prepare(task); err == nil || !strings.Contains(err.Error(), "verify patch source") {
 		t.Fatalf("expected source hash failure, got %v", err)
+	} else if kind := FailureKindOf(err); kind != FailureKindSource {
+		t.Fatalf("expected %s, got %s", FailureKindSource, kind)
 	}
 }
 

@@ -20,21 +20,21 @@ func Prepare(task *Task) error {
 		return fmt.Errorf("update task is nil")
 	}
 	if err := task.Validate(); err != nil {
-		return err
+		return withFailureKind(FailureKindTaskInvalid, err)
 	}
 
 	stageRoot := stagingDir(task)
 	if err := os.RemoveAll(stageRoot); err != nil {
-		return fmt.Errorf("reset staging directory: %w", err)
+		return withFailureKind(FailureKindStaging, fmt.Errorf("reset staging directory: %w", err))
 	}
 	if err := os.MkdirAll(stageRoot, 0755); err != nil {
-		return fmt.Errorf("create staging directory: %w", err)
+		return withFailureKind(FailureKindStaging, fmt.Errorf("create staging directory: %w", err))
 	}
 
 	for _, file := range task.Files {
 		outputPath := localPath(stageRoot, file.Path)
 		if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
-			return fmt.Errorf("create staging path for %s: %w", file.Path, err)
+			return withFailureKind(FailureKindStaging, fmt.Errorf("create staging path for %s: %w", file.Path, err))
 		}
 		tempOutput := outputPath + ".tmp"
 		_ = os.Remove(tempOutput)
@@ -45,7 +45,7 @@ func Prepare(task *Task) error {
 			err = preparePatchChain(task, file, tempOutput)
 		case TaskFileKindFull:
 			if err := verifyFile(file.ArtifactPath, file.ArtifactSize, file.ArtifactSHA256); err != nil {
-				return fmt.Errorf("verify artifact for %s: %w", file.Path, err)
+				return withFailureKind(FailureKindArtifact, fmt.Errorf("verify artifact for %s: %w", file.Path, err))
 			}
 			err = materializeFullArtifact(file.ArtifactPath, file.Compression, tempOutput)
 		default:
@@ -58,12 +58,12 @@ func Prepare(task *Task) error {
 		if requiresAuthenticode(file.Path) {
 			if err := verifyAuthenticode(tempOutput); err != nil {
 				_ = os.Remove(tempOutput)
-				return fmt.Errorf("verify Authenticode signature for %s: %w", file.Path, err)
+				return withFailureKind(FailureKindSignature, fmt.Errorf("verify Authenticode signature for %s: %w", file.Path, err))
 			}
 		}
 		if err := os.Rename(tempOutput, outputPath); err != nil {
 			_ = os.Remove(tempOutput)
-			return fmt.Errorf("finalize staged %s: %w", file.Path, err)
+			return withFailureKind(FailureKindStaging, fmt.Errorf("finalize staged %s: %w", file.Path, err))
 		}
 	}
 
@@ -87,10 +87,10 @@ func preparePatchChain(task *Task, file TaskFile, firstOutput string) error {
 	sourcePath := localPath(task.AppDir, file.Path)
 	for index, step := range steps {
 		if err := verifyFile(step.ArtifactPath, step.ArtifactSize, step.ArtifactSHA256); err != nil {
-			return fmt.Errorf("verify patch artifact step %d: %w", index+1, err)
+			return withFailureKind(FailureKindArtifact, fmt.Errorf("verify patch artifact step %d: %w", index+1, err))
 		}
 		if err := verifyFile(sourcePath, 0, step.SourceSHA256); err != nil {
-			return fmt.Errorf("verify patch source step %d: %w", index+1, err)
+			return withFailureKind(FailureKindSource, fmt.Errorf("verify patch source step %d: %w", index+1, err))
 		}
 
 		outputPath := firstOutput
@@ -100,11 +100,11 @@ func preparePatchChain(task *Task, file TaskFile, firstOutput string) error {
 		_ = os.Remove(outputPath)
 		if err := ReconstructZstdPatch(sourcePath, step.ArtifactPath, outputPath); err != nil {
 			_ = os.Remove(outputPath)
-			return fmt.Errorf("reconstruct patch step %d: %w", index+1, err)
+			return withFailureKind(FailureKindPatchApply, fmt.Errorf("reconstruct patch step %d: %w", index+1, err))
 		}
 		if err := verifyFile(outputPath, step.TargetSize, step.TargetSHA256); err != nil {
 			_ = os.Remove(outputPath)
-			return fmt.Errorf("verify reconstructed patch step %d: %w", index+1, err)
+			return withFailureKind(FailureKindPatchApply, fmt.Errorf("verify reconstructed patch step %d: %w", index+1, err))
 		}
 		if index > 0 {
 			_ = os.Remove(sourcePath)
@@ -114,7 +114,7 @@ func preparePatchChain(task *Task, file TaskFile, firstOutput string) error {
 	if sourcePath != firstOutput {
 		if err := os.Rename(sourcePath, firstOutput); err != nil {
 			_ = os.Remove(sourcePath)
-			return fmt.Errorf("finalize patch chain: %w", err)
+			return withFailureKind(FailureKindPatchApply, fmt.Errorf("finalize patch chain: %w", err))
 		}
 	}
 	return nil
@@ -131,15 +131,15 @@ func ValidatePrepared(task *Task) error {
 		return fmt.Errorf("update task is nil")
 	}
 	if err := task.Validate(); err != nil {
-		return err
+		return withFailureKind(FailureKindTaskInvalid, err)
 	}
 	if err := verifyPreparedMarker(task); err != nil {
-		return err
+		return withFailureKind(FailureKindMarker, err)
 	}
 	for _, file := range task.Files {
 		stagedPath := localPath(stagingDir(task), file.Path)
 		if err := verifyFile(stagedPath, file.TargetSize, file.TargetSHA256); err != nil {
-			return fmt.Errorf("verify staged %s: %w", file.Path, err)
+			return withFailureKind(FailureKindStaging, fmt.Errorf("verify staged %s: %w", file.Path, err))
 		}
 	}
 	return nil
@@ -168,23 +168,23 @@ func ReconstructZstdPatch(sourcePath string, patchPath string, outputPath string
 
 func materializeFullArtifact(artifactPath string, compression string, outputPath string) error {
 	if compression == ArtifactCompressionNone {
-		return copyFile(artifactPath, outputPath)
+		return withFailureKind(FailureKindStaging, copyFile(artifactPath, outputPath))
 	}
 	if compression != ArtifactCompressionZstd {
-		return fmt.Errorf("unsupported full artifact compression: %s", compression)
+		return withFailureKind(FailureKindArtifact, fmt.Errorf("unsupported full artifact compression: %s", compression))
 	}
 
 	artifact, err := os.Open(artifactPath)
 	if err != nil {
-		return fmt.Errorf("open full artifact: %w", err)
+		return withFailureKind(FailureKindArtifact, fmt.Errorf("open full artifact: %w", err))
 	}
 	defer artifact.Close()
 	decoder, err := zstd.NewReader(artifact, zstd.WithDecoderLowmem(true))
 	if err != nil {
-		return fmt.Errorf("open zstd decoder: %w", err)
+		return withFailureKind(FailureKindDecode, fmt.Errorf("open zstd decoder: %w", err))
 	}
 	defer decoder.Close()
-	return writeDecodedFile(decoder, outputPath)
+	return withFailureKind(FailureKindDecode, writeDecodedFile(decoder, outputPath))
 }
 
 func writeDecodedFile(reader io.Reader, outputPath string) error {

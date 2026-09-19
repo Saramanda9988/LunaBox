@@ -14,6 +14,7 @@ interface DashboardSQLRow {
   install_success?: number;
   install_failed?: number;
   failure_code?: string;
+  failure_reason?: string;
   count?: number;
 }
 
@@ -80,7 +81,7 @@ export interface DashboardData {
     download_requests: number;
     requested_bytes: number;
   }>;
-  failures: Array<{ code: string; count: number }>;
+  failures: Array<{ code: string; reason: string; count: number }>;
   releases: ReleaseObjectSummary[];
   invalid_manifests: string[];
 }
@@ -129,6 +130,7 @@ export async function loadDashboard(db: D1Database, bucket: R2Bucket): Promise<D
     }),
     failures: failureResult.results.map(row => ({
       code: stringValue(row.failure_code) || "unknown",
+      reason: stringValue(row.failure_reason),
       count: numberValue(row.count),
     })),
     releases: releaseScan.releases,
@@ -181,10 +183,11 @@ async function loadDatabaseStats(db: D1Database): Promise<D1Result<DashboardSQLR
       GROUP BY version
     `),
     db.prepare(`
-      SELECT 'failure' AS row_kind, COALESCE(failure_code, 'unknown') AS failure_code, COUNT(*) AS count
+      SELECT 'failure' AS row_kind, COALESCE(failure_code, 'unknown') AS failure_code,
+        COALESCE(failure_reason, '') AS failure_reason, COUNT(*) AS count
       FROM update_events
       WHERE event_type = 'install_failed'
-      GROUP BY COALESCE(failure_code, 'unknown')
+      GROUP BY COALESCE(failure_code, 'unknown'), COALESCE(failure_reason, '')
       ORDER BY count DESC
       LIMIT 10
     `),

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"lunabox/internal/appconf"
+	"lunabox/internal/applog"
 	"lunabox/internal/utils/apputils"
 	"lunabox/internal/utils/downloadutils"
 	"lunabox/internal/utils/processutils"
@@ -114,6 +115,16 @@ func Apply(ctx context.Context, options Options) (*Result, error) {
 		return nil, fmt.Errorf("create update transaction: %w", err)
 	}
 	transactionID := uuid.NewString()
+	// reportFailure reports an install failure with its stage code and normalized
+	// reason. The caller logs the raw error locally; nothing but the normalized
+	// reason leaves the machine.
+	reportFailure := func(stageCode string, reason string) {
+		failedEvent := newTelemetryEvent("install_failed", transactionID, options.CurrentVersion, manifest.Version, channelName, options.BuildMode)
+		failedEvent.FailureCode = stageCode
+		failedEvent.FailureReason = reason
+		_ = reportEvent(ctx, options.Config, options.UserAgent, manifest.EventURL, failedEvent)
+		applog.LogErrorf(ctx, "update install failed: %s/%s", stageCode, reason)
+	}
 	runnerPath := filepath.Join(workDir, "runner", updaterExecutableName)
 	if err := apputils.CopyFile(installedUpdater, runnerPath); err != nil {
 		return nil, fmt.Errorf("copy updater to transaction directory: %w", err)
@@ -190,6 +201,7 @@ func Apply(ctx context.Context, options Options) (*Result, error) {
 		fallbackUsed = true
 		emitProgress(options.Progress, Progress{Phase: "fallback", Fallback: true})
 		if err := replacePatchesWithFullDownloads(ctx, options.Progress, downloader, selected, task); err != nil {
+			reportFailure("prepare_failed", failureReasonFallbackDownload)
 			return nil, fmt.Errorf("patch prepare failed (%v), and full fallback failed: %w", prepareErr, err)
 		}
 		if err := updateutils.WriteTask(taskPath, task); err != nil {
@@ -198,9 +210,7 @@ func Apply(ctx context.Context, options Options) (*Result, error) {
 		prepareErr = runUpdaterPrepare(runnerPath, taskPath, workDir)
 	}
 	if prepareErr != nil {
-		failedEvent := newTelemetryEvent("install_failed", transactionID, options.CurrentVersion, manifest.Version, channelName, options.BuildMode)
-		failedEvent.FailureCode = "prepare_failed"
-		_ = reportEvent(ctx, options.Config, options.UserAgent, manifest.EventURL, failedEvent)
+		reportFailure("prepare_failed", prepareFailureReason(workDir))
 		return nil, fmt.Errorf("prepare update: %w", prepareErr)
 	}
 
@@ -224,9 +234,7 @@ func Apply(ctx context.Context, options Options) (*Result, error) {
 		if pendingWritten {
 			removePendingUpdate()
 		}
-		failedEvent := newTelemetryEvent("install_failed", transactionID, options.CurrentVersion, manifest.Version, channelName, options.BuildMode)
-		failedEvent.FailureCode = "commit_start_failed"
-		_ = reportEvent(ctx, options.Config, options.UserAgent, manifest.EventURL, failedEvent)
+		reportFailure("commit_start_failed", launchFailureReason(err))
 		return nil, err
 	}
 

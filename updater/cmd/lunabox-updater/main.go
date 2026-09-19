@@ -32,6 +32,12 @@ func main() {
 	switch command {
 	case "prepare":
 		err = updateutils.Prepare(task)
+		if err != nil {
+			// LunaBox reads this marker to report a normalized failure reason.
+			if recordErr := updateutils.WritePrepareFailure(task, err); recordErr != nil {
+				err = fmt.Errorf("%w; record prepare failure: %v", err, recordErr)
+			}
+		}
 	case "commit":
 		err = updateutils.Commit(task)
 		if err != nil && !*elevated && updateutils.CanRetryElevated(err) {
@@ -42,14 +48,14 @@ func main() {
 			}
 		}
 		if err != nil {
-			_ = updateutils.WriteResult(task, false, err.Error())
+			_ = updateutils.WriteFailure(task, err)
 		}
 		if updateutils.ShouldRestartAfterCommit(err) {
 			restartErr := updateutils.Restart(task)
 			if err == nil {
 				err = restartErr
 				if restartErr != nil {
-					_ = updateutils.WriteResult(task, false, restartErr.Error())
+					_ = updateutils.WriteFailure(task, restartErr)
 				}
 			} else if restartErr != nil {
 				err = fmt.Errorf("%w; restart failed: %v", err, restartErr)

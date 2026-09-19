@@ -70,10 +70,10 @@ type transactionJournalEntry struct {
 // order if any file is locked or cannot be replaced.
 func Commit(task *Task) error {
 	if task == nil {
-		return &preExitCommitError{err: fmt.Errorf("update task is nil")}
+		return &preExitCommitError{err: withFailureKind(FailureKindTaskInvalid, fmt.Errorf("update task is nil"))}
 	}
 	if err := task.Validate(); err != nil {
-		return &preExitCommitError{err: err}
+		return &preExitCommitError{err: withFailureKind(FailureKindTaskInvalid, err)}
 	}
 	if err := ValidatePrepared(task); err != nil {
 		return &preExitCommitError{err: err}
@@ -84,24 +84,24 @@ func Commit(task *Task) error {
 		timeout = time.Duration(task.WaitTimeout) * time.Second
 	}
 	if err := waitForProcessExit(task.WaitPID, timeout); err != nil {
-		return &preExitCommitError{err: fmt.Errorf("wait for LunaBox to exit: %w", err)}
+		return &preExitCommitError{err: withFailureKind(FailureKindWait, fmt.Errorf("wait for LunaBox to exit: %w", err))}
 	}
 
 	journal, err := newTransactionJournal(task)
 	if err != nil {
-		return err
+		return withFailureKind(FailureKindStaging, err)
 	}
 	journalPath := filepath.Join(task.WorkDir, "transaction.json")
 	if previous, loadErr := loadJournal(journalPath); loadErr == nil && previous.Status == "applying" {
 		if err := validateRecoveryJournal(journal, previous); err != nil {
-			return err
+			return withFailureKind(FailureKindJournal, err)
 		}
 		if rollbackErr := rollbackTransaction(task, previous); rollbackErr != nil {
-			return &unsafeRestartCommitError{err: fmt.Errorf("recover interrupted update: %w", rollbackErr)}
+			return &unsafeRestartCommitError{err: withFailureKind(FailureKindRollback, fmt.Errorf("recover interrupted update: %w", rollbackErr))}
 		}
 	}
 	if err := writeJournal(journalPath, journal); err != nil {
-		return fmt.Errorf("write transaction journal: %w", err)
+		return withFailureKind(FailureKindJournal, fmt.Errorf("write transaction journal: %w", err))
 	}
 
 	for i := range journal.Entries {
@@ -110,16 +110,16 @@ func Commit(task *Task) error {
 		_, statErr := os.Stat(targetPath)
 		entry.TargetExisted = statErr == nil
 		if statErr != nil && !os.IsNotExist(statErr) {
-			return rollbackOrError(task, journal, fmt.Errorf("inspect replacement target %s: %w", entry.Path, statErr))
+			return rollbackOrError(task, journal, withFailureKind(FailureKindReplace, fmt.Errorf("inspect replacement target %s: %w", entry.Path, statErr)))
 		}
 		entry.Attempted = true
 		if err := writeJournal(journalPath, journal); err != nil {
-			return rollbackOrError(task, journal, fmt.Errorf("persist replacement intent for %s: %w", entry.Path, err))
+			return rollbackOrError(task, journal, withFailureKind(FailureKindJournal, fmt.Errorf("persist replacement intent for %s: %w", entry.Path, err)))
 		}
 
 		stagedPath := localPath(stagingDir(task), entry.Path)
 		if err := copyFile(stagedPath, entry.SwapPath); err != nil {
-			return rollbackOrError(task, journal, fmt.Errorf("stage replacement for %s: %w", entry.Path, err))
+			return rollbackOrError(task, journal, withFailureKind(FailureKindReplace, fmt.Errorf("stage replacement for %s: %w", entry.Path, err)))
 		}
 
 		targetExisted, err := replaceFileWithRetry(targetPath, entry.SwapPath, entry.BackupPath)
@@ -131,24 +131,24 @@ func Commit(task *Task) error {
 			_ = os.Remove(entry.SwapPath)
 			rollbackErr := rollbackTransaction(task, journal)
 			if rollbackErr != nil {
-				return &unsafeRestartCommitError{err: fmt.Errorf("replace %s: %w; rollback failed: %v", entry.Path, err, rollbackErr)}
+				return &unsafeRestartCommitError{err: withFailureKind(FailureKindRollback, fmt.Errorf("replace %s: %w; rollback failed: %v", entry.Path, err, rollbackErr))}
 			}
-			return fmt.Errorf("replace %s: %w", entry.Path, err)
+			return withFailureKind(FailureKindReplace, fmt.Errorf("replace %s: %w", entry.Path, err))
 		}
 
 		entry.Applied = true
 		if err := writeJournal(journalPath, journal); err != nil {
 			rollbackErr := rollbackTransaction(task, journal)
 			if rollbackErr != nil {
-				return &unsafeRestartCommitError{err: fmt.Errorf("persist transaction after %s: %w; rollback failed: %v", entry.Path, err, rollbackErr)}
+				return &unsafeRestartCommitError{err: withFailureKind(FailureKindRollback, fmt.Errorf("persist transaction after %s: %w; rollback failed: %v", entry.Path, err, rollbackErr))}
 			}
-			return fmt.Errorf("persist transaction after %s: %w", entry.Path, err)
+			return withFailureKind(FailureKindJournal, fmt.Errorf("persist transaction after %s: %w", entry.Path, err))
 		}
 	}
 
 	journal.Status = "complete"
 	if err := writeJournal(journalPath, journal); err != nil {
-		return fmt.Errorf("complete transaction journal: %w", err)
+		return withFailureKind(FailureKindJournal, fmt.Errorf("complete transaction journal: %w", err))
 	}
 	metadataWarning := ""
 	if err := updateInstallMetadata(task.BuildMode, task.TargetVersion); err != nil {
@@ -157,13 +157,13 @@ func Commit(task *Task) error {
 	cleanupTransaction(journal)
 	_ = os.Remove(journalPath)
 	cleanupPreparedFiles(task)
-	_ = writeResult(task, true, "", metadataWarning)
+	_ = writeResult(task, true, "", FailureKindUnknown, metadataWarning)
 	return nil
 }
 
 func rollbackOrError(task *Task, journal *transactionJournal, operationErr error) error {
 	if rollbackErr := rollbackTransaction(task, journal); rollbackErr != nil {
-		return &unsafeRestartCommitError{err: fmt.Errorf("%w; rollback failed: %v", operationErr, rollbackErr)}
+		return &unsafeRestartCommitError{err: withFailureKind(FailureKindRollback, fmt.Errorf("%w; rollback failed: %v", operationErr, rollbackErr))}
 	}
 	return operationErr
 }
@@ -187,33 +187,42 @@ func Restart(task *Task) error {
 	command := exec.Command(restartPath, task.RestartArgs...)
 	command.Dir = task.AppDir
 	if err := configureRestartCommand(command); err != nil {
-		return err
+		return withFailureKind(FailureKindRestart, err)
 	}
 	if err := command.Start(); err != nil {
-		return fmt.Errorf("restart LunaBox: %w", err)
+		return withFailureKind(FailureKindRestart, fmt.Errorf("restart LunaBox: %w", err))
 	}
 	return command.Process.Release()
 }
 
 type UpdateResult struct {
-	TransactionID string `json:"transaction_id"`
-	TargetVersion string `json:"target_version"`
-	Success       bool   `json:"success"`
-	Error         string `json:"error,omitempty"`
-	Warning       string `json:"warning,omitempty"`
-	FinishedAt    string `json:"finished_at"`
+	TransactionID string      `json:"transaction_id"`
+	TargetVersion string      `json:"target_version"`
+	Success       bool        `json:"success"`
+	Error         string      `json:"error,omitempty"`
+	FailureKind   FailureKind `json:"failure_kind,omitempty"`
+	Warning       string      `json:"warning,omitempty"`
+	FinishedAt    string      `json:"finished_at"`
 }
 
-func WriteResult(task *Task, success bool, errorMessage string) error {
-	return writeResult(task, success, errorMessage, "")
+// WriteFailure records a failed commit together with its normalized failure
+// kind, so the next LunaBox launch can report the reason without uploading the
+// raw message.
+func WriteFailure(task *Task, err error) error {
+	message := ""
+	if err != nil {
+		message = err.Error()
+	}
+	return writeResult(task, false, message, FailureKindOf(err), "")
 }
 
-func writeResult(task *Task, success bool, errorMessage string, warningMessage string) error {
+func writeResult(task *Task, success bool, errorMessage string, failureKind FailureKind, warningMessage string) error {
 	result := UpdateResult{
 		TransactionID: task.TransactionID,
 		TargetVersion: task.TargetVersion,
 		Success:       success,
 		Error:         errorMessage,
+		FailureKind:   failureKind,
 		Warning:       warningMessage,
 		FinishedAt:    time.Now().UTC().Format(time.RFC3339),
 	}
