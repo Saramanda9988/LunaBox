@@ -29,6 +29,7 @@ func TestYukiHubImporterPreviewAndImport(t *testing.T) {
 				OriginalTitle: "テストゲーム",
 				Tags:          "剧情  校园",
 				PlayStatus:    "completed",
+				NSFW:          true,
 				TotalPlayTime: 120_000,
 				LastPlayedAt:  createdAt.Add(2 * time.Hour).UnixMilli(),
 				CreatedAt:     createdAt.UnixMilli(),
@@ -118,6 +119,9 @@ func TestYukiHubImporterPreviewAndImport(t *testing.T) {
 	if game.Status != enums.StatusCompleted || game.SourceType != enums.VNDB || game.SourceID != "v123" {
 		t.Fatalf("Identity or status mapping failed: %+v", game)
 	}
+	if !game.IsNSFW {
+		t.Fatal("YukiHub nsfw flag was not imported")
+	}
 	if len(game.Aliases) != 2 || game.Aliases[0] != "テストゲーム" || game.Aliases[1] != "Test Game" {
 		t.Fatalf("Unexpected aliases: %#v", game.Aliases)
 	}
@@ -175,6 +179,29 @@ func TestYukiHubPreviewMatchesExistingGameByNameWithoutPath(t *testing.T) {
 	}
 	if len(previews) != 1 || !previews[0].Exists || previews[0].ExistingID != "existing-id" {
 		t.Fatalf("Existing game was not detected: %+v", previews)
+	}
+}
+
+func TestMapYukiHubGameStatusCoversAllPlayStatuses(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]enums.GameStatus{
+		"":             enums.StatusNotStarted,
+		"unplayed":     enums.StatusNotStarted,
+		"not_started":  enums.StatusNotStarted,
+		"want_to_play": enums.StatusNotStarted,
+		"playing":      enums.StatusPlaying,
+		"completed":    enums.StatusCompleted,
+		"onhold":       enums.StatusOnHold,
+		"on_hold":      enums.StatusOnHold,
+		"shelved":      enums.StatusOnHold,
+		"dropped":      enums.StatusDropped,
+		"abandoned":    enums.StatusDropped,
+	}
+	for input, want := range cases {
+		if got := mapYukiHubGameStatus(input); got != want {
+			t.Errorf("mapYukiHubGameStatus(%q) = %q, want %q", input, got, want)
+		}
 	}
 }
 

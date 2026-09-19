@@ -35,7 +35,7 @@ type GamePlayInfo struct {
 	Duration        int      // 秒
 	Summary         string   // 截断至 300 字
 	Categories      []string // 分类标签
-	Status          string   // not_started / playing / completed / on_hold
+	Status          string   // not_started / playing / completed / on_hold / dropped
 	SpoilerBoundary string   // 来自 game_progress 或全局配置
 	ProgressNote    string   // 玩家备注
 	Route           string   // 当前路线

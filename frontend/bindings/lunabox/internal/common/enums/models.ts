@@ -49,6 +49,11 @@ export enum GameStatus {
      * 搁置
      */
     StatusOnHold = "on_hold",
+
+    /**
+     * 抛弃
+     */
+    StatusDropped = "dropped",
 };
 
 export enum LaunchMode {

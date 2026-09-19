@@ -18,6 +18,7 @@
     "playing": "Playing",
     "completed": "Completed",
     "onHold": "On Hold",
+    "dropped": "Dropped",
     "name": "Name",
     "company": "Game Company",
     "lastPlayedAt": "Last Played",

@@ -821,6 +821,8 @@ func mapGameStatusToHikarinagiStatus(status enums.GameStatus) (string, bool) {
 		return "COMPLETED", true
 	case enums.StatusOnHold:
 		return "ON_HOLD", true
+	case enums.StatusDropped:
+		return "DROPPED", true
 	default:
 		return "", false
 	}

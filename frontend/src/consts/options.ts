@@ -10,6 +10,7 @@ export const statusOptions: Array<{ label: string; value: GameStatusFilter }>
     { label: "common.playing", value: enums.GameStatus.StatusPlaying },
     { label: "common.completed", value: enums.GameStatus.StatusCompleted },
     { label: "common.onHold", value: enums.GameStatus.StatusOnHold },
+    { label: "common.dropped", value: enums.GameStatus.StatusDropped },
   ];
 
 export const sortOptions: Array<{

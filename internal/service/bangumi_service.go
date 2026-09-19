@@ -892,6 +892,8 @@ func mapGameStatusToBangumiCollectionType(status enums.GameStatus) (int, bool) {
 		return 3, true
 	case enums.StatusOnHold:
 		return 4, true
+	case enums.StatusDropped:
+		return 5, true
 	default:
 		return 0, false
 	}

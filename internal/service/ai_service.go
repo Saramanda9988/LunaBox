@@ -209,6 +209,7 @@ func (s *AiService) buildContextPrompt(data *AIStatsData) string {
 					"playing":      "游玩中",
 					"completed":    "已通关",
 					"on_hold":      "搁置中",
+					"dropped":      "已抛弃",
 				}[g.Status]
 				if statusLabel != "" {
 					if g.Status == "completed" {

@@ -53,6 +53,7 @@ type yukiHubGame struct {
 	Description   string `json:"description"`
 	Tags          string `json:"tags"`
 	PlayStatus    string `json:"play_status"`
+	NSFW          bool   `json:"nsfw"`
 	TotalPlayTime int64  `json:"total_play_time"`
 	LastPlayedAt  int64  `json:"last_played_at"`
 	CreatedAt     int64  `json:"created_at"`
@@ -375,6 +376,7 @@ func convertYukiHubGame(
 		Rating:          parseYukiHubRating(primary.data.RatingText),
 		ReleaseDate:     strings.TrimSpace(primary.data.Released),
 		Status:          mapYukiHubGameStatus(source.PlayStatus),
+		IsNSFW:          source.NSFW,
 		SourceType:      sourceType,
 		SourceID:        sourceID,
 		MetadataSources: collectYukiHubMetadataSources(metadataItems, updatedAt),
@@ -488,12 +490,23 @@ func convertYukiHubSessions(gameID string, game yukiHubGame, entries []yukiHubPl
 	return sessions
 }
 
+// mapYukiHubGameStatus 把 YukiHub 备份里的 play_status 映射为 LunaBox 状态。
+//
+// YukiHub 侧 normalizePlayStatus（GameRepository.java）只会产出这五个值：
+// unplayed 未玩 / playing 在玩 / completed 玩过 / onhold 搁置 / dropped 抛弃。
+// 这里额外容忍下划线、过去式等历史写法，避免旧备份解析不到。
+//
+// unplayed 与未知值一律落到「未开始」；LunaBox 的「想玩」在 YukiHub 侧没有对应状态。
 func mapYukiHubGameStatus(status string) enums.GameStatus {
 	switch strings.ToLower(strings.TrimSpace(status)) {
 	case "playing":
 		return enums.StatusPlaying
 	case "completed":
 		return enums.StatusCompleted
+	case "onhold", "on_hold", "on-hold", "shelved", "paused", "hold":
+		return enums.StatusOnHold
+	case "dropped", "drop", "abandoned", "abandon", "give_up":
+		return enums.StatusDropped
 	default:
 		return enums.StatusNotStarted
 	}
