@@ -5,6 +5,17 @@ type Data struct {
 	Games []Game
 }
 
+// PlayStatus 对应 ReinaManager games.clear 字段的游玩状态。
+type PlayStatus int64
+
+const (
+	PlayStatusWish    PlayStatus = 1
+	PlayStatusPlayed  PlayStatus = 2
+	PlayStatusPlaying PlayStatus = 3
+	PlayStatusOnHold  PlayStatus = 4
+	PlayStatusDropped PlayStatus = 5
+)
+
 // Game represents a game record and its related ReinaManager data.
 type Game struct {
 	ID                int64
@@ -13,7 +24,7 @@ type Game struct {
 	LocalPath         string
 	Executable        string
 	SavePath          string
-	Clear             int64
+	Clear             PlayStatus
 	UseLocaleEmulator bool
 	UseMagpie         bool
 	Custom            CustomData

@@ -5,6 +5,7 @@ package importer
 import (
 	"lunabox/internal/common/enums"
 	"lunabox/internal/models"
+	"lunabox/internal/models/steam"
 	"os"
 	"path/filepath"
 	"testing"
@@ -34,7 +35,7 @@ func TestFindSteamInstallPathInHomeRequiresSteamApps(t *testing.T) {
 
 func TestIsImportableSteamGameRequiresInstalledNumericAppID(t *testing.T) {
 	installDir := t.TempDir()
-	base := SteamLocalGame{
+	base := steam.LocalGame{
 		AppID:      "123456",
 		Name:       "Native Steam Game",
 		InstallDir: installDir,

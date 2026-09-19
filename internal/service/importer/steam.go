@@ -6,6 +6,7 @@ import (
 	"lunabox/internal/common/enums"
 	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
+	"lunabox/internal/models/steam"
 	"lunabox/internal/utils/apputils"
 	"lunabox/internal/utils/metadata"
 	"os"
@@ -22,19 +23,6 @@ const steamFullyInstalledFlag = 4
 
 type SteamImporter struct {
 	deps Dependencies
-}
-
-type SteamLocalGame struct {
-	AppID        string   `json:"app_id"`
-	Name         string   `json:"name"`
-	InstallDir   string   `json:"install_dir"`
-	LibraryPath  string   `json:"library_path"`
-	ManifestPath string   `json:"manifest_path"`
-	SizeOnDisk   int64    `json:"size_on_disk"`
-	StateFlags   int      `json:"state_flags"`
-	Executables  []string `json:"executables"`
-	SelectedExe  string   `json:"selected_exe"`
-	ProtonPrefix string   `json:"proton_prefix"`
 }
 
 type vdfNode struct {
@@ -185,7 +173,7 @@ func (s *SteamImporter) ImportSelected(skipNoPath bool, samePathAction string, s
 	return result, nil
 }
 
-func (s *SteamImporter) ScanLocalGames() ([]SteamLocalGame, error) {
+func (s *SteamImporter) ScanLocalGames() ([]steam.LocalGame, error) {
 	steamPath, err := findSteamInstallPath()
 	if err != nil {
 		return nil, err
@@ -196,7 +184,7 @@ func (s *SteamImporter) ScanLocalGames() ([]SteamLocalGame, error) {
 		return nil, err
 	}
 
-	games := make([]SteamLocalGame, 0)
+	games := make([]steam.LocalGame, 0)
 	seenAppIDs := make(map[string]bool)
 	for _, libraryPath := range libraryPaths {
 		manifestPaths, err := filepath.Glob(filepath.Join(libraryPath, "steamapps", "appmanifest_*.acf"))
@@ -225,7 +213,7 @@ func (s *SteamImporter) ScanLocalGames() ([]SteamLocalGame, error) {
 	return games, nil
 }
 
-func (s *SteamImporter) fetchSteamGameMetadata(getter *metadata.SteamInfoGetter, localGame SteamLocalGame) (models.Game, []metadata.TagItem) {
+func (s *SteamImporter) fetchSteamGameMetadata(getter *metadata.SteamInfoGetter, localGame steam.LocalGame) (models.Game, []metadata.TagItem) {
 	gameID := uuid.New().String()
 	now := time.Now()
 	game := models.Game{
@@ -312,10 +300,10 @@ func uniqueExistingSteamLibraries(paths []string) []string {
 	return result
 }
 
-func readSteamManifest(libraryPath string, manifestPath string) (SteamLocalGame, error) {
+func readSteamManifest(libraryPath string, manifestPath string) (steam.LocalGame, error) {
 	root, err := parseVDFFile(manifestPath)
 	if err != nil {
-		return SteamLocalGame{}, err
+		return steam.LocalGame{}, err
 	}
 	appState := child(root, "AppState")
 	if appState == nil {
@@ -335,7 +323,7 @@ func readSteamManifest(libraryPath string, manifestPath string) (SteamLocalGame,
 		selectedExe = apputils.SelectBestExecutable(executables, name)
 	}
 
-	return SteamLocalGame{
+	return steam.LocalGame{
 		AppID:        strings.TrimSpace(appID),
 		Name:         name,
 		InstallDir:   installDir,
@@ -361,7 +349,7 @@ func steamLocalProtonPrefix(libraryPath string, appID string) string {
 	return ""
 }
 
-func isImportableSteamGame(game SteamLocalGame) bool {
+func isImportableSteamGame(game steam.LocalGame) bool {
 	if game.StateFlags&steamFullyInstalledFlag == 0 {
 		return false
 	}

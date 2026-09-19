@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"lunabox/internal/common/enums"
+	"lunabox/internal/models/steam"
 )
 
 func TestFindSteamInstallPathLinuxUsesEnvCandidate(t *testing.T) {
@@ -112,8 +113,8 @@ func TestDefaultSteamImportedLaunchModeLinuxUsesSteamLaunch(t *testing.T) {
 
 func TestIsImportableSteamGameRejectsRuntimeAndCompatibilityTools(t *testing.T) {
 	installDir := t.TempDir()
-	makeGame := func(appID string, name string) SteamLocalGame {
-		return SteamLocalGame{
+	makeGame := func(appID string, name string) steam.LocalGame {
+		return steam.LocalGame{
 			AppID:      appID,
 			Name:       name,
 			InstallDir: installDir,
@@ -121,7 +122,7 @@ func TestIsImportableSteamGameRejectsRuntimeAndCompatibilityTools(t *testing.T) 
 		}
 	}
 
-	rejected := []SteamLocalGame{
+	rejected := []steam.LocalGame{
 		makeGame("228980", "Steamworks Common Redistributables"),
 		makeGame("2805730", "Some Renamed Proton Tool"),
 		makeGame("123456", "Steam Linux Runtime 3.0 (sniper)"),

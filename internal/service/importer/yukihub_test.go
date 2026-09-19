@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"lunabox/internal/common/enums"
 	"lunabox/internal/models"
+	"lunabox/internal/models/yukihub"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,14 +16,14 @@ func TestYukiHubImporterPreviewAndImport(t *testing.T) {
 	t.Parallel()
 
 	createdAt := time.Date(2026, time.August, 14, 10, 0, 0, 0, time.Local)
-	backup := yukiHubBackup{
+	backup := yukihub.Backup{
 		App:       "YukiHub",
 		Schema:    5,
 		CreatedAt: createdAt.UnixMilli(),
-		Settings: yukiHubBackupSettings{
+		Settings: yukihub.BackupSettings{
 			MetadataSource: "vndb",
 		},
-		Games: []yukiHubGame{
+		Games: []yukihub.Game{
 			{
 				LocalID:       42,
 				Title:         "测试游戏",
@@ -36,7 +37,7 @@ func TestYukiHubImporterPreviewAndImport(t *testing.T) {
 				UpdatedAt:     createdAt.Add(3 * time.Hour).UnixMilli(),
 			},
 		},
-		PlaySessions: []yukiHubPlaySession{
+		PlaySessions: []yukihub.PlaySession{
 			{
 				SessionUUID: "475fb291-a302-4776-8063-7c344691792f",
 				GameLocalID: 42,
@@ -46,7 +47,7 @@ func TestYukiHubImporterPreviewAndImport(t *testing.T) {
 				UpdatedAt:   createdAt.Add(time.Hour + 30*time.Second).UnixMilli(),
 			},
 		},
-		MetadataCache: []yukiHubMetadataCache{
+		MetadataCache: []yukihub.MetadataCache{
 			{
 				GameLocalID: 42,
 				Source:      "vndb",
@@ -144,7 +145,7 @@ func TestYukiHubImporterPreviewAndImport(t *testing.T) {
 func TestLoadYukiHubBackupSupportsPlainJSONAndRejectsOtherApps(t *testing.T) {
 	t.Parallel()
 
-	path := writeYukiHubTestBackup(t, yukiHubBackup{App: "YukiHub", Schema: 5}, false)
+	path := writeYukiHubTestBackup(t, yukihub.Backup{App: "YukiHub", Schema: 5}, false)
 	backup, err := loadYukiHubBackup(path)
 	if err != nil {
 		t.Fatalf("Plain JSON backup returned an error: %v", err)
@@ -153,7 +154,7 @@ func TestLoadYukiHubBackupSupportsPlainJSONAndRejectsOtherApps(t *testing.T) {
 		t.Fatalf("Schema = %d, want 5", backup.Schema)
 	}
 
-	invalidPath := writeYukiHubTestBackup(t, yukiHubBackup{App: "OtherApp", Schema: 5}, true)
+	invalidPath := writeYukiHubTestBackup(t, yukihub.Backup{App: "OtherApp", Schema: 5}, true)
 	if _, err := loadYukiHubBackup(invalidPath); err == nil {
 		t.Fatal("Expected a validation error for another app")
 	}
@@ -162,10 +163,10 @@ func TestLoadYukiHubBackupSupportsPlainJSONAndRejectsOtherApps(t *testing.T) {
 func TestYukiHubPreviewMatchesExistingGameByNameWithoutPath(t *testing.T) {
 	t.Parallel()
 
-	backupPath := writeYukiHubTestBackup(t, yukiHubBackup{
+	backupPath := writeYukiHubTestBackup(t, yukihub.Backup{
 		App:    "YukiHub",
 		Schema: 5,
-		Games:  []yukiHubGame{{LocalID: 1, Title: "Existing Game"}},
+		Games:  []yukihub.Game{{LocalID: 1, Title: "Existing Game"}},
 	}, true)
 	service := NewYukiHubImporter(Dependencies{
 		ListGames: func() ([]models.Game, error) {
@@ -205,7 +206,7 @@ func TestMapYukiHubGameStatusCoversAllPlayStatuses(t *testing.T) {
 	}
 }
 
-func writeYukiHubTestBackup(t *testing.T, backup yukiHubBackup, compressed bool) string {
+func writeYukiHubTestBackup(t *testing.T, backup yukihub.Backup, compressed bool) string {
 	t.Helper()
 
 	data, err := json.Marshal(backup)

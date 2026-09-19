@@ -86,6 +86,69 @@ func TestPlayniteImportPreservesExporterFields(t *testing.T) {
 	}
 }
 
+func TestPlayniteStatusMapping(t *testing.T) {
+	tests := []struct {
+		input string
+		want  enums.GameStatus
+	}{
+		{input: "not_started", want: enums.StatusNotStarted},
+		{input: "want_to_play", want: enums.StatusWantToPlay},
+		{input: "playing", want: enums.StatusPlaying},
+		{input: "completed", want: enums.StatusCompleted},
+		{input: "on_hold", want: enums.StatusOnHold},
+		{input: "dropped", want: enums.StatusDropped},
+		{input: " DROPPED ", want: enums.StatusDropped},
+		{input: "unknown", want: enums.StatusNotStarted},
+	}
+
+	for _, test := range tests {
+		if got := stringToGameStatus(test.input); got != test.want {
+			t.Errorf("stringToGameStatus(%q) = %q, want %q", test.input, got, test.want)
+		}
+	}
+}
+
+func TestPotatoVNStatusMapping(t *testing.T) {
+	tests := []struct {
+		input potatovn.PlayType
+		want  enums.GameStatus
+	}{
+		{input: potatovn.PlayTypeNone, want: enums.StatusNotStarted},
+		{input: potatovn.PlayTypePlaying, want: enums.StatusPlaying},
+		{input: potatovn.PlayTypePlayed, want: enums.StatusCompleted},
+		{input: potatovn.PlayTypeShelved, want: enums.StatusOnHold},
+		{input: potatovn.PlayTypeAbandoned, want: enums.StatusDropped},
+		{input: potatovn.PlayTypeWantToPlay, want: enums.StatusWantToPlay},
+		{input: potatovn.PlayType(99), want: enums.StatusNotStarted},
+	}
+
+	for _, test := range tests {
+		if got := mapPotatoVNStatus(test.input); got != test.want {
+			t.Errorf("mapPotatoVNStatus(%d) = %q, want %q", test.input, got, test.want)
+		}
+	}
+}
+
+func TestReinaManagerStatusMapping(t *testing.T) {
+	tests := []struct {
+		input reinamanager.PlayStatus
+		want  enums.GameStatus
+	}{
+		{input: reinamanager.PlayStatusWish, want: enums.StatusWantToPlay},
+		{input: reinamanager.PlayStatusPlayed, want: enums.StatusCompleted},
+		{input: reinamanager.PlayStatusPlaying, want: enums.StatusPlaying},
+		{input: reinamanager.PlayStatusOnHold, want: enums.StatusOnHold},
+		{input: reinamanager.PlayStatusDropped, want: enums.StatusDropped},
+		{input: reinamanager.PlayStatus(0), want: enums.StatusWantToPlay},
+	}
+
+	for _, test := range tests {
+		if got := mapReinaManagerStatus(test.input); got != test.want {
+			t.Errorf("mapReinaManagerStatus(%d) = %q, want %q", test.input, got, test.want)
+		}
+	}
+}
+
 func TestPotatoVNConvertToGameImportsLaunchFields(t *testing.T) {
 	exePath := `D:\Games\potato\bin\game.exe`
 	gameDirectory := `D:\Games\potato`

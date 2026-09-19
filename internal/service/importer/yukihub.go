@@ -11,6 +11,7 @@ import (
 	"lunabox/internal/common/enums"
 	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
+	"lunabox/internal/models/yukihub"
 	"os"
 	"regexp"
 	"sort"
@@ -32,71 +33,9 @@ type YukiHubImporter struct {
 	deps Dependencies
 }
 
-type yukiHubBackup struct {
-	App           string                 `json:"app"`
-	Schema        int                    `json:"schema"`
-	CreatedAt     int64                  `json:"created_at"`
-	Settings      yukiHubBackupSettings  `json:"settings"`
-	Games         []yukiHubGame          `json:"games"`
-	PlaySessions  []yukiHubPlaySession   `json:"play_sessions"`
-	MetadataCache []yukiHubMetadataCache `json:"metadata_cache"`
-}
-
-type yukiHubBackupSettings struct {
-	MetadataSource string `json:"metadata_source"`
-}
-
-type yukiHubGame struct {
-	LocalID       int64  `json:"local_id"`
-	Title         string `json:"title"`
-	OriginalTitle string `json:"original_title"`
-	Description   string `json:"description"`
-	Tags          string `json:"tags"`
-	PlayStatus    string `json:"play_status"`
-	NSFW          bool   `json:"nsfw"`
-	TotalPlayTime int64  `json:"total_play_time"`
-	LastPlayedAt  int64  `json:"last_played_at"`
-	CreatedAt     int64  `json:"created_at"`
-	UpdatedAt     int64  `json:"updated_at"`
-}
-
-type yukiHubPlaySession struct {
-	SessionUUID string `json:"session_uuid"`
-	GameLocalID int64  `json:"game_local_id"`
-	StartTime   int64  `json:"start_time"`
-	EndTime     int64  `json:"end_time"`
-	Duration    int64  `json:"duration"`
-	CreatedAt   int64  `json:"created_at"`
-	UpdatedAt   int64  `json:"updated_at"`
-}
-
-type yukiHubMetadataCache struct {
-	GameLocalID int64  `json:"game_local_id"`
-	Source      string `json:"source"`
-	SourceID    string `json:"source_id"`
-	JSON        string `json:"json"`
-	UpdatedAt   int64  `json:"updated_at"`
-}
-
-type yukiHubMetadata struct {
-	ID                    string   `json:"id"`
-	ChineseTitle          string   `json:"chineseTitle"`
-	OriginalTitle         string   `json:"originalTitle"`
-	RomanTitle            string   `json:"romanTitle"`
-	CoverURL              string   `json:"coverUrl"`
-	Description           string   `json:"description"`
-	TranslatedDescription string   `json:"translatedDescription"`
-	Released              string   `json:"released"`
-	Developer             string   `json:"developer"`
-	TagsText              string   `json:"tagsText"`
-	RatingText            string   `json:"ratingText"`
-	CoverSexual           int      `json:"coverSexual"`
-	ScreenshotURLs        []string `json:"screenshotUrls"`
-}
-
 type parsedYukiHubMetadata struct {
-	cache    yukiHubMetadataCache
-	data     yukiHubMetadata
+	cache    yukihub.MetadataCache
+	data     yukihub.Metadata
 	source   enums.SourceType
 	sourceID string
 }
@@ -229,7 +168,7 @@ func (y *YukiHubImporter) ImportSelected(backupPath string, skipNoPath bool, _ s
 	return result, nil
 }
 
-func loadYukiHubBackup(backupPath string) (*yukiHubBackup, error) {
+func loadYukiHubBackup(backupPath string) (*yukihub.Backup, error) {
 	file, err := os.Open(backupPath)
 	if err != nil {
 		return nil, fmt.Errorf("无法读取 YukiHub 备份文件: %w", err)
@@ -261,7 +200,7 @@ func loadYukiHubBackup(backupPath string) (*yukiHubBackup, error) {
 	}
 	data = bytes.TrimPrefix(data, []byte{0xef, 0xbb, 0xbf})
 
-	var backup yukiHubBackup
+	var backup yukihub.Backup
 	if err := json.Unmarshal(data, &backup); err != nil {
 		return nil, fmt.Errorf("解析 YukiHub 备份文件失败: %w", err)
 	}
@@ -271,7 +210,7 @@ func loadYukiHubBackup(backupPath string) (*yukiHubBackup, error) {
 	return &backup, nil
 }
 
-func indexYukiHubMetadata(entries []yukiHubMetadataCache) map[int64][]parsedYukiHubMetadata {
+func indexYukiHubMetadata(entries []yukihub.MetadataCache) map[int64][]parsedYukiHubMetadata {
 	result := make(map[int64][]parsedYukiHubMetadata)
 	for _, entry := range entries {
 		parsed := parsedYukiHubMetadata{
@@ -288,8 +227,8 @@ func indexYukiHubMetadata(entries []yukiHubMetadataCache) map[int64][]parsedYuki
 	return result
 }
 
-func indexYukiHubSessions(entries []yukiHubPlaySession) map[int64][]yukiHubPlaySession {
-	result := make(map[int64][]yukiHubPlaySession)
+func indexYukiHubSessions(entries []yukihub.PlaySession) map[int64][]yukihub.PlaySession {
+	result := make(map[int64][]yukihub.PlaySession)
 	for _, entry := range entries {
 		result[entry.GameLocalID] = append(result[entry.GameLocalID], entry)
 	}
@@ -341,10 +280,10 @@ func mapYukiHubSourceType(source string) enums.SourceType {
 }
 
 func convertYukiHubGame(
-	source yukiHubGame,
+	source yukihub.Game,
 	metadataItems []parsedYukiHubMetadata,
 	primary parsedYukiHubMetadata,
-	sourceSessions []yukiHubPlaySession,
+	sourceSessions []yukihub.PlaySession,
 	backupCreatedAt int64,
 ) (models.Game, []models.PlaySession, []string) {
 	gameID := uuid.New().String()
@@ -419,7 +358,7 @@ func collectYukiHubMetadataSources(items []parsedYukiHubMetadata, fallbackTime t
 	return result
 }
 
-func convertYukiHubSessions(gameID string, game yukiHubGame, entries []yukiHubPlaySession, createdAt time.Time, updatedAt time.Time) []models.PlaySession {
+func convertYukiHubSessions(gameID string, game yukihub.Game, entries []yukihub.PlaySession, createdAt time.Time, updatedAt time.Time) []models.PlaySession {
 	sessions := make([]models.PlaySession, 0, len(entries)+1)
 	recordedDuration := 0
 	var earliestStart time.Time

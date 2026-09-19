@@ -237,6 +237,8 @@ func stringToSourceType(sourceType string) enums.SourceType {
 
 func stringToGameStatus(status string) enums.GameStatus {
 	switch strings.ToLower(strings.TrimSpace(status)) {
+	case string(enums.StatusNotStarted):
+		return enums.StatusNotStarted
 	case string(enums.StatusWantToPlay):
 		return enums.StatusWantToPlay
 	case string(enums.StatusPlaying):
@@ -245,6 +247,8 @@ func stringToGameStatus(status string) enums.GameStatus {
 		return enums.StatusCompleted
 	case string(enums.StatusOnHold):
 		return enums.StatusOnHold
+	case string(enums.StatusDropped):
+		return enums.StatusDropped
 	default:
 		return enums.StatusNotStarted
 	}

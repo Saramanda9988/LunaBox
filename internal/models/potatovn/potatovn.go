@@ -20,6 +20,18 @@ const (
 	RssTypeSteam    RssType = 7
 )
 
+// PlayType 对应 PotatoVN 的游玩状态。
+type PlayType int
+
+const (
+	PlayTypeNone PlayType = iota
+	PlayTypePlaying
+	PlayTypePlayed
+	PlayTypeShelved
+	PlayTypeAbandoned
+	PlayTypeWantToPlay
+)
+
 // DefaultImagePath PotatoVN 默认图标路径
 const DefaultImagePath = "ms-appx:///Assets/WindowIcon.ico"
 
@@ -133,7 +145,7 @@ type Galgame struct {
 	MuteInBackground     bool                           `json:"MuteInBackground"`
 	KeyReMap             bool                           `json:"KeyReMap"`
 	DetectedSavePosition *string                        `json:"DetectedSavePosition"`
-	PlayType             int                            `json:"PlayType"`
+	PlayType             PlayType                       `json:"PlayType"`
 	Comment              string                         `json:"Comment"`
 	MyRate               int                            `json:"MyRate"`
 	PrivateComment       bool                           `json:"PrivateComment"`

@@ -258,7 +258,7 @@ func readReinaManagerGames(db *sql.DB) (map[int64]*reinamanager.Game, error) {
 		game.LocalPath = localPath.String
 		game.Executable = executable.String
 		game.SavePath = savePath.String
-		game.Clear = clear.Int64
+		game.Clear = reinamanager.PlayStatus(clear.Int64)
 		game.UseLocaleEmulator = leLaunch.Int64 != 0
 		game.UseMagpie = magpie.Int64 != 0
 		game.CreatedAt = createdAt.Int64
@@ -551,14 +551,18 @@ func collectReinaManagerTags(game reinamanager.Game) []string {
 	return result
 }
 
-func mapReinaManagerStatus(clear int64) enums.GameStatus {
-	switch clear {
-	case 2:
+func mapReinaManagerStatus(status reinamanager.PlayStatus) enums.GameStatus {
+	switch status {
+	case reinamanager.PlayStatusPlayed:
 		return enums.StatusCompleted
-	case 3:
+	case reinamanager.PlayStatusPlaying:
 		return enums.StatusPlaying
-	case 4, 5:
+	case reinamanager.PlayStatusOnHold:
 		return enums.StatusOnHold
+	case reinamanager.PlayStatusDropped:
+		return enums.StatusDropped
+	case reinamanager.PlayStatusWish:
+		return enums.StatusWantToPlay
 	default:
 		return enums.StatusWantToPlay
 	}

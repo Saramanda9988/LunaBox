@@ -325,6 +325,7 @@ func (p *PotatoVNImporter) convertToGameWithCover(galgame potatovn.Galgame, temp
 		GameDirectory:     strings.TrimSpace(galgame.Path),
 		SavePath:          galgame.GetSavePath(),
 		ProcessName:       galgame.GetProcessName(),
+		Status:            mapPotatoVNStatus(galgame.PlayType),
 		SourceType:        sourceType,
 		MetadataSources:   collectPotatoVNMetadataSources(galgame),
 		SourceID:          sourceID,
@@ -361,6 +362,25 @@ func (p *PotatoVNImporter) convertToGameWithCover(galgame potatovn.Galgame, temp
 	}
 
 	return game, sessions
+}
+
+func mapPotatoVNStatus(status potatovn.PlayType) enums.GameStatus {
+	switch status {
+	case potatovn.PlayTypePlaying:
+		return enums.StatusPlaying
+	case potatovn.PlayTypePlayed:
+		return enums.StatusCompleted
+	case potatovn.PlayTypeShelved:
+		return enums.StatusOnHold
+	case potatovn.PlayTypeAbandoned:
+		return enums.StatusDropped
+	case potatovn.PlayTypeWantToPlay:
+		return enums.StatusWantToPlay
+	case potatovn.PlayTypeNone:
+		return enums.StatusNotStarted
+	default:
+		return enums.StatusNotStarted
+	}
 }
 
 func collectPotatoVNMetadataSources(galgame potatovn.Galgame) []models.GameMetadataSource {
