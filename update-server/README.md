@@ -1,6 +1,6 @@
 # LunaBox Update Server
 
-Cloudflare Worker update service backed by R2 and D1.
+ Update service backed by Cloudflare Worker, R2 and D1.
 
 ## Object layout
 
