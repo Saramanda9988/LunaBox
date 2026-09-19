@@ -40,6 +40,22 @@ describe("update events", () => {
     expect(event.transferred_bytes).toBe(1024);
   });
 
+  it("keeps the anonymous installation identifier", () => {
+    const event = parseUpdateEvent({
+      event_id: "event_12345678",
+      transaction_id: "transaction_12345678",
+      installation_id: "7cb8064e-479b-49a9-9f48-45ff62e62c66",
+      event_type: "install_success",
+      current_version: "1.13.0",
+      target_version: "1.14.0",
+      channel: "windows-amd64-portable",
+      architecture: "amd64",
+      build_mode: "portable",
+    });
+
+    expect(event.installation_id).toBe("7cb8064e-479b-49a9-9f48-45ff62e62c66");
+  });
+
   it("rejects unsupported event types", () => {
     expect(() => parseUpdateEvent({
       event_id: "event_12345678",

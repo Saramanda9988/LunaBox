@@ -1,0 +1,188 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+}
+
+.app-layout {
+  min-height: 100vh;
+}
+
+.app-layout > .ant-layout-sider {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  border-inline-end: 1px solid var(--ant-color-border-secondary);
+}
+
+.app-logo {
+  display: flex;
+  height: 64px;
+  padding: 0 16px;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-logo > div:last-child,
+.sider-footer > div > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.sider-footer {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 16px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.app-header {
+  display: flex;
+  height: 64px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.app-content {
+  padding: 24px;
+}
+
+.page-heading h2.ant-typography,
+.page-heading .ant-typography {
+  margin-top: 0;
+}
+
+.page-heading h2.ant-typography {
+  margin-bottom: 4px;
+}
+
+.page-heading p.ant-typography {
+  margin-bottom: 0;
+}
+
+.summary-card,
+.fill-card {
+  height: 100%;
+}
+
+.summary-card .ant-statistic {
+  margin-bottom: 8px;
+}
+
+.summary-card .ant-statistic-content {
+  font-size: 30px;
+}
+
+.chart-empty {
+  height: 280px;
+}
+
+.chart-skeleton,
+.chart-skeleton .ant-skeleton-image {
+  width: 100% !important;
+  height: 280px !important;
+}
+
+.table-toolbar,
+.event-filters {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.version-search {
+  width: 280px;
+}
+
+.table-link {
+  height: auto;
+  padding: 0;
+  font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.event-filters .ant-select,
+.event-filters .ant-input-affix-wrapper {
+  width: 100%;
+}
+
+.filter-actions {
+  margin-top: 16px;
+}
+
+.login-page {
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.login-card {
+  width: 400px;
+  max-width: 100%;
+  box-shadow: var(--ant-box-shadow-tertiary);
+}
+
+.login-heading {
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.login-heading h2.ant-typography {
+  margin: 8px 0 0;
+}
+
+.login-alert {
+  margin: 0 0 16px;
+}
+
+.login-note {
+  margin: 16px 0 0 !important;
+  text-align: center;
+}
+
+@media (max-width: 991px) {
+  .app-header {
+    padding: 0 16px;
+  }
+
+  .app-header > .ant-typography {
+    display: none;
+  }
+
+  .app-content {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 575px) {
+  .app-header .ant-tag,
+  .app-header .ant-btn > span {
+    display: none;
+  }
+
+  .table-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .version-search {
+    width: 100%;
+  }
+
+  .table-toolbar .ant-segmented {
+    overflow-x: auto;
+  }
+}

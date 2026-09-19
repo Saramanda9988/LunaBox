@@ -1,5 +1,5 @@
-import { adminHTMLResponse, adminScriptResponse } from "./admin-panel";
 import { loadDashboard } from "./dashboard";
+import { loadReleaseDetails, parseReleaseFilters } from "./release-details";
 import {
   assetObjectKey,
   channelObjectKey,
@@ -13,13 +13,13 @@ import {
 
 interface RouteContext {
   request: Request;
-  env: Env;
+  env: Cloudflare.ProductionEnv;
   execution: ExecutionContext;
   url: URL;
 }
 
 export default {
-  async fetch(request: Request, env: Env, execution: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Cloudflare.ProductionEnv, execution: ExecutionContext): Promise<Response> {
     try {
       return await route({ request, env, execution, url: new URL(request.url) });
     }
@@ -32,24 +32,28 @@ export default {
       return json({ error: "internal_error" }, 500);
     }
   },
-} satisfies ExportedHandler<Env>;
+} satisfies ExportedHandler<Cloudflare.ProductionEnv>;
 
 async function route(context: RouteContext): Promise<Response> {
   const { request, url } = context;
   if (request.method === "GET" && url.pathname === "/health")
     return json({ status: "ok" });
 
-  if (request.method === "GET" && (url.pathname === "/admin" || url.pathname === "/admin/"))
-    return adminHTMLResponse();
+  if (request.method === "GET" && url.pathname === "/admin")
+    return Response.redirect(`${url.origin}/admin/`, 308);
 
-  if (request.method === "GET" && url.pathname === "/admin/app.js")
-    return adminScriptResponse();
+  if ((request.method === "GET" || request.method === "HEAD") && url.pathname.startsWith("/admin/"))
+    return serveAdminAsset(context);
 
   if (request.method === "GET" && url.pathname === "/favicon.ico")
     return new Response(null, { status: 204, headers: { "cache-control": "public, max-age=86400" } });
 
   if (request.method === "GET" && url.pathname === "/v1/admin/dashboard")
     return adminDashboard(context);
+
+  const adminReleaseMatch = url.pathname.match(/^\/v1\/admin\/releases\/([^/]+)$/);
+  if (request.method === "GET" && adminReleaseMatch)
+    return adminReleaseDetails(context, decodeURIComponent(adminReleaseMatch[1]));
 
   if (request.method === "GET" && url.pathname === "/version.json")
     return serveObject(context, channelObjectKey("stable"), "public, max-age=60");
@@ -83,6 +87,22 @@ async function route(context: RouteContext): Promise<Response> {
     return releaseStats(context, decodeURIComponent(statsMatch[1]));
 
   return json({ error: "not_found" }, 404);
+}
+
+async function serveAdminAsset(context: RouteContext): Promise<Response> {
+  const response = await context.env.ASSETS.fetch(context.request);
+  const headers = new Headers(response.headers);
+  headers.set("content-security-policy", "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
+  headers.set("referrer-policy", "no-referrer");
+  headers.set("x-content-type-options", "nosniff");
+  headers.set("x-frame-options", "DENY");
+  if (context.url.pathname === "/admin/")
+    headers.set("cache-control", "no-store");
+  return new Response(context.request.method === "HEAD" ? null : response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 async function serveObject(context: RouteContext, key: string, cacheControl: string): Promise<Response> {
@@ -228,6 +248,19 @@ async function adminDashboard(context: RouteContext): Promise<Response> {
   if (!await hasValidAdminToken(context.request, context.env.ADMIN_TOKEN))
     return json({ error: "unauthorized" }, 401);
   return json(await loadDashboard(context.env.UPDATE_DB, context.env.UPDATE_BUCKET));
+}
+
+async function adminReleaseDetails(context: RouteContext, version: string): Promise<Response> {
+  if (!isSafeVersion(version))
+    return json({ error: "invalid_version" }, 400);
+  if (!await hasValidAdminToken(context.request, context.env.ADMIN_TOKEN))
+    return json({ error: "unauthorized" }, 401);
+  return json(await loadReleaseDetails(
+    context.env.UPDATE_DB,
+    context.env.UPDATE_BUCKET,
+    version,
+    parseReleaseFilters(context.url),
+  ));
 }
 
 async function recordDownloadRequest(db: D1Database, version: string, asset: string, requestedBytes: number): Promise<void> {

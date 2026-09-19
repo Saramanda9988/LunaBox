@@ -13,6 +13,8 @@ interface DashboardSQLRow {
   download_verified?: number;
   install_success?: number;
   install_failed?: number;
+  devices?: number;
+  last_event_at?: string;
   failure_code?: string;
   failure_reason?: string;
   count?: number;
@@ -80,6 +82,8 @@ export interface DashboardData {
     install_failed: number;
     download_requests: number;
     requested_bytes: number;
+    devices: number;
+    last_event_at: string;
   }>;
   failures: Array<{ code: string; reason: string; count: number }>;
   releases: ReleaseObjectSummary[];
@@ -98,6 +102,41 @@ export async function loadDashboard(db: D1Database, bucket: R2Bucket): Promise<D
   const downloadByVersion = new Map(
     downloadResult.results.slice(1).map(row => [stringValue(row.version), row]),
   );
+  const versions: DashboardData["versions"] = versionResult.results.map(row => {
+    const version = stringValue(row.version);
+    const versionDownloads = downloadByVersion.get(version);
+    return {
+      version,
+      update_available: numberValue(row.update_available),
+      download_started: numberValue(row.download_started),
+      download_verified: numberValue(row.download_verified),
+      install_success: numberValue(row.install_success),
+      install_failed: numberValue(row.install_failed),
+      download_requests: numberValue(versionDownloads?.requests),
+      requested_bytes: numberValue(versionDownloads?.requested_bytes),
+      devices: numberValue(row.devices),
+      last_event_at: stringValue(row.last_event_at),
+    };
+  });
+  const versionsWithEvents = new Set(versions.map(row => row.version));
+  for (const release of releaseScan.releases) {
+    if (versionsWithEvents.has(release.version))
+      continue;
+    const versionDownloads = downloadByVersion.get(release.version);
+    versions.push({
+      version: release.version,
+      update_available: 0,
+      download_started: 0,
+      download_verified: 0,
+      install_success: 0,
+      install_failed: 0,
+      download_requests: numberValue(versionDownloads?.requests),
+      requested_bytes: numberValue(versionDownloads?.requested_bytes),
+      devices: 0,
+      last_event_at: release.uploaded_at,
+    });
+  }
+  versions.sort((left, right) => right.last_event_at.localeCompare(left.last_event_at));
 
   return {
     generated_at: new Date().toISOString(),
@@ -114,20 +153,7 @@ export async function loadDashboard(db: D1Database, bucket: R2Bucket): Promise<D
       date: stringValue(row.date),
       count: numberValue(row.count),
     })),
-    versions: versionResult.results.map(row => {
-      const version = stringValue(row.version);
-      const versionDownloads = downloadByVersion.get(version);
-      return {
-        version,
-        update_available: numberValue(row.update_available),
-        download_started: numberValue(row.download_started),
-        download_verified: numberValue(row.download_verified),
-        install_success: numberValue(row.install_success),
-        install_failed: numberValue(row.install_failed),
-        download_requests: numberValue(versionDownloads?.requests),
-        requested_bytes: numberValue(versionDownloads?.requested_bytes),
-      };
-    }),
+    versions,
     failures: failureResult.results.map(row => ({
       code: stringValue(row.failure_code) || "unknown",
       reason: stringValue(row.failure_reason),
@@ -146,7 +172,7 @@ async function loadDatabaseStats(db: D1Database): Promise<D1Result<DashboardSQLR
         COUNT(*) AS total_events,
         COALESCE(SUM(event_type = 'install_success'), 0) AS successful_updates,
         COALESCE(SUM(event_type = 'install_failed'), 0) AS failed_updates,
-        COUNT(DISTINCT CASE WHEN event_type = 'install_success' THEN installation_id END) AS updated_installations
+        COUNT(DISTINCT COALESCE(NULLIF(installation_id, ''), NULLIF(transaction_id, ''))) AS updated_installations
       FROM update_events
     `),
     db.prepare(`
@@ -165,7 +191,9 @@ async function loadDatabaseStats(db: D1Database): Promise<D1Result<DashboardSQLR
         COALESCE(SUM(event_type = 'download_started'), 0) AS download_started,
         COALESCE(SUM(event_type = 'download_verified'), 0) AS download_verified,
         COALESCE(SUM(event_type = 'install_success'), 0) AS install_success,
-        COALESCE(SUM(event_type = 'install_failed'), 0) AS install_failed
+        COALESCE(SUM(event_type = 'install_failed'), 0) AS install_failed,
+        COUNT(DISTINCT COALESCE(NULLIF(installation_id, ''), NULLIF(transaction_id, ''))) AS devices,
+        MAX(created_at) AS last_event_at
       FROM update_events
       GROUP BY target_version
       ORDER BY MAX(created_at) DESC
@@ -240,7 +268,7 @@ async function listReleaseVersions(bucket: R2Bucket): Promise<string[]> {
   return [...versions];
 }
 
-async function readReleaseManifest(bucket: R2Bucket, version: string): Promise<ReleaseObjectSummary | null> {
+export async function readReleaseManifest(bucket: R2Bucket, version: string): Promise<ReleaseObjectSummary | null> {
   const object = await bucket.get(`releases/${version}/manifest.json`);
   if (!object)
     return null;

@@ -4,24 +4,32 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --env test",
-    "deploy": "wrangler deploy --env production",
-    "test": "vitest run",
-    "types": "wrangler types --env production --env-file .dev.vars.example --include-runtime false",
-    "typecheck": "wrangler types --env production --env-file .dev.vars.example --include-runtime false --check && tsc --noEmit"
+    "build": "vite build",
+    "dev": "vite",
+    "dev:worker": "wrangler dev --env test",
+    "deploy": "pnpm build && wrangler deploy --env production",
+    "preview": "vite preview",
+    "test": "vitest run --config vitest.config.ts",
+    "types": "wrangler types --env-file .dev.vars.example --include-runtime false",
+    "typecheck": "wrangler types --env-file .dev.vars.example --include-runtime false --check && tsc --noEmit -p tsconfig.json && tsc --noEmit -p admin/tsconfig.json"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "5.20260817.1",
+    "@cloudflare/workers-types": "5.20260919.1",
     "@types/node": "^26.2.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
     "typescript": "7.0.2",
+    "vite": "^8.3.0",
     "vitest": "5.0.1",
-    "wrangler": "4.123.0"
+    "wrangler": "4.134.0"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "workerd"
-    ]
-  },
-  "packageManager": "pnpm@10.13.1"
+  "packageManager": "pnpm@10.13.1",
+  "dependencies": {
+    "@ant-design/icons": "^6.3.4",
+    "@ant-design/plots": "^2.6.8",
+    "antd": "^6.6.4",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  }
 }
