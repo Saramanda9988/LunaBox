@@ -6,7 +6,7 @@ import bangumiLogoUrl from "../assets/providers/bangumi-logo.png";
 import dlsiteLogoUrl from "../assets/providers/dlsite-logo.png";
 import erogamescapeLogoUrl from "../assets/providers/erogamescape-logo.png";
 import hikarinagiIconUrl from "../assets/providers/hikarinagi-icon.webp";
-import hikarinagiLogoUrl from "../assets/providers/hikarinagi-logo.png";
+import hikarinagiLogoUrl from "../assets/providers/hikarinagi-logo.svg";
 import steamLogoUrl from "../assets/providers/steam-logo.png";
 import touchgalLogoUrl from "../assets/providers/touchgal-logo.webp";
 import vndbLogoUrl from "../assets/providers/vndb-logo.svg";

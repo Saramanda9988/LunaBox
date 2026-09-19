@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
 import hikarinagiIconUrl from "../../assets/providers/hikarinagi-icon.webp";
-import hikarinagiLogoUrl from "../../assets/providers/hikarinagi-logo.png";
+import hikarinagiLogoUrl from "../../assets/providers/hikarinagi-logo.svg";
 import { useRemoteStatusSync } from "../../hooks/useRemoteStatusSync";
 import {
   disconnectHikarinagiAuthorization,
