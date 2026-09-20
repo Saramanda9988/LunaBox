@@ -115,11 +115,15 @@ func Apply(ctx context.Context, options Options) (*Result, error) {
 		return nil, fmt.Errorf("create update transaction: %w", err)
 	}
 	transactionID := uuid.NewString()
+	installationID, installationIDErr := loadOrCreateInstallationID()
+	if installationIDErr != nil {
+		applog.LogWarningf(ctx, "create update telemetry installation id: %v", installationIDErr)
+	}
 	// reportFailure reports an install failure with its stage code and normalized
 	// reason. The caller logs the raw error locally; nothing but the normalized
 	// reason leaves the machine.
 	reportFailure := func(stageCode string, reason string) {
-		failedEvent := newTelemetryEvent("install_failed", transactionID, options.CurrentVersion, manifest.Version, channelName, options.BuildMode)
+		failedEvent := newTelemetryEvent("install_failed", transactionID, installationID, options.CurrentVersion, manifest.Version, channelName, options.BuildMode)
 		failedEvent.FailureCode = stageCode
 		failedEvent.FailureReason = reason
 		_ = reportEvent(ctx, options.Config, options.UserAgent, manifest.EventURL, failedEvent)
@@ -139,7 +143,7 @@ func Apply(ctx context.Context, options Options) (*Result, error) {
 		return &Result{Started: false}, nil
 	}
 	_ = reportEvent(ctx, options.Config, options.UserAgent, manifest.EventURL,
-		newTelemetryEvent("update_available", transactionID, options.CurrentVersion, manifest.Version, channelName, options.BuildMode))
+		newTelemetryEvent("update_available", transactionID, installationID, options.CurrentVersion, manifest.Version, channelName, options.BuildMode))
 
 	downloader, _, err := downloadutils.NewDownloader(downloadutils.TransferConfig{
 		ProxyConfig: options.Config,
@@ -163,7 +167,7 @@ func Apply(ctx context.Context, options Options) (*Result, error) {
 	}
 
 	totalBytes := selectedArtifactTotal(selected)
-	downloadStarted := newTelemetryEvent("download_started", transactionID, options.CurrentVersion, manifest.Version, channelName, options.BuildMode)
+	downloadStarted := newTelemetryEvent("download_started", transactionID, installationID, options.CurrentVersion, manifest.Version, channelName, options.BuildMode)
 	downloadStarted.TransferredBytes = totalBytes
 	_ = reportEvent(ctx, options.Config, options.UserAgent, manifest.EventURL, downloadStarted)
 	var completedBytes int64
@@ -186,7 +190,7 @@ func Apply(ctx context.Context, options Options) (*Result, error) {
 		}
 		task.Files = append(task.Files, item.task)
 	}
-	downloadVerified := newTelemetryEvent("download_verified", transactionID, options.CurrentVersion, manifest.Version, channelName, options.BuildMode)
+	downloadVerified := newTelemetryEvent("download_verified", transactionID, installationID, options.CurrentVersion, manifest.Version, channelName, options.BuildMode)
 	downloadVerified.TransferredBytes = completedBytes
 	_ = reportEvent(ctx, options.Config, options.UserAgent, manifest.EventURL, downloadVerified)
 
@@ -222,6 +226,7 @@ func Apply(ctx context.Context, options Options) (*Result, error) {
 			EventURL:       manifest.EventURL,
 			WorkDir:        workDir,
 			TransactionID:  transactionID,
+			InstallationID: installationID,
 			CurrentVersion: options.CurrentVersion,
 			TargetVersion:  manifest.Version,
 			Channel:        channelName,

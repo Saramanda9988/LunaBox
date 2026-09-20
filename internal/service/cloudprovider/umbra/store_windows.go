@@ -51,14 +51,6 @@ func credentialDir(cfg Config) (string, error) {
 	return filepath.Join(configDir, "umbra", hex.EncodeToString(sum[:16])), nil
 }
 
-func installIDPath() (string, error) {
-	configDir, err := apputils.GetConfigDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(configDir, "umbra", "install-id"), nil
-}
-
 func newProtectedFile(path string) *protectedFile {
 	lock, _ := protectedFileLocks.LoadOrStore(path, &sync.Mutex{})
 	return &protectedFile{path: path, mu: lock.(*sync.Mutex)}

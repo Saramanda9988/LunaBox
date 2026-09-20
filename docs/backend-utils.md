@@ -23,6 +23,7 @@
 | 进程查询与退出监听 | `internal/utils/processutils` | `GetRunningProcesses`、`GetProcessPIDByName`、`WaitForProcessExitAsync` |
 | 活跃时长与焦点检测 | `internal/utils/timerutils` | `NewActiveTimeTracker`、`focusing.NewFocusTracker` |
 | 网络代理 | `internal/utils/proxyutils` | `ResolveProxy` |
+| 匿名安装标识 | `internal/utils/identityutils` | `LoadOrCreateInstallationID` |
 | SQL / 搜索 / 备份辅助 | `internal/utils` | `BuildPlaceholders`、`UniqueNonEmptyStrings`、`GenerateUserID`、`SearchViaTavily` |
 
 ---

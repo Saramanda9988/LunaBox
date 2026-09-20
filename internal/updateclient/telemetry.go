@@ -16,6 +16,7 @@ import (
 	"lunabox/internal/applog"
 	"lunabox/internal/utils/apputils"
 	"lunabox/internal/utils/downloadutils"
+	"lunabox/internal/utils/identityutils"
 	"lunabox/updater/updateutils"
 
 	"github.com/google/uuid"
@@ -26,6 +27,7 @@ const pendingUpdateFileName = "pending-update.json"
 type telemetryEvent struct {
 	EventID          string `json:"event_id"`
 	TransactionID    string `json:"transaction_id,omitempty"`
+	InstallationID   string `json:"installation_id,omitempty"`
 	EventType        string `json:"event_type"`
 	CurrentVersion   string `json:"current_version,omitempty"`
 	TargetVersion    string `json:"target_version"`
@@ -46,16 +48,18 @@ type pendingUpdate struct {
 	EventURL       string `json:"event_url"`
 	WorkDir        string `json:"work_dir"`
 	TransactionID  string `json:"transaction_id"`
+	InstallationID string `json:"installation_id,omitempty"`
 	CurrentVersion string `json:"current_version"`
 	TargetVersion  string `json:"target_version"`
 	Channel        string `json:"channel"`
 	BuildMode      string `json:"build_mode"`
 }
 
-func newTelemetryEvent(eventType string, transactionID string, currentVersion string, targetVersion string, channel string, buildMode string) telemetryEvent {
+func newTelemetryEvent(eventType string, transactionID string, installationID string, currentVersion string, targetVersion string, channel string, buildMode string) telemetryEvent {
 	return telemetryEvent{
 		EventID:        uuid.NewString(),
 		TransactionID:  transactionID,
+		InstallationID: installationID,
 		EventType:      eventType,
 		CurrentVersion: currentVersion,
 		TargetVersion:  targetVersion,
@@ -181,7 +185,11 @@ func ReportPendingResult(ctx context.Context, config *appconf.AppConfig, userAge
 	if result.Warning != "" {
 		applog.LogWarningf(ctx, "update commit warning: %s", result.Warning)
 	}
-	event := newTelemetryEvent(eventType, state.TransactionID, state.CurrentVersion, state.TargetVersion, state.Channel, state.BuildMode)
+	installationID := state.InstallationID
+	if installationID == "" {
+		installationID, _ = loadOrCreateInstallationID()
+	}
+	event := newTelemetryEvent(eventType, state.TransactionID, installationID, state.CurrentVersion, state.TargetVersion, state.Channel, state.BuildMode)
 	event.EventID = state.EventID
 	event.FailureCode = failureCode
 	event.FailureReason = failureReason
@@ -198,6 +206,10 @@ func pendingUpdatePath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(dir, pendingUpdateFileName), nil
+}
+
+func loadOrCreateInstallationID() (string, error) {
+	return identityutils.LoadOrCreateInstallationID()
 }
 
 func isUpdateWorkDir(workDir string) bool {

@@ -13,6 +13,7 @@ import (
 
 	umbrsdk "github.com/Umbrae-Labs/umbra-sdk/umbra-go"
 	"lunabox/internal/utils/httputils"
+	"lunabox/internal/utils/identityutils"
 	"lunabox/internal/utils/proxyutils"
 )
 
@@ -198,13 +199,13 @@ func Authenticate(ctx context.Context, cfg Config, appVersion string, opener Bro
 
 	var registration *umbrsdk.DeviceRegistrationOptions
 	if needsRegistration {
-		installPath, err := installIDPath()
+		installationID, err := identityutils.LoadOrCreateInstallationID()
 		if err != nil {
-			return fmt.Errorf("获取 Umbra install ID 路径失败: %w", err)
+			return fmt.Errorf("获取 LunaBox 安装标识失败: %w", err)
 		}
 		device, err := umbrsdk.DetectDeviceMetadata(umbrsdk.DeviceMetadataOptions{
-			AppVersion:    appVersion,
-			InstallIDPath: installPath,
+			AppVersion: appVersion,
+			InstallID:  installationID,
 		})
 		if err != nil {
 			return fmt.Errorf("检测 Umbra 设备信息失败: %w", err)

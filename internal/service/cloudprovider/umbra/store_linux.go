@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -31,23 +30,4 @@ func credentialDir(cfg Config) (string, error) {
 	identity := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/") + "\x00" + strings.TrimSpace(cfg.ClientID)
 	sum := sha256.Sum256([]byte(identity))
 	return filepath.Join(configDir, "umbra", hex.EncodeToString(sum[:16])), nil
-}
-
-func installIDPath() (string, error) {
-	configDir, err := apputils.GetConfigDir()
-	if err != nil {
-		return "", err
-	}
-	dir := filepath.Join(configDir, "umbra")
-	if err := ensurePrivateDir(dir); err != nil {
-		return "", err
-	}
-	return filepath.Join(dir, "install-id"), nil
-}
-
-func ensurePrivateDir(path string) error {
-	if err := os.MkdirAll(path, 0o700); err != nil {
-		return err
-	}
-	return os.Chmod(path, 0o700)
 }
