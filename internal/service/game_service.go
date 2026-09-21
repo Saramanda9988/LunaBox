@@ -44,8 +44,10 @@ type GameService struct {
 	emitEvent          func(string, ...interface{})
 	imageTaskStarter   func([]CoverImageDownloadItem) string
 	coverDownloadLocks sync.Map
+	idMapperMu         sync.Mutex
 	idMapper           *idmapper.Mapper
 	idMapperErr        error
+	idMapperLoaded     bool
 }
 
 type CoverImageDownloadItem struct {
@@ -73,12 +75,9 @@ func (s metadataSearchSource) fetchCandidates(name string) ([]metadata.MetadataR
 
 func NewGameService() *GameService {
 	runtime := wailsruntime.Unavailable()
-	mapper, mapperErr := idmapper.LoadEmbedded()
 	return &GameService{
-		runtime:     runtime,
-		emitEvent:   func(name string, data ...interface{}) { runtime.Emit(name, data...) },
-		idMapper:    mapper,
-		idMapperErr: mapperErr,
+		runtime:   runtime,
+		emitEvent: func(name string, data ...interface{}) { runtime.Emit(name, data...) },
 	}
 }
 
@@ -122,8 +121,21 @@ func (s *GameService) SetImageDownloadTaskStarter(starter func([]CoverImageDownl
 
 //wails:ignore
 func (s *GameService) SetGameIDMapper(mapper *idmapper.Mapper) {
+	s.idMapperMu.Lock()
+	defer s.idMapperMu.Unlock()
 	s.idMapper = mapper
 	s.idMapperErr = nil
+	s.idMapperLoaded = true
+}
+
+func (s *GameService) getGameIDMapper() (*idmapper.Mapper, error) {
+	s.idMapperMu.Lock()
+	defer s.idMapperMu.Unlock()
+	if !s.idMapperLoaded {
+		s.idMapper, s.idMapperErr = idmapper.LoadEmbedded()
+		s.idMapperLoaded = true
+	}
+	return s.idMapper, s.idMapperErr
 }
 
 //wails:ignore

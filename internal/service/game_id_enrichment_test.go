@@ -2,12 +2,54 @@ package service
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"lunabox/internal/appconf"
 	"lunabox/internal/common/enums"
 	"lunabox/internal/service/gamehelper/idmapper"
 )
+
+func TestGameIDMapperLoadsOnDemand(t *testing.T) {
+	svc := NewGameService()
+	if svc.idMapperLoaded || svc.idMapper != nil {
+		t.Fatal("constructor eagerly loaded the mapping database")
+	}
+	svc.Init(context.Background(), setupImportServiceTestDB(t), &appconf.AppConfig{})
+	preview, err := svc.PreviewLegacyGameMetadataSourceIDs()
+	if err != nil || len(preview.Items) != 0 {
+		t.Fatalf("empty library preview = %+v, %v", preview, err)
+	}
+	if svc.idMapperLoaded {
+		t.Fatal("empty library loaded the mapping database")
+	}
+
+	var callers sync.WaitGroup
+	results := make(chan *idmapper.Mapper, 16)
+	for range 16 {
+		callers.Add(1)
+		go func() {
+			defer callers.Done()
+			mapper, loadErr := svc.getGameIDMapper()
+			if loadErr != nil {
+				t.Errorf("load mapper: %v", loadErr)
+			}
+			results <- mapper
+		}()
+	}
+	callers.Wait()
+	close(results)
+	for mapper := range results {
+		if mapper == nil || mapper != svc.idMapper {
+			t.Fatal("concurrent callers did not share the same mapper")
+		}
+	}
+	fixture := idmapper.New([]idmapper.IDs{{VNDBID: 1}})
+	svc.SetGameIDMapper(fixture)
+	if got, err := svc.getGameIDMapper(); err != nil || got != fixture {
+		t.Fatalf("injected mapper = %p, %v; want %p", got, err, fixture)
+	}
+}
 
 func TestPreviewAndEnrichLegacyGameMetadataSourceIDs(t *testing.T) {
 	db := setupImportServiceTestDB(t)

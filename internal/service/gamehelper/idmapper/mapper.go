@@ -30,10 +30,11 @@ type IDs struct {
 
 // Mapper keeps the embedded SQLite mapping in memory for fast batch lookups.
 type Mapper struct {
-	byVNDB       map[int64]IDs
-	byBangumi    map[int64]IDs
-	bySteam      map[int64]IDs
-	byHikarinagi map[int64]IDs
+	records      []IDs
+	byVNDB       map[int64]int
+	byBangumi    map[int64]int
+	bySteam      map[int64]int
+	byHikarinagi map[int64]int
 }
 
 var (
@@ -52,14 +53,32 @@ func LoadEmbedded() (*Mapper, error) {
 
 // New creates an in-memory mapper. It is primarily useful for tests.
 func New(records []IDs) *Mapper {
-	mapper := &Mapper{
-		byVNDB:       make(map[int64]IDs, len(records)),
-		byBangumi:    make(map[int64]IDs, len(records)),
-		bySteam:      make(map[int64]IDs, len(records)),
-		byHikarinagi: make(map[int64]IDs, len(records)),
-	}
+	// Keep one immutable copy of each record. Each source index only stores
+	// its position, and reserves space for IDs actually present in that source.
+	var vndbCount, bangumiCount, steamCount, hikarinagiCount int
 	for _, record := range records {
-		mapper.add(record)
+		if record.VNDBID > 0 {
+			vndbCount++
+		}
+		if record.BangumiID > 0 {
+			bangumiCount++
+		}
+		if record.SteamID > 0 {
+			steamCount++
+		}
+		if record.HikarinagiID > 0 {
+			hikarinagiCount++
+		}
+	}
+	mapper := &Mapper{
+		records:      append([]IDs(nil), records...),
+		byVNDB:       make(map[int64]int, vndbCount),
+		byBangumi:    make(map[int64]int, bangumiCount),
+		bySteam:      make(map[int64]int, steamCount),
+		byHikarinagi: make(map[int64]int, hikarinagiCount),
+	}
+	for index, record := range mapper.records {
+		mapper.add(record, index)
 	}
 	return mapper
 }
@@ -75,22 +94,22 @@ func (m *Mapper) Resolve(source enums.SourceType, sourceID string) (IDs, bool) {
 		return IDs{}, false
 	}
 
+	var index int
+	var found bool
 	switch source {
 	case enums.VNDB:
-		result, found := m.byVNDB[numericID]
-		return result, found
+		index, found = m.byVNDB[numericID]
 	case enums.Bangumi:
-		result, found := m.byBangumi[numericID]
-		return result, found
+		index, found = m.byBangumi[numericID]
 	case enums.Steam:
-		result, found := m.bySteam[numericID]
-		return result, found
+		index, found = m.bySteam[numericID]
 	case enums.Hikarinagi:
-		result, found := m.byHikarinagi[numericID]
-		return result, found
-	default:
+		index, found = m.byHikarinagi[numericID]
+	}
+	if !found {
 		return IDs{}, false
 	}
+	return m.records[index], true
 }
 
 func loadEmbeddedDatabase() (*Mapper, error) {
@@ -157,18 +176,18 @@ func loadEmbeddedDatabase() (*Mapper, error) {
 	return New(records), nil
 }
 
-func (m *Mapper) add(record IDs) {
+func (m *Mapper) add(record IDs, index int) {
 	if record.VNDBID > 0 {
-		m.byVNDB[record.VNDBID] = record
+		m.byVNDB[record.VNDBID] = index
 	}
 	if record.BangumiID > 0 {
-		m.byBangumi[record.BangumiID] = record
+		m.byBangumi[record.BangumiID] = index
 	}
 	if record.SteamID > 0 {
-		m.bySteam[record.SteamID] = record
+		m.bySteam[record.SteamID] = index
 	}
 	if record.HikarinagiID > 0 {
-		m.byHikarinagi[record.HikarinagiID] = record
+		m.byHikarinagi[record.HikarinagiID] = index
 	}
 }
 

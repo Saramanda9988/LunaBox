@@ -124,16 +124,19 @@ func (s *GameService) EnrichLegacyGameMetadataSourceIDs() (GameIDEnrichmentResul
 // without modifying the user's library.
 func (s *GameService) PreviewLegacyGameMetadataSourceIDs() (GameIDEnrichmentPreview, error) {
 	preview := GameIDEnrichmentPreview{Items: []GameIDEnrichmentPreviewItem{}}
-	if s.idMapperErr != nil {
-		return preview, fmt.Errorf("加载游戏 ID 映射库失败: %w", s.idMapperErr)
-	}
-	if s.idMapper == nil {
-		return preview, fmt.Errorf("游戏 ID 映射库未初始化")
-	}
-
 	candidates, err := s.listGameIDEnrichmentCandidates()
 	if err != nil {
 		return preview, err
+	}
+	if len(candidates) == 0 {
+		return preview, nil
+	}
+	mapper, err := s.getGameIDMapper()
+	if err != nil {
+		return preview, fmt.Errorf("加载游戏 ID 映射库失败: %w", err)
+	}
+	if mapper == nil {
+		return preview, fmt.Errorf("游戏 ID 映射库未初始化")
 	}
 	preview.ScannedGames = len(candidates)
 	preview.Items = make([]GameIDEnrichmentPreviewItem, 0, len(candidates))
@@ -147,7 +150,7 @@ func (s *GameService) PreviewLegacyGameMetadataSourceIDs() (GameIDEnrichmentPrev
 			AddedSources:    []GameIDEnrichmentSource{},
 		}
 
-		mapping, found := s.idMapper.Resolve(candidate.defaultSource, candidate.defaultID)
+		mapping, found := mapper.Resolve(candidate.defaultSource, candidate.defaultID)
 		if !found {
 			item.Reason = "no_mapping"
 			preview.UnchangedGames++
