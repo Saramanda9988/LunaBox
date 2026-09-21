@@ -2,6 +2,9 @@ packages:
   - .
   - packages/*
 
+minimumReleaseAgeExclude:
+  - '@wailsio/runtime@3.0.0-beta.24'
+
 allowBuilds:
   '@swc/core': true
   esbuild: true
