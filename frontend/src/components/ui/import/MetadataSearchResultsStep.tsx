@@ -158,7 +158,6 @@ export function MetadataSearchResultsStep({
                           }
                           fallbackSrc={item.Game.cover_source_url}
                           alt={item.Game.name}
-                          isNSFW={item.Game.is_nsfw}
                           className="h-full w-full"
                           imageClassName="h-full w-full object-cover"
                         />

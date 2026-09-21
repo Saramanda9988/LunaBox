@@ -198,7 +198,6 @@ export function HomeGameRailPanel({
                               src={game.cover_url || game.cover_source_url}
                               fallbackSrc={game.cover_source_url}
                               alt={game.name}
-                              isNSFW={game.is_nsfw}
                               className="h-full w-full rounded-[0.65rem]"
                               imageClassName="h-full w-full object-cover"
                             />
