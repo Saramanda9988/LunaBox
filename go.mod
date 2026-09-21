@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.6
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.6
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.97.3
+	github.com/cavaliergopher/grab/v3 v3.0.1
 	github.com/duckdb/duckdb-go/v2 v2.5.6
 	github.com/gen2brain/webp v0.5.5
 	github.com/google/uuid v1.6.0
@@ -18,7 +19,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.48
 	github.com/spf13/cobra v1.10.2
 	github.com/syndtr/goleveldb v1.0.0
-	github.com/wailsapp/wails/v3 v3.0.0-beta.5
+	github.com/wailsapp/wails/v3 v3.0.0-beta.24
 	github.com/zeebo/blake3 v0.2.4
 	golang.org/x/image v0.45.0
 	golang.org/x/mod v0.41.0
@@ -32,20 +33,6 @@ replace lunabox/updater => ./updater
 
 require (
 	github.com/adrg/xdg v0.5.3 // indirect
-	github.com/clipperhouse/stringish v0.1.1 // indirect
-	github.com/coder/websocket v1.8.14 // indirect
-	github.com/duckdb/duckdb-go-bindings/lib/darwin-amd64 v0.3.5 // indirect
-	github.com/duckdb/duckdb-go-bindings/lib/darwin-arm64 v0.3.5 // indirect
-	github.com/duckdb/duckdb-go-bindings/lib/linux-amd64 v0.3.5 // indirect
-	github.com/duckdb/duckdb-go-bindings/lib/linux-arm64 v0.3.5 // indirect
-	github.com/duckdb/duckdb-go-bindings/lib/windows-amd64 v0.3.5 // indirect
-	github.com/ebitengine/purego v0.8.3 // indirect
-	github.com/klauspost/compress v1.18.4 // indirect
-	github.com/onsi/gomega v1.34.1 // indirect
-	github.com/tetratelabs/wazero v1.9.0 // indirect
-)
-
-require (
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/apache/arrow-go/v18 v18.5.1 // indirect
@@ -68,11 +55,18 @@ require (
 	github.com/bodgit/sevenzip v1.6.1 // indirect
 	github.com/bodgit/windows v1.0.1 // indirect
 	github.com/cavaliergopher/cpio v1.0.1 // indirect
-	github.com/cavaliergopher/grab/v3 v3.0.1
 	github.com/cavaliergopher/rpm v1.3.0 // indirect
+	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.4.0 // indirect
+	github.com/coder/websocket v1.8.14 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/duckdb/duckdb-go-bindings v0.3.5 // indirect
+	github.com/duckdb/duckdb-go-bindings/lib/darwin-amd64 v0.3.5 // indirect
+	github.com/duckdb/duckdb-go-bindings/lib/darwin-arm64 v0.3.5 // indirect
+	github.com/duckdb/duckdb-go-bindings/lib/linux-amd64 v0.3.5 // indirect
+	github.com/duckdb/duckdb-go-bindings/lib/linux-arm64 v0.3.5 // indirect
+	github.com/duckdb/duckdb-go-bindings/lib/windows-amd64 v0.3.5 // indirect
+	github.com/ebitengine/purego v0.8.3 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
@@ -81,17 +75,19 @@ require (
 	github.com/google/flatbuffers v25.12.19+incompatible // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/jchv/go-winloader v0.0.0-20250406163304-c1995be93bd1 // indirect
 	github.com/kdomanski/iso9660 v0.4.0 // indirect
+	github.com/klauspost/compress v1.18.4 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/nwaples/rardecode/v2 v2.2.2 // indirect
+	github.com/onsi/gomega v1.34.1 // indirect
 	github.com/peterebden/ar v0.0.0-20241106141004-20dc11b778e8 // indirect
 	github.com/pierrec/lz4/v4 v4.1.25 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/sshaman1101/dcompress v0.0.0-20200109162717-50436a6332de // indirect
+	github.com/tetratelabs/wazero v1.9.0 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect

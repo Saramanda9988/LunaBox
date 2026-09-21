@@ -27,7 +27,7 @@ tasks:
             Remove-Item -LiteralPath $resourceFile -Force -ErrorAction SilentlyContinue
           }'
         platforms: [windows]
-      - cmd: go build -buildvcs=false -o "{{.BIN_DIR}}/{{.APP_NAME}}{{exeExt}}" .
+      - cmd: go build -tags private_mac_apis -buildvcs=false -o "{{.BIN_DIR}}/{{.APP_NAME}}{{exeExt}}" .
         platforms: [darwin]
       - cmd: ./scripts/patch-wails-linux-tray.sh
         platforms: [linux]

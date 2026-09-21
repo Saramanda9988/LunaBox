@@ -41,7 +41,7 @@
 
 开发、绑定生成和打包流程都会调用 `scripts/patch-wails-linux-tray.sh`。该脚本除了托盘修复，还会让 amd64 GTK4 构建保留 WebKit 的默认 GPU 渲染路径，并在创建 WebView 时，通过 WebKitGTK 2.42 起提供的公开 feature API 关闭 `PreferPageRenderingUpdatesNear60FPS`。直接使用 `go build` 前需要手动运行该脚本；设置 `LUNABOX_WEBKIT_PREFER_60FPS=1` 可以保留引擎默认偏好以便对比。
 
-Wails beta.5 的 `application_linux.go` 在包初始化时检测 NVIDIA，并自动设置 `WEBKIT_DISABLE_DMABUF_RENDERER=1`。本机独立引擎测试确认该值会使 `webkit://gpu` 的硬件加速策略变成 `never`，即使 API 请求 `Always`。LunaBox 补丁在 amd64 上跳过这项自动禁用，用户显式设置的环境变量仍然有效；arm64 保留原有兼容措施。若 NVIDIA 环境出现白屏或驱动问题，可用 `WEBKIT_DISABLE_DMABUF_RENDERER=1` 恢复上游兼容行为。补丁需要重新构建并重启应用后生效，不能改变已经启动的 WebKit 子进程。
+Wails beta.24 的 `application_linux.go` 在包初始化时检测 NVIDIA，并自动设置 `WEBKIT_DISABLE_DMABUF_RENDERER=1`。本机独立引擎测试确认该值会使 `webkit://gpu` 的硬件加速策略变成 `never`，即使 API 请求 `Always`。LunaBox 补丁在 amd64 上跳过这项自动禁用，用户显式设置的环境变量仍然有效；arm64 保留原有兼容措施。若 NVIDIA 环境出现白屏或驱动问题，可用 `WEBKIT_DISABLE_DMABUF_RENDERER=1` 恢复上游兼容行为。补丁需要重新构建并重启应用后生效，不能改变已经启动的 WebKit 子进程。
 
 2026-09-13 本机 WebKitGTK 2.52.5 对比：禁用 DMA-BUF 时策略为 `never`；重新启用后为 `always`，渲染器为 `DMABuf (Hardware, Shared Memory)`，渲染进程使用 NVIDIA GBM 和 `GPU (2 threads)`。项目时间线录制中的 `paint` 中位耗时约 80ms、最高约 120ms，是恢复 GPU 绘制的主要验证目标；尚未获得重启后的同场景录制，不能据此宣称应用性能改善幅度。
 
@@ -55,6 +55,10 @@ Wails beta.5 的 `application_linux.go` 在包初始化时检测 NVIDIA，并自
 
 参考：[Wails #6056（macOS 帧率偏好）](https://github.com/wailsapp/wails/issues/6056)、[WebKit DRM 同步实现](https://github.com/WebKit/WebKit/blob/main/Source/WebKit/UIProcess/glib/DisplayVBlankMonitorDRM.cpp)、[WebKit 回退计时器](https://github.com/WebKit/WebKit/blob/main/Source/WebKit/UIProcess/glib/DisplayVBlankMonitorTimer.cpp)。
 
-GPU 参考：[Wails beta.5 NVIDIA 自动禁用逻辑](https://github.com/wailsapp/wails/blob/v3.0.0-beta.5/v3/pkg/application/application_linux.go)、[WebKitGTK 2.48 的 GPU 绘制线程](https://webkitgtk.org/2025/04/08/webkitgtk-2.48.html)。
+GPU 参考：[Wails beta.24 NVIDIA 自动禁用逻辑](https://github.com/wailsapp/wails/blob/v3.0.0-beta.24/v3/pkg/application/application_linux.go)、[WebKitGTK 2.48 的 GPU 绘制线程](https://webkitgtk.org/2025/04/08/webkitgtk-2.48.html)。
 
 线程兼容参考：[WebKit 2.52 的主线程 GPU 绘制实现](https://github.com/WebKit/WebKit/blob/webkitglib/2.52/Source/WebCore/platform/graphics/skia/SkiaPaintingEngine.cpp)。升级 WebKit 或 NVIDIA 驱动后，应重新验证 GPU 报告、启动窗口关闭与应用退出，再评估是否恢复 GPU 工作线程。
+
+### macOS 透明窗口
+
+Wails beta.19 起将透明 WKWebView 使用的私有 WebKit API 放入 `private_mac_apis` 构建标签。LunaBox 的主窗口与启动窗口使用透明背景和玻璃效果，因此 macOS 开发构建与 DMG 构建均启用该标签，以保持原有外观。Mac App Store 审核场景应改用 Wails 的公共 API 模式，并重新检查窗口背景效果。

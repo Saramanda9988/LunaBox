@@ -17,13 +17,13 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "peerDependencies": {
-    "@wailsio/runtime": "3.0.0-beta.5"
+    "@wailsio/runtime": "3.0.0-beta.24"
   },
   "dependencies": {
     "@lunabox/desktop-shell-core": "workspace:*"
   },
   "devDependencies": {
-    "@wailsio/runtime": "3.0.0-beta.5",
+    "@wailsio/runtime": "3.0.0-beta.24",
     "@typescript/native": "npm:typescript@^7.0.2"
   }
 }

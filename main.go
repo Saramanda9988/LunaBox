@@ -865,7 +865,7 @@ func runGUI(
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 		Linux: application.LinuxOptions{
-			ProgramName: "io.github.saramanda9988.lunabox",
+			ApplicationID: applicationUniqueID,
 		},
 		Services:   applicationServices,
 		OnShutdown: shutdownApplication,

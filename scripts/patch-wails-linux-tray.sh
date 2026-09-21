@@ -105,9 +105,9 @@ changed = False
 # takes precedence; arm64 keeps the upstream workaround and LunaBox safe mode.
 changed |= replace_once(
     application_linux_go,
-    '''\t"regexp"
+    '''\t"path/filepath"
 ''',
-    '''\t"regexp"
+    '''\t"path/filepath"
 \t"runtime"
 ''',
 )
@@ -190,7 +190,7 @@ changed |= replace_once(
 changed |= replace_if_present(
     systemtray_go,
     '''\t// LunaBox patch: keep Linux tray menus host-rendered through StatusNotifierItem.Menu.
-\t// Wails v3 beta.5 OpenMenu is not implemented on Linux, so installing ShowMenu
+\t// Wails v3 OpenMenu is not implemented on Linux, so installing ShowMenu
 \t// as the default right-click handler eats the tray host's context-menu event.
 \tif s.rightClickHandler == nil && hasMenu && runtime.GOOS != "linux" {
 \t\ts.rightClickHandler = s.ShowMenu
@@ -198,7 +198,7 @@ changed |= replace_if_present(
 ''',
     '''\t// LunaBox patch: on Linux, leave ContextMenu unhandled so the tray host
 \t// falls back to StatusNotifierItem.Menu and renders the exported DBusMenu.
-\t// Wails v3 beta.5 installs ShowMenu by default, but OpenMenu is not
+\t// Wails v3 installs ShowMenu by default, but OpenMenu is not
 \t// implemented on Linux, which makes right-click look dead.
 \tif s.rightClickHandler == nil && hasMenu && runtime.GOOS != "linux" {
 \t\ts.rightClickHandler = s.ShowMenu
@@ -214,7 +214,7 @@ changed |= replace_if_present(
 ''',
     '''\t// LunaBox patch: on Linux, leave ContextMenu unhandled so the tray host
 \t// falls back to StatusNotifierItem.Menu and renders the exported DBusMenu.
-\t// Wails v3 beta.5 installs ShowMenu by default, but OpenMenu is not
+\t// Wails v3 installs ShowMenu by default, but OpenMenu is not
 \t// implemented on Linux, which makes right-click look dead.
 \tif s.rightClickHandler == nil && hasMenu && runtime.GOOS != "linux" {
 \t\ts.rightClickHandler = s.ShowMenu
@@ -230,7 +230,7 @@ changed |= replace_once(
 ''',
     '''\t// LunaBox patch: on Linux, leave ContextMenu unhandled so the tray host
 \t// falls back to StatusNotifierItem.Menu and renders the exported DBusMenu.
-\t// Wails v3 beta.5 installs ShowMenu by default, but OpenMenu is not
+\t// Wails v3 installs ShowMenu by default, but OpenMenu is not
 \t// implemented on Linux, which makes right-click look dead.
 \tif s.rightClickHandler == nil && hasMenu && runtime.GOOS != "linux" {
 \t\ts.rightClickHandler = s.ShowMenu
@@ -303,7 +303,7 @@ changed |= replace_if_present(
     '''func (s *linuxSystemTray) openMenu() {
 \t// LunaBox patch: Linux tray menu is opened by the tray host through
 \t// StatusNotifierItem.Menu and com.canonical.dbusmenu. There is no app-side
-\t// popup implementation in Wails v3 beta.5.
+\t// popup implementation in Wails v3.
 }
 ''',
     '''func (s *linuxSystemTray) openMenu() {

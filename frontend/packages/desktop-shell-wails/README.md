@@ -2,7 +2,7 @@
 
 Wails v3 adapter for `@lunabox/desktop-shell-react`.
 
-Depends on `@lunabox/desktop-shell-core` and Wails beta.5, with no React dependency.
+Depends on `@lunabox/desktop-shell-core` and Wails beta.24, with no React dependency.
 Vue and plain JavaScript applications can consume the same adapter.
 
 ```tsx

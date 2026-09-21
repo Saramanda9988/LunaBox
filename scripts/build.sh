@@ -491,7 +491,7 @@ GOOS=darwin GOARCH="$TARGET_ARCH" CGO_ENABLED=1 \
     CGO_CFLAGS="-mmacosx-version-min=12.0" \
     CGO_LDFLAGS="-mmacosx-version-min=12.0" \
     MACOSX_DEPLOYMENT_TARGET="12.0" \
-    go build -tags production -trimpath -buildvcs=false -ldflags "$LDFLAGS_INSTALLER" -o "$APP_BINARY" .
+    go build -tags "production,private_mac_apis" -trimpath -buildvcs=false -ldflags "$LDFLAGS_INSTALLER" -o "$APP_BINARY" .
 GOOS=darwin GOARCH="$TARGET_ARCH" CGO_ENABLED=1 \
     CGO_CFLAGS="-mmacosx-version-min=12.0" \
     CGO_LDFLAGS="-mmacosx-version-min=12.0" \
