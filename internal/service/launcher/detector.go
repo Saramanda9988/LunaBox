@@ -182,6 +182,10 @@ func IsLikelyHelperProcess(processName string) bool {
 		"rpcss.exe",
 		"svchost.exe",
 		"tabtip.exe",
+		"unitycrashhandler.exe",
+		"unitycrashhandler32.exe",
+		"unitycrashhandler64.exe",
+		"unitycrashhandl",
 		"xalia.exe":
 		return true
 	default:

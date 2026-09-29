@@ -140,3 +140,27 @@ func TestLinuxSuccessorCandidatesRejectProtonPythonWrapper(t *testing.T) {
 		t.Fatalf("expected Proton python wrapper to be rejected, got %+v", candidates)
 	}
 }
+
+func TestLinuxProcessCandidateRejectsSteamRuntimeHelper(t *testing.T) {
+	input := StagedProcessDetectionInput{
+		GameID:          "game",
+		Launcher:        LaunchedProcessInfo{PID: 100, Name: "steam"},
+		LauncherExeName: "steam",
+		LaunchDir:       "/home/u/.steam/steam/steamapps/common/Aokana",
+	}
+	candidates := []linuxProcessCandidate{
+		{
+			detail: processutils.ProcessDetails{
+				ProcessInfo: processutils.ProcessInfo{Name: "x86_64-linux-gn", PID: 201},
+				ExecutablePath: "/home/u/.local/share/Steam/ubuntu12_32/steam-runtime.old" +
+					"/usr/libexec/steam-runtime-tools-0/x86_64-linux-gnu/x86_64-linux-gnu",
+				CurrentDirectory: input.LaunchDir,
+			},
+			fromDirectory: true,
+		},
+	}
+
+	if proc, ok := pickLinuxProcessCandidate(candidates, input, "Steam game", nil); ok {
+		t.Fatalf("expected Steam runtime helper to be rejected, got %+v", proc)
+	}
+}

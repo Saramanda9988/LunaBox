@@ -393,9 +393,35 @@ func linuxIsLikelyHelperProcess(detail processutils.ProcessDetails) bool {
 	if IsLikelyHelperProcess(detail.Name) {
 		return true
 	}
+	if isLinuxSteamRuntimeHelperPath(detail.ExecutablePath) {
+		return true
+	}
 	name := strings.ToLower(strings.TrimSpace(detail.Name))
 	if name == "bash" || name == "sh" || name == "python" || strings.HasPrefix(name, "python") {
 		return linuxCommandLineContainsProton(detail.CommandLine)
+	}
+	return false
+}
+
+// isLinuxSteamRuntimeHelperPath reports executables that belong to Steam's
+// runtime tooling. Those helpers are short-lived and inherit the game's
+// working directory, so they must never be mistaken for the game process.
+func isLinuxSteamRuntimeHelperPath(path string) bool {
+	path = strings.ToLower(filepath.ToSlash(strings.TrimSpace(path)))
+	if path == "" {
+		return false
+	}
+	for _, marker := range []string{
+		"/steam-runtime",
+		"/steamlinuxruntime",
+		"/pressure-vessel/",
+		"/steam-runtime-tools-0/",
+		"/ubuntu12_32/",
+		"/ubuntu12_64/",
+	} {
+		if strings.Contains(path, marker) {
+			return true
+		}
 	}
 	return false
 }
