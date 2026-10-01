@@ -17,6 +17,7 @@ require (
 	github.com/labstack/gommon v0.4.2
 	github.com/mattn/go-runewidth v0.0.19
 	github.com/mattn/go-sqlite3 v1.14.48
+	github.com/natefinch/atomic v1.0.1
 	github.com/spf13/cobra v1.10.2
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/wailsapp/wails/v3 v3.0.0-beta.24

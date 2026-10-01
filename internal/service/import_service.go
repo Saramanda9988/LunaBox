@@ -245,14 +245,14 @@ func (s *ImportService) ImportFromYukiHubWithSelection(backupPath string, skipNo
 
 // =================== Playnite 导入功能 ====================
 
-// SelectJSONFile 选择要导入的 JSON 文件
+// SelectJSONFile 选择要导入的 Playnite ZIP 或旧版 JSON 文件
 func (s *ImportService) SelectJSONFile() (string, error) {
 	selection, err := s.runtime.OpenFile(wailsruntime.OpenDialogOptions{
-		Title: "选择 Playnite 导出的 JSON 文件",
+		Title: "选择 Playnite 导出的 ZIP 或 JSON 文件",
 		Filters: []wailsruntime.FileFilter{
 			{
-				DisplayName: "JSON 文件",
-				Pattern:     "*.json",
+				DisplayName: "Playnite 导出文件",
+				Pattern:     "*.zip;*.json",
 			},
 		},
 	})

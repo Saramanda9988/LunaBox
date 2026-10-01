@@ -77,7 +77,7 @@ function getImportConfigs(t: any): Record<ImportSource, ImportConfig> {
       title: t("gameImportModal.playnite.title"),
       icon: "i-mdi-application-import",
       iconSrc: playniteIconUrl,
-      fileType: "JSON",
+      fileType: "ZIP · JSON",
       fileDescription: t("gameImportModal.playnite.desc"),
       fileHint: t("gameImportModal.playnite.hint"),
       buttonText: t("gameImportModal.playnite.btn"),

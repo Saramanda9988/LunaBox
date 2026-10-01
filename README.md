@@ -170,6 +170,10 @@ Archive extraction support:
 
 - [7-Zip](https://www.7-zip.org/) - A free and open-source file archiver, a utility used to place groups of files within compressed containers known as "archives".
 
+Friendship links:
+
+- [LINUX DO](https://linux.do/)
+
 ## 🙌 Sponsors
 
 | [![SignPath](screenshot/signpath-icon.png)](https://about.signpath.io/product/open-source) | Free code signing on Windows provided by [SignPath.io](https://about.signpath.io/product/open-source), certificate by [SignPath Foundation](https://signpath.org/). |

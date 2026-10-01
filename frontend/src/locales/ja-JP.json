@@ -71,7 +71,7 @@
     "importPotatoVN": "PotatoVN からインポート",
     "importPotatoVNDesc": "PotatoVN が出力した ZIP ファイルをインポート",
     "importPlaynite": "Playnite からインポート",
-    "importPlayniteDesc": "Playnite が出力した JSON ファイルをインポート",
+    "importPlayniteDesc": "Playnite の ZIP または JSON ファイルをインポート",
     "importYukiHub": "YukiHub からインポート",
     "importYukiHubDesc": "YukiHub が出力した YKBAK バックアップをインポート",
     "importVnite": "Vnite からインポート",
@@ -312,9 +312,9 @@
   "gameImportModal": {
     "playnite": {
       "title": "Playnite からインポート",
-      "desc": "Playnite が出力した JSON ファイルを選択",
-      "hint": "LunaBox Exporter 拡張機能が生成したライブラリ JSON ファイルに対応",
-      "btn": "JSON ファイルを選択"
+      "desc": "Playnite の ZIP または旧形式の JSON を選択",
+      "hint": "ZIP にはゲームデータとカバー画像が含まれます",
+      "btn": "ZIP または JSON を選択"
     },
     "potatovn": {
       "title": "PotatoVN からインポート",

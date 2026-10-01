@@ -1,7 +1,9 @@
 package appconf
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	enums2 "lunabox/internal/common/enums"
 	"lunabox/internal/utils"
@@ -11,7 +13,16 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+
+	"github.com/natefinch/atomic"
 )
+
+const configBackupSuffix = ".bak"
+
+// configFileMu serializes configuration snapshots within this process. The
+// atomic package also protects the replace operation across processes.
+var configFileMu sync.Mutex
 
 var defaultMetadataSources = []string{
 	string(enums2.Bangumi),
@@ -21,13 +32,13 @@ var defaultMetadataSources = []string{
 }
 
 var allowedMetadataSourceSet = map[string]struct{}{
-	string(enums2.Bangumi):    {},
-	string(enums2.VNDB):       {},
-	string(enums2.Ymgal):      {},
-	string(enums2.Steam):      {},
-	string(enums2.DLsite):     {},
-	string(enums2.TouchGal):   {},
-	string(enums2.Hikarinagi): {},
+	string(enums2.Bangumi):      {},
+	string(enums2.VNDB):         {},
+	string(enums2.Ymgal):        {},
+	string(enums2.Steam):        {},
+	string(enums2.DLsite):       {},
+	string(enums2.TouchGal):     {},
+	string(enums2.Hikarinagi):   {},
 	string(enums2.ErogameScape): {},
 }
 
@@ -333,6 +344,8 @@ func LoadConfig() (*AppConfig, error) {
 		ShowSortFieldOnCover:        false,
 		BlurNSFWGameCovers:          true,
 	}
+	defaultConfig := *config
+	defaultConfig.MetadataSources = cloneStringSlice(config.MetadataSources)
 
 	// 获取配置文件路径
 	configPath, err := getConfigPath()
@@ -352,10 +365,37 @@ func LoadConfig() (*AppConfig, error) {
 		return config, err
 	}
 
-	// 解析配置
-	if err := json.Unmarshal(data, config); err != nil {
-		log.Printf("Failed to parse appconf file: %v", err)
-		return config, err
+	// 解析配置。旧版本直接覆盖目标文件，异常中断时可能留下空文件或
+	// 半截 JSON；此时尝试读取上一份完整快照，随后用新实现修复主文件。
+	recoveredFromBackup := false
+	primaryConfig := *config
+	primaryConfig.MetadataSources = cloneStringSlice(config.MetadataSources)
+	if err := json.Unmarshal(data, &primaryConfig); err != nil {
+		primaryErr := err
+		backupPath := configPath + configBackupSuffix
+		backupData, backupReadErr := os.ReadFile(backupPath)
+		if backupReadErr == nil {
+			backupConfig := *config
+			backupConfig.MetadataSources = cloneStringSlice(config.MetadataSources)
+			if backupErr := json.Unmarshal(backupData, &backupConfig); backupErr == nil {
+				*config = backupConfig
+				log.Printf("appconf is invalid (%v), recovered from %s", primaryErr, backupPath)
+				recoveredFromBackup = true
+			} else {
+				*config = defaultConfig
+				log.Printf("failed to parse appconf and its backup: primary=%v backup=%v; using defaults", primaryErr, backupErr)
+				recoveredFromBackup = true
+			}
+		} else {
+			*config = defaultConfig
+			log.Printf("failed to parse appconf file: %v; using defaults", primaryErr)
+			recoveredFromBackup = true
+		}
+	} else {
+		*config = primaryConfig
+		// Refresh the recovery snapshot once per application startup. SaveConfig
+		// keeps this snapshot stable during high-frequency state updates.
+		writeConfigBackup(configPath, data)
 	}
 	config.MetadataSources = normalizeMetadataSources(config.MetadataSources)
 	NormalizeMetadataCoverSources(config)
@@ -375,7 +415,10 @@ func LoadConfig() (*AppConfig, error) {
 	config.GameCardLayout = NormalizeGameCardLayout(config.GameCardLayout)
 	NormalizeBatchImportPreferences(config)
 
-	shouldSaveSanitizedConfig := SanitizeErogameScapeConfig(config)
+	shouldSaveSanitizedConfig := recoveredFromBackup
+	if SanitizeErogameScapeConfig(config) {
+		shouldSaveSanitizedConfig = true
+	}
 	if normalizedRetention := NormalizeLocalDBBackupRetention(config.LocalDBBackupRetention); config.LocalDBBackupRetention != normalizedRetention {
 		config.LocalDBBackupRetention = normalizedRetention
 		shouldSaveSanitizedConfig = true
@@ -452,6 +495,13 @@ func MigrateLegacyCompatibilityConfig(config *AppConfig) bool {
 }
 
 func SaveConfig(config *AppConfig) error {
+	if config == nil {
+		return fmt.Errorf("cannot save nil app config")
+	}
+
+	configFileMu.Lock()
+	defer configFileMu.Unlock()
+
 	configPath, err := getConfigPath()
 	if err != nil {
 		return err
@@ -479,7 +529,42 @@ func SaveConfig(config *AppConfig) error {
 		return err
 	}
 
-	return os.WriteFile(configPath, data, 0644)
+	// Keep one valid snapshot for recovery. Once the backup is valid, later
+	// saves skip this write and only replace the primary file.
+	ensureConfigBackup(configPath)
+
+	// atomic.WriteFile writes and fsyncs a sibling temporary file, then replaces
+	// the destination atomically. Windows uses MoveFileEx with replace and
+	// write-through flags, so a failed write cannot truncate appconf.json.
+	if err := atomic.WriteFile(configPath, bytes.NewReader(data)); err != nil {
+		return fmt.Errorf("write app config atomically: %w", err)
+	}
+	// A new installation or a recovered file has no previous snapshot. Create
+	// it after the primary write so the next save still has a recovery point.
+	ensureConfigBackup(configPath)
+	return nil
+}
+
+func ensureConfigBackup(configPath string) {
+	backupPath := configPath + configBackupSuffix
+	if backup, err := os.ReadFile(backupPath); err == nil && json.Valid(backup) {
+		return
+	}
+
+	previous, err := os.ReadFile(configPath)
+	if err != nil || !json.Valid(previous) {
+		return
+	}
+	writeConfigBackup(configPath, previous)
+}
+
+func writeConfigBackup(configPath string, data []byte) {
+	if !json.Valid(data) {
+		return
+	}
+	if err := atomic.WriteFile(configPath+configBackupSuffix, bytes.NewReader(data)); err != nil {
+		log.Printf("failed to create appconf backup: %v", err)
+	}
 }
 
 func IsBangumiStatusPushEnabled(config *AppConfig) bool {

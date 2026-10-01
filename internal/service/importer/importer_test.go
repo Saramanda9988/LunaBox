@@ -2,8 +2,12 @@ package importer
 
 import (
 	"archive/zip"
+	"bytes"
 	"database/sql"
 	"encoding/json"
+	"image"
+	"image/color"
+	"image/png"
 	"lunabox/internal/common/enums"
 	"lunabox/internal/common/vo"
 	"lunabox/internal/models"
@@ -11,8 +15,10 @@ import (
 	"lunabox/internal/models/potatovn"
 	"lunabox/internal/models/reinamanager"
 	"lunabox/internal/models/vnite"
+	"lunabox/internal/utils/imageutils"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -83,6 +89,95 @@ func TestPlayniteImportPreservesExporterFields(t *testing.T) {
 		committed[0].Source.Tags[0].Name != "Visual Novel" ||
 		committed[0].Source.Tags[1].Name != "Drama" {
 		t.Fatalf("unexpected imported tags: %+v", committed[0].Source.Tags)
+	}
+}
+
+func TestPlaynitePackageImportsCover(t *testing.T) {
+	const gameID = "playnite-package-cover-test"
+	var cover bytes.Buffer
+	img := image.NewRGBA(image.Rect(0, 0, 1, 1))
+	img.Set(0, 0, color.RGBA{R: 255, A: 255})
+	if err := png.Encode(&cover, img); err != nil {
+		t.Fatal(err)
+	}
+
+	gamesJSON, err := json.Marshal([]playnite.PlayniteGame{{
+		ID: gameID, Name: "Packaged Game", Path: `C:\\Games\\Packaged Game\\game.exe`,
+		CoverURL: "covers/" + gameID + ".png",
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	zipPath := filepath.Join(t.TempDir(), "playnite.zip")
+	zipFile, err := os.Create(zipPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	archive := zip.NewWriter(zipFile)
+	for name, contents := range map[string][]byte{
+		"games.json":                gamesJSON,
+		"covers/" + gameID + ".png": cover.Bytes(),
+	} {
+		entry, err := archive.Create(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := entry.Write(contents); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := archive.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := zipFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	var committed []ImportItem
+	deps := Dependencies{
+		ListGames: func() ([]models.Game, error) { return nil, nil },
+		AddItems: func(items []ImportItem) (ImportResult, error) {
+			committed = items
+			return ImportResult{Success: len(items)}, nil
+		},
+	}
+	importer := NewPlayniteImporter(deps)
+	previews, err := importer.Preview(zipPath)
+	if err != nil || len(previews) != 1 {
+		t.Fatalf("preview package: games=%d error=%v", len(previews), err)
+	}
+	result, err := importer.Import(zipPath, true, SamePathActionSkip)
+	if err != nil || result.Success != 1 || len(committed) != 1 {
+		t.Fatalf("import package: result=%+v items=%d error=%v", result, len(committed), err)
+	}
+	coverURL := committed[0].Source.Game.CoverURL
+	if !strings.HasPrefix(coverURL, "/local/covers/") {
+		t.Fatalf("cover was not stored locally: %q", coverURL)
+	}
+	coverDir, err := imageutils.GetCoverDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	storedCover := filepath.Join(coverDir, filepath.Base(coverURL))
+	t.Cleanup(func() { _ = os.Remove(storedCover) })
+	if _, err := os.Stat(storedCover); err != nil {
+		t.Fatalf("stored cover missing: %v", err)
+	}
+}
+
+func TestPlaynitePackageCoverEntriesStayInsideCovers(t *testing.T) {
+	for _, name := range []string{
+		"covers/../outside.png",
+		"covers/..\\outside.png",
+		"C:\\outside.png",
+		"covers/script.exe",
+	} {
+		if isPlayniteCoverEntry(name) {
+			t.Errorf("accepted invalid cover entry %q", name)
+		}
+	}
+	if !isPlayniteCoverEntry("covers/game.png") {
+		t.Fatal("rejected valid cover entry")
 	}
 }
 

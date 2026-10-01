@@ -272,7 +272,7 @@ export function ScanLibraryDirectoryWithOptions(libraryPath: string, options: vo
 }
 
 /**
- * SelectJSONFile 选择要导入的 JSON 文件
+ * SelectJSONFile 选择要导入的 Playnite ZIP 或旧版 JSON 文件
  */
 export function SelectJSONFile(): $CancellablePromise<string> {
     return $Call.ByID(2819581164);

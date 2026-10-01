@@ -71,7 +71,7 @@
     "importPotatoVN": "从 PotatoVN 导入",
     "importPotatoVNDesc": "导入 PotatoVN 导出的 ZIP 文件",
     "importPlaynite": "从 Playnite 导入",
-    "importPlayniteDesc": "导入 Playnite 导出的 JSON 文件",
+    "importPlayniteDesc": "导入 Playnite 导出的 ZIP 或 JSON 文件",
     "importYukiHub": "从 YukiHub 导入",
     "importYukiHubDesc": "导入 YukiHub 导出的 YKBAK 备份",
     "importVnite": "从 Vnite 导入",
@@ -312,9 +312,9 @@
   "gameImportModal": {
     "playnite": {
       "title": "从 Playnite 导入",
-      "desc": "选择 Playnite 导出的 JSON 文件",
-      "hint": "支持 LunaBox Exporter 扩展生成的游戏库 JSON 文件",
-      "btn": "选择 JSON 文件"
+      "desc": "选择 Playnite 导出的 ZIP 或旧版 JSON 文件",
+      "hint": "ZIP 包含游戏数据和封面图片",
+      "btn": "选择 ZIP 或 JSON 文件"
     },
     "potatovn": {
       "title": "从 PotatoVN 导入",

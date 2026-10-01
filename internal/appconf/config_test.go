@@ -1,7 +1,10 @@
 package appconf
 
 import (
+	"encoding/json"
 	enums2 "lunabox/internal/common/enums"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
@@ -257,5 +260,87 @@ func TestMigrateLegacyCompatibilityConfigKeepsWineFields(t *testing.T) {
 	}
 	if config.WineRunnerPath != "/opt/homebrew/bin/wine" || config.WinePrefix != "/Users/test/.wine" {
 		t.Fatalf("Wine config changed unexpectedly: %+v", config)
+	}
+}
+
+func TestLoadConfigRecoversFromAtomicBackup(t *testing.T) {
+	configDir := t.TempDir()
+	t.Setenv("LUNABOX_PORTABLE_ROOT", configDir)
+
+	config, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("create initial config: %v", err)
+	}
+	configPath := filepath.Join(configDir, "appconf.json")
+	config.Theme = "dark"
+	if err := SaveConfig(config); err != nil {
+		t.Fatalf("save dark config: %v", err)
+	}
+	if err := os.Remove(configPath + configBackupSuffix); err != nil {
+		t.Fatalf("remove initial backup: %v", err)
+	}
+	config.Language = "en"
+	if err := SaveConfig(config); err != nil {
+		t.Fatalf("save second config: %v", err)
+	}
+
+	if err := os.WriteFile(configPath, []byte{0}, 0o600); err != nil {
+		t.Fatalf("corrupt primary config: %v", err)
+	}
+
+	recovered, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("recover config: %v", err)
+	}
+	if recovered.Theme != "dark" {
+		t.Fatalf("expected backup theme to be recovered, got %q", recovered.Theme)
+	}
+	if recovered.Language != "zh-CN" {
+		t.Fatalf("expected previous valid snapshot, got language %q", recovered.Language)
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("read repaired config: %v", err)
+	}
+	var repaired AppConfig
+	if err := json.Unmarshal(data, &repaired); err != nil {
+		t.Fatalf("repaired config is invalid JSON: %v", err)
+	}
+
+	if err := os.Remove(configPath + configBackupSuffix); err != nil {
+		t.Fatalf("remove backup for fallback test: %v", err)
+	}
+	if err := os.WriteFile(configPath, []byte{0}, 0o600); err != nil {
+		t.Fatalf("corrupt config without backup: %v", err)
+	}
+	fresh, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("load defaults after unrecoverable config: %v", err)
+	}
+	if fresh.Theme != "light" || fresh.Language != "zh-CN" {
+		t.Fatalf("expected default config after unrecoverable corruption, got theme=%q language=%q", fresh.Theme, fresh.Language)
+	}
+}
+
+func TestEnsureConfigBackupKeepsExistingValidSnapshot(t *testing.T) {
+	configDir := t.TempDir()
+	configPath := filepath.Join(configDir, "appconf.json")
+	backupPath := configPath + configBackupSuffix
+	if err := os.WriteFile(configPath, []byte(`{"theme":"dark"}`), 0o600); err != nil {
+		t.Fatalf("write primary config: %v", err)
+	}
+	previousSnapshot := []byte(`{"theme":"light"}`)
+	if err := os.WriteFile(backupPath, previousSnapshot, 0o600); err != nil {
+		t.Fatalf("write backup config: %v", err)
+	}
+
+	ensureConfigBackup(configPath)
+	backup, err := os.ReadFile(backupPath)
+	if err != nil {
+		t.Fatalf("read backup config: %v", err)
+	}
+	if string(backup) != string(previousSnapshot) {
+		t.Fatalf("valid recovery snapshot was rewritten: got %s", backup)
 	}
 }
