@@ -72,6 +72,7 @@ type StartService struct {
 
 	activeSessions   map[string]*activePlaySession
 	activeSessionsMu sync.Mutex
+	setProcessMuted  func(uint32, bool) (bool, error)
 }
 
 type launchedProcess struct {
@@ -107,6 +108,7 @@ type activePlaySession struct {
 	audioMuted      bool
 	audioStateKnown bool
 	audioLastError  string
+	audioStopped    bool
 }
 
 func intPtr(value int) *int {
@@ -119,8 +121,9 @@ func boolPtr(value bool) *bool {
 
 func NewStartService() *StartService {
 	return &StartService{
-		activeSessions: make(map[string]*activePlaySession),
-		runtime:        wailsruntime.Unavailable(),
+		activeSessions:  make(map[string]*activePlaySession),
+		runtime:         wailsruntime.Unavailable(),
+		setProcessMuted: audioutils.SetProcessMuted,
 		// activeTimeTracker 将在 Init 时创建
 	}
 }
@@ -128,6 +131,9 @@ func NewStartService() *StartService {
 //wails:ignore
 func (s *StartService) Init(ctx context.Context, db *sql.DB, config *appconf.AppConfig) {
 	s.ctx = ctx
+	if s.setProcessMuted == nil {
+		s.setProcessMuted = audioutils.SetProcessMuted
+	}
 	// db 不再使用，但保留参数以保持与其他服务的接口一致性
 	s.config = config
 	// 初始化内部服务
@@ -618,6 +624,8 @@ func (s *StartService) waitForProcessExit(session *activePlaySession, processNam
 	select {
 	case <-exitChan:
 		applog.LogInfof(s.ctx, "Game process %s (PID %d) has exited", processName, processID)
+		// Restore audio before successor detection waits for another process.
+		s.restoreSessionAudio(session)
 		// 进程退出不一定是游戏结束：彩窗/启动器可能已把控制权交给了新进程
 		// （spawn 子进程后自退、同名 re-exec 等），先做一轮继任者检测。
 		if successor, ok := s.detectSuccessorProcess(session, processID, processName, handoff); ok {
@@ -704,7 +712,7 @@ func (s *StartService) finalizePlaySessionOnce(session *activePlaySession, reaso
 
 	close(session.done)
 	s.unregisterActiveSession(gameID, sessionID)
-	s.restoreSessionAudio(session)
+	s.stopSessionAudio(session)
 
 	// 确保停止追踪（无论如何都要执行）
 	activeSeconds := s.activeTimeTracker.StopTracking(gameID)
@@ -864,10 +872,10 @@ func (s *StartService) deleteShortOrCancelledSession(session *activePlaySession,
 	session.finalOnce.Do(func() {
 		close(session.done)
 		s.unregisterActiveSession(session.gameID, session.sessionID)
+		s.stopSessionAudio(session)
 		if err := s.sessionService.DeletePlaySession(session.sessionID); err != nil {
 			applog.LogErrorf(s.ctx, "Failed to delete cancelled play session %s: %v", session.sessionID, err)
 		}
-		s.restoreSessionAudio(session)
 		s.activeTimeTracker.StopTracking(session.gameID)
 		s.emitGameRuntimeIdle(session, reason)
 		s.requestHomeRefresh()
@@ -940,6 +948,10 @@ func (s *StartService) handleFocusUpdate(update timerutils.FocusUpdate) {
 
 	session.audioMu.Lock()
 	defer session.audioMu.Unlock()
+	if session.audioStopped {
+		s.restoreSessionAudioLocked(session)
+		return
+	}
 	select {
 	case <-session.done:
 		s.restoreSessionAudioLocked(session)
@@ -953,30 +965,37 @@ func (s *StartService) handleFocusUpdate(update timerutils.FocusUpdate) {
 	}
 
 	// 进程退出时，焦点追踪器可能会先发出一次“失去前台”通知。
-	// 这类通知只代表窗口消失，不应再为已经结束的进程设置静音状态。
+	// Windows 音频会话的生命周期可能晚于进程本身，因此仍需先尝试解除静音。
 	if !update.IsFocused && !processutils.IsProcessPresentByPID(update.ProcessID) {
 		if session.audioStateKnown && session.audioPID == update.ProcessID {
-			session.audioPID = 0
-			session.audioMuted = false
-			session.audioStateKnown = false
-			session.audioLastError = ""
+			s.restoreSessionAudioLocked(session)
 		}
 		return
 	}
 
 	shouldMute := !update.IsFocused
-	if session.audioStateKnown && session.audioPID == update.ProcessID && session.audioMuted == shouldMute {
+	if session.audioStateKnown && session.audioPID == update.ProcessID && session.audioMuted == shouldMute && session.audioLastError == "" {
 		return
 	}
 
 	if session.audioStateKnown && session.audioPID != update.ProcessID {
-		if session.audioMuted {
-			_, _ = audioutils.SetProcessMuted(session.audioPID, false)
+		s.restoreSessionAudioLocked(session)
+		if session.audioStateKnown {
+			// Keep the old PID until restoration succeeds so it remains recoverable.
+			return
 		}
-		session.audioStateKnown = false
 	}
 
-	matched, err := audioutils.SetProcessMuted(update.ProcessID, shouldMute)
+	matched, err := s.setProcessMuted(update.ProcessID, shouldMute)
+	// Enumeration may change some sessions before another session fails.
+	// Record those changes even when the overall operation returns an error.
+	if matched {
+		session.audioPID = update.ProcessID
+		// An error can follow successful changes to only some sessions. Keep the
+		// state marked muted until a later retry proves that every session changed.
+		session.audioMuted = shouldMute || err != nil
+		session.audioStateKnown = true
+	}
 	if err != nil {
 		s.logAudioErrorLocked(session, update.ProcessID, err)
 		return
@@ -1000,17 +1019,38 @@ func (s *StartService) restoreSessionAudio(session *activePlaySession) {
 	s.restoreSessionAudioLocked(session)
 }
 
+// stopSessionAudio prevents in-flight focus callbacks from muting again during
+// final cleanup. Brief retries cover transient failures while sessions exist.
+func (s *StartService) stopSessionAudio(session *activePlaySession) {
+	if session == nil || !audioutils.IsProcessMuteSupported() {
+		return
+	}
+	session.audioMu.Lock()
+	defer session.audioMu.Unlock()
+	session.audioStopped = true
+	for attempt := 0; attempt < 3; attempt++ {
+		s.restoreSessionAudioLocked(session)
+		if !session.audioStateKnown {
+			return
+		}
+		if attempt < 2 {
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+}
+
 func (s *StartService) restoreSessionAudioLocked(session *activePlaySession) {
 	if !session.audioStateKnown {
 		return
 	}
 	if session.audioMuted {
-		matched, err := audioutils.SetProcessMuted(session.audioPID, false)
+		matched, err := s.setProcessMuted(session.audioPID, false)
 		if err != nil {
 			s.logAudioErrorLocked(session, session.audioPID, err)
 			return
 		}
 		if !matched {
+			s.logAudioErrorLocked(session, session.audioPID, fmt.Errorf("no audio session found while restoring process audio"))
 			return
 		}
 	}
@@ -1060,12 +1100,12 @@ func (s *StartService) updateGameProcessName(gameID string, processName string) 
 func (s *StartService) CleanupPendingSessions() {
 	activeSessions := s.activeSessionSnapshot()
 	activeDurations := make(map[string]int)
+	for _, session := range activeSessions {
+		s.stopSessionAudio(session)
+	}
 
 	// 停止所有活跃时间追踪
 	if s.activeTimeTracker != nil {
-		for _, session := range activeSessions {
-			s.restoreSessionAudio(session)
-		}
 		activeDurations = s.activeTimeTracker.StopAllTracking()
 		applog.LogInfof(s.ctx, "Stopped all active time tracking")
 	}

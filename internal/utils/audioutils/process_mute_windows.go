@@ -12,9 +12,11 @@ import (
 )
 
 const (
-	clsctxAll   = 0x17
-	eRender     = 0
-	eMultimedia = 1
+	clsctxAll            = 0x17
+	eRender              = 0
+	eMultimedia          = 1
+	deviceStateActive    = 1
+	deviceStateUnplugged = 8
 )
 
 var (
@@ -54,6 +56,16 @@ type iMMDeviceEnumeratorVtbl struct {
 
 type iMMDevice struct {
 	vtbl *iMMDeviceVtbl
+}
+
+type iMMDeviceCollection struct {
+	vtbl *iMMDeviceCollectionVtbl
+}
+
+type iMMDeviceCollectionVtbl struct {
+	iUnknownVtbl
+	getCount uintptr
+	item     uintptr
 }
 
 type iMMDeviceVtbl struct {
@@ -127,9 +139,11 @@ func IsProcessMuteSupported() bool {
 	return true
 }
 
-// SetProcessMuted changes every audio session associated with processID on the
-// default multimedia output device. matched is false while the process has not
-// created an audio session yet, allowing callers to retry later.
+// SetProcessMuted changes every audio session associated with processID. Muting
+// uses the default multimedia output device; restoration scans active and
+// unplugged output devices because the default may have changed since muting.
+// matched reports any success, even if another session failed; callers must
+// retain partial mute changes.
 func SetProcessMuted(processID uint32, muted bool) (matched bool, err error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -152,6 +166,9 @@ func SetProcessMuted(processID uint32, muted bool) (matched bool, err error) {
 		return false, err
 	}
 	defer release(unsafe.Pointer(deviceEnumerator))
+	if !muted {
+		return restoreProcessOnActiveDevices(deviceEnumerator, processID)
+	}
 
 	var device *iMMDevice
 	hr, _, _ = syscall.SyscallN(
@@ -165,9 +182,48 @@ func SetProcessMuted(processID uint32, muted bool) (matched bool, err error) {
 		return false, err
 	}
 	defer release(unsafe.Pointer(device))
+	return setDeviceProcessMuted(device, processID, muted)
+}
 
+func restoreProcessOnActiveDevices(enumerator *iMMDeviceEnumerator, processID uint32) (matched bool, err error) {
+	var devices *iMMDeviceCollection
+	hr, _, _ := syscall.SyscallN(
+		enumerator.vtbl.enumAudioEndpoints,
+		uintptr(unsafe.Pointer(enumerator)),
+		eRender,
+		deviceStateActive|deviceStateUnplugged,
+		uintptr(unsafe.Pointer(&devices)),
+	)
+	if err := checkHRESULT(hr, "enumerate output devices for audio restoration"); err != nil {
+		return false, err
+	}
+	defer release(unsafe.Pointer(devices))
+	var count uint32
+	hr, _, _ = syscall.SyscallN(devices.vtbl.getCount, uintptr(unsafe.Pointer(devices)), uintptr(unsafe.Pointer(&count)))
+	if err := checkHRESULT(hr, "count output devices"); err != nil {
+		return false, err
+	}
+	var firstErr error
+	for index := uint32(0); index < count; index++ {
+		var device *iMMDevice
+		hr, _, _ = syscall.SyscallN(devices.vtbl.item, uintptr(unsafe.Pointer(devices)), uintptr(index), uintptr(unsafe.Pointer(&device)))
+		deviceErr := checkHRESULT(hr, "get output device")
+		if deviceErr == nil {
+			var changed bool
+			changed, deviceErr = setDeviceProcessMuted(device, processID, false)
+			matched = matched || changed
+			release(unsafe.Pointer(device))
+		}
+		if deviceErr != nil && firstErr == nil {
+			firstErr = deviceErr
+		}
+	}
+	return matched, firstErr
+}
+
+func setDeviceProcessMuted(device *iMMDevice, processID uint32, muted bool) (matched bool, err error) {
 	var sessionManager *iAudioSessionManager2
-	hr, _, _ = syscall.SyscallN(
+	hr, _, _ := syscall.SyscallN(
 		device.vtbl.activate,
 		uintptr(unsafe.Pointer(device)),
 		uintptr(unsafe.Pointer(&iidIAudioSessionManager2)),
