@@ -1,16 +1,71 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'  # 例如: v1.0.0, v1.2.3
   workflow_dispatch:
+    inputs:
+      version:
+        description: '发布版本号，例如 1.13.0 或 v1.13.0；须与 sync/version.json 一致'
+        required: true
+        type: string
 
 env:
   LUNABOX_UPDATE_SERVICE_URL: ${{ vars.UPDATE_PUBLIC_BASE_URL }}
 
 jobs:
+  prepare-release:
+    name: Prepare release tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.release_version.outputs.version }}
+      tag: ${{ steps.release_version.outputs.tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Validate release version
+        id: release_version
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          VERSION="${INPUT_VERSION#v}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?(\+[0-9A-Za-z][0-9A-Za-z.-]*)?$ ]]; then
+            echo "Invalid release version: $INPUT_VERSION" >&2
+            exit 1
+          fi
+          SOURCE_VERSION="$(jq -r '.version // empty' sync/version.json)"
+          if [ "$SOURCE_VERSION" != "$VERSION" ]; then
+            echo "sync/version.json version $SOURCE_VERSION does not match release version $VERSION" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create tag at the triggering commit
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"; then
+            TAG_COMMIT="$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"
+            if [ "$TAG_COMMIT" != "$GITHUB_SHA" ]; then
+              echo "Tag $RELEASE_TAG points to $TAG_COMMIT, expected $GITHUB_SHA" >&2
+              exit 1
+            fi
+          else
+            git tag "$RELEASE_TAG" "$GITHUB_SHA"
+            git push origin "refs/tags/$RELEASE_TAG"
+          fi
+
   build-release:
+    needs: prepare-release
     name: Windows ${{ matrix.arch }} / ${{ matrix.mode }}
     runs-on: ${{ matrix.runner }}
     permissions:
@@ -41,6 +96,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Setup Go
@@ -100,12 +156,12 @@ jobs:
           choco install nsis --no-progress -y
           'C:\Program Files (x86)\NSIS' >> $env:GITHUB_PATH
 
-      - name: Get version from tag
+      - name: Get prepared release version
         id: get_version
         shell: bash
         run: |
           set -euo pipefail
-          echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=${{ needs.prepare-release.outputs.version }}" >> "$GITHUB_OUTPUT"
 
       - name: Build Portable with script
         if: matrix.mode == 'portable'
@@ -350,6 +406,7 @@ jobs:
           if-no-files-found: error
 
   build-macos:
+    needs: prepare-release
     name: macOS ${{ matrix.arch }} / DMG
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -367,6 +424,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Free disk space for macOS build
@@ -441,12 +499,12 @@ jobs:
           go install "github.com/wailsapp/wails/v3/cmd/wails3@$version"
           test "$(wails3 version 2>&1)" = "$version"
 
-      - name: Get version from tag
+      - name: Get prepared release version
         id: get_version
         shell: bash
         run: |
           set -euo pipefail
-          echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=${{ needs.prepare-release.outputs.version }}" >> "$GITHUB_OUTPUT"
 
       - name: Build app bundle and DMG
         shell: bash
@@ -471,6 +529,7 @@ jobs:
           if-no-files-found: error
 
   build-linux:
+    needs: prepare-release
     name: Linux ${{ matrix.arch }} / Packages
     runs-on: ${{ matrix.runner }}
     permissions:
@@ -489,6 +548,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Setup Go
@@ -555,12 +615,12 @@ jobs:
         shell: bash
         run: ./scripts/patch-wails-linux-tray.sh
 
-      - name: Get version from tag
+      - name: Get prepared release version
         id: get_version
         shell: bash
         run: |
           set -euo pipefail
-          echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=${{ needs.prepare-release.outputs.version }}" >> "$GITHUB_OUTPUT"
 
       - name: Build Linux packages
         shell: bash
@@ -592,8 +652,7 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    needs: [build-release, build-macos, build-linux]
-    if: startsWith(github.ref, 'refs/tags/')
+    needs: [prepare-release, build-release, build-macos, build-linux]
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -603,6 +662,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Setup Go
@@ -613,9 +673,9 @@ jobs:
             go.sum
             updater/go.sum
 
-      - name: Get version from tag
+      - name: Get prepared release version
         id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: echo "VERSION=${{ needs.prepare-release.outputs.version }}" >> "$GITHUB_OUTPUT"
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -650,7 +710,7 @@ jobs:
           UPDATE_S3_BUCKET: ${{ vars.UPDATE_S3_BUCKET }}
           UPDATE_S3_ENDPOINT: ${{ vars.UPDATE_S3_ENDPOINT }}
         run: |
-          CURRENT_TAG="$GITHUB_REF_NAME"
+          CURRENT_TAG="${{ needs.prepare-release.outputs.tag }}"
           PREVIOUS_TAG="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 30 --json tagName,isDraft,isPrerelease --jq "[.[] | select(.isDraft == false and .isPrerelease == false and .tagName != \"$CURRENT_TAG\")][0].tagName // \"\"")"
           PREVIOUS_VERSION="${PREVIOUS_TAG#v}"
           echo "tag=$PREVIOUS_TAG" >> "$GITHUB_OUTPUT"
@@ -783,7 +843,7 @@ jobs:
 
           ### 📝 更新内容
 
-          请查看 [Commits](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
+          请查看 [Commits](https://github.com/${{ github.repository }}/commits/${{ needs.prepare-release.outputs.tag }})
           EOF
           fi
 
@@ -806,13 +866,15 @@ jobs:
           echo "" >> release_notes.md
           echo "### 🔗 相关链接" >> release_notes.md
           echo "" >> release_notes.md
-          echo "- [查看所有提交](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})" >> release_notes.md
+          echo "- [查看所有提交](https://github.com/${{ github.repository }}/commits/${{ needs.prepare-release.outputs.tag }})" >> release_notes.md
 
           cat release_notes.md
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.prepare-release.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: release/*
           body_path: release_notes.md
           draft: false
