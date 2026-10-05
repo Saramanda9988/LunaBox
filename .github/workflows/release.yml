@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: '发布版本号，例如 1.13.0 或 v1.13.0；须与 sync/version.json 一致'
+        description: '发布版本号，格式为 vX.Y.Z，例如 v1.13.2；去除 v 后须与 sync/version.json 和 build/config.yml 一致'
         required: true
         type: string
 
@@ -34,14 +34,34 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          VERSION="${INPUT_VERSION#v}"
-          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?(\+[0-9A-Za-z][0-9A-Za-z.-]*)?$ ]]; then
-            echo "Invalid release version: $INPUT_VERSION" >&2
+          if [[ ! "$INPUT_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release version must use the vX.Y.Z format: $INPUT_VERSION" >&2
             exit 1
           fi
+          VERSION="${INPUT_VERSION#v}"
           SOURCE_VERSION="$(jq -r '.version // empty' sync/version.json)"
           if [ "$SOURCE_VERSION" != "$VERSION" ]; then
             echo "sync/version.json version $SOURCE_VERSION does not match release version $VERSION" >&2
+            exit 1
+          fi
+          BUILD_VERSION="$(awk '
+            {
+              sub(/\r$/, "")
+              if ($0 ~ /^info:[[:space:]]*$/) {
+                in_info = 1
+                next
+              }
+              if (in_info && $0 ~ /^[^[:space:]]/) {
+                in_info = 0
+              }
+              if (in_info && $0 ~ /^[[:space:]]+version:[[:space:]]*/) {
+                print $2
+              }
+            }
+          ' build/config.yml)"
+          if [ "$BUILD_VERSION" != "$VERSION" ]; then
+            echo "build/config.yml info.version $BUILD_VERSION does not match release version $VERSION" >&2
+            echo "Run bash scripts/update-build-assets.sh $INPUT_VERSION and commit the generated build assets before releasing." >&2
             exit 1
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
