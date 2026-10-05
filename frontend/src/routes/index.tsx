@@ -407,11 +407,11 @@ function HomePage() {
   if (!lastPlayed || !selectedGame) {
     return (
       <div className="h-full relative flex flex-col items-center justify-center">
-        <div className="absolute top-6 left-8">
-          <h1 className="text-4xl font-bold text-brand-900 dark:text-white drop-shadow-lg">
+        <div className="absolute inset-x-8 top-8 mx-auto max-w-8xl">
+          <h1 className="text-4xl font-bold text-brand-900 dark:text-white">
             {t("home.title")}
           </h1>
-          <p className="mt-2 text-brand-600 dark:text-white/80 drop-shadow">
+          <p className="mt-2 text-brand-500 dark:text-brand-400">
             {t("home.welcome")}
           </p>
         </div>
@@ -483,11 +483,11 @@ function HomePage() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent dark:from-black/40 pointer-events-none" />
           </div>
         )}
-        <div className="absolute top-6 left-8 z-10">
-          <h1 className="text-4xl font-bold text-brand-900 dark:text-white drop-shadow-lg">
+        <div className="absolute inset-x-8 top-8 z-10 mx-auto max-w-8xl">
+          <h1 className="text-4xl font-bold text-brand-900 dark:text-white">
             {t("home.title")}
           </h1>
-          <p className="mt-2 text-brand-600 dark:text-white/80 drop-shadow">
+          <p className="mt-2 text-brand-500 dark:text-brand-400">
             {t("home.welcomeBack")}
           </p>
         </div>

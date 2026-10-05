@@ -53,6 +53,7 @@ import { SteamBatchImportModal } from "../components/modal/SteamBatchImportModal
 import { LibrarySkeleton } from "../components/skeleton/LibrarySkeleton";
 import { BetterButton } from "../components/ui/better/BetterButton";
 import { BetterDropdownMenu } from "../components/ui/better/BetterDropdownMenu";
+import { BetterTooltip } from "../components/ui/better/BetterTooltip";
 import { sourceLabel } from "../components/ui/import/importFlow";
 import { ScrollToTopButton } from "../components/ui/ScrollToTopButton";
 import { sortOptions, statusOptions } from "../consts/options";
@@ -941,8 +942,7 @@ function LibraryPage() {
     [enums.GameStatus.StatusDropped]: {
       label: t("common.dropped"),
       icon: "i-mdi-delete-outline",
-      color:
-        "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300",
+      color: "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300",
     },
   };
 
@@ -1255,14 +1255,15 @@ function LibraryPage() {
             batchActions={(
               <>
                 {platformGOOS === "windows" && (
-                  <button
-                    type="button"
-                    aria-label={t("library.batchImportToSteam")}
-                    onClick={handleBatchImportToSteam}
-                    disabled={
-                      selectedGameIds.length === 0 || isBatchImportingToSteam
-                    }
-                    className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
+                  <BetterTooltip content={t("library.batchImportToSteam")}>
+                    <button
+                      type="button"
+                      aria-label={t("library.batchImportToSteam")}
+                      onClick={handleBatchImportToSteam}
+                      disabled={
+                        selectedGameIds.length === 0 || isBatchImportingToSteam
+                      }
+                      className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
                           bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
                           rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300
                           ${
@@ -1271,65 +1272,75 @@ function LibraryPage() {
                     ? "opacity-50 cursor-not-allowed"
                     : ""
                   }`}
-                  >
-                    <div
-                      className={`${
-                        isBatchImportingToSteam
-                          ? "i-mdi-loading animate-spin"
-                          : "i-mdi-steam"
-                      } text-lg`}
-                    />
-                  </button>
+                    >
+                      <div
+                        className={`${
+                          isBatchImportingToSteam
+                            ? "i-mdi-loading animate-spin"
+                            : "i-mdi-steam"
+                        } text-lg`}
+                      />
+                    </button>
+                  </BetterTooltip>
                 )}
                 {/* 批量更新状态 */}
-                <BetterDropdownMenu
-                  title={t("library.setStatus")}
-                  align="end"
-                  menuWidth="min-w-[130px]"
-                  disabled={selectedGameIds.length === 0}
-                  trigger={(
-                    <div
-                      className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
+                <BetterTooltip content={t("library.setStatus")}>
+                  <BetterDropdownMenu
+                    title={t("library.setStatus")}
+                    ariaLabel={t("library.setStatus")}
+                    align="end"
+                    menuWidth="min-w-[130px]"
+                    disabled={selectedGameIds.length === 0}
+                    trigger={(
+                      <div
+                        className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
                               bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
                               rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300
                               ${selectedGameIds.length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
-                    >
-                      <div className="i-mdi-tag-edit-outline text-lg" />
-                    </div>
-                  )}
-                  items={Object.entries(statusConfig).map(([key, cfg]) => ({
-                    key,
-                    label: cfg.label,
-                    icon: cfg.icon,
-                    pill: true,
-                    pillColor: cfg.color,
-                    onClick: () => handleBatchStatusUpdate(key),
-                  }))}
-                />
+                      >
+                        <div className="i-mdi-tag-edit-outline text-lg" />
+                      </div>
+                    )}
+                    items={Object.entries(statusConfig).map(([key, cfg]) => ({
+                      key,
+                      label: cfg.label,
+                      icon: cfg.icon,
+                      pill: true,
+                      pillColor: cfg.color,
+                      onClick: () => handleBatchStatusUpdate(key),
+                    }))}
+                  />
+                </BetterTooltip>
                 {/* 批量添加到收藏 */}
-                <button
-                  type="button"
-                  onClick={openBatchAddModal}
-                  disabled={selectedGameIds.length === 0}
-                  className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
+                <BetterTooltip content={t("library.batchAddToFilter")}>
+                  <button
+                    type="button"
+                    aria-label={t("library.batchAddToFilter")}
+                    onClick={openBatchAddModal}
+                    disabled={selectedGameIds.length === 0}
+                    className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
                           bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
                           rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-brand-700 dark:text-brand-300
                           ${selectedGameIds.length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
-                >
-                  <div className="i-mdi-folder-plus-outline text-lg" />
-                </button>
+                  >
+                    <div className="i-mdi-folder-plus-outline text-lg" />
+                  </button>
+                </BetterTooltip>
                 {/* 批量删除 */}
-                <button
-                  type="button"
-                  onClick={handleBatchDelete}
-                  disabled={selectedGameIds.length === 0}
-                  className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
+                <BetterTooltip content={t("library.toast.batchDeleteTitle")}>
+                  <button
+                    type="button"
+                    aria-label={t("library.toast.batchDeleteTitle")}
+                    onClick={handleBatchDelete}
+                    disabled={selectedGameIds.length === 0}
+                    className={`glass-panel flex items-center gap-2 px-3 py-2 text-sm
                           bg-white dark:bg-brand-800 border border-brand-200 dark:border-brand-700
                           rounded-lg hover:bg-brand-100 dark:hover:bg-brand-700 text-error-600 dark:text-error-400
                           ${selectedGameIds.length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
-                >
-                  <div className="i-mdi-delete text-lg" />
-                </button>
+                  >
+                    <div className="i-mdi-delete text-lg" />
+                  </button>
+                </BetterTooltip>
               </>
             )}
             actionButton={(
