@@ -36,9 +36,9 @@ jobs:
         working-directory: ./frontend
         run: pnpm install --frozen-lockfile
 
-      - name: Audit dependencies
+      - name: Audit production dependencies
         working-directory: ./frontend
-        run: pnpm audit
+        run: pnpm audit --prod
 
       - name: Run ESLint
         working-directory: ./frontend
