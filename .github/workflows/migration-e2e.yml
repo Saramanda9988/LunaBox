@@ -5,12 +5,14 @@ on:
   push:
     paths:
       - 'internal/migrations/**'
+      - 'internal/applog/**'
       - 'go.mod'
       - 'go.sum'
       - '.github/workflows/migration-e2e.yml'
   pull_request:
     paths:
       - 'internal/migrations/**'
+      - 'internal/applog/**'
       - 'go.mod'
       - 'go.sum'
       - '.github/workflows/migration-e2e.yml'
