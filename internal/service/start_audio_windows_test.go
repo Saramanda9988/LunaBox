@@ -47,6 +47,23 @@ func TestBackgroundMuteRetainsPartialSuccess(t *testing.T) {
 	}
 }
 
+func TestBackgroundMuteRefreshesSessionsWithoutFocusChange(t *testing.T) {
+	s, _, update := newAudioTestSession()
+	calls := 0
+	s.setProcessMuted = func(pid uint32, muted bool) (bool, error) {
+		calls++
+		if pid != update.ProcessID || !muted {
+			t.Fatal("expected background session discovery for the current process")
+		}
+		return true, nil
+	}
+	s.handleFocusUpdate(update)
+	s.handleFocusUpdate(update)
+	if calls != 2 {
+		t.Fatal("new audio sessions must be discovered even when focus is unchanged")
+	}
+}
+
 func TestBackgroundMuteKeepsOldPIDAfterRestoreFailure(t *testing.T) {
 	for _, result := range []string{"error", "missing", "partial"} {
 		t.Run(result, func(t *testing.T) {

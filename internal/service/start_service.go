@@ -974,7 +974,9 @@ func (s *StartService) handleFocusUpdate(update timerutils.FocusUpdate) {
 	}
 
 	shouldMute := !update.IsFocused
-	if session.audioStateKnown && session.audioPID == update.ProcessID && session.audioMuted == shouldMute && session.audioLastError == "" {
+	// Keep discovering sessions while in the background: games can recreate
+	// their audio streams or move to a different output device without focus changes.
+	if !shouldMute && session.audioStateKnown && session.audioPID == update.ProcessID && !session.audioMuted && session.audioLastError == "" {
 		return
 	}
 

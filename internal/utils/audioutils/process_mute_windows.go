@@ -5,6 +5,7 @@ package audioutils
 import (
 	"fmt"
 	"runtime"
+	"sync"
 	"syscall"
 	"unsafe"
 
@@ -12,11 +13,10 @@ import (
 )
 
 const (
-	clsctxAll            = 0x17
-	eRender              = 0
-	eMultimedia          = 1
-	deviceStateActive    = 1
-	deviceStateUnplugged = 8
+	clsctxAll         = 0x17
+	eRender           = 0
+	eMultimedia       = 1
+	deviceStateActive = 1
 )
 
 var (
@@ -24,6 +24,7 @@ var (
 	procCoInitializeEx       = ole32.NewProc("CoInitializeEx")
 	procCoUninitialize       = ole32.NewProc("CoUninitialize")
 	procCoCreateInstance     = ole32.NewProc("CoCreateInstance")
+	procCoTaskMemFree        = ole32.NewProc("CoTaskMemFree")
 	clsidMMDeviceEnumerator  = windows.GUID{Data1: 0xbcde0395, Data2: 0xe52f, Data3: 0x467c, Data4: [8]byte{0x8e, 0x3d, 0xc4, 0x57, 0x92, 0x91, 0x69, 0x2e}}
 	iidIMMDeviceEnumerator   = windows.GUID{Data1: 0xa95664d2, Data2: 0x9614, Data3: 0x4f35, Data4: [8]byte{0xa7, 0x46, 0xde, 0x8d, 0xb6, 0x36, 0x17, 0xe6}}
 	iidIAudioSessionManager2 = windows.GUID{Data1: 0x77aa99a0, Data2: 0x1bd6, Data3: 0x484f, Data4: [8]byte{0x8b, 0xc7, 0x2c, 0x65, 0x4c, 0x9a, 0x9b, 0x6f}}
@@ -139,23 +140,97 @@ func IsProcessMuteSupported() bool {
 	return true
 }
 
-// SetProcessMuted changes every audio session associated with processID. Muting
-// uses the default multimedia output device; restoration scans active and
-// unplugged output devices because the default may have changed since muting.
-// matched reports any success, even if another session failed; callers must
-// retain partial mute changes.
-func SetProcessMuted(processID uint32, muted bool) (matched bool, err error) {
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
+type retainedAudioSession struct {
+	control *iAudioSessionControl2
+	volume  *iSimpleAudioVolume
+}
 
-	hr, _, _ := procCoInitializeEx.Call(0, windows.COINIT_MULTITHREADED)
-	if err := checkHRESULT(hr, "initialize COM"); err != nil {
-		return false, err
+type processMuteState struct {
+	sessions map[uint32]map[string]retainedAudioSession
+}
+
+type processMuteResult struct {
+	matched bool
+	err     error
+}
+
+type processMuteRequest struct {
+	processID uint32
+	muted     bool
+	result    chan processMuteResult
+}
+
+// All retained COM interfaces belong to this worker's MTA. Keeping the thread
+// initialized also keeps the apartment alive between focus updates.
+var processMuteRequests = sync.OnceValue(func() chan processMuteRequest {
+	requests := make(chan processMuteRequest)
+	go func() {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		state := processMuteState{sessions: make(map[uint32]map[string]retainedAudioSession)}
+		initialized := false
+		defer func() {
+			if initialized {
+				procCoUninitialize.Call()
+			}
+		}()
+		for request := range requests {
+			if !initialized {
+				hr, _, _ := procCoInitializeEx.Call(0, windows.COINIT_MULTITHREADED)
+				if err := checkHRESULT(hr, "initialize COM"); err != nil {
+					request.result <- processMuteResult{err: err}
+					continue
+				}
+				initialized = true
+			}
+			matched, err := state.setProcessMuted(request.processID, request.muted)
+			request.result <- processMuteResult{matched: matched, err: err}
+		}
+	}()
+	return requests
+})
+
+// SetProcessMuted retains every session it mutes until restoration succeeds.
+// The retained controls remain usable after the game's streams and PID exit;
+// enumerating that PID again would miss the expired sessions and leave Windows'
+// persistent mute setting behind. matched includes partial success on errors.
+func SetProcessMuted(processID uint32, muted bool) (matched bool, err error) {
+	if processID == 0 {
+		return false, nil
 	}
-	defer procCoUninitialize.Call()
+	result := make(chan processMuteResult, 1)
+	processMuteRequests() <- processMuteRequest{processID: processID, muted: muted, result: result}
+	response := <-result
+	return response.matched, response.err
+}
+
+func (s *processMuteState) restoreRetainedSessions(processID uint32) (matched bool, err error) {
+	for id, session := range s.sessions[processID] {
+		if restoreErr := setAudioVolumeMuted(session.volume, false); restoreErr != nil {
+			if err == nil {
+				err = restoreErr
+			}
+			continue // Keep failed references for the next restoration attempt.
+		}
+		matched = true
+		release(unsafe.Pointer(session.volume))
+		release(unsafe.Pointer(session.control))
+		delete(s.sessions[processID], id)
+	}
+	if len(s.sessions[processID]) == 0 {
+		delete(s.sessions, processID)
+	}
+	return matched, err
+}
+
+func (s *processMuteState) setProcessMuted(processID uint32, muted bool) (matched bool, err error) {
+	if !muted && len(s.sessions[processID]) > 0 {
+		// Restore only the sessions we changed, even if the default device changed.
+		return s.restoreRetainedSessions(processID)
+	}
 
 	var deviceEnumerator *iMMDeviceEnumerator
-	hr, _, _ = procCoCreateInstance.Call(
+	hr, _, _ := procCoCreateInstance.Call(
 		uintptr(unsafe.Pointer(&clsidMMDeviceEnumerator)),
 		0,
 		clsctxAll,
@@ -167,7 +242,8 @@ func SetProcessMuted(processID uint32, muted bool) (matched bool, err error) {
 	}
 	defer release(unsafe.Pointer(deviceEnumerator))
 	if !muted {
-		return restoreProcessOnActiveDevices(deviceEnumerator, processID)
+		// A fresh foreground process may have inherited mute from an older build.
+		return s.restoreProcessOnActiveDevices(deviceEnumerator, processID)
 	}
 
 	var device *iMMDevice
@@ -182,16 +258,16 @@ func SetProcessMuted(processID uint32, muted bool) (matched bool, err error) {
 		return false, err
 	}
 	defer release(unsafe.Pointer(device))
-	return setDeviceProcessMuted(device, processID, muted)
+	return s.setDeviceProcessMuted(device, processID, muted)
 }
 
-func restoreProcessOnActiveDevices(enumerator *iMMDeviceEnumerator, processID uint32) (matched bool, err error) {
+func (s *processMuteState) restoreProcessOnActiveDevices(enumerator *iMMDeviceEnumerator, processID uint32) (matched bool, err error) {
 	var devices *iMMDeviceCollection
 	hr, _, _ := syscall.SyscallN(
 		enumerator.vtbl.enumAudioEndpoints,
 		uintptr(unsafe.Pointer(enumerator)),
 		eRender,
-		deviceStateActive|deviceStateUnplugged,
+		deviceStateActive,
 		uintptr(unsafe.Pointer(&devices)),
 	)
 	if err := checkHRESULT(hr, "enumerate output devices for audio restoration"); err != nil {
@@ -210,7 +286,7 @@ func restoreProcessOnActiveDevices(enumerator *iMMDeviceEnumerator, processID ui
 		deviceErr := checkHRESULT(hr, "get output device")
 		if deviceErr == nil {
 			var changed bool
-			changed, deviceErr = setDeviceProcessMuted(device, processID, false)
+			changed, deviceErr = s.setDeviceProcessMuted(device, processID, false)
 			matched = matched || changed
 			release(unsafe.Pointer(device))
 		}
@@ -221,7 +297,7 @@ func restoreProcessOnActiveDevices(enumerator *iMMDeviceEnumerator, processID ui
 	return matched, firstErr
 }
 
-func setDeviceProcessMuted(device *iMMDevice, processID uint32, muted bool) (matched bool, err error) {
+func (s *processMuteState) setDeviceProcessMuted(device *iMMDevice, processID uint32, muted bool) (matched bool, err error) {
 	var sessionManager *iAudioSessionManager2
 	hr, _, _ := syscall.SyscallN(
 		device.vtbl.activate,
@@ -259,7 +335,7 @@ func setDeviceProcessMuted(device *iMMDevice, processID uint32, muted bool) (mat
 
 	var firstErr error
 	for index := int32(0); index < count; index++ {
-		changed, sessionErr := setSessionMuted(sessionEnumerator, index, processID, muted)
+		changed, sessionErr := s.setSessionMuted(sessionEnumerator, index, processID, muted)
 		if changed {
 			matched = true
 		}
@@ -270,7 +346,7 @@ func setDeviceProcessMuted(device *iMMDevice, processID uint32, muted bool) (mat
 	return matched, firstErr
 }
 
-func setSessionMuted(enumerator *iAudioSessionEnumerator, index int32, processID uint32, muted bool) (bool, error) {
+func (s *processMuteState) setSessionMuted(enumerator *iAudioSessionEnumerator, index int32, processID uint32, muted bool) (bool, error) {
 	var sessionControl *iUnknown
 	hr, _, _ := syscall.SyscallN(
 		enumerator.vtbl.getSession,
@@ -287,7 +363,12 @@ func setSessionMuted(enumerator *iAudioSessionEnumerator, index int32, processID
 	if err := queryInterface(unsafe.Pointer(sessionControl), &iidIAudioSessionControl2, unsafe.Pointer(&sessionControl2)); err != nil {
 		return false, nil
 	}
-	defer release(unsafe.Pointer(sessionControl2))
+	retained := false
+	defer func() {
+		if !retained {
+			release(unsafe.Pointer(sessionControl2))
+		}
+	}()
 
 	var sessionProcessID uint32
 	hr, _, _ = syscall.SyscallN(
@@ -306,23 +387,50 @@ func setSessionMuted(enumerator *iAudioSessionEnumerator, index int32, processID
 	if err := queryInterface(unsafe.Pointer(sessionControl), &iidISimpleAudioVolume, unsafe.Pointer(&volume)); err != nil {
 		return false, err
 	}
-	defer release(unsafe.Pointer(volume))
+	defer func() {
+		if !retained {
+			release(unsafe.Pointer(volume))
+		}
+	}()
 
+	var sessionID string
+	if muted {
+		var id *uint16
+		hr, _, _ = syscall.SyscallN(sessionControl2.vtbl.getSessionInstanceIdentifier, uintptr(unsafe.Pointer(sessionControl2)), uintptr(unsafe.Pointer(&id)))
+		if err := checkHRESULT(hr, "get audio session instance ID"); err != nil {
+			return false, err // Never mute a session that cannot be retained.
+		}
+		sessionID = windows.UTF16PtrToString(id)
+		procCoTaskMemFree.Call(uintptr(unsafe.Pointer(id)))
+	}
+	if err := setAudioVolumeMuted(volume, muted); err != nil {
+		return false, err
+	}
+	if muted {
+		if s.sessions[processID] == nil {
+			s.sessions[processID] = make(map[string]retainedAudioSession)
+		}
+		if _, exists := s.sessions[processID][sessionID]; !exists {
+			s.sessions[processID][sessionID] = retainedAudioSession{control: sessionControl2, volume: volume}
+			retained = true
+		}
+	}
+	return true, nil
+}
+
+func setAudioVolumeMuted(volume *iSimpleAudioVolume, muted bool) error {
 	muteValue := uintptr(0)
 	if muted {
 		muteValue = 1
 	}
 	eventContext := windows.GUID{}
-	hr, _, _ = syscall.SyscallN(
+	hr, _, _ := syscall.SyscallN(
 		volume.vtbl.setMute,
 		uintptr(unsafe.Pointer(volume)),
 		muteValue,
 		uintptr(unsafe.Pointer(&eventContext)),
 	)
-	if err := checkHRESULT(hr, "set audio session mute state"); err != nil {
-		return false, err
-	}
-	return true, nil
+	return checkHRESULT(hr, "set audio session mute state")
 }
 
 func queryInterface(instance unsafe.Pointer, iid *windows.GUID, destination unsafe.Pointer) error {
