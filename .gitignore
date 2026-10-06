@@ -9,6 +9,7 @@ build/linux/appimage/
 build/*.db
 node_modules
 frontend/dist
+output/playwright/
 .idea
 .DS_Store
 frontend/package.json.md5

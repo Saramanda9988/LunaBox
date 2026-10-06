@@ -168,7 +168,7 @@ function RootLayout() {
               <SideBar bgEnabled={!!bgEnabled} bgOpacity={bgOpacity} />
               <main
                 ref={mainRef}
-                className={`@container flex-1 overflow-auto ${
+                className={`app-content-viewport @container flex-1 overflow-auto ${
                   bgEnabled ? "" : "bg-brand-100 dark:bg-brand-900"
                 }`}
                 style={{

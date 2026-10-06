@@ -67,6 +67,14 @@ export default defineConfig({
       },
     ],
     [
+      "app-content-viewport",
+      {
+        // Bound descendant backdrop sampling to the scrolling viewport. A
+        // stacking context alone still lets overlapping window chrome bleed in.
+        "clip-path": "inset(0)",
+      },
+    ],
+    [
       "app-toast-stack-item",
       {
         "position": "absolute",
@@ -146,7 +154,7 @@ export default defineConfig({
       "glass-text":
         "drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)] drop-shadow-[0_0_8px_rgba(0,0,0,0.2)]",
       "glass-settings-section":
-        "data-glass:bg-white/8 data-glass:dark:bg-black/12 data-glass:border data-glass:border-white/20 data-glass:dark:border-white/12",
+        "data-glass:bg-white/32 data-glass:dark:bg-black/12 data-glass:border data-glass:border-brand-300/65 data-glass:dark:border-white/12",
     },
 
     // 玻璃态层级系统（从不透明到透明）
@@ -176,25 +184,25 @@ export default defineConfig({
       },
     ],
 
-    // 3. glass-card - 卡片（统计卡、列表项等，中等透明）
+    // 3. glass-card - 卡片；沿用用户配置的背景图模糊，避免逐层叠加滤镜。
     [
       /^glass-card$/,
       () =>
-        "data-glass:bg-white/8 data-glass:dark:bg-black/12 data-glass:backdrop-blur-12 data-glass:backdrop-saturate-180 data-glass:border data-glass:border-white/22 data-glass:dark:border-white/12 data-glass:shadow-none native-webkit:backdrop-filter-off",
+        "data-glass:bg-white/36 data-glass:dark:bg-black/12 data-glass:border data-glass:border-brand-300/65 data-glass:dark:border-white/12 data-glass:shadow-none",
     ],
 
     // 4. glass-panel - 面板容器（较透明，轻量感）
     [
       /^glass-panel$/,
       () =>
-        "data-glass:bg-white/5 data-glass:dark:bg-black/8 data-glass:backdrop-blur-12 data-glass:backdrop-saturate-180 data-glass:border data-glass:border-white/18 data-glass:dark:border-white/10 data-glass:shadow-none native-webkit:backdrop-filter-off",
+        "data-glass:bg-white/28 data-glass:dark:bg-black/8 data-glass:border data-glass:border-brand-300/55 data-glass:dark:border-white/10 data-glass:shadow-none",
     ],
 
-    // 5. glass-input - 输入框（最透明，突出内容）
+    // 5. glass-input - 输入框；比容器更实，保持文字与边界清晰。
     [
       /^glass-input$/,
       () =>
-        "data-glass:bg-white/8 data-glass:dark:bg-black/10 data-glass:border data-glass:border-white/25 data-glass:dark:border-white/18",
+        "data-glass:bg-white/55 data-glass:dark:bg-black/10 data-glass:border data-glass:border-brand-400/50 data-glass:dark:border-white/18",
     ],
 
     // 6. glass-btn-none - 透明按钮（仅保留交互反馈）

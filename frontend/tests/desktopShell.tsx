@@ -45,7 +45,10 @@ export function Fixture() {
         </header>
         <div className="relative flex-1 overflow-hidden">
           <div className="absolute left-0 top-0 h-full w-full shrink-0">
-            <main data-testid="content" className="h-full overflow-auto p-6">
+            <main
+              data-testid="content"
+              className="app-content-viewport h-full overflow-auto p-6"
+            >
               <button
                 type="button"
                 data-testid="open"

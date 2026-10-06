@@ -32,7 +32,7 @@ export function BetterSelect({
 }: BetterSelectProps) {
   const selectedOption = options.find(opt => opt.value === value);
   const displayValue = selectedOption?.label || placeholder;
-  const buttonClasses = `glass-card relative w-full px-3 py-2 pr-10
+  const buttonClasses = `glass-input relative w-full px-3 py-2 pr-10
                      text-left cursor-pointer
                      border border-brand-300 dark:border-brand-600
                      rounded-md

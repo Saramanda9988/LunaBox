@@ -230,7 +230,7 @@ function GameCardComponent({
       </div>
 
       <div
-        className={`bg-white dark:bg-brand-800 data-glass:bg-white/8 data-glass:backdrop-blur-12 data-glass:backdrop-saturate-180 data-glass:dark:bg-black/12 native-webkit:backdrop-filter-off ${isLandscape ? "px-3 pt-2 pb-3" : "px-2 pt-1 pb-2"}`}
+        className={`bg-white dark:bg-brand-800 data-glass:bg-white/8 data-glass:backdrop-blur-24 data-glass:backdrop-saturate-125 data-glass:dark:bg-black/12 data-glass:dark:backdrop-blur-12 data-glass:dark:backdrop-saturate-180 native-webkit:backdrop-filter-off ${isLandscape ? "px-3 pt-2 pb-3" : "px-2 pt-1 pb-2"}`}
       >
         <h3 className="truncate text-sm font-bold text-brand-900 dark:text-white leading-tight">
           <HighlightText text={game.name} query={searchQuery} />
