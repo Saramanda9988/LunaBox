@@ -7,7 +7,7 @@ info:
   description: LunaBox game library manager
   copyright: Copyright (c) LunaBox contributors
   comments: LunaBox game library manager
-  version: 1.13.2
+  version: 1.13.3
 
 protocols:
   - scheme: lunabox

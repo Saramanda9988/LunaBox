@@ -1,10 +1,10 @@
 {
 	"fixed": {
-		"file_version": "1.13.2"
+		"file_version": "1.13.3"
 	},
 	"info": {
 		"0000": {
-			"ProductVersion": "1.13.2",
+			"ProductVersion": "1.13.3",
 			"CompanyName": "LunaBox",
 			"FileDescription": "LunaBox game library manager",
 			"LegalCopyright": "Copyright (c) LunaBox contributors",
