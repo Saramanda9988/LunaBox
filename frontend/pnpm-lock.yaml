@@ -11,12 +11,6 @@ importers:
       '@headlessui/react':
         specifier: ^2.2.9
         version: 2.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@lunabox/desktop-shell-react':
-        specifier: workspace:*
-        version: link:packages/desktop-shell-react
-      '@lunabox/desktop-shell-wails':
-        specifier: workspace:*
-        version: link:packages/desktop-shell-wails
       '@ncdai/react-wheel-picker':
         specifier: ^1.2.2
         version: 1.2.2(react@18.3.1)
@@ -165,50 +159,6 @@ importers:
       vite:
         specifier: ^7.3.6
         version: 7.3.6(jiti@2.7.0)(yaml@2.9.1)
-
-  packages/desktop-shell-core:
-    devDependencies:
-      '@typescript/native':
-        specifier: npm:typescript@^7.0.2
-        version: typescript@7.0.2
-
-  packages/desktop-shell-react:
-    dependencies:
-      '@headlessui/react':
-        specifier: ^2.2.9
-        version: 2.2.9(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@lunabox/desktop-shell-core':
-        specifier: workspace:*
-        version: link:../desktop-shell-core
-    devDependencies:
-      '@types/react':
-        specifier: ^18.3.27
-        version: 18.3.27
-      '@types/react-dom':
-        specifier: ^18.3.7
-        version: 18.3.7(@types/react@18.3.27)
-      '@typescript/native':
-        specifier: npm:typescript@^7.0.2
-        version: typescript@7.0.2
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.3.1
-        version: 18.3.1(react@18.3.1)
-
-  packages/desktop-shell-wails:
-    dependencies:
-      '@lunabox/desktop-shell-core':
-        specifier: workspace:*
-        version: link:../desktop-shell-core
-    devDependencies:
-      '@typescript/native':
-        specifier: npm:typescript@^7.0.2
-        version: typescript@7.0.2
-      '@wailsio/runtime':
-        specifier: 3.0.0-beta.24
-        version: 3.0.0-beta.24
 
 packages:
 

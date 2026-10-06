@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { LayerPortal } from "@lunabox/desktop-shell-react";
+import { createPortal } from "react-dom";
 
 export const APP_MODAL_ROOT_ID = "app-modal-root";
 
@@ -8,11 +8,12 @@ interface ModalPortalProps {
 }
 
 export function ModalPortal({ children }: ModalPortalProps) {
-  return (
-    <LayerPortal host="content" layer="modal" pointerEvents="auto">
-      <div className="absolute inset-0" data-glass="false">
-        {children}
-      </div>
-    </LayerPortal>
+  const target = document.getElementById(APP_MODAL_ROOT_ID) ?? document.body;
+
+  return createPortal(
+    <div className="absolute inset-0 pointer-events-auto" data-glass="false">
+      {children}
+    </div>,
+    target,
   );
 }

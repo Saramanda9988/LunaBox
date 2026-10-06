@@ -19,6 +19,7 @@ import {
   getMetadataSourceURL,
 } from "../../utils/metadataSources";
 import { formatDateInputValue, formatDateToYYYYMMDD } from "../../utils/time";
+import { TOPBAR_HEIGHT } from "../bar/TopBar";
 import { BetterActionInput } from "../ui/better/BetterActionInput";
 import { BetterButton } from "../ui/better/BetterButton";
 import { BetterDataTable } from "../ui/better/BetterDataTable";
@@ -237,7 +238,7 @@ function ReleaseDatePicker({
       />
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-[var(--desktop-layer-dropdown)] mt-2 w-[22rem] max-w-[calc(100vw-2rem)] rounded-xl border border-brand-200 bg-white p-3 shadow-xl focus:outline-none dark:border-brand-700 dark:bg-brand-800 data-glass:bg-white/90 data-glass:backdrop-blur-20 data-glass:dark:bg-brand-900/90">
+        <div className="absolute left-0 top-full z-[9000] mt-2 w-[22rem] max-w-[calc(100vw-2rem)] rounded-xl border border-brand-200 bg-white p-3 shadow-xl focus:outline-none dark:border-brand-700 dark:bg-brand-800 data-glass:bg-white/90 data-glass:backdrop-blur-20 data-glass:dark:bg-brand-900/90">
           <div className="space-y-3">
             <div className="grid h-9 grid-cols-[4rem_1fr_4rem] items-center">
               <div className="flex items-center gap-1">
@@ -1128,6 +1129,7 @@ export function GameEditPanel({
           title={t("gameEdit.metadataSources")}
           closeLabel={t("common.cancel")}
           className="!w-[min(92vw,42rem)]"
+          topOffset={TOPBAR_HEIGHT}
         >
           <div className="space-y-4">
             {metadataSources.length > 0 ? (

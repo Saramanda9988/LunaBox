@@ -4,9 +4,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm build:desktop && vite",
-    "build:desktop": "pnpm --filter \"@lunabox/desktop-shell-*\" -r build",
-    "build": "pnpm build:desktop && pnpm typecheck && vite build",
+    "dev": "vite",
+    "build": "pnpm typecheck && vite build",
     "i18n:check": "node scripts/i18n-clean.mjs --check",
     "i18n:clean": "node scripts/i18n-clean.mjs",
     "preview": "vite preview",
@@ -14,8 +13,6 @@
     "prepare": "cd .. && husky frontend/.husky"
   },
   "dependencies": {
-    "@lunabox/desktop-shell-react": "workspace:*",
-    "@lunabox/desktop-shell-wails": "workspace:*",
     "@headlessui/react": "^2.2.9",
     "@ncdai/react-wheel-picker": "^1.2.2",
     "@radix-ui/react-switch": "^1.2.6",
