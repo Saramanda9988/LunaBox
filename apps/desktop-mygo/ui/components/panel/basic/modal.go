@@ -317,8 +317,8 @@ func pathPrefixDiff(c *ui.Context, t *theme.Theme, ch gamePathChange, oldLibrary
 	oldPrefix, newPrefix, suffix := splitRebasedPath(ch.oldPath, ch.newPath, oldLibrary, newLibrary)
 	space := ui.Span{Text: "\uFFFC", ObjectWidth: 6, ObjectHeight: 1} // mx-1.5
 	f := theme.TextXS
-	d := components.LineOverflow(f)
 	full := ch.oldPath + " → " + ch.newPath
+	d := components.LineOverflow(ui.Span{Text: full, Font: monoFont, Size: f.Size}, f.Line)
 	ui.RichText(c,
 		ui.Span{Text: oldPrefix, Background: t.Pick(theme.Error100, theme.Error900.Alpha(0.35)), Radius: 4,
 			Color: t.Pick(theme.Error700, theme.Error300), Strikethrough: true, DecorationColor: theme.Error500.Alpha(0.7)},

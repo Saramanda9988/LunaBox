@@ -69,16 +69,6 @@ const (
 // 原版字体栈的 ui-sans-serif 在 Chromium 中不被支持，所以实际生效的就是它。
 var UIFont = systemUIFont()
 
-// NaturalLineRatio 是 MyGo 在 Windows 上一行文字的自然高度（升部+降部）与字号之比，按字体实测；
-// 中文、假名回退也落在同一行盒里。components.TestLineBoxHeights 校验由此得到的占位等于 CSS 行高。
-func NaturalLineRatio() float32 {
-	switch UIFont {
-	case "Microsoft YaHei UI", "Microsoft YaHei":
-		return 1.27
-	}
-	return 4.0 / 3 // Segoe UI：(2210+514)/2048
-}
-
 // CubicBezier 返回 CSS cubic-bezier() 的缓动函数。
 func CubicBezier(x1, y1, x2, y2 float64) ui.Easing {
 	sample := func(a1, a2, t float64) float64 {

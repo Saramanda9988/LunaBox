@@ -52,6 +52,9 @@ func newFixture(t *testing.T, width, height int) *fixture {
 	}
 	e := &env.Env{Svc: svc.API(), Covers: covers.New(), Theme: theme.New(true, 1.5), Router: ui.NewRouter("/"), MainWidth: float32(width)}
 	f := &fixture{svc: svc, env: e, game: g, launcher: NewLauncher(e), width: width}
+	// 默认对照 Windows 界面（管理员启动、导出快捷方式、启动增强工具、“请先退出 Steam”）：
+	// 要测 Linux 界面的用 useGOOS("linux")，这样测试不依赖跑测试的机器。
+	f.launcher.goos = "windows"
 	f.tt = ui.NewTester(f.view, width, height)
 	f.tt.SetScale(1.5)
 	f.tt.SetDark(true)

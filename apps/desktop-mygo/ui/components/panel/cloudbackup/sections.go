@@ -260,7 +260,8 @@ func oneDriveNote(c *ui.Context, t *theme.Theme) {
 // dark:hover:text-brand-300 的文档链接（在浏览器里打开）。
 func clientIDHint(c *ui.Context, t *theme.Theme) {
 	color := hintColor(t)
-	d := components.LineOverflow(theme.TextXS)
+	hintText := locales.SettingsCloudBackupClientIdHint() + " " + locales.SettingsCloudBackupClientIdHintLink() + locales.SettingsCloudBackupClientIdHint2()
+	d := components.LineOverflow(ui.Span{Text: hintText, Font: theme.UIFont, Size: theme.TextXS.Size, Weight: theme.WeightNormal}, theme.TextXS.Line)
 	rt := ui.RichText(c.Key("client-id-hint")).FontSize(theme.TextXS.Size).FixedLineHeight(theme.TextXS.Line).
 		FontWeight(theme.WeightNormal).TextColor(color).Margin(-d, 0, -d, 0)
 	if theme.UIFont != "" {

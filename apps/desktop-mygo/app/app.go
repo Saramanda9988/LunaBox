@@ -8,6 +8,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"runtime"
 
 	"github.com/egoist/mygo"
 	mygoui "github.com/egoist/mygo/ui"
@@ -197,7 +198,7 @@ func (a *app) newMainWindow() *mygo.Window {
 	if mygo.Theme.IsDark() {
 		bg = "#121416"
 	}
-	return mygo.NewWindow(mygo.WindowOptions{
+	opts := mygo.WindowOptions{
 		Title:     "LunaBox",
 		Width:     w,
 		Height:    h,
@@ -211,7 +212,15 @@ func (a *app) newMainWindow() *mygo.Window {
 		HideWindowButtons: true,
 		BackgroundColor:   bg,
 		Content:           mygoui.View(a.ui.View),
-	})
+	}
+	if runtime.GOOS == "linux" {
+		// Linux 的 TitleBarHidden 仍由合成器装饰窗口（KWin 会画一条自己的标题栏），与顶栏叠成两条。
+		// 无边框窗口由 MyGo 在映射前 announceCSD，告诉合成器窗口自己画装饰；Wails 版在 Linux 上也是无边框。
+		opts.Frameless = true
+		opts.TitleBarStyle = mygo.TitleBarDefault
+		opts.HideWindowButtons = false
+	}
+	return mygo.NewWindow(opts)
 }
 
 // onSecondInstance 在又启动了一次时调用：处理它带来的 lunabox:// 链接（没有 IPC 服务转交时），否则显示主窗口。

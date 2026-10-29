@@ -235,7 +235,7 @@ func run(arch, ver, mode string) error {
 	if err := utils.LoadEnvFilesIfExists(envFiles...); err != nil {
 		return err
 	}
-	ver, commit, buildTime := resolveVersion(ver)
+	ver, commit, buildTime := resolveVersion(ver, cfg.Version)
 	// mygo build 用 mygo.json 的 version 写 exe 的文件版本（同 Wails 版的 build/windows/info.json），
 	// 应用里显示的版本是 ver；两者不一致说明 mygo.json 没有随 apps/desktop/scripts/update-build-assets 更新。
 	if cfg.Version != baseVersion(ver) {
@@ -681,9 +681,10 @@ func writeLinuxPackages(tool string, t target, ver, root, base string) ([]string
 		"homepage":    "https://github.com/Saramanda9988/LunaBox",
 		"license":     "MIT",
 		"contents":    contents,
-		"depends":     []string{"libgtk-3-0 | libgtk-3-0t64", "xdg-utils"},
-		"overrides":   map[string]any{"rpm": map[string]any{"depends": []string{"gtk3", "xdg-utils"}}},
-		"scripts":     map[string]string{"postinstall": postinstall, "postremove": postremove},
+		// MyGo 的 Linux 托盘用 AppIndicator（dlopen），没有它「关闭到托盘」不会生效。
+		"depends":   []string{"libgtk-3-0 | libgtk-3-0t64", "libayatana-appindicator3-1", "xdg-utils"},
+		"overrides": map[string]any{"rpm": map[string]any{"depends": []string{"gtk3", "libayatana-appindicator-gtk3", "xdg-utils"}}},
+		"scripts":   map[string]string{"postinstall": postinstall, "postremove": postremove},
 	}, "", "  ")
 	if err != nil {
 		return nil, err
@@ -811,10 +812,14 @@ func readConfig() (config, error) {
 	return c, nil
 }
 
-// resolveVersion 同 build.bat 的 resolve_version：版本号去掉开头的 v，没有标签时用 1.0.0。
-func resolveVersion(ver string) (v, commit, buildTime string) {
+// resolveVersion 同 build.bat 的 resolve_version：版本号去掉开头的 v。
+// 拿不到 git 标签时依次退回 mygo.json 的版本与 1.0.0（容器里挂载 worktree、没装 git 时会走到这里）。
+func resolveVersion(ver, fallback string) (v, commit, buildTime string) {
 	if ver == "" {
 		ver = gitOutput("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*")
+	}
+	if ver == "" {
+		ver = fallback
 	}
 	if ver == "" {
 		ver = "1.0.0"

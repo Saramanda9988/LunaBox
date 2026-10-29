@@ -5,6 +5,7 @@ package components
 
 import (
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -23,7 +24,7 @@ func Text(c *ui.Context, s string, f theme.FontStep, weight int, color ui.Color)
 // MyGo 的行高取 max(行高, 字体升部+降部)，而 CSS 允许行高小于字体高度、让字形上下等量溢出
 // （负的半行距）。这里用对称的负外边距把文字占位压回 CSS 的行高，字形位置与浏览器一致。
 func TextMargin(c *ui.Context, s string, f theme.FontStep, weight int, color ui.Color, top, right, bottom, left float32) ui.Element {
-	d := LineOverflow(f)
+	d := LineOverflow(ui.Span{Text: s, Size: f.Size, Weight: weight}, f.Line)
 	e := ui.Text(c, s).FontSize(f.Size).FixedLineHeight(f.Line).FontWeight(weight).TextColor(color).
 		Margin(top-d, right, bottom-d, left)
 	if theme.UIFont != "" {
@@ -32,9 +33,48 @@ func TextMargin(c *ui.Context, s string, f theme.FontStep, weight int, color ui.
 	return e
 }
 
-// LineOverflow 是字形高出 CSS 行高的一半。
-func LineOverflow(f theme.FontStep) float32 {
-	return max(0, (f.Size*theme.NaturalLineRatio()-f.Line)/2)
+// LineOverflow 是字形高出 CSS 行高的一半：把文字占位压回 CSS 行高，后面元素的位置才与浏览器一致。
+//
+// MyGo 的行高取 max(行高, 字体升部+降部)，而 CSS 允许行高小于字体高度、让字形上下等量溢出。
+// 一行里混有回退字体时（Linux、macOS 上中文、假名与西文常常不是同一套字体），各段文字的自然行高
+// 不同，所以按这行文字实际排版出的行盒量，而不是按界面字体的一个固定比例。
+func LineOverflow(span ui.Span, line float32) float32 {
+	if span.Text == "" {
+		return 0
+	}
+	return max(0, (lineBoxHeight(span)-line)/2)
+}
+
+// lineBoxKey 与 lineBoxHeight 的缓存键：同一段文字每帧都要量，而 Shape 本身不缓存。
+type lineBoxKey struct {
+	text   string
+	family string
+	size   float32
+	weight int
+}
+
+var (
+	lineBoxMu    sync.Mutex
+	lineBoxCache = map[lineBoxKey]float32{}
+)
+
+// lineBoxHeight 是一段文字的自然行高（升部+降部，取这一行用到的字体的最大值），与元素排出来的行盒一致。
+func lineBoxHeight(span ui.Span) float32 {
+	key := lineBoxKey{text: span.Text, family: span.Font, size: span.Size, weight: span.Weight}
+	lineBoxMu.Lock()
+	h, ok := lineBoxCache[key]
+	lineBoxMu.Unlock()
+	if ok {
+		return h
+	}
+	_, h = ui.ShapeText(span.Text, ui.Font{Family: span.Font, Size: span.Size, Weight: span.Weight}, 0).Size()
+	lineBoxMu.Lock()
+	if len(lineBoxCache) >= 4096 {
+		lineBoxCache = map[lineBoxKey]float32{}
+	}
+	lineBoxCache[key] = h
+	lineBoxMu.Unlock()
+	return h
 }
 
 // HighlightText 对应 HighlightText：query 命中的部分以 bg-yellow-500/50（暗色）标出。
@@ -50,7 +90,7 @@ func HighlightText(c *ui.Context, t *theme.Theme, s, query string, f theme.FontS
 	}
 	mark := t.Pick(ui.Hex("#fde047").Alpha(0.8), theme.Yellow500.Alpha(0.5))
 	end := idx + len(q)
-	d := LineOverflow(f)
+	d := LineOverflow(ui.Span{Text: s, Size: f.Size, Weight: weight}, f.Line)
 	ui.RichText(c,
 		ui.Span{Text: s[:idx]},
 		ui.Span{Text: s[idx:end], Background: mark},
