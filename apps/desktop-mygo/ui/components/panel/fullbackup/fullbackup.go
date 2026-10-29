@@ -70,12 +70,8 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 			components.Text(c, locales.SettingsFullDataBackupHint(), theme.TextSM, theme.WeightNormal, t.Pick(theme.Brand600, theme.Brand300))
 			// text-error-600 dark:text-error-400，前面是 font-medium 的“注意：”
 			warn := t.Pick(theme.Error600, theme.Error400)
-			d := components.LineOverflow(ui.Span{
-				Text:   locales.SettingsFullDataBackupWarningNote() + locales.SettingsFullDataBackupWarningHint(),
-				Font:   theme.UIFont,
-				Size:   theme.TextSM.Size,
-				Weight: theme.WeightNormal,
-			}, theme.TextSM.Line)
+			d := components.TextOverflow(locales.SettingsFullDataBackupWarningNote()+locales.SettingsFullDataBackupWarningHint(),
+				theme.TextSM, theme.WeightNormal)
 			rt := ui.RichText(c,
 				ui.Span{Text: locales.SettingsFullDataBackupWarningNote(), Weight: theme.WeightMedium},
 				ui.Span{Text: locales.SettingsFullDataBackupWarningHint()},

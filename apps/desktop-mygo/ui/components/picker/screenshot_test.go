@@ -39,7 +39,7 @@ func (s *screenScene) view(c *ui.Context) {
 		ui.Box(c).Absolute().Left(384).Top(70).Size(512, 690).Radius(8).Background(t.PanelBg)
 		ui.Column(c).Absolute().Left(408).Top(170).Width(455.33).Gap(16).Children(func() {
 			ui.Column(c).Children(func() {
-				d := components.LineOverflow(ui.Span{Text: "日期", Size: theme.TextSM.Size, Weight: theme.WeightMedium}, theme.TextSM.Line)
+				d := components.TextOverflow("日期", theme.TextSM, theme.WeightMedium)
 				components.SectionLabel(c, t, "日期").Margin(-d, 0, 4-d, 0)
 				DateRangePicker(c, t, "date", DateRangeProps{
 					StartDate: s.date, EndDate: s.date, TriggerLabel: "选择日期", ApplyLabel: "确定", ResetLabel: "重置",
@@ -48,12 +48,12 @@ func (s *screenScene) view(c *ui.Context) {
 				}).FillWidth()
 			})
 			ui.Column(c).Children(func() {
-				d := components.LineOverflow(ui.Span{Text: "开始时间", Size: theme.TextSM.Size, Weight: theme.WeightMedium}, theme.TextSM.Line)
+				d := components.TextOverflow("开始时间", theme.TextSM, theme.WeightMedium)
 				components.SectionLabel(c, t, "开始时间").Margin(-d, 0, 4-d, 0)
 				TimeWheelPicker(c, t, "start", TimeWheelProps{ValueMinutes: s.minutes, OnChange: func(v int) { s.minutes = v }})
 			})
 			ui.Column(c).Children(func() {
-				d := components.LineOverflow(ui.Span{Text: "游玩时长", Size: theme.TextSM.Size, Weight: theme.WeightMedium}, theme.TextSM.Line)
+				d := components.TextOverflow("游玩时长", theme.TextSM, theme.WeightMedium)
 				components.SectionLabel(c, t, "游玩时长").Margin(-d, 0, 8-d, 0)
 				DurationWheelPicker(c, t, "duration", DurationWheelProps{
 					ValueSeconds: s.secs, OnChange: func(v int) { s.secs = v },

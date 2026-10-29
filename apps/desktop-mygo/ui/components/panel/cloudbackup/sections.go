@@ -261,7 +261,7 @@ func oneDriveNote(c *ui.Context, t *theme.Theme) {
 func clientIDHint(c *ui.Context, t *theme.Theme) {
 	color := hintColor(t)
 	hintText := locales.SettingsCloudBackupClientIdHint() + " " + locales.SettingsCloudBackupClientIdHintLink() + locales.SettingsCloudBackupClientIdHint2()
-	d := components.LineOverflow(ui.Span{Text: hintText, Font: theme.UIFont, Size: theme.TextXS.Size, Weight: theme.WeightNormal}, theme.TextXS.Line)
+	d := components.TextOverflow(hintText, theme.TextXS, theme.WeightNormal)
 	rt := ui.RichText(c.Key("client-id-hint")).FontSize(theme.TextXS.Size).FixedLineHeight(theme.TextXS.Line).
 		FontWeight(theme.WeightNormal).TextColor(color).Margin(-d, 0, -d, 0)
 	if theme.UIFont != "" {

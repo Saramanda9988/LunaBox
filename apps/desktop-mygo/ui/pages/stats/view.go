@@ -316,7 +316,7 @@ func (p *Page) summaryCards(c *ui.Context, t *theme.Theme, s *vo.PeriodStats, wi
 					// ml-1：宽 4 的行内占位，单位与数值按基线对齐
 					spans = append(spans, ui.Span{Text: "\ufffc", ObjectWidth: 4}, ui.Span{Text: it.suffix, Size: 12, Weight: theme.WeightNormal, Color: muted})
 				}
-				d := components.LineOverflow(ui.Span{Text: it.value, Font: theme.UIFont, Size: theme.TextXL.Size, Weight: theme.WeightBold}, theme.TextXL.Line)
+				d := components.TextOverflow(it.value, theme.TextXL, theme.WeightBold)
 				v := ui.RichText(c, spans...).FontSize(theme.TextXL.Size).FixedLineHeight(theme.TextXL.Line).
 					FontWeight(theme.WeightBold).TextColor(t.TextStrong).Margin(-d, 0, -d, 0)
 				if theme.UIFont != "" {

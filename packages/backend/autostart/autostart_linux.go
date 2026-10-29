@@ -30,21 +30,33 @@ func Set(enabled bool) error {
 	if err != nil {
 		return err
 	}
+	path := filepath.Join(dir, autostartFileName)
 	if !enabled {
-		return removeOwn(dir, exe)
+		// lunabox.desktop 是本程序固定的文件名，不论 Exec 指向哪里都删：程序挪过位置（便携版）或另一个
+		// 版本装在别处时，它指向的已不是当前程序，留着它下次登录会去启动一个不存在或不该启动的程序。
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("autostart: remove %s: %w", path, err)
+		}
+		return removeOwn(dir, exe, path)
+	}
+	// 换行会让 Exec 之后的内容变成新的键（同 Wails 的 validateDesktopExecToken）。
+	if strings.ContainsFunc(exe, func(r rune) bool { return r != '\t' && (r < 0x20 || r == 0x7f) }) {
+		return fmt.Errorf("autostart: control character in executable path %q", exe)
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("autostart: create autostart dir: %w", err)
 	}
-	// 换过安装位置时先删掉指向同一个程序的旧项。
-	if err := removeOwn(dir, exe); err != nil {
-		return err
-	}
-	path := filepath.Join(dir, autostartFileName)
-	if err := os.WriteFile(path, []byte(desktopEntry(exe)), 0o644); err != nil {
+	// 先写临时文件再改名：写到一半失败不会留下一个残缺的启动项。
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, []byte(desktopEntry(exe)), 0o644); err != nil {
 		return fmt.Errorf("autostart: write desktop file: %w", err)
 	}
-	return nil
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("autostart: write desktop file: %w", err)
+	}
+	// 别的文件名下指向本程序的旧项（如 Wails 版按别的标识写的）一并删掉，免得登录时启动两次。
+	return removeOwn(dir, exe, path)
 }
 
 // autostartDir 与 Wails 一致：$XDG_CONFIG_HOME/autostart，未设置时 ~/.config/autostart。
@@ -72,8 +84,8 @@ Terminal=false
 `, autostartAppName, quoteExec(exe), appruntime.AutostartLaunchArgument)
 }
 
-// removeOwn 删除 Exec 指向 exe 的 .desktop：只删本程序的启动项，不动其他程序的。
-func removeOwn(dir, exe string) error {
+// removeOwn 删除 keep 以外 Exec 指向 exe 的 .desktop：只删本程序的启动项，不动其他程序的。
+func removeOwn(dir, exe, keep string) error {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -86,6 +98,9 @@ func removeOwn(dir, exe string) error {
 			continue
 		}
 		path := filepath.Join(dir, entry.Name())
+		if path == keep {
+			continue
+		}
 		content, err := os.ReadFile(path)
 		if err != nil {
 			continue
@@ -100,8 +115,11 @@ func removeOwn(dir, exe string) error {
 	return nil
 }
 
-// quoteExec 按 freedesktop 的 Exec 规则给一个参数加引号：含空格或保留字符时双引号并转义。
+// quoteExec 按 freedesktop 的 Exec 规则给一个参数加引号：含空格或保留字符时双引号并转义，
+// % 写成 %%（否则 %f、%u 之类会被启动器当作字段码展开）。引号内的转义与 Wails 一样只转一层，
+// 两个版本才认得出彼此写的 Exec。
 func quoteExec(s string) string {
+	s = strings.ReplaceAll(s, "%", "%%")
 	if !strings.ContainsAny(s, " \t\"`$\\") {
 		return s
 	}
@@ -117,8 +135,12 @@ func quoteExec(s string) string {
 	return b.String()
 }
 
-// execPathOf 返回 Exec= 一行的第一个参数（去掉引号与转义）。
+// execPathOf 返回 Exec= 一行的第一个参数（去掉引号与转义，%% 还原为 %）。
 func execPathOf(contents string) string {
+	return strings.ReplaceAll(execToken(contents), "%%", "%")
+}
+
+func execToken(contents string) string {
 	for _, line := range strings.Split(contents, "\n") {
 		value, ok := strings.CutPrefix(strings.TrimSpace(line), "Exec=")
 		if !ok {

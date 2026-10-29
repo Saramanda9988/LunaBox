@@ -41,3 +41,12 @@ func TestLineBoxHeights(t *testing.T) {
 		}
 	}
 }
+
+// 带换行的文字按一行的溢出算，而不是几行的总高。
+func TestTextOverflowMultiline(t *testing.T) {
+	one := TextOverflow("游戏库 Navel", theme.TextSM, theme.WeightNormal)
+	two := TextOverflow("游戏库 Navel\n游戏库 Navel", theme.TextSM, theme.WeightNormal)
+	if one != two {
+		t.Errorf("multiline overflow = %.2f, want %.2f (same as one line)", two, one)
+	}
+}
