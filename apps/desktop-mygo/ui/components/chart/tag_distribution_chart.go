@@ -112,12 +112,13 @@ func pie(c *ui.Context, t *theme.Theme, st *TagState, tags []vo.TagPlayStats, va
 	}
 	st.over = over
 	canvas.Draw(func(p *ui.Painter, r ui.Rect) {
+		ox, oy := pixelOrigin(p, r.X, r.Y)
 		for i, s := range slices {
 			fill, stroke := tagColors[i%len(tagColors)], border
 			if i == st.hover {
 				fill, stroke = hoverColor(fill), hoverColor(stroke)
 			}
-			path := plot.Sector(r.X+cx, r.Y+cy, 0, radius, s)
+			path := plot.Sector(ox+cx, oy+cy, 0, radius, s)
 			p.FillPath(path, fill)
 			p.StrokePath(path, pieBorder, stroke)
 		}

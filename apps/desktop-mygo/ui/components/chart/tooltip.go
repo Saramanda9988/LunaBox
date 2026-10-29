@@ -174,7 +174,8 @@ func tooltip(c *ui.Context, m measureFunc, W, H float32, area ui.Rect, s tipSpec
 	box := ui.Column(c.Key("chart-tooltip")).Absolute().Left(g.x).Top(g.y).Size(w, h).Padding(tipPadding).PassThrough()
 	box.Transition(ui.ElementTransition{Position: true, Duration: 400 * time.Millisecond, Ease: easeOutQuart})
 	box.Draw(func(p *ui.Painter, r ui.Rect) {
-		p.FillPath(tipPath(g, r.X, r.Y, r.X+caretX), tooltipBg)
+		x, y := pixelOrigin(p, r.X, r.Y)
+		p.FillPath(tipPath(g, x, y, x+caretX), tooltipBg)
 	})
 	box.Children(func() {
 		if s.title != "" {

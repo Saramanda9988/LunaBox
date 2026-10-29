@@ -46,6 +46,18 @@ var (
 	white     = ui.RGBA(255, 255, 255, 1) // tooltip.titleColor / bodyColor / multiKeyBackground
 )
 
+// pixelOrigin 把路径的原点 (x, y) 移到设备像素上。MyGo 按路径在像素网格上的位置（精确到 1/4 像素）缓存它的蒙版，
+// 页面滚动到非整数像素（150% 缩放下滚动一个 DIP 是 1.5 像素）时，同一个扇区、柱子每帧都要重新光栅化并上传到
+// 蒙版图集：统计页滚动时每秒上传几百 MB，图集反复撑满重建，显卡驱动的暂存内存随之暴涨。原点对齐像素后，
+// 平移不改变蒙版，滚动时直接复用。
+func pixelOrigin(p *ui.Painter, x, y float32) (float32, float32) {
+	s := p.Scale()
+	if s <= 0 {
+		return x, y
+	}
+	return float32(math.Round(float64(x*s))) / s, float32(math.Round(float64(y*s))) / s
+}
+
 // colors 是 useChartTheme 的 textColor 与 gridColor。
 type colors struct {
 	text, grid ui.Color

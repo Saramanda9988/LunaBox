@@ -263,13 +263,20 @@ func (p *Page) heroCover(c *ui.Context, t *theme.Theme, g *models.Game, maxW, kc
 	}
 	wrap.Children(func() {
 		// Shrink(0)：收起时封面保持原尺寸，只被外层的 max-h 从底部裁掉；否则会跟着压扁，图片 Contain 缩小、两侧露出底色。
-		box := ui.Box(c.Key("cover")).Size(w, h).Shrink(0).Radius(16).Clip().Background(t.Pick(theme.Brand200, theme.Brand800)).
+		box := ui.Box(c.Key("cover")).Size(w, h).Shrink(0).Radius(16).Background(t.Pick(theme.Brand200, theme.Brand800)).
 			Shadow(0, 8, 30, 0, ui.RGBA(0, 0, 0, 0.3)).Shadow(0, 0, 0, 2, t.Pick(theme.White.Alpha(0.2), theme.White.Alpha(0.1))).
 			Opacity(kc).Translate(0, (1-kc)*20).Scale(0.99+0.01*kc, 0.99+0.01*kc).Cursor(ui.CursorPointer).Label(g.Name)
+		// overflow-hidden 不用 Clip：换游戏时封面要淡入、上移、缩放 760ms，变换下的圆角裁剪每帧都要在 CPU 上光栅化
+		// 一张封面大小的蒙版再上传（150% 缩放下约 1.3MB 一帧）。图片的比例与 box 相同，直接按圆角画出即可；
+		// 只有要模糊的 NSFW 封面需要裁掉模糊溢出的部分，仍然裁剪。
+		blur := g.IsNSFW && blurNSFW
+		if blur {
+			box.Clip()
+		}
 		id := g.ID
 		box.OnClick(func() { p.openDetail(id) }).Children(func() {
-			img := ui.Image(c, bmp).Fill().Fit(ui.Contain)
-			if g.IsNSFW && blurNSFW {
+			img := ui.Image(c, bmp).Fill().Fit(ui.Contain).Radius(16)
+			if blur {
 				components.CoverBlur(c, box, img, true)
 			}
 		})

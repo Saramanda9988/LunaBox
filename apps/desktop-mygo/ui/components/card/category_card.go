@@ -155,7 +155,7 @@ func coverStack(c *ui.Context, t *theme.Theme, p CategoryCardProps, w, h, fan fl
 				if t.Dark {
 					shadow = ui.RGBA(0, 0, 0, 0.3)
 				}
-				card := ui.Box(c).Fill().Radius(8).Clip().Border(3, t.Pick(theme.White, theme.Brand900)).
+				card := ui.Box(c).Fill().Radius(8).Border(3, t.Pick(theme.White, theme.Brand900)).
 					Shadow(0, 4, 6, -1, shadow).Shadow(0, 2, 4, -2, shadow).
 					Scale(s.scale, s.scale).Rotate(s.rotate).Translate(s.x, s.y)
 				if len(games) == 0 {
@@ -180,9 +180,16 @@ func coverStack(c *ui.Context, t *theme.Theme, p CategoryCardProps, w, h, fan fl
 					bmp = p.Covers(game)
 				}
 				if bmp != nil {
+					// overflow-hidden 不用 Clip：旋转的元素裁剪时 MyGo 要在 CPU 上为每张封面光栅化一张裁剪蒙版并上传，
+					// 侧边栏展开、收起时卡片每帧变宽，三张封面的蒙版每帧重建（每秒几百 MB 的纹理）。封面本身按边框内侧的
+					// 圆角（8 - 3）画出，效果相同；只有要模糊的 NSFW 封面需要裁掉模糊溢出的部分，仍然裁剪。
+					blur := g.IsNSFW && p.BlurNSFW
+					if blur {
+						card.Clip()
+					}
 					card.Children(func() {
-						img := ui.Image(c, bmp).Fill().Fit(ui.Cover)
-						if g.IsNSFW && p.BlurNSFW {
+						img := ui.Image(c, bmp).Fill().Fit(ui.Cover).Radius(5)
+						if blur {
 							components.CoverBlur(c, card, img, false)
 						}
 					})

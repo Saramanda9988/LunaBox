@@ -224,13 +224,14 @@ func barChart(c *ui.Context, t *theme.Theme, s *barState, b barSpec) ui.Element 
 		}
 		p.Line(ox+a.X, oy+a.Y, ox+a.X, oy+a.Y+a.H, 1, jsBorder)
 		p.Line(ox+a.X, oy+a.Y+a.H, ox+a.X+a.W, oy+a.Y+a.H, 1, jsBorder)
+		px, py := pixelOrigin(p, ox, oy)
 		for i, rr := range rects {
 			color := b.colors[i]
 			if i == s.hover {
 				color = hoverColor(color)
 			}
-			rr.X += ox
-			rr.Y += oy
+			rr.X += px
+			rr.Y += py
 			p.FillPath(barPath(rr, b.horizontal), color)
 		}
 	})
