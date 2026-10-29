@@ -179,26 +179,21 @@ func hoverOverlay(c *ui.Context, p GameCardProps, opacity float32) {
 	})
 }
 
-// roundOverlayButton：h-8 w-8 rounded-full，hover:scale-110 active:scale-95（transition-transform 150ms）。
-// icon 为 loading 时是旋转的加载图标。
+// roundOverlayButton：h-8 w-8 rounded-full，悬停换底色。icon 为 loading 时是旋转的加载图标。
+// 不做悬停缩放：圆角裁剪的封面里一有变换，MyGo 就要为封面与卡片各光栅化一张裁剪蒙版，扫过一排卡片内存就一路上涨。
 func roundOverlayButton(c *ui.Context, key, icon string, bg, bgHover ui.Color, shadow, disabled bool) ui.Element {
 	btn := ui.ButtonBase(c.Key(key)).Size(32, 32).Radius(999).Center().FocusRing(false)
 	btn.Background(bg)
-	scale := float32(1)
 	switch {
 	case disabled:
 		components.Disable(btn, 0.65)
-	case btn.Pressed():
-		scale = 0.95
 	case btn.Hovered():
 		btn.Background(bgHover)
-		scale = 1.1
 	}
 	if shadow {
 		btn.Shadow(0, 10, 15, -3, ui.RGBA(0, 0, 0, 0.1)).Shadow(0, 4, 6, -4, ui.RGBA(0, 0, 0, 0.1))
 	}
-	s := btn.AnimateWith("scale", scale, 150*time.Millisecond, theme.EaseTailwind)
-	btn.Scale(s, s).Children(func() {
+	btn.Children(func() {
 		if icon == "loading" {
 			components.Spinner(c, 18, theme.White)
 		} else {

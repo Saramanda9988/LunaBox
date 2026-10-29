@@ -278,7 +278,9 @@ func (r *Rail) card(c *ui.Context, t *theme.Theme, p Props, g models.Game) {
 	}
 	btn.Children(func() {
 		const radius = 10.4 // rounded-[0.65rem]
-		ui.Box(c).Fill().Radius(radius).Clip().Background(t.Pick(theme.Brand200, theme.Brand800.Alpha(0.7))).Children(func() {
+		// overflow-hidden 不用 Clip，封面与底部渐变各自按圆角画：按钮悬停时缩放、上移，变换下的圆角裁剪要在 CPU 上
+		// 光栅化蒙版，动画的每一帧都重建一张，不用的还会留在内存里（最多 32MB）。
+		ui.Box(c).Fill().Radius(radius).Background(t.Pick(theme.Brand200, theme.Brand800.Alpha(0.7))).Children(func() {
 			var bmp *ui.Bitmap
 			missing := true
 			if p.Covers != nil {
@@ -286,14 +288,14 @@ func (r *Rail) card(c *ui.Context, t *theme.Theme, p Props, g models.Game) {
 			}
 			switch {
 			case bmp != nil:
-				ui.Image(c, bmp).Fill().Fit(ui.Cover)
+				ui.Image(c, bmp).Fill().Fit(ui.Cover).Radius(radius)
 			case missing:
 				ui.Box(c).Fill().Center().Children(func() {
 					components.Icon(c, "image-off", 30, t.Pick(theme.Brand400, theme.White.Alpha(0.5)))
 				})
 			}
 			// absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent
-			ui.Box(c).Absolute().Left(0).Right(0).Bottom(0).HeightPercent(50).PassThrough().
+			ui.Box(c).Absolute().Left(0).Right(0).Bottom(0).HeightPercent(50).Radius(0, 0, radius, radius).PassThrough().
 				LinearGradient(ui.LinearGradient{From: theme.Black.Alpha(0), To: theme.Black.Alpha(0.6), Angle: 180, Oklab: true})
 		})
 	})

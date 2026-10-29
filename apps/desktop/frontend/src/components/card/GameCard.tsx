@@ -206,7 +206,7 @@ function GameCardComponent({
               onClick={handleStartGame}
               disabled={isCurrentGameRunning}
               aria-label={t("gameCard.startGame")}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-600 text-white shadow-lg transition-transform hover:scale-110 hover:bg-neutral-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-65 disabled:hover:scale-100"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-600 text-white shadow-lg hover:bg-neutral-500 disabled:cursor-not-allowed disabled:opacity-65"
             >
               <div
                 className={
@@ -221,7 +221,7 @@ function GameCardComponent({
             <button
               type="button"
               onClick={handleViewDetails}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white transition-transform hover:scale-110 hover:bg-white/30 active:scale-95"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
             >
               <div className="i-mdi-information-variant text-lg" />
             </button>
