@@ -8,6 +8,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"runtime"
 	"runtime/debug"
 
 	"github.com/egoist/mygo"
@@ -22,6 +23,12 @@ import (
 //
 //go:embed resources/icon.png
 var appIcon []byte
+
+// darwinAppIcon 是 Wails 版的 build/darwin/appicon.png：留出 macOS 图标的边距、带圆角。macOS 上用它设置程序坞图标，
+// appIcon 铺满整张图，在程序坞里是一块比其他应用大的白色方块。
+//
+//go:embed darwin/appicon.png
+var darwinAppIcon []byte
 
 var (
 	flagRepeat    = flag.Int("repeat", 1, "把游戏列表复制 N 份，用于压测大列表")
@@ -52,8 +59,12 @@ func main() {
 	if *flagLang != "" {
 		os.Setenv("MYGO_LOCALE", *flagLang) // 同 mygo dev -lang：只影响这次运行
 	}
+	icon := appIcon
+	if runtime.GOOS == "darwin" {
+		icon = darwinAppIcon
+	}
 	err := app.Run(app.Options{
-		Icon:       appIcon,
+		Icon:       icon,
 		Args:       flag.Args(),
 		Autostart:  autostart,
 		Dev:        mygo.IsDev(),

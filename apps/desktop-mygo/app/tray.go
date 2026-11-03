@@ -2,28 +2,42 @@ package app
 
 import (
 	_ "embed"
+	"runtime"
 
 	"github.com/egoist/mygo"
 
 	"lunabox/desktop-mygo/ui/locales"
 )
 
-// trayIcon 是 Wails 版的 build/windows/tray.png（32x32）。
+// trayIcon 是 Wails 版的 build/windows/tray.png（32x32），Windows 的托盘图标。
 //
 //go:embed tray.png
 var trayIcon []byte
+
+// trayTemplateIcon 是 Wails 版的 build/darwin/tray-template.png：黑色透明底的模板图标，macOS 按菜单栏深浅着色。
+//
+//go:embed tray-template.png
+var trayTemplateIcon []byte
 
 // setupTray 创建通知区域图标，对应 Wails 版的 configureTray：单击显示主窗口，右键菜单是“显示主窗口”“退出”。
 // 必须在 WhenReady 里调用。
 func (a *app) setupTray() {
 	show := &mygo.MenuItem{Label: locales.NativeTrayShowMainWindow(), Click: func(*mygo.MenuItem, *mygo.Window) { a.core.ShowMainWindow() }}
 	quit := &mygo.MenuItem{Label: locales.NativeTrayQuit(), Click: func(*mygo.MenuItem, *mygo.Window) { a.core.RequestQuit("tray-menu") }}
-	tray, err := mygo.NewTray(mygo.TrayOptions{
+	opts := mygo.TrayOptions{
 		ID:      "main", // 跨启动保留用户的选择：Windows 上显示在任务栏还是溢出区，macOS 上菜单栏里的位置
 		Icon:    trayIcon,
 		ToolTip: "LunaBox",
 		Menu:    mygo.NewMenu([]*mygo.MenuItem{show, mygo.Separator(), quit}),
-	})
+	}
+	switch runtime.GOOS {
+	case "darwin":
+		opts.Icon, opts.IconIsTemplate = trayTemplateIcon, true
+	case "linux":
+		// 同 Wails 版用应用图标：面板按自己的尺寸缩放，高分屏上比 32x32 的 tray.png 清楚。
+		opts.Icon = a.o.Icon
+	}
+	tray, err := mygo.NewTray(opts)
 	if err != nil {
 		a.logger.Error("failed to create tray icon: " + err.Error())
 		return
