@@ -101,7 +101,7 @@ desktop-mygo 替代 Wails 版之前还要补的东西。按要不要做分成四
 
 - **与 Wails 版并存**：单实例锁用的是同一个标识 `io.github.saramanda9988.lunabox`（`mygo.json` 的 `identifier`，即 Wails 版的 `applicationUniqueID`；开发版是 `LunaBox Dev`），但机制不同（Wails 是 Windows 的命名互斥量、Linux 的 D-Bus 名称、macOS 临时目录里的锁文件，MyGo 是 Unix socket），两个版本仍可能同时打开同一份数据（DuckDB 会拒绝第二个进程，后启动的那个显示启动错误窗）。
 - **跨平台**：在 macOS（Metal）与 Linux 上跑通并对照。启动配置的 macOS 兼容层、Linux 的 Wine / Proton 已迁移，但只在 Windows 上用替换的服务测过；macOS 的 `lunabox://`（`mygo.json` 的 `urlSchemes` 写进 Info.plist，`App.OnOpenURL` 交给 `HandleLaunchedWithURL`）还没在 macOS 上实测。
-- **打包发布**：`tools/release` 已按 Wails 版的布局打出全部种类的包（Windows 便携版与安装版、macOS DMG、Linux AppImage、deb、rpm），Windows 的两种包带 LunaBoxUpdater.exe；还没有代码签名（SignPath、macOS 的签名与公证），没有替换 Wails 版的正式发布流程。
+- **打包发布**：`tools/release` 已按 Wails 版的布局打出全部种类的包（Windows 便携版与安装版、macOS DMG、Linux AppImage、deb、rpm），Windows 的两种包带 LunaBoxUpdater.exe；开发版 `autobuild.yml` 已切到 MyGo 并用 SignPath 签名 Windows 包，还没有 macOS 的签名与公证，正式发布流程 `release.yml` 仍是 Wails 版。
 - **应用内更新与 Wails 版共用官方渠道**：“立即更新”与 Wails 版一样按官方更新清单的 `windows-<架构>-<portable|installer>` 渠道下载并交给 LunaBoxUpdater。正式发布切换到 MyGo 版之前，清单里是 Wails 版的文件，MyGo 预发布版更新后会变成 Wails 版（数据通用）。完整的下载、替换与重启只能等有清单时验证。
 
 ## 原版自身的问题

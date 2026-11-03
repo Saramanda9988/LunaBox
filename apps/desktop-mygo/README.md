@@ -65,16 +65,17 @@ go run ./tools/release -version 1.2.0 -arch arm64 -mode installer
 
 | 系统 | `-mode` | 包 | 对应 Wails 版 |
 | --- | --- | --- | --- |
-| Windows | `portable`（默认） | `LunaBox-mygo-<版本>-windows-<架构>-portable.zip`，带 lunacli、LunaBoxUpdater 与 7z，数据在 `LunaBox.exe` 旁边 | `scripts\build.bat portable` |
-| Windows | `installer` | `LunaBox-mygo-<版本>-windows-<架构>-setup.exe`，用 Wails 版的 `build/windows/nsis/project.nsi`（不装 WebView2），需要 NSIS | `scripts\build.bat installer` |
-| Linux | `appimage`（默认） | `LunaBox-mygo-<版本>-linux-<架构>.AppImage`，数据与 Wails 版的 AppImage 一样在 `~/.config/LunaBox`，需要 appimagetool | `scripts/build.sh appimage` |
-| Linux | `installer` | `LunaBox-mygo-<版本>-linux-<架构>.deb` 与 `.rpm`，依赖 GTK 3 而不是 WebKitGTK，需要 [nFPM](https://nfpm.goreleaser.com) | `scripts/build.sh installer` |
+| Windows | `portable`（默认） | `LunaBox-<版本>-windows-<架构>-portable.zip`，带 lunacli、LunaBoxUpdater 与 7z，数据在 `LunaBox.exe` 旁边 | `scripts\build.bat portable` |
+| Windows | `installer` | `LunaBox-<版本>-windows-<架构>-setup.exe`，用 Wails 版的 `build/windows/nsis/project.nsi`（不装 WebView2），需要 NSIS | `scripts\build.bat installer` |
+| Windows | `installer-payload`、`installer-package` | 把 `installer` 拆成两步，中间给 exe 签名：前者只把安装包的内容放到 `LunaBox-<版本>-windows-<架构>-installer`，后者不编译，把这个目录打成安装包 | `scripts\build.bat installer-payload`、`installer-package` |
+| Linux | `appimage`（默认） | `LunaBox-<版本>-linux-<架构>.AppImage`，数据与 Wails 版的 AppImage 一样在 `~/.config/LunaBox`，需要 appimagetool | `scripts/build.sh appimage` |
+| Linux | `installer` | `LunaBox-<版本>-linux-<架构>.deb` 与 `.rpm`，依赖 GTK 3 而不是 WebKitGTK，需要 [nFPM](https://nfpm.goreleaser.com) | `scripts/build.sh installer` |
 | Linux | `all` | 以上两种 | `scripts/build.sh all` |
-| macOS | `installer`（默认） | `LunaBox-mygo-<版本>-macos-<架构>.dmg`，`.app` 的 `Contents/Resources/bin` 带 lunacli 与 7zz，ad-hoc 签名 | `scripts/build.sh installer` |
+| macOS | `installer`（默认） | `LunaBox-<版本>-macos-<架构>.dmg`，`.app` 的 `Contents/Resources/bin` 带 lunacli 与 7zz，ad-hoc 签名 | `scripts/build.sh installer` |
 
-统计页的美化导出用系统的 WebView（WebView2 Runtime、WKWebView、WebKitGTK）预览与截取 HTML 模板，运行时检测，安装包不依赖它，没有时弹窗里提示。Linux 构建需要 gcc，运行需要系统的 GTK 3 与 libepoxy；macOS 构建需要 Xcode 命令行工具。安装版（Windows 安装包、deb、rpm、DMG）装到 Wails 版的位置，会替换已安装的 Wails 版。Windows 的应用内更新与 Wails 版共用官方更新清单（见 [docs/gaps.md](docs/gaps.md#发布与平台)）；代码签名还没有做。
+统计页的美化导出用系统的 WebView（WebView2 Runtime、WKWebView、WebKitGTK）预览与截取 HTML 模板，运行时检测，安装包不依赖它，没有时弹窗里提示。Linux 构建需要 gcc，运行需要系统的 GTK 3 与 libepoxy；macOS 构建需要 Xcode 命令行工具。安装版（Windows 安装包、deb、rpm、DMG）装到 Wails 版的位置，会替换已安装的 Wails 版。Windows 的应用内更新与 Wails 版共用官方更新清单（见 [docs/gaps.md](docs/gaps.md#发布与平台)）；Windows 的代码签名在 `autobuild.yml` 里做。
 
-GitHub Actions 的 **MyGo Build Pre-release**（`.github/workflows/mygo-build.yml`，手动触发）的矩阵同 Wails 版的 `autobuild.yml`：Windows amd64、arm64 的便携版与安装版，macOS arm64、amd64 的 DMG，Linux 的 AppImage、deb、rpm（Wails 版暂停了 Linux arm64，MyGo 版保留），发布到滚动的预发布 `mygo-dev-latest`（与 Wails 版的 `dev-latest` 分开）。
+GitHub Actions 的开发版 **Auto Build Pre-release**（`.github/workflows/autobuild.yml`）已改用 `tools/release` 构建三端，Windows 包经 SignPath 签名，发布到 `dev-latest`。**MyGo Build Pre-release**（`.github/workflows/mygo-build.yml`，手动触发，不签名）的矩阵：Windows amd64、arm64 的便携版与安装版，macOS arm64、amd64 的 DMG，Linux 的 AppImage、deb、rpm（Wails 版暂停了 Linux arm64，MyGo 版保留），发布到滚动的预发布 `mygo-dev-latest`（与 Wails 版的 `dev-latest` 分开）。
 
 ## 开发约定
 

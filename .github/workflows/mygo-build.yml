@@ -129,7 +129,7 @@ jobs:
           go run ./tools/release -version '${{ needs.version.outputs.version }}' -arch '${{ matrix.arch }}' -mode portable
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $Artifact = 'build/release/LunaBox-mygo-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable.zip'
+          $Artifact = 'build/release/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable.zip'
           if (!(Test-Path -LiteralPath $Artifact)) {
             throw "Portable artifact not found: $Artifact"
           }
@@ -165,7 +165,7 @@ jobs:
           go run ./tools/release -version '${{ needs.version.outputs.version }}' -arch '${{ matrix.arch }}' -mode installer
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $Artifact = 'build/release/LunaBox-mygo-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-setup.exe'
+          $Artifact = 'build/release/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-setup.exe'
           if (!(Test-Path -LiteralPath $Artifact)) {
             throw "Installer artifact not found: $Artifact"
           }
@@ -175,7 +175,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lunabox-mygo-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable
-          path: apps/desktop-mygo/build/release/LunaBox-mygo-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable.zip
+          path: apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable.zip
           if-no-files-found: error
 
       - name: Upload installer
@@ -183,7 +183,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lunabox-mygo-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-installer
-          path: apps/desktop-mygo/build/release/LunaBox-mygo-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-setup.exe
+          path: apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-setup.exe
           if-no-files-found: error
 
   build-macos:
@@ -233,7 +233,7 @@ jobs:
           set -euo pipefail
           go run ./tools/release -version '${{ needs.version.outputs.version }}' -arch '${{ matrix.arch }}' -mode installer
 
-          artifact="build/release/LunaBox-mygo-${{ needs.version.outputs.version }}-macos-${{ matrix.arch }}.dmg"
+          artifact="build/release/LunaBox-${{ needs.version.outputs.version }}-macos-${{ matrix.arch }}.dmg"
           test -f "$artifact"
 
           mount_dir="${RUNNER_TEMP}/lunabox-mygo-dmg-check"
@@ -252,7 +252,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lunabox-mygo-${{ needs.version.outputs.version }}-macos-${{ matrix.arch }}
-          path: apps/desktop-mygo/build/release/LunaBox-mygo-${{ needs.version.outputs.version }}-macos-${{ matrix.arch }}.dmg
+          path: apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-macos-${{ matrix.arch }}.dmg
           if-no-files-found: error
 
   build-linux:
@@ -337,7 +337,7 @@ jobs:
           set -euo pipefail
           go run ./tools/release -version '${{ needs.version.outputs.version }}' -arch '${{ matrix.arch }}' -mode all
 
-          base="$PWD/build/release/LunaBox-mygo-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}"
+          base="$PWD/build/release/LunaBox-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}"
           test -x "$base.AppImage"
           test -f "$base.deb"
           test -f "$base.rpm"
@@ -366,9 +366,9 @@ jobs:
         with:
           name: lunabox-mygo-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}
           path: |
-            apps/desktop-mygo/build/release/LunaBox-mygo-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}.AppImage
-            apps/desktop-mygo/build/release/LunaBox-mygo-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}.deb
-            apps/desktop-mygo/build/release/LunaBox-mygo-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}.rpm
+            apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}.AppImage
+            apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}.deb
+            apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}.rpm
           if-no-files-found: error
 
   create-prerelease:

@@ -5,5 +5,12 @@
   "urlSchemes": ["lunabox"],
   "out": "build",
   "i18n": { "dir": "ui/locales", "source": "zh-CN" },
-  "linux": { "webview": false }
+  "linux": { "webview": false },
+  "macos": {
+    "infoPlist": {
+      "CFBundleGetInfoString": "LunaBox game library manager",
+      "NSAudioCaptureUsageDescription": "LunaBox uses system audio access to mute games while they are in the background.",
+      "NSHumanReadableCopyright": "Copyright (c) LunaBox contributors"
+    }
+  }
 }

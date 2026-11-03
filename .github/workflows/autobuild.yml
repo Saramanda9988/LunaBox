@@ -42,13 +42,14 @@ jobs:
           echo "commit-count=$commit_count" >> "$GITHUB_OUTPUT"
           echo "Resolved version: $version"
 
+  # 三端都用 MyGo 版（apps/desktop-mygo/tools/release）构建，发布包的文件名与包内布局同 Wails 版的 build.bat、build.sh。
   build-windows:
     name: Windows ${{ matrix.arch }} / ${{ matrix.mode }}
     needs: version
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
-        working-directory: apps/desktop
+        working-directory: apps/desktop-mygo
     strategy:
       fail-fast: true
       matrix:
@@ -82,24 +83,13 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: apps/desktop/go.mod
+          go-version-file: apps/desktop-mygo/go.mod
           cache: true
           cache-dependency-path: |
+            apps/desktop-mygo/go.sum
             apps/desktop/go.sum
             packages/backend/go.sum
             packages/updater/go.sum
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: apps/desktop/frontend/pnpm-lock.yaml
 
       - name: Setup ARM64 CGO toolchain
         id: msys2-arm64
@@ -110,6 +100,7 @@ jobs:
           path-type: inherit
           install: ${{ matrix.toolchain }}
 
+      # tools/release 在 MSYS2_LOCATION/clangarm64/bin 下找 clang。
       - name: Export ARM64 MSYS2 location
         if: matrix.arch == 'arm64'
         shell: pwsh
@@ -120,22 +111,13 @@ jobs:
           }
           "MSYS2_LOCATION=$Location" >> $env:GITHUB_ENV
 
+      # 安装版用 Wails 版的 apps/desktop/build/windows/nsis/project.nsi 打包。
       - name: Install NSIS
         if: matrix.mode == 'installer'
         shell: pwsh
         run: |
           choco install nsis --no-progress -y
           'C:\Program Files (x86)\NSIS' >> $env:GITHUB_PATH
-
-      - name: Install matching Wails v3 CLI
-        shell: pwsh
-        run: |
-          $Version = (go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3).Trim()
-          go install "github.com/wailsapp/wails/v3/cmd/wails3@$Version"
-          $Installed = (& wails3 version 2>&1 | Out-String).Trim()
-          if ($Installed -ne $Version) {
-            throw "wails3 version mismatch: expected $Version, found $Installed"
-          }
 
       - name: Build portable package
         if: matrix.mode == 'portable'
@@ -150,10 +132,11 @@ jobs:
           LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
         run: |
           $ErrorActionPreference = 'Stop'
-          .\scripts\build.bat portable '${{ needs.version.outputs.version }}' '${{ matrix.arch }}'
+          go run ./tools/release -version '${{ needs.version.outputs.version }}' -arch '${{ matrix.arch }}' -mode portable
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $Artifact = 'build/bin/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable.zip'
+          $Name = 'LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable'
+          $Artifact = "build/release/$Name.zip"
           if (!(Test-Path -LiteralPath $Artifact)) {
             throw "Portable artifact not found: $Artifact"
           }
@@ -163,9 +146,19 @@ jobs:
             Remove-Item -LiteralPath $ExtractDir -Recurse -Force
           }
           Expand-Archive -LiteralPath $Artifact -DestinationPath $ExtractDir -Force
-          foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe')) {
-            if (!(Get-ChildItem -Path $ExtractDir -Filter $Name -Recurse -File | Select-Object -First 1)) {
-              throw "Portable artifact is missing $Name."
+          $Root = Join-Path $ExtractDir $Name
+          $Files = @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe', '7z/7z.exe', '7z/7z.dll', 'README.txt')
+          if ('${{ matrix.arch }}' -eq 'arm64') {
+            $Files += 'duckdb.dll'
+          }
+          foreach ($Path in $Files) {
+            if (!(Test-Path -LiteralPath (Join-Path $Root $Path) -PathType Leaf)) {
+              throw "Portable artifact is missing $Name/$Path."
+            }
+          }
+          foreach ($Path in @('backups', 'covers', 'backgrounds', 'logs')) {
+            if (!(Test-Path -LiteralPath (Join-Path $Root $Path) -PathType Container)) {
+              throw "Portable artifact is missing directory $Name/$Path."
             }
           }
 
@@ -182,11 +175,18 @@ jobs:
           LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
         run: |
           $ErrorActionPreference = 'Stop'
-          .\scripts\build.bat installer-payload '${{ needs.version.outputs.version }}' '${{ matrix.arch }}'
+          go run ./tools/release -version '${{ needs.version.outputs.version }}' -arch '${{ matrix.arch }}' -mode installer-payload
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          if (!(Test-Path -LiteralPath 'build/windows/payload/${{ matrix.arch }}/LunaBox.exe') -or !(Test-Path -LiteralPath 'build/windows/payload/${{ matrix.arch }}/lunacli.exe') -or !(Test-Path -LiteralPath 'build/bin/LunaBoxUpdater.exe')) {
-            throw 'Installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe.'
+          $PayloadDir = 'build/release/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-installer'
+          $Files = @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe', '7z/7z.exe', '7z/7z.dll')
+          if ('${{ matrix.arch }}' -eq 'arm64') {
+            $Files += 'duckdb.dll'
+          }
+          foreach ($Path in $Files) {
+            if (!(Test-Path -LiteralPath (Join-Path $PayloadDir $Path) -PathType Leaf)) {
+              throw "Installer payload is missing $Path."
+            }
           }
 
           $SigningDir = 'build/signing/installer-payload'
@@ -194,9 +194,9 @@ jobs:
             Remove-Item -LiteralPath $SigningDir -Recurse -Force
           }
           New-Item -ItemType Directory -Force -Path $SigningDir | Out-Null
-          Copy-Item -LiteralPath 'build/windows/payload/${{ matrix.arch }}/LunaBox.exe' -Destination $SigningDir -Force
-          Copy-Item -LiteralPath 'build/windows/payload/${{ matrix.arch }}/lunacli.exe' -Destination $SigningDir -Force
-          Copy-Item -LiteralPath 'build/bin/LunaBoxUpdater.exe' -Destination $SigningDir -Force
+          foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe')) {
+            Copy-Item -LiteralPath (Join-Path $PayloadDir $Name) -Destination $SigningDir -Force
+          }
 
       - name: Upload unsigned portable artifact
         id: upload-unsigned-portable
@@ -204,7 +204,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-lunabox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable
-          path: apps/desktop/build/bin/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable.zip
+          path: apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable.zip
           if-no-files-found: error
           retention-days: 1
 
@@ -220,7 +220,7 @@ jobs:
           github-artifact-id: ${{ steps.upload-unsigned-portable.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 1200
-          output-artifact-directory: apps/desktop/signed
+          output-artifact-directory: apps/desktop-mygo/signed
 
       - name: Verify signed portable artifact
         if: matrix.mode == 'portable'
@@ -253,7 +253,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lunabox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable
-          path: apps/desktop/signed/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable.zip
+          path: apps/desktop-mygo/signed/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable.zip
           if-no-files-found: error
 
       - name: Upload unsigned installer payload
@@ -262,7 +262,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-lunabox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-installer-payload
-          path: apps/desktop/build/signing/installer-payload/
+          path: apps/desktop-mygo/build/signing/installer-payload/
           if-no-files-found: error
           retention-days: 1
 
@@ -278,34 +278,30 @@ jobs:
           github-artifact-id: ${{ steps.upload-unsigned-installer-payload.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 1200
-          output-artifact-directory: apps/desktop/signed-payload
+          output-artifact-directory: apps/desktop-mygo/signed-payload
 
       - name: Build installer from signed payload
         if: matrix.mode == 'installer'
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $SignedGui = 'signed-payload/LunaBox.exe'
-          $SignedCli = 'signed-payload/lunacli.exe'
-          $SignedUpdater = 'signed-payload/LunaBoxUpdater.exe'
-          if (!(Test-Path -LiteralPath $SignedGui) -or !(Test-Path -LiteralPath $SignedCli) -or !(Test-Path -LiteralPath $SignedUpdater)) {
-            throw 'Signed installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe.'
-          }
-          foreach ($Path in @($SignedGui, $SignedCli, $SignedUpdater)) {
-            $Signature = Get-AuthenticodeSignature $Path
-            if ($Signature.Status -ne 'Valid') {
-              throw "$(Split-Path $Path -Leaf) does not have a valid Authenticode signature: $($Signature.Status)"
+          $PayloadDir = 'build/release/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-installer'
+          foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe')) {
+            $SignedFile = "signed-payload/$Name"
+            if (!(Test-Path -LiteralPath $SignedFile)) {
+              throw 'Signed installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe.'
             }
+            $Signature = Get-AuthenticodeSignature $SignedFile
+            if ($Signature.Status -ne 'Valid') {
+              throw "$Name does not have a valid Authenticode signature: $($Signature.Status)"
+            }
+            Copy-Item -LiteralPath $SignedFile -Destination (Join-Path $PayloadDir $Name) -Force
           }
 
-          $PayloadDir = 'build/windows/payload/${{ matrix.arch }}'
-          Copy-Item -LiteralPath $SignedGui -Destination "$PayloadDir/LunaBox.exe" -Force
-          Copy-Item -LiteralPath $SignedCli -Destination "$PayloadDir/lunacli.exe" -Force
-          Copy-Item -LiteralPath $SignedUpdater -Destination 'build/bin/LunaBoxUpdater.exe' -Force
-          .\scripts\build.bat installer-package '${{ needs.version.outputs.version }}' '${{ matrix.arch }}'
+          go run ./tools/release -version '${{ needs.version.outputs.version }}' -arch '${{ matrix.arch }}' -mode installer-package
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $Artifact = 'build/bin/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-setup.exe'
+          $Artifact = 'build/release/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-setup.exe'
           if (!(Test-Path -LiteralPath $Artifact)) {
             throw "Installer artifact not found: $Artifact"
           }
@@ -316,7 +312,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-lunabox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-installer
-          path: apps/desktop/build/bin/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-setup.exe
+          path: apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-setup.exe
           if-no-files-found: error
           retention-days: 1
 
@@ -332,7 +328,7 @@ jobs:
           github-artifact-id: ${{ steps.upload-unsigned-installer.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 1200
-          output-artifact-directory: apps/desktop/signed-installer
+          output-artifact-directory: apps/desktop-mygo/signed-installer
 
       - name: Verify signed installer
         if: matrix.mode == 'installer'
@@ -348,7 +344,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lunabox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-installer
-          path: apps/desktop/signed-installer/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-setup.exe
+          path: apps/desktop-mygo/signed-installer/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-setup.exe
           if-no-files-found: error
 
   build-macos:
@@ -357,7 +353,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
-        working-directory: apps/desktop
+        working-directory: apps/desktop-mygo
     strategy:
       fail-fast: true
       matrix:
@@ -421,32 +417,13 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: apps/desktop/go.mod
+          go-version-file: apps/desktop-mygo/go.mod
           cache: true
           cache-dependency-path: |
+            apps/desktop-mygo/go.sum
             apps/desktop/go.sum
             packages/backend/go.sum
             packages/updater/go.sum
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: apps/desktop/frontend/pnpm-lock.yaml
-
-      - name: Install matching Wails v3 CLI
-        shell: bash
-        run: |
-          set -euo pipefail
-          version="$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
-          go install "github.com/wailsapp/wails/v3/cmd/wails3@$version"
-          test "$(wails3 version 2>&1)" = "$version"
 
       - name: Build app bundle and DMG
         shell: bash
@@ -460,15 +437,30 @@ jobs:
           LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
         run: |
           set -euo pipefail
-          chmod +x scripts/build.sh
-          ./scripts/build.sh installer '${{ needs.version.outputs.version }}' '${{ matrix.arch }}'
-          test -f 'build/bin/LunaBox-${{ needs.version.outputs.version }}-macos-${{ matrix.arch }}.dmg'
+          go run ./tools/release -version '${{ needs.version.outputs.version }}' -arch '${{ matrix.arch }}' -mode installer
+
+          artifact='build/release/LunaBox-${{ needs.version.outputs.version }}-macos-${{ matrix.arch }}.dmg'
+          test -f "$artifact"
+
+          mount_dir="${RUNNER_TEMP}/lunabox-dmg-check"
+          mkdir -p "$mount_dir"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mount_dir" "$artifact" >/dev/null
+          trap 'hdiutil detach "$mount_dir" >/dev/null || true' EXIT
+          for path in LunaBox.app/Contents/MacOS/LunaBox LunaBox.app/Contents/Resources/bin/lunacli LunaBox.app/Contents/Resources/bin/7zz; do
+            if [[ ! -x "$mount_dir/$path" ]]; then
+              echo "DMG is missing executable $path." >&2
+              exit 1
+            fi
+          done
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$mount_dir/LunaBox.app/Contents/Info.plist")" = 'io.github.saramanda9988.lunabox'
+          test -L "$mount_dir/Applications"
+          codesign --verify --deep --strict "$mount_dir/LunaBox.app"
 
       - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
           name: lunabox-${{ needs.version.outputs.version }}-macos-${{ matrix.arch }}
-          path: apps/desktop/build/bin/LunaBox-${{ needs.version.outputs.version }}-macos-${{ matrix.arch }}.dmg
+          path: apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-macos-${{ matrix.arch }}.dmg
           if-no-files-found: error
 
   build-linux:
@@ -477,7 +469,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
-        working-directory: apps/desktop
+        working-directory: apps/desktop-mygo
     permissions:
       contents: read
     strategy:
@@ -499,31 +491,22 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: apps/desktop/go.mod
+          go-version-file: apps/desktop-mygo/go.mod
           cache: true
           cache-dependency-path: |
+            apps/desktop-mygo/go.sum
             apps/desktop/go.sum
             packages/backend/go.sum
             packages/updater/go.sum
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: apps/desktop/frontend/pnpm-lock.yaml
-
+      # MyGo 运行时才用 purego 加载 GTK，构建只需要 DuckDB 的 cgo 编译器；
+      # desktop-file-utils 让 appimagetool 校验桌面入口。
       - name: Install Linux build dependencies
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y build-essential ca-certificates curl desktop-file-utils libayatana-appindicator3-dev libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+          sudo apt-get install -y build-essential ca-certificates curl desktop-file-utils
 
       - name: Install nFPM
         shell: bash
@@ -549,18 +532,6 @@ jobs:
           sudo install -m 0755 "$tool_path" /usr/local/bin/appimagetool
           APPIMAGE_EXTRACT_AND_RUN=1 appimagetool --version
 
-      - name: Install matching Wails v3 CLI
-        shell: bash
-        run: |
-          set -euo pipefail
-          version="$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
-          go install "github.com/wailsapp/wails/v3/cmd/wails3@$version"
-          test "$(wails3 version 2>&1)" = "$version"
-
-      - name: Patch Wails Linux tray support
-        shell: bash
-        run: ./scripts/patch-wails-linux-tray.sh
-
       - name: Build Linux packages
         shell: bash
         env:
@@ -574,20 +545,58 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: "1"
         run: |
           set -euo pipefail
-          chmod +x scripts/build.sh
-          ./scripts/build.sh all '${{ needs.version.outputs.version }}' '${{ matrix.arch }}'
-          test "$(find build/bin -maxdepth 1 -type f -name 'LunaBox-*-linux-${{ matrix.arch }}.deb' | wc -l | tr -d ' ')" -eq 1
-          test "$(find build/bin -maxdepth 1 -type f -name 'LunaBox-*-linux-${{ matrix.arch }}.rpm' | wc -l | tr -d ' ')" -eq 1
-          test "$(find build/bin -maxdepth 1 -type f -name 'LunaBox-*-linux-${{ matrix.arch }}.AppImage' | wc -l | tr -d ' ')" -eq 1
+          go run ./tools/release -version '${{ needs.version.outputs.version }}' -arch '${{ matrix.arch }}' -mode all
+
+          base="$PWD/build/release/LunaBox-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}"
+          test -x "$base.AppImage"
+          test -f "$base.deb"
+          test -f "$base.rpm"
+
+          extract_dir="${RUNNER_TEMP}/lunabox-appimage-check"
+          rm -rf "$extract_dir"
+          mkdir -p "$extract_dir"
+          (cd "$extract_dir" && env -u APPIMAGE_EXTRACT_AND_RUN "$base.AppImage" --appimage-extract >/dev/null)
+          for path in AppRun usr/bin/LunaBox usr/bin/lunacli usr/bin/7zz; do
+            if [[ ! -x "$extract_dir/squashfs-root/$path" ]]; then
+              echo "AppImage is missing executable $path." >&2
+              exit 1
+            fi
+          done
+          for path in \
+            io.github.saramanda9988.lunabox.desktop \
+            io.github.saramanda9988.lunabox.png \
+            usr/share/applications/io.github.saramanda9988.lunabox.desktop \
+            usr/share/icons/hicolor/512x512/apps/io.github.saramanda9988.lunabox.png; do
+            if [[ ! -f "$extract_dir/squashfs-root/$path" ]]; then
+              echo "AppImage is missing $path." >&2
+              exit 1
+            fi
+          done
+
+          deb_files="$(dpkg-deb -c "$base.deb")"
+          for path in ./usr/bin/LunaBox ./usr/bin/lunacli ./usr/lib/lunabox/LunaBox ./usr/lib/lunabox/7zz; do
+            if ! grep -Eq "^-rwxr-xr-x .* ${path}\$" <<<"$deb_files"; then
+              echo "deb is missing executable $path." >&2
+              exit 1
+            fi
+          done
+          for path in \
+            ./usr/share/applications/io.github.saramanda9988.lunabox.desktop \
+            ./usr/share/icons/hicolor/512x512/apps/io.github.saramanda9988.lunabox.png; do
+            if ! grep -Eq " ${path}\$" <<<"$deb_files"; then
+              echo "deb is missing $path." >&2
+              exit 1
+            fi
+          done
 
       - name: Upload Linux packages
         uses: actions/upload-artifact@v4
         with:
           name: lunabox-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}
           path: |
-            apps/desktop/build/bin/LunaBox-*-linux-${{ matrix.arch }}.deb
-            apps/desktop/build/bin/LunaBox-*-linux-${{ matrix.arch }}.rpm
-            apps/desktop/build/bin/LunaBox-*-linux-${{ matrix.arch }}.AppImage
+            apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}.deb
+            apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}.rpm
+            apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}.AppImage
           if-no-files-found: error
 
   create-prerelease:
@@ -638,7 +647,7 @@ jobs:
           cat <<'EOF' > release_notes.md
           ## 🚀 LunaBox Development Build
 
-          **⚠️ 这是一个自动构建的开发版本**
+          **⚠️ 这是一个自动构建的开发版本，界面已切换为 MyGo 原生实现**
 
           ### 📋 版本信息
 
@@ -658,7 +667,7 @@ jobs:
           | `*-windows-*-portable.zip` | Windows 便携版，解压即用，数据存储在程序目录 |
           | `*-windows-*-setup.exe` | Windows NSIS 安装版，数据存储在 `%APPDATA%\\LunaBox` |
           | `*-macos-*.dmg` | macOS 磁盘映像，将 LunaBox 拖入 Applications |
-          | `*-linux-*.AppImage` | Linux AppImage，依赖系统 GTK4 / WebKitGTK 6.0 运行库 |
+          | `*-linux-*.AppImage` | Linux AppImage，依赖系统 GTK 3 与 libepoxy 运行库 |
           | `*-linux-*.deb` | Linux Debian/Ubuntu 安装包 |
           | `*-linux-*.rpm` | Linux Fedora/RHEL/openSUSE 安装包 |
 

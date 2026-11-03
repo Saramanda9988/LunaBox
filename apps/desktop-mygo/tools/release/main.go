@@ -1,16 +1,19 @@
 // release 构建 MyGo 版的发布包：用 mygo build 编译（Windows 的 exe 带图标、manifest 与版本信息，macOS 是 .app），
 // 注入版本号与构建期凭据，再和 lunacli、7z 一起按 Wails 版的布局打包到 build/release。-mode 是包的种类：
 //
-//   - Windows portable（默认）：便携版 LunaBox-mygo-<版本>-windows-<架构>-portable.zip（旁边留一份解压好的目录），
+//   - Windows portable（默认）：便携版 LunaBox-<版本>-windows-<架构>-portable.zip（旁边留一份解压好的目录），
 //     对应 Wails 版的 apps/desktop/scripts/build.bat portable；
-//   - Windows installer：NSIS 安装包 LunaBox-mygo-<版本>-windows-<架构>-setup.exe，对应 build.bat installer，
+//   - Windows installer：NSIS 安装包 LunaBox-<版本>-windows-<架构>-setup.exe，对应 build.bat installer，
 //     用 Wails 版的 build/windows/nsis/project.nsi（不装 WebView2）；需要 NSIS；
-//   - Linux appimage（默认）：LunaBox-mygo-<版本>-linux-<架构>.AppImage（旁边留 .AppDir），对应 build.sh appimage，
+//   - Windows installer-payload 与 installer-package：同 build.bat，把 installer 拆成两步，中间给 exe 签名。
+//     installer-payload 只编译并放好安装包的内容（LunaBox-<版本>-windows-<架构>-installer 目录），
+//     installer-package 不编译，把这个目录（换成签名后的 exe）打成安装包；
+//   - Linux appimage（默认）：LunaBox-<版本>-linux-<架构>.AppImage（旁边留 .AppDir），对应 build.sh appimage，
 //     BuildMode 是 appimage：数据在 ~/.config/LunaBox，与 Wails 版的 AppImage 相同；需要 appimagetool；
-//   - Linux installer：LunaBox-mygo-<版本>-linux-<架构>.deb 与 .rpm（旁边留 .pkgroot），对应 build.sh installer，
+//   - Linux installer：LunaBox-<版本>-linux-<架构>.deb 与 .rpm（旁边留 .pkgroot），对应 build.sh installer，
 //     布局同 Wails 版（主程序与 7zz 在 /usr/lib/lunabox），依赖 GTK 3 而不是 WebKitGTK；需要 nFPM；
 //   - Linux all：installer 与 appimage 都打，对应 build.sh all；
-//   - macOS installer（默认，也是唯一的）：LunaBox-mygo-<版本>-macos-<架构>.dmg（旁边留 DMG 的内容），
+//   - macOS installer（默认，也是唯一的）：LunaBox-<版本>-macos-<架构>.dmg（旁边留 DMG 的内容），
 //     对应 build.sh installer：.app 里补上 Contents/Resources/bin 的 lunacli 与 7zz，ad-hoc 签名。
 //
 // 安装版（Windows 安装包、deb、rpm、DMG）的 BuildMode 是 installer，装到 Wails 版的位置，会替换已安装的 Wails 版。
@@ -94,18 +97,28 @@ type toolchain struct {
 
 // modes 是每个系统的 -mode，第一个是默认。
 var modes = map[string][]string{
-	"windows": {"portable", "installer"},
+	"windows": {"portable", "installer", "installer-payload", "installer-package"},
 	"linux":   {"appimage", "installer", "all"},
 	"darwin":  {"installer"},
 }
 
-// packageLabels 是每种包在输出里的名字，键是 <系统>/<种类>。种类也是注入的 version.BuildMode。
+// packageLabels 是每种包在输出里的名字，键是 <系统>/<种类>。
 var packageLabels = map[string]string{
-	"windows/portable":  "Windows Portable",
-	"windows/installer": "Windows Installer",
-	"linux/appimage":    "Linux AppImage",
-	"linux/installer":   "Linux deb/rpm",
-	"darwin/installer":  "macOS DMG",
+	"windows/portable":          "Windows Portable",
+	"windows/installer":         "Windows Installer",
+	"windows/installer-payload": "Windows Installer Payload",
+	"windows/installer-package": "Windows Installer Package",
+	"linux/appimage":            "Linux AppImage",
+	"linux/installer":           "Linux deb/rpm",
+	"darwin/installer":          "macOS DMG",
+}
+
+// buildModeOf 是种类 kind 注入的 version.BuildMode：安装版拆开的两步都是 installer，其余就是种类本身。
+func buildModeOf(kind string) string {
+	if strings.HasPrefix(kind, "installer-") {
+		return "installer"
+	}
+	return kind
 }
 
 // kindsOf 是 mode 要打的包的种类。每种单独 mygo build 一次（BuildMode 不同）；all 同 build.sh，先 installer 后 appimage。
@@ -288,7 +301,7 @@ func run(arch, ver, mode string) error {
 			{"Version", ver},
 			{"GitCommit", commit},
 			{"BuildTime", buildTime},
-			{"BuildMode", kind},
+			{"BuildMode", buildModeOf(kind)},
 		}, creds...)
 		p, d, err := buildPackage(cfg, t, tc, kind, tools[kind], ver, vars)
 		if err != nil {
@@ -326,7 +339,7 @@ func findTool(goos, kind string) (string, error) {
 			return "", fmt.Errorf("打包 deb、rpm 需要 nFPM（go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest）：%w", err)
 		}
 		return p, nil
-	case "windows/installer":
+	case "windows/installer", "windows/installer-package":
 		if p, err := exec.LookPath("makensis"); err == nil {
 			return p, nil
 		}
@@ -340,9 +353,23 @@ func findTool(goos, kind string) (string, error) {
 	return "", nil
 }
 
-// buildPackage 编译 GUI 与 CLI（BuildMode 是 kind），再打成 kind 的包，返回包与解压好的目录。
+// buildPackage 编译 GUI 与 CLI（BuildMode 见 buildModeOf），再打成 kind 的包，返回包与解压好的目录。
+// installer-package 不编译，只把 installer-payload 放好的目录打成安装包；installer-payload 不打包。
 func buildPackage(cfg config, t target, tc toolchain, kind, tool, ver string, vars []assignment) ([]string, string, error) {
 	label := packageLabels[t.goos+"/"+kind]
+	release := filepath.Join(cfg.Out, "release")
+	installerName := fmt.Sprintf("LunaBox-%s-windows-%s", ver, t.arch)
+	installerPkg, installerDir := filepath.Join(release, installerName+"-setup.exe"), filepath.Join(release, installerName+"-installer")
+	if kind == "installer-package" {
+		fmt.Printf("[%s] Creating NSIS installer...\n", label)
+		for _, name := range []string{"LunaBox.exe", "lunacli.exe", "LunaBoxUpdater.exe"} {
+			if !fileExists(filepath.Join(installerDir, name)) {
+				return nil, "", fmt.Errorf("缺少 %s（先运行 -mode installer-payload）", filepath.Join(installerDir, name))
+			}
+		}
+		return []string{installerPkg}, installerDir, writeInstaller(tool, cfg, t, installerDir, installerPkg)
+	}
+
 	fmt.Printf("[%s 1/3] Building GUI (mygo build)...\n", label)
 	if err := buildApp(t, vars); err != nil {
 		return nil, "", err
@@ -361,11 +388,10 @@ func buildPackage(cfg config, t target, tc toolchain, kind, tool, ver string, va
 		}
 	}
 
-	release := filepath.Join(cfg.Out, "release")
 	switch t.goos + "/" + kind {
 	case "windows/portable":
 		fmt.Printf("[%s 3/3] Creating ZIP...\n", label)
-		name := fmt.Sprintf("LunaBox-mygo-%s-windows-%s-portable", ver, t.arch)
+		name := fmt.Sprintf("LunaBox-%s-windows-%s-portable", ver, t.arch)
 		pkg, dir := filepath.Join(release, name+".zip"), filepath.Join(release, name)
 		if err := os.RemoveAll(dir); err != nil {
 			return nil, "", err
@@ -386,10 +412,8 @@ func buildPackage(cfg config, t target, tc toolchain, kind, tool, ver string, va
 		}
 		return []string{pkg}, dir, writeZip(pkg, dir)
 
-	case "windows/installer":
-		fmt.Printf("[%s 3/3] Creating NSIS installer...\n", label)
-		name := fmt.Sprintf("LunaBox-mygo-%s-windows-%s", ver, t.arch)
-		pkg, dir := filepath.Join(release, name+"-setup.exe"), filepath.Join(release, name+"-installer")
+	case "windows/installer", "windows/installer-payload":
+		dir := installerDir
 		if err := os.RemoveAll(dir); err != nil {
 			return nil, "", err
 		}
@@ -399,11 +423,16 @@ func buildPackage(cfg config, t target, tc toolchain, kind, tool, ver string, va
 		if err := copyPath(updater, filepath.Join(dir, "LunaBoxUpdater.exe")); err != nil {
 			return nil, "", err
 		}
-		return []string{pkg}, dir, writeInstaller(tool, cfg, t, dir, pkg)
+		if kind == "installer-payload" {
+			fmt.Printf("[%s 3/3] Staged installer payload.\n", label)
+			return nil, dir, nil
+		}
+		fmt.Printf("[%s 3/3] Creating NSIS installer...\n", label)
+		return []string{installerPkg}, dir, writeInstaller(tool, cfg, t, dir, installerPkg)
 
 	case "linux/appimage":
 		fmt.Printf("[%s 3/3] Creating AppImage...\n", label)
-		name := fmt.Sprintf("LunaBox-mygo-%s-linux-%s", ver, t.arch)
+		name := fmt.Sprintf("LunaBox-%s-linux-%s", ver, t.arch)
 		pkg, dir := filepath.Join(release, name+".AppImage"), filepath.Join(release, name+".AppDir")
 		if err := os.RemoveAll(dir); err != nil {
 			return nil, "", err
@@ -415,7 +444,7 @@ func buildPackage(cfg config, t target, tc toolchain, kind, tool, ver string, va
 
 	case "linux/installer":
 		fmt.Printf("[%s 3/3] Creating deb and rpm packages...\n", label)
-		name := fmt.Sprintf("LunaBox-mygo-%s-linux-%s", ver, t.arch)
+		name := fmt.Sprintf("LunaBox-%s-linux-%s", ver, t.arch)
 		dir := filepath.Join(release, name+".pkgroot")
 		if err := os.RemoveAll(dir); err != nil {
 			return nil, "", err
@@ -428,7 +457,7 @@ func buildPackage(cfg config, t target, tc toolchain, kind, tool, ver string, va
 
 	case "darwin/installer":
 		fmt.Printf("[%s 3/3] Creating DMG...\n", label)
-		name := fmt.Sprintf("LunaBox-mygo-%s-macos-%s", ver, t.arch)
+		name := fmt.Sprintf("LunaBox-%s-macos-%s", ver, t.arch)
 		pkg, dir := filepath.Join(release, name+".dmg"), filepath.Join(release, name)
 		if err := os.RemoveAll(dir); err != nil {
 			return nil, "", err
@@ -1051,14 +1080,12 @@ func ldflagsQuote(s string) string {
 
 func readme(ver string) string {
 	return strings.Join([]string{
-		"LunaBox (MyGo) Portable v" + ver,
+		"LunaBox Portable v" + ver,
 		"",
 		"This package contains:",
 		"  - LunaBox.exe  : GUI version (double-click to launch)",
 		"  - lunacli.exe  : CLI version (use in a terminal)",
 		"  - LunaBoxUpdater.exe : standalone update helper",
-		"",
-		"Data (database, settings, covers, logs) is stored next to LunaBox.exe.",
 		"",
 		"CLI usage:",
 		"  lunacli list",
