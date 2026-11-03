@@ -1612,6 +1612,7 @@
   "native_settingsSaveFailed": "設定の保存に失敗しました",
   "native_trayShowMainWindow": "メインウィンドウを表示",
   "native_trayQuit": "終了",
+  "native_templateExportWebViewUnavailable": "WebView コンポーネントが見つからないため、テンプレートのプレビューとエクスポートができません（Windows には WebView2 Runtime、Linux には WebKitGTK が必要です）",
   "mygo.previousMonth": "前の月",
   "mygo.nextMonth": "次の月",
   "mygo.undo": "元に戻す",

@@ -3223,5 +3223,7 @@
   "native_trayShowMainWindow": "显示主窗口",
   "@native_trayShowMainWindow": {"description": "extra:native.trayShowMainWindow"},
   "native_trayQuit": "退出",
-  "@native_trayQuit": {"description": "extra:native.trayQuit"}
+  "@native_trayQuit": {"description": "extra:native.trayQuit"},
+  "native_templateExportWebViewUnavailable": "系统缺少 WebView 组件，无法预览和导出模板（Windows 需要 WebView2 Runtime，Linux 需要 WebKitGTK）",
+  "@native_templateExportWebViewUnavailable": {"description": "extra:native.templateExportWebViewUnavailable"}
 }

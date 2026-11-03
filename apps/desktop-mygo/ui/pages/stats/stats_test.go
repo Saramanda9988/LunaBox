@@ -211,10 +211,39 @@ func TestResetRange(t *testing.T) {
 	}
 }
 
-func TestExportNotMigrated(t *testing.T) {
-	h := newHarness(t, 1100, nil)
+// 测试没有窗口，也就没有 WebView：模板列表照常加载，选中第一个并用真实服务渲染，预览区提示缺少 WebView，
+// 导出按钮不可用。
+func TestExportModal(t *testing.T) {
+	h := newHarness(t, 1100, games(t, 2))
 	h.click(t, locales.StatsExportTitle())
-	h.expectToast(t, locales.NativeFeatureNotMigrated(locales.StatsExportTitle()))
+	x := &h.export
+	if len(x.templates) < 3 || x.selected != x.templates[0].ID {
+		t.Fatalf("templates %v, selected %q", x.templates, x.selected)
+	}
+	h.expect(t, locales.StatsTemplateExportTitle(), locales.StatsTemplateExportSelectTemplate(), x.templates[0].Name,
+		x.templates[1].Name, locales.NativeTemplateExportWebViewUnavailable(), locales.StatsTemplateExportTipText())
+	if x.loading || !strings.Contains(x.html, name(1)) {
+		t.Fatalf("not rendered: loading %v, html has game %v", x.loading, strings.Contains(x.html, name(1)))
+	}
+	h.exportImage() // 没有 WebView 时什么都不做
+	if x.exporting {
+		t.Fatal("exporting without a web view")
+	}
+
+	first := x.html
+	h.click(t, x.templates[1].Name)
+	if x.selected != x.templates[1].ID || x.html == first {
+		t.Fatalf("switch template: selected %q, html changed %v", x.selected, x.html != first)
+	}
+
+	h.click(t, locales.StatsTemplateExportCancelBtn())
+	h.expectNot(t, locales.StatsTemplateExportTipText())
+	h.click(t, locales.StatsExportTitle()) // 再次打开时保留选中的模板
+	if x.selected != x.templates[1].ID || !h.tt.HasText(locales.StatsTemplateExportTipText()) {
+		t.Fatalf("reopen: selected %q", x.selected)
+	}
+	h.click(t, locales.CommonClose())
+	h.expectNot(t, locales.StatsTemplateExportTipText())
 }
 
 func TestAISummarizeFails(t *testing.T) {

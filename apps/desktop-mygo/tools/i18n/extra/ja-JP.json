@@ -32,7 +32,8 @@
     "backupRefreshCloud": "クラウドバックアップを更新",
     "settingsSaveFailed": "設定の保存に失敗しました",
     "trayShowMainWindow": "メインウィンドウを表示",
-    "trayQuit": "終了"
+    "trayQuit": "終了",
+    "templateExportWebViewUnavailable": "WebView コンポーネントが見つからないため、テンプレートのプレビューとエクスポートができません（Windows には WebView2 Runtime、Linux には WebKitGTK が必要です）"
   },
   "mygo": {
     "previousMonth": "前の月",

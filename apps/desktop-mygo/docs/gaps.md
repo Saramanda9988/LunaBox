@@ -24,7 +24,8 @@ desktop-mygo 替代 Wails 版之前还要补的东西。按要不要做分成四
 
 ### 统计页
 
-- “美化导出”（`TemplateExportModal`，包括 `MosaicPosterPanel`、`PosterCoverEditor`）只弹提示。原版用 WebView 渲染海报模板；为了 Linux 安装包不依赖 WebKitGTK（`mygo.json` 的 `"linux": {"webview": false}`），要决定是改成原生绘制，还是只在有 WebView 的平台提供。
+- “美化导出”的封面拼贴（`MosaicPosterPanel`、`PosterCoverEditor`，原版的默认模板）还没有迁移，模板列表里只有 HTML 模板。它在原版里是 Canvas 2D 手绘的，不依赖 WebView，打算用 `ui.Painter` 原生绘制、`ui.Render` 导出 PNG。
+- HTML 模板在系统 WebView 里预览（`ui/pages/stats/export.go`），运行时用 `mygo.WebViewAvailable()` 检测：Linux 安装包仍不依赖 WebKitGTK（`mygo.json` 的 `"linux": {"webview": false}`），没装时弹窗里提示，不能预览和导出。
 
 ### 首页
 

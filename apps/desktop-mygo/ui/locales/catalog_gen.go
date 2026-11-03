@@ -24060,3 +24060,19 @@ func NativeTrayQuit() string { return In(i18n.Locale()).NativeTrayQuit() }
 func (msgs Messages) NativeTrayQuit() string {
 	return Catalog.Format(msgs.locale, "native_trayQuit", nil)
 }
+
+// NativeTemplateExportWebViewUnavailable says "系统缺少 WebView 组件，无法预览和导出模板（Windows 需要 WebView2 Runtime，Linux 需要 WebKitGTK）"
+// in the language the app shows.
+//
+// extra:native.templateExportWebViewUnavailable
+func NativeTemplateExportWebViewUnavailable() string {
+	return In(i18n.Locale()).NativeTemplateExportWebViewUnavailable()
+}
+
+// NativeTemplateExportWebViewUnavailable says "系统缺少 WebView 组件，无法预览和导出模板（Windows 需要 WebView2 Runtime，Linux 需要 WebKitGTK）"
+// in the language of msgs.
+//
+// extra:native.templateExportWebViewUnavailable
+func (msgs Messages) NativeTemplateExportWebViewUnavailable() string {
+	return Catalog.Format(msgs.locale, "native_templateExportWebViewUnavailable", nil)
+}

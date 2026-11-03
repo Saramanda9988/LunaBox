@@ -38,6 +38,7 @@ func (b *Backend) API() *api.Services {
 		Game:        s.Game,
 		Tag:         s.Tag,
 		Stats:       s.Stats,
+		Template:    s.Template,
 		AI:          s.AI,
 		Session:     s.Session,
 		Category:    s.Category,

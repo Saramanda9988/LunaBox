@@ -29,6 +29,7 @@ type Services struct {
 	Game        GameService
 	Tag         TagService
 	Stats       StatsService
+	Template    TemplateService
 	AI          AIService
 	Session     SessionService
 	Category    CategoryService
@@ -124,6 +125,15 @@ type TagService interface {
 type StatsService interface {
 	GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats, error)
 	GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.PeriodStats, error)
+}
+
+// TemplateService 对应 service.TemplateService（统计页的美化导出）。
+type TemplateService interface {
+	ListTemplates() ([]vo.TemplateInfo, error)
+	PrepareExportData(stats vo.PeriodStats, aiSummary string) (vo.StatsExportData, error)
+	RenderTemplate(req vo.RenderTemplateRequest) (vo.RenderTemplateResponse, error)
+	OpenTemplatesDir() error
+	ExportRenderedHTML(base64Data string) error
 }
 
 // AIService 对应 service.AiService。

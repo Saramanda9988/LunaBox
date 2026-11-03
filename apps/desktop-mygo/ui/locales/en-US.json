@@ -1611,5 +1611,6 @@
   "native_backupRefreshCloud": "Refresh Cloud Backups",
   "native_settingsSaveFailed": "Failed to save settings",
   "native_trayShowMainWindow": "Show Main Window",
-  "native_trayQuit": "Exit"
+  "native_trayQuit": "Exit",
+  "native_templateExportWebViewUnavailable": "No WebView component found, so templates cannot be previewed or exported (Windows needs the WebView2 Runtime, Linux needs WebKitGTK)"
 }

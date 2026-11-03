@@ -1,6 +1,6 @@
 // Package stats 是统计页面，对应原版 routes/stats.tsx：时间维度与自定义日期范围、AI 总结、汇总卡片、
-// 游玩时长排行榜（含 StatsLeaderboardModal）、标签分布、游玩时段分布与两张时长趋势图。
-// “美化导出”（TemplateExportModal）要用 WebView 渲染模板，还没有迁移，按钮只弹提示。
+// 游玩时长排行榜（含 StatsLeaderboardModal）、标签分布、游玩时段分布与两张时长趋势图，
+// 以及“美化导出”（TemplateExportModal，见 export.go：模板在 WebView 里预览与截图）。
 package stats
 
 import (
@@ -40,6 +40,7 @@ type Page struct {
 	webSearch bool // webSearchUsed
 
 	leaderboardOpen bool
+	export          exporter
 
 	scroll      components.ScrollBar
 	modalScroll components.ScrollBar
@@ -63,6 +64,8 @@ func (p *Page) Open(now time.Time) {
 	p.custom, p.start, p.end = false, "", ""
 	p.aiLoading, p.webSearch = false, false
 	p.leaderboardOpen = false
+	p.closeExport()
+	p.export.templates, p.export.selected = nil, ""
 	p.scroll, p.modalScroll = components.ScrollBar{}, components.ScrollBar{}
 	p.totalChart, p.gameChart, p.hourWeek, p.tags = chart.State{}, chart.State{}, chart.HourWeekState{}, chart.TagState{}
 	p.toasts = nil

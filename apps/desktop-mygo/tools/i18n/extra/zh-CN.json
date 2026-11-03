@@ -32,6 +32,7 @@
     "backupRefreshCloud": "刷新云端备份",
     "settingsSaveFailed": "保存设置失败",
     "trayShowMainWindow": "显示主窗口",
-    "trayQuit": "退出"
+    "trayQuit": "退出",
+    "templateExportWebViewUnavailable": "系统缺少 WebView 组件，无法预览和导出模板（Windows 需要 WebView2 Runtime，Linux 需要 WebKitGTK）"
   }
 }

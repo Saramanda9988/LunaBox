@@ -14,6 +14,7 @@ import (
 	"lunabox/backend/utils/apputils"
 	"lunabox/backend/utils/httputils"
 	"lunabox/backend/version"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -199,12 +200,42 @@ func (s *TemplateService) RenderTemplate(req vo.RenderTemplateRequest) (vo.Rende
 	}
 
 	var buf strings.Builder
-	if err := tmpl.Execute(&buf, req.Data); err != nil {
+	if err := tmpl.Execute(&buf, newTemplateData(req.Data)); err != nil {
 		return resp, fmt.Errorf("failed to execute template: %w", err)
 	}
 
 	resp.HTML = buf.String()
 	return resp, nil
+}
+
+// templateData 是交给模板的数据。html/template 会把 src 里的 data: 地址替换成 #ZgotmplZ，
+// 所以封面 Base64 以 template.URL 交给模板；同名字段遮住内嵌的 vo 字段，模板写法不变。
+type templateData struct {
+	vo.StatsExportData
+	Leaderboard []templateGameItem `json:"leaderboard"`
+}
+
+type templateGameItem struct {
+	vo.StatsGameItem
+	CoverBase64 template.URL `json:"cover_base64"`
+}
+
+func newTemplateData(data vo.StatsExportData) templateData {
+	out := templateData{StatsExportData: data, Leaderboard: make([]templateGameItem, len(data.Leaderboard))}
+	for i, item := range data.Leaderboard {
+		out.Leaderboard[i] = templateGameItem{StatsGameItem: item, CoverBase64: trustedImageURL(item.CoverBase64)}
+	}
+	return out
+}
+
+// trustedImageURL 只放行 fetchImageAsBase64 产生的地址：data:image/ 与 http(s)、站内路径，其余丢弃。
+func trustedImageURL(s string) template.URL {
+	for _, prefix := range []string{"data:image/", "http://", "https://", "/"} {
+		if strings.HasPrefix(s, prefix) {
+			return template.URL(s)
+		}
+	}
+	return ""
 }
 
 // PrepareExportData 准备导出数据（处理图片等）
@@ -309,8 +340,11 @@ func (s *TemplateService) PrepareExportData(stats vo.PeriodStats, aiSummary stri
 
 // fetchImageAsBase64 获取图片并转为Base64
 func (s *TemplateService) fetchImageAsBase64(url string) (string, error) {
-	// 跳过本地图片
-	if strings.Contains(url, "wails.localhost") {
+	// 本地图片从数据目录读取：MyGo 版的 WebView 没有 Wails 的资源服务，html2canvas 也不会被跨域图片污染画布
+	if strings.HasPrefix(url, "/local/") || strings.Contains(url, "wails.localhost") {
+		if i := strings.Index(url, "/local/"); i >= 0 {
+			return readLocalImageAsBase64(url[i+len("/local/"):])
+		}
 		return url, nil
 	}
 
@@ -345,6 +379,36 @@ func (s *TemplateService) fetchImageAsBase64(url string) (string, error) {
 
 	base64Data := base64.StdEncoding.EncodeToString(data)
 	return fmt.Sprintf("data:%s;base64,%s", contentType, base64Data), nil
+}
+
+// readLocalImageAsBase64 读取数据目录下的本地图片（/local/ 之后的路径，可带查询串）并转为Base64
+func readLocalImageAsBase64(rel string) (string, error) {
+	if i := strings.IndexAny(rel, "?#"); i >= 0 {
+		rel = rel[:i]
+	}
+	dataDir, err := apputils.GetDataDir()
+	if err != nil {
+		return "", err
+	}
+	base, err := filepath.Abs(dataDir)
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(base, filepath.FromSlash(rel))
+	if !strings.HasPrefix(path, base+string(os.PathSeparator)) {
+		return "", fmt.Errorf("local image outside data dir: %s", rel)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	contentType := http.DetectContentType(data)
+	if !strings.HasPrefix(contentType, "image/") { // 嗅探不出 AVIF 等格式时按扩展名
+		if byExt := mime.TypeByExtension(filepath.Ext(path)); byExt != "" {
+			contentType = byExt
+		}
+	}
+	return fmt.Sprintf("data:%s;base64,%s", contentType, base64.StdEncoding.EncodeToString(data)), nil
 }
 
 // OpenTemplatesDir 打开模板目录

@@ -1,6 +1,6 @@
 # desktop-mygo
 
-LunaBox 的原生桌面前端：用 [MyGo](https://github.com/egoist/mygo) v0.6.3 的原生 UI（Windows 上是 D3D11 渲染、DirectWrite 文字，没有 WebView）重写 `apps/desktop/frontend`，后端与 Wails 版共用 `packages/backend`。
+LunaBox 的原生桌面前端：用 [MyGo](https://github.com/egoist/mygo) v0.6.3 的原生 UI（Windows 上是 D3D11 渲染、DirectWrite 文字，没有 WebView；只有统计页的美化导出用系统 WebView 预览 HTML 模板）重写 `apps/desktop/frontend`，后端与 Wails 版共用 `packages/backend`。
 
 它和 Wails 版并行开发，目标是之后**替代 Wails + WebView 前端**，所以按正式产品的标准来做：界面与原版一比一、文字走同一套多语言、行为由真实服务驱动并有测试覆盖。
 
@@ -8,7 +8,7 @@ LunaBox 的原生桌面前端：用 [MyGo](https://github.com/egoist/mygo) v0.6.
 
 **还不参与发布。** 已迁移的页面：首页、游戏库、游戏详情页（全部标签页与弹窗）、收藏夹列表与收藏详情、下载管理、统计、设置页（全部分区与弹窗），以及添加与导入游戏、顶栏、侧边栏、灵动岛、自定义背景与玻璃模式，支持与原版相同的四种语言。
 
-主要还缺：统计页的美化导出、界面缩放、应用内更新与安装包。完整清单（包括还没对照过的界面和已知的视觉差异）见 [docs/gaps.md](docs/gaps.md)。
+主要还缺：统计页美化导出里的封面拼贴、界面缩放、应用内更新与安装包。完整清单（包括还没对照过的界面和已知的视觉差异）见 [docs/gaps.md](docs/gaps.md)。
 
 在 150% 缩放、深色主题、简体中文下与原版逐像素对照过的区域，元素坐标与原版 DOM 一致到 0.1 DIP，剩下的像素差异来自抗锯齿、封面缩放算法和 1 像素的窗口宽度差，明细见 [docs/parity.md](docs/parity.md#读结果)。
 
@@ -72,7 +72,7 @@ go run ./tools/release -version 1.2.0 -arch arm64 -mode installer
 | Linux | `all` | 以上两种 | `scripts/build.sh all` |
 | macOS | `installer`（默认） | `LunaBox-mygo-<版本>-macos-<架构>.dmg`，`.app` 的 `Contents/Resources/bin` 带 lunacli 与 7zz，ad-hoc 签名 | `scripts/build.sh installer` |
 
-Linux 构建需要 gcc，运行需要系统的 GTK 3 与 libepoxy；macOS 构建需要 Xcode 命令行工具。安装版（Windows 安装包、deb、rpm、DMG）装到 Wails 版的位置，会替换已安装的 Wails 版。代码签名与自动更新还没有做。
+统计页的美化导出用系统的 WebView（WebView2 Runtime、WKWebView、WebKitGTK）预览与截取 HTML 模板，运行时检测，安装包不依赖它，没有时弹窗里提示。Linux 构建需要 gcc，运行需要系统的 GTK 3 与 libepoxy；macOS 构建需要 Xcode 命令行工具。安装版（Windows 安装包、deb、rpm、DMG）装到 Wails 版的位置，会替换已安装的 Wails 版。代码签名与自动更新还没有做。
 
 GitHub Actions 的 **MyGo Build Pre-release**（`.github/workflows/mygo-build.yml`，手动触发）的矩阵同 Wails 版的 `autobuild.yml`：Windows amd64、arm64 的便携版与安装版，macOS arm64、amd64 的 DMG，Linux 的 AppImage、deb、rpm（Wails 版暂停了 Linux arm64，MyGo 版保留），发布到滚动的预发布 `mygo-dev-latest`（与 Wails 版的 `dev-latest` 分开）。
 

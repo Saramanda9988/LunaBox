@@ -32,6 +32,7 @@
     "backupRefreshCloud": "Refresh Cloud Backups",
     "settingsSaveFailed": "Failed to save settings",
     "trayShowMainWindow": "Show Main Window",
-    "trayQuit": "Exit"
+    "trayQuit": "Exit",
+    "templateExportWebViewUnavailable": "No WebView component found, so templates cannot be previewed or exported (Windows needs the WebView2 Runtime, Linux needs WebKitGTK)"
   }
 }

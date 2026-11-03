@@ -112,6 +112,7 @@ func (p *Page) View(c *ui.Context) {
 		})
 	})
 	p.leaderboardModal(c, t)
+	p.exportModal(c, t)
 }
 
 // toolbar 对应 StatsToolbar：左侧时间维度与自定义日期范围，右侧“美化导出”与“AI总结”图标按钮。
@@ -162,7 +163,7 @@ func (p *Page) toolbar(c *ui.Context, t *theme.Theme, winW float32) {
 		ui.Row(c.Key("actions")).Shrink(0).AlignItems(ui.Center).Gap(8).Children(func() {
 			export := locales.StatsExportTitle()
 			better.Button(c, t, "export", better.ButtonProps{Icon: "image-filter-hdr", Disabled: p.loading}).Label(export).
-				OnClick(func() { p.env.Toast(c, env.Info(locales.NativeFeatureNotMigrated(export))) })
+				OnClick(p.openExport)
 			better.Button(c, t, "ai-summarize", better.ButtonProps{Icon: "robot-happy", Disabled: p.loading, Loading: p.aiLoading}).
 				Label(locales.StatsAiSummarizeTitle()).OnClick(p.summarize)
 		})
