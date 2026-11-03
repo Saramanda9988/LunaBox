@@ -1,21 +1,21 @@
-module lunabox
+module lunabox/desktop-mygo
 
-go 1.27.1
+go 1.27.3
+
+tool github.com/egoist/mygo/cmd/mygo
 
 require (
-	github.com/wailsapp/wails/v3 v3.0.0-beta.24
+	github.com/egoist/mygo v0.7.4
+	github.com/gen2brain/avif v0.6.0
+	golang.org/x/image v0.46.0
+	golang.org/x/sys v0.48.0
+	golang.org/x/text v0.43.0
 	lunabox/backend v0.0.0
-)
-
-replace (
-	lunabox/backend => ../../packages/backend
-	lunabox/updater => ../../packages/updater
 )
 
 require (
 	github.com/PuerkitoBio/goquery v1.10.3 // indirect
 	github.com/Umbrae-Labs/umbra-sdk/umbra-go v0.3.0 // indirect
-	github.com/adrg/xdg v0.5.3 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/apache/arrow-go/v18 v18.5.1 // indirect
@@ -46,7 +46,6 @@ require (
 	github.com/cavaliergopher/rpm v1.3.0 // indirect
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.4.0 // indirect
-	github.com/coder/websocket v1.8.14 // indirect
 	github.com/duckdb/duckdb-go-bindings v0.3.5 // indirect
 	github.com/duckdb/duckdb-go-bindings/lib/darwin-amd64 v0.3.5 // indirect
 	github.com/duckdb/duckdb-go-bindings/lib/darwin-arm64 v0.3.5 // indirect
@@ -54,12 +53,11 @@ require (
 	github.com/duckdb/duckdb-go-bindings/lib/linux-arm64 v0.3.5 // indirect
 	github.com/duckdb/duckdb-go-bindings/lib/windows-amd64 v0.3.5 // indirect
 	github.com/duckdb/duckdb-go/v2 v2.5.6 // indirect
-	github.com/ebitengine/purego v0.8.3 // indirect
+	github.com/ebitengine/purego v0.11.1 // indirect
 	github.com/gen2brain/webp v0.5.5 // indirect
-	github.com/go-ole/go-ole v1.3.0 // indirect
+	github.com/go-text/typesetting v0.3.5 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
-	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/flatbuffers v25.12.19+incompatible // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -83,7 +81,7 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/sshaman1101/dcompress v0.0.0-20200109162717-50436a6332de // indirect
 	github.com/syndtr/goleveldb v1.0.0 // indirect
-	github.com/tetratelabs/wazero v1.9.0 // indirect
+	github.com/tetratelabs/wazero v1.12.0 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
@@ -93,16 +91,18 @@ require (
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
-	golang.org/x/image v0.45.0 // indirect
 	golang.org/x/mod v0.41.0 // indirect
-	golang.org/x/net v0.58.0 // indirect
-	golang.org/x/sync v0.23.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260811182544-a038080d80e5 // indirect
-	golang.org/x/text v0.42.0 // indirect
-	golang.org/x/tools v0.49.0 // indirect
+	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260924152758-ed294f943157 // indirect
+	golang.org/x/tools v0.51.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	golift.io/xtractr v0.3.0 // indirect
 	lunabox/updater v0.0.0 // indirect
 	resty.dev/v3 v3.0.0-rc.3 // indirect
+)
+
+replace (
+	lunabox/backend => ../../packages/backend
+	lunabox/updater => ../../packages/updater
 )

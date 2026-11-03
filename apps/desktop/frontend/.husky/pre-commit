@@ -1,1 +1,0 @@
-cd apps/desktop/frontend && pnpm exec lint-staged
