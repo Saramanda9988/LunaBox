@@ -4,9 +4,9 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/appconf"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/theme"
 )
 
 // Settings 是设置页（routes/settings.tsx）传给各设置面板的内容，对应原版面板的 formData、onChange 等属性。

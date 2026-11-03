@@ -16,10 +16,10 @@ import (
 	"lunabox/backend/appconf"
 	"lunabox/backend/applog"
 	"lunabox/backend/bootstrap"
-	"lunabox/desktop-mygo/host"
-	"lunabox/desktop-mygo/ui"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/pages/startup"
+	"lunabox/desktop/host"
+	"lunabox/desktop/ui"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/pages/startup"
 )
 
 // 主窗口的最小尺寸（DIP）。

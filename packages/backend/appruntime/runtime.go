@@ -11,9 +11,9 @@ var ErrUnavailable = errors.New("application runtime is unavailable")
 const AutostartLaunchArgument = "--autostart"
 
 // Runtime is the small subset of the desktop application/window API used by
-// LunaBox services. Each desktop shell implements it (apps/desktop with Wails,
-// apps/desktop-mygo with MyGo); services receive it explicitly instead of
-// resolving global application state.
+// LunaBox services. The desktop shell implements it (apps/desktop/host with
+// MyGo); services receive it explicitly instead of resolving global
+// application state.
 type Runtime interface {
 	Emit(name string, data ...any) bool
 	OpenURL(targetURL string) error

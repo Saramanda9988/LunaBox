@@ -5,7 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/theme"
 )
 
 // TestScrollAreaFirstFrame：区域刚出现时还不知道是否超出，那一帧不绘制内容；画出来的每一帧都已经按滚动条

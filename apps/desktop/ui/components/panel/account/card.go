@@ -9,12 +9,12 @@ import (
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/models"
-	"lunabox/desktop-mygo/ui/assets"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/better"
-	"lunabox/desktop-mygo/ui/components/panel"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/assets"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/better"
+	"lunabox/desktop/ui/components/panel"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // 断点按窗口宽度（Tailwind 的 sm、lg）。

@@ -9,8 +9,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/theme"
 )
 
 // screenScene 把控件放在与原版截图相同的位置（1280×800 视口、150% 缩放）：

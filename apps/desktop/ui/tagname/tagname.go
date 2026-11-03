@@ -1,6 +1,6 @@
 // Package tagname 对应原版 frontend/src/utils/tagTranslation.ts：VNDB 标签按界面语言显示译名，
-// 以及用译名搜索标签。译名数据是原版的 utils/vndbTagTranslations.<语言>.json（MIT，来源见文件里的
-// _attribution），由 tools/i18n 原样复制到 data/，TestDataMatchesFrontend 检查两边一致。
+// 以及用译名搜索标签。译名数据在 data/<语言>.json（MIT，来源见文件里的 _attribution），
+// 最初复制自原版的 utils/vndbTagTranslations.<语言>.json。
 //
 // 英语界面不翻译；日语用 ja-JP，繁体中文（zh-TW、zh-HK、zh-MO、zh-Hant）用 zh-TW，其余中文用 zh-CN。
 package tagname

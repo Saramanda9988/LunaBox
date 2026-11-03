@@ -8,11 +8,11 @@ import (
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/enums"
 	"lunabox/backend/models"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/better"
-	"lunabox/desktop-mygo/ui/components/panel"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/better"
+	"lunabox/desktop/ui/components/panel"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // metadataDrawer 是“元数据来源”抽屉：BetterDrawer className="!w-[min(92vw,42rem)]" topOffset={TOPBAR_HEIGHT}，内容 space-y-4。

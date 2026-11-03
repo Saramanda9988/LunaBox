@@ -9,7 +9,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/models"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/theme"
 )
 
 // DESKTOP_MYGO_PNG=<目录> 时把表情选择器、标签渲染成图片，用于目测。

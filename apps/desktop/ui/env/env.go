@@ -12,9 +12,9 @@ import (
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
-	"lunabox/desktop-mygo/api"
-	"lunabox/desktop-mygo/ui/covers"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/api"
+	"lunabox/desktop/ui/covers"
+	"lunabox/desktop/ui/theme"
 )
 
 // Backend 是游戏库列表用到的查询，由真实服务实现（见 app 包的 list.go）；单独成接口是为了

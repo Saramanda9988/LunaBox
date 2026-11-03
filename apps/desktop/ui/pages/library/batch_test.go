@@ -11,9 +11,9 @@ import (
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
 	"lunabox/backend/service"
-	"lunabox/desktop-mygo/api"
-	"lunabox/desktop-mygo/ui/env/envtest"
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/api"
+	"lunabox/desktop/ui/env/envtest"
+	"lunabox/desktop/ui/locales"
 )
 
 // fakeBatch 实现批量操作用到的服务方法（其余方法来自内嵌的 nil 接口，调用会 panic）。

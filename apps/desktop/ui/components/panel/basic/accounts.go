@@ -5,10 +5,10 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/components/panel"
-	"lunabox/desktop-mygo/ui/components/panel/account"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components/panel"
+	"lunabox/desktop/ui/components/panel/account"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // handleAccountExpand 的时长（ACCOUNT_CONTENT_FADE_MS、ACCOUNT_CARD_RESIZE_MS、ACCOUNT_CARD_RESIZE_BUFFER_MS），

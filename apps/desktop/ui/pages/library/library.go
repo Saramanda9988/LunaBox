@@ -7,11 +7,11 @@ import (
 
 	"lunabox/backend/common/enums"
 	"lunabox/backend/models"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/bar"
-	"lunabox/desktop-mygo/ui/components/grid"
-	"lunabox/desktop-mygo/ui/components/importer"
-	"lunabox/desktop-mygo/ui/env"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/bar"
+	"lunabox/desktop/ui/components/grid"
+	"lunabox/desktop/ui/components/importer"
+	"lunabox/desktop/ui/env"
 )
 
 // Page 是游戏库页面的状态。

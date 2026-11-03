@@ -8,8 +8,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // CategoryNameMaxLength 是 consts/category.ts 的 CATEGORY_NAME_MAX_LENGTH。

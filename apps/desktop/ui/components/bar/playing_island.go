@@ -9,11 +9,11 @@ import (
 
 	"lunabox/backend/models"
 	"lunabox/backend/service"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
-	"lunabox/desktop-mygo/ui/timefmt"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
+	"lunabox/desktop/ui/timefmt"
 )
 
 // 对应 PlayingIsland.tsx 的常量。

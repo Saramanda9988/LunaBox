@@ -6,7 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/timefmt"
+	"lunabox/desktop/ui/timefmt"
 )
 
 // lineInput 是 DurationLineChart 一次布局需要的量（canvas 尺寸与数据），与 UI 无关，便于单元测试。

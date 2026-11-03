@@ -8,12 +8,12 @@ import (
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/service"
-	"lunabox/desktop-mygo/host/hosttest"
-	"lunabox/desktop-mygo/ui/components/panel"
-	"lunabox/desktop-mygo/ui/covers"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/host/hosttest"
+	"lunabox/desktop/ui/components/panel"
+	"lunabox/desktop/ui/covers"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // fakeSetup 不碰注册表与 PATH：GetStatus 返回给定的状态，注册操作只记下调用。

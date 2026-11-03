@@ -42,14 +42,14 @@ jobs:
           echo "commit-count=$commit_count" >> "$GITHUB_OUTPUT"
           echo "Resolved version: $version"
 
-  # 三端都用 MyGo 版（apps/desktop-mygo/tools/release）构建，发布包的文件名与包内布局同 Wails 版的 build.bat、build.sh。
+  # 三端都用 apps/desktop/tools/release 构建，发布包的文件名与包内布局沿用 Wails 版（应用内更新与已安装的旧版依赖它）。
   build-windows:
     name: Windows ${{ matrix.arch }} / ${{ matrix.mode }}
     needs: version
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
-        working-directory: apps/desktop-mygo
+        working-directory: apps/desktop
     strategy:
       fail-fast: true
       matrix:
@@ -83,10 +83,9 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: apps/desktop-mygo/go.mod
+          go-version-file: apps/desktop/go.mod
           cache: true
           cache-dependency-path: |
-            apps/desktop-mygo/go.sum
             apps/desktop/go.sum
             packages/backend/go.sum
             packages/updater/go.sum
@@ -111,7 +110,7 @@ jobs:
           }
           "MSYS2_LOCATION=$Location" >> $env:GITHUB_ENV
 
-      # 安装版用 Wails 版的 apps/desktop/build/windows/nsis/project.nsi 打包。
+      # 安装版用 apps/desktop/packaging/windows/nsis/project.nsi 打包。
       - name: Install NSIS
         if: matrix.mode == 'installer'
         shell: pwsh
@@ -204,7 +203,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-lunabox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable
-          path: apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable.zip
+          path: apps/desktop/build/release/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable.zip
           if-no-files-found: error
           retention-days: 1
 
@@ -220,7 +219,7 @@ jobs:
           github-artifact-id: ${{ steps.upload-unsigned-portable.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 1200
-          output-artifact-directory: apps/desktop-mygo/signed
+          output-artifact-directory: apps/desktop/signed
 
       - name: Verify signed portable artifact
         if: matrix.mode == 'portable'
@@ -253,7 +252,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lunabox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable
-          path: apps/desktop-mygo/signed/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable.zip
+          path: apps/desktop/signed/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-portable.zip
           if-no-files-found: error
 
       - name: Upload unsigned installer payload
@@ -262,7 +261,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-lunabox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-installer-payload
-          path: apps/desktop-mygo/build/signing/installer-payload/
+          path: apps/desktop/build/signing/installer-payload/
           if-no-files-found: error
           retention-days: 1
 
@@ -278,7 +277,7 @@ jobs:
           github-artifact-id: ${{ steps.upload-unsigned-installer-payload.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 1200
-          output-artifact-directory: apps/desktop-mygo/signed-payload
+          output-artifact-directory: apps/desktop/signed-payload
 
       - name: Build installer from signed payload
         if: matrix.mode == 'installer'
@@ -312,7 +311,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-lunabox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-installer
-          path: apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-setup.exe
+          path: apps/desktop/build/release/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-setup.exe
           if-no-files-found: error
           retention-days: 1
 
@@ -328,7 +327,7 @@ jobs:
           github-artifact-id: ${{ steps.upload-unsigned-installer.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 1200
-          output-artifact-directory: apps/desktop-mygo/signed-installer
+          output-artifact-directory: apps/desktop/signed-installer
 
       - name: Verify signed installer
         if: matrix.mode == 'installer'
@@ -344,7 +343,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lunabox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-installer
-          path: apps/desktop-mygo/signed-installer/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-setup.exe
+          path: apps/desktop/signed-installer/LunaBox-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}-setup.exe
           if-no-files-found: error
 
   build-macos:
@@ -353,7 +352,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
-        working-directory: apps/desktop-mygo
+        working-directory: apps/desktop
     strategy:
       fail-fast: true
       matrix:
@@ -417,10 +416,9 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: apps/desktop-mygo/go.mod
+          go-version-file: apps/desktop/go.mod
           cache: true
           cache-dependency-path: |
-            apps/desktop-mygo/go.sum
             apps/desktop/go.sum
             packages/backend/go.sum
             packages/updater/go.sum
@@ -460,7 +458,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lunabox-${{ needs.version.outputs.version }}-macos-${{ matrix.arch }}
-          path: apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-macos-${{ matrix.arch }}.dmg
+          path: apps/desktop/build/release/LunaBox-${{ needs.version.outputs.version }}-macos-${{ matrix.arch }}.dmg
           if-no-files-found: error
 
   build-linux:
@@ -469,7 +467,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
-        working-directory: apps/desktop-mygo
+        working-directory: apps/desktop
     permissions:
       contents: read
     strategy:
@@ -491,10 +489,9 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: apps/desktop-mygo/go.mod
+          go-version-file: apps/desktop/go.mod
           cache: true
           cache-dependency-path: |
-            apps/desktop-mygo/go.sum
             apps/desktop/go.sum
             packages/backend/go.sum
             packages/updater/go.sum
@@ -594,9 +591,9 @@ jobs:
         with:
           name: lunabox-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}
           path: |
-            apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}.deb
-            apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}.rpm
-            apps/desktop-mygo/build/release/LunaBox-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}.AppImage
+            apps/desktop/build/release/LunaBox-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}.deb
+            apps/desktop/build/release/LunaBox-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}.rpm
+            apps/desktop/build/release/LunaBox-${{ needs.version.outputs.version }}-linux-${{ matrix.arch }}.AppImage
           if-no-files-found: error
 
   create-prerelease:
@@ -647,7 +644,7 @@ jobs:
           cat <<'EOF' > release_notes.md
           ## 🚀 LunaBox Development Build
 
-          **⚠️ 这是一个自动构建的开发版本，界面已切换为 MyGo 原生实现**
+          **⚠️ 这是一个自动构建的开发版本**
 
           ### 📋 版本信息
 

@@ -1,30 +1,11 @@
 package tagname
 
 import (
-	"bytes"
-	"os"
-	"path/filepath"
 	"slices"
 	"testing"
 
 	"github.com/egoist/mygo/i18n"
 )
-
-func TestDataMatchesFrontend(t *testing.T) {
-	for _, lang := range Languages {
-		want, err := os.ReadFile(filepath.Join("..", "..", "..", "desktop", "frontend", "src", "utils", "vndbTagTranslations."+lang+".json"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		have, err := data.ReadFile("data/" + lang + ".json")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !bytes.Equal(want, have) {
-			t.Errorf("data/%s.json 与原版不一致；在 apps/desktop-mygo 下运行 go run ./tools/i18n", lang)
-		}
-	}
-}
 
 func TestLanguage(t *testing.T) {
 	for locale, want := range map[string]string{

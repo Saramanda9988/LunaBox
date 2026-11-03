@@ -6,7 +6,7 @@ import (
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/bootstrap"
-	"lunabox/desktop-mygo/api"
+	"lunabox/desktop/api"
 )
 
 // Backend 是界面使用的后端：bootstrap 构造的服务、数据库与配置，加上把服务事件交给界面的 Events。

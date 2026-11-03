@@ -9,9 +9,9 @@ import (
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/vo"
-	"lunabox/desktop-mygo/ui/components/panel/cloudbackup"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/ui/components/panel/cloudbackup"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
 )
 
 // cloudSyncToastID 是“正在同步”提示的 id：同步结束后换成成功或失败的提示。

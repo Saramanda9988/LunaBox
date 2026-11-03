@@ -1,6 +1,6 @@
 # 与原版的差距
 
-desktop-mygo 替代 Wails 版之前还要补的东西。按要不要做分成四类：
+与原版（`wails-final` 标签里的 Wails 版）相比还要补的东西。按要不要做分成四类：
 
 1. [功能未实现](#功能未实现)：原版有、这里没有或只弹“尚未迁移”的功能，**必须做**。
 2. [还没对照过的界面](#还没对照过的界面)：已经实现，但没有和原版截图逐像素比较过，**要补对照场景**。
@@ -9,7 +9,7 @@ desktop-mygo 替代 Wails 版之前还要补的东西。按要不要做分成四
 
 最后是[发布与平台](#发布与平台)的工作和[原版自身的问题](#原版自身的问题)。完成一项后从这里删掉；新发现的差异按上面的分类加进来。
 
-清单在 2026-10-21 对照原版 `apps/desktop/frontend/src` 的组件与 hooks 核对过：弹“尚未迁移”的地方都调用 `locales.NativeFeatureNotMigrated`，可以搜这个函数找到。
+清单在 2026-10-21 对照原版 `apps/desktop/frontend/src`（现在在 `wails-final` 标签里）的组件与 hooks 核对过：弹“尚未迁移”的地方都调用 `locales.NativeFeatureNotMigrated`，可以搜这个函数找到。
 
 ## 功能未实现
 
@@ -27,7 +27,7 @@ desktop-mygo 替代 Wails 版之前还要补的东西。按要不要做分成四
 
 ## 还没对照过的界面
 
-对照场景在 `tools/parity/scenarios.mjs`，流程见 [parity.md](parity.md)。现在只有深色主题、简体中文、150% 缩放下的游戏库、收藏夹、收藏详情、设置页各分区与下载管理有场景。还没有场景的：
+对照工具与流程随原版一起归档在 `wails-final` 标签里（`apps/desktop-mygo/tools/parity` 与 `apps/desktop-mygo/docs/parity.md`），需要对照时从标签里取出原版与工具。归档时只有深色主题、简体中文、150% 缩放下的游戏库、收藏夹、收藏详情、设置页各分区与下载管理有场景。还没有场景的：
 
 - **整页**：首页、游戏详情页（图表与日期、滚轮选择器单独对照过）、统计页（`DESKTOP_MYGO_PNG=<目录> go test ./ui/pages/stats -run TestScreenshots` 可以画出整页目测）、灵动岛、自定义背景与玻璃模式。
 - **状态与弹窗**：
@@ -101,11 +101,11 @@ desktop-mygo 替代 Wails 版之前还要补的东西。按要不要做分成四
 
 - **与 Wails 版并存**：单实例锁用的是同一个标识 `io.github.saramanda9988.lunabox`（`mygo.json` 的 `identifier`，即 Wails 版的 `applicationUniqueID`；开发版是 `LunaBox Dev`），但机制不同（Wails 是 Windows 的命名互斥量、Linux 的 D-Bus 名称、macOS 临时目录里的锁文件，MyGo 是 Unix socket），两个版本仍可能同时打开同一份数据（DuckDB 会拒绝第二个进程，后启动的那个显示启动错误窗）。
 - **跨平台**：在 macOS（Metal）与 Linux 上跑通并对照。启动配置的 macOS 兼容层、Linux 的 Wine / Proton 已迁移，但只在 Windows 上用替换的服务测过；macOS 的 `lunabox://`（`mygo.json` 的 `urlSchemes` 写进 Info.plist，`App.OnOpenURL` 交给 `HandleLaunchedWithURL`）还没在 macOS 上实测。
-- **打包发布**：`tools/release` 已按 Wails 版的布局打出全部种类的包（Windows 便携版与安装版、macOS DMG、Linux AppImage、deb、rpm），Windows 的两种包带 LunaBoxUpdater.exe；开发版 `autobuild.yml` 已切到 MyGo 并用 SignPath 签名 Windows 包，还没有 macOS 的签名与公证，正式发布流程 `release.yml` 仍是 Wails 版。
-- **应用内更新与 Wails 版共用官方渠道**：“立即更新”与 Wails 版一样按官方更新清单的 `windows-<架构>-<portable|installer>` 渠道下载并交给 LunaBoxUpdater。正式发布切换到 MyGo 版之前，清单里是 Wails 版的文件，MyGo 预发布版更新后会变成 Wails 版（数据通用）。完整的下载、替换与重启只能等有清单时验证。
+- **打包发布**：`tools/release` 按 Wails 版的布局打出全部种类的包（Windows 便携版与安装版、macOS DMG、Linux AppImage、deb、rpm），Windows 的两种包带 LunaBoxUpdater.exe；`release.yml`、`autobuild.yml`、`update-test.yml` 都用它，Windows 包经 SignPath 签名。还没有 macOS 的签名与公证。
+- **从 Wails 版应用内升级**：“立即更新”与 Wails 版一样按官方更新清单的 `windows-<架构>-<portable|installer>` 渠道下载并交给 LunaBoxUpdater，Wails 版也能用同一份清单直接升级到这个版本（`LunaBox.exe` 整个换掉，patch 不划算时更新资产生成器只发完整的 `.zst`）。第一次正式发布前用 `update-test.yml` 发一个测试版，从 Wails 版的便携版与安装版各升级一次，验证下载、替换与重启。
 
 ## 原版自身的问题
 
-没有修改，两个前端都受影响：
+从原版带过来、还没有修的：
 
 - `BackupService.RestoreBackup` 在存档目录里只有一个文件时会把它当作单文件存档，恢复到目录自身的路径上。

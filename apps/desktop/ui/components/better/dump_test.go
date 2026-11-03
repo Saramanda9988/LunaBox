@@ -10,7 +10,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/theme"
 )
 
 // DESKTOP_MYGO_PNG=<目录> 时把图片查看器渲染成图片，用于目测。

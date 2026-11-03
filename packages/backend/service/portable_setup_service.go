@@ -130,7 +130,7 @@ func protocolRegistrationMatchesPath(registeredExe string, executablePath string
 // Installed builds are managed by Wails during packaging.
 func (s *PortableSetupService) RegisterProtocol() (PortableSetupStatus, error) {
 	if !supportsLocalIntegrationSetup() {
-		return PortableSetupStatus{}, fmt.Errorf("安装版协议由 Wails 安装程序管理")
+		return PortableSetupStatus{}, fmt.Errorf("安装版协议由安装程序管理")
 	}
 	if runtime.GOOS == "darwin" {
 		return s.GetStatus()
@@ -149,7 +149,7 @@ func (s *PortableSetupService) RegisterProtocol() (PortableSetupStatus, error) {
 // build.
 func (s *PortableSetupService) UnregisterProtocol() (PortableSetupStatus, error) {
 	if !supportsLocalIntegrationSetup() {
-		return PortableSetupStatus{}, fmt.Errorf("安装版协议由 Wails 安装程序管理")
+		return PortableSetupStatus{}, fmt.Errorf("安装版协议由安装程序管理")
 	}
 	if runtime.GOOS == "darwin" {
 		return s.GetStatus()

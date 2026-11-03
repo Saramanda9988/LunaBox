@@ -2,19 +2,19 @@
 
 ## 原则
 
-- **同一份后端**：服务、数据库迁移、启动与退出流程都在 `packages/backend`（`go.mod` 里 `replace lunabox/backend => ../../packages/backend`）。服务的构造、后台任务、关闭到托盘、退出前同步、协议请求与关闭顺序在 `lunabox/backend/bootstrap`，与 Wails 版是同一份代码。这里只写 MyGo 相关的部分，不复制后端代码。页面通过 `api` 包的接口调用服务（`env.Env.Svc`），与原版前端调用 Wails 绑定一样。
-- **同一份翻译**：界面文字来自原版的语言包，见 [i18n.md](i18n.md)。界面代码里不写死文字，`TestNoHardcodedText` 会检查。
-- **一比一还原**：尺寸、颜色从运行中的原版导出计算样式，再逐像素对照，见 [parity.md](parity.md)。
+- **后端在 `packages/backend`**：服务、数据库迁移、启动与退出流程都在那里（`go.mod` 里 `replace lunabox/backend => ../../packages/backend`）。服务的构造、后台任务、关闭到托盘、退出前同步、协议请求与关闭顺序在 `lunabox/backend/bootstrap`。这里只写 MyGo 相关的部分，不复制后端代码。页面通过 `api` 包的接口调用服务（`env.Env.Svc`），与原版前端调用 Wails 绑定一样。
+- **沿用原版的翻译**：界面文字在 `ui/locales`，key 沿用原版的语言包，见 [i18n.md](i18n.md)。界面代码里不写死文字，`TestNoHardcodedText` 会检查。
+- **一比一还原**：尺寸、颜色是从运行中的原版导出计算样式、再逐像素对照得来的（对照工具在 `wails-final` 标签的 `apps/desktop-mygo/tools/parity`）。改界面时保持现有的取值，不凭截图估。
 - **测试不开窗口**：`ui.Tester` 构建视图、模拟输入、推进时钟（`tt.Advance`），测试在临时目录里新建数据库并跑完全部迁移（`hosttest.NewServices`）。
 
 ## 目录
 
-目录对应原版 `apps/desktop/frontend/src`：
+目录对应原版前端（`wails-final` 标签的 `apps/desktop/frontend/src`）：
 
 | 路径 | 内容 |
 | --- | --- |
 | `main.go` | 命令行参数与语言 |
-| `app/` | MyGo 的应用外壳（对应 `apps/desktop/main.go`）：单实例、数据目录与日志、主窗口（隐藏标题栏与系统窗口按钮，由顶栏绘制；最大化按钮在 Windows 11 上显示贴靠布局）、托盘、启动错误窗，把窗口与框架事件交给 `bootstrap.App`；游戏库列表查询（`ui.Backend`，`-repeat` 压测时放大） |
+| `app/` | MyGo 的应用外壳（对应原版的 `main.go`）：单实例、数据目录与日志、主窗口（隐藏标题栏与系统窗口按钮，由顶栏绘制；最大化按钮在 Windows 11 上显示贴靠布局）、托盘、启动错误窗，把窗口与框架事件交给 `bootstrap.App`；游戏库列表查询（`ui.Backend`，`-repeat` 压测时放大） |
 | `host/` | 把后端接到 MyGo：`appruntime.Runtime`（原生文件对话框、事件、打开网址、开机自启）与 `bootstrap.Window` 的实现、把服务事件转到界面线程的 `Events`、给界面的 `api.Services`（`Backend.API`）、开发运行的数据目录；`host/hosttest` 给测试提供真实服务 |
 | `api/` | 界面调用的后端接口（对应原版前端的 Wails 绑定），界面只依赖这些接口 |
 | `ui/app.go`、`ui/routes.go` | 根布局（`routes/__root.tsx`）与路由表，用 MyGo 的 `ui.Router`；`ui/runtime_events.go` 是应用级事件（`useAppRuntimeEffects`、`useExitSyncToast`、`useDownloadNotifications`、`useCoverImageDownloadNotifications`）与启动时的 `GetPendingInstall`、`useUpdateCheck` |
@@ -32,14 +32,14 @@
 | `ui/components/importer` | 添加与导入游戏（`components/ui/import` 与 AddGameModal、BatchImportModal、DragDropImportModal、GameImportModal、SkippedImportCandidatesModal）：导入流程（`useImportFlow`）、预览表格、手动选择、元数据搜索结果（详情页编辑也用它）；根布局的拖放提示 |
 | `ui/components/modal` | 多个页面共用的弹窗：AddToCategoryModal（详情页、游戏库批量操作）；根布局的 InstallConfirmModal、TimezoneSelectModal |
 | `ui/components/bar`、`card`、`grid`、`chart` | `components/bar`（TopBar、SideBar、PlayingIsland、FilterBar）、`components/card`（GameCard、CategoryCard、DownloadCard）、`components/grid`（VirtualGameGrid 与分页加载）、`components/chart`（原版用到的全部图表，用 MyGo 的 `ui/chart`） |
-| `ui/locales` | 多语言目录（由原版语言包生成）与类型化函数，见 [i18n.md](i18n.md) |
+| `ui/locales` | 多语言目录（ARB，直接编辑）与生成的类型化函数，见 [i18n.md](i18n.md) |
 | `ui/theme`、`ui/assets` | `uno.config.ts` 的色板、字号、过渡曲线、像素吸附与玻璃模式（`theme/glass.go`）；图标、元数据来源图标、表情数据与图片 |
 | `ui/env`、`ui/covers`、`ui/perf`、`ui/timefmt` | 页面共享的运行环境（后端、路由、主题、语言）、封面缓存与自定义背景图、性能 HUD 与压测、`utils/time.ts` 的时长与日期格式 |
 | `ui/tagname` | `utils/tagTranslation.ts`：VNDB 标签按界面语言显示译名、按译名搜索标签 |
+| `cmd/lunacli` | 命令行工具 lunacli（随包发布） |
 | `tools/mygo`、`tools/release` | 设好 `CGO_ENABLED=1` 再运行 `go tool mygo`；按 Wails 版的布局构建 Windows 便携版与安装版、macOS DMG、Linux AppImage、deb 与 rpm |
-| `tools/i18n` | 把原版语言包转换成 `ui/locales`，复制 VNDB 标签译名；`extra/` 是原版没有的补充文字 |
-| `tools/parity` | 与原版逐像素对照，见 [parity.md](parity.md) |
-| `tools/icons`、`tools/perf`、`tools/emoji` | 导出 MDI 图标；测进程内存与 CPU；下载表情选择器的数据 |
+| `packaging/`、`lib/` | 安装包脚本（NSIS、deb 与 rpm 的安装脚本）；随包的 7z 与 Windows arm64 的 DuckDB |
+| `tools/perf`、`tools/emoji` | 测进程内存与 CPU；下载表情选择器的数据 |
 
 依赖方向：`pages` → `components/*` → `components` → `theme`、`assets`、`locales`。组件不读页面状态，通过参数与回调交互；组件自己的临时状态（弹层开关、悬停计时）用 `ui.Local` 挂在自己的元素上。
 

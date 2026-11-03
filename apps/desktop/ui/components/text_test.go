@@ -7,7 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/theme"
 )
 
 // Text 的占位高度必须等于 CSS 行高，后面元素的位置才会与浏览器一致。

@@ -15,7 +15,7 @@ import (
 	"lunabox/backend/bootstrap"
 	"lunabox/backend/models"
 	"lunabox/backend/utils/dbutils"
-	"lunabox/desktop-mygo/host"
+	"lunabox/desktop/host"
 )
 
 var (

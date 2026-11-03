@@ -9,7 +9,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/common/vo"
-	"lunabox/desktop-mygo/ui/assets"
+	"lunabox/desktop/ui/assets"
 )
 
 // 封面拼贴海报的绘制，对应原版 utils/posterCanvas.ts 的 renderPoster：预览与导出画同一个 posterScene，

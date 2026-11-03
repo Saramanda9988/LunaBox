@@ -6,7 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/assets"
+	"lunabox/desktop/ui/assets"
 )
 
 // DefaultAccent 是 DEFAULT_IMAGE_ACCENT_RGB（rgb(71, 85, 105)）：没有封面或还没算出主色时用它。

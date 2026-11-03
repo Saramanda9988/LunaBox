@@ -16,9 +16,9 @@ import (
 	_ "golang.org/x/image/bmp"
 	_ "golang.org/x/image/webp"
 
-	"lunabox/desktop-mygo/ui/assets"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/assets"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // cropDisplayMaxWidth 是裁剪弹窗里位图保留的最大宽度（像素）。弹窗最宽 896 DIP，200% 缩放下约 1800px；

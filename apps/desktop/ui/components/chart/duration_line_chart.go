@@ -7,8 +7,8 @@ import (
 	"github.com/egoist/mygo/ui"
 	plot "github.com/egoist/mygo/ui/chart"
 
-	"lunabox/desktop-mygo/ui/theme"
-	"lunabox/desktop-mygo/ui/timefmt"
+	"lunabox/desktop/ui/theme"
+	"lunabox/desktop/ui/timefmt"
 )
 
 // Point 是一天（年维度为一个月）的游戏时长。

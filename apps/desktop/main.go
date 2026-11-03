@@ -1,5 +1,5 @@
-// desktop-mygo 是 LunaBox 用 MyGo 原生 UI 实现的桌面应用：界面在 ui 包里一比一还原 Wails 版前端，
-// 后端与 Wails 版共用 packages/backend（服务、启动、生命周期与退出在 lunabox/backend/bootstrap），
+// LunaBox 是用 MyGo 原生 UI 实现的桌面应用：界面在 ui 包里一比一还原 Wails 版前端（标签 wails-final），
+// 后端是 packages/backend（服务、启动、生命周期与退出在 lunabox/backend/bootstrap），
 // app 包是 MyGo 的应用外壳，host 包把后端接到 MyGo。
 package main
 
@@ -14,8 +14,8 @@ import (
 	"github.com/egoist/mygo"
 
 	"lunabox/backend/bootstrap"
-	"lunabox/desktop-mygo/app"
-	_ "lunabox/desktop-mygo/ui/locales" // 注册界面的多语言目录（ui/locales），它的语言就是应用的语言
+	"lunabox/desktop/app"
+	_ "lunabox/desktop/ui/locales" // 注册界面的多语言目录（ui/locales），它的语言就是应用的语言
 )
 
 // appIcon 是应用图标（与 Wails 版的 build/appicon.png 相同）。mygo dev、mygo build 把它嵌进 exe 的图标资源；

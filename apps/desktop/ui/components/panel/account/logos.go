@@ -8,7 +8,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/assets"
+	"lunabox/desktop/ui/assets"
 )
 
 // 水印 logo 的不透明度：opacity-30 dark:opacity-25。

@@ -18,8 +18,8 @@ import (
 	"lunabox/backend/models"
 	"lunabox/backend/service"
 	"lunabox/backend/utils/metadata"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
 )
 
 // MatchStatus 是 ImportMatchStatus。

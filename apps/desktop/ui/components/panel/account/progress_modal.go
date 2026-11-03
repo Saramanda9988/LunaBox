@@ -7,11 +7,11 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/better"
-	"lunabox/desktop-mygo/ui/components/panel"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/better"
+	"lunabox/desktop/ui/components/panel"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // progressModal 对应 RemoteStatusSyncProgressModal.tsx：ModalPortal 里 w-full max-w-lg rounded-xl border border-brand-200

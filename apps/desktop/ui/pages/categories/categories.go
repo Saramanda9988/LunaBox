@@ -11,12 +11,12 @@ import (
 
 	"lunabox/backend/common/enums"
 	"lunabox/backend/common/vo"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/bar"
-	"lunabox/desktop-mygo/ui/components/better"
-	"lunabox/desktop-mygo/ui/components/grid"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/bar"
+	"lunabox/desktop/ui/components/better"
+	"lunabox/desktop/ui/components/grid"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
 )
 
 // 排序字段（CategoriesSortBy）。

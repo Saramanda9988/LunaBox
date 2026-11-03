@@ -32,24 +32,24 @@ import (
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/service"
-	"lunabox/desktop-mygo/api"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/bar"
-	"lunabox/desktop-mygo/ui/components/importer"
-	"lunabox/desktop-mygo/ui/components/modal"
-	"lunabox/desktop-mygo/ui/components/panel/launch"
-	"lunabox/desktop-mygo/ui/covers"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/pages/categories"
-	"lunabox/desktop-mygo/ui/pages/category"
-	"lunabox/desktop-mygo/ui/pages/downloads"
-	"lunabox/desktop-mygo/ui/pages/game"
-	"lunabox/desktop-mygo/ui/pages/home"
-	"lunabox/desktop-mygo/ui/pages/library"
-	"lunabox/desktop-mygo/ui/pages/settings"
-	"lunabox/desktop-mygo/ui/pages/stats"
-	"lunabox/desktop-mygo/ui/perf"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/api"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/bar"
+	"lunabox/desktop/ui/components/importer"
+	"lunabox/desktop/ui/components/modal"
+	"lunabox/desktop/ui/components/panel/launch"
+	"lunabox/desktop/ui/covers"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/pages/categories"
+	"lunabox/desktop/ui/pages/category"
+	"lunabox/desktop/ui/pages/downloads"
+	"lunabox/desktop/ui/pages/game"
+	"lunabox/desktop/ui/pages/home"
+	"lunabox/desktop/ui/pages/library"
+	"lunabox/desktop/ui/pages/settings"
+	"lunabox/desktop/ui/pages/stats"
+	"lunabox/desktop/ui/perf"
+	"lunabox/desktop/ui/theme"
 )
 
 // Backend 是界面用到的后端能力。
@@ -349,7 +349,7 @@ func (a *App) hud(c *ui.Context) {
 	})
 }
 
-// Screenshot 等可见封面解码完成后截图并退出，用于和原版逐像素对比（tools/parity）。
+// Screenshot 等可见封面解码完成后截图并退出，用于和原版逐像素对比（wails-final 标签里的 tools/parity）。
 func (a *App) Screenshot(path string) {
 	time.Sleep(800 * time.Millisecond)
 	for range 60 {

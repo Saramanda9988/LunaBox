@@ -12,8 +12,8 @@ import (
 	"lunabox/backend/common/enums"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
 )
 
 // 本文件是 routes/game.tsx 传给 GameEditPanel 的处理函数，以及面板里调用服务的部分。服务调用都在后台执行

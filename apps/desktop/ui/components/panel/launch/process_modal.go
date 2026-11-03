@@ -9,11 +9,11 @@ import (
 
 	"lunabox/backend/models"
 	"lunabox/backend/utils/processutils"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/panel"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/panel"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // processModal 是 ProcessSelectModal 的状态。

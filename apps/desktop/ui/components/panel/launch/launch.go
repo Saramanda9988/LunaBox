@@ -14,12 +14,12 @@ import (
 	"lunabox/backend/common/enums"
 	"lunabox/backend/models"
 	"lunabox/backend/service"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/better"
-	"lunabox/desktop-mygo/ui/components/panel"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/better"
+	"lunabox/desktop/ui/components/panel"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // State 是面板跨帧保留的状态，由详情页持有；进入另一个游戏时清零。

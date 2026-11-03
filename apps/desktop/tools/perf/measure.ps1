@@ -4,7 +4,6 @@
 
 .EXAMPLE
   # 先手动启动应用并停在游戏库页面，等封面加载完、不要动鼠标
-  pwsh tools/perf/measure.ps1 -Name desktop-mygo
   pwsh tools/perf/measure.ps1 -Name LunaBox -Seconds 20
 #>
 param(

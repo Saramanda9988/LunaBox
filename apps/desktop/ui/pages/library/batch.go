@@ -9,13 +9,13 @@ import (
 
 	"lunabox/backend/common/enums"
 	"lunabox/backend/service"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/bar"
-	"lunabox/desktop-mygo/ui/components/better"
-	"lunabox/desktop-mygo/ui/components/modal"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/bar"
+	"lunabox/desktop/ui/components/better"
+	"lunabox/desktop/ui/components/modal"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // batchState 是批量操作的弹窗：加入收藏夹（AddToCategoryModal）、删除确认（ConfirmModal）与导入到 Steam

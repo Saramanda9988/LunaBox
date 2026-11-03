@@ -9,11 +9,11 @@ import (
 
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/better"
-	"lunabox/desktop-mygo/ui/covers"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/better"
+	"lunabox/desktop/ui/covers"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // SearchResults 是 MetadataSearchResultsStep 的状态：选择说明是否打开、候选卡片的横向滚动。

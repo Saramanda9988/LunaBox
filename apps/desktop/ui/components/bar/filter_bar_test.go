@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/env/envtest"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/env/envtest"
 )
 
 // 标签建议同 useTagGameFilter：库里名称匹配的标签，加上译名匹配、库里也有的标签，按原名或显示名过滤，去掉已选的。

@@ -11,7 +11,7 @@ import (
 
 	"lunabox/backend/common/enums"
 	"lunabox/backend/models"
-	"lunabox/desktop-mygo/host/hosttest"
+	"lunabox/desktop/host/hosttest"
 )
 
 // 切换状态写进数据库（BatchUpdateStatus）。

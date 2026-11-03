@@ -8,9 +8,9 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/models"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/tagname"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/tagname"
+	"lunabox/desktop/ui/theme"
 )
 
 // TagEditor 是“添加标签”输入框的状态（isAdding、inputValue），由调用方持有：添加成功后调用方清空它。

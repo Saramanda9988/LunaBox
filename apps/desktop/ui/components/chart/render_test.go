@@ -7,7 +7,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/common/vo"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/theme"
 )
 
 func caseNamed(t *testing.T, name string) lineCase {

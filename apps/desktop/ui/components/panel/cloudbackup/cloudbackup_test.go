@@ -13,13 +13,13 @@ import (
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/version"
-	"lunabox/desktop-mygo/host"
-	"lunabox/desktop-mygo/host/hosttest"
-	"lunabox/desktop-mygo/ui/components/panel"
-	"lunabox/desktop-mygo/ui/covers"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/host"
+	"lunabox/desktop/host/hosttest"
+	"lunabox/desktop/ui/components/panel"
+	"lunabox/desktop/ui/covers"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // harness 模拟设置页：Change、PatchLive 改本地的一份配置并计数，Refresh 从服务重新读取。

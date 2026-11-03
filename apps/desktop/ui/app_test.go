@@ -8,10 +8,10 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/host/hosttest"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/env/envtest"
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/host/hosttest"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/env/envtest"
+	"lunabox/desktop/ui/locales"
 )
 
 // newTestApp 从游戏库开始（这些用例测的是游戏库与从它出发的导航）；默认的首页见 TestDefaultRouteIsHome。

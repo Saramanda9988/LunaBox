@@ -7,17 +7,17 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/common/enums"
-	"lunabox/desktop-mygo/ui/assets"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/bar"
-	"lunabox/desktop-mygo/ui/components/better"
-	"lunabox/desktop-mygo/ui/components/card"
-	"lunabox/desktop-mygo/ui/components/grid"
-	"lunabox/desktop-mygo/ui/components/importer"
-	"lunabox/desktop-mygo/ui/components/panel/launch"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/assets"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/bar"
+	"lunabox/desktop/ui/components/better"
+	"lunabox/desktop/ui/components/card"
+	"lunabox/desktop/ui/components/grid"
+	"lunabox/desktop/ui/components/importer"
+	"lunabox/desktop/ui/components/panel/launch"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 const (

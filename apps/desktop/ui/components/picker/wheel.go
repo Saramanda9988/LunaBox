@@ -7,7 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/theme"
 )
 
 // 原版 BetterNumberWheelPicker 给 @ncdai/react-wheel-picker 1.2.2 的 WheelPicker 传的参数，以及库里由它们算出的几何量：

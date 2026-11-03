@@ -7,10 +7,10 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/common/vo"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // guideModal 是 GameGuideDocumentModal 的状态。

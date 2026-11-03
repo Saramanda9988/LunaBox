@@ -7,8 +7,8 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/service"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/theme"
 )
 
 // loadingStep 对应 ImportTaskLoadingStep：py-12 text-center，text-5xl 的旋转图标（mb-4），text-lg 的标题，

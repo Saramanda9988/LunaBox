@@ -1,7 +1,7 @@
 package library
 
 import (
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/ui/locales"
 )
 
 type importOption struct {

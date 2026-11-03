@@ -10,8 +10,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/assets"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/assets"
+	"lunabox/desktop/ui/theme"
 )
 
 // Text 创建一段带 Tailwind 字号和固定行高的文字，与浏览器的行盒高度一致。

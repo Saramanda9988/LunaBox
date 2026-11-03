@@ -8,7 +8,7 @@ import (
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/enums"
 	"lunabox/backend/models"
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/ui/locales"
 )
 
 // metadataSourceTypes 是“添加来源”下拉框的选项顺序（GameEditPanel.tsx 的 metadataSourceTypes）。

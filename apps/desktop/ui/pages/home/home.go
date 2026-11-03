@@ -15,11 +15,11 @@ import (
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
 	"lunabox/backend/service"
-	"lunabox/desktop-mygo/ui/components/panel/homerail"
-	"lunabox/desktop-mygo/ui/components/panel/launch"
-	"lunabox/desktop-mygo/ui/covers"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/ui/components/panel/homerail"
+	"lunabox/desktop/ui/components/panel/launch"
+	"lunabox/desktop/ui/covers"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
 )
 
 // 让首页刷新的服务事件（hooks/useAppRuntimeEffects.ts）。

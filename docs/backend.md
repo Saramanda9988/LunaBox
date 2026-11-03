@@ -48,15 +48,13 @@
 ## Service 设计与依赖注入
 
 - MUST 以 service 作为业务边界，按 domain 划分，不需要 DAO 层。
-- MUST `packages/backend/service` 根目录主要保留暴露给 Wails 前端的 service 类型、公开方法、依赖注入与业务入口。
+- MUST `packages/backend/service` 根目录主要保留供界面调用（经 `apps/desktop/api` 的接口）的 service 类型、公开方法、依赖注入与业务入口。
 - MUST 业务强相关的内部实现放入对应子包，例如游戏辅助使用 `gamehelper`、导入使用 `importer`、云同步使用 `cloudsync`；跨业务通用能力放入 `packages/backend/utils` 或已有的 `packages/backend/common` 专题包。
 - MUST SQL 操作封装在所属 service 业务域中，可以位于根 service 的私有方法或对应子包的持久化组件中，避免在无关 service 与工具包中分散 SQL。
 - MUST 子包不得导入 `packages/backend/service` 根包；根 service 通过普通参数、接口或回调向子包提供外部能力，保持单向依赖。
 - MUST 在 `packages/backend/bootstrap/services.go` 中创建 service 实例并调用 `Init(...)` 完成基础注入（ctx/db/config）；两个桌面端共用这一份。
 - MUST service 间依赖通过 `SetXxxService(...)` 注入（参照 `StartService.SetSessionService`、`ImportService.SetSessionService`），不要直接 new 另一个 service。
-- MUST `Init(...)`、`SetXxxService(...)` 以及测试钩子使用 `//wails:ignore`，避免基础设施方法被生成为前端 API，或让 service 类型被误判为 model。
-- MUST 桌面框架的 application/window 能力通过 `packages/backend/appruntime.Runtime` 和 `SetRuntime(...)` 显式注入（Wails 版实现在 `apps/desktop/wailsruntime`，MyGo 版在 `apps/desktop-mygo/host`）；不要恢复依赖 `context.Context` 的 v2 风格全局 runtime 调用，也不要在 service 中调用 `application.Get()`。
-- SHOULD 在 Wails v3 正式版 API 稳定前保留这层窄适配器，用它集中隔离 alpha API 变化；正式版升级时再评估是否直接注入更细的 capability interface。
+- MUST 桌面框架的 application/window 能力（文件对话框、事件、打开网址、开机自启等）通过 `packages/backend/appruntime.Runtime` 和 `SetRuntime(...)` 显式注入（实现在 `apps/desktop/host`）；service 不直接依赖界面框架。
 - SHOULD 避免循环依赖；如果出现循环，优先重构职责或抽出更小的 service。
 
 反例（MUST NOT）：
@@ -89,22 +87,22 @@
 - 新增或修改 `packages/backend/appconf.AppConfig` 字段时，除了 `LoadConfig/SaveConfig` 外，还必须同步检查 `packages/backend/service/config_service.go` 的 `UpdateAppConfig(...)`。
 - `packages/backend/appconf/config.go` 仅保留配置结构、默认值、读写与配置访问方法；所有以 `Normalize` 命名的配置规范化函数必须定义在 `packages/backend/appconf/normalize.go`。
 - 新增配置规范化规则时，必须复用 `normalize.go` 中已有的公共函数，或在该文件新增函数；`LoadConfig(...)` 与 `SaveConfig(...)` 需在合适位置调用该规则，保证内存配置与写入文件使用相同的有效值。
-- `UpdateAppConfig(...)` 负责把前端提交的新配置写回运行中的 in-memory config；漏字段会导致：
+- `UpdateAppConfig(...)` 负责把界面提交的新配置写回运行中的 in-memory config；漏字段会导致：
   - 配置文件已更新，但当前进程仍使用旧值
   - 设置页回显不稳定
   - 运行时逻辑（如退出判断、自动备份、云同步）读取到错误配置
 
 ---
 
-## 应用退出生命周期（Wails）
+## 应用退出生命周期
 
-- MUST 区分 `OnBeforeClose`、前端退出流、`OnShutdown` 三层职责：
-  - `OnBeforeClose`：拦截关闭请求、保存窗口态、决定是隐藏到托盘还是转交前端退出流
-  - 前端退出流：处理可交互的“退出前同步/提示”逻辑，例如云同步 toast
+- MUST 区分窗口关闭、界面退出流、`OnShutdown` 三层职责：
+  - 窗口关闭（`packages/backend/bootstrap`）：拦截关闭请求、保存窗口态、决定是隐藏到托盘还是转交界面退出流
+  - 界面退出流（`apps/desktop/ui/runtime_events.go`）：处理可交互的“退出前同步/提示”逻辑，例如云同步 toast
   - `OnShutdown`：只做无交互的最终清理，如停 IPC、清理 session、关闭 DB、保存配置、退出托盘
-- MUST NOT 在 `OnShutdown` 内新增依赖前端交互的流程；此时前端已进入销毁阶段。
-- SHOULD 将可能耗时、可能失败、需要反馈给用户的退出动作前移到前端退出流。
-- 当前项目中，应用退出时的数据库自动备份通过 `packages/backend/bootstrap` 发出 `app:quit-sync-requested` 事件，由前端处理；云端上传启用时由同一请求一并完成，`OnShutdown` 则跳过重复的数据库退出备份。
+- MUST NOT 在 `OnShutdown` 内新增依赖界面交互的流程；此时界面已进入销毁阶段。
+- SHOULD 将可能耗时、可能失败、需要反馈给用户的退出动作前移到界面退出流。
+- 当前项目中，应用退出时的数据库自动备份通过 `packages/backend/bootstrap` 发出 `app:quit-sync-requested` 事件，由界面处理；云端上传启用时由同一请求一并完成，`OnShutdown` 则跳过重复的数据库退出备份。
 
 ---
 
@@ -141,9 +139,9 @@
 
 ## 系统底层操作（文件/进程/系统信息）
 
-优先级：Wails runtime API > Go 标准库（`os`/`io`/`filepath`/`exec`）> Windows API
+优先级：`appruntime.Runtime` > Go 标准库（`os`/`io`/`filepath`/`exec`）> Windows API
 
-- MUST 优先使用 Wails runtime API（文件选择对话框、窗口控制、事件等）。
+- MUST 文件选择对话框、窗口控制、事件等界面框架能力通过 `appruntime.Runtime` 使用。
 - MAY 确实需要时才使用 Windows API（参考 `packages/backend/utils/processutils/process_windows.go` 与 `packages/backend/utils/timerutils/focusing/windows_focus.go` 的封装方式）。
 - MUST NOT 用"命令输出文本/返回字符串内容"判断成功与否；以 Go 的 `error`、退出码、系统错误码为准，避免编码/语言环境导致的乱码与误判。
 

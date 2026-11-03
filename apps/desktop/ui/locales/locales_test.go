@@ -1,31 +1,12 @@
 package locales_test
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/egoist/mygo/i18n"
 
-	"lunabox/desktop-mygo/tools/i18n/catalogs"
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/ui/locales"
 )
-
-// 原版前端的语言包改了而没有重新生成时失败：两个前端要说同样的话。
-func TestCatalogsMatchFrontend(t *testing.T) {
-	res, err := catalogs.Convert(catalogs.Options{
-		Frontend: filepath.Join("..", "..", "..", "desktop", "frontend", "src", "locales"),
-		Extra:    filepath.Join("..", "..", "tools", "i18n", "extra"),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, w := range res.Warnings {
-		t.Log(w)
-	}
-	if diff := res.Diff("."); len(diff) > 0 {
-		t.Fatalf("ui/locales 与原版语言包不一致：%v；在 apps/desktop-mygo 下运行 go run ./tools/i18n", diff)
-	}
-}
 
 func TestMessages(t *testing.T) {
 	for _, c := range []struct{ locale, want string }{

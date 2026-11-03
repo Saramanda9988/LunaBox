@@ -9,7 +9,7 @@ import (
 	"lunabox/backend/common/vo"
 )
 
-// 截图与参照页（testdata/reference.html）共用的样例数据：固定种子生成，Go 一侧写成 chart-data.js 交给参照页。
+// 截图与参照页（wails-final 标签里的 testdata/reference.html）共用的样例数据：固定种子生成，Go 一侧写成 chart-data.js 交给参照页。
 
 type rng uint64
 

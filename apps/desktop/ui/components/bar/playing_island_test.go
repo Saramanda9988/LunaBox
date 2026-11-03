@@ -10,10 +10,10 @@ import (
 
 	"lunabox/backend/models"
 	"lunabox/backend/service"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
-	"lunabox/desktop-mygo/ui/timefmt"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
+	"lunabox/desktop/ui/timefmt"
 )
 
 // islandFixture 像 App 一样持有灵动岛的状态，运行状态与动作由测试直接改。

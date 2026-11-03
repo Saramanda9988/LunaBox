@@ -12,7 +12,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/common/vo"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/theme"
 )
 
 func TestNiceNum(t *testing.T) {
@@ -213,7 +213,7 @@ func TestLayoutLineInvariants(t *testing.T) {
 }
 
 // TestLayoutMatchesChartJS 用 MyGo 实际的字宽排每个样例，与原版 Chart.js 在 Chromium 里排出的结果
-// （testdata/chartjs-layout.json，由 testdata/reference.html 的 data-layout 导出）比较。
+// （testdata/chartjs-layout.json，由 wails-final 标签里的 testdata/reference.html 的 data-layout 导出）比较。
 func TestLayoutMatchesChartJS(t *testing.T) {
 	if chartFont != "Arial" {
 		t.Skip("Chart.js 的默认字体在本机不是 Arial")

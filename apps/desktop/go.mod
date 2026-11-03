@@ -1,4 +1,4 @@
-module lunabox/desktop-mygo
+module lunabox/desktop
 
 go 1.27.3
 

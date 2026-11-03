@@ -52,8 +52,8 @@ func PrepareDataDir(o DataDirOptions) (dir, seededFrom string, err error) {
 	return dir, seededFrom, nil
 }
 
-// DevProjectDir 是开发运行时的项目目录（apps/desktop-mygo）：可执行文件在 build/ 下时是它的上一级，
-// 否则是当前目录（go run、mygo dev 在 apps/desktop-mygo 下执行）。
+// DevProjectDir 是开发运行时的项目目录（apps/desktop）：可执行文件在 build/ 下时是它的上一级，
+// 否则是当前目录（go run、mygo dev 在 apps/desktop 下执行）。
 func DevProjectDir() string {
 	if exe, err := os.Executable(); err == nil {
 		if dir := filepath.Dir(exe); filepath.Base(dir) == "build" {

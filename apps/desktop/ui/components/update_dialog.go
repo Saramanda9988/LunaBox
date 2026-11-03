@@ -10,8 +10,8 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/service"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // uno.config.ts 的 accent（星光蓝），theme 包里没有。

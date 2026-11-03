@@ -8,9 +8,9 @@ import (
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/service"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
 )
 
 // 应用级的服务事件，对应 hooks/useAppRuntimeEffects.ts、useExitSyncToast.ts、useDownloadNotifications.ts 与

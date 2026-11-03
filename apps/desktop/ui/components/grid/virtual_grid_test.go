@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/theme"
 )
 
 func TestGeometryMatchesWeb(t *testing.T) {

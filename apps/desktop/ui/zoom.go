@@ -8,8 +8,8 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/appconf"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
 )
 
 // zoom 对应 hooks/useAppZoom.ts：按 window_zoom_factor 缩放整个窗口，返回缩放比例。原版改根元素的字号，

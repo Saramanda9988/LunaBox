@@ -1,29 +1,30 @@
-// release 构建 MyGo 版的发布包：用 mygo build 编译（Windows 的 exe 带图标、manifest 与版本信息，macOS 是 .app），
-// 注入版本号与构建期凭据，再和 lunacli、7z 一起按 Wails 版的布局打包到 build/release。-mode 是包的种类：
+// release 构建发布包：用 mygo build 编译（Windows 的 exe 带图标、manifest 与版本信息，macOS 是 .app），
+// 注入版本号与构建期凭据，再和 lunacli、7z 一起打包到 build/release。包的文件名与布局沿用 Wails 版
+// （标签 wails-final 的 apps/desktop/scripts/build.bat、build.sh），应用内更新与已安装的旧版都依赖它。-mode 是包的种类：
 //
-//   - Windows portable（默认）：便携版 LunaBox-<版本>-windows-<架构>-portable.zip（旁边留一份解压好的目录），
-//     对应 Wails 版的 apps/desktop/scripts/build.bat portable；
-//   - Windows installer：NSIS 安装包 LunaBox-<版本>-windows-<架构>-setup.exe，对应 build.bat installer，
-//     用 Wails 版的 build/windows/nsis/project.nsi（不装 WebView2）；需要 NSIS；
-//   - Windows installer-payload 与 installer-package：同 build.bat，把 installer 拆成两步，中间给 exe 签名。
+//   - Windows portable（默认）：便携版 LunaBox-<版本>-windows-<架构>-portable.zip（旁边留一份解压好的目录）；
+//   - Windows installer：NSIS 安装包 LunaBox-<版本>-windows-<架构>-setup.exe，用 packaging/windows/nsis/project.nsi
+//     （不装 WebView2）；需要 NSIS；
+//   - Windows installer-payload 与 installer-package：把 installer 拆成两步，中间给 exe 签名。
 //     installer-payload 只编译并放好安装包的内容（LunaBox-<版本>-windows-<架构>-installer 目录），
 //     installer-package 不编译，把这个目录（换成签名后的 exe）打成安装包；
-//   - Linux appimage（默认）：LunaBox-<版本>-linux-<架构>.AppImage（旁边留 .AppDir），对应 build.sh appimage，
-//     BuildMode 是 appimage：数据在 ~/.config/LunaBox，与 Wails 版的 AppImage 相同；需要 appimagetool；
-//   - Linux installer：LunaBox-<版本>-linux-<架构>.deb 与 .rpm（旁边留 .pkgroot），对应 build.sh installer，
-//     布局同 Wails 版（主程序与 7zz 在 /usr/lib/lunabox），依赖 GTK 3 而不是 WebKitGTK；需要 nFPM；
-//   - Linux all：installer 与 appimage 都打，对应 build.sh all；
+//   - Linux appimage（默认）：LunaBox-<版本>-linux-<架构>.AppImage（旁边留 .AppDir），
+//     BuildMode 是 appimage：数据在 ~/.config/LunaBox；需要 appimagetool；
+//   - Linux installer：LunaBox-<版本>-linux-<架构>.deb 与 .rpm（旁边留 .pkgroot），
+//     主程序与 7zz 在 /usr/lib/lunabox，依赖 GTK 3；需要 nFPM；
+//   - Linux all：installer 与 appimage 都打；
 //   - macOS installer（默认，也是唯一的）：LunaBox-<版本>-macos-<架构>.dmg（旁边留 DMG 的内容），
-//     对应 build.sh installer：.app 里补上 Contents/Resources/bin 的 lunacli 与 7zz，ad-hoc 签名。
+//     .app 里补上 Contents/Resources/bin 的 lunacli 与 7zz，ad-hoc 签名。
 //
-// 安装版（Windows 安装包、deb、rpm、DMG）的 BuildMode 是 installer，装到 Wails 版的位置，会替换已安装的 Wails 版。
+// 安装版（Windows 安装包、deb、rpm、DMG）的 BuildMode 是 installer，装到 Wails 版的位置、用同一个卸载项与包名，
+// 会直接替换已安装的 Wails 版。
 //
 //	go run ./tools/release                           # 版本取最近的 v* 标签，架构 amd64，包是默认的种类
 //	go run ./tools/release -version 1.2.0 -arch arm64 -mode installer
 //
-// 在 apps/desktop-mygo 下运行，目标系统是当前系统（Windows、Linux 或 macOS）：DuckDB 需要 cgo，不能交叉编译。
-// 凭据与 Wails 版相同：环境变量 LUNABOX_*，没有设置的从 .env.build、.env 读取（格式见 .env.build.example）。
-// Windows arm64 与 build.bat 一样动态链接 apps/desktop/lib/winarm64 的 DuckDB。
+// 在 apps/desktop 下运行，目标系统是当前系统（Windows、Linux 或 macOS）：DuckDB 需要 cgo，不能交叉编译。
+// 凭据是环境变量 LUNABOX_*，没有设置的从 .env.build、.env 读取（格式见 .env.build.example）。
+// Windows arm64 动态链接 lib/winarm64 的 DuckDB。
 //
 // mygo build 的 -ldflags 是固定的（GOFLAGS 里的 -ldflags 会被它覆盖），所以版本号与凭据不用 -X 注入，
 // 而是构建期间在 main 包里写一个 release_gen.go，在 init 里给 lunabox/backend/version 的变量赋值，构建完删除。
@@ -55,8 +56,11 @@ import (
 // genFile 是构建期间写进 main 包的文件（.gitignore 忽略）。
 const genFile = "release_gen.go"
 
-// desktopDir 是 Wails 版的目录：lunacli 的源码、随包的 7z、Windows arm64 的 DuckDB 与安装包脚本都在这里。
-var desktopDir = filepath.Join("..", "desktop")
+// libDir 是随包的 7z 与 Windows arm64 的 DuckDB，packagingDir 是安装包脚本（NSIS 与 deb、rpm 的安装脚本）。
+var (
+	libDir       = "lib"
+	packagingDir = "packaging"
+)
 
 // credential 是一项构建期凭据：环境变量 env 注入 version 包的变量 name。
 type credential struct{ env, name string }
@@ -139,12 +143,12 @@ type target struct {
 func newTarget(goos, arch string) target {
 	switch goos {
 	case "linux":
-		return target{goos, arch, "", filepath.Join(desktopDir, "lib", "linux"+arch, "7z", "7zz")}
+		return target{goos, arch, "", filepath.Join(libDir, "linux"+arch, "7z", "7zz")}
 	case "darwin":
-		// 同 build.sh：macOS 只有 lib/macarm64 的 7zz，两种架构都用它。
-		return target{goos, arch, "", filepath.Join(desktopDir, "lib", "macarm64", "7z", "7zz")}
+		// lib/macarm64 的 7zz 是通用二进制（x86_64 + arm64），两种架构都用它。
+		return target{goos, arch, "", filepath.Join(libDir, "macarm64", "7z", "7zz")}
 	}
-	return target{goos, arch, ".exe", filepath.Join(desktopDir, "lib", "win"+arch, "7z")}
+	return target{goos, arch, ".exe", filepath.Join(libDir, "win"+arch, "7z")}
 }
 
 // sevenZipFiles 是随包的 7z 必须有的文件。
@@ -174,10 +178,10 @@ func (t target) builtExe(name string) string {
 	return name + ".exe"
 }
 
-// skipBuilt 报告 mygo build 的输出里不放进发布包的文件，exe 是输出的主程序名。发布包的内容同 Wails 版：
+// skipBuilt 报告 mygo build 的输出里不放进发布包的文件，exe 是输出的主程序名：
 //   - icon.png：resources/icon.png 是图标，mygo build 当作资源复制到主程序旁边；exe 的图标资源、
 //     AppImage 与 deb、rpm 的图标已经有了，窗口图标用 main.go 嵌入的那份，运行时不读它；
-//   - Windows 的 NSIS 安装包（安装版用 Wails 版的安装包脚本另外打）；
+//   - Windows 的 NSIS 安装包（安装版用 packaging/windows/nsis 的脚本另外打）；
 //   - Linux 的 deb、tar.gz、install.sh 与桌面入口及其图标 <exe>.png（AppImage、deb、rpm 有自己的桌面入口与图标）。
 func (t target) skipBuilt(e fs.DirEntry, exe string) bool {
 	if e.IsDir() {
@@ -249,10 +253,10 @@ func run(arch, ver, mode string) error {
 		return err
 	}
 	ver, commit, buildTime := resolveVersion(ver, cfg.Version)
-	// mygo build 用 mygo.json 的 version 写 exe 的文件版本（同 Wails 版的 build/windows/info.json），
-	// 应用里显示的版本是 ver；两者不一致说明 mygo.json 没有随 apps/desktop/scripts/update-build-assets 更新。
+	// mygo build 用 mygo.json 的 version 写 exe 的文件版本与安装包的版本，应用里显示的版本是 ver；
+	// 两者不一致说明发布前没有更新 mygo.json 的 version。
 	if cfg.Version != baseVersion(ver) {
-		fmt.Fprintf(os.Stderr, "WARNING: mygo.json 的 version %s 与版本号 %s 不一致，exe 的文件版本会是 %s；运行 apps/desktop/scripts/update-build-assets 同步。\n", cfg.Version, ver, cfg.Version)
+		fmt.Fprintf(os.Stderr, "WARNING: mygo.json 的 version %s 与版本号 %s 不一致，exe 的文件版本会是 %s；先更新 mygo.json 的 version。\n", cfg.Version, ver, cfg.Version)
 	}
 	creds, status, err := credentials()
 	if err != nil {
@@ -514,10 +518,10 @@ func stageFiles(cfg config, t target, tc toolchain, cli, dir string) error {
 	return nil
 }
 
-// writeInstaller 同 build.bat 的 build_installer_package：用 Wails 版的 NSIS 脚本把 dir（stageFiles 放好的
-// LunaBox.exe、lunacli.exe、LunaBoxUpdater.exe、7z 与 duckdb.dll）打成 pkg。脚本装到 Wails 版的位置、写同一个
-// 卸载项，所以会替换已安装的 Wails 版；LUNABOX_NO_WEBVIEW2 去掉 WebView2 运行时（MyGo 只在美化导出里用系统已有的
-// WebView，运行时检测）。安装包的版本取 mygo.json，与 exe 的文件版本相同。
+// writeInstaller 用 packaging/windows/nsis/project.nsi 把 dir（stageFiles 放好的 LunaBox.exe、lunacli.exe、
+// LunaBoxUpdater.exe、7z 与 duckdb.dll）打成 pkg。脚本装到 Wails 版的位置、写同一个卸载项，所以会替换已安装的
+// Wails 版；LUNABOX_NO_WEBVIEW2 去掉 WebView2 运行时（只有美化导出用系统已有的 WebView，运行时检测）。
+// 安装包的版本取 mygo.json，与 exe 的文件版本相同。
 func writeInstaller(tool string, cfg config, t target, dir, pkg string) error {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
@@ -538,7 +542,7 @@ func writeInstaller(tool string, cfg config, t target, dir, pkg string) error {
 		"/DLUNABOX_NO_WEBVIEW2",
 		"project.nsi",
 	)
-	cmd.Dir = filepath.Join(desktopDir, "build", "windows", "nsis")
+	cmd.Dir = filepath.Join(packagingDir, "windows", "nsis")
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("makensis：%w", err)
@@ -695,7 +699,7 @@ func writeLinuxPackages(tool string, t target, ver, root, base string) ([]string
 	if err != nil {
 		return nil, err
 	}
-	scripts := filepath.Join(desktopDir, "build", "linux", "nfpm", "scripts")
+	scripts := filepath.Join(packagingDir, "linux", "nfpm", "scripts")
 	postinstall, err := filepath.Abs(filepath.Join(scripts, "postinstall.sh"))
 	if err != nil {
 		return nil, err
@@ -841,7 +845,7 @@ func baseVersion(v string) string {
 func readConfig() (config, error) {
 	data, err := os.ReadFile("mygo.json")
 	if err != nil {
-		return config{}, fmt.Errorf("读取 mygo.json（要在 apps/desktop-mygo 下运行）：%w", err)
+		return config{}, fmt.Errorf("读取 mygo.json（要在 apps/desktop 下运行）：%w", err)
 	}
 	var c config
 	if err := json.Unmarshal(data, &c); err != nil {
@@ -913,14 +917,14 @@ func credentials() ([]assignment, map[string]string, error) {
 	return vars, status, nil
 }
 
-// configureToolchain 同 build.bat 的 configure_architecture：设置 cgo 的环境变量（mygo build 与 go build 继承），
-// Windows arm64 用 MSYS2 的 clang 并动态链接 apps/desktop/lib/winarm64 的 DuckDB（duckdb_use_lib）；
-// Linux 与 build.sh 相同，用系统的 gcc 静态链接 DuckDB；macOS 同 build.sh，用 Xcode 的 clang，最低 macOS 12.0。
+// configureToolchain 设置 cgo 的环境变量（mygo build 与 go build 继承）：
+// Windows arm64 用 MSYS2 的 clang 并动态链接 lib/winarm64 的 DuckDB（duckdb_use_lib）；
+// Linux 用系统的 gcc 静态链接 DuckDB；macOS 用 Xcode 的 clang，最低 macOS 12.0。
 func configureToolchain(goos, arch string) (toolchain, error) {
 	var tc toolchain
 	os.Setenv("CGO_ENABLED", "1")
 	if goos == "windows" && arch == "arm64" {
-		src := filepath.Join(desktopDir, "lib", "winarm64")
+		src := filepath.Join(libDir, "winarm64")
 		dst, err := filepath.Abs(filepath.Join("build", "duckdb", "winarm64"))
 		if err != nil {
 			return tc, err
@@ -1048,7 +1052,7 @@ func buildUpdater(t target, out string) error {
 	return nil
 }
 
-// buildCLI 同 build.bat 的 build_cli：用 Wails 版模块里的 cmd/lunacli，注入版本号与 BuildMode。
+// buildCLI 编译 cmd/lunacli，注入版本号与 BuildMode。
 func buildCLI(t target, out string, vars []assignment) error {
 	abs, err := filepath.Abs(out)
 	if err != nil {
@@ -1058,7 +1062,7 @@ func buildCLI(t target, out string, vars []assignment) error {
 	for _, v := range vars {
 		ldflags += " -X " + ldflagsQuote("lunabox/backend/version."+v.name+"="+v.value)
 	}
-	cmd := exec.Command("go", "-C", desktopDir, "build", "-trimpath", "-buildvcs=false", "-ldflags", ldflags, "-o", abs, "./cmd/lunacli")
+	cmd := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-ldflags", ldflags, "-o", abs, "./cmd/lunacli")
 	cmd.Env = append(os.Environ(), "GOOS="+t.goos, "GOARCH="+t.arch)
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {

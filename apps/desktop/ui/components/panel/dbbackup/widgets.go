@@ -7,11 +7,11 @@ import (
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/vo"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/panel"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
-	"lunabox/desktop-mygo/ui/timefmt"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/panel"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
+	"lunabox/desktop/ui/timefmt"
 )
 
 // card：glass-card bg-white dark:bg-brand-800 p-6 rounded-lg shadow-sm。

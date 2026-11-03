@@ -6,8 +6,8 @@ import (
 	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // Overlay 是 ui.Overlay，并在浮层里关掉玻璃模式（theme.WithoutGlass）：原版的弹窗、抽屉与弹出层都挂在

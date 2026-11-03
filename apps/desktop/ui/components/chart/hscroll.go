@@ -5,7 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/theme"
 )
 
 // hScrollbar 是 HorizontalScrollChart 外层 overflow-x-auto 的滚动条：style.css 里 ::-webkit-scrollbar 的

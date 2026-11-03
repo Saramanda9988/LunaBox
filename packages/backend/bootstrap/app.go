@@ -2,8 +2,8 @@
 // 打开数据库与迁移、构造并注入服务、启动后台服务（会话结束钩子、开机自启、MCP、CLI 的 IPC 服务、云同步、定时备份）、
 // 关闭到托盘与退出前同步、lunabox:// 协议请求，以及退出时的关闭顺序。
 //
-// 各桌面端只负责界面框架相关的部分：apps/desktop 用 Wails，apps/desktop-mygo 用 MyGo，
-// 它们创建主窗口与托盘，实现 Window 与 appruntime.Runtime，并把框架的事件交给 App。
+// 桌面端（apps/desktop，用 MyGo）只负责界面框架相关的部分：
+// 创建主窗口与托盘，实现 Window 与 appruntime.Runtime，并把框架的事件交给 App。
 package bootstrap
 
 import (
@@ -285,7 +285,7 @@ func (a *App) HandleSecondInstance(req *ProtocolRequest) {
 	a.ShowMainWindow()
 }
 
-// OnShutdown 添加桌面端自己的关闭步骤（例如 Wails 版的图片代理服务），在关闭 MCP 服务之后、关闭数据库之前执行。
+// OnShutdown 添加桌面端自己的关闭步骤，在关闭 MCP 服务之后、关闭数据库之前执行。
 func (a *App) OnShutdown(name string, fn func()) {
 	a.mu.Lock()
 	a.shutdownSteps = append(a.shutdownSteps, shutdownStep{name: name, fn: fn})

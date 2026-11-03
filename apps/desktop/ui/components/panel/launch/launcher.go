@@ -15,10 +15,10 @@ import (
 	"lunabox/backend/models"
 	"lunabox/backend/service"
 	launcherpkg "lunabox/backend/service/launcher"
-	"lunabox/desktop-mygo/ui/components/panel"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components/panel"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // runtimeEvent 是 StartService 发出的运行状态事件（useAppRuntimeEffects 订阅的 game-runtime:changed）。

@@ -6,10 +6,10 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/common/vo"
-	"lunabox/desktop-mygo/ui/components/modal"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components/modal"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // openCategories 对应 openCategoryModal：读取全部收藏夹与游戏所在的收藏夹后打开。

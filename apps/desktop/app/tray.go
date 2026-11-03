@@ -6,7 +6,7 @@ import (
 
 	"github.com/egoist/mygo"
 
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/ui/locales"
 )
 
 // trayIcon 是 Wails 版的 build/windows/tray.png（32x32），Windows 的托盘图标。

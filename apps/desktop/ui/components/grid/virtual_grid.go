@@ -6,7 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/components/card"
+	"lunabox/desktop/ui/components/card"
 )
 
 // 与 VirtualGameGrid.tsx 相同的网格参数（rem 按 16px）。

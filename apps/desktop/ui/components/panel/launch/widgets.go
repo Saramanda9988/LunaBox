@@ -5,9 +5,9 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/better"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/better"
+	"lunabox/desktop/ui/theme"
 )
 
 // monoFont 是 font-mono 在 Windows 的 Chromium 里实际生效的字体：字体栈 ui-monospace, SFMono-Regular, Menlo, Monaco,

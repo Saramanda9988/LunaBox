@@ -11,12 +11,12 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/models"
-	"lunabox/desktop-mygo/host"
-	"lunabox/desktop-mygo/host/hosttest"
-	"lunabox/desktop-mygo/ui/covers"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/env/envtest"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/host"
+	"lunabox/desktop/host/hosttest"
+	"lunabox/desktop/ui/covers"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/env/envtest"
+	"lunabox/desktop/ui/theme"
 )
 
 // TestScreenshots 把整页（月维度、12 个游戏、AI 总结）在深浅两种主题、宽窄两种主内容区下画到

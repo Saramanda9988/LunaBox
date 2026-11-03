@@ -9,11 +9,11 @@ import (
 
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/bar"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/bar"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // addGamesModal 是 AddGameToCategoryModal 的状态：不在收藏夹里的游戏，按名称搜索，分页“加载更多”。

@@ -14,9 +14,9 @@ import (
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/enums"
-	"lunabox/desktop-mygo/ui/assets"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/assets"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // allSources 对应 utils/metadataSources.ts 的 ALL_METADATA_SOURCES。

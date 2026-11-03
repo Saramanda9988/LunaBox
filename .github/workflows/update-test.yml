@@ -112,34 +112,12 @@ jobs:
             packages/backend/go.sum
             packages/updater/go.sum
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: apps/desktop/frontend/pnpm-lock.yaml
-
       - name: Install NSIS
         if: matrix.mode == 'installer'
         shell: pwsh
         run: |
           choco install nsis --no-progress -y
           'C:\Program Files (x86)\NSIS' >> $env:GITHUB_PATH
-
-      - name: Install matching Wails v3 CLI
-        shell: pwsh
-        run: |
-          $Version = (go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3).Trim()
-          go install "github.com/wailsapp/wails/v3/cmd/wails3@$Version"
-          $Installed = (& wails3 version 2>&1 | Out-String).Trim()
-          if ($Installed -ne $Version) {
-            throw "wails3 version mismatch: expected $Version, found $Installed"
-          }
 
       - name: Build portable package
         if: matrix.mode == 'portable'
@@ -154,30 +132,20 @@ jobs:
           LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
         run: |
           $ErrorActionPreference = 'Stop'
-          .\scripts\build.bat portable '${{ needs.prepare.outputs.version }}' '${{ matrix.arch }}'
+          go run ./tools/release -version '${{ needs.prepare.outputs.version }}' -arch '${{ matrix.arch }}' -mode portable
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $Artifact = 'build/bin/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-portable.zip'
-          if (!(Test-Path -LiteralPath $Artifact)) {
-            throw "Portable artifact not found: $Artifact"
-          }
-
-          $ExtractDir = 'build/signing/portable-package'
-          if (Test-Path -LiteralPath $ExtractDir) {
-            Remove-Item -LiteralPath $ExtractDir -Recurse -Force
-          }
-          Expand-Archive -LiteralPath $Artifact -DestinationPath $ExtractDir -Force
-          $PayloadDir = (Get-ChildItem -Path $ExtractDir -Filter 'LunaBox.exe' -Recurse | Select-Object -First 1).Directory.FullName
-          if ([string]::IsNullOrWhiteSpace($PayloadDir)) {
-            throw 'Portable artifact does not contain LunaBox.exe.'
-          }
-
+          # tools/release 在 zip 旁边留了解压好的目录，签名后在这里换上签名的 exe 再重新打包。
+          $PortableDir = 'build/release/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-portable'
           $SigningDir = 'build/signing/test-portable-payload'
+          if (Test-Path -LiteralPath $SigningDir) {
+            Remove-Item -LiteralPath $SigningDir -Recurse -Force
+          }
           New-Item -ItemType Directory -Force -Path $SigningDir | Out-Null
           foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe')) {
-            $Source = Join-Path $PayloadDir $Name
+            $Source = Join-Path $PortableDir $Name
             if (!(Test-Path -LiteralPath $Source)) {
-              throw "Portable artifact is missing $Name."
+              throw "Portable package is missing $Name."
             }
             Copy-Item -LiteralPath $Source -Destination $SigningDir -Force
           }
@@ -195,22 +163,22 @@ jobs:
           LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
         run: |
           $ErrorActionPreference = 'Stop'
-          .\scripts\build.bat installer-payload '${{ needs.prepare.outputs.version }}' '${{ matrix.arch }}'
+          go run ./tools/release -version '${{ needs.prepare.outputs.version }}' -arch '${{ matrix.arch }}' -mode installer-payload
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $PayloadDir = 'build/windows/payload/${{ matrix.arch }}'
-          if (!(Test-Path -LiteralPath "$PayloadDir/LunaBox.exe") -or !(Test-Path -LiteralPath "$PayloadDir/lunacli.exe") -or !(Test-Path -LiteralPath 'build/bin/LunaBoxUpdater.exe')) {
-            throw 'Installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe.'
-          }
-
+          $PayloadDir = 'build/release/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-installer'
           $SigningDir = 'build/signing/test-installer-payload'
           if (Test-Path -LiteralPath $SigningDir) {
             Remove-Item -LiteralPath $SigningDir -Recurse -Force
           }
           New-Item -ItemType Directory -Force -Path $SigningDir | Out-Null
-          Copy-Item -LiteralPath "$PayloadDir/LunaBox.exe" -Destination $SigningDir -Force
-          Copy-Item -LiteralPath "$PayloadDir/lunacli.exe" -Destination $SigningDir -Force
-          Copy-Item -LiteralPath 'build/bin/LunaBoxUpdater.exe' -Destination $SigningDir -Force
+          foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe')) {
+            $Source = Join-Path $PayloadDir $Name
+            if (!(Test-Path -LiteralPath $Source)) {
+              throw "Installer payload is missing $Name."
+            }
+            Copy-Item -LiteralPath $Source -Destination $SigningDir -Force
+          }
 
       - name: Upload unsigned portable artifact
         id: upload-unsigned-portable
@@ -241,7 +209,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $UnsignedArtifact = 'build/bin/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-portable.zip'
+          $PortableDir = 'build/release/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-portable'
           $SignedPayloadDir = 'signed-portable-payload'
           foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe')) {
             $SignedFile = Join-Path $SignedPayloadDir $Name
@@ -253,34 +221,23 @@ jobs:
             if ($Signature.Status -ne 'Valid') {
               throw "$Name does not have a valid Authenticode signature: $($Signature.Status)"
             }
-          }
-
-          $ExtractDir = Join-Path $env:RUNNER_TEMP 'lunabox-signed-portable'
-          if (Test-Path $ExtractDir) { Remove-Item $ExtractDir -Recurse -Force }
-          Expand-Archive -LiteralPath $UnsignedArtifact -DestinationPath $ExtractDir -Force
-          $PayloadDir = (Get-ChildItem $ExtractDir -Filter 'LunaBox.exe' -Recurse | Select-Object -First 1).Directory.FullName
-          if ([string]::IsNullOrWhiteSpace($PayloadDir)) {
-            throw 'Portable artifact does not contain LunaBox.exe.'
-          }
-          foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe')) {
-            Copy-Item -LiteralPath (Join-Path $SignedPayloadDir $Name) -Destination $PayloadDir -Force
+            Copy-Item -LiteralPath $SignedFile -Destination $PortableDir -Force
           }
 
           New-Item -ItemType Directory -Force -Path 'signed' | Out-Null
           $Artifact = 'signed/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-portable.zip'
           if (Test-Path -LiteralPath $Artifact) { Remove-Item -LiteralPath $Artifact -Force }
-          Compress-Archive -LiteralPath $PayloadDir -DestinationPath $Artifact -CompressionLevel Optimal
+          Compress-Archive -LiteralPath $PortableDir -DestinationPath $Artifact -CompressionLevel Optimal
 
+          # 应用内更新的输入：签名后的运行时文件，布局同程序目录。
           $RuntimeDir = Join-Path $PWD 'update-runtime'
-          if (Test-Path $RuntimeDir) { Remove-Item $RuntimeDir -Recurse -Force }
+          if (Test-Path -LiteralPath $RuntimeDir) { Remove-Item -LiteralPath $RuntimeDir -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
           foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe', 'duckdb.dll')) {
-            $Source = Join-Path $PayloadDir $Name
-            if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
+            $Source = Join-Path $PortableDir $Name
+            if (Test-Path -LiteralPath $Source) { Copy-Item -LiteralPath $Source -Destination $RuntimeDir -Force }
           }
-          if (Test-Path (Join-Path $PayloadDir '7z')) {
-            Copy-Item (Join-Path $PayloadDir '7z') -Destination $RuntimeDir -Recurse -Force
-          }
+          Copy-Item -LiteralPath (Join-Path $PortableDir '7z') -Destination $RuntimeDir -Recurse -Force
 
       - name: Upload portable artifact
         if: matrix.mode == 'portable'
@@ -319,48 +276,37 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $SignedGui = 'signed-payload/LunaBox.exe'
-          $SignedCli = 'signed-payload/lunacli.exe'
-          $SignedUpdater = 'signed-payload/LunaBoxUpdater.exe'
-          if (!(Test-Path -LiteralPath $SignedGui) -or !(Test-Path -LiteralPath $SignedCli) -or !(Test-Path -LiteralPath $SignedUpdater)) {
-            Get-ChildItem -Path signed-payload -Recurse | ForEach-Object { Write-Host $_.FullName }
-            throw 'Signed installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe.'
-          }
-          foreach ($Path in @($SignedGui, $SignedCli, $SignedUpdater)) {
-            $Signature = Get-AuthenticodeSignature $Path
-            if ($Signature.Status -ne "Valid") {
-              throw "$(Split-Path $Path -Leaf) does not have a valid Authenticode signature: $($Signature.Status)"
+          $PayloadDir = 'build/release/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-installer'
+          foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe')) {
+            $SignedFile = "signed-payload/$Name"
+            if (!(Test-Path -LiteralPath $SignedFile)) {
+              Get-ChildItem -Path signed-payload -Recurse | ForEach-Object { Write-Host $_.FullName }
+              throw 'Signed installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe.'
             }
+            $Signature = Get-AuthenticodeSignature $SignedFile
+            if ($Signature.Status -ne 'Valid') {
+              throw "$Name does not have a valid Authenticode signature: $($Signature.Status)"
+            }
+            Copy-Item -LiteralPath $SignedFile -Destination (Join-Path $PayloadDir $Name) -Force
           }
 
-          $PayloadDir = 'build/windows/payload/${{ matrix.arch }}'
-          Copy-Item -LiteralPath $SignedGui -Destination "$PayloadDir/LunaBox.exe" -Force
-          Copy-Item -LiteralPath $SignedCli -Destination "$PayloadDir/lunacli.exe" -Force
-          Copy-Item -LiteralPath $SignedUpdater -Destination 'build/bin/LunaBoxUpdater.exe' -Force
-
-          .\scripts\build.bat installer-package '${{ needs.prepare.outputs.version }}' '${{ matrix.arch }}'
+          go run ./tools/release -version '${{ needs.prepare.outputs.version }}' -arch '${{ matrix.arch }}' -mode installer-package
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $Artifact = 'build/bin/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-setup.exe'
+          $Artifact = 'build/release/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-setup.exe'
           if (!(Test-Path -LiteralPath $Artifact)) {
-            Get-ChildItem -Path "build/bin" -Recurse | ForEach-Object { Write-Host $_.FullName }
             throw "Installer artifact not found: $Artifact"
           }
 
-          $RuntimeDir = Join-Path $PWD "update-runtime"
-          if (Test-Path $RuntimeDir) { Remove-Item $RuntimeDir -Recurse -Force }
+          # 应用内更新的输入：安装包的内容（已换成签名后的 exe），布局同安装目录。
+          $RuntimeDir = Join-Path $PWD 'update-runtime'
+          if (Test-Path -LiteralPath $RuntimeDir) { Remove-Item -LiteralPath $RuntimeDir -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
-          foreach ($Name in @("LunaBoxUpdater.exe", "duckdb.dll")) {
-            $Source = Join-Path "build/bin" $Name
-            if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
-          }
-          foreach ($Name in @("LunaBox.exe", "lunacli.exe")) {
+          foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe', 'duckdb.dll')) {
             $Source = Join-Path $PayloadDir $Name
-            if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
+            if (Test-Path -LiteralPath $Source) { Copy-Item -LiteralPath $Source -Destination $RuntimeDir -Force }
           }
-          if (Test-Path "build/bin/7z") {
-            Copy-Item "build/bin/7z" -Destination $RuntimeDir -Recurse -Force
-          }
+          Copy-Item -LiteralPath (Join-Path $PayloadDir '7z') -Destination $RuntimeDir -Recurse -Force
 
       - name: Upload update runtime input
         uses: actions/upload-artifact@v4
@@ -375,7 +321,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-lunabox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-installer
-          path: apps/desktop/build/bin/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-setup.exe
+          path: apps/desktop/build/release/LunaBox-${{ needs.prepare.outputs.version }}-windows-${{ matrix.arch }}-setup.exe
           if-no-files-found: error
           retention-days: 1
 

@@ -5,34 +5,20 @@ on:
     branches: [main, master, develop]
     paths:
       - "packages/backend/**"
-      - "apps/desktop/wailsruntime/**"
-      - "apps/desktop/cmd/**"
-      - "apps/desktop/build/**"
-      - "apps/desktop/scripts/**"
-      - "apps/desktop/*.go"
-      - "apps/desktop/go.mod"
-      - "apps/desktop/go.sum"
-      - "apps/desktop/Taskfile.yml"
       - "packages/updater/**"
+      - "apps/desktop/**"
       - ".github/workflows/internal.yml"
   pull_request:
     branches: [main, master, develop]
     paths:
       - "packages/backend/**"
-      - "apps/desktop/wailsruntime/**"
-      - "apps/desktop/cmd/**"
-      - "apps/desktop/build/**"
-      - "apps/desktop/scripts/**"
-      - "apps/desktop/*.go"
-      - "apps/desktop/go.mod"
-      - "apps/desktop/go.sum"
-      - "apps/desktop/Taskfile.yml"
       - "packages/updater/**"
+      - "apps/desktop/**"
       - ".github/workflows/internal.yml"
 
 jobs:
   compile:
-    name: Compile Backend Packages (${{ matrix.os }})
+    name: Compile (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -57,59 +43,24 @@ jobs:
             packages/backend/go.sum
             packages/updater/go.sum
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: apps/desktop/frontend/pnpm-lock.yaml
-
-      - name: Install Linux build dependencies
-        if: runner.os == 'Linux'
+      # DuckDB 需要 cgo；MyGo 在 Linux 上运行时才用 purego 加载 GTK，构建只需要 C 编译器。
+      - name: Configure cgo
         shell: bash
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y build-essential libayatana-appindicator3-dev libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
-
-      - name: Install matching Wails v3 CLI
-        shell: bash
-        run: |
-          set -euo pipefail
-          version="$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
-          go install "github.com/wailsapp/wails/v3/cmd/wails3@$version"
-          test "$(wails3 version 2>&1)" = "$version"
-
-      - name: Patch Wails Linux tray support
-        if: runner.os == 'Linux'
-        shell: bash
-        run: ./scripts/patch-wails-linux-tray.sh
+        run: echo 'CGO_ENABLED=1' >> "$GITHUB_ENV"
 
       - name: Configure macOS compilation
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          echo 'CGO_ENABLED=1' >> "$GITHUB_ENV"
           echo 'CGO_CFLAGS=-mmacosx-version-min=12.0' >> "$GITHUB_ENV"
           echo 'CGO_LDFLAGS=-mmacosx-version-min=12.0' >> "$GITHUB_ENV"
           echo 'MACOSX_DEPLOYMENT_TARGET=12.0' >> "$GITHUB_ENV"
 
-      - name: Compile platform-specific Go tests
+      - name: Compile backend tests
         working-directory: packages/backend
         run: go test -run '^$' ./...
 
-      - name: Install frontend dependencies
-        working-directory: apps/desktop/frontend
-        run: pnpm install --frozen-lockfile
-
-      - name: Build frontend assets
-        working-directory: apps/desktop/frontend
-        run: pnpm run build
-
-      - name: Build application with Wails v3
-        run: wails3 build
+      - name: Compile desktop app and tests
+        run: |
+          go build ./...
+          go test -run '^$' ./...

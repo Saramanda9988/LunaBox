@@ -6,9 +6,9 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/assets"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/assets"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/theme"
 )
 
 // TopBarProps 是窗口控制按钮的状态与动作。

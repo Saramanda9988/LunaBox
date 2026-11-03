@@ -1,5 +1,5 @@
 // Package theme 是原版前端的设计令牌：uno.config.ts 的色板、Tailwind 的字号阶梯与过渡曲线，
-// 以及 Chromium 把边框吸附到设备像素的规则。数值都用 tools/parity 从运行中的原版导出的计算样式校对过。
+// 以及 Chromium 把边框吸附到设备像素的规则。数值都用对照工具（wails-final 标签里的 tools/parity）从运行中的原版导出的计算样式校对过。
 package theme
 
 import "github.com/egoist/mygo/ui"

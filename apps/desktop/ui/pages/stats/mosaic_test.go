@@ -14,9 +14,9 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/models"
-	"lunabox/desktop-mygo/host"
-	"lunabox/desktop-mygo/host/hosttest"
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/host"
+	"lunabox/desktop/host/hosttest"
+	"lunabox/desktop/ui/locales"
 )
 
 // writeCover 写一张 w×h、左右两半颜色不同的 PNG 封面，返回路径（封面缓存把非 http 的地址当作文件路径）。

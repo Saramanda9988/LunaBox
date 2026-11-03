@@ -4,8 +4,8 @@ import (
 	"math"
 	"strconv"
 
-	"lunabox/desktop-mygo/ui/components/better"
-	"lunabox/desktop-mygo/ui/env"
+	"lunabox/desktop/ui/components/better"
+	"lunabox/desktop/ui/env"
 )
 
 // appZoomOptions 对应 appZoomOptions：标签是 Math.round(value * 100)%，值是 String(value)。

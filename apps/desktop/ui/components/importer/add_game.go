@@ -12,13 +12,13 @@ import (
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
 	"lunabox/backend/utils/metadata"
-	"lunabox/desktop-mygo/ui/assets"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/better"
-	metadatapanel "lunabox/desktop-mygo/ui/components/panel/metadata"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/assets"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/better"
+	metadatapanel "lunabox/desktop/ui/components/panel/metadata"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // AddGame 是 AddGameModal 的状态：选择本地或远程游戏，按名称或 ID 获取元数据，或手动填写。

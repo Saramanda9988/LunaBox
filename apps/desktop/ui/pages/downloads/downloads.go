@@ -11,11 +11,11 @@ import (
 
 	"lunabox/backend/common/vo"
 	"lunabox/backend/service"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/card"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/timefmt"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/card"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/timefmt"
 )
 
 // 服务发出的事件。

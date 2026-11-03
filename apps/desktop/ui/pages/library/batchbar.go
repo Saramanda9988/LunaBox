@@ -3,12 +3,12 @@ package library
 import (
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/bar"
-	"lunabox/desktop-mygo/ui/components/better"
-	"lunabox/desktop-mygo/ui/components/panel/launch"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/bar"
+	"lunabox/desktop/ui/components/better"
+	"lunabox/desktop/ui/components/panel/launch"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // batchActions 是 library.tsx 传给 FilterBar 的 batchActions：导入到 Steam（只在 Windows 上）、设为状态、加入收藏夹、删除。

@@ -9,10 +9,10 @@ import (
 	plot "github.com/egoist/mygo/ui/chart"
 
 	"lunabox/backend/common/vo"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
-	"lunabox/desktop-mygo/ui/timefmt"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
+	"lunabox/desktop/ui/timefmt"
 )
 
 // TagState 是 TagDistributionChart 跨帧的状态：悬停的扇区。
@@ -38,7 +38,7 @@ var tagColors = []ui.Color{
 }
 
 // 饼图的 canvas：原版容器是 w-[200px] aspect-square，统计页里实际是 200×200（对照运行中的原版截图）。
-// 单独的参照页（testdata/reference.html）里 Chart.js 初始化时按默认的 300 宽把 canvas 撑到 200×300，
+// 单独的参照页（wails-final 标签里的 testdata/reference.html）里 Chart.js 初始化时按默认的 300 宽把 canvas 撑到 200×300，
 // 那是参照页的布局所致，统计页里不会出现。
 const (
 	pieW      = 200

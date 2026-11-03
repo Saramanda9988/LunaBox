@@ -8,12 +8,12 @@ import (
 
 	"lunabox/backend/common/enums"
 	"lunabox/backend/service/gamehelper"
-	"lunabox/desktop-mygo/host"
-	"lunabox/desktop-mygo/host/hosttest"
-	"lunabox/desktop-mygo/ui/covers"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/env/envtest"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/host"
+	"lunabox/desktop/host/hosttest"
+	"lunabox/desktop/ui/covers"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/env/envtest"
+	"lunabox/desktop/ui/theme"
 )
 
 type testPage struct {

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: '发布版本号，格式为 vX.Y.Z，例如 v1.13.2；去除 v 后须与 sync/version.json 和 apps/desktop/build/config.yml 一致'
+        description: '发布版本号，格式为 vX.Y.Z，例如 v1.14.0；去除 v 后须与 sync/version.json 和 apps/desktop/mygo.json 一致'
         required: true
         type: string
 
@@ -44,24 +44,10 @@ jobs:
             echo "sync/version.json version $SOURCE_VERSION does not match release version $VERSION" >&2
             exit 1
           fi
-          BUILD_VERSION="$(awk '
-            {
-              sub(/\r$/, "")
-              if ($0 ~ /^info:[[:space:]]*$/) {
-                in_info = 1
-                next
-              }
-              if (in_info && $0 ~ /^[^[:space:]]/) {
-                in_info = 0
-              }
-              if (in_info && $0 ~ /^[[:space:]]+version:[[:space:]]*/) {
-                print $2
-              }
-            }
-          ' apps/desktop/build/config.yml)"
+          BUILD_VERSION="$(jq -r '.version // empty' apps/desktop/mygo.json)"
           if [ "$BUILD_VERSION" != "$VERSION" ]; then
-            echo "apps/desktop/build/config.yml info.version $BUILD_VERSION does not match release version $VERSION" >&2
-            echo "Run bash apps/desktop/scripts/update-build-assets.sh $INPUT_VERSION and commit the generated build assets before releasing." >&2
+            echo "apps/desktop/mygo.json version $BUILD_VERSION does not match release version $VERSION" >&2
+            echo "Update the version field in apps/desktop/mygo.json and commit it before releasing." >&2
             exit 1
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -84,6 +70,7 @@ jobs:
             git push origin "refs/tags/$RELEASE_TAG"
           fi
 
+  # 三端都用 apps/desktop/tools/release 构建，发布包的文件名与包内布局沿用 Wails 版（应用内更新与已安装的旧版依赖它）。
   build-release:
     needs: prepare-release
     name: Windows ${{ matrix.arch }} / ${{ matrix.mode }}
@@ -114,7 +101,7 @@ jobs:
             runner: windows-11-arm
             msystem: CLANGARM64
             toolchain: mingw-w64-clang-aarch64-toolchain
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -132,28 +119,6 @@ jobs:
             packages/backend/go.sum
             packages/updater/go.sum
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: apps/desktop/frontend/pnpm-lock.yaml
-
-      - name: Install matching Wails v3 CLI
-        shell: pwsh
-        run: |
-          $Version = (go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3).Trim()
-          go install "github.com/wailsapp/wails/v3/cmd/wails3@$Version"
-          $Installed = (& wails3 version 2>&1 | Out-String).Trim()
-          if ($Installed -ne $Version) {
-            throw "wails3 version mismatch: expected $Version, found $Installed"
-          }
-
       - name: Setup ARM64 CGO toolchain
         id: msys2-arm64
         if: matrix.arch == 'arm64'
@@ -163,6 +128,7 @@ jobs:
           path-type: inherit
           install: ${{ matrix.toolchain }}
 
+      # tools/release 在 MSYS2_LOCATION/clangarm64/bin 下找 clang。
       - name: Export ARM64 MSYS2 location
         if: matrix.arch == 'arm64'
         shell: pwsh
@@ -180,15 +146,9 @@ jobs:
           choco install nsis --no-progress -y
           'C:\Program Files (x86)\NSIS' >> $env:GITHUB_PATH
 
-      - name: Get prepared release version
-        id: get_version
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "VERSION=${{ needs.prepare-release.outputs.version }}" >> "$GITHUB_OUTPUT"
-
-      - name: Build Portable with script
+      - name: Build portable package
         if: matrix.mode == 'portable'
+        shell: pwsh
         env:
           LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
           LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
@@ -198,19 +158,40 @@ jobs:
           LUNABOX_UMBRA_CLIENT_ID: ${{ vars.LUNABOX_UMBRA_CLIENT_ID }}
           LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
         run: |
-          $ErrorActionPreference = "Stop"
-          .\scripts\build.bat "portable" "${{ steps.get_version.outputs.VERSION }}" "${{ matrix.arch }}"
+          $ErrorActionPreference = 'Stop'
+          go run ./tools/release -version '${{ needs.prepare-release.outputs.version }}' -arch '${{ matrix.arch }}' -mode portable
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $Artifact = "build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip"
-          if (!(Test-Path $Artifact)) {
-            Get-ChildItem -Path "build/bin" -Recurse | ForEach-Object { Write-Host $_.FullName }
-            throw "Build artifact not found: $Artifact"
+          $Name = 'LunaBox-${{ needs.prepare-release.outputs.version }}-windows-${{ matrix.arch }}-portable'
+          $Artifact = "build/release/$Name.zip"
+          if (!(Test-Path -LiteralPath $Artifact)) {
+            throw "Portable artifact not found: $Artifact"
           }
-        shell: pwsh
 
-      - name: Build Installer Payload with script
+          $ExtractDir = Join-Path $env:RUNNER_TEMP 'lunabox-portable-check'
+          if (Test-Path -LiteralPath $ExtractDir) {
+            Remove-Item -LiteralPath $ExtractDir -Recurse -Force
+          }
+          Expand-Archive -LiteralPath $Artifact -DestinationPath $ExtractDir -Force
+          $Root = Join-Path $ExtractDir $Name
+          $Files = @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe', '7z/7z.exe', '7z/7z.dll', 'README.txt')
+          if ('${{ matrix.arch }}' -eq 'arm64') {
+            $Files += 'duckdb.dll'
+          }
+          foreach ($Path in $Files) {
+            if (!(Test-Path -LiteralPath (Join-Path $Root $Path) -PathType Leaf)) {
+              throw "Portable artifact is missing $Name/$Path."
+            }
+          }
+          foreach ($Path in @('backups', 'covers', 'backgrounds', 'logs')) {
+            if (!(Test-Path -LiteralPath (Join-Path $Root $Path) -PathType Container)) {
+              throw "Portable artifact is missing directory $Name/$Path."
+            }
+          }
+
+      - name: Build installer payload
         if: matrix.mode == 'installer'
+        shell: pwsh
         env:
           LUNABOX_BANGUMI_CLIENT_ID: ${{ vars.LUNABOX_BANGUMI_CLIENT_ID }}
           LUNABOX_BANGUMI_CLIENT_SECRET: ${{ secrets.LUNABOX_BANGUMI_CLIENT_SECRET }}
@@ -220,36 +201,41 @@ jobs:
           LUNABOX_UMBRA_CLIENT_ID: ${{ vars.LUNABOX_UMBRA_CLIENT_ID }}
           LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
         run: |
-          $ErrorActionPreference = "Stop"
-          .\scripts\build.bat "installer-payload" "${{ steps.get_version.outputs.VERSION }}" "${{ matrix.arch }}"
+          $ErrorActionPreference = 'Stop'
+          go run ./tools/release -version '${{ needs.prepare-release.outputs.version }}' -arch '${{ matrix.arch }}' -mode installer-payload
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $PayloadDir = "build/windows/payload/${{ matrix.arch }}"
-          if (!(Test-Path "$PayloadDir/LunaBox.exe") -or !(Test-Path "$PayloadDir/lunacli.exe") -or !(Test-Path "build/bin/LunaBoxUpdater.exe")) {
-            Get-ChildItem -Path $PayloadDir -Recurse | ForEach-Object { Write-Host $_.FullName }
-            Get-ChildItem -Path "build/bin" -Recurse | ForEach-Object { Write-Host $_.FullName }
-            throw "Installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe."
+          $PayloadDir = 'build/release/LunaBox-${{ needs.prepare-release.outputs.version }}-windows-${{ matrix.arch }}-installer'
+          $Files = @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe', '7z/7z.exe', '7z/7z.dll')
+          if ('${{ matrix.arch }}' -eq 'arm64') {
+            $Files += 'duckdb.dll'
+          }
+          foreach ($Path in $Files) {
+            if (!(Test-Path -LiteralPath (Join-Path $PayloadDir $Path) -PathType Leaf)) {
+              throw "Installer payload is missing $Path."
+            }
           }
 
-          $SigningDir = "build/signing/installer-payload"
-          if (Test-Path $SigningDir) { Remove-Item $SigningDir -Recurse -Force }
+          $SigningDir = 'build/signing/installer-payload'
+          if (Test-Path -LiteralPath $SigningDir) {
+            Remove-Item -LiteralPath $SigningDir -Recurse -Force
+          }
           New-Item -ItemType Directory -Force -Path $SigningDir | Out-Null
-          Copy-Item -LiteralPath "$PayloadDir/LunaBox.exe" -Destination $SigningDir -Force
-          Copy-Item -LiteralPath "$PayloadDir/lunacli.exe" -Destination $SigningDir -Force
-          Copy-Item -LiteralPath "build/bin/LunaBoxUpdater.exe" -Destination $SigningDir -Force
-        shell: pwsh
+          foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe')) {
+            Copy-Item -LiteralPath (Join-Path $PayloadDir $Name) -Destination $SigningDir -Force
+          }
 
-      - name: Upload Unsigned Portable Artifact
+      - name: Upload unsigned portable artifact
         id: upload-unsigned-portable
         if: matrix.mode == 'portable'
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable
-          path: apps/desktop/build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip
+          name: unsigned-lunabox-${{ needs.prepare-release.outputs.version }}-windows-${{ matrix.arch }}-portable
+          path: apps/desktop/build/release/LunaBox-${{ needs.prepare-release.outputs.version }}-windows-${{ matrix.arch }}-portable.zip
           if-no-files-found: error
           retention-days: 1
 
-      - name: Sign Portable Artifact
+      - name: Sign portable artifact
         if: matrix.mode == 'portable'
         uses: signpath/github-action-submit-signing-request@v2
         with:
@@ -265,61 +251,62 @@ jobs:
 
       - name: Verify signed portable artifact
         if: matrix.mode == 'portable'
+        shell: pwsh
         run: |
-          $ErrorActionPreference = "Stop"
-          $Artifact = "signed/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip"
-          if (!(Test-Path $Artifact)) {
+          $ErrorActionPreference = 'Stop'
+          $Artifact = 'signed/LunaBox-${{ needs.prepare-release.outputs.version }}-windows-${{ matrix.arch }}-portable.zip'
+          if (!(Test-Path -LiteralPath $Artifact)) {
             Get-ChildItem -Path signed -Recurse | ForEach-Object { Write-Host $_.FullName }
             throw "Signed portable artifact not found: $Artifact"
           }
 
-          $ExtractDir = Join-Path $env:RUNNER_TEMP "lunabox-signed-portable"
-          if (Test-Path $ExtractDir) { Remove-Item $ExtractDir -Recurse -Force }
-          Expand-Archive -Path $Artifact -DestinationPath $ExtractDir -Force
-          $PayloadDir = (Get-ChildItem $ExtractDir -Filter "LunaBox.exe" -Recurse | Select-Object -First 1).Directory.FullName
-          if ([string]::IsNullOrWhiteSpace($PayloadDir)) {
-            throw "Signed portable archive does not contain LunaBox.exe."
+          $ExtractDir = Join-Path $env:RUNNER_TEMP 'lunabox-signed-portable'
+          if (Test-Path -LiteralPath $ExtractDir) {
+            Remove-Item -LiteralPath $ExtractDir -Recurse -Force
           }
-          foreach ($Name in @("LunaBox.exe", "lunacli.exe", "LunaBoxUpdater.exe")) {
+          Expand-Archive -LiteralPath $Artifact -DestinationPath $ExtractDir -Force
+          $PayloadDir = (Get-ChildItem $ExtractDir -Filter 'LunaBox.exe' -Recurse | Select-Object -First 1).Directory.FullName
+          if ([string]::IsNullOrWhiteSpace($PayloadDir)) {
+            throw 'Signed portable archive does not contain LunaBox.exe.'
+          }
+          foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe')) {
             $Path = Join-Path $PayloadDir $Name
-            if (!(Test-Path $Path)) { throw "Signed portable archive is missing $Name." }
+            if (!(Test-Path -LiteralPath $Path)) { throw "Signed portable archive is missing $Name." }
             $Signature = Get-AuthenticodeSignature $Path
-            if ($Signature.Status -ne "Valid") {
+            if ($Signature.Status -ne 'Valid') {
               throw "$Name does not have a valid Authenticode signature: $($Signature.Status)"
             }
           }
 
-          $RuntimeDir = Join-Path $PWD "update-runtime"
-          if (Test-Path $RuntimeDir) { Remove-Item $RuntimeDir -Recurse -Force }
+          # 应用内更新的输入：签名后的运行时文件，布局同程序目录。
+          $RuntimeDir = Join-Path $PWD 'update-runtime'
+          if (Test-Path -LiteralPath $RuntimeDir) { Remove-Item -LiteralPath $RuntimeDir -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
-          foreach ($Name in @("LunaBox.exe", "lunacli.exe", "LunaBoxUpdater.exe", "duckdb.dll")) {
+          foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe', 'duckdb.dll')) {
             $Source = Join-Path $PayloadDir $Name
-            if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
+            if (Test-Path -LiteralPath $Source) { Copy-Item -LiteralPath $Source -Destination $RuntimeDir -Force }
           }
-          if (Test-Path (Join-Path $PayloadDir "7z")) {
-            Copy-Item (Join-Path $PayloadDir "7z") -Destination $RuntimeDir -Recurse -Force
-          }
-        shell: pwsh
+          Copy-Item -LiteralPath (Join-Path $PayloadDir '7z') -Destination $RuntimeDir -Recurse -Force
 
-      - name: Upload Portable Artifact
+      - name: Upload portable artifact
         if: matrix.mode == 'portable'
         uses: actions/upload-artifact@v4
         with:
-          name: lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable
-          path: apps/desktop/signed/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-portable.zip
+          name: lunabox-${{ needs.prepare-release.outputs.version }}-windows-${{ matrix.arch }}-portable
+          path: apps/desktop/signed/LunaBox-${{ needs.prepare-release.outputs.version }}-windows-${{ matrix.arch }}-portable.zip
           if-no-files-found: error
 
-      - name: Upload Unsigned Installer Payload
+      - name: Upload unsigned installer payload
         id: upload-unsigned-installer-payload
         if: matrix.mode == 'installer'
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-installer-payload
+          name: unsigned-lunabox-${{ needs.prepare-release.outputs.version }}-windows-${{ matrix.arch }}-installer-payload
           path: apps/desktop/build/signing/installer-payload/
           if-no-files-found: error
           retention-days: 1
 
-      - name: Sign Installer Payload
+      - name: Sign installer payload
         if: matrix.mode == 'installer'
         uses: signpath/github-action-submit-signing-request@v2
         with:
@@ -333,72 +320,61 @@ jobs:
           wait-for-completion-timeout-in-seconds: 1200
           output-artifact-directory: apps/desktop/signed-payload
 
-      - name: Build Installer from signed payload
+      - name: Build installer from signed payload
         if: matrix.mode == 'installer'
+        shell: pwsh
         run: |
-          $ErrorActionPreference = "Stop"
-          $SignedGui = "signed-payload/LunaBox.exe"
-          $SignedCli = "signed-payload/lunacli.exe"
-          $SignedUpdater = "signed-payload/LunaBoxUpdater.exe"
-          if (!(Test-Path $SignedGui) -or !(Test-Path $SignedCli) -or !(Test-Path $SignedUpdater)) {
-            Get-ChildItem -Path signed-payload -Recurse | ForEach-Object { Write-Host $_.FullName }
-            throw "Signed installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe."
-          }
-          foreach ($Path in @($SignedGui, $SignedCli, $SignedUpdater)) {
-            $Signature = Get-AuthenticodeSignature $Path
-            if ($Signature.Status -ne "Valid") {
-              throw "$(Split-Path $Path -Leaf) does not have a valid Authenticode signature: $($Signature.Status)"
+          $ErrorActionPreference = 'Stop'
+          $PayloadDir = 'build/release/LunaBox-${{ needs.prepare-release.outputs.version }}-windows-${{ matrix.arch }}-installer'
+          foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe')) {
+            $SignedFile = "signed-payload/$Name"
+            if (!(Test-Path -LiteralPath $SignedFile)) {
+              Get-ChildItem -Path signed-payload -Recurse | ForEach-Object { Write-Host $_.FullName }
+              throw 'Signed installer payload must contain LunaBox.exe, lunacli.exe, and LunaBoxUpdater.exe.'
             }
+            $Signature = Get-AuthenticodeSignature $SignedFile
+            if ($Signature.Status -ne 'Valid') {
+              throw "$Name does not have a valid Authenticode signature: $($Signature.Status)"
+            }
+            Copy-Item -LiteralPath $SignedFile -Destination (Join-Path $PayloadDir $Name) -Force
           }
 
-          $PayloadDir = "build/windows/payload/${{ matrix.arch }}"
-          Copy-Item $SignedGui -Destination "$PayloadDir/LunaBox.exe" -Force
-          Copy-Item $SignedCli -Destination "$PayloadDir/lunacli.exe" -Force
-          Copy-Item $SignedUpdater -Destination "build/bin/LunaBoxUpdater.exe" -Force
-
-          .\scripts\build.bat "installer-package" "${{ steps.get_version.outputs.VERSION }}" "${{ matrix.arch }}"
+          go run ./tools/release -version '${{ needs.prepare-release.outputs.version }}' -arch '${{ matrix.arch }}' -mode installer-package
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $Artifact = "build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe"
-          if (!(Test-Path $Artifact)) {
-            Get-ChildItem -Path "build/bin" -Recurse | ForEach-Object { Write-Host $_.FullName }
+          $Artifact = 'build/release/LunaBox-${{ needs.prepare-release.outputs.version }}-windows-${{ matrix.arch }}-setup.exe'
+          if (!(Test-Path -LiteralPath $Artifact)) {
             throw "Installer artifact not found: $Artifact"
           }
 
-          $RuntimeDir = Join-Path $PWD "update-runtime"
-          if (Test-Path $RuntimeDir) { Remove-Item $RuntimeDir -Recurse -Force }
+          # 应用内更新的输入：安装包的内容（已换成签名后的 exe），布局同安装目录。
+          $RuntimeDir = Join-Path $PWD 'update-runtime'
+          if (Test-Path -LiteralPath $RuntimeDir) { Remove-Item -LiteralPath $RuntimeDir -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
-          foreach ($Name in @("LunaBoxUpdater.exe", "duckdb.dll")) {
-            $Source = Join-Path "build/bin" $Name
-            if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
-          }
-          foreach ($Name in @("LunaBox.exe", "lunacli.exe")) {
+          foreach ($Name in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe', 'duckdb.dll')) {
             $Source = Join-Path $PayloadDir $Name
-            if (Test-Path $Source) { Copy-Item $Source -Destination $RuntimeDir -Force }
+            if (Test-Path -LiteralPath $Source) { Copy-Item -LiteralPath $Source -Destination $RuntimeDir -Force }
           }
-          if (Test-Path "build/bin/7z") {
-            Copy-Item "build/bin/7z" -Destination $RuntimeDir -Recurse -Force
-          }
-        shell: pwsh
+          Copy-Item -LiteralPath (Join-Path $PayloadDir '7z') -Destination $RuntimeDir -Recurse -Force
 
       - name: Upload update runtime input
         uses: actions/upload-artifact@v4
         with:
-          name: update-runtime-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-${{ matrix.mode }}
+          name: update-runtime-${{ needs.prepare-release.outputs.version }}-windows-${{ matrix.arch }}-${{ matrix.mode }}
           path: apps/desktop/update-runtime/
           if-no-files-found: error
 
-      - name: Upload Unsigned Installer Artifact
+      - name: Upload unsigned installer
         id: upload-unsigned-installer
         if: matrix.mode == 'installer'
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-installer
-          path: apps/desktop/build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe
+          name: unsigned-lunabox-${{ needs.prepare-release.outputs.version }}-windows-${{ matrix.arch }}-installer
+          path: apps/desktop/build/release/LunaBox-${{ needs.prepare-release.outputs.version }}-windows-${{ matrix.arch }}-setup.exe
           if-no-files-found: error
           retention-days: 1
 
-      - name: Sign Installer Artifact
+      - name: Sign installer
         if: matrix.mode == 'installer'
         uses: signpath/github-action-submit-signing-request@v2
         with:
@@ -412,23 +388,22 @@ jobs:
           wait-for-completion-timeout-in-seconds: 1200
           output-artifact-directory: apps/desktop/signed-installer
 
-      - name: Verify signed installer artifact
+      - name: Verify signed installer
         if: matrix.mode == 'installer'
+        shell: pwsh
         run: |
-          $ErrorActionPreference = "Stop"
-          $Artifact = "signed-installer/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe"
-          if (!(Test-Path $Artifact)) {
+          $Artifact = 'signed-installer/LunaBox-${{ needs.prepare-release.outputs.version }}-windows-${{ matrix.arch }}-setup.exe'
+          if (!(Test-Path -LiteralPath $Artifact)) {
             Get-ChildItem -Path signed-installer -Recurse | ForEach-Object { Write-Host $_.FullName }
             throw "Signed installer artifact not found: $Artifact"
           }
-        shell: pwsh
 
-      - name: Upload Installer Artifact
+      - name: Upload installer
         if: matrix.mode == 'installer'
         uses: actions/upload-artifact@v4
         with:
-          name: lunabox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-installer
-          path: apps/desktop/signed-installer/LunaBox-${{ steps.get_version.outputs.VERSION }}-windows-${{ matrix.arch }}-setup.exe
+          name: lunabox-${{ needs.prepare-release.outputs.version }}-windows-${{ matrix.arch }}-installer
+          path: apps/desktop/signed-installer/LunaBox-${{ needs.prepare-release.outputs.version }}-windows-${{ matrix.arch }}-setup.exe
           if-no-files-found: error
 
   build-macos:
@@ -509,33 +484,6 @@ jobs:
             packages/backend/go.sum
             packages/updater/go.sum
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: apps/desktop/frontend/pnpm-lock.yaml
-
-      - name: Install matching Wails v3 CLI
-        shell: bash
-        run: |
-          set -euo pipefail
-          version="$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
-          go install "github.com/wailsapp/wails/v3/cmd/wails3@$version"
-          test "$(wails3 version 2>&1)" = "$version"
-
-      - name: Get prepared release version
-        id: get_version
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "VERSION=${{ needs.prepare-release.outputs.version }}" >> "$GITHUB_OUTPUT"
-
       - name: Build app bundle and DMG
         shell: bash
         env:
@@ -548,15 +496,30 @@ jobs:
           LUNABOX_UMBRA_REGISTRATION_TOKEN: ${{ secrets.LUNABOX_UMBRA_REGISTRATION_TOKEN }}
         run: |
           set -euo pipefail
-          chmod +x scripts/build.sh
-          ./scripts/build.sh installer '${{ steps.get_version.outputs.VERSION }}' '${{ matrix.arch }}'
-          test -f 'build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-macos-${{ matrix.arch }}.dmg'
+          go run ./tools/release -version '${{ needs.prepare-release.outputs.version }}' -arch '${{ matrix.arch }}' -mode installer
+
+          artifact='build/release/LunaBox-${{ needs.prepare-release.outputs.version }}-macos-${{ matrix.arch }}.dmg'
+          test -f "$artifact"
+
+          mount_dir="${RUNNER_TEMP}/lunabox-dmg-check"
+          mkdir -p "$mount_dir"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mount_dir" "$artifact" >/dev/null
+          trap 'hdiutil detach "$mount_dir" >/dev/null || true' EXIT
+          for path in LunaBox.app/Contents/MacOS/LunaBox LunaBox.app/Contents/Resources/bin/lunacli LunaBox.app/Contents/Resources/bin/7zz; do
+            if [[ ! -x "$mount_dir/$path" ]]; then
+              echo "DMG is missing executable $path." >&2
+              exit 1
+            fi
+          done
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$mount_dir/LunaBox.app/Contents/Info.plist")" = 'io.github.saramanda9988.lunabox'
+          test -L "$mount_dir/Applications"
+          codesign --verify --deep --strict "$mount_dir/LunaBox.app"
 
       - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
-          name: lunabox-${{ steps.get_version.outputs.VERSION }}-macos-${{ matrix.arch }}
-          path: apps/desktop/build/bin/LunaBox-${{ steps.get_version.outputs.VERSION }}-macos-${{ matrix.arch }}.dmg
+          name: lunabox-${{ needs.prepare-release.outputs.version }}-macos-${{ matrix.arch }}
+          path: apps/desktop/build/release/LunaBox-${{ needs.prepare-release.outputs.version }}-macos-${{ matrix.arch }}.dmg
           if-no-files-found: error
 
   build-linux:
@@ -595,24 +558,14 @@ jobs:
             packages/backend/go.sum
             packages/updater/go.sum
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: apps/desktop/frontend/pnpm-lock.yaml
-
+      # 运行时才用 purego 加载 GTK，构建只需要 DuckDB 的 cgo 编译器；
+      # desktop-file-utils 让 appimagetool 校验桌面入口。
       - name: Install Linux build dependencies
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y build-essential ca-certificates curl desktop-file-utils libayatana-appindicator3-dev libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+          sudo apt-get install -y build-essential ca-certificates curl desktop-file-utils
 
       - name: Install nFPM
         shell: bash
@@ -638,25 +591,6 @@ jobs:
           sudo install -m 0755 "$tool_path" /usr/local/bin/appimagetool
           APPIMAGE_EXTRACT_AND_RUN=1 appimagetool --version
 
-      - name: Install matching Wails v3 CLI
-        shell: bash
-        run: |
-          set -euo pipefail
-          version="$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)"
-          go install "github.com/wailsapp/wails/v3/cmd/wails3@$version"
-          test "$(wails3 version 2>&1)" = "$version"
-
-      - name: Patch Wails Linux tray support
-        shell: bash
-        run: ./scripts/patch-wails-linux-tray.sh
-
-      - name: Get prepared release version
-        id: get_version
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "VERSION=${{ needs.prepare-release.outputs.version }}" >> "$GITHUB_OUTPUT"
-
       - name: Build Linux packages
         shell: bash
         env:
@@ -670,20 +604,40 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: "1"
         run: |
           set -euo pipefail
-          chmod +x scripts/build.sh
-          ./scripts/build.sh all '${{ steps.get_version.outputs.VERSION }}' '${{ matrix.arch }}'
-          test "$(find build/bin -maxdepth 1 -type f -name 'LunaBox-*-linux-${{ matrix.arch }}.deb' | wc -l | tr -d ' ')" -eq 1
-          test "$(find build/bin -maxdepth 1 -type f -name 'LunaBox-*-linux-${{ matrix.arch }}.rpm' | wc -l | tr -d ' ')" -eq 1
-          test "$(find build/bin -maxdepth 1 -type f -name 'LunaBox-*-linux-${{ matrix.arch }}.AppImage' | wc -l | tr -d ' ')" -eq 1
+          go run ./tools/release -version '${{ needs.prepare-release.outputs.version }}' -arch '${{ matrix.arch }}' -mode all
+
+          base="$PWD/build/release/LunaBox-${{ needs.prepare-release.outputs.version }}-linux-${{ matrix.arch }}"
+          test -x "$base.AppImage"
+          test -f "$base.deb"
+          test -f "$base.rpm"
+
+          extract_dir="${RUNNER_TEMP}/lunabox-appimage-check"
+          rm -rf "$extract_dir"
+          mkdir -p "$extract_dir"
+          (cd "$extract_dir" && env -u APPIMAGE_EXTRACT_AND_RUN "$base.AppImage" --appimage-extract >/dev/null)
+          for path in AppRun usr/bin/LunaBox usr/bin/lunacli usr/bin/7zz; do
+            if [[ ! -x "$extract_dir/squashfs-root/$path" ]]; then
+              echo "AppImage is missing executable $path." >&2
+              exit 1
+            fi
+          done
+
+          deb_files="$(dpkg-deb -c "$base.deb")"
+          for path in ./usr/bin/LunaBox ./usr/bin/lunacli ./usr/lib/lunabox/LunaBox ./usr/lib/lunabox/7zz; do
+            if ! grep -Eq "^-rwxr-xr-x .* ${path}\$" <<<"$deb_files"; then
+              echo "deb is missing executable $path." >&2
+              exit 1
+            fi
+          done
 
       - name: Upload Linux packages
         uses: actions/upload-artifact@v4
         with:
-          name: lunabox-${{ steps.get_version.outputs.VERSION }}-linux-${{ matrix.arch }}
+          name: lunabox-${{ needs.prepare-release.outputs.version }}-linux-${{ matrix.arch }}
           path: |
-            apps/desktop/build/bin/LunaBox-*-linux-${{ matrix.arch }}.deb
-            apps/desktop/build/bin/LunaBox-*-linux-${{ matrix.arch }}.rpm
-            apps/desktop/build/bin/LunaBox-*-linux-${{ matrix.arch }}.AppImage
+            apps/desktop/build/release/LunaBox-${{ needs.prepare-release.outputs.version }}-linux-${{ matrix.arch }}.deb
+            apps/desktop/build/release/LunaBox-${{ needs.prepare-release.outputs.version }}-linux-${{ matrix.arch }}.rpm
+            apps/desktop/build/release/LunaBox-${{ needs.prepare-release.outputs.version }}-linux-${{ matrix.arch }}.AppImage
           if-no-files-found: error
 
   create-release:
@@ -693,7 +647,7 @@ jobs:
     permissions:
       actions: read
       contents: write
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -892,7 +846,7 @@ jobs:
           echo "| \`*-windows-*-portable.zip\` | Windows 便携版，解压即用，数据存储在程序目录 |" >> release_notes.md
           echo "| \`*-windows-*-setup.exe\` | Windows 安装版，数据存储在 %APPDATA%\\\\LunaBox |" >> release_notes.md
           echo "| \`*-macos-*.dmg\` | macOS 磁盘映像，将 LunaBox 拖入 Applications |" >> release_notes.md
-          echo "| \`*-linux-*.AppImage\` | Linux AppImage，依赖系统 GTK4 / WebKitGTK 6.0 运行库 |" >> release_notes.md
+          echo "| \`*-linux-*.AppImage\` | Linux AppImage，依赖系统 GTK 3 与 libepoxy 运行库 |" >> release_notes.md
           echo "| \`*-linux-*.deb\` | Linux Debian/Ubuntu 安装包 |" >> release_notes.md
           echo "| \`*-linux-*.rpm\` | Linux Fedora/RHEL/openSUSE 安装包 |" >> release_notes.md
           echo "" >> release_notes.md

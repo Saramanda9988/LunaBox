@@ -171,7 +171,7 @@ func mb(b uint64) float64 { return float64(b) / (1 << 20) }
 // benchReport 汇总一次自动滚动压测。
 func (p *Perf) benchReport(frames []frameSample, items int, scrolled float32, d time.Duration, before, after *memSample) string {
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "== desktop-mygo scroll bench (%s) ==\n", time.Now().Format(time.DateTime))
+	fmt.Fprintf(&sb, "== LunaBox scroll bench (%s) ==\n", time.Now().Format(time.DateTime))
 	fmt.Fprintf(&sb, "items=%d  scrolled=%.0f DIP  duration=%s  frames=%d  avg fps=%.1f\n",
 		items, scrolled, d.Round(time.Millisecond), len(frames), float64(len(frames))/d.Seconds())
 

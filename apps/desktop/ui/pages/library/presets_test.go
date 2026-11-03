@@ -11,8 +11,8 @@ import (
 	"lunabox/backend/common/enums"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
-	"lunabox/desktop-mygo/api"
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/api"
+	"lunabox/desktop/ui/locales"
 )
 
 // fakePresets 记录新建与删除的预设。

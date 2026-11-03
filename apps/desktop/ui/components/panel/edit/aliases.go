@@ -8,9 +8,9 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/models"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // aliasesField 对应“游戏别名”：glass-input flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-md border

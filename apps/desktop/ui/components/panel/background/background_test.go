@@ -14,13 +14,13 @@ import (
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/appruntime"
-	"lunabox/desktop-mygo/host"
-	"lunabox/desktop-mygo/host/hosttest"
-	"lunabox/desktop-mygo/ui/components/panel"
-	"lunabox/desktop-mygo/ui/covers"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/host"
+	"lunabox/desktop/host/hosttest"
+	"lunabox/desktop/ui/components/panel"
+	"lunabox/desktop/ui/covers"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // fakeRuntime 让 SelectAndCropBackgroundImage 的文件对话框直接返回 file（或 err），不弹真实的对话框。

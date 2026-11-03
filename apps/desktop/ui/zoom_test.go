@@ -6,7 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/ui/locales"
 )
 
 // TestZoomShortcuts：Ctrl + / Ctrl - / Ctrl 0 逐档调整 window_zoom_factor 并立即保存，窗口按它缩放，

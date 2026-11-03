@@ -11,23 +11,23 @@ import (
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/vo"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/panel"
-	"lunabox/desktop-mygo/ui/components/panel/ai"
-	"lunabox/desktop-mygo/ui/components/panel/appdata"
-	"lunabox/desktop-mygo/ui/components/panel/autobackup"
-	"lunabox/desktop-mygo/ui/components/panel/background"
-	"lunabox/desktop-mygo/ui/components/panel/basic"
-	"lunabox/desktop-mygo/ui/components/panel/cloudbackup"
-	"lunabox/desktop-mygo/ui/components/panel/dbbackup"
-	"lunabox/desktop-mygo/ui/components/panel/fullbackup"
-	"lunabox/desktop-mygo/ui/components/panel/gamesettings"
-	"lunabox/desktop-mygo/ui/components/panel/metadata"
-	"lunabox/desktop-mygo/ui/components/panel/portable"
-	"lunabox/desktop-mygo/ui/components/panel/proxy"
-	"lunabox/desktop-mygo/ui/components/panel/update"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/panel"
+	"lunabox/desktop/ui/components/panel/ai"
+	"lunabox/desktop/ui/components/panel/appdata"
+	"lunabox/desktop/ui/components/panel/autobackup"
+	"lunabox/desktop/ui/components/panel/background"
+	"lunabox/desktop/ui/components/panel/basic"
+	"lunabox/desktop/ui/components/panel/cloudbackup"
+	"lunabox/desktop/ui/components/panel/dbbackup"
+	"lunabox/desktop/ui/components/panel/fullbackup"
+	"lunabox/desktop/ui/components/panel/gamesettings"
+	"lunabox/desktop/ui/components/panel/metadata"
+	"lunabox/desktop/ui/components/panel/portable"
+	"lunabox/desktop/ui/components/panel/proxy"
+	"lunabox/desktop/ui/components/panel/update"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
 )
 
 // saveDelay 是草稿停止修改后自动保存的延迟（routes/settings.tsx 的 setTimeout 250ms）。
@@ -118,7 +118,7 @@ func (p *Page) Open() {
 
 // SetDebugState 让截图直接进入某个状态：collapsed（全部收起），或分区的 key（basic、metadata、appearance、game、
 // proxy、cloud-backup、auto-backup、ai、db-backup、full-data-backup、update、app-data、portable-setup）——只展开它，
-// 并把它滚到主内容区顶部下方 24px 处（tools/parity 的 settings-* 场景在原版上做同样的滚动）。
+// 并把它滚到主内容区顶部下方 24px 处（原版对照工具 tools/parity 的 settings-* 场景在原版上做同样的滚动）。
 func (p *Page) SetDebugState(state string) { p.debug = state }
 
 // Flush 在离开页面前补存还没保存的草稿（原版卸载时取消了计时器，草稿留在 store 里，下次进入设置页时被

@@ -9,7 +9,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/theme"
 )
 
 // cardPad 是截图里图表外的卡片内边距（stats 页卡片的 p-5）。
@@ -48,7 +48,7 @@ func savePNG(t *testing.T, tt *ui.Tester, path string) {
 }
 
 // TestScreenshotDump 在 DESKTOP_MYGO_PNG=<目录> 时把每种图表的样例（深色、浅色，150% 缩放）存成
-// chart-<场景>-<dark|light>.png，并写出 chart-data.js 供 testdata/reference.html 用原版的 Chart.js 画同一份数据。
+// chart-<场景>-<dark|light>.png，并写出 chart-data.js 供 wails-final 标签里的 testdata/reference.html 用原版的 Chart.js 画同一份数据。
 func TestScreenshotDump(t *testing.T) {
 	dir := os.Getenv("DESKTOP_MYGO_PNG")
 	if dir == "" {

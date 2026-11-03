@@ -10,10 +10,10 @@ import (
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/vo"
-	"lunabox/desktop-mygo/api"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/api"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // fakeCloudSync 记录 SyncNow 的调用；GetCloudSyncStatus 返回 status。

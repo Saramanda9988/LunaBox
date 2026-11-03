@@ -5,7 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/timefmt"
+	"lunabox/desktop/ui/timefmt"
 )
 
 // barInput 是 Chart.js 柱状图（一个数据集、一条类目轴加一条数值轴）一次布局的输入。

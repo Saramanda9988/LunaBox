@@ -7,11 +7,11 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/common/enums"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/better"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/better"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // skippedModal 对应 SkippedImportCandidatesModal：max-h-[82vh] w-full max-w-3xl rounded-xl 的面板，页头 border-b p-5

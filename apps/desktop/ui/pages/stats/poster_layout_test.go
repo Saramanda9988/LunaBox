@@ -9,7 +9,7 @@ import (
 	"lunabox/backend/common/vo"
 )
 
-// TestPosterLayoutMatchesFrontend 拿原版 posterLayout.ts 算出的排布（testdata/poster_layout.mjs 生成）逐项对照：
+// TestPosterLayoutMatchesFrontend 拿原版 posterLayout.ts 算出的排布（wails-final 标签里的 testdata/poster_layout.mjs 生成）逐项对照：
 // 固定排布、并列时长、领奖台并列与 90 个游戏的长尾，种子取奇偶两种。
 func TestPosterLayoutMatchesFrontend(t *testing.T) {
 	data, err := os.ReadFile("testdata/poster_layout.json")

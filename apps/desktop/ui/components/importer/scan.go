@@ -7,12 +7,12 @@ import (
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/enums"
-	"lunabox/desktop-mygo/ui/components"
-	"lunabox/desktop-mygo/ui/components/better"
-	"lunabox/desktop-mygo/ui/components/panel/metadata"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/locales"
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/better"
+	"lunabox/desktop/ui/components/panel/metadata"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
 
 // scanSteps 是 BatchImportModal 与 DragDropImportModal 共用的部分：扫描结果的预览、元数据匹配、导入与手动选择。

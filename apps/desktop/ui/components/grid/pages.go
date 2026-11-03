@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"lunabox/backend/models"
-	"lunabox/desktop-mygo/ui/env"
+	"lunabox/desktop/ui/env"
 )
 
 // 与 routes/library.tsx、routes/category.tsx 相同的分页窗口。

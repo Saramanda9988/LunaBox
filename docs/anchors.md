@@ -2,31 +2,35 @@
 
 > 除特别标注外，本文路径均相对桌面应用目录 `apps/desktop/`。
 
-## 前端
+## 界面
 
-| 职责                                           | 路径                                                |
-| ---------------------------------------------- | --------------------------------------------------- |
-| 路由注册（routeTree 组装）与应用级运行时编排   | `frontend/src/App.tsx`                              |
-| 根布局（TopBar/SideBar、data-glass、拖拽遮罩） | `frontend/src/routes/__root.tsx`                    |
-| 页面路由文件                                   | `frontend/src/routes/*.tsx`（每个页面导出 `Route`） |
-| 全局 Store（Zustand）                          | `frontend/src/store.ts`                             |
-| 应用级运行时事件监听                           | `frontend/src/hooks/useAppRuntimeEffects.ts`        |
-| 退出前云同步 / 退出提示                        | `frontend/src/hooks/useExitSyncToast.ts`            |
-| UnoCSS 配置                                    | `frontend/uno.config.ts`                            |
-| 全局样式（仅全局不可避免项）                   | `frontend/src/style.css`                            |
-| Wails v3 绑定（自动生成，勿手改）              | `frontend/bindings/`                                |
-| Wails 绑定与 runtime 兼容入口                  | `frontend/src/bindings/`                            |
-| 工具函数                                       | `frontend/src/utils/`                               |
-| 时间处理函数                                   | `frontend/src/utils/time.ts`                        |
-| 可复用 UI 组件                                 | `frontend/src/components/ui/`                       |
-| HeadlessUI 封装参考                            | `frontend/src/components/ui/BetterSelect.tsx`       |
-| Radix 封装参考                                 | `frontend/src/components/ui/BetterSwitch.tsx`       |
+目录与原版前端的对应关系见 [apps/desktop/docs/architecture.md](../apps/desktop/docs/architecture.md)。
+
+| 职责                                                   | 路径                                                     |
+| ------------------------------------------------------ | -------------------------------------------------------- |
+| 命令行参数与语言                                       | `main.go`                                                |
+| 应用外壳（单实例、数据目录与日志、主窗口、托盘）       | `app/`                                                   |
+| 把后端接到 MyGo（`appruntime.Runtime`、事件、开发数据） | `host/`                                                  |
+| 界面调用的后端接口                                     | `api/`                                                   |
+| 根布局                                                 | `ui/app.go`                                              |
+| 路由表                                                 | `ui/routes.go`                                           |
+| 应用级运行时事件、退出前同步提示                       | `ui/runtime_events.go`                                   |
+| 页面                                                   | `ui/pages/<页面>/`                                        |
+| 详情页标签页与设置页分区                               | `ui/components/panel/<面板>/`                             |
+| 可复用组件（Modal、Toaster 等）与 Better 系列          | `ui/components/`、`ui/components/better/`                |
+| 页面共享环境（后端、路由、主题、语言）                 | `ui/env/`                                                |
+| 色板、字号、过渡曲线与玻璃模式                         | `ui/theme/`                                              |
+| 界面文字（ARB，直接编辑）与生成的函数                  | `ui/locales/*.json`、`ui/locales/catalog_gen.go`（勿手改） |
+| 时长与日期格式                                         | `ui/timefmt/`                                            |
+| 命令行工具                                             | `cmd/lunacli/`                                           |
+| 发布包构建                                             | `tools/release/`                                         |
+| 安装包脚本（NSIS、deb/rpm 安装脚本）                   | `packaging/`                                             |
 
 ## 后端
 
 | 职责                              | 路径                                                                                                                                                |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 启动、退出生命周期与依赖注入      | `packages/backend/bootstrap/`（Wails 外壳在 `main.go`）                                                                                                                                         |
+| 启动、退出生命周期与依赖注入      | `packages/backend/bootstrap/`（桌面端外壳在 `app/`）                                                                                                                                         |
 | 初始建表（新安装时的完整 schema） | `packages/backend/migrations/init.go` → `InitSchema(...)`                                                                                                   |
 | Migration 列表                    | `packages/backend/migrations/migrations.go`                                                                                                                 |
 | Services                          | `packages/backend/service/*_service.go`                                                                                                                     |

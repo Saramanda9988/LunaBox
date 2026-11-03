@@ -9,11 +9,11 @@ import (
 
 	"lunabox/backend/common/vo"
 	"lunabox/backend/service"
-	"lunabox/desktop-mygo/host"
-	"lunabox/desktop-mygo/host/hosttest"
-	"lunabox/desktop-mygo/ui/env"
-	"lunabox/desktop-mygo/ui/env/envtest"
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/host"
+	"lunabox/desktop/host/hosttest"
+	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/env/envtest"
+	"lunabox/desktop/ui/locales"
 )
 
 // newEventApp 返回订阅了应用级事件的 App；没有窗口时事件在发出它的 goroutine 上同步处理。

@@ -5,8 +5,8 @@ import (
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/vo"
-	"lunabox/desktop-mygo/api"
-	"lunabox/desktop-mygo/ui/locales"
+	"lunabox/desktop/api"
+	"lunabox/desktop/ui/locales"
 )
 
 // authView 对应 utils/*Auth.ts 的 BangumiAuthViewState。

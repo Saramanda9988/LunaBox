@@ -5,7 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/theme"
 )
 
 // ScrollBar 是 ScrollArea 的状态：滚动位置与滑块拖动。放在页面状态里，页面可以读写滚动位置。

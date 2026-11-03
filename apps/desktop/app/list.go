@@ -6,7 +6,7 @@ import (
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
-	"lunabox/desktop-mygo/host"
+	"lunabox/desktop/host"
 )
 
 // listBackend 用真实服务实现 ui.Backend（游戏库的列表查询）。

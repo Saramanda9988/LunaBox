@@ -30,8 +30,8 @@
 ####
 ## !define REQUEST_EXECUTION_LEVEL "admin"            # Default "admin"  see also https://nsis.sourceforge.io/Docs/Chapter4.html
 ####
-## LunaBox MyGo 版（apps/desktop-mygo/tools/release）也用这个脚本打安装包，用下面的 define 换掉 Wails 版的输入与输出，
-## 都不定义时与 Wails 版相同：
+## apps/desktop/tools/release 用这个脚本打安装包，用下面的 define 指定输入与输出（脚本沿用 Wails 版，
+## 安装位置与卸载项不变，所以会直接替换已安装的 Wails 版）：
 ##   LUNABOX_PAYLOAD_DIR  lunacli.exe、7z、duckdb.dll（与 LunaBoxUpdater.exe）所在的目录，默认 ..\..\bin
 ##   LUNABOX_OUTFILE      安装包的路径，默认 ..\..\bin\${INFO_PROJECTNAME}-${ARCH}-installer.exe
 ##   LUNABOX_NO_WEBVIEW2  不安装 WebView2 运行时

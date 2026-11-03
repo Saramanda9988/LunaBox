@@ -7,7 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/assets"
+	"lunabox/desktop/ui/assets"
 )
 
 // bgZoom 是背景层的 transform: scale(1.1)。

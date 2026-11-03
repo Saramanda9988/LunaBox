@@ -14,7 +14,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"lunabox/desktop-mygo/ui/theme"
+	"lunabox/desktop/ui/theme"
 )
 
 // chartFont 是 Chart.defaults.font.family（"'Helvetica Neue', 'Helvetica', 'Arial', sans-serif"）在本机
