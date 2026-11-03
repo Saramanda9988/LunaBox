@@ -87,6 +87,12 @@ func Run(o Options) error {
 		KeepWindowState: o.Screenshot != "",
 	})
 	mygo.App.OnSecondInstance(a.onSecondInstance)
+	if runtime.GOOS == "darwin" {
+		// macOS 用 Apple 事件把 lunabox:// 交给声明了它的 .app（mygo.json 的 urlSchemes 写进 Info.plist），
+		// 启动时的与运行中收到的都在这里，不在命令行里（Wails 版的 ApplicationLaunchedWithUrl）。
+		// Windows 与 Linux 的链接在命令行里，由 TakeProtocolRequest 与 onSecondInstance 处理。
+		mygo.App.OnOpenURL(a.core.HandleLaunchedWithURL)
+	}
 	mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) { a.core.ForceQuit() })
 	mygo.App.OnQuit(a.shutdown)
 	mygo.App.WhenReady(a.ready)

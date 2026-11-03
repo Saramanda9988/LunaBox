@@ -8,7 +8,7 @@ LunaBox 的原生桌面前端：用 [MyGo](https://github.com/egoist/mygo) v0.6.
 
 **还不参与发布。** 已迁移的页面：首页、游戏库、游戏详情页（全部标签页与弹窗）、收藏夹列表与收藏详情、下载管理、统计、设置页（全部分区与弹窗），以及添加与导入游戏、顶栏、侧边栏、灵动岛、自定义背景与玻璃模式，支持与原版相同的四种语言。
 
-主要还缺：统计页美化导出里的封面拼贴、界面缩放、应用内更新与安装包。完整清单（包括还没对照过的界面和已知的视觉差异）见 [docs/gaps.md](docs/gaps.md)。
+主要还缺：筛选条件跨运行保存、首页的触控滑动、代码签名与替换 Wails 版的正式发布流程，以及 macOS、Linux 上的实测与对照。完整清单（包括还没对照过的界面和已知的视觉差异）见 [docs/gaps.md](docs/gaps.md)。
 
 在 150% 缩放、深色主题、简体中文下与原版逐像素对照过的区域，元素坐标与原版 DOM 一致到 0.1 DIP，剩下的像素差异来自抗锯齿、封面缩放算法和 1 像素的窗口宽度差，明细见 [docs/parity.md](docs/parity.md#读结果)。
 
@@ -65,14 +65,14 @@ go run ./tools/release -version 1.2.0 -arch arm64 -mode installer
 
 | 系统 | `-mode` | 包 | 对应 Wails 版 |
 | --- | --- | --- | --- |
-| Windows | `portable`（默认） | `LunaBox-mygo-<版本>-windows-<架构>-portable.zip`，带 lunacli 与 7z，数据在 `LunaBox.exe` 旁边 | `scripts\build.bat portable` |
-| Windows | `installer` | `LunaBox-mygo-<版本>-windows-<架构>-setup.exe`，用 Wails 版的 `build/windows/nsis/project.nsi`（不装 WebView2、不带 LunaBoxUpdater），需要 NSIS | `scripts\build.bat installer` |
+| Windows | `portable`（默认） | `LunaBox-mygo-<版本>-windows-<架构>-portable.zip`，带 lunacli、LunaBoxUpdater 与 7z，数据在 `LunaBox.exe` 旁边 | `scripts\build.bat portable` |
+| Windows | `installer` | `LunaBox-mygo-<版本>-windows-<架构>-setup.exe`，用 Wails 版的 `build/windows/nsis/project.nsi`（不装 WebView2），需要 NSIS | `scripts\build.bat installer` |
 | Linux | `appimage`（默认） | `LunaBox-mygo-<版本>-linux-<架构>.AppImage`，数据与 Wails 版的 AppImage 一样在 `~/.config/LunaBox`，需要 appimagetool | `scripts/build.sh appimage` |
 | Linux | `installer` | `LunaBox-mygo-<版本>-linux-<架构>.deb` 与 `.rpm`，依赖 GTK 3 而不是 WebKitGTK，需要 [nFPM](https://nfpm.goreleaser.com) | `scripts/build.sh installer` |
 | Linux | `all` | 以上两种 | `scripts/build.sh all` |
 | macOS | `installer`（默认） | `LunaBox-mygo-<版本>-macos-<架构>.dmg`，`.app` 的 `Contents/Resources/bin` 带 lunacli 与 7zz，ad-hoc 签名 | `scripts/build.sh installer` |
 
-统计页的美化导出用系统的 WebView（WebView2 Runtime、WKWebView、WebKitGTK）预览与截取 HTML 模板，运行时检测，安装包不依赖它，没有时弹窗里提示。Linux 构建需要 gcc，运行需要系统的 GTK 3 与 libepoxy；macOS 构建需要 Xcode 命令行工具。安装版（Windows 安装包、deb、rpm、DMG）装到 Wails 版的位置，会替换已安装的 Wails 版。代码签名与自动更新还没有做。
+统计页的美化导出用系统的 WebView（WebView2 Runtime、WKWebView、WebKitGTK）预览与截取 HTML 模板，运行时检测，安装包不依赖它，没有时弹窗里提示。Linux 构建需要 gcc，运行需要系统的 GTK 3 与 libepoxy；macOS 构建需要 Xcode 命令行工具。安装版（Windows 安装包、deb、rpm、DMG）装到 Wails 版的位置，会替换已安装的 Wails 版。Windows 的应用内更新与 Wails 版共用官方更新清单（见 [docs/gaps.md](docs/gaps.md#发布与平台)）；代码签名还没有做。
 
 GitHub Actions 的 **MyGo Build Pre-release**（`.github/workflows/mygo-build.yml`，手动触发）的矩阵同 Wails 版的 `autobuild.yml`：Windows amd64、arm64 的便携版与安装版，macOS arm64、amd64 的 DMG，Linux 的 AppImage、deb、rpm（Wails 版暂停了 Linux arm64，MyGo 版保留），发布到滚动的预发布 `mygo-dev-latest`（与 Wails 版的 `dev-latest` 分开）。
 

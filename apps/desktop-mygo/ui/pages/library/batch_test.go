@@ -228,3 +228,31 @@ func TestBatchImportToSteamWaitsWhileSteamRuns(t *testing.T) {
 		t.Fatalf("retry did not re-check: %q", tt.Texts())
 	}
 }
+
+// 批量模式下在卡片上按右键切换它的选中状态（拖动选择的起点，useDragSelection），不弹右键菜单；拖过其他卡片的
+// 行为在 grid 包的 DragSelection 测试里。
+func TestBatchRightPressSelects(t *testing.T) {
+	l, _, tt := newBatchPage(t, 3)
+	if err := tt.RightClick("Summer Pockets"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !l.selected["1"] || len(l.selected) != 1 || tt.Menu() != nil {
+		t.Fatalf("selected %v, menu %v", l.selected, tt.Menu())
+	}
+	if err := tt.RightClick("Summer Pockets"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if len(l.selected) != 0 {
+		t.Fatalf("selected %v after the second right press", l.selected)
+	}
+	// 左键点选不受影响。
+	if err := tt.Click("Summer Pockets"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !l.selected["1"] || len(l.selected) != 1 {
+		t.Fatalf("selected %v after a click", l.selected)
+	}
+}

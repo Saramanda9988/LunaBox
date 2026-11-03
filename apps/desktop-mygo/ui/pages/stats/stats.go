@@ -65,7 +65,7 @@ func (p *Page) Open(now time.Time) {
 	p.aiLoading, p.webSearch = false, false
 	p.leaderboardOpen = false
 	p.closeExport()
-	p.export.templates, p.export.selected = nil, ""
+	p.export.templates, p.export.selected = nil, mosaicID
 	p.scroll, p.modalScroll = components.ScrollBar{}, components.ScrollBar{}
 	p.totalChart, p.gameChart, p.hourWeek, p.tags = chart.State{}, chart.State{}, chart.HourWeekState{}, chart.TagState{}
 	p.toasts = nil

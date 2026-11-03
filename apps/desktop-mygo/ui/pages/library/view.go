@@ -75,6 +75,12 @@ func (l *Page) content(c *ui.Context, t *theme.Theme, winH float32) {
 			if l.pages.Loading {
 				wrap.Opacity(0.6).PassThrough()
 			}
+			l.drag.Surface(c, wrap, grid.DragProps{
+				Enabled:        l.filters.Batch,
+				Selected:       func(id string) bool { return l.selected[id] },
+				OnSelectChange: l.setSelected,
+				Scroll:         &l.scroll.State,
+			})
 			wrap.Children(func() { l.gameGrid(c, t, winH) })
 			if l.pages.Loading {
 				loadingPill(c, t)
@@ -102,7 +108,7 @@ func (l *Page) gameGrid(c *ui.Context, t *theme.Theme, winH float32) {
 				return
 			}
 			running, ending := launcher.Status(g.ID)
-			card.GameCard(c.Key(g.ID), t, card.GameCardProps{
+			props := card.GameCardProps{
 				Game:           g,
 				Width:          l.grid.CardW,
 				Landscape:      l.landscape,
@@ -118,7 +124,8 @@ func (l *Page) gameGrid(c *ui.Context, t *theme.Theme, winH float32) {
 				Ending:         ending,
 				OnPlay:         func() { launcher.StartFromCard(c, *g) },
 				OnDetail:       func() { l.env.Router.Push(env.GamePath(g.ID)) },
-			})
+			}
+			l.drag.Target(c.Key(g.ID), g.ID, func(c *ui.Context) { card.GameCard(c, t, props) })
 		},
 	})
 }

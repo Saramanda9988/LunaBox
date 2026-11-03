@@ -50,8 +50,8 @@ const canvas = await window.html2canvas(target, {
 })
 return canvas.toDataURL("image/png")`
 
-// exporter 是“美化导出”弹窗（TemplateExportModal）的状态：模板在 WebView 里预览，导出时用 html2canvas 截成 PNG。
-// 封面拼贴（cover_mosaic、MosaicPosterPanel）还没有迁移，列表里只有 HTML 模板。
+// exporter 是“美化导出”弹窗（TemplateExportModal）的状态。列表第一项是原生绘制的封面拼贴（mosaic.go，默认选中，
+// 不需要 WebView）；其余是 HTML 模板，在 WebView 里预览，导出时用 html2canvas 截成 PNG。
 type exporter struct {
 	open      bool
 	templates []vo.TemplateInfo
@@ -64,8 +64,9 @@ type exporter struct {
 
 	// web 是预览模板的 WebView，打开弹窗时创建、关闭时销毁。没有窗口（测试）或系统缺少 WebView 时为 nil。
 	// 模板来自用户目录，页面设为 Untrusted：不能调用 Go 方法，也拿不到权限。
-	web  *mygo.WebView
-	list components.ScrollBar
+	web    *mygo.WebView
+	list   components.ScrollBar
+	mosaic mosaicState
 }
 
 // openExport 打开弹窗：加载模板列表并渲染选中的模板（原版 isOpen 变化触发的两个 useEffect）。
@@ -81,7 +82,11 @@ func (p *Page) openExport() {
 		}
 	}
 	p.loadTemplates()
-	p.renderTemplate()
+	if x.selected == mosaicID {
+		p.openMosaic()
+	} else {
+		p.renderTemplate()
+	}
 }
 
 // closeExport 关闭弹窗并销毁 WebView（它的页面进程很占内存）。
@@ -90,6 +95,7 @@ func (p *Page) closeExport() {
 	x.open, x.html, x.loading, x.exporting = false, "", false, false
 	x.gen++
 	x.seq++
+	p.closeMosaic()
 	if x.web != nil {
 		x.web.Destroy()
 		x.web = nil
@@ -124,7 +130,14 @@ func (p *Page) selectTemplate(id string) {
 	if x.exporting || id == x.selected {
 		return
 	}
+	if x.selected == mosaicID {
+		p.closeMosaic()
+	}
 	x.selected = id
+	if id == mosaicID {
+		p.openMosaic()
+		return
+	}
 	p.renderTemplate()
 }
 
@@ -132,7 +145,7 @@ func (p *Page) selectTemplate(id string) {
 // 失败时保留上一次的预览。
 func (p *Page) renderTemplate() {
 	x := &p.export
-	if p.stats == nil || x.selected == "" {
+	if p.stats == nil || x.selected == "" || x.selected == mosaicID {
 		return
 	}
 	x.seq++
@@ -165,6 +178,10 @@ func (p *Page) renderTemplate() {
 // exportImage 对应 handleExport：在模板页面里截图，保存对话框选好位置后关闭弹窗。
 func (p *Page) exportImage() {
 	x := &p.export
+	if x.selected == mosaicID {
+		p.exportMosaic()
+		return
+	}
 	web, gen := x.web, x.gen
 	if web == nil || x.html == "" || x.loading || x.exporting {
 		return
@@ -210,7 +227,18 @@ func (p *Page) openTemplatesDir() {
 	})
 }
 
+// mosaicTemplate 是封面拼贴在列表里的一项（原版写在 TemplateExportModal 里，文字每次按当前语言取）。
+func mosaicTemplate() vo.TemplateInfo {
+	return vo.TemplateInfo{
+		ID: mosaicID, Name: locales.StatsTemplateExportMosaicName(), Description: locales.StatsTemplateExportMosaicDescription(),
+		IsBuiltin: true, Version: "1.0.0", Author: "LunaBox",
+	}
+}
+
 func (x *exporter) selectedTemplate() (vo.TemplateInfo, bool) {
+	if x.selected == mosaicID {
+		return mosaicTemplate(), true
+	}
 	for _, tmpl := range x.templates {
 		if tmpl.ID == x.selected {
 			return tmpl, true
@@ -282,6 +310,7 @@ func (p *Page) templateList(c *ui.Context, t *theme.Theme, line ui.Color) {
 			}
 			sc.Padding(8, 8+gutter, 8, 8).Children(func() {
 				ui.Column(c).Gap(4).Children(func() {
+					p.templateItem(c.Key(mosaicID), t, mosaicTemplate())
 					for _, tmpl := range x.templates {
 						p.templateItem(c.Key(tmpl.ID), t, tmpl)
 					}
@@ -359,6 +388,10 @@ func (p *Page) templatePreview(c *ui.Context, t *theme.Theme, line ui.Color) {
 			})
 			ui.Box(c).Height(t.HL).Background(line).Shrink(0)
 		}
+		if x.selected == mosaicID {
+			p.mosaicPanel(c, t, line)
+			return
+		}
 		area := ui.Column(c.Key("area")).Grow(1).Basis(0).MinHeight(0).Padding(16)
 		switch {
 		case x.web == nil:
@@ -408,6 +441,9 @@ func (p *Page) exportFooter(c *ui.Context, t *theme.Theme) {
 // rounded-lg shadow-sm disabled:opacity-50；导出中显示 i-mdi-loading animate-spin，否则 i-mdi-download。
 func (p *Page) exportButton(c *ui.Context, x *exporter) {
 	enabled := x.web != nil && x.html != "" && !x.loading && !x.exporting
+	if x.selected == mosaicID {
+		enabled = x.mosaic.ready() && !x.exporting
+	}
 	btn := ui.ButtonBase(c.Key("export")).Padding(8, 16).Gap(8).AlignItems(ui.Center).Radius(8).FocusRing(false)
 	bg := theme.Neutral600
 	if enabled && btn.Hovered() {

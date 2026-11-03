@@ -27,6 +27,7 @@ const (
 	eventDownloadImportFailed = "download:game-import-failed"
 	eventDownloadMetaFailed   = "download:metadata-failed"
 	eventCoverImageDownload   = "cover-image:download"
+	eventUpdateProgress       = "update:progress" // UpdateService.DownloadAndApplyUpdate，交给正在更新的 UpdateDialog
 )
 
 // accountEvents 是有授权状态（<name>:auth-status-changed）与游玩状态推送失败事件（<name>:status-push-failed）的账号来源。
@@ -112,6 +113,13 @@ func (a *App) subscribe() {
 	svc.Events.On(eventDownloadImportFailed, func(data any) { a.downloadTaskError(data, false) })
 	svc.Events.On(eventDownloadMetaFailed, func(data any) { a.downloadTaskError(data, true) })
 	svc.Events.On(eventCoverImageDownload, a.coverImageDownload)
+	svc.Events.On(eventUpdateProgress, func(data any) {
+		var p service.UpdateProgress
+		if decodeEvent(data, &p) {
+			components.UpdateProgressEvent(p, time.Now())
+			a.invalidate()
+		}
+	})
 }
 
 // startup 在窗口创建后做 App.tsx 挂载时的事：取启动期间没处理的安装请求（GetPendingInstall），检查更新（useUpdateCheck）。

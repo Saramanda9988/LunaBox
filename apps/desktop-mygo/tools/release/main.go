@@ -4,7 +4,7 @@
 //   - Windows portable（默认）：便携版 LunaBox-mygo-<版本>-windows-<架构>-portable.zip（旁边留一份解压好的目录），
 //     对应 Wails 版的 apps/desktop/scripts/build.bat portable；
 //   - Windows installer：NSIS 安装包 LunaBox-mygo-<版本>-windows-<架构>-setup.exe，对应 build.bat installer，
-//     用 Wails 版的 build/windows/nsis/project.nsi（不装 WebView2、不带 LunaBoxUpdater）；需要 NSIS；
+//     用 Wails 版的 build/windows/nsis/project.nsi（不装 WebView2）；需要 NSIS；
 //   - Linux appimage（默认）：LunaBox-mygo-<版本>-linux-<架构>.AppImage（旁边留 .AppDir），对应 build.sh appimage，
 //     BuildMode 是 appimage：数据在 ~/.config/LunaBox，与 Wails 版的 AppImage 相同；需要 appimagetool；
 //   - Linux installer：LunaBox-mygo-<版本>-linux-<架构>.deb 与 .rpm（旁边留 .pkgroot），对应 build.sh installer，
@@ -353,6 +353,13 @@ func buildPackage(cfg config, t target, tc toolchain, kind, tool, ver string, va
 	if err := buildCLI(t, cli, vars[:4]); err != nil {
 		return nil, "", err
 	}
+	// Windows 的应用内更新（UpdateService.DownloadAndApplyUpdate）在 LunaBox.exe 旁边找 LunaBoxUpdater.exe。
+	updater := filepath.Join(cfg.Out, "release", "LunaBoxUpdater-"+t.arch+".exe")
+	if t.goos == "windows" {
+		if err := buildUpdater(t, updater); err != nil {
+			return nil, "", err
+		}
+	}
 
 	release := filepath.Join(cfg.Out, "release")
 	switch t.goos + "/" + kind {
@@ -371,6 +378,9 @@ func buildPackage(cfg config, t target, tc toolchain, kind, tool, ver string, va
 		if err := stageFiles(cfg, t, tc, cli, dir); err != nil {
 			return nil, "", err
 		}
+		if err := copyPath(updater, filepath.Join(dir, "LunaBoxUpdater.exe")); err != nil {
+			return nil, "", err
+		}
 		if err := os.WriteFile(filepath.Join(dir, "README.txt"), []byte(readme(ver)), 0o644); err != nil {
 			return nil, "", err
 		}
@@ -384,6 +394,9 @@ func buildPackage(cfg config, t target, tc toolchain, kind, tool, ver string, va
 			return nil, "", err
 		}
 		if err := stageFiles(cfg, t, tc, cli, dir); err != nil {
+			return nil, "", err
+		}
+		if err := copyPath(updater, filepath.Join(dir, "LunaBoxUpdater.exe")); err != nil {
 			return nil, "", err
 		}
 		return []string{pkg}, dir, writeInstaller(tool, cfg, t, dir, pkg)
@@ -473,9 +486,9 @@ func stageFiles(cfg config, t target, tc toolchain, cli, dir string) error {
 }
 
 // writeInstaller 同 build.bat 的 build_installer_package：用 Wails 版的 NSIS 脚本把 dir（stageFiles 放好的
-// LunaBox.exe、lunacli.exe、7z 与 duckdb.dll）打成 pkg。脚本装到 Wails 版的位置、写同一个卸载项，
-// 所以会替换已安装的 Wails 版；LUNABOX_NO_WEBVIEW2、LUNABOX_NO_UPDATER 去掉 MyGo 用不到的 WebView2 运行时
-// 与 LunaBoxUpdater.exe。安装包的版本取 mygo.json，与 exe 的文件版本相同。
+// LunaBox.exe、lunacli.exe、LunaBoxUpdater.exe、7z 与 duckdb.dll）打成 pkg。脚本装到 Wails 版的位置、写同一个
+// 卸载项，所以会替换已安装的 Wails 版；LUNABOX_NO_WEBVIEW2 去掉 WebView2 运行时（MyGo 只在美化导出里用系统已有的
+// WebView，运行时检测）。安装包的版本取 mygo.json，与 exe 的文件版本相同。
 func writeInstaller(tool string, cfg config, t target, dir, pkg string) error {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
@@ -494,7 +507,6 @@ func writeInstaller(tool string, cfg config, t target, dir, pkg string) error {
 		"/DLUNABOX_PAYLOAD_DIR="+absDir,
 		"/DLUNABOX_OUTFILE="+absPkg,
 		"/DLUNABOX_NO_WEBVIEW2",
-		"/DLUNABOX_NO_UPDATER",
 		"project.nsi",
 	)
 	cmd.Dir = filepath.Join(desktopDir, "build", "windows", "nsis")
@@ -991,6 +1003,22 @@ func buildApp(t target, vars []assignment) error {
 	return nil
 }
 
+// buildUpdater 同 build.bat 的 build_updater：packages/updater 的 cmd/lunabox-updater，窗口程序（-H=windowsgui）。
+func buildUpdater(t target, out string) error {
+	abs, err := filepath.Abs(out)
+	if err != nil {
+		return err
+	}
+	dir := filepath.Join("..", "..", "packages", "updater")
+	cmd := exec.Command("go", "-C", dir, "build", "-trimpath", "-buildvcs=false", "-ldflags", "-s -w -H=windowsgui", "-o", abs, "./cmd/lunabox-updater")
+	cmd.Env = append(os.Environ(), "GOOS="+t.goos, "GOARCH="+t.arch)
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("构建 LunaBoxUpdater：%w", err)
+	}
+	return nil
+}
+
 // buildCLI 同 build.bat 的 build_cli：用 Wails 版模块里的 cmd/lunacli，注入版本号与 BuildMode。
 func buildCLI(t target, out string, vars []assignment) error {
 	abs, err := filepath.Abs(out)
@@ -1028,6 +1056,7 @@ func readme(ver string) string {
 		"This package contains:",
 		"  - LunaBox.exe  : GUI version (double-click to launch)",
 		"  - lunacli.exe  : CLI version (use in a terminal)",
+		"  - LunaBoxUpdater.exe : standalone update helper",
 		"",
 		"Data (database, settings, covers, logs) is stored next to LunaBox.exe.",
 		"",

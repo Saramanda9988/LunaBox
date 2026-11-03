@@ -11,6 +11,7 @@ import (
 	"lunabox/desktop-mygo/ui/components"
 	"lunabox/desktop-mygo/ui/components/bar"
 	"lunabox/desktop-mygo/ui/components/card"
+	"lunabox/desktop-mygo/ui/components/grid"
 	"lunabox/desktop-mygo/ui/env"
 	"lunabox/desktop-mygo/ui/locales"
 	"lunabox/desktop-mygo/ui/theme"
@@ -110,7 +111,8 @@ func gridColumns(width float32) (cols int, colW float32) {
 	return cols, (width - card.CategoryGap*float32(cols-1)) / float32(cols)
 }
 
-// grid：pt-2 的收藏夹网格，卡片 w-full max-w-48 在格子里居中（justify-items-center）。
+// grid：pt-2 的收藏夹网格，卡片 w-full max-w-48 在格子里居中（justify-items-center）。批量模式下网格接收拖动选择
+// （useDragSelection），可选的卡片（非系统收藏夹，原版的 data-drag-selection-id）登记为目标。
 func (p *Page) grid(c *ui.Context, t *theme.Theme, list []vo.CategoryVO, width float32) {
 	cols, colW := gridColumns(width)
 	cardW := min(card.CategoryMaxWidth, colW)
@@ -118,20 +120,42 @@ func (p *Page) grid(c *ui.Context, t *theme.Theme, list []vo.CategoryVO, width f
 	if cfg := p.env.Config(); cfg != nil {
 		blur = cfg.BlurNSFWGameCovers
 	}
-	ui.Grid(c.Key("category-grid")).Columns(cols).GapX(card.CategoryGap).GapY(card.CategoryGap).Padding(8, 0, 0, 0).Children(func() {
+	byID := make(map[string]vo.CategoryVO, len(list))
+	for _, cat := range list {
+		byID[cat.ID] = cat
+	}
+	g := ui.Grid(c.Key("category-grid")).Columns(cols).GapX(card.CategoryGap).GapY(card.CategoryGap).Padding(8, 0, 0, 0)
+	p.drag.Surface(c, g, grid.DragProps{
+		Enabled:  p.filters.Batch,
+		Selected: func(id string) bool { return p.selected[id] },
+		OnSelectChange: func(id string, on bool) {
+			if cat, ok := byID[id]; ok {
+				p.setSelected(cat, on)
+			}
+		},
+		Scroll: &p.scroll.State,
+	})
+	g.Children(func() {
 		for _, cat := range list {
 			ui.Box(c.Key(cat.ID)).AlignItems(ui.Center).Children(func() {
-				card.CategoryCard(c, t, card.CategoryCardProps{
-					Category:          cat,
-					Width:             cardW,
-					Covers:            func(g *models.Game) *ui.Bitmap { return p.env.Covers.Get(g) },
-					BlurNSFW:          blur,
-					SelectionMode:     p.filters.Batch,
-					Selected:          p.selected[cat.ID],
-					SelectionDisabled: cat.IsSystem,
-					OnSelectChange:    func(on bool) { p.setSelected(cat, on) },
-					OnOpen:            func() { p.env.Router.Push(env.CategoryPath(cat.ID)) },
-				})
+				build := func(c *ui.Context) {
+					card.CategoryCard(c, t, card.CategoryCardProps{
+						Category:          cat,
+						Width:             cardW,
+						Covers:            func(g *models.Game) *ui.Bitmap { return p.env.Covers.Get(g) },
+						BlurNSFW:          blur,
+						SelectionMode:     p.filters.Batch,
+						Selected:          p.selected[cat.ID],
+						SelectionDisabled: cat.IsSystem,
+						OnSelectChange:    func(on bool) { p.setSelected(cat, on) },
+						OnOpen:            func() { p.env.Router.Push(env.CategoryPath(cat.ID)) },
+					})
+				}
+				if cat.IsSystem {
+					build(c)
+				} else {
+					p.drag.Target(c, cat.ID, build)
+				}
 			})
 		}
 	})

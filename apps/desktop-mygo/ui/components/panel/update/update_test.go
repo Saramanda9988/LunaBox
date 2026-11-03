@@ -12,6 +12,7 @@ import (
 	"lunabox/backend/service"
 	"lunabox/desktop-mygo/host"
 	"lunabox/desktop-mygo/host/hosttest"
+	"lunabox/desktop-mygo/ui/components"
 	"lunabox/desktop-mygo/ui/components/panel"
 	"lunabox/desktop-mygo/ui/covers"
 	"lunabox/desktop-mygo/ui/env"
@@ -19,17 +20,31 @@ import (
 	"lunabox/desktop-mygo/ui/theme"
 )
 
-// fakeCheck 用真实的 UpdateService，只替换联网的检查。
+// fakeCheck 用真实的 UpdateService，只替换联网的检查与应用内更新。
 type fakeCheck struct {
 	*service.UpdateService
 	result *service.UpdateCheckResult
 	err    error
 	calls  int
+
+	// DownloadAndApplyUpdate 依次发出 progress 里的进度，再返回 applyResult、applyErr。
+	progress    []service.UpdateProgress
+	applyResult *service.UpdateApplyResult
+	applyErr    error
+	applied     []string
 }
 
 func (f *fakeCheck) CheckForUpdates() (*service.UpdateCheckResult, error) {
 	f.calls++
 	return f.result, f.err
+}
+
+func (f *fakeCheck) DownloadAndApplyUpdate(manifestURL string) (*service.UpdateApplyResult, error) {
+	f.applied = append(f.applied, manifestURL)
+	for _, p := range f.progress {
+		components.UpdateProgressEvent(p, time.Now())
+	}
+	return f.applyResult, f.applyErr
 }
 
 type harness struct {
@@ -136,13 +151,32 @@ func TestNewVersionDialog(t *testing.T) {
 	if h.tt.HasText(locales.SettingsUpdateNewVersion() + " ") {
 		t.Error("hint shown while the dialog is open")
 	}
-	// Windows 是应用内更新（原型只提示尚未迁移），macOS、Linux 才有手动下载按钮。
+	// Windows 是应用内更新，macOS、Linux 才有手动下载按钮。
 	if runtime.GOOS == "windows" {
 		if h.tt.HasText(locales.UpdateDialogGithubDownload()) {
 			t.Error("manual download shown on Windows")
 		}
+		// 失败：显示错误，可以再试。
+		h.fake.applyErr = errors.New("network down")
 		h.click(t, locales.UpdateDialogUpdateNow())
-		h.expect(t, locales.NativeFeatureNotMigrated(locales.UpdateDialogUpdateNow()))
+		h.expect(t, locales.UpdateDialogUpdateFailed(), "network down")
+		// 没有要更新的文件同样是失败。
+		h.fake.applyErr, h.fake.applyResult = nil, &service.UpdateApplyResult{}
+		h.click(t, locales.UpdateDialogUpdateNow())
+		h.expect(t, locales.UpdateDialogNoFilesToUpdate())
+		if h.state.dialog.Updating || len(h.fake.applied) != 2 || h.fake.applied[0] != "https://example.invalid/manifest.json" {
+			t.Fatalf("after failures: updating %v, applied %q", h.state.dialog.Updating, h.fake.applied)
+		}
+		// 开始更新：进度事件交给这个对话框，之后后端退出应用，对话框保持更新中。
+		h.fake.applyResult = &service.UpdateApplyResult{Started: true, FileCount: 1}
+		h.fake.progress = []service.UpdateProgress{{Phase: "downloading", File: "LunaBox.exe", Downloaded: 50, Total: 100, Percent: 50}}
+		h.click(t, locales.UpdateDialogUpdateNow())
+		h.expect(t, locales.UpdateDialogDownloading(), "50%", "LunaBox.exe", locales.UpdateDialogDownloadingButton())
+		if !h.state.dialog.Updating || h.state.dialog.Error != "" {
+			t.Fatalf("after start: %+v", h.state.dialog)
+		}
+		h.state.dialog.Updating = false // 测试里应用不会退出，放开关闭按钮
+		h.frames(1)
 	}
 
 	// 关闭：淡出 200ms 后关闭，面板里留下新版本提示，点击再次打开。

@@ -129,6 +129,34 @@ func TestCreatesCategory(t *testing.T) {
 	}
 }
 
+// 批量模式下在卡片上按右键切换它的选中状态（拖动选择的起点，useDragSelection）；系统收藏夹不是拖动选择的目标。
+func TestBatchRightPressSelects(t *testing.T) {
+	tp := newTestPage(t)
+	if err := tp.tt.Click("批量选择"); err != nil {
+		t.Fatal(err)
+	}
+	tp.frames(2)
+	id := tp.categoryID(t, "视觉小说")
+	if err := tp.tt.RightClick("视觉小说"); err != nil {
+		t.Fatal(err)
+	}
+	tp.frames(1)
+	if !tp.selected[id] || tp.selectedCount() != 1 || tp.tt.Menu() != nil {
+		t.Fatalf("selected %v, menu %v", tp.selected, tp.tt.Menu())
+	}
+	if err := tp.tt.RightClick("视觉小说"); err != nil {
+		t.Fatal(err)
+	}
+	tp.frames(1)
+	if err := tp.tt.RightClick("最喜欢的游戏"); err != nil {
+		t.Fatal(err)
+	}
+	tp.frames(1)
+	if tp.selectedCount() != 0 {
+		t.Fatalf("selected %v after toggling off and pressing the system collection", tp.selected)
+	}
+}
+
 func TestBatchDeletesSkippingSystem(t *testing.T) {
 	tp := newTestPage(t)
 	if err := tp.tt.Click("批量选择"); err != nil {

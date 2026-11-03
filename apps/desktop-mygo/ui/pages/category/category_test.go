@@ -196,3 +196,19 @@ func TestNotFound(t *testing.T) {
 		t.Fatalf("path = %q", got)
 	}
 }
+
+// 批量模式下在卡片上按右键切换它的选中状态（拖动选择的起点，useDragSelection）。
+func TestBatchRightPressSelects(t *testing.T) {
+	tp := newTestPage(t)
+	if err := tp.tt.Click("批量选择"); err != nil {
+		t.Fatal(err)
+	}
+	tp.frames(2)
+	if err := tp.tt.RightClick("橘光柠水随想曲"); err != nil {
+		t.Fatal(err)
+	}
+	tp.frames(1)
+	if !tp.selected["0"] || len(tp.selected) != 1 || tp.tt.Menu() != nil {
+		t.Fatalf("selected %v, menu %v", tp.selected, tp.tt.Menu())
+	}
+}

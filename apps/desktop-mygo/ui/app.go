@@ -288,6 +288,12 @@ func (a *App) appModals(c *ui.Context, t *theme.Theme) {
 			TopOffset: env.TopbarHeight,
 			OnClose:   func() { a.updateInfo = nil },
 			OnSkip:    a.skipVersion,
+			OnInAppUpdate: func(manifestURL string) {
+				update := a.env.Svc.Update
+				a.updateDialog.StartInAppUpdate(a.env.Async, func() (*service.UpdateApplyResult, error) {
+					return update.DownloadAndApplyUpdate(manifestURL)
+				})
+			},
 		})
 	}
 	cfg := a.env.Config()

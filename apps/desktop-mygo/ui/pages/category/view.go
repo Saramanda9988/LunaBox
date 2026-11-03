@@ -277,6 +277,12 @@ func (p *Page) content(c *ui.Context, t *theme.Theme, winH float32) {
 			if p.pages.Loading {
 				wrap.Opacity(0.6).PassThrough()
 			}
+			p.drag.Surface(c, wrap, grid.DragProps{
+				Enabled:        p.filters.Batch,
+				Selected:       func(id string) bool { return p.selected[id] },
+				OnSelectChange: p.setSelected,
+				Scroll:         &p.scroll.State,
+			})
 			wrap.Children(func() { p.gameGrid(c, t, winH) })
 			if p.pages.Loading {
 				loadingPill(c, t)
@@ -342,7 +348,7 @@ func (p *Page) gameGrid(c *ui.Context, t *theme.Theme, winH float32) {
 			if !p.filters.Batch {
 				props.Overlay = func(hover float32) { removeButton(c, t, hover, func() { p.removeGame(g.ID) }) }
 			}
-			card.GameCard(c.Key(g.ID), t, props)
+			p.drag.Target(c.Key(g.ID), g.ID, func(c *ui.Context) { card.GameCard(c, t, props) })
 		},
 	})
 }

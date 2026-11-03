@@ -27,6 +27,7 @@ type Page struct {
 	scroll        components.ScrollBar
 	addMenuOpen   bool
 	selected      map[string]bool
+	drag          grid.DragSelection // 批量模式下按住右键拖过卡片选择（useDragSelection）
 	randomLoading bool
 	grid          grid.Geometry
 	batch         batchState
@@ -106,6 +107,15 @@ func (l *Page) toggleSelected(id string) {
 		delete(l.selected, id)
 	} else {
 		l.selected[id] = true
+	}
+}
+
+// setSelected 对应 setGameSelection：拖动选择把经过的游戏设成同一个状态。
+func (l *Page) setSelected(id string, selected bool) {
+	if selected {
+		l.selected[id] = true
+	} else {
+		delete(l.selected, id)
 	}
 }
 

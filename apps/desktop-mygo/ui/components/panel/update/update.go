@@ -37,6 +37,7 @@ const monoFont = "Consolas"
 type updateAPI interface {
 	CheckForUpdates() (*service.UpdateCheckResult, error)
 	SkipVersion(ver string) error
+	DownloadAndApplyUpdate(manifestURL string) (*service.UpdateApplyResult, error)
 }
 
 // State 是面板跨帧保留的状态，由设置页持有。
@@ -104,6 +105,12 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 			TopOffset: panel.TopOffset,
 			OnClose:   func() { s.showDialog = false },
 			OnSkip:    func(ver string) { s.skip(p, ver) },
+			OnInAppUpdate: func(manifestURL string) {
+				api := s.update(p)
+				s.dialog.StartInAppUpdate(p.Env.Async, func() (*service.UpdateApplyResult, error) {
+					return api.DownloadAndApplyUpdate(manifestURL)
+				})
+			},
 		})
 	}
 }

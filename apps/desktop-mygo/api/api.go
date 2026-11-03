@@ -125,6 +125,7 @@ type TagService interface {
 type StatsService interface {
 	GetGameStats(req vo.GameStatsRequest) (vo.GameDetailStats, error)
 	GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.PeriodStats, error)
+	GetPosterGames(startDate, endDate string) ([]vo.PosterGame, error)
 }
 
 // TemplateService 对应 service.TemplateService（统计页的美化导出）。
@@ -274,6 +275,7 @@ type UpdateService interface {
 	CheckForUpdates() (*service.UpdateCheckResult, error)
 	CheckForUpdatesOnStartup() (*service.UpdateCheckResult, error)
 	SkipVersion(ver string) error
+	DownloadAndApplyUpdate(manifestURL string) (*service.UpdateApplyResult, error)
 }
 
 // PortableSetupService 对应 service.PortableSetupService。

@@ -211,19 +211,28 @@ func TestResetRange(t *testing.T) {
 	}
 }
 
-// 测试没有窗口，也就没有 WebView：模板列表照常加载，选中第一个并用真实服务渲染，预览区提示缺少 WebView，
+// 测试没有窗口，也就没有 WebView：默认选中原生的封面拼贴；HTML 模板用真实服务渲染，预览区提示缺少 WebView，
 // 导出按钮不可用。
 func TestExportModal(t *testing.T) {
 	h := newHarness(t, 1100, games(t, 2))
 	h.click(t, locales.StatsExportTitle())
 	x := &h.export
-	if len(x.templates) < 3 || x.selected != x.templates[0].ID {
+	if len(x.templates) < 3 || x.selected != mosaicID {
 		t.Fatalf("templates %v, selected %q", x.templates, x.selected)
 	}
-	h.expect(t, locales.StatsTemplateExportTitle(), locales.StatsTemplateExportSelectTemplate(), x.templates[0].Name,
-		x.templates[1].Name, locales.NativeTemplateExportWebViewUnavailable(), locales.StatsTemplateExportTipText())
+	h.expect(t, locales.StatsTemplateExportTitle(), locales.StatsTemplateExportSelectTemplate(), locales.StatsTemplateExportMosaicName(),
+		x.templates[0].Name, x.templates[1].Name, locales.StatsTemplateExportTipText(), locales.StatsTemplateExportMosaicHeading(),
+		locales.StatsTemplateExportMosaicResolution("2"), locales.StatsTemplateExportMosaicMissing("2"))
+	h.expectNot(t, locales.NativeTemplateExportWebViewUnavailable())
+
+	h.click(t, x.templates[0].Name)
+	h.expect(t, locales.NativeTemplateExportWebViewUnavailable())
+	h.expectNot(t, locales.StatsTemplateExportMosaicHeading())
 	if x.loading || !strings.Contains(x.html, name(1)) {
 		t.Fatalf("not rendered: loading %v, html has game %v", x.loading, strings.Contains(x.html, name(1)))
+	}
+	if x.mosaic.games != nil {
+		t.Fatal("mosaic kept its games after switching away")
 	}
 	h.exportImage() // 没有 WebView 时什么都不做
 	if x.exporting {
@@ -319,6 +328,10 @@ func (failingStats) GetGameStats(vo.GameStatsRequest) (vo.GameDetailStats, error
 
 func (failingStats) GetGlobalPeriodStats(vo.PeriodStatsRequest) (vo.PeriodStats, error) {
 	return vo.PeriodStats{}, errors.New("boom")
+}
+
+func (failingStats) GetPosterGames(string, string) ([]vo.PosterGame, error) {
+	return nil, errors.New("boom")
 }
 
 // TestContainerColumns：主内容区不小于 1024 时排行榜与标签分布、时段分布与总时长趋势各占一行，否则上下排列。

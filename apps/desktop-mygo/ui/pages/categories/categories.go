@@ -14,6 +14,7 @@ import (
 	"lunabox/desktop-mygo/ui/components"
 	"lunabox/desktop-mygo/ui/components/bar"
 	"lunabox/desktop-mygo/ui/components/better"
+	"lunabox/desktop-mygo/ui/components/grid"
 	"lunabox/desktop-mygo/ui/env"
 	"lunabox/desktop-mygo/ui/locales"
 )
@@ -38,6 +39,7 @@ type Page struct {
 	openedAt   time.Time
 	gen        int
 	selected   map[string]bool
+	drag       grid.DragSelection // 批量模式下按住右键拖过卡片选择（useDragSelection）
 
 	addOpen     bool
 	newName     string

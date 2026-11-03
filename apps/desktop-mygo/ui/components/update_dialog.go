@@ -1,6 +1,7 @@
 package components
 
 import (
+	"errors"
 	"runtime"
 	"strconv"
 	"time"
@@ -70,6 +71,40 @@ func (s *UpdateDialogState) SetProgress(v service.UpdateProgress, now time.Time)
 	s.Progress = &v
 }
 
+// updating 是正在应用内更新的对话框。原版每个 UpdateDialog 各自订阅 update:progress；后端的 applyMu 保证同一时间
+// 只有一次更新，所以这里由 App 订阅一次（UpdateProgressEvent），交给发起更新的对话框。只在主线程读写。
+var updating *UpdateDialogState
+
+// UpdateProgressEvent 把 update:progress 事件交给正在更新的对话框。
+func UpdateProgressEvent(v service.UpdateProgress, now time.Time) {
+	if updating != nil && updating.Updating {
+		updating.SetProgress(v, now)
+	}
+}
+
+// StartInAppUpdate 对应 handleInAppUpdate 调用 DownloadAndApplyUpdate 的前后：进入更新中、清空错误，进度从下载 0% 开始；
+// run 在后台执行 work 并把它返回的函数放回主线程（env.Env.Async）。失败或没有要更新的文件时退出更新中并显示错误；
+// 成功时后端稍后退出应用，由 LunaBoxUpdater 替换文件后重新启动。
+func (s *UpdateDialogState) StartInAppUpdate(run func(work func() func()), apply func() (*service.UpdateApplyResult, error)) {
+	if s.Updating {
+		return
+	}
+	s.Updating, s.Error, s.Speed, s.sample = true, "", 0, nil
+	s.Progress = &service.UpdateProgress{Phase: "downloading"}
+	updating = s
+	run(func() func() {
+		result, err := apply()
+		return func() {
+			if err == nil && (result == nil || !result.Started) {
+				err = errors.New(locales.UpdateDialogNoFilesToUpdate())
+			}
+			if err != nil {
+				s.Updating, s.Error = false, err.Error()
+			}
+		}
+	})
+}
+
 // UpdateDialogProps 是 UpdateDialog 的属性。
 type UpdateDialogProps struct {
 	Info      *service.UpdateCheckResult // updateInfo；为空或没有更新时不显示
@@ -77,8 +112,8 @@ type UpdateDialogProps struct {
 	TopOffset float32                    // 原版的 #app-modal-root 在顶栏下方，遮罩从这里开始
 	OnClose   func()                     // 淡出结束后调用
 	OnSkip    func(version string)
-	// OnInAppUpdate 对应 handleInAppUpdate 里的 DownloadAndApplyUpdate(update_manifest_url)：开始下载时调用方设置
-	// Updating、Progress，失败时设置 Error。为空时只提示“尚未迁移”（原型不能替换已安装的程序）。
+	// OnInAppUpdate 对应 handleInAppUpdate 里的 DownloadAndApplyUpdate(update_manifest_url)，调用方一般交给
+	// UpdateDialogState.StartInAppUpdate。只在 Windows 且有更新清单时调用。
 	OnInAppUpdate func(manifestURL string)
 }
 
@@ -140,11 +175,7 @@ func UpdateDialog(c *ui.Context, t *theme.Theme, key string, s *UpdateDialogStat
 		}
 	}
 	handleInAppUpdate := func() {
-		if !supportsInAppUpdate || info.UpdateManifestURL == "" || s.Updating {
-			return
-		}
-		if p.OnInAppUpdate == nil {
-			c.Toast(locales.NativeFeatureNotMigrated(locales.UpdateDialogUpdateNow()))
+		if !supportsInAppUpdate || info.UpdateManifestURL == "" || s.Updating || p.OnInAppUpdate == nil {
 			return
 		}
 		p.OnInAppUpdate(info.UpdateManifestURL)

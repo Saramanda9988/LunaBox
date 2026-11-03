@@ -15,17 +15,11 @@ desktop-mygo 替代 Wails 版之前还要补的东西。按要不要做分成四
 
 ### 游戏库
 
-- 拖动框选（`useDragSelection`）：游戏库与收藏详情的批量模式都只能逐个点选或全选。
 - 筛选条件不像原版那样存进 localStorage，只在一次运行内跨页面保留。
-
-### 应用级（`App.tsx`、`__root.tsx`）
-
-- **应用内更新**：更新弹窗（设置页手动检查与启动时检查共用）的“立即更新”只弹提示，不下载、不替换安装版（`ui/components/update_dialog.go`）。`DownloadAndApplyUpdate` 按 Wails 版的更新清单替换 `LunaBox.exe`，要等 MyGo 版有自己的发布渠道（见[发布与平台](#发布与平台)）再接。
 
 ### 统计页
 
-- “美化导出”的封面拼贴（`MosaicPosterPanel`、`PosterCoverEditor`，原版的默认模板）还没有迁移，模板列表里只有 HTML 模板。它在原版里是 Canvas 2D 手绘的，不依赖 WebView，打算用 `ui.Painter` 原生绘制、`ui.Render` 导出 PNG。
-- HTML 模板在系统 WebView 里预览（`ui/pages/stats/export.go`），运行时用 `mygo.WebViewAvailable()` 检测：Linux 安装包仍不依赖 WebKitGTK（`mygo.json` 的 `"linux": {"webview": false}`），没装时弹窗里提示，不能预览和导出。
+- HTML 模板在系统 WebView 里预览（`ui/pages/stats/export.go`），运行时用 `mygo.WebViewAvailable()` 检测：Linux 安装包仍不依赖 WebKitGTK（`mygo.json` 的 `"linux": {"webview": false}`），没装时弹窗里提示，不能预览和导出。封面拼贴是原生绘制的，不受影响。
 
 ### 首页
 
@@ -71,6 +65,7 @@ desktop-mygo 替代 Wails 版之前还要补的东西。按要不要做分成四
 - 写剪贴板不报告失败，所以下载管理没有“复制失败”的提示。
 - 原生复选框（导入预览、跳过无路径的游戏）按 Chromium 浅色样式自己画；禁用时用 MyGo 的半透明近似 Chromium 的灰色。
 - 拖放导入用 MyGo 的原生拖放，只接受文件列表；原版 dragleave 后 80ms 才隐藏提示的延迟没有。
+- 批量模式的拖动选择（`ui/components/grid/drag_select.go`）只有鼠标右键：MyGo 的指针事件不区分鼠标、触控与触控笔，原版触控、触控笔移动 10px 后开始拖动、之后 500ms 内屏蔽点击的那条路径没有。
 
 ### 实现方式不同
 
@@ -86,6 +81,8 @@ desktop-mygo 替代 Wails 版之前还要补的东西。按要不要做分成四
 - 筛选预设在游戏库每次重新查询时读取，读取失败只记日志，不像原版那样提示 `filterPresets.loadFailed`（那时没有可以显示提示的帧）。
 - 启动配置没有原版 `GetLocalProtonTools` 失败时的提示：Go 的服务方法不返回错误，原版只有 Wails 调用本身失败时才走到那里。
 - 裁剪弹窗的手柄与裁剪框一样只在键盘聚焦时显示聚焦色（原版用 `:focus`，用鼠标按过的手柄也会显示）。
+- 拖动选择按上一帧的布局判断指针下的卡片（原版 `elementFromPoint`），自动滚动后选中指针下的卡片可能晚一帧；每张可选的卡片外面多包一层不加样式的 Box，用来取它的位置。
+- 封面拼贴（`ui/pages/stats/mosaic.go`、`poster_layout.go`、`poster_paint.go`）：排布与原版 `posterLayout.ts` 逐项一致（`testdata/poster_layout.json` 由原版代码生成）；封面解码最宽 1000 像素（原版长边 1400），很大的横图导出时略软；背景模糊用元素的 `Blur` 加不透明度，超出海报边缘的处理与 canvas `filter` 略有不同；字体每个系统取一个（雅黑、PingFang SC、Noto Sans CJK SC），不是字体栈；“显示数量”用 BetterSelect、缩放滑块自己画（原版是原生 select 与 range）；编辑器换封面没有 0.4→1 的淡入；滚轮缩放沿用 `exp(-deltaY*0.001)`，但 MyGo 每格的 DY 与浏览器不一定相同；抬起封面的阴影偏移随封面旋转（canvas 的 shadowOffset 不随变换）；右下角品牌图标由 96px 的图放大到 114px 绘制。
 
 ### 比原版更合理的行为
 
@@ -102,10 +99,10 @@ desktop-mygo 替代 Wails 版之前还要补的东西。按要不要做分成四
 
 ## 发布与平台
 
-- **与 Wails 版并存**：两个版本的单实例锁不同，正式版可能同时打开同一份数据（DuckDB 会拒绝第二个进程，后启动的那个显示启动错误窗）。
-- **跨平台**：在 macOS（Metal）与 Linux 上跑通并对照。启动配置的 macOS 兼容层、Linux 的 Wine / Proton 已迁移，但只在 Windows 上用替换的服务测过。
-- **打包发布**：`tools/release` 已按 Wails 版的布局打出全部种类的包（Windows 便携版与安装版、macOS DMG、Linux AppImage、deb、rpm），还没有代码签名（SignPath、macOS 的签名与公证）与自动更新（LunaBoxUpdater），没有替换 Wails 版的正式发布流程。
-- **macOS 的 lunabox://**：`.app` 没有声明 URL scheme。MyGo 版只从命令行参数接收链接，还没有处理 macOS 打开链接的 Apple 事件，声明了也收不到。
+- **与 Wails 版并存**：单实例锁用的是同一个标识 `io.github.saramanda9988.lunabox`（`mygo.json` 的 `identifier`，即 Wails 版的 `applicationUniqueID`；开发版是 `LunaBox Dev`），但机制不同（Wails 是 Windows 的命名互斥量、Linux 的 D-Bus 名称、macOS 临时目录里的锁文件，MyGo 是 Unix socket），两个版本仍可能同时打开同一份数据（DuckDB 会拒绝第二个进程，后启动的那个显示启动错误窗）。
+- **跨平台**：在 macOS（Metal）与 Linux 上跑通并对照。启动配置的 macOS 兼容层、Linux 的 Wine / Proton 已迁移，但只在 Windows 上用替换的服务测过；macOS 的 `lunabox://`（`mygo.json` 的 `urlSchemes` 写进 Info.plist，`App.OnOpenURL` 交给 `HandleLaunchedWithURL`）还没在 macOS 上实测。
+- **打包发布**：`tools/release` 已按 Wails 版的布局打出全部种类的包（Windows 便携版与安装版、macOS DMG、Linux AppImage、deb、rpm），Windows 的两种包带 LunaBoxUpdater.exe；还没有代码签名（SignPath、macOS 的签名与公证），没有替换 Wails 版的正式发布流程。
+- **应用内更新与 Wails 版共用官方渠道**：“立即更新”与 Wails 版一样按官方更新清单的 `windows-<架构>-<portable|installer>` 渠道下载并交给 LunaBoxUpdater。正式发布切换到 MyGo 版之前，清单里是 Wails 版的文件，MyGo 预发布版更新后会变成 Wails 版（数据通用）。完整的下载、替换与重启只能等有清单时验证。
 
 ## 原版自身的问题
 
