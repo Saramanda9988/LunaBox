@@ -102,7 +102,7 @@ func actionInput(c *ui.Context, t *theme.Theme, key string, value *string, label
 	row.Children(func() {
 		in = ui.TextInputBase(c.Key("input"), value).Grow(1).Basis(0).MinWidth(0).Padding(8, 12).
 			Font(monoFont).FontSize(theme.TextBase.Size).FixedLineHeight(theme.TextBase.Line).TextColor(t.TextStrong).
-			Placeholder(placeholder).Label(label)
+			Placeholder(placeholder).PlaceholderColor(t.Pick(theme.Brand400, theme.Brand500)).Label(label)
 		for _, a := range actions {
 			btn := ui.ButtonBase(c.Key(a.icon)).Size(40, 40).Center().Shrink(0).FocusRing(false).Label(a.label)
 			disabled := a.disabled || a.loading

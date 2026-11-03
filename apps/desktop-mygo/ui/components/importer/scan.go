@@ -39,7 +39,7 @@ func (s *scanSteps) sources() ([]enums.SourceType, matchSettings) {
 func (s *scanSteps) startMatch(c *ui.Context) {
 	_, ms := s.sources()
 	s.step = "match"
-	s.flow.StartMatch(c, ms, func() { s.step = "preview" })
+	s.flow.StartMatch(ms, func() { s.step = "preview" })
 }
 
 // importCandidates 对应 handleImport：导入期间显示 importing，结束后回到预览。

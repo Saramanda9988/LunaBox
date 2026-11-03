@@ -64,7 +64,6 @@ desktop-mygo 替代 Wails 版之前还要补的东西。按要不要做分成四
 ### MyGo 做不到
 
 - Toast 最多同时显示 3 条（原版 4 条）。
-- 输入框的占位文字颜色跟随窗口主题，不能逐个设置。
 - 禁用元素的不透明度最高 0.5：MyGo 会把禁用元素再减半，`components.Disable` 补偿，但 `opacity-60`、`disabled:opacity-65`、`disabled:opacity-70` 做不到。
 - 没有 `cursor-zoom-in` 光标。
 - 文本框没有 `resize-y` 拖动柄，评价的文本框固定 240px 高、可滚动。

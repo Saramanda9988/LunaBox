@@ -416,7 +416,7 @@ func (s *State) textarea(c *ui.Context, t *theme.Theme) {
 		ta := ui.TextAreaBase(c.Key("content"), &s.content).FillWidth().Height(240).Padding(16, 20, 40, 20).Radius(12).
 			FontSize(textSMLeading.Size).FixedLineHeight(textSMLeading.Line).TextColor(t.Pick(theme.Brand900, theme.White)).
 			Background(t.Pick(theme.Brand50, theme.Brand750)).Label(locales.GameReviewContentLabel()).
-			Placeholder(locales.GameReviewContentPlaceholder())
+			Placeholder(locales.GameReviewContentPlaceholder()).PlaceholderColor(t.Pick(theme.Brand400, theme.Brand500))
 		if theme.UIFont != "" {
 			ta.Font(theme.UIFont)
 		}

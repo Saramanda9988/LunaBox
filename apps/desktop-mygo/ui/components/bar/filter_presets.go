@@ -221,10 +221,10 @@ func presetForm(c *ui.Context, t *theme.Theme, p FilterBarProps, translate bool)
 	ui.Column(c.Key("form")).Gap(8).Padding(10).Radius(8).Border(t.HL, t.PanelBorder).
 		Background(t.Pick(theme.Brand50.Alpha(0.7), theme.Brand900.Alpha(0.4))).Children(func() {
 		components.Text(c, locales.FilterPresetsName(), theme.FontStep{Size: 11, Line: 16.5}, theme.WeightMedium, t.TextMuted)
-		// glass-input w-full rounded-lg border px-2.5 py-2 text-xs，focus:border-neutral-500
+		// glass-input w-full rounded-lg border px-2.5 py-2 text-xs placeholder:text-brand-400，focus:border-neutral-500
 		in := ui.TextInputBase(c.Key("name"), &m.name).FillWidth().Padding(8, 10).Radius(8).AutoFocus().
 			FontSize(theme.TextXS.Size).FixedLineHeight(theme.TextXS.Line).TextColor(t.TextStrong).
-			Placeholder(locales.FilterPresetsNamePlaceholder()).Label(locales.FilterPresetsName())
+			Placeholder(locales.FilterPresetsNamePlaceholder()).PlaceholderColor(theme.Brand400).Label(locales.FilterPresetsName())
 		if theme.UIFont != "" {
 			in.Font(theme.UIFont)
 		}

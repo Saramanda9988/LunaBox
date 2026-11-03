@@ -232,7 +232,7 @@ func tagFilterSection(c *ui.Context, t *theme.Theme, p FilterBarProps) {
 			input := ui.TextInputBase(c.Key("tag-input"), &f.TagInput).Grow(1).Basis(96).MinWidth(96).
 				FontSize(theme.TextXS.Size).FixedLineHeight(theme.TextXS.Line).TextColor(t.TextStrong)
 			if len(f.Tags) == 0 {
-				input.Placeholder(locales.FilterBarTagsPlaceholder())
+				input.Placeholder(locales.FilterBarTagsPlaceholder()).PlaceholderColor(theme.Brand400) // placeholder:text-brand-400
 			}
 			if input.Changed() {
 				f.searchTags(p.Env, f.TagInput)

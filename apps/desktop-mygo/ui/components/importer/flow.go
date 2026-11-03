@@ -318,7 +318,7 @@ type matchSettings struct {
 
 // StartMatch 对应 handleStartMatch：依次为选中且待匹配（或出错）的候选项查找元数据，每次之间等待 Delay。
 // 优先来源连续失败或被限流时暂停并提示；全部完成后检查元数据重复。onDone 在完成或暂停后调用（被 Stop 打断时不调用）。
-func (f *Flow) StartMatch(c *ui.Context, s matchSettings, onDone func()) {
+func (f *Flow) StartMatch(s matchSettings, onDone func()) {
 	f.Pause, f.abort = "", false
 	total := 0
 	for _, cand := range f.Candidates {
@@ -327,14 +327,13 @@ func (f *Flow) StartMatch(c *ui.Context, s matchSettings, onDone func()) {
 		}
 	}
 	f.Progress = Progress{Total: total}
-	m := &matcher{f: f, c: c, s: s, onDone: onDone, gen: f.gen}
+	m := &matcher{f: f, s: s, onDone: onDone, gen: f.gen}
 	m.next(0)
 }
 
 // matcher 是一次匹配的进度：handleStartMatch 循环里的局部变量。
 type matcher struct {
 	f        *Flow
-	c        *ui.Context
 	s        matchSettings
 	onDone   func()
 	gen      int
@@ -375,7 +374,7 @@ func (m *matcher) next(i int) {
 			if pause := m.apply(i, result, err); pause != "" {
 				f.abort = true
 				f.Pause = pause
-				f.env.Toast(m.c, env.Error(pause))
+				f.env.Notify(env.Error(pause))
 				if m.onDone != nil {
 					m.onDone()
 				}

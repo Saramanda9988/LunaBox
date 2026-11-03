@@ -103,7 +103,7 @@ func (e *editor) aliasInputBox(c *ui.Context) ui.Element {
 	t, s := e.t, e.s
 	in := ui.TextInputBase(c.Key("alias-input"), &s.aliasDraft).Padding(6, 12).Radius(999).AutoFocus().
 		FontSize(theme.TextXS.Size).FixedLineHeight(theme.TextXS.Line).TextColor(t.TextStrong).
-		Placeholder(locales.GameEditAliasPlaceholder()).Label(locales.GameEditAliases())
+		Placeholder(locales.GameEditAliasPlaceholder()).PlaceholderColor(t.Pick(theme.Brand400, theme.Brand500)).Label(locales.GameEditAliases())
 	if theme.UIFont != "" {
 		in.Font(theme.UIFont)
 	}

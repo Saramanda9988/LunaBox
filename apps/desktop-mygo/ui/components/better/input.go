@@ -19,11 +19,11 @@ type InputProps struct {
 
 // Input 对应 BetterInput：w-full rounded-md border border-brand-300 bg-white px-3 py-2 text-base，
 // 聚焦时 border-neutral-500 ring-2 ring-neutral-500/30，disabled:opacity-60。返回输入框元素，
-// 调用方用 Changed / Submitted 观察编辑。占位文字的颜色跟随窗口主题（MyGo 不支持逐个设置）。
+// 调用方用 Changed / Submitted 观察编辑。占位文字 placeholder:text-brand-400 dark:placeholder:text-brand-500。
 func Input(c *ui.Context, t *theme.Theme, key string, value *string, p InputProps) ui.Element {
 	in := ui.TextInputBase(c.Key(key), value).FillWidth().Padding(8, 12).Radius(6).
 		FontSize(theme.TextBase.Size).FixedLineHeight(theme.TextBase.Line).TextColor(t.TextStrong).
-		Placeholder(p.Placeholder)
+		Placeholder(p.Placeholder).PlaceholderColor(t.Pick(theme.Brand400, theme.Brand500))
 	if theme.UIFont != "" {
 		in.Font(theme.UIFont)
 	}
@@ -71,7 +71,7 @@ func ActionInput(c *ui.Context, t *theme.Theme, key string, value *string, p Inp
 	row.Children(func() {
 		in = ui.TextInputBase(c.Key("input"), value).Grow(1).Basis(0).MinWidth(0).Padding(8, 12).
 			FontSize(theme.TextBase.Size).FixedLineHeight(theme.TextBase.Line).TextColor(t.TextStrong).
-			Placeholder(p.Placeholder)
+			Placeholder(p.Placeholder).PlaceholderColor(t.Pick(theme.Brand400, theme.Brand500))
 		if theme.UIFont != "" {
 			in.Font(theme.UIFont)
 		}

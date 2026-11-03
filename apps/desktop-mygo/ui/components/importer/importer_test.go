@@ -233,7 +233,7 @@ func runMatch(t *testing.T, f *Flow, s matchSettings) bool {
 		if s.all == nil {
 			return
 		}
-		f.StartMatch(c, s, func() { done = true })
+		f.StartMatch(s, func() { done = true })
 		s.all = nil
 	}, 100, 100)
 	tt.Frame()

@@ -50,7 +50,7 @@ func tagInput(c *ui.Context, t *theme.Theme, p GameTagsProps) {
 	ed := p.Editor
 	in := ui.TextInputBase(c.Key("tag-input"), &ed.Input).Width(128).Padding(6, 12).Radius(999).AutoFocus().
 		FontSize(theme.TextXS.Size).FixedLineHeight(theme.TextXS.Line).TextColor(t.TextStrong).
-		Placeholder(locales.TagsInputPlaceholder()).Label(locales.TagsInputPlaceholder())
+		Placeholder(locales.TagsInputPlaceholder()).PlaceholderColor(t.Pick(theme.Brand400, theme.Brand500)).Label(locales.TagsInputPlaceholder())
 	if theme.UIFont != "" {
 		in.Font(theme.UIFont)
 	}
