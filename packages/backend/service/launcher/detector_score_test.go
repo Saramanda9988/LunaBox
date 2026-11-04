@@ -210,21 +210,58 @@ func TestScorerScoreIsBoundedAndSampleRateIndependent(t *testing.T) {
 	}
 }
 
-func TestCommitThresholdDecaysTowardsConfiguredTimeout(t *testing.T) {
-	timeout := 10 * time.Minute
-	if got := commitThreshold(10*time.Second, timeout); got != strictCommitThreshold {
-		t.Fatalf("expected strict threshold early, got %f", got)
-	}
-	if got := commitThreshold(timeout, timeout); got != relaxedCommitThreshold {
-		t.Fatalf("expected relaxed threshold at timeout, got %f", got)
-	}
-	mid := commitThreshold(strictCommitPhase+(timeout-strictCommitPhase)/2, timeout)
+func TestCommitThresholdDecaysOverAbsoluteRelaxedPhase(t *testing.T) {
 	want := (strictCommitThreshold + relaxedCommitThreshold) / 2
-	if math.Abs(mid-want) > 1e-9 {
-		t.Fatalf("expected linear decay midpoint %f, got %f", want, mid)
+	for _, timeout := range []time.Duration{relaxedCommitPhase, 10 * time.Minute} {
+		if got := commitThreshold(10*time.Second, timeout); got != strictCommitThreshold {
+			t.Fatalf("timeout %s: expected strict threshold early, got %f", timeout, got)
+		}
+		mid := commitThreshold(strictCommitPhase+(relaxedCommitPhase-strictCommitPhase)/2, timeout)
+		if math.Abs(mid-want) > 1e-9 {
+			t.Fatalf("timeout %s: expected linear decay midpoint %f, got %f", timeout, want, mid)
+		}
+		for _, at := range []time.Duration{relaxedCommitPhase, timeout} {
+			if got := commitThreshold(at, timeout); got != relaxedCommitThreshold {
+				t.Fatalf("timeout %s: expected relaxed threshold at %s, got %f", timeout, at, got)
+			}
+		}
+	}
+
+	// A timeout shorter than the relaxed phase reaches the relaxed threshold at
+	// the timeout itself.
+	short := 45 * time.Second
+	if got := commitThreshold(short, short); got != relaxedCommitThreshold {
+		t.Fatalf("expected relaxed threshold at a short timeout, got %f", got)
 	}
 	if got := commitThreshold(20*time.Second, 5*time.Second); got != strictCommitThreshold {
 		t.Fatalf("expected strict threshold when timeout is shorter than the strict phase, got %f", got)
+	}
+}
+
+// A longer timeout must not delay commits for a process that is already
+// present with moderate evidence (window but no foreground). The launcher stays
+// open so the sole-survivor rule does not apply.
+func TestScorerCommitTimeDoesNotDependOnLongTimeout(t *testing.T) {
+	timeline := func(time.Duration) []candidateSample {
+		return []candidateSample{
+			win(proc("launcher.exe", 100), processLinks{IsLauncher: true}, false, false),
+			win(proc("game.exe", 200), descendantInDir, true, false),
+		}
+	}
+	commitAt := func(timeout time.Duration) time.Duration {
+		t.Helper()
+		picked, at, ok := runDetection(t, newProcessScorer(timeout), timeout, timeline)
+		if !ok || picked.Process.PID != 200 {
+			t.Fatalf("timeout %s: expected background game to commit, got %+v ok=%v", timeout, picked, ok)
+		}
+		return at
+	}
+	short, long := commitAt(testDetectionTimeout), commitAt(10*time.Minute)
+	if short != long {
+		t.Fatalf("expected the same commit time regardless of timeout, got %s (60s) vs %s (10m)", short, long)
+	}
+	if long < strictCommitPhase || long > relaxedCommitPhase {
+		t.Fatalf("expected moderate evidence to commit during the relaxed phase, got %s", long)
 	}
 }
 

@@ -17,11 +17,12 @@ import (
 // time-weighted EMA of that evidence, so it stays in [0,1], does not depend on
 // the sample rate, and favours recent evidence (a closed splash fades out).
 //
-// The early-commit tiers are anchored to absolute times rather than to the
+// The commit tiers are anchored to absolute times rather than to the
 // configurable timeout: the timeout bounds the slowest launchers, while normal
-// games settle within seconds. Between strictCommitPhase and the timeout the
-// commit threshold decays linearly, so a longer timeout only stretches the
-// relaxed tail.
+// games settle within seconds. Between strictCommitPhase and relaxedCommitPhase
+// the commit threshold decays linearly and then holds, so a longer timeout
+// gives late processes more time to appear (and verification more time to
+// retarget) without delaying commits for processes that are already present.
 const (
 	detectionSampleInterval    = 500 * time.Millisecond
 	verificationSampleInterval = time.Second
@@ -31,6 +32,10 @@ const (
 	minCandidateAge         = 3 * time.Second
 	strictCommitPhase       = 15 * time.Second
 	strictCommitThreshold   = 0.85
+	// relaxedCommitPhase is when the threshold reaches relaxedCommitThreshold;
+	// a shorter timeout reaches it earlier. It matches the minimum configurable
+	// timeout, so the default configuration keeps the same curve.
+	relaxedCommitPhase      = 60 * time.Second
 	relaxedCommitThreshold  = 0.55
 	commitMargin            = 0.25
 	fallbackCommitThreshold = 0.4
@@ -206,14 +211,19 @@ func (s *processScorer) ranked() []*scoredCandidate {
 	return ranked
 }
 
+// commitThreshold decays from strict to relaxed between strictCommitPhase and
+// the earlier of relaxedCommitPhase and the timeout, then holds. Relaxing early
+// under a long timeout is safe because verification keeps running until the
+// deadline and can still retarget to a process that takes over later.
 func commitThreshold(at time.Duration, timeout time.Duration) float64 {
 	if at < strictCommitPhase || timeout <= strictCommitPhase {
 		return strictCommitThreshold
 	}
-	if at >= timeout {
+	end := min(timeout, relaxedCommitPhase)
+	if at >= end {
 		return relaxedCommitThreshold
 	}
-	progress := float64(at-strictCommitPhase) / float64(timeout-strictCommitPhase)
+	progress := float64(at-strictCommitPhase) / float64(end-strictCommitPhase)
 	return strictCommitThreshold - (strictCommitThreshold-relaxedCommitThreshold)*progress
 }
 
