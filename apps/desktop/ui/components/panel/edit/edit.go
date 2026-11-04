@@ -9,7 +9,6 @@ package edit
 import (
 	"slices"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -19,6 +18,7 @@ import (
 	"lunabox/backend/models"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/better"
+	"lunabox/desktop/ui/components/gamefield"
 	"lunabox/desktop/ui/components/importer"
 	"lunabox/desktop/ui/components/panel"
 	"lunabox/desktop/ui/env"
@@ -96,7 +96,7 @@ func (s *State) init(g *models.Game) {
 	s.search.Cancel()
 	*s = State{
 		gameID:          g.ID,
-		rating:          formatRating(g.Rating),
+		rating:          gamefield.FormatRating(g.Rating),
 		ratingValue:     g.Rating,
 		sourceDraftType: enums.Bangumi,
 		sourceEdits:     map[enums.SourceType]string{},
@@ -198,7 +198,7 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Game) {
 func (e *editor) textField(c *ui.Context, key, label, value string, apply func(g *models.Game, v string)) {
 	t := e.t
 	ui.Column(c.Key(key)).Children(func() {
-		fieldLabel(c, t, label)
+		gamefield.Label(c, t, label)
 		v := value
 		if better.Input(c, t, "input", &v, better.InputProps{Label: label}).Changed() {
 			e.set(func(g *models.Game) { apply(g, v) })
@@ -214,19 +214,19 @@ func (e *editor) coverField(c *ui.Context) {
 		remote = e.g.CoverURL
 	}
 	ui.Column(c.Key("cover")).Children(func() {
-		fieldLabel(c, t, locales.GameEditCover())
+		gamefield.Label(c, t, locales.GameEditCover())
 		v := e.g.CoverURL
-		in := actionInput(c, t, "input", &v, actionInputProps{
+		in := gamefield.ActionInput(c, t, "input", &v, gamefield.ActionInputProps{
 			Placeholder: locales.GameEditCoverPlaceholder(), Label: locales.GameEditCover(), OnPaste: func(text string) bool { return e.pasteCover(c, text) },
 		},
-			inputAction{Icon: "image-search-outline", Label: locales.GameEditSelectImage(), OnClick: func() { e.selectCoverImage(c) }},
-			inputAction{Icon: "download", Label: locales.GameEditDownloadCover(), Disabled: !isRemoteCoverURL(remote) || s.downloadingCover,
+			gamefield.InputAction{Icon: "image-search-outline", Label: locales.GameEditSelectImage(), OnClick: func() { e.selectCoverImage(c) }},
+			gamefield.InputAction{Icon: "download", Label: locales.GameEditDownloadCover(), Disabled: !isRemoteCoverURL(remote) || s.downloadingCover,
 				Loading: s.downloadingCover, OnClick: func() { e.downloadCover(c, remote) }},
 		)
 		if in.Changed() {
 			e.set(func(g *models.Game) { g.CoverURL = v })
 		}
-		hint(c, t, locales.GameEditCoverHint(), false)
+		gamefield.Hint(c, t, locales.GameEditCoverHint(), false)
 	})
 }
 
@@ -235,16 +235,16 @@ func (e *editor) coverSourceField(c *ui.Context) {
 	t, s := e.t, e.s
 	remote := e.g.CoverSourceURL
 	ui.Column(c.Key("cover-source")).Children(func() {
-		fieldLabel(c, t, locales.GameEditCoverSource())
+		gamefield.Label(c, t, locales.GameEditCoverSource())
 		v := e.g.CoverSourceURL
-		in := actionInput(c, t, "input", &v, actionInputProps{Placeholder: locales.GameEditCoverSourcePlaceholder(), Label: locales.GameEditCoverSource()},
-			inputAction{Icon: "download", Label: locales.GameEditDownloadCover(), Disabled: !isRemoteCoverURL(remote) || s.downloadingCover,
+		in := gamefield.ActionInput(c, t, "input", &v, gamefield.ActionInputProps{Placeholder: locales.GameEditCoverSourcePlaceholder(), Label: locales.GameEditCoverSource()},
+			gamefield.InputAction{Icon: "download", Label: locales.GameEditDownloadCover(), Disabled: !isRemoteCoverURL(remote) || s.downloadingCover,
 				Loading: s.downloadingCover, OnClick: func() { e.downloadCover(c, remote) }},
 		)
 		if in.Changed() {
 			e.set(func(g *models.Game) { g.CoverSourceURL = v })
 		}
-		hint(c, t, locales.GameEditCoverSourceHint(), false)
+		gamefield.Hint(c, t, locales.GameEditCoverSourceHint(), false)
 	})
 }
 
@@ -270,69 +270,32 @@ func (e *editor) ratingAndReleaseDate(c *ui.Context) {
 	})
 }
 
-// ratingField 对应评分：BetterInput type="number" min=0 max=10 step=0.1（flex-1），右侧 text-sm 的“/ 10”。
+// ratingField 对应评分：gamefield.Rating 与说明。
 func (e *editor) ratingField(c *ui.Context) {
 	t, s := e.t, e.s
 	if e.g.Rating != s.ratingValue {
-		s.rating, s.ratingValue = formatRating(e.g.Rating), e.g.Rating
+		s.rating, s.ratingValue = gamefield.FormatRating(e.g.Rating), e.g.Rating
 	}
-	fieldLabel(c, t, locales.GameEditRating())
-	ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-		prev := s.rating
-		var in ui.Element
-		ui.Box(c).Grow(1).Basis(0).MinWidth(0).Children(func() {
-			in = better.Input(c, t, "input", &s.rating, better.InputProps{Placeholder: locales.GameEditRatingPlaceholder(), Label: locales.GameEditRating()})
-		})
-		if in.Changed() {
-			e.changeRating(c, prev)
-		}
-		components.Text(c, "/ 10", theme.TextSM, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400)).NoWrap()
+	gamefield.Label(c, t, locales.GameEditRating())
+	gamefield.Rating(c, t, &s.rating, func(rating float64) {
+		s.ratingValue = rating
+		e.set(func(g *models.Game) { g.Rating = rating })
 	})
-	hint(c, t, locales.GameEditRatingHint(), true)
-}
-
-// changeRating 对应 number input 的 onChange：空为 0，否则限制在 0–10。number input 不接受的字符不会进入输入框。
-func (e *editor) changeRating(c *ui.Context, prev string) {
-	s := e.s
-	text := strings.TrimSpace(s.rating)
-	rating := 0.0
-	if text != "" {
-		v, err := strconv.ParseFloat(text, 64)
-		if err != nil {
-			if text != "-" && text != "." && !strings.HasSuffix(text, "e") {
-				s.rating = prev
-			}
-			return
-		}
-		rating = min(10, max(0, v))
-		if rating != v {
-			s.rating = formatRating(rating)
-		}
-	}
-	s.ratingValue = rating
-	e.set(func(g *models.Game) { g.Rating = rating })
-}
-
-// formatRating 是 value={game.rating > 0 ? game.rating : ""}。
-func formatRating(r float64) string {
-	if r <= 0 {
-		return ""
-	}
-	return strconv.FormatFloat(r, 'f', -1, 64)
+	gamefield.Hint(c, t, locales.GameEditRatingHint(), true)
 }
 
 // releaseDateField 是发售日期选择器；数据库里的日期不是 YYYY-MM-DD 时提示原始值。
 func (e *editor) releaseDateField(c *ui.Context) {
 	t, s := e.t, e.s
-	value := formatDateInputValue(e.g.ReleaseDate)
-	fieldLabel(c, t, locales.GameEditReleaseDate())
-	datePicker(c, t, "picker", datePickerProps{
+	value := gamefield.FormatDateInputValue(e.g.ReleaseDate)
+	gamefield.Label(c, t, locales.GameEditReleaseDate())
+	gamefield.DatePicker(c, t, "picker", gamefield.DatePickerProps{
 		Value: value, Label: locales.GameEditReleaseDate(), ClearLabel: locales.GameEditClearReleaseDate(), CanClear: e.g.ReleaseDate != "",
 		Open: &s.dateOpen, Month: &s.dateMonth,
 		OnChange: func(v string) { e.set(func(g *models.Game) { g.ReleaseDate = v }) },
 	})
 	if e.g.ReleaseDate != "" && value == "" {
-		hint(c, t, locales.GameEditReleaseDateRawHint(e.g.ReleaseDate), true)
+		gamefield.Hint(c, t, locales.GameEditReleaseDateRawHint(e.g.ReleaseDate), true)
 	}
 }
 
@@ -356,15 +319,15 @@ func (e *editor) pathFields(c *ui.Context) {
 				exe.Grow(1).Basis(0).MinWidth(288)
 			}
 			dir.Children(func() {
-				fieldLabel(c, t, locales.GameEditGameDirectory())
+				gamefield.Label(c, t, locales.GameEditGameDirectory())
 				v := g.GameDirectory
 				open := g.GameDirectory
 				if open == "" {
 					open = g.Path
 				}
-				in := actionInput(c, t, "input", &v, actionInputProps{Placeholder: locales.GameEditGameDirectoryPlaceholder(), Label: locales.GameEditGameDirectory()},
-					inputAction{Icon: "folder-search-outline", Label: locales.GameEditSelectFolder(), OnClick: func() { e.selectGameDirectory(c) }},
-					inputAction{Icon: "folder-open-outline", Label: locales.GameEditOpenInExplorer(), Disabled: open == "",
+				in := gamefield.ActionInput(c, t, "input", &v, gamefield.ActionInputProps{Placeholder: locales.GameEditGameDirectoryPlaceholder(), Label: locales.GameEditGameDirectory()},
+					gamefield.InputAction{Icon: "folder-search-outline", Label: locales.GameEditSelectFolder(), OnClick: func() { e.selectGameDirectory(c) }},
+					gamefield.InputAction{Icon: "folder-open-outline", Label: locales.GameEditOpenInExplorer(), Disabled: open == "",
 						OnClick: func() { e.openPath(c, open) }},
 				)
 				if in.Changed() {
@@ -373,12 +336,12 @@ func (e *editor) pathFields(c *ui.Context) {
 			})
 			// 原版先挂 dir 再挂 exe：两列在同一行时，可执行文件输入框的修改要以目录的当前值来解析相对路径。
 			exe.Children(func() {
-				fieldLabel(c, t, locales.GameEditExecutable())
+				gamefield.Label(c, t, locales.GameEditExecutable())
 				v := executableDisplayPath(e.g.Path, e.g.GameDirectory)
 				path := e.g.Path
-				in := actionInput(c, t, "input", &v, actionInputProps{Label: locales.GameEditExecutable()},
-					inputAction{Icon: "file-search-outline", Label: locales.GameEditSelectFile(), OnClick: func() { e.selectExecutable(c) }},
-					inputAction{Icon: "folder-open-outline", Label: locales.GameEditOpenInExplorer(), Disabled: path == "",
+				in := gamefield.ActionInput(c, t, "input", &v, gamefield.ActionInputProps{Label: locales.GameEditExecutable()},
+					gamefield.InputAction{Icon: "file-search-outline", Label: locales.GameEditSelectFile(), OnClick: func() { e.selectExecutable(c) }},
+					gamefield.InputAction{Icon: "folder-open-outline", Label: locales.GameEditOpenInExplorer(), Disabled: path == "",
 						OnClick: func() { e.openPath(c, path) }},
 				)
 				if in.Changed() {
@@ -395,18 +358,18 @@ func (e *editor) savePathField(c *ui.Context) {
 	t := e.t
 	root, save := e.g.GameDirectory, e.g.SavePath
 	ui.Column(c.Key("save-path")).Children(func() {
-		fieldLabel(c, t, locales.GameEditSavePath())
+		gamefield.Label(c, t, locales.GameEditSavePath())
 		v := save
-		in := actionInput(c, t, "input", &v, actionInputProps{Placeholder: locales.GameEditSavePathPlaceholder(), Label: locales.GameEditSavePath()},
-			inputAction{Icon: "folder-search-outline", Label: locales.GameEditSelectFolder(), OnClick: func() { e.selectSaveDirectory(c, root) }},
-			inputAction{Icon: "file-search-outline", Label: locales.GameEditSelectFile(), OnClick: func() { e.selectSaveFile(c, root) }},
-			inputAction{Icon: "folder-open-outline", Label: locales.GameEditOpenInExplorer(), Disabled: save == "",
+		in := gamefield.ActionInput(c, t, "input", &v, gamefield.ActionInputProps{Placeholder: locales.GameEditSavePathPlaceholder(), Label: locales.GameEditSavePath()},
+			gamefield.InputAction{Icon: "folder-search-outline", Label: locales.GameEditSelectFolder(), OnClick: func() { e.selectSaveDirectory(c, root) }},
+			gamefield.InputAction{Icon: "file-search-outline", Label: locales.GameEditSelectFile(), OnClick: func() { e.selectSaveFile(c, root) }},
+			gamefield.InputAction{Icon: "folder-open-outline", Label: locales.GameEditOpenInExplorer(), Disabled: save == "",
 				OnClick: func() { e.openPath(c, save) }},
 		)
 		if in.Changed() {
 			e.set(func(g *models.Game) { g.SavePath = v })
 		}
-		hint(c, t, locales.GameEditSavePathHint(), false)
+		gamefield.Hint(c, t, locales.GameEditSavePathHint(), false)
 	})
 }
 
@@ -414,7 +377,7 @@ func (e *editor) savePathField(c *ui.Context) {
 func (e *editor) summaryField(c *ui.Context) {
 	t := e.t
 	ui.Column(c.Key("summary")).Children(func() {
-		fieldLabel(c, t, locales.GameEditSummary())
+		gamefield.Label(c, t, locales.GameEditSummary())
 		v := e.g.Summary
 		if better.Textarea(c, t, "input", &v, better.TextareaProps{Label: locales.GameEditSummary(), Rows: 6}).Changed() {
 			e.set(func(g *models.Game) { g.Summary = v })
@@ -429,7 +392,7 @@ func (e *editor) metadataSection(c *ui.Context) {
 	g := &e.g
 	defType, defID := defaultSource(g)
 	ui.Column(c.Key("metadata")).Gap(4).Children(func() {
-		fieldLabel(c, t, locales.GameEditMetadataSources())
+		gamefield.Label(c, t, locales.GameEditMetadataSources())
 		bg, border := t.GlassPanel(t.Pick(theme.Brand50.Alpha(0.6), theme.Brand900.Alpha(0.25)), t.Pick(theme.Brand200, theme.Brand700)) // glass-panel
 		ui.Row(c.Key("card")).Gap(16).Padding(12).Radius(12).AlignItems(ui.Center).Justify(ui.SpaceBetween).
 			Border(t.HL, border).Background(bg).

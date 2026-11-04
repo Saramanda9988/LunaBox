@@ -1,4 +1,4 @@
-package edit
+package gamefield
 
 import (
 	"fmt"
@@ -19,8 +19,8 @@ var weekdayLabels = []string{"Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"}
 
 var dateRe = regexp.MustCompile(`^(\d{4})-(\d{2})-(\d{2})$`)
 
-// parseDateInputValue 对应 parseDateInputValue：YYYY-MM-DD 且日期真实存在时返回本地零点。
-func parseDateInputValue(s string) (time.Time, bool) {
+// ParseDateInputValue 对应 parseDateInputValue：YYYY-MM-DD 且日期真实存在时返回本地零点。
+func ParseDateInputValue(s string) (time.Time, bool) {
 	m := dateRe.FindStringSubmatch(s)
 	if m == nil {
 		return time.Time{}, false
@@ -35,10 +35,10 @@ func parseDateInputValue(s string) (time.Time, bool) {
 	return date, true
 }
 
-// formatDateInputValue 对应 utils/time.ts 的 formatDateInputValue：合法的 YYYY-MM-DD 原样返回，否则为空。
-func formatDateInputValue(s string) string {
+// FormatDateInputValue 对应 utils/time.ts 的 formatDateInputValue：合法的 YYYY-MM-DD 原样返回，否则为空。
+func FormatDateInputValue(s string) string {
 	s = strings.TrimSpace(s)
-	if _, ok := parseDateInputValue(s); !ok {
+	if _, ok := ParseDateInputValue(s); !ok {
 		return ""
 	}
 	return s
@@ -68,8 +68,8 @@ func calendarRows(month time.Time) []calendarWeek {
 	return rows
 }
 
-// datePickerProps 是 ReleaseDatePicker 的属性。
-type datePickerProps struct {
+// DatePickerProps 是 ReleaseDatePicker 的属性。
+type DatePickerProps struct {
 	Value      string // YYYY-MM-DD 或空
 	Label      string
 	ClearLabel string
@@ -79,13 +79,13 @@ type datePickerProps struct {
 	OnChange   func(value string)
 }
 
-// datePicker 对应 ReleaseDatePicker：只读的 BetterActionInput（点击开关日历，右侧日历与清除按钮），
+// DatePicker 对应 ReleaseDatePicker：只读的 BetterActionInput（点击开关日历，右侧日历与清除按钮），
 // 下方 absolute left-0 top-full mt-2 w-[22rem] 的日历面板。
 //
 // 原版是 readOnly 的 <input className="cursor-pointer">：这里用按钮画出同样的输入框外观。
-func datePicker(c *ui.Context, t *theme.Theme, key string, p datePickerProps) {
+func DatePicker(c *ui.Context, t *theme.Theme, key string, p DatePickerProps) {
 	if p.Month.IsZero() {
-		if d, ok := parseDateInputValue(p.Value); ok {
+		if d, ok := ParseDateInputValue(p.Value); ok {
 			*p.Month = startOfMonth(d)
 		} else {
 			*p.Month = startOfMonth(time.Now())
@@ -106,9 +106,9 @@ func datePicker(c *ui.Context, t *theme.Theme, key string, p datePickerProps) {
 				components.Text(c, strings.ReplaceAll(p.Value, "-", "/"), theme.TextBase, theme.WeightNormal, t.TextStrong).SingleLine()
 			}
 		})
-		actionButton(c, t, inputAction{Icon: "calendar-month-outline", Label: p.Label, OnClick: toggle})
+		ActionButton(c, t, InputAction{Icon: "calendar-month-outline", Label: p.Label, OnClick: toggle})
 		if p.CanClear {
-			actionButton(c, t, inputAction{Icon: "close-circle-outline", Label: p.ClearLabel, OnClick: func() {
+			ActionButton(c, t, InputAction{Icon: "close-circle-outline", Label: p.ClearLabel, OnClick: func() {
 				p.OnChange("")
 				*p.Open = false
 			}})
@@ -175,7 +175,7 @@ func calendarNavButton(c *ui.Context, t *theme.Theme, icon, label string, onClic
 }
 
 // calendarTable 是日历的 BetterDataTable（maxHeightClassName="max-h-none"），每格 p-1 text-center 的日期按钮。
-func calendarTable(c *ui.Context, t *theme.Theme, p datePickerProps) {
+func calendarTable(c *ui.Context, t *theme.Theme, p DatePickerProps) {
 	month := *p.Month
 	cols := make([]better.DataTableColumn[calendarWeek], len(weekdayLabels))
 	for i, wd := range weekdayLabels {

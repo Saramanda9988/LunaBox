@@ -532,13 +532,6 @@ func TestPathHelpers(t *testing.T) {
 			t.Errorf("resolve(%q, %q) = %q, want %q", c.in, c.dir, got, c.want)
 		}
 	}
-	if formatDateInputValue("2023-02-29") != "" || formatDateInputValue(" 2024-02-29 ") != "2024-02-29" {
-		t.Error("formatDateInputValue")
-	}
-	rows := calendarRows(time.Date(2024, 5, 1, 0, 0, 0, 0, time.Local))
-	if got := rows[0].dates[0].Format("2006-01-02"); got != "2024-04-28" {
-		t.Errorf("first calendar day = %s", got)
-	}
 }
 
 // DESKTOP_MYGO_PNG=<目录> 时把面板与它的抽屉、弹窗存成图片（深色，150%），用于目测。

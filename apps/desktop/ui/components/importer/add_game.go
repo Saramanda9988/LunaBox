@@ -11,7 +11,6 @@ import (
 	"lunabox/backend/common/enums"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
-	"lunabox/backend/utils/metadata"
 	"lunabox/desktop/ui/assets"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/better"
@@ -37,9 +36,7 @@ type AddGame struct {
 	searchBy  string      // 进行中的是 "name" 还是 "id"：对应的按钮显示加载并可以点击取消
 	manualID  string
 	source    enums.SourceType // manualSource
-	cover     string
-	company   string
-	summary   string
+	form      manualForm       // 手动填写的字段
 	gen       int
 }
 
@@ -254,61 +251,14 @@ func (a *AddGame) searchByID(c *ui.Context, source enums.SourceType, onAdded fun
 	})
 }
 
-// selectCover 对应 handleSelectCoverImage。
-func (a *AddGame) selectCover(c *ui.Context) {
-	svc, gen := a.env.Svc.Game, a.gen
-	a.env.Async(func() func() {
-		url, err := svc.SelectCoverImageWithTempID()
-		return func() {
-			if gen != a.gen {
-				return
-			}
-			if err != nil {
-				log.Printf("add game: select cover: %v", err)
-				a.env.Toast(c, env.Error(locales.AddGameModalToastSelectCoverFailed()))
-				return
-			}
-			if url != "" {
-				a.cover = url
-			}
-		}
-	})
-}
-
-// manualSave 对应 handleManualSave：远程游戏填了 ID 时记下这个来源，否则是本地来源。
-func (a *AddGame) manualSave(c *ui.Context, source enums.SourceType, onAdded func()) {
-	if a.name == "" {
-		a.env.Toast(c, env.Error(locales.AddGameModalToastFillGameName()))
-		return
-	}
-	if !a.remote && a.exe == "" {
-		a.env.Toast(c, env.Error(locales.AddGameModalToastSelectExecutableRequired()))
-		return
-	}
-	id := ""
-	if a.remote && source != enums.Local {
-		id = strings.TrimSpace(a.manualID)
-	}
-	src := enums.Local
-	if id != "" {
-		src = source
-	}
-	g := models.Game{Name: a.name, CoverURL: a.cover, Company: a.company, Summary: a.summary, SourceType: src, SourceID: id, Status: enums.StatusNotStarted}
-	if id != "" {
-		g.MetadataSources = []models.GameMetadataSource{{SourceType: src, SourceID: id}}
-	}
-	if a.remote {
-		g.Status = enums.StatusWantToPlay
-	} else {
-		g.Path = a.exe
-	}
-	a.save(c, vo.GameMetadataFromWebVO{Source: src, Game: g, Tags: []metadata.TagItem{}}, onAdded)
-}
-
 // View 对应 AddGameModal：w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl，text-4xl 的标题与关闭按钮
 // （结果步骤 mb-2，其余 mb-6）。onAdded 在保存后调用（onGameAdded）。要在页面最后构建。
 func (a *AddGame) View(c *ui.Context, t *theme.Theme, onAdded func()) {
-	components.Modal(c, t, "add-game", components.ModalProps{Open: a.open, TopOffset: env.TopbarHeight, MaxWidth: 672}, func(pnl ui.Element) {
+	width := float32(672)
+	if a.step == "manual" {
+		width = manualWidth
+	}
+	components.Modal(c, t, "add-game", components.ModalProps{Open: a.open, TopOffset: env.TopbarHeight, MaxWidth: width}, func(pnl ui.Element) {
 		pnl.Radius(12).Padding(24).Background(t.PanelBg).Shadow(0, 25, 50, -12, ui.RGBA(0, 0, 0, 0.25)).Children(func() {
 			mb := float32(24)
 			if a.step == "results" {
@@ -336,7 +286,7 @@ func (a *AddGame) View(c *ui.Context, t *theme.Theme, onAdded func()) {
 			case "id":
 				a.idStep(c, t, opts, source, onAdded)
 			case "manual":
-				a.manualStep(c, t, source, onAdded)
+				a.manualStep(c, t, onAdded)
 			}
 		})
 	})
@@ -476,7 +426,7 @@ func (a *AddGame) localStep(c *ui.Context, t *theme.Theme) {
 			ui.Row(c).Gap(16).Children(func() {
 				manual := outlineButton(c, t, "manual", locales.CommonManualAdd(), a.exe == "", 20, 10)
 				if a.exe != "" {
-					manual.OnClick(func() { a.back("manual") })
+					manual.OnClick(a.toManual)
 				}
 				a.searchButton(c, "search", "name", locales.AddGameModalSearchMeta(), a.exe == "" || a.name == "" || a.loading, func() { a.searchByName(c) })
 			})
@@ -527,7 +477,7 @@ func (a *AddGame) remoteStep(c *ui.Context, t *theme.Theme, opts []better.Select
 		})
 		ui.Row(c).Justify(ui.SpaceBetween).Gap(16).Children(func() {
 			outlineButton(c, t, "back", locales.CommonBack(), false, 20, 10).OnClick(func() { a.back("type") })
-			outlineButton(c, t, "manual", locales.CommonManualAdd(), false, 20, 10).OnClick(func() { a.back("manual") })
+			outlineButton(c, t, "manual", locales.CommonManualAdd(), false, 20, 10).OnClick(a.toManual)
 		})
 	})
 }
@@ -546,7 +496,7 @@ func (a *AddGame) resultsStep(c *ui.Context, t *theme.Theme, onAdded func()) {
 				linkButton(c, t, "back", "←"+locales.AddGameModalGoBack(), false, func() { a.step = a.entryStep() })
 				ui.Row(c).Gap(16).AlignItems(ui.Center).Children(func() {
 					components.Text(c, locales.AddGameModalNoneOfAbove(), theme.TextSM, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400)).NoWrap()
-					linkButton(c, t, "fill", locales.AddGameModalFillManually(), false, func() { a.step = "manual" })
+					linkButton(c, t, "fill", locales.AddGameModalFillManually(), false, a.toManual)
 					linkButton(c, t, "by-id", locales.AddGameModalSearchById(), true, func() {
 						if a.remote {
 							a.step = "remote"
@@ -584,51 +534,6 @@ func (a *AddGame) idStep(c *ui.Context, t *theme.Theme, opts []better.SelectOpti
 			outlineButton(c, t, "back", locales.CommonBack(), false, 20, 10).OnClick(func() { a.back("results") })
 			a.searchButton(c, "confirm", "id", locales.CommonConfirm(), a.manualID == "" || source == enums.Local || a.loading,
 				func() { a.searchByID(c, source, onAdded) })
-		})
-	})
-}
-
-// manualStep（space-y-4）：说明，名称、封面（输入框加“选择”按钮与 mt-1 text-xs 的提示）、开发商、简介（rows=3），
-// 右下角返回与保存。
-func (a *AddGame) manualStep(c *ui.Context, t *theme.Theme, source enums.SourceType, onAdded func()) {
-	ui.Column(c.Key("manual-step")).Gap(16).Children(func() {
-		info := locales.AddGameModalManualFillInfo()
-		if a.remote {
-			info = locales.AddGameModalRemoteManualFillInfo()
-		}
-		components.Text(c, info, theme.TextBase, theme.WeightNormal, t.Pick(theme.Brand600, theme.Brand300))
-		labeled(c, t, "name", locales.AddGameModalGameName(), func() {
-			field(c, t, "name-input", &a.name, locales.AddGameModalGameName(), "")
-		})
-		labeled(c, t, "cover", locales.AddGameModalCoverImage(), func() {
-			ui.Row(c).Gap(8).AlignItems(ui.Stretch).Children(func() {
-				field(c, t, "cover-input", &a.cover, locales.AddGameModalCoverImage(), locales.AddGameModalCoverPlaceholder()).Grow(1).Basis(0).MinWidth(0)
-				// rounded-lg bg-brand-100 px-4 py-2 text-brand-700 hover:bg-brand-200 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600
-				btn := ui.ButtonBase(c.Key("select-cover")).Padding(8, 16).Radius(8).Center().FocusRing(false)
-				bg := t.Pick(theme.Brand100, theme.Brand700)
-				if btn.Hovered() {
-					bg = t.Pick(theme.Brand200, theme.Brand600)
-				}
-				btn.Background(bg).OnClick(func() { a.selectCover(c) }).Children(func() {
-					components.Text(c, locales.CommonSelect(), theme.TextBase, theme.WeightNormal, t.Pick(theme.Brand700, theme.Brand300)).NoWrap()
-				})
-			})
-			components.TextMargin(c, locales.AddGameModalCoverHint(), theme.TextXS, theme.WeightNormal, theme.Brand500, 4, 0, 0, 0)
-		})
-		labeled(c, t, "company", locales.AddGameModalDeveloper(), func() {
-			field(c, t, "company-input", &a.company, locales.AddGameModalDeveloper(), "")
-		})
-		labeled(c, t, "summary", locales.AddGameModalSummary(), func() {
-			better.Textarea(c, t, "summary-input", &a.summary, better.TextareaProps{Label: locales.AddGameModalSummary(), Rows: 3}).
-				Padding(12).Radius(8).Background(t.Pick(theme.Brand50, theme.Brand700))
-		})
-		ui.Row(c).Justify(ui.End).Gap(16).Margin(8, 0, 0, 0).Children(func() {
-			outlineButton(c, t, "back", locales.CommonBack(), false, 20, 10).OnClick(func() { a.step = a.entryStep() })
-			label := locales.CommonSave()
-			if a.loading {
-				label = locales.CommonSaving()
-			}
-			primary(c, "save", label, a.name == "" || a.loading, func() { a.manualSave(c, source, onAdded) })
 		})
 	})
 }

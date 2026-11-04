@@ -1614,5 +1614,9 @@
   "native_trayQuit": "Exit",
   "native_templateExportWebViewUnavailable": "No WebView component found, so templates cannot be previewed or exported (Windows needs the WebView2 Runtime, Linux needs WebKitGTK)",
   "native_authCancelled": "Authorization cancelled",
-  "native_clickToCancel": "Click to cancel"
+  "native_clickToCancel": "Click to cancel",
+  "native_tags": "Tags",
+  "native_addGameCoverEmpty": "Click to choose or paste a cover",
+  "native_addGameTagsHint": "Press Enter to add a new tag, or pick one already in your library",
+  "native_addGameSourcesHint": "The starred source is the default; metadata can be updated from these sources later"
 }

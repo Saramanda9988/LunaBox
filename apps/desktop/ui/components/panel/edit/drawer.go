@@ -10,6 +10,7 @@ import (
 	"lunabox/backend/models"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/better"
+	"lunabox/desktop/ui/components/gamefield"
 	"lunabox/desktop/ui/components/panel"
 	"lunabox/desktop/ui/locales"
 	"lunabox/desktop/ui/theme"
@@ -116,14 +117,14 @@ func (e *editor) sourceItem(c *ui.Context, src models.GameMetadataSource) {
 
 	url := sourceURL(source, sourceID, erogameScapeBase(e))
 	v := sourceID
-	in := actionInput(c, t, "source-id", &v, actionInputProps{Placeholder: locales.GameEditSourceIdPlaceholder(), Label: label + " ID"},
-		inputAction{Icon: "open-in-new", Label: locales.GameEditOpenSourcePage(), Disabled: url == "", OnClick: func() { c.OpenURL(url) }},
+	in := gamefield.ActionInput(c, t, "source-id", &v, gamefield.ActionInputProps{Placeholder: locales.GameEditSourceIdPlaceholder(), Label: label + " ID"},
+		gamefield.InputAction{Icon: "open-in-new", Label: locales.GameEditOpenSourcePage(), Disabled: url == "", OnClick: func() { c.OpenURL(url) }},
 	)
 	if in.Changed() {
 		s.sourceEdits[source] = v
 		e.scheduleSourceSave(c, source, v)
 	}
-	if blurred(in) && strings.TrimSpace(v) == "" {
+	if gamefield.Blurred(in) && strings.TrimSpace(v) == "" {
 		s.sourceEdits[source] = src.SourceID
 	}
 }
@@ -144,7 +145,7 @@ func (e *editor) addSourceForm(c *ui.Context) {
 		components.Text(c, locales.GameEditAddSource(), theme.TextSM, theme.WeightSemibold, t.Pick(theme.Brand800, theme.Brand100))
 		ui.Row(c).Gap(8).AlignItems(ui.Start).Children(func() {
 			var options []better.SelectOption
-			for _, source := range metadataSourceTypes {
+			for _, source := range gamefield.MetadataSourceTypes {
 				if !configured(g, source) {
 					options = append(options, better.SelectOption{Label: sourceLabel(source), Value: string(source)})
 				}

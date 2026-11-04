@@ -18,6 +18,7 @@ import (
 	"lunabox/desktop/host"
 	"lunabox/desktop/host/hosttest"
 	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/env/envtest"
 	"lunabox/desktop/ui/locales"
 	"lunabox/desktop/ui/theme"
 )
@@ -431,7 +432,7 @@ func TestAddGameManualRemote(t *testing.T) {
 	h.click(t, locales.AddGameModalRemoteGame())
 	h.click(t, locales.CommonManualAdd())
 	h.expect(t, locales.AddGameModalRemoteManualFillInfo())
-	a.name, a.company = "星之梦", "ゆずソフト"
+	a.name, a.form.company = "星之梦", "ゆずソフト"
 	h.frames(1)
 	h.click(t, locales.CommonSave())
 	h.frames(2)
@@ -536,5 +537,106 @@ func TestAddGameCancelSearch(t *testing.T) {
 	h.click(t, locales.AddGameModalSearchMeta())
 	if a.step != "results" || len(a.results) != 1 {
 		t.Fatalf("search: step %q, results %d", a.step, len(a.results))
+	}
+}
+
+// 手动填写与详情页的编辑字段对齐：别名、评分、发售日期、标签（从库里的标签候选中选，或输入新的）、
+// 元数据来源（远程游戏上一步填的 ID 带过来，可以再添加、切换默认），保存后都写进数据库。
+func TestAddGameManualFullForm(t *testing.T) {
+	var a *AddGame
+	h := newHarness(t)
+	h.env.Backend = &envtest.Backend{Tags: []string{"纯爱", "乐队"}}
+	view := func(h *harness, c *ui.Context, th *theme.Theme) { a.View(c, th, func() { h.completed++ }) }
+	a = NewAddGame(h.env)
+	h.run(view)
+	h.tt.SetSize(1280, 1600) // 表单不用滚动就能点到底部的按钮
+	a.Open()
+	h.frames(2)
+	h.click(t, locales.AddGameModalRemoteGame())
+	a.manualID = "160559"
+	h.frames(1)
+	h.click(t, locales.CommonManualAdd())
+	h.expect(t, locales.NativeAddGameCoverEmpty(), locales.GameEditAliases(), locales.GameEditRating(), locales.GameEditReleaseDate(),
+		locales.NativeTags(), locales.GameEditMetadataSources())
+	f := &a.form
+	if len(f.sources) != 1 || f.sources[0].SourceID != "160559" {
+		t.Fatalf("prefilled sources %+v", f.sources)
+	}
+	first := f.sources[0].SourceType
+	a.name = "千恋＊万花"
+	f.ratingValue, f.rating, f.releaseDate = 8.5, "8.5", "2016-07-15"
+	h.frames(1)
+
+	h.click(t, locales.GameEditAddAlias())
+	h.tt.Type("Senren")
+	h.tt.Key(0, ui.KeyEnter)
+	h.frames(2)
+	if !slices.Equal(f.aliases, []string{"Senren"}) {
+		t.Fatalf("aliases %q", f.aliases)
+	}
+
+	h.click(t, locales.TagsInputPlaceholder())
+	h.tt.Type("纯")
+	h.frames(2)
+	h.click(t, "纯爱") // 库里的候选
+	h.tt.Type("新标签")
+	h.tt.Key(0, ui.KeyEnter)
+	h.frames(2)
+	if !slices.Equal(f.tags, []string{"纯爱", "新标签"}) {
+		t.Fatalf("tags %q", f.tags)
+	}
+
+	second := enums.VNDB
+	if first == enums.VNDB {
+		second = enums.Bangumi
+	}
+	f.sourceDraftType, f.sourceDraftID = second, "v19073"
+	if second == enums.Bangumi {
+		f.sourceDraftID = "160559"
+	}
+	h.frames(1)
+	h.click(t, locales.GameEditAddSource())
+	if len(f.sources) != 2 {
+		t.Fatalf("sources %+v", f.sources)
+	}
+	h.click(t, locales.GameEditSetDefaultSource()) // 第二个设为默认
+	if def, _ := f.defaultSourceOf(f.sources); def.SourceType != second {
+		t.Fatalf("default %q", def.SourceType)
+	}
+	h.click(t, locales.GameEditSetDefaultSource()) // 再换回第一个（不会按第二个来源联网补标签）
+	if def, _ := f.defaultSourceOf(f.sources); def.SourceType != first {
+		t.Fatalf("default %q", def.SourceType)
+	}
+
+	h.click(t, locales.CommonSave())
+	h.frames(2)
+	if h.completed != 1 || a.IsOpen() {
+		t.Fatalf("completed %d, open %v", h.completed, a.IsOpen())
+	}
+	var id string
+	if err := h.svc.DB.QueryRow(`SELECT id FROM games WHERE name = ?`, "千恋＊万花").Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	g, err := h.svc.Game.GetGameByID(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g.Rating != 8.5 || g.ReleaseDate != "2016-07-15" || !slices.Equal(g.Aliases, []string{"Senren"}) ||
+		g.SourceType != first || len(g.MetadataSources) != 2 || g.Status != enums.StatusWantToPlay {
+		t.Fatalf("saved game %+v", g)
+	}
+	tags, err := h.svc.Tag.GetTagsByGame(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var user []string
+	for _, tag := range tags {
+		if tag.Source == "user" {
+			user = append(user, tag.Name)
+		}
+	}
+	slices.Sort(user)
+	if !slices.Equal(user, []string{"新标签", "纯爱"}) {
+		t.Fatalf("user tags %q", user)
 	}
 }

@@ -8,13 +8,9 @@ import (
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/enums"
 	"lunabox/backend/models"
+	"lunabox/desktop/ui/components/gamefield"
 	"lunabox/desktop/ui/locales"
 )
-
-// metadataSourceTypes 是“添加来源”下拉框的选项顺序（GameEditPanel.tsx 的 metadataSourceTypes）。
-var metadataSourceTypes = []enums.SourceType{
-	enums.Bangumi, enums.VNDB, enums.Ymgal, enums.Steam, enums.DLsite, enums.TouchGal, enums.Hikarinagi, enums.ErogameScape,
-}
 
 // sourceLabel 对应 sourceOptions 的 label（与 importFlow.ts 的 sourceLabel 相同）；未知来源原样显示。
 func sourceLabel(source enums.SourceType) string {
@@ -41,7 +37,7 @@ func sourceLabel(source enums.SourceType) string {
 
 // resultSourceLabel 是 importFlow.ts 的 sourceLabel：未知来源显示为 Steam。
 func resultSourceLabel(source enums.SourceType) string {
-	for _, s := range metadataSourceTypes {
+	for _, s := range gamefield.MetadataSourceTypes {
 		if s == source {
 			return sourceLabel(source)
 		}

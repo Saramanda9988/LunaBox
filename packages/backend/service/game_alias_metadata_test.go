@@ -121,3 +121,35 @@ func TestUpdateDownloadedCoverURLSkipsSupersededSource(t *testing.T) {
 		t.Fatalf("manual cover = %q source = %q", coverURL, coverSourceURL)
 	}
 }
+
+// 手动添加时填写的用户标签随游戏一起保存，去掉重复的。
+func TestAddGameFromWebMetadataSavesUserTags(t *testing.T) {
+	db := setupImportServiceTestDB(t)
+	service := NewGameService()
+	service.Init(context.Background(), db, &appconf.AppConfig{})
+	tags := NewTagService()
+	tags.Init(context.Background(), db, &appconf.AppConfig{})
+	service.SetTagService(tags)
+
+	game := models.Game{ID: "manual-tags-game", Name: "手动添加", SourceType: enums.Local}
+	err := service.AddGameFromWebMetadata(vo.GameMetadataFromWebVO{Source: enums.Local, Game: game, Tags: []metadata.TagItem{
+		{Name: "纯爱", Source: "user"}, {Name: " 纯爱 ", Source: "user"}, {Name: "乐队", Source: "user"},
+	}})
+	if err != nil {
+		t.Fatalf("add game: %v", err)
+	}
+	saved, err := tags.GetTagsByGame(game.ID)
+	if err != nil {
+		t.Fatalf("get tags: %v", err)
+	}
+	var names []string
+	for _, tag := range saved {
+		if tag.Source != "user" {
+			t.Fatalf("tag %q has source %q", tag.Name, tag.Source)
+		}
+		names = append(names, tag.Name)
+	}
+	if len(names) != 2 {
+		t.Fatalf("user tags: %q", names)
+	}
+}

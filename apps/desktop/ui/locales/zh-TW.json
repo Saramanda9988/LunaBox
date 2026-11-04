@@ -1614,5 +1614,9 @@
   "native_trayQuit": "結束",
   "native_templateExportWebViewUnavailable": "系統缺少 WebView 元件，無法預覽和匯出模板（Windows 需要 WebView2 Runtime，Linux 需要 WebKitGTK）",
   "native_authCancelled": "已取消授權",
-  "native_clickToCancel": "點擊取消"
+  "native_clickToCancel": "點擊取消",
+  "native_tags": "標籤",
+  "native_addGameCoverEmpty": "點擊選擇或貼上封面",
+  "native_addGameTagsHint": "按 Enter 新增標籤，或從庫裡已有的標籤中選擇",
+  "native_addGameSourcesHint": "星標的是預設來源，新增後可以從這些來源更新中繼資料"
 }

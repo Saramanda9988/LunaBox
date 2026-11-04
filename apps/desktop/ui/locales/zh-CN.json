@@ -3229,5 +3229,13 @@
   "native_authCancelled": "已取消授权",
   "@native_authCancelled": {"description": "extra:native.authCancelled"},
   "native_clickToCancel": "点击取消",
-  "@native_clickToCancel": {"description": "extra:native.clickToCancel"}
+  "@native_clickToCancel": {"description": "extra:native.clickToCancel"},
+  "native_tags": "标签",
+  "@native_tags": {"description": "extra:native.tags"},
+  "native_addGameCoverEmpty": "点击选择或粘贴封面",
+  "@native_addGameCoverEmpty": {"description": "extra:native.addGameCoverEmpty"},
+  "native_addGameTagsHint": "按 Enter 添加新标签，或从库里已有的标签中选择",
+  "@native_addGameTagsHint": {"description": "extra:native.addGameTagsHint"},
+  "native_addGameSourcesHint": "星标的是默认来源，添加后可以从这些来源更新元数据",
+  "@native_addGameSourcesHint": {"description": "extra:native.addGameSourcesHint"}
 }

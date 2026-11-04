@@ -231,7 +231,8 @@ func (s *GameService) AddGameFromWebMetadata(meta vo.GameMetadataFromWebVO) erro
 		game.SourceType = meta.Source
 	}
 	s.applyDefaultLaunchTools(&game)
-	fallbackFetchTags := len(meta.Tags) == 0
+	_, scraped := splitUserTags(meta.Tags)
+	fallbackFetchTags := len(scraped) == 0
 	return s.addGameWithTags(game, meta.Tags, fallbackFetchTags)
 }
 
@@ -356,14 +357,21 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 	}
 
 	// 优先使用已刮削出的 tags，避免重复网络请求；无 tags 时再按 source_id 兜底拉取。
+	// Source 为 user 的是手动添加时填写的用户标签。
 	if s.tagService != nil {
+		userTags, scrapedTags := splitUserTags(tags)
 		switch {
-		case len(tags) > 0:
-			if err := s.tagService.upsertScrapedTags(game.ID, tags); err != nil {
+		case len(scrapedTags) > 0:
+			if err := s.tagService.upsertScrapedTags(game.ID, scrapedTags); err != nil {
 				applog.LogWarningf(s.ctx, "AddGame: failed to upsert scraped tags for game %s: %v", game.Name, err)
 			}
 		case fallbackFetchTags:
 			s.syncScrapedTagsForGame(game)
+		}
+		for _, name := range userTags {
+			if err := s.tagService.AddUserTag(game.ID, name); err != nil {
+				applog.LogWarningf(s.ctx, "AddGame: failed to add user tag %q for game %s: %v", name, game.Name, err)
+			}
 		}
 	}
 
@@ -373,6 +381,26 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 	}
 
 	return nil
+}
+
+// splitUserTags 把标签分成用户标签（Source 为 user，去重后的名称）与刮削的标签。
+func splitUserTags(tags []metadata.TagItem) ([]string, []metadata.TagItem) {
+	var user []string
+	var scraped []metadata.TagItem
+	seen := map[string]bool{}
+	for _, tag := range tags {
+		if !strings.EqualFold(strings.TrimSpace(tag.Source), "user") {
+			scraped = append(scraped, tag)
+			continue
+		}
+		name := strings.TrimSpace(tag.Name)
+		if name == "" || seen[strings.ToLower(name)] {
+			continue
+		}
+		seen[strings.ToLower(name)] = true
+		user = append(user, name)
+	}
+	return user, scraped
 }
 
 func (s *GameService) finalizeTempCover(gameID, tempCoverURL string) {
@@ -1261,6 +1289,26 @@ func (s *GameService) SelectCoverImage(gameID string) (string, error) {
 	return coverPath, nil
 }
 
+// decodeCoverImageDataURL 解码剪贴板图片的 data URL，限制大小。
+func decodeCoverImageDataURL(dataURL string) ([]byte, string, error) {
+	contentType, encodedData, err := gamehelper.SplitImageDataURL(dataURL)
+	if err != nil {
+		return nil, "", err
+	}
+	if base64.StdEncoding.DecodedLen(len(encodedData)) > gamehelper.MaxClipboardCoverImageBytes {
+		return nil, "", fmt.Errorf("cover image is too large")
+	}
+
+	imageData, err := base64.StdEncoding.DecodeString(encodedData)
+	if err != nil {
+		return nil, "", fmt.Errorf("decode cover image data: %w", err)
+	}
+	if len(imageData) > gamehelper.MaxClipboardCoverImageBytes {
+		return nil, "", fmt.Errorf("cover image is too large")
+	}
+	return imageData, contentType, nil
+}
+
 // SaveCoverImageDataURL 保存前端剪贴板读取到的图片 data URL。
 func (s *GameService) SaveCoverImageDataURL(gameID string, dataURL string) (string, error) {
 	gameID = strings.TrimSpace(gameID)
@@ -1268,20 +1316,9 @@ func (s *GameService) SaveCoverImageDataURL(gameID string, dataURL string) (stri
 		return "", errors.New("game ID is required")
 	}
 
-	contentType, encodedData, err := gamehelper.SplitImageDataURL(dataURL)
+	imageData, contentType, err := decodeCoverImageDataURL(dataURL)
 	if err != nil {
 		return "", err
-	}
-	if base64.StdEncoding.DecodedLen(len(encodedData)) > gamehelper.MaxClipboardCoverImageBytes {
-		return "", fmt.Errorf("cover image is too large")
-	}
-
-	imageData, err := base64.StdEncoding.DecodeString(encodedData)
-	if err != nil {
-		return "", fmt.Errorf("decode cover image data: %w", err)
-	}
-	if len(imageData) > gamehelper.MaxClipboardCoverImageBytes {
-		return "", fmt.Errorf("cover image is too large")
 	}
 
 	unlock := s.lockGameCover(gameID)
@@ -1296,6 +1333,22 @@ func (s *GameService) SaveCoverImageDataURL(gameID string, dataURL string) (stri
 		return "", fmt.Errorf("failed to update cover URL from clipboard: %w", err)
 	}
 
+	return coverPath, nil
+}
+
+// SaveCoverImageDataURLWithTempID 把剪贴板图片的 data URL 用临时 ID 保存为封面（用于新增游戏时，
+// 同 SelectCoverImageWithTempID，添加游戏时改成游戏 ID）。
+func (s *GameService) SaveCoverImageDataURLWithTempID(dataURL string) (string, error) {
+	imageData, contentType, err := decodeCoverImageDataURL(dataURL)
+	if err != nil {
+		return "", err
+	}
+	tempID := fmt.Sprintf("temp_%d", time.Now().UnixNano())
+	coverPath, err := imageutils.SaveCoverImageBytes(imageData, tempID, contentType)
+	if err != nil {
+		applog.LogErrorf(s.ctx, "failed to save cover image from clipboard: %v", err)
+		return "", fmt.Errorf("failed to save cover image from clipboard: %w", err)
+	}
 	return coverPath, nil
 }
 

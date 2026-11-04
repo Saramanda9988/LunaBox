@@ -24104,3 +24104,59 @@ func NativeClickToCancel() string { return In(i18n.Locale()).NativeClickToCancel
 func (msgs Messages) NativeClickToCancel() string {
 	return Catalog.Format(msgs.locale, "native_clickToCancel", nil)
 }
+
+// NativeTags says "标签"
+// in the language the app shows.
+//
+// extra:native.tags
+func NativeTags() string { return In(i18n.Locale()).NativeTags() }
+
+// NativeTags says "标签"
+// in the language of msgs.
+//
+// extra:native.tags
+func (msgs Messages) NativeTags() string {
+	return Catalog.Format(msgs.locale, "native_tags", nil)
+}
+
+// NativeAddGameCoverEmpty says "点击选择或粘贴封面"
+// in the language the app shows.
+//
+// extra:native.addGameCoverEmpty
+func NativeAddGameCoverEmpty() string { return In(i18n.Locale()).NativeAddGameCoverEmpty() }
+
+// NativeAddGameCoverEmpty says "点击选择或粘贴封面"
+// in the language of msgs.
+//
+// extra:native.addGameCoverEmpty
+func (msgs Messages) NativeAddGameCoverEmpty() string {
+	return Catalog.Format(msgs.locale, "native_addGameCoverEmpty", nil)
+}
+
+// NativeAddGameTagsHint says "按 Enter 添加新标签，或从库里已有的标签中选择"
+// in the language the app shows.
+//
+// extra:native.addGameTagsHint
+func NativeAddGameTagsHint() string { return In(i18n.Locale()).NativeAddGameTagsHint() }
+
+// NativeAddGameTagsHint says "按 Enter 添加新标签，或从库里已有的标签中选择"
+// in the language of msgs.
+//
+// extra:native.addGameTagsHint
+func (msgs Messages) NativeAddGameTagsHint() string {
+	return Catalog.Format(msgs.locale, "native_addGameTagsHint", nil)
+}
+
+// NativeAddGameSourcesHint says "星标的是默认来源，添加后可以从这些来源更新元数据"
+// in the language the app shows.
+//
+// extra:native.addGameSourcesHint
+func NativeAddGameSourcesHint() string { return In(i18n.Locale()).NativeAddGameSourcesHint() }
+
+// NativeAddGameSourcesHint says "星标的是默认来源，添加后可以从这些来源更新元数据"
+// in the language of msgs.
+//
+// extra:native.addGameSourcesHint
+func (msgs Messages) NativeAddGameSourcesHint() string {
+	return Catalog.Format(msgs.locale, "native_addGameSourcesHint", nil)
+}

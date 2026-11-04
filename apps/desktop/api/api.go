@@ -104,6 +104,7 @@ type GameService interface {
 	FetchMetadataFromWebContext(ctx context.Context, req vo.MetadataRequest) (vo.GameMetadataFromWebVO, error)
 	AddGameFromWebMetadata(meta vo.GameMetadataFromWebVO) error
 	SelectCoverImageWithTempID() (string, error)
+	SaveCoverImageDataURLWithTempID(dataURL string) (string, error)
 	UpdateGameFromRemoteBySourceContext(ctx context.Context, gameID string, source enums.SourceType) error
 	UpdateGameFromRemoteWithFieldsContext(ctx context.Context, gameID string, fields []enums.MetadataUpdateField) error
 	RefreshGamesMetadataWithFields(gameIDs []string, fields []enums.MetadataUpdateField) (vo.MetadataRefreshResult, error)

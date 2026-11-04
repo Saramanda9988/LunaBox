@@ -13,6 +13,7 @@ import (
 	"lunabox/backend/common/enums"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
+	"lunabox/desktop/ui/components/gamefield"
 	"lunabox/desktop/ui/env"
 	"lunabox/desktop/ui/locales"
 )
@@ -276,7 +277,7 @@ func (e *editor) addSource(c *ui.Context) {
 		e.p.OnSaved()
 		e.toast(c, env.Success(locales.GameEditSourceSaved()))
 		s.sourceDraftID = ""
-		for _, t := range metadataSourceTypes {
+		for _, t := range gamefield.MetadataSourceTypes {
 			if t != source && !configured(&g, t) {
 				s.sourceDraftType = t
 				break
