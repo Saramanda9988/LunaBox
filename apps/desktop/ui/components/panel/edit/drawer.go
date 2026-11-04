@@ -187,18 +187,20 @@ func (e *editor) searchButtons(c *ui.Context) {
 			}
 			return normal
 		}
-		better.Button(c, t, "search-relations", better.ButtonProps{
-			Variant: better.ButtonSecondary, Icon: "database-search-outline", Loading: s.searching,
-			Label: label(locales.GameEditSearchMetadataByCurrentName()),
-		}).FillWidth().OnClick(func() { e.searchByName(c, searchSourceRelations) })
-		better.Button(c, t, "search-update", better.ButtonProps{
-			Variant: better.ButtonPrimary, Icon: "database-refresh-outline", Loading: s.searching,
-			Label: label(locales.GameEditSearchMetadataAndUpdateByCurrentName()),
-		}).FillWidth().OnClick(func() { e.searchByName(c, searchUpdateMetadata) })
-		if s.searching && s.search.Active() {
-			better.Button(c, t, "search-cancel", better.ButtonProps{
-				Variant: better.ButtonGhost, Icon: "close", Label: locales.CommonCancel(),
-			}).FillWidth().OnClick(s.cancelSearch)
+		// 进行中的那个按钮显示“点击取消”，点击取消搜索；另一个照常禁用。
+		button := func(key string, mode searchMode, variant better.ButtonVariant, icon, normal string) {
+			p := better.ButtonProps{
+				Variant: variant, Icon: icon, Loading: s.searching, Label: label(normal),
+				OnClick: func() { e.searchByName(c, mode) },
+			}
+			if s.searching && s.searchingMode == mode && s.search.Active() {
+				p.OnCancel, p.CancelLabel = s.cancelSearch, locales.NativeClickToCancel()
+			}
+			better.Button(c, t, key, p).FillWidth()
 		}
+		button("search-relations", searchSourceRelations, better.ButtonSecondary, "database-search-outline",
+			locales.GameEditSearchMetadataByCurrentName())
+		button("search-update", searchUpdateMetadata, better.ButtonPrimary, "database-refresh-outline",
+			locales.GameEditSearchMetadataAndUpdateByCurrentName())
 	})
 }

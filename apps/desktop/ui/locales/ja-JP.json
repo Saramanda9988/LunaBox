@@ -1796,5 +1796,6 @@
   "mygo.clipboardReadAllow": "許可",
   "mygo.clipboardReadDeny": "拒否",
   "mygo.clipboardReadEmpty": "クリップボードは空です。",
-  "native_authCancelled": "認証をキャンセルしました"
+  "native_authCancelled": "認証をキャンセルしました",
+  "native_clickToCancel": "クリックでキャンセル"
 }

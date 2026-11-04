@@ -38,6 +38,12 @@ type ButtonProps struct {
 	Disabled bool
 	Label    string
 	Children func(color ui.Color) // 自定义内容（图片 + 文字等），收到当前文字颜色
+
+	// OnCancel 不为 nil 时，加载中的按钮可以点击取消：保留旋转图标，文字换成 CancelLabel（如“点击取消”）。
+	// 点击由按钮分发：调用方把原来的操作放在 OnClick 里，不要再在返回的元素上设置 OnClick。
+	OnCancel    func()
+	CancelLabel string
+	OnClick     func()
 }
 
 // ButtonStyle 是 BetterButton 在某个状态下的颜色，调用方可以在 Button 返回后按 className 覆盖。
@@ -99,8 +105,19 @@ func Button(c *ui.Context, t *theme.Theme, key string, p ButtonProps) ui.Element
 	case ButtonLG:
 		h, padX, gap, f, iconSize = 44, 20, 8, theme.FontStep{Size: 14, Line: 14}, 20
 	}
-	disabled := p.Disabled || p.Loading
+	cancelable := p.Loading && p.OnCancel != nil
+	disabled := p.Disabled || (p.Loading && !cancelable)
 	btn := ui.ButtonBase(c.Key(key)).Height(h).Radius(8).Gap(gap).Center().Shrink(0).FocusRing(false)
+	if p.OnCancel != nil || p.OnClick != nil {
+		btn.OnClick(func() {
+			switch {
+			case cancelable:
+				p.OnCancel()
+			case !disabled && !p.Loading && p.OnClick != nil:
+				p.OnClick()
+			}
+		})
+	}
 	if p.Label == "" && p.Children == nil {
 		btn.Width(h)
 	} else {
@@ -124,7 +141,9 @@ func Button(c *ui.Context, t *theme.Theme, key string, p ButtonProps) ui.Element
 		case p.Icon != "":
 			components.Icon(c, p.Icon, iconSize, style.Text)
 		}
-		if p.Children != nil {
+		if cancelable {
+			components.Text(c, p.CancelLabel, f, theme.WeightMedium, style.Text).NoWrap()
+		} else if p.Children != nil {
 			p.Children(style.Text)
 		} else if p.Label != "" {
 			components.Text(c, p.Label, f, theme.WeightMedium, style.Text).NoWrap() // 按钮按文字定宽；SingleLine 会因取整截成“重…”

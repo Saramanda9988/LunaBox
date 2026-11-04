@@ -66,6 +66,7 @@ type State struct {
 	sourceSaves     map[enums.SourceType]pendingSave
 	busySource      string      // "add"、"<source>:default"、"<source>:delete"
 	searching       bool        // isSearchingMetadataByName
+	searchingMode   searchMode  // 进行中的搜索是哪个按钮发起的
 	search          env.Request // 按当前名称搜索元数据的请求，可以取消
 
 	fieldsOpen bool                        // isMetadataFieldModalOpen
@@ -518,22 +519,22 @@ func (e *editor) footerButtons(c *ui.Context) {
 	t, s := e.t, e.s
 	locked := e.g.MetadataLocked
 	ui.Row(c.Key("footer")).Padding(16, 0, 0, 0).Gap(16).Justify(ui.End).Children(func() {
-		// 更新进行中时按钮显示加载，旁边是“取消”。
-		if s.updating && s.update.Active() {
-			better.Button(c, t, "update-cancel", better.ButtonProps{
-				Variant: better.ButtonSecondary, Icon: "close", Label: locales.CommonCancel(),
-			}).OnClick(s.cancelUpdate)
-		}
-		better.Button(c, t, "update-remote", better.ButtonProps{
+		// 更新进行中时按钮显示旋转图标与“点击取消”，点击取消更新。
+		p := better.ButtonProps{
 			Variant: better.ButtonPrimary, Icon: "cloud-sync", Label: locales.GameEditUpdateFromRemote(), Disabled: locked,
 			Loading: s.updating,
-		}).OnClick(func() {
-			// handleOpenUpdateFromRemote：打开字段选择弹窗，勾选上次用过的字段。
-			if !locked && !s.updating {
-				s.fields = slices.Clone(s.lastFields)
-				s.fieldsOpen = true
-			}
-		})
+			OnClick: func() {
+				// handleOpenUpdateFromRemote：打开字段选择弹窗，勾选上次用过的字段。
+				if !locked && !s.updating {
+					s.fields = slices.Clone(s.lastFields)
+					s.fieldsOpen = true
+				}
+			},
+		}
+		if s.updating && s.update.Active() {
+			p.OnCancel, p.CancelLabel = s.cancelUpdate, locales.NativeClickToCancel()
+		}
+		better.Button(c, t, "update-remote", p)
 		better.Button(c, t, "delete", better.ButtonProps{
 			Variant: better.ButtonDanger, Icon: "trash-can-outline", Label: locales.CommonDelete(),
 		}).OnClick(func() { s.deleteOpen = true })

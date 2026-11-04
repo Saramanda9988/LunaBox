@@ -213,18 +213,15 @@ func (s *State) oneDriveCard(c *ui.Context, t *theme.Theme, p panel.Settings) {
 			ui.Column(c.Key("unauthorized")).FillWidth().Gap(12).Children(func() {
 				hasClientID := strings.TrimSpace(cfg.OneDriveClientID) != ""
 				label, icon := locales.SettingsCloudBackupAuthOneDriveBtn(), "microsoft"
-				if s.authorizingOneDrive {
-					label = locales.SettingsCloudBackupWaitingAuth()
+				// 等待授权时显示旋转图标与“点击取消”，点击停止等待。
+				switch cancelable := s.authorizingOneDrive && s.oneDriveReq.Active(); {
+				case cancelable:
+					darkButton(c, t, "auth-onedrive", locales.NativeClickToCancel(), icon, true, false).OnClick(s.cancelOneDriveAuth)
+				case s.authorizingOneDrive:
+					darkButton(c, t, "auth-onedrive", locales.SettingsCloudBackupWaitingAuth(), icon, true, true)
+				default:
+					darkButton(c, t, "auth-onedrive", label, icon, false, !hasClientID).OnClick(func() { s.oneDriveAuth(p) })
 				}
-				// 等待中另有取消等待（同 umbraUnauthorized）
-				ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-					darkButton(c, t, "auth-onedrive", label, icon, s.authorizingOneDrive, s.authorizingOneDrive || !hasClientID).
-						OnClick(func() { s.oneDriveAuth(p) })
-					if s.authorizingOneDrive && s.oneDriveReq.Active() {
-						dangerTextButton(c, t, "cancel-onedrive-auth", locales.SettingsCloudBackupCancelAuth(), false).
-							OnClick(s.cancelOneDriveAuth)
-					}
-				})
 				if s.authorizingOneDrive {
 					components.Text(c, locales.SettingsCloudBackupAuthWaitHint(), theme.TextXS, theme.WeightNormal, hintColor(t))
 				}

@@ -522,20 +522,13 @@ func TestAddGameCancelSearch(t *testing.T) {
 		t.Fatalf("after cancel: step %q, loading %v, results %d", a.step, a.loading, len(a.results))
 	}
 
-	// 等待中搜索按钮旁边多出“取消”（关闭按钮的标签也是“取消”，所以数个数），取消后消失。
-	cancels := func() int { return countText(h.tt.Texts(), locales.CommonCancel()) }
-	idle := cancels()
+	// 等待中搜索按钮显示“点击取消”，点它取消搜索，弹窗与步骤不变。
 	a.loading, a.searchBy = true, "name"
 	ctx := a.search.Start()
 	h.frames(1)
-	h.expect(t, locales.CommonSearching())
-	if got := cancels(); got <= idle {
-		t.Fatalf("cancel buttons while searching: %d, idle %d", got, idle)
-	}
-	a.cancelSearch()
-	h.frames(1)
-	if ctx.Err() == nil || a.loading || cancels() != idle {
-		t.Fatalf("after cancel: ctx %v, loading %v, cancel buttons %d", ctx.Err(), a.loading, cancels())
+	h.click(t, locales.NativeClickToCancel())
+	if ctx.Err() == nil || a.loading || !a.IsOpen() || a.step != "remote" || h.tt.HasText(locales.NativeClickToCancel()) {
+		t.Fatalf("click to cancel: ctx %v, loading %v, open %v, step %q", ctx.Err(), a.loading, a.IsOpen(), a.step)
 	}
 
 	// 不取消时照常进入结果步骤。
@@ -544,14 +537,4 @@ func TestAddGameCancelSearch(t *testing.T) {
 	if a.step != "results" || len(a.results) != 1 {
 		t.Fatalf("search: step %q, results %d", a.step, len(a.results))
 	}
-}
-
-func countText(texts []string, s string) int {
-	n := 0
-	for _, text := range texts {
-		if text == s {
-			n++
-		}
-	}
-	return n
 }

@@ -24090,3 +24090,17 @@ func NativeAuthCancelled() string { return In(i18n.Locale()).NativeAuthCancelled
 func (msgs Messages) NativeAuthCancelled() string {
 	return Catalog.Format(msgs.locale, "native_authCancelled", nil)
 }
+
+// NativeClickToCancel says "点击取消"
+// in the language the app shows.
+//
+// extra:native.clickToCancel
+func NativeClickToCancel() string { return In(i18n.Locale()).NativeClickToCancel() }
+
+// NativeClickToCancel says "点击取消"
+// in the language of msgs.
+//
+// extra:native.clickToCancel
+func (msgs Messages) NativeClickToCancel() string {
+	return Catalog.Format(msgs.locale, "native_clickToCancel", nil)
+}

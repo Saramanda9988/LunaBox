@@ -34,7 +34,7 @@ type AddGame struct {
 	resultsUI SearchResults
 	loading   bool
 	search    env.Request // 进行中的按名称或 ID 获取元数据，可以取消
-	searchBy  string      // 进行中的是 "name" 还是 "id"：取消按钮显示在对应的按钮旁边
+	searchBy  string      // 进行中的是 "name" 还是 "id"：对应的按钮显示加载并可以点击取消
 	manualID  string
 	source    enums.SourceType // manualSource
 	cover     string
@@ -434,15 +434,24 @@ func (a *AddGame) searchLabel(idle string) string {
 	return idle
 }
 
-// cancelButton 是搜索进行中（by 是 searchBy）时显示在搜索按钮旁边的“取消”，样式同“返回”；height 不为 0 时与旁边的按钮等高。
-func (a *AddGame) cancelButton(c *ui.Context, t *theme.Theme, by string, height float32) {
+// searchButton 是按名称搜索（by 为 "name"）或按 ID 获取（"id"）的按钮：这个搜索进行中时显示旋转图标与“点击取消”，
+// 点击取消搜索；其余时候同 primary。
+func (a *AddGame) searchButton(c *ui.Context, key, by, idle string, disabled bool, onClick func()) ui.Element {
 	if a.searchBy != by || !a.search.Active() {
-		return
+		return primary(c, key, a.searchLabel(idle), disabled, onClick)
 	}
-	btn := outlineButton(c, t, "cancel-search-"+by, locales.CommonCancel(), false, 20, 10).Shrink(0).OnClick(a.cancelSearch)
-	if height > 0 {
-		btn.Height(height)
+	label := locales.NativeClickToCancel()
+	btn := ui.ButtonBase(c.Key(key)).Padding(10, 20).Radius(8).Gap(8).Center().FocusRing(false).Label(label)
+	bg := theme.Neutral600
+	if btn.Hovered() {
+		bg = theme.Neutral700
 	}
+	btn.Background(bg).Transition(theme.ColorsTransition(150 * time.Millisecond)).OnClick(a.cancelSearch)
+	btn.Children(func() {
+		components.Spinner(c, 14, theme.White)
+		components.Text(c, label, theme.TextSM, theme.WeightMedium, theme.White).NoWrap()
+	})
+	return btn
 }
 
 // localStep（space-y-6）：选择可执行文件（w-full py-4 bg-neutral-500 的按钮）、只读的路径、游戏名，底部返回、手动添加与搜索。
@@ -469,8 +478,7 @@ func (a *AddGame) localStep(c *ui.Context, t *theme.Theme) {
 				if a.exe != "" {
 					manual.OnClick(func() { a.back("manual") })
 				}
-				a.cancelButton(c, t, "name", 0)
-				primary(c, "search", a.searchLabel(locales.AddGameModalSearchMeta()), a.exe == "" || a.name == "" || a.loading, func() { a.searchByName(c) })
+				a.searchButton(c, "search", "name", locales.AddGameModalSearchMeta(), a.exe == "" || a.name == "" || a.loading, func() { a.searchByName(c) })
 			})
 		})
 	})
@@ -498,9 +506,8 @@ func (a *AddGame) remoteStep(c *ui.Context, t *theme.Theme, opts []better.Select
 					ui.Row(c).Gap(12).AlignItems(ui.Stretch).Children(func() {
 						field(c, t, "id-input", &a.manualID, locales.AddGameModalGameId(), locales.AddGameModalGameIdPlaceholder()).
 							Height(48).Padding(0, 12).Grow(1).Basis(0).MinWidth(0)
-						primary(c, "confirm-id", a.searchLabel(locales.CommonConfirm()), a.manualID == "" || source == enums.Local || a.loading,
+						a.searchButton(c, "confirm-id", "id", locales.CommonConfirm(), a.manualID == "" || source == enums.Local || a.loading,
 							func() { a.searchByID(c, source, onAdded) }).Height(48).Shrink(0)
-						a.cancelButton(c, t, "id", 48)
 					})
 				})
 			})
@@ -515,8 +522,7 @@ func (a *AddGame) remoteStep(c *ui.Context, t *theme.Theme, opts []better.Select
 		labeled(c, t, "name", locales.AddGameModalGameName(), func() {
 			ui.Row(c).Gap(12).AlignItems(ui.Stretch).Children(func() { // flex gap-3：按钮拉伸到输入框的高度
 				field(c, t, "name-input", &a.name, locales.AddGameModalGameName(), "").Grow(1).Basis(0).MinWidth(0)
-				primary(c, "search", a.searchLabel(locales.AddGameModalSearchMeta()), a.name == "" || a.loading, func() { a.searchByName(c) })
-				a.cancelButton(c, t, "name", 0)
+				a.searchButton(c, "search", "name", locales.AddGameModalSearchMeta(), a.name == "" || a.loading, func() { a.searchByName(c) })
 			})
 		})
 		ui.Row(c).Justify(ui.SpaceBetween).Gap(16).Children(func() {
@@ -576,8 +582,7 @@ func (a *AddGame) idStep(c *ui.Context, t *theme.Theme, opts []better.SelectOpti
 		})
 		ui.Row(c).Justify(ui.End).Gap(16).Children(func() {
 			outlineButton(c, t, "back", locales.CommonBack(), false, 20, 10).OnClick(func() { a.back("results") })
-			a.cancelButton(c, t, "id", 0)
-			primary(c, "confirm", a.searchLabel(locales.CommonConfirm()), a.manualID == "" || source == enums.Local || a.loading,
+			a.searchButton(c, "confirm", "id", locales.CommonConfirm(), a.manualID == "" || source == enums.Local || a.loading,
 				func() { a.searchByID(c, source, onAdded) })
 		})
 	})

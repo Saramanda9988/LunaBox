@@ -371,7 +371,7 @@ func (e *editor) searchByName(c *ui.Context, mode searchMode) {
 	}
 	clear(s.sourceSaves)
 	name := strings.TrimSpace(e.g.Name)
-	s.searching = true
+	s.searching, s.searchingMode = true, mode
 	ctx := s.search.Start()
 	e.p.Env.Async(func() func() {
 		var saveErr error

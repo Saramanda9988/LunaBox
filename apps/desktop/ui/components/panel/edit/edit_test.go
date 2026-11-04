@@ -636,31 +636,28 @@ func countText(texts []string, s string) int {
 	return n
 }
 
-// 按名称搜索与从远端更新都可以取消：等待时显示“取消”，请求返回前取消的不打开结果、不提示。
+// 按名称搜索与从远端更新都可以取消：等待时按钮显示“点击取消”，请求返回前取消的不打开结果、不提示。
 func TestCancelRemoteRequests(t *testing.T) {
 	h := newHarness(t, testGame())
 	fake := &remoteGame{GameService: h.env.Svc.Game}
 	h.env.Svc.Game = fake
-	cancels := func() int { return countText(h.tt.Texts(), "取消") }
-
 	h.click(t, "编辑")
 	h.waitAnimation()
-	idle := cancels()
 	fake.during = h.state.cancelSearch
 	h.click(t, "根据当前游戏名称重新搜索（更新元数据）")
 	if fake.ctx == nil || fake.ctx.Err() == nil || h.state.searching || h.state.searchOpen {
 		t.Fatalf("cancelled search: ctx %v, searching %v, open %v", fake.ctx, h.state.searching, h.state.searchOpen)
 	}
-	h.state.searching = true
-	h.state.search.Start()
+	// 等待中发起搜索的按钮显示“点击取消”（另一个照常禁用），点它取消。
+	h.state.searching, h.state.searchingMode = true, searchUpdateMetadata
+	ctx := h.state.search.Start()
 	h.frames(1)
-	if cancels() <= idle {
-		t.Fatalf("no cancel button while searching in %q", h.tt.Texts())
+	if n := countText(h.tt.Texts(), "点击取消"); n == 0 {
+		t.Fatalf("no click-to-cancel while searching in %q", h.tt.Texts())
 	}
-	h.state.cancelSearch()
-	h.frames(1)
-	if cancels() != idle || h.state.search.Active() {
-		t.Fatalf("cancel button after cancel: %d, idle %d", cancels(), idle)
+	h.click(t, "点击取消")
+	if ctx.Err() == nil || h.state.searching || h.state.searchOpen || h.tt.HasText("点击取消") {
+		t.Fatalf("click to cancel search: ctx %v, searching %v", ctx.Err(), h.state.searching)
 	}
 	fake.during = nil
 	h.click(t, "根据当前游戏名称重新搜索（更新元数据）")
@@ -670,7 +667,6 @@ func TestCancelRemoteRequests(t *testing.T) {
 	h.state.searchOpen, h.state.drawerOpen = false, false
 	h.waitAnimation()
 
-	idle = cancels()
 	fake.during = h.state.cancelUpdate
 	h.click(t, "从远端更新信息")
 	h.click(t, "开始更新")
@@ -678,15 +674,11 @@ func TestCancelRemoteRequests(t *testing.T) {
 		t.Fatalf("cancelled update: ctx %v, updating %v, updates %d", fake.ctx.Err(), h.state.updating, fake.updates)
 	}
 	h.state.updating = true
-	h.state.update.Start()
+	ctx = h.state.update.Start()
 	h.frames(1)
-	if cancels() <= idle {
-		t.Fatalf("no cancel button while updating in %q", h.tt.Texts())
-	}
-	h.state.cancelUpdate()
-	h.frames(1)
-	if cancels() != idle {
-		t.Fatalf("cancel button after cancel: %d, idle %d", cancels(), idle)
+	h.click(t, "点击取消")
+	if ctx.Err() == nil || h.state.updating || h.state.fieldsOpen || h.tt.HasText("点击取消") {
+		t.Fatalf("click to cancel update: ctx %v, updating %v, fields open %v", ctx.Err(), h.state.updating, h.state.fieldsOpen)
 	}
 	fake.during = nil
 	h.click(t, "从远端更新信息")
