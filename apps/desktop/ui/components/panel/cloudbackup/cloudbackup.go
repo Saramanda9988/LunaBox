@@ -33,6 +33,8 @@ type State struct {
 	umbraAuthCancelRequested bool // umbraAuthCancelRequestedRef
 	umbraAuthGen             int  // 离开设置页时递增：之前开始的授权回来时面板已经“卸载”（mountedRef 为 false）
 
+	oneDriveReq env.Request // 等待 OneDrive 授权回调的请求，可以取消
+
 	// deps 是读取 Umbra 用户信息那个 useEffect 的依赖，变化时（以及挂载时）重新执行。
 	deps      profileDeps
 	depsValid bool
@@ -232,6 +234,7 @@ func (s *State) testConnection(p panel.Settings, busy *bool, test func(appconf.A
 }
 
 // oneDriveAuth 对应 handleOneDriveAuth：在浏览器里授权（最长等待 5 分钟），拿到 refresh token 后写进草稿。
+// 等待中可以用 cancelOneDriveAuth 取消。
 func (s *State) oneDriveAuth(p panel.Settings) {
 	clientID := strings.TrimSpace(p.Config.OneDriveClientID)
 	if clientID == "" {
@@ -239,10 +242,13 @@ func (s *State) oneDriveAuth(p panel.Settings) {
 		return
 	}
 	s.authorizingOneDrive = true
-	e := p.Env
+	e, ctx := p.Env, s.oneDriveReq.Start()
 	e.Async(func() func() {
-		token, err := e.Svc.Backup.StartOneDriveAuth(clientID)
+		token, err := e.Svc.Backup.StartOneDriveAuthContext(ctx, clientID)
 		return func() {
+			if !s.oneDriveReq.Finish(ctx) {
+				return // 已取消（cancelOneDriveAuth 或离开设置页时复位了状态）
+			}
 			s.authorizingOneDrive = false
 			if err != nil {
 				s.toast(env.Error(locales.SettingsCloudBackupToastOneDriveAuthFailed(err.Error())))
@@ -252,6 +258,14 @@ func (s *State) oneDriveAuth(p panel.Settings) {
 			s.toast(env.Success(locales.SettingsCloudBackupToastOneDriveAuthSuccess()))
 		}
 	})
+}
+
+// cancelOneDriveAuth 停止等待 OneDrive 的授权回调（原版没有，与 Umbra 的“取消等待”相同）。
+func (s *State) cancelOneDriveAuth() {
+	if s.oneDriveReq.Cancel() {
+		s.authorizingOneDrive = false
+		s.toast(env.Success(locales.NativeAuthCancelled()))
+	}
 }
 
 // umbraAuth 对应 handleUmbraAuth：OAuth 与设备注册；用户取消等待时提示“已取消”。
@@ -295,8 +309,12 @@ func (s *State) cancelUmbraAuth(p panel.Settings) {
 }
 
 // Leave 对应面板卸载时的 effect cleanup，离开设置页时调用：授权还在进行时取消它。之后授权的结果回来时不提示、
-// 不改草稿（原版 mountedRef 为 false 时直接返回），再次进入设置页时按钮回到未授权的状态。
+// 不改草稿（原版 mountedRef 为 false 时直接返回），再次进入设置页时按钮回到未授权的状态。OneDrive 的授权同样取消、
+// 不提示（否则离开后拿到的 token 写进的草稿会在下次进入时被丢掉）。
 func Leave(s *State, p panel.Settings) {
+	if s.oneDriveReq.Cancel() {
+		s.authorizingOneDrive = false
+	}
 	if !s.umbraAuthActive {
 		return
 	}

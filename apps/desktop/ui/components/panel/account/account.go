@@ -12,6 +12,7 @@ import (
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/panel"
 	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
 	"lunabox/desktop/ui/theme"
 )
 
@@ -40,9 +41,10 @@ type cardState struct {
 
 	statusLoading, profileLoading bool
 	authorizing, disconnecting    bool
-	disconnectConfirm             bool // showDisconnectConfirm
-	syncConfirm                   bool // showSyncConfirm
-	gen                           int  // 最近一次 refreshStatus 的编号，丢弃过期结果
+	auth                          env.Request // 等待浏览器授权回调的请求，可以取消
+	disconnectConfirm             bool        // showDisconnectConfirm
+	syncConfirm                   bool        // showSyncConfirm
+	gen                           int         // 最近一次 refreshStatus 的编号，丢弃过期结果
 
 	// useRemoteStatusSync
 	progress     vo.RemoteStatusSyncProgress
@@ -157,15 +159,19 @@ func (s *State) refreshStatus(p panel.Settings, sp *spec, cs *cardState, done fu
 }
 
 // authorize 对应 handleAuthorize：StartAuth 打开浏览器并等待回调（会阻塞，在后台执行），成功后重新读取配置与授权状态。
+// 等待中可以用 cancelAuthorize 取消。
 func (s *State) authorize(p panel.Settings, sp *spec, cs *cardState) {
 	if cs.authorizing || p.Env == nil || p.Env.Svc == nil {
 		return
 	}
 	cs.authorizing = true
-	e := p.Env
+	e, ctx := p.Env, cs.auth.Start()
 	e.Async(func() func() {
-		err := sp.start(e.Svc)
+		err := sp.start(ctx, e.Svc)
 		return func() {
+			if !cs.auth.Finish(ctx) {
+				return // 已取消（cancelAuthorize 复位了状态并提示）
+			}
 			if err != nil {
 				s.toast(env.Error(sp.text.actionFailed(err.Error())))
 				s.refreshStatus(p, sp, cs, func() { cs.authorizing = false })
@@ -178,6 +184,14 @@ func (s *State) authorize(p panel.Settings, sp *spec, cs *cardState) {
 			})
 		}
 	})
+}
+
+// cancelAuthorize 停止等待授权回调：服务关闭本地的回调服务器，之后在浏览器里完成授权也不会生效。
+func (s *State) cancelAuthorize(cs *cardState) {
+	if cs.auth.Cancel() {
+		cs.authorizing = false
+		s.toast(env.Success(locales.NativeAuthCancelled()))
+	}
 }
 
 // disconnect 对应 handleDisconnect。

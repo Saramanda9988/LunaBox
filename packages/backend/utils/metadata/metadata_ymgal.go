@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,11 +19,12 @@ import (
 // YmgalInfoGetter 获取月幕 Galgame 信息。
 type YmgalInfoGetter struct {
 	client *http.Client
+	ctx    context.Context
 }
 
 func NewYmgalInfoGetter(options ...GetterOption) *YmgalInfoGetter {
 	config := newGetterConfig(options)
-	return &YmgalInfoGetter{client: config.client}
+	return &YmgalInfoGetter{client: config.client, ctx: config.ctx}
 }
 
 var _ Getter = (*YmgalInfoGetter)(nil)
@@ -84,7 +86,7 @@ func (y YmgalInfoGetter) getAccessToken() (string, error) {
 	params.Add("scope", "public")
 
 	reqURL := fmt.Sprintf("%s?%s", ymgalTokenURL, params.Encode())
-	req, err := http.NewRequest("GET", reqURL, nil)
+	req, err := http.NewRequestWithContext(metadataContext(y.ctx), "GET", reqURL, nil)
 	if err != nil {
 		return "", err
 	}
@@ -125,7 +127,7 @@ func (y YmgalInfoGetter) FetchMetadata(id string, token string) (MetadataResult,
 	}
 
 	reqURL := fmt.Sprintf("%s?gid=%s", ymgalAPIURL, id)
-	req, err := http.NewRequest("GET", reqURL, nil)
+	req, err := http.NewRequestWithContext(metadataContext(y.ctx), "GET", reqURL, nil)
 	if err != nil {
 		return MetadataResult{}, err
 	}
@@ -170,7 +172,7 @@ func (y YmgalInfoGetter) FetchMetadataByName(name string, token string) (Metadat
 	params.Add("keyword", name)
 	params.Add("similarity", "70")
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s?%s", searchURL, params.Encode()), nil)
+	req, err := http.NewRequestWithContext(metadataContext(y.ctx), "GET", fmt.Sprintf("%s?%s", searchURL, params.Encode()), nil)
 	if err != nil {
 		return MetadataResult{}, err
 	}

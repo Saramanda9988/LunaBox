@@ -1612,5 +1612,6 @@
   "native_settingsSaveFailed": "儲存設定失敗",
   "native_trayShowMainWindow": "顯示主視窗",
   "native_trayQuit": "結束",
-  "native_templateExportWebViewUnavailable": "系統缺少 WebView 元件，無法預覽和匯出模板（Windows 需要 WebView2 Runtime，Linux 需要 WebKitGTK）"
+  "native_templateExportWebViewUnavailable": "系統缺少 WebView 元件，無法預覽和匯出模板（Windows 需要 WebView2 Runtime，Linux 需要 WebKitGTK）",
+  "native_authCancelled": "已取消授權"
 }

@@ -216,8 +216,15 @@ func (s *State) oneDriveCard(c *ui.Context, t *theme.Theme, p panel.Settings) {
 				if s.authorizingOneDrive {
 					label = locales.SettingsCloudBackupWaitingAuth()
 				}
-				darkButton(c, t, "auth-onedrive", label, icon, s.authorizingOneDrive, s.authorizingOneDrive || !hasClientID).
-					OnClick(func() { s.oneDriveAuth(p) })
+				// 等待中另有取消等待（同 umbraUnauthorized）
+				ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+					darkButton(c, t, "auth-onedrive", label, icon, s.authorizingOneDrive, s.authorizingOneDrive || !hasClientID).
+						OnClick(func() { s.oneDriveAuth(p) })
+					if s.authorizingOneDrive && s.oneDriveReq.Active() {
+						dangerTextButton(c, t, "cancel-onedrive-auth", locales.SettingsCloudBackupCancelAuth(), false).
+							OnClick(s.cancelOneDriveAuth)
+					}
+				})
 				if s.authorizingOneDrive {
 					components.Text(c, locales.SettingsCloudBackupAuthWaitHint(), theme.TextXS, theme.WeightNormal, hintColor(t))
 				}

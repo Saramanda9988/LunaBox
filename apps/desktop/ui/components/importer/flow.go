@@ -258,6 +258,9 @@ type Flow struct {
 	gen    int  // Reset 后之前的异步结果不再生效
 	manual manualState
 
+	match       env.Request // 自动匹配进行中的那一次请求，Stop、Reset 时取消
+	manualFetch env.Request // 手动选择弹窗里的搜索，关闭弹窗时取消
+
 	// Delay 是两次匹配请求之间的等待，默认 matchDelay；测试里设为负数不等待。
 	Delay time.Duration
 }
@@ -268,16 +271,20 @@ func newFlow(e *env.Env) *Flow { return &Flow{env: e} }
 func (f *Flow) Reset() {
 	f.abort = true
 	f.gen++
+	f.match.Cancel()
 	f.Candidates, f.Skipped, f.Result, f.Pause = nil, nil, nil, ""
 	f.Progress = Progress{}
-	f.manual.open = false
+	f.closeManual()
 }
 
 // SetCandidates 换上扫描结果。
 func (f *Flow) SetCandidates(cands, skipped []Candidate) { f.Candidates, f.Skipped = cands, skipped }
 
-// Stop 对应 stopMatching。
-func (f *Flow) Stop() { f.abort = true }
+// Stop 对应 stopMatching：同时取消正在进行的那一次请求，这个候选项保持待匹配。
+func (f *Flow) Stop() {
+	f.abort = true
+	f.match.Cancel()
+}
 
 // counts 是 matchedCount、notFoundCount、pendingCount、errorCount（只算选中的）。
 func (f *Flow) counts() (matched, notFound, pending, errs int) {
@@ -364,11 +371,12 @@ func (m *matcher) next(i int) {
 	m.count++
 	name := f.Candidates[i].SearchName
 	f.Progress.Current, f.Progress.Name = m.count, name
-	svc := f.env.Svc.Import
+	svc, ctx := f.env.Svc.Import, f.match.Start()
 	f.env.Async(func() func() {
-		result, err := svc.FetchMetadataForCandidateWithPreference(name, m.s.preferred)
+		result, err := svc.FetchMetadataForCandidateWithPreferenceContext(ctx, name, m.s.preferred)
 		return func() {
-			if !m.live() || i >= len(f.Candidates) {
+			// 被 Stop 取消（或被新的一轮匹配取代）时丢弃，候选项保持待匹配。
+			if !f.match.Finish(ctx) || !m.live() || i >= len(f.Candidates) {
 				return
 			}
 			if pause := m.apply(i, result, err); pause != "" {
@@ -686,11 +694,11 @@ func (f *Flow) openManual(i int, s matchSettings, enabled []enums.SourceType) {
 		return
 	}
 	m.searching = true
-	name, svc, gen := f.Candidates[i].SearchName, f.env.Svc.Import, f.gen
+	name, svc, gen, ctx := f.Candidates[i].SearchName, f.env.Svc.Import, f.gen, f.manualFetch.Start()
 	f.env.Async(func() func() {
-		r, err := svc.FetchMetadataForCandidateWithPreference(name, s.preferred)
+		r, err := svc.FetchMetadataForCandidateWithPreferenceContext(ctx, name, s.preferred)
 		return func() {
-			if gen != f.gen || !m.open || m.index != i {
+			if !f.manualFetch.Finish(ctx) || gen != f.gen || !m.open || m.index != i {
 				return
 			}
 			m.searching = false
@@ -725,11 +733,11 @@ func (f *Flow) searchByID(c *ui.Context) {
 		return
 	}
 	m.searching = true
-	svc, src, gen := f.env.Svc.Game, m.source, f.gen
+	svc, src, gen, ctx := f.env.Svc.Game, m.source, f.gen, f.manualFetch.Start()
 	f.env.Async(func() func() {
-		meta, err := svc.FetchMetadataFromWeb(vo.MetadataRequest{Source: src, ID: id})
+		meta, err := svc.FetchMetadataFromWebContext(ctx, vo.MetadataRequest{Source: src, ID: id})
 		return func() {
-			if gen != f.gen {
+			if !f.manualFetch.Finish(ctx) || gen != f.gen {
 				return
 			}
 			m.searching = false
@@ -744,6 +752,12 @@ func (f *Flow) searchByID(c *ui.Context) {
 			}
 		}
 	})
+}
+
+// closeManual 关闭手动选择弹窗，取消弹窗里进行中的搜索。
+func (f *Flow) closeManual() {
+	f.manualFetch.Cancel()
+	f.manual.open, f.manual.searching = false, false
 }
 
 // skipMetadata 对应 handleSkipMetadata：不使用元数据导入（标成未找到）。

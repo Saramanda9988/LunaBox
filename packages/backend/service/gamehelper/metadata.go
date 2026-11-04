@@ -1,6 +1,7 @@
 package gamehelper
 
 import (
+	"context"
 	"reflect"
 	"strings"
 
@@ -40,6 +41,11 @@ func MetadataGetterOptions(config *appconf.AppConfig) []metadata.GetterOption {
 		metadata.WithVNDBCoverSource(config.VNDBCoverSource),
 		metadata.WithSteamCoverOrientation(config.SteamCoverOrientation),
 	}
+}
+
+// MetadataGetterOptionsContext 同 MetadataGetterOptions，数据源的请求随 ctx 取消。
+func MetadataGetterOptionsContext(ctx context.Context, config *appconf.AppConfig) []metadata.GetterOption {
+	return append(MetadataGetterOptions(config), metadata.WithContext(ctx))
 }
 
 // ConfiguredMetadataSources returns the enabled metadata sources in user-preferred order,

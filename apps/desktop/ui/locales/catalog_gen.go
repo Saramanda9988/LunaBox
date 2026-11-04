@@ -24076,3 +24076,17 @@ func NativeTemplateExportWebViewUnavailable() string {
 func (msgs Messages) NativeTemplateExportWebViewUnavailable() string {
 	return Catalog.Format(msgs.locale, "native_templateExportWebViewUnavailable", nil)
 }
+
+// NativeAuthCancelled says "已取消授权"
+// in the language the app shows.
+//
+// extra:native.authCancelled
+func NativeAuthCancelled() string { return In(i18n.Locale()).NativeAuthCancelled() }
+
+// NativeAuthCancelled says "已取消授权"
+// in the language of msgs.
+//
+// extra:native.authCancelled
+func (msgs Messages) NativeAuthCancelled() string {
+	return Catalog.Format(msgs.locale, "native_authCancelled", nil)
+}

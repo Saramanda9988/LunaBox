@@ -1,6 +1,7 @@
 package edit
 
 import (
+	"context"
 	"encoding/base64"
 	"slices"
 	"strings"
@@ -217,11 +218,16 @@ func (e *editor) updateFromRemote(c *ui.Context, fields []enums.MetadataUpdateFi
 	s.lastFields = slices.Clone(fields)
 	s.fieldsOpen = false
 	s.updating = true
+	ctx := s.update.Start()
 	e.p.Env.Async(func() func() {
-		err := svc.Game.UpdateGameFromRemoteWithFields(old.ID, fields)
+		err := svc.Game.UpdateGameFromRemoteWithFieldsContext(ctx, old.ID, fields)
 		return func() {
+			if ctx.Err() != nil {
+				return // 已取消（cancelUpdate 复位了状态），游戏没有改动
+			}
 			if s.gameID == old.ID {
 				s.updating = false
+				s.update.Finish(ctx)
 			}
 			if err != nil {
 				e.toast(c, env.Error(locales.GameToastUpdateRemoteFailed(err.Error())))
@@ -233,6 +239,13 @@ func (e *editor) updateFromRemote(c *ui.Context, fields []enums.MetadataUpdateFi
 			e.toast(c, env.Success(locales.GameToastUpdateRemoteSuccess()))
 		}
 	})
+}
+
+// cancelUpdate 取消进行中的从远端更新：拉取完成前取消时游戏不会改动。
+func (s *State) cancelUpdate() {
+	if s.update.Cancel() {
+		s.updating = false
+	}
 }
 
 // sourceAction 对应 runSourceAction：busySource 标出正在操作的按钮，失败时提示。work 在后台执行，after 在成功后回到主线程执行。
@@ -359,6 +372,7 @@ func (e *editor) searchByName(c *ui.Context, mode searchMode) {
 	clear(s.sourceSaves)
 	name := strings.TrimSpace(e.g.Name)
 	s.searching = true
+	ctx := s.search.Start()
 	e.p.Env.Async(func() func() {
 		var saveErr error
 		for source, sourceID := range pending {
@@ -369,16 +383,19 @@ func (e *editor) searchByName(c *ui.Context, mode searchMode) {
 		var results []vo.GameMetadataFromWebVO
 		var err error
 		if saveErr == nil {
-			results, err = svc.Game.FetchMetadataByName(name)
+			results, err = svc.Game.FetchMetadataByNameContext(ctx, name)
 		}
 		return func() {
 			if s.gameID != id {
 				return
 			}
-			s.searching = false
 			if len(pending) > 0 {
-				e.p.OnSaved()
+				e.p.OnSaved() // 取消时待保存的来源 ID 也已经保存了
 			}
+			if !s.search.Finish(ctx) {
+				return // 已取消（cancelSearch 复位了状态）
+			}
+			s.searching = false
 			switch {
 			case saveErr != nil:
 				e.toast(c, env.Error(locales.GameEditSourceOperationFailed(saveErr.Error())))
@@ -393,6 +410,20 @@ func (e *editor) searchByName(c *ui.Context, mode searchMode) {
 			}
 		}
 	})
+}
+
+// cancelSearch 取消进行中的按名称搜索，不打开结果弹窗。
+func (s *State) cancelSearch() {
+	if s.search.Cancel() {
+		s.searching = false
+	}
+}
+
+// cancelApply 取消应用结果时进行中的从远端更新：已关联的来源保留，游戏信息与默认来源不变，结果弹窗留着可以重选。
+func (s *State) cancelApply() {
+	if s.apply.Cancel() {
+		s.applying = false
+	}
 }
 
 // selectSearchResult 对应 handleSelectMetadataSearchResult：每个来源只能保留一个结果；把保留的结果都关联到游戏，
@@ -425,6 +456,10 @@ func (e *editor) selectSearchResult(c *ui.Context, result vo.GameMetadataFromWeb
 	}
 	mode := s.searchMode
 	s.applying = true
+	ctx := context.Background()
+	if mode == searchUpdateMetadata {
+		ctx = s.apply.Start() // 只有从远端更新需要网络，可以取消
+	}
 	e.p.Env.Async(func() func() {
 		err := func() error {
 			for _, l := range links {
@@ -433,7 +468,7 @@ func (e *editor) selectSearchResult(c *ui.Context, result vo.GameMetadataFromWeb
 				}
 			}
 			if mode == searchUpdateMetadata {
-				if err := svc.Game.UpdateGameFromRemoteBySource(old.ID, result.Source); err != nil {
+				if err := svc.Game.UpdateGameFromRemoteBySourceContext(ctx, old.ID, result.Source); err != nil {
 					return err
 				}
 			}
@@ -443,6 +478,11 @@ func (e *editor) selectSearchResult(c *ui.Context, result vo.GameMetadataFromWeb
 			if s.gameID != old.ID {
 				return
 			}
+			if ctx.Err() != nil {
+				e.p.OnSaved() // 已取消（cancelApply 复位了状态）；关联的来源已经保存，让页面重新读取
+				return
+			}
+			s.apply.Finish(ctx)
 			s.applying = false
 			if err != nil {
 				if mode == searchUpdateMetadata {

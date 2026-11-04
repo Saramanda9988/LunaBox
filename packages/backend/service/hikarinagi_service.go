@@ -239,6 +239,12 @@ func (s *HikarinagiService) GetProfile() (vo.HikarinagiProfile, error) {
 }
 
 func (s *HikarinagiService) StartAuth() (vo.HikarinagiAuthStatus, error) {
+	return s.StartAuthContext(s.ctx)
+}
+
+// StartAuthContext 同 StartAuth，ctx 取消时停止等待授权回调并返回 ctx 的错误。
+func (s *HikarinagiService) StartAuthContext(ctx context.Context) (vo.HikarinagiAuthStatus, error) {
+	ctx = s.resolveContext(ctx)
 	if strings.TrimSpace(s.clientID) == "" {
 		return vo.HikarinagiAuthStatus{}, fmt.Errorf("Hikarinagi OAuth 未配置，请在构建时通过 %s 注入 public client ID", hikarinagiOAuthClientIDEnv)
 	}
@@ -264,7 +270,7 @@ func (s *HikarinagiService) StartAuth() (vo.HikarinagiAuthStatus, error) {
 		}
 
 		tokenResp, err := s.exchangeAuthorizationCode(
-			s.ctx,
+			ctx,
 			result.Code,
 			session.redirectURI,
 			session.codeVerifier,
@@ -273,7 +279,7 @@ func (s *HikarinagiService) StartAuth() (vo.HikarinagiAuthStatus, error) {
 		if err != nil {
 			return vo.HikarinagiAuthStatus{}, err
 		}
-		user, err := s.fetchCurrentUser(s.ctx, tokenResp.AccessToken)
+		user, err := s.fetchCurrentUser(ctx, tokenResp.AccessToken)
 		if err != nil {
 			return vo.HikarinagiAuthStatus{}, fmt.Errorf("获取 Hikarinagi 当前用户信息失败: %w", err)
 		}
@@ -290,8 +296,8 @@ func (s *HikarinagiService) StartAuth() (vo.HikarinagiAuthStatus, error) {
 		return status, nil
 	case <-timer.C:
 		return vo.HikarinagiAuthStatus{}, fmt.Errorf("Hikarinagi 授权超时")
-	case <-s.resolveContext(s.ctx).Done():
-		return vo.HikarinagiAuthStatus{}, s.resolveContext(s.ctx).Err()
+	case <-ctx.Done():
+		return vo.HikarinagiAuthStatus{}, ctx.Err()
 	}
 }
 
@@ -335,7 +341,7 @@ func (s *HikarinagiService) refreshAccessToken(ctx context.Context) (string, err
 }
 
 func (s *HikarinagiService) fetchMetadataByID(ctx context.Context, sourceID string) (metadata.MetadataResult, error) {
-	getter := metadata.NewHikarinagiInfoGetter(gamehelper.MetadataGetterOptions(s.config)...)
+	getter := metadata.NewHikarinagiInfoGetter(gamehelper.MetadataGetterOptionsContext(ctx, s.config)...)
 	token, err := s.getValidAccessToken(ctx)
 	if err != nil {
 		return getter.FetchMetadata(sourceID, "")
@@ -361,7 +367,7 @@ func (s *HikarinagiService) fetchMetadataByName(ctx context.Context, name string
 }
 
 func (s *HikarinagiService) fetchMetadataCandidatesByName(ctx context.Context, name string) ([]metadata.MetadataResult, error) {
-	getter := metadata.NewHikarinagiInfoGetter(gamehelper.MetadataGetterOptions(s.config)...)
+	getter := metadata.NewHikarinagiInfoGetter(gamehelper.MetadataGetterOptionsContext(ctx, s.config)...)
 	token, err := s.getValidAccessToken(ctx)
 	if err != nil {
 		return getter.FetchMetadataCandidatesByName(name, "")

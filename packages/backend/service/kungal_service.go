@@ -236,6 +236,12 @@ func (s *KungalService) GetProfile() (vo.KungalProfile, error) {
 }
 
 func (s *KungalService) StartAuth() (vo.KungalAuthStatus, error) {
+	return s.StartAuthContext(s.ctx)
+}
+
+// StartAuthContext 同 StartAuth，ctx 取消时停止等待授权回调并返回 ctx 的错误。
+func (s *KungalService) StartAuthContext(ctx context.Context) (vo.KungalAuthStatus, error) {
+	ctx = s.resolveContext(ctx)
 	if strings.TrimSpace(s.clientID) == "" {
 		return vo.KungalAuthStatus{}, fmt.Errorf("鲲 Galgame OAuth 未配置，请在构建时通过 %s 注入 public client ID", kungalOAuthClientIDEnv)
 	}
@@ -259,11 +265,11 @@ func (s *KungalService) StartAuth() (vo.KungalAuthStatus, error) {
 		if result.Error != "" {
 			return vo.KungalAuthStatus{}, fmt.Errorf("鲲 Galgame 授权失败: %s", result.Error)
 		}
-		tokenResp, err := s.exchangeAuthorizationCode(s.ctx, result.Code, session)
+		tokenResp, err := s.exchangeAuthorizationCode(ctx, result.Code, session)
 		if err != nil {
 			return vo.KungalAuthStatus{}, err
 		}
-		user, err := s.fetchUserInfo(s.ctx, tokenResp.AccessToken)
+		user, err := s.fetchUserInfo(ctx, tokenResp.AccessToken)
 		if err != nil {
 			return vo.KungalAuthStatus{}, fmt.Errorf("获取鲲 Galgame 用户信息失败: %w", err)
 		}
@@ -280,8 +286,8 @@ func (s *KungalService) StartAuth() (vo.KungalAuthStatus, error) {
 		return status, nil
 	case <-timer.C:
 		return vo.KungalAuthStatus{}, fmt.Errorf("鲲 Galgame 授权超时")
-	case <-s.resolveContext(nil).Done():
-		return vo.KungalAuthStatus{}, s.resolveContext(nil).Err()
+	case <-ctx.Done():
+		return vo.KungalAuthStatus{}, ctx.Err()
 	}
 }
 
@@ -445,7 +451,7 @@ func (s *KungalService) syncGameChunk(ctx context.Context, games []models.Game) 
 }
 
 func (s *KungalService) fetchMetadataByID(ctx context.Context, sourceID string) (metadata.MetadataResult, error) {
-	getter := metadata.NewKungalInfoGetter(gamehelper.MetadataGetterOptions(s.config)...)
+	getter := metadata.NewKungalInfoGetter(gamehelper.MetadataGetterOptionsContext(ctx, s.config)...)
 	var result metadata.MetadataResult
 	err := s.withOptionalAccessToken(ctx, func(token string) error {
 		var fetchErr error
@@ -464,7 +470,7 @@ func (s *KungalService) fetchMetadataByName(ctx context.Context, name string) (m
 }
 
 func (s *KungalService) fetchMetadataCandidatesByName(ctx context.Context, name string) ([]metadata.MetadataResult, error) {
-	getter := metadata.NewKungalInfoGetter(gamehelper.MetadataGetterOptions(s.config)...)
+	getter := metadata.NewKungalInfoGetter(gamehelper.MetadataGetterOptionsContext(ctx, s.config)...)
 	var results []metadata.MetadataResult
 	err := s.withOptionalAccessToken(ctx, func(token string) error {
 		var fetchErr error

@@ -682,8 +682,7 @@ func (s *ImportService) FetchMetadataForCandidate(searchName string) (vo.BatchIm
 		SearchName:  searchName,
 		MatchStatus: "not_found",
 	}
-	getterOptions := gamehelper.MetadataGetterOptions(s.config)
-	sources := s.getConfiguredMetadataSearchSources(getterOptions)
+	sources := s.getConfiguredMetadataSearchSources(s.ctx)
 
 	for _, src := range sources {
 		metaResults, err := src.fetchCandidates(searchName)
@@ -710,6 +709,20 @@ const importMetadataNameSimilarityThreshold = 0.75
 // A configured preferred source is authoritative. Without one, the search name is
 // used as the reference for every enabled source.
 func (s *ImportService) FetchMetadataForCandidateWithPreference(searchName string, preferredSource enums.SourceType) (vo.BatchImportMetadataMatchResult, error) {
+	return s.FetchMetadataForCandidateWithPreferenceContext(s.ctx, searchName, preferredSource)
+}
+
+// FetchMetadataForCandidateWithPreferenceContext 同 FetchMetadataForCandidateWithPreference，ctx 取消时中断各来源的请求，
+// 返回 ctx 的错误（这时的结果不完整，不应当作匹配结果）。
+func (s *ImportService) FetchMetadataForCandidateWithPreferenceContext(ctx context.Context, searchName string, preferredSource enums.SourceType) (vo.BatchImportMetadataMatchResult, error) {
+	result, err := s.fetchMetadataForCandidateWithPreference(ctx, searchName, preferredSource)
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return result, ctxErr
+	}
+	return result, err
+}
+
+func (s *ImportService) fetchMetadataForCandidateWithPreference(ctx context.Context, searchName string, preferredSource enums.SourceType) (vo.BatchImportMetadataMatchResult, error) {
 	searchName = strings.TrimSpace(searchName)
 	result := vo.BatchImportMetadataMatchResult{
 		SearchName:      searchName,
@@ -722,7 +735,7 @@ func (s *ImportService) FetchMetadataForCandidateWithPreference(searchName strin
 		return result, nil
 	}
 
-	sources := s.getConfiguredMetadataSearchSources(gamehelper.MetadataGetterOptions(s.config))
+	sources := s.getConfiguredMetadataSearchSources(ctx)
 	if len(sources) == 0 {
 		result.PreferredError = "没有可用的数据源"
 		return result, nil
@@ -977,7 +990,8 @@ func isMetadataNoResultError(err error) bool {
 		strings.Contains(message, "returned no data")
 }
 
-func (s *ImportService) getConfiguredMetadataSearchSources(getterOptions []metadata.GetterOption) []metadataSearchSource {
+func (s *ImportService) getConfiguredMetadataSearchSources(ctx context.Context) []metadataSearchSource {
+	getterOptions := gamehelper.MetadataGetterOptionsContext(ctx, s.config)
 	vndbToken := ""
 	language := ""
 	if s.config != nil {
@@ -996,10 +1010,10 @@ func (s *ImportService) getConfiguredMetadataSearchSources(getterOptions []metad
 			sources = append(sources, metadataSearchSource{
 				source: enums.Bangumi,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return s.bangumiService.fetchMetadataByName(s.ctx, name)
+					return s.bangumiService.fetchMetadataByName(ctx, name)
 				},
 				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
-					return s.bangumiService.fetchMetadataCandidatesByName(s.ctx, name)
+					return s.bangumiService.fetchMetadataCandidatesByName(ctx, name)
 				},
 			})
 		case enums.VNDB:
@@ -1075,10 +1089,10 @@ func (s *ImportService) getConfiguredMetadataSearchSources(getterOptions []metad
 			sources = append(sources, metadataSearchSource{
 				source: enums.Hikarinagi,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return s.hikarinagiService.fetchMetadataByName(s.ctx, name)
+					return s.hikarinagiService.fetchMetadataByName(ctx, name)
 				},
 				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
-					return s.hikarinagiService.fetchMetadataCandidatesByName(s.ctx, name)
+					return s.hikarinagiService.fetchMetadataCandidatesByName(ctx, name)
 				},
 			})
 		case enums.Kungal:
@@ -1088,10 +1102,10 @@ func (s *ImportService) getConfiguredMetadataSearchSources(getterOptions []metad
 			sources = append(sources, metadataSearchSource{
 				source: enums.Kungal,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return s.kungalService.fetchMetadataByName(s.ctx, name)
+					return s.kungalService.fetchMetadataByName(ctx, name)
 				},
 				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
-					return s.kungalService.fetchMetadataCandidatesByName(s.ctx, name)
+					return s.kungalService.fetchMetadataCandidatesByName(ctx, name)
 				},
 			})
 		}

@@ -23,6 +23,7 @@ import (
 // SteamInfoGetter 获取 Steam 商店元数据。
 type SteamInfoGetter struct {
 	client           *http.Client
+	ctx              context.Context
 	preferredLangs   []string
 	countryCode      string
 	tagLimit         int
@@ -39,6 +40,7 @@ func NewSteamInfoGetterWithLanguage(language string, options ...GetterOption) *S
 	config := newGetterConfig(options)
 	return &SteamInfoGetter{
 		client:           config.client,
+		ctx:              config.ctx,
 		preferredLangs:   langs,
 		countryCode:      countryCode,
 		tagLimit:         config.tagLimit,
@@ -322,7 +324,7 @@ func (s SteamInfoGetter) fetchByAppIDAndLang(appID int, lang string) (MetadataRe
 	params.Add("cc", s.countryCode)
 
 	reqURL := fmt.Sprintf("%s?%s", steamAppDetailsAPIURL, params.Encode())
-	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
+	req, err := http.NewRequestWithContext(metadataContext(s.ctx), http.MethodGet, reqURL, nil)
 	if err != nil {
 		return MetadataResult{}, err
 	}
@@ -399,7 +401,7 @@ func (s SteamInfoGetter) resolveSteamCoverURL(appID int, lang string, headerImag
 	}
 
 	for _, candidate := range buildSteamPortraitCoverURLs(appID, lang) {
-		if steamCoverURLAvailableWithTimeout(s.client, candidate, steamCoverProbeTimeout) {
+		if steamCoverURLAvailableWithTimeout(metadataContext(s.ctx), s.client, candidate, steamCoverProbeTimeout) {
 			return candidate
 		}
 	}
@@ -451,7 +453,7 @@ func (s SteamInfoGetter) resolveSteamStoreLibraryCapsuleURL(appID int, lang stri
 		}
 
 		for _, candidate := range buildSteamStoreLibraryCapsuleURLs(appID, item.Assets) {
-			if steamCoverURLAvailableWithTimeout(s.client, candidate, steamCoverProbeTimeout) {
+			if steamCoverURLAvailableWithTimeout(metadataContext(s.ctx), s.client, candidate, steamCoverProbeTimeout) {
 				return candidate
 			}
 		}
@@ -536,11 +538,11 @@ func normalizeSteamAssetLanguage(lang string) string {
 	}
 }
 
-func steamCoverURLAvailableWithTimeout(client *http.Client, candidate string, timeout time.Duration) bool {
+func steamCoverURLAvailableWithTimeout(parent context.Context, client *http.Client, candidate string, timeout time.Duration) bool {
 	if timeout <= 0 {
 		timeout = steamCoverProbeTimeout
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	return steamCoverURLAvailable(ctx, client, candidate)
 }
@@ -576,7 +578,7 @@ func (s SteamInfoGetter) searchByName(keyword string, lang string) ([]steamSearc
 	params.Add("cc", s.countryCode)
 
 	reqURL := fmt.Sprintf("%s?%s", steamStoreSearchAPI, params.Encode())
-	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
+	req, err := http.NewRequestWithContext(metadataContext(s.ctx), http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -684,7 +686,7 @@ func (s SteamInfoGetter) fetchCommunityTagWeights(appID int, lang string) ([]ste
 		includeTagCount = steamMaxCommunityTags
 	}
 
-	item, err := s.fetchStoreBrowseItem(context.Background(), appID, lang, steamStoreBrowseDataRequest{
+	item, err := s.fetchStoreBrowseItem(metadataContext(s.ctx), appID, lang, steamStoreBrowseDataRequest{
 		IncludeTagCount: includeTagCount,
 	})
 	if err != nil {
@@ -697,7 +699,7 @@ func (s SteamInfoGetter) fetchStoreBrowseItemWithTimeout(appID int, lang string,
 	if timeout <= 0 {
 		timeout = steamCoverProbeTimeout
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(metadataContext(s.ctx), timeout)
 	defer cancel()
 	return s.fetchStoreBrowseItem(ctx, appID, lang, dataRequest)
 }
@@ -768,7 +770,7 @@ func (s SteamInfoGetter) fetchCommunityTagCatalog(lang string) (map[int]string, 
 	params := url.Values{}
 	params.Set("language", lang)
 	reqURL := steamPopularTagsAPIURL + "?" + params.Encode()
-	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
+	req, err := http.NewRequestWithContext(metadataContext(s.ctx), http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -815,7 +817,7 @@ func (s SteamInfoGetter) fetchCommunityTagsFromStorePage(appID int, lang string)
 	params.Add("cc", s.countryCode)
 
 	reqURL := fmt.Sprintf(steamStoreAppURL, appID) + "?" + params.Encode()
-	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
+	req, err := http.NewRequestWithContext(metadataContext(s.ctx), http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1065,7 +1067,7 @@ func (s SteamInfoGetter) fetchReviewRating(appID int) (float64, error) {
 	params.Add("filter", "summary")
 
 	reqURL := fmt.Sprintf("%s?%s", fmt.Sprintf(steamAppReviewsAPIURL, appID), params.Encode())
-	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
+	req, err := http.NewRequestWithContext(metadataContext(s.ctx), http.MethodGet, reqURL, nil)
 	if err != nil {
 		return 0, err
 	}

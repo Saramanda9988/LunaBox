@@ -92,7 +92,7 @@ func (f *Flow) manualModal(c *ui.Context, t *theme.Theme, enabled []enums.Source
 		return
 	}
 	name := f.Candidates[m.index].SearchName
-	closeModal := func() { m.open = false }
+	closeModal := f.closeManual // 搜索中关闭即取消搜索
 	_, winH := c.Size()
 	components.Overlay(c, t, func() {
 		host := ui.Box(c.Key("manual-select")).Absolute().Top(env.TopbarHeight).Left(0).Right(0).Bottom(0).Modal().

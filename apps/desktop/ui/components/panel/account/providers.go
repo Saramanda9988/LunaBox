@@ -1,6 +1,7 @@
 package account
 
 import (
+	"context"
 	"strings"
 
 	"lunabox/backend/appconf"
@@ -75,7 +76,7 @@ type spec struct {
 
 	status     func(svc *api.Services) (authSnapshot, error)
 	profile    func(svc *api.Services) (profileView, error)
-	start      func(svc *api.Services) error
+	start      func(ctx context.Context, svc *api.Services) error // StartAuthContext：ctx 取消时停止等待
 	disconnect func(svc *api.Services) error
 	sync       func(svc *api.Services) (vo.RemoteStatusSyncProgress, error)
 }
@@ -135,8 +136,8 @@ var specs = []spec{
 			pr, err := svc.Bangumi.GetProfile()
 			return profileView{pr.Username, pr.Nickname, pr.AvatarURL, []string{pr.AvatarLarge, pr.AvatarMedium, pr.AvatarSmall}}, err
 		},
-		start: func(svc *api.Services) error {
-			_, err := svc.Bangumi.StartAuth()
+		start: func(ctx context.Context, svc *api.Services) error {
+			_, err := svc.Bangumi.StartAuthContext(ctx)
 			return err
 		},
 		disconnect: func(svc *api.Services) error {
@@ -181,8 +182,8 @@ var specs = []spec{
 			pr, err := svc.Hikarinagi.GetProfile()
 			return profileView{username: pr.Username, nickname: pr.Nickname, avatarURL: pr.AvatarURL}, err
 		},
-		start: func(svc *api.Services) error {
-			_, err := svc.Hikarinagi.StartAuth()
+		start: func(ctx context.Context, svc *api.Services) error {
+			_, err := svc.Hikarinagi.StartAuthContext(ctx)
 			return err
 		},
 		disconnect: func(svc *api.Services) error {
@@ -227,8 +228,8 @@ var specs = []spec{
 			pr, err := svc.Kungal.GetProfile()
 			return profileView{username: pr.Username, avatarURL: pr.AvatarURL}, err
 		},
-		start: func(svc *api.Services) error {
-			_, err := svc.Kungal.StartAuth()
+		start: func(ctx context.Context, svc *api.Services) error {
+			_, err := svc.Kungal.StartAuthContext(ctx)
 			return err
 		},
 		disconnect: func(svc *api.Services) error {

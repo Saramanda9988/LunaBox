@@ -33,6 +33,8 @@ type AddGame struct {
 	results   []vo.GameMetadataFromWebVO
 	resultsUI SearchResults
 	loading   bool
+	search    env.Request // 进行中的按名称或 ID 获取元数据，可以取消
+	searchBy  string      // 进行中的是 "name" 还是 "id"：取消按钮显示在对应的按钮旁边
 	manualID  string
 	source    enums.SourceType // manualSource
 	cover     string
@@ -50,8 +52,9 @@ func (a *AddGame) Open() { a.open = true }
 // IsOpen 报告弹窗是否打开。
 func (a *AddGame) IsOpen() bool { return a.open }
 
-// close 对应 resetAndClose。
+// close 对应 resetAndClose：同时取消进行中的元数据请求。
 func (a *AddGame) close() {
+	a.search.Cancel()
 	src := a.source
 	*a = AddGame{env: a.env, step: "type", source: src, gen: a.gen + 1}
 }
@@ -121,20 +124,33 @@ func (a *AddGame) selectExecutable(c *ui.Context) {
 	})
 }
 
-// searchByName 对应 handleSearchByName：按名称获取各来源的元数据，进入结果。
+// cancelSearch 取消进行中的按名称或 ID 获取元数据，回到可以重新搜索的状态（不提示）。
+func (a *AddGame) cancelSearch() {
+	if a.search.Cancel() {
+		a.loading, a.searchBy = false, ""
+	}
+}
+
+// back 是各步骤的“返回”：先取消进行中的搜索，否则结果回来时会跳到结果步骤。
+func (a *AddGame) back(step string) {
+	a.cancelSearch()
+	a.step = step
+}
+
+// searchByName 对应 handleSearchByName：按名称获取各来源的元数据，进入结果。可以用 cancelSearch 取消。
 func (a *AddGame) searchByName(c *ui.Context) {
 	if a.name == "" || a.loading {
 		return
 	}
-	a.loading = true
-	svc, name, gen := a.env.Svc.Game, a.name, a.gen
+	a.loading, a.searchBy = true, "name"
+	svc, name, gen, ctx := a.env.Svc.Game, a.name, a.gen, a.search.Start()
 	a.env.Async(func() func() {
-		results, err := svc.FetchMetadataByName(name)
+		results, err := svc.FetchMetadataByNameContext(ctx, name)
 		return func() {
-			if gen != a.gen {
+			if gen != a.gen || !a.search.Finish(ctx) {
 				return
 			}
-			a.loading = false
+			a.loading, a.searchBy = false, ""
 			if err != nil {
 				log.Printf("add game: fetch metadata %q: %v", name, err)
 				a.env.Toast(c, env.Error(locales.AddGameModalToastFetchMetaFailed()))
@@ -212,20 +228,20 @@ func (a *AddGame) selectResult(c *ui.Context, selected vo.GameMetadataFromWebVO,
 	a.saveFromMetadata(c, selected, a.results, onAdded)
 }
 
-// searchByID 对应 handleSearchById：按来源与 ID 获取元数据后直接保存。
+// searchByID 对应 handleSearchById：按来源与 ID 获取元数据后直接保存。获取可以用 cancelSearch 取消。
 func (a *AddGame) searchByID(c *ui.Context, source enums.SourceType, onAdded func()) {
 	if a.manualID == "" || source == enums.Local || a.loading {
 		return
 	}
-	a.loading = true
-	svc, id, gen := a.env.Svc.Game, a.manualID, a.gen
+	a.loading, a.searchBy = true, "id"
+	svc, id, gen, ctx := a.env.Svc.Game, a.manualID, a.gen, a.search.Start()
 	a.env.Async(func() func() {
-		meta, err := svc.FetchMetadataFromWeb(vo.MetadataRequest{Source: source, ID: id})
+		meta, err := svc.FetchMetadataFromWebContext(ctx, vo.MetadataRequest{Source: source, ID: id})
 		return func() {
-			if gen != a.gen {
+			if gen != a.gen || !a.search.Finish(ctx) {
 				return
 			}
-			a.loading = false
+			a.loading, a.searchBy = false, ""
 			if err != nil {
 				log.Printf("add game: fetch %s/%s: %v", source, id, err)
 				a.env.Toast(c, env.Error(locales.AddGameModalToastFetchMetaByIdFailed()))
@@ -418,6 +434,17 @@ func (a *AddGame) searchLabel(idle string) string {
 	return idle
 }
 
+// cancelButton 是搜索进行中（by 是 searchBy）时显示在搜索按钮旁边的“取消”，样式同“返回”；height 不为 0 时与旁边的按钮等高。
+func (a *AddGame) cancelButton(c *ui.Context, t *theme.Theme, by string, height float32) {
+	if a.searchBy != by || !a.search.Active() {
+		return
+	}
+	btn := outlineButton(c, t, "cancel-search-"+by, locales.CommonCancel(), false, 20, 10).Shrink(0).OnClick(a.cancelSearch)
+	if height > 0 {
+		btn.Height(height)
+	}
+}
+
 // localStep（space-y-6）：选择可执行文件（w-full py-4 bg-neutral-500 的按钮）、只读的路径、游戏名，底部返回、手动添加与搜索。
 func (a *AddGame) localStep(c *ui.Context, t *theme.Theme) {
 	ui.Column(c.Key("local-step")).Gap(24).Children(func() {
@@ -436,12 +463,13 @@ func (a *AddGame) localStep(c *ui.Context, t *theme.Theme) {
 			field(c, t, "name-input", &a.name, locales.AddGameModalGameName(), "")
 		})
 		ui.Row(c).Justify(ui.SpaceBetween).Gap(16).Children(func() {
-			outlineButton(c, t, "back", locales.CommonBack(), false, 20, 10).OnClick(func() { a.step = "type" })
+			outlineButton(c, t, "back", locales.CommonBack(), false, 20, 10).OnClick(func() { a.back("type") })
 			ui.Row(c).Gap(16).Children(func() {
 				manual := outlineButton(c, t, "manual", locales.CommonManualAdd(), a.exe == "", 20, 10)
 				if a.exe != "" {
-					manual.OnClick(func() { a.step = "manual" })
+					manual.OnClick(func() { a.back("manual") })
 				}
+				a.cancelButton(c, t, "name", 0)
 				primary(c, "search", a.searchLabel(locales.AddGameModalSearchMeta()), a.exe == "" || a.name == "" || a.loading, func() { a.searchByName(c) })
 			})
 		})
@@ -472,6 +500,7 @@ func (a *AddGame) remoteStep(c *ui.Context, t *theme.Theme, opts []better.Select
 							Height(48).Padding(0, 12).Grow(1).Basis(0).MinWidth(0)
 						primary(c, "confirm-id", a.searchLabel(locales.CommonConfirm()), a.manualID == "" || source == enums.Local || a.loading,
 							func() { a.searchByID(c, source, onAdded) }).Height(48).Shrink(0)
+						a.cancelButton(c, t, "id", 48)
 					})
 				})
 			})
@@ -487,11 +516,12 @@ func (a *AddGame) remoteStep(c *ui.Context, t *theme.Theme, opts []better.Select
 			ui.Row(c).Gap(12).AlignItems(ui.Stretch).Children(func() { // flex gap-3：按钮拉伸到输入框的高度
 				field(c, t, "name-input", &a.name, locales.AddGameModalGameName(), "").Grow(1).Basis(0).MinWidth(0)
 				primary(c, "search", a.searchLabel(locales.AddGameModalSearchMeta()), a.name == "" || a.loading, func() { a.searchByName(c) })
+				a.cancelButton(c, t, "name", 0)
 			})
 		})
 		ui.Row(c).Justify(ui.SpaceBetween).Gap(16).Children(func() {
-			outlineButton(c, t, "back", locales.CommonBack(), false, 20, 10).OnClick(func() { a.step = "type" })
-			outlineButton(c, t, "manual", locales.CommonManualAdd(), false, 20, 10).OnClick(func() { a.step = "manual" })
+			outlineButton(c, t, "back", locales.CommonBack(), false, 20, 10).OnClick(func() { a.back("type") })
+			outlineButton(c, t, "manual", locales.CommonManualAdd(), false, 20, 10).OnClick(func() { a.back("manual") })
 		})
 	})
 }
@@ -545,7 +575,8 @@ func (a *AddGame) idStep(c *ui.Context, t *theme.Theme, opts []better.SelectOpti
 			field(c, t, "id-input", &a.manualID, locales.AddGameModalGameId(), locales.AddGameModalGameIdPlaceholder())
 		})
 		ui.Row(c).Justify(ui.End).Gap(16).Children(func() {
-			outlineButton(c, t, "back", locales.CommonBack(), false, 20, 10).OnClick(func() { a.step = "results" })
+			outlineButton(c, t, "back", locales.CommonBack(), false, 20, 10).OnClick(func() { a.back("results") })
+			a.cancelButton(c, t, "id", 0)
 			primary(c, "confirm", a.searchLabel(locales.CommonConfirm()), a.manualID == "" || source == enums.Local || a.loading,
 				func() { a.searchByID(c, source, onAdded) })
 		})

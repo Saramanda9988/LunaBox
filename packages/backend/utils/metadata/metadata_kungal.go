@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,6 +32,7 @@ func IsKungalUnauthorizedError(err error) bool {
 
 type KungalInfoGetter struct {
 	client   *http.Client
+	ctx      context.Context
 	tagLimit int
 }
 
@@ -38,6 +40,7 @@ func NewKungalInfoGetter(options ...GetterOption) *KungalInfoGetter {
 	config := newGetterConfig(options)
 	return &KungalInfoGetter{
 		client:   config.client,
+		ctx:      config.ctx,
 		tagLimit: config.tagLimit,
 	}
 }
@@ -222,7 +225,7 @@ func (k KungalInfoGetter) FetchMetadataCandidatesByName(name string, accessToken
 }
 
 func (k KungalInfoGetter) doGet(reqURL, accessToken string) (int, []byte, error) {
-	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
+	req, err := http.NewRequestWithContext(metadataContext(k.ctx), http.MethodGet, reqURL, nil)
 	if err != nil {
 		return 0, nil, fmt.Errorf("create Kungal API request: %w", err)
 	}

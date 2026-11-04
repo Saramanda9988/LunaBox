@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -19,6 +20,7 @@ import (
 
 type ErogameScapeInfoGetter struct {
 	client   *http.Client
+	ctx      context.Context
 	baseURL  string
 	tagLimit int
 }
@@ -27,6 +29,7 @@ func NewErogameScapeInfoGetter(options ...GetterOption) *ErogameScapeInfoGetter 
 	config := newGetterConfig(options)
 	return &ErogameScapeInfoGetter{
 		client:   config.client,
+		ctx:      config.ctx,
 		baseURL:  config.erogameScapeBaseURL,
 		tagLimit: config.tagLimit,
 	}
@@ -36,6 +39,7 @@ func newErogameScapeInfoGetterWithBaseURL(baseURL string, options ...GetterOptio
 	config := newGetterConfig(options)
 	return &ErogameScapeInfoGetter{
 		client:   config.client,
+		ctx:      config.ctx,
 		baseURL:  strings.TrimRight(strings.TrimSpace(baseURL), "/"),
 		tagLimit: config.tagLimit,
 	}
@@ -191,7 +195,7 @@ func (e ErogameScapeInfoGetter) fetchDocument(path string, params url.Values) (*
 		reqURL += "?" + params.Encode()
 	}
 
-	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
+	req, err := http.NewRequestWithContext(metadataContext(e.ctx), http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, err
 	}

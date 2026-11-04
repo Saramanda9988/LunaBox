@@ -325,6 +325,12 @@ func (s *State) actions(c *ui.Context, t *theme.Theme, p panel.Settings, sp *spe
 	if v.auth.state == authNeedsReauth {
 		label = sp.text.reauthorize()
 	}
+	// 等待授权时左边是“取消等待”（与云备份的 Umbra 授权相同）。
+	if cs.authorizing && cs.auth.Active() {
+		better.Button(c, t, "cancel-authorize", better.ButtonProps{
+			Variant: better.ButtonGhost, Label: locales.SettingsCloudBackupCancelAuth(),
+		}).OnClick(func() { s.cancelAuthorize(cs) })
+	}
 	better.Button(c, t, "authorize", better.ButtonProps{
 		Variant: better.ButtonPrimary, Icon: "account-key-outline", Loading: cs.authorizing, Label: label,
 	}).OnClick(func() { s.authorize(p, sp, cs) })

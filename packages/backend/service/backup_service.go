@@ -366,19 +366,28 @@ func (s *BackupService) GetOneDriveAuthURL() string {
 
 // StartOneDriveAuth 启动 OneDrive 授权流程（使用本地回调服务器）
 func (s *BackupService) StartOneDriveAuth(clientID string) (string, error) {
+	return s.StartOneDriveAuthContext(s.ctx, clientID)
+}
+
+// StartOneDriveAuthContext 同 StartOneDriveAuth，ctx 取消时停止等待授权回调并返回 ctx 的错误。
+func (s *BackupService) StartOneDriveAuthContext(ctx context.Context, clientID string) (string, error) {
 	effectiveClientID := strings.TrimSpace(clientID)
 	if effectiveClientID == "" {
 		effectiveClientID = strings.TrimSpace(s.config.OneDriveClientID)
 	}
 
-	code, redirectURI, err := onedrive.StartOneDriveAuthFlow(s.ctx, effectiveClientID, 5*time.Minute, func(url string) error {
+	code, redirectURI, err := onedrive.StartOneDriveAuthFlow(ctx, effectiveClientID, 5*time.Minute, func(url string) error {
 		return s.runtime.OpenURL(url)
 	})
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			applog.LogInfof(s.ctx, "StartOneDriveAuth: authorization cancelled")
+			return "", err
+		}
 		applog.LogErrorf(s.ctx, "StartOneDriveAuth: failed to get auth code: %v", err)
 		return "", err
 	}
-	tokenResp, err := onedrive.ExchangeOneDriveCodeForTokenWithRedirectAndProxy(s.ctx, effectiveClientID, code, redirectURI, s.config)
+	tokenResp, err := onedrive.ExchangeOneDriveCodeForTokenWithRedirectAndProxy(ctx, effectiveClientID, code, redirectURI, s.config)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "StartOneDriveAuth: failed to exchange code for token: %v", err)
 		return "", err

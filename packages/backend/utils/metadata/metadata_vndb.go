@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 // VNDBInfoGetter 获取 VNDB 信息。
 type VNDBInfoGetter struct {
 	client         *http.Client
+	ctx            context.Context
 	preferredLangs []string
 	tagLimit       int
 	coverSource    enums.MetadataCoverSource
@@ -26,6 +28,7 @@ func NewVNDBInfoGetter(options ...GetterOption) *VNDBInfoGetter {
 	config := newGetterConfig(options)
 	return &VNDBInfoGetter{
 		client:      config.client,
+		ctx:         config.ctx,
 		tagLimit:    config.tagLimit,
 		coverSource: config.vndbCoverSource,
 	}
@@ -35,6 +38,7 @@ func NewVNDBInfoGetterWithLanguage(language string, options ...GetterOption) *VN
 	config := newGetterConfig(options)
 	return &VNDBInfoGetter{
 		client:         config.client,
+		ctx:            config.ctx,
 		preferredLangs: buildVNDBLanguagePreference(language),
 		tagLimit:       config.tagLimit,
 		coverSource:    config.vndbCoverSource,
@@ -207,7 +211,7 @@ func (v VNDBInfoGetter) queryVNDBResults(filters []interface{}, sort string, res
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", vndbAPIURL, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(metadataContext(v.ctx), "POST", vndbAPIURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, err
 	}

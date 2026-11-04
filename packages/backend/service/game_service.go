@@ -403,7 +403,7 @@ func (s *GameService) syncScrapedTagsForGame(game models.Game) {
 		return
 	}
 
-	metaResult, err := s.fetchMetadataResultBySource(game.SourceType, game.SourceID)
+	metaResult, err := s.fetchMetadataResultBySource(s.ctx, game.SourceType, game.SourceID)
 	if err != nil {
 		applog.LogWarningf(s.ctx, "syncScrapedTagsForGame: failed to fetch tags for game %s (%s/%s): %v", game.Name, game.SourceType, game.SourceID, err)
 		return
@@ -1491,11 +1491,16 @@ func (s *GameService) ExportLaunchShortcut(gameID string) (string, error) {
 }
 
 func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWebVO, error) {
+	return s.FetchMetadataByNameContext(s.ctx, name)
+}
+
+// FetchMetadataByNameContext 同 FetchMetadataByName，ctx 取消时中断各来源的请求并返回 ctx 的错误。
+func (s *GameService) FetchMetadataByNameContext(ctx context.Context, name string) ([]vo.GameMetadataFromWebVO, error) {
 	var games []vo.GameMetadataFromWebVO
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	searchSources := s.getConfiguredMetadataSearchSources()
+	searchSources := s.getConfiguredMetadataSearchSources(ctx)
 	// 这里暂不处理任何错误，直接尝试从多个来源并发获取数据，空就是网络问题或未找到，不管它
 	wg.Add(len(searchSources))
 	for _, searchSource := range searchSources {
@@ -1515,6 +1520,9 @@ func (s *GameService) FetchMetadataByName(name string) ([]vo.GameMetadataFromWeb
 	}
 
 	wg.Wait()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 
 	return games, nil
 }
@@ -1528,7 +1536,12 @@ func (s *GameService) FetchMetadata(req vo.MetadataRequest) (models.Game, error)
 }
 
 func (s *GameService) FetchMetadataFromWeb(req vo.MetadataRequest) (vo.GameMetadataFromWebVO, error) {
-	result, err := s.fetchMetadataResultByRequest(req)
+	return s.FetchMetadataFromWebContext(s.ctx, req)
+}
+
+// FetchMetadataFromWebContext 同 FetchMetadataFromWeb，ctx 取消时中断请求。
+func (s *GameService) FetchMetadataFromWebContext(ctx context.Context, req vo.MetadataRequest) (vo.GameMetadataFromWebVO, error) {
+	result, err := s.fetchMetadataResultByRequest(ctx, req)
 	if err != nil {
 		return vo.GameMetadataFromWebVO{}, err
 	}
@@ -1540,7 +1553,7 @@ func (s *GameService) FetchMetadataFromWeb(req vo.MetadataRequest) (vo.GameMetad
 	}, nil
 }
 
-func (s *GameService) fetchMetadataResultByRequest(req vo.MetadataRequest) (metadata.MetadataResult, error) {
+func (s *GameService) fetchMetadataResultByRequest(ctx context.Context, req vo.MetadataRequest) (metadata.MetadataResult, error) {
 	sourceID := strings.TrimSpace(req.ID)
 	if sourceID == "" {
 		return metadata.MetadataResult{}, errors.New("metadata id is empty")
@@ -1548,65 +1561,65 @@ func (s *GameService) fetchMetadataResultByRequest(req vo.MetadataRequest) (meta
 
 	switch req.Source {
 	case enums2.Bangumi:
-		return s.fetchMetadataResultBySource(req.Source, strings.ToLower(sourceID))
+		return s.fetchMetadataResultBySource(ctx, req.Source, strings.ToLower(sourceID))
 	case enums2.VNDB:
 		if !gamehelper.IsVndbID(strings.ToLower(sourceID)) {
 			return metadata.MetadataResult{}, fmt.Errorf("invalid VNDB ID format: %s", req.ID)
 		}
-		return s.fetchMetadataResultBySource(req.Source, strings.ToLower(sourceID))
+		return s.fetchMetadataResultBySource(ctx, req.Source, strings.ToLower(sourceID))
 	case enums2.Ymgal:
 		if !gamehelper.IsYmgalID(strings.ToLower(sourceID)) {
 			return metadata.MetadataResult{}, fmt.Errorf("invalid Ymgal ID format: %s", req.ID)
 		}
-		return s.fetchMetadataResultBySource(req.Source, strings.ToLower(sourceID))
+		return s.fetchMetadataResultBySource(ctx, req.Source, strings.ToLower(sourceID))
 	case enums2.Steam:
 		if !gamehelper.IsSteamAppID(sourceID) {
 			return metadata.MetadataResult{}, fmt.Errorf("invalid Steam app ID format: %s", req.ID)
 		}
-		return s.fetchMetadataResultBySource(req.Source, sourceID)
+		return s.fetchMetadataResultBySource(ctx, req.Source, sourceID)
 	case enums2.DLsite:
 		normalizedID, ok := metadata.NormalizeDLsiteID(sourceID)
 		if !ok {
 			return metadata.MetadataResult{}, fmt.Errorf("invalid DLsite ID format: %s", req.ID)
 		}
-		return s.fetchMetadataResultBySource(req.Source, normalizedID)
+		return s.fetchMetadataResultBySource(ctx, req.Source, normalizedID)
 	case enums2.ErogameScape:
 		normalizedID, ok := metadata.NormalizeErogameScapeID(sourceID)
 		if !ok {
 			return metadata.MetadataResult{}, fmt.Errorf("invalid ErogameScape ID format: %s", req.ID)
 		}
-		return s.fetchMetadataResultBySource(req.Source, normalizedID)
+		return s.fetchMetadataResultBySource(ctx, req.Source, normalizedID)
 	case enums2.TouchGal:
 		normalizedID, ok := metadata.NormalizeTouchGalID(sourceID)
 		if !ok {
 			return metadata.MetadataResult{}, fmt.Errorf("invalid TouchGAL uniqueId format: %s", req.ID)
 		}
-		return s.fetchMetadataResultBySource(req.Source, normalizedID)
+		return s.fetchMetadataResultBySource(ctx, req.Source, normalizedID)
 	case enums2.Hikarinagi:
 		normalizedID, ok := metadata.NormalizeHikarinagiID(sourceID)
 		if !ok {
 			return metadata.MetadataResult{}, fmt.Errorf("invalid Hikarinagi ID format: %s", req.ID)
 		}
-		return s.fetchMetadataResultBySource(req.Source, normalizedID)
+		return s.fetchMetadataResultBySource(ctx, req.Source, normalizedID)
 	case enums2.Kungal:
 		normalizedID, ok := metadata.NormalizeKungalID(sourceID)
 		if !ok {
 			return metadata.MetadataResult{}, fmt.Errorf("invalid Kungal ID format: %s", req.ID)
 		}
-		return s.fetchMetadataResultBySource(req.Source, normalizedID)
+		return s.fetchMetadataResultBySource(ctx, req.Source, normalizedID)
 	default:
 		return metadata.MetadataResult{}, fmt.Errorf("unsupported source type: %s", req.Source)
 	}
 }
 
-func (s *GameService) fetchMetadataResultBySource(source enums2.SourceType, sourceID string) (metadata.MetadataResult, error) {
-	getterOptions := gamehelper.MetadataGetterOptions(s.config)
+func (s *GameService) fetchMetadataResultBySource(ctx context.Context, source enums2.SourceType, sourceID string) (metadata.MetadataResult, error) {
+	getterOptions := gamehelper.MetadataGetterOptionsContext(ctx, s.config)
 	switch source {
 	case enums2.Bangumi:
 		if s.bangumiService == nil {
 			return metadata.MetadataResult{}, fmt.Errorf("Bangumi 服务未初始化")
 		}
-		return s.bangumiService.fetchMetadataByID(s.ctx, sourceID)
+		return s.bangumiService.fetchMetadataByID(ctx, sourceID)
 	case enums2.VNDB:
 		getter := metadata.NewVNDBInfoGetterWithLanguage(s.config.Language, getterOptions...)
 		return getter.FetchMetadata(sourceID, s.config.VNDBAccessToken)
@@ -1629,12 +1642,12 @@ func (s *GameService) fetchMetadataResultBySource(source enums2.SourceType, sour
 		if s.hikarinagiService == nil {
 			return metadata.MetadataResult{}, fmt.Errorf("Hikarinagi 服务未初始化")
 		}
-		return s.hikarinagiService.fetchMetadataByID(s.ctx, sourceID)
+		return s.hikarinagiService.fetchMetadataByID(ctx, sourceID)
 	case enums2.Kungal:
 		if s.kungalService == nil {
 			return metadata.MetadataResult{}, fmt.Errorf("鲲 Galgame 服务未初始化")
 		}
-		return s.kungalService.fetchMetadataByID(s.ctx, sourceID)
+		return s.kungalService.fetchMetadataByID(ctx, sourceID)
 	default:
 		return metadata.MetadataResult{}, fmt.Errorf("unsupported source type: %s", source)
 	}
@@ -1642,27 +1655,37 @@ func (s *GameService) fetchMetadataResultBySource(source enums2.SourceType, sour
 
 // UpdateGameFromRemote 从远程数据源更新游戏信息
 func (s *GameService) UpdateGameFromRemote(gameID string) error {
-	_, err := s.updateGameMetadataFromRemote(gameID, true, nil)
+	_, err := s.updateGameMetadataFromRemote(s.ctx, gameID, true, nil)
 	return err
 }
 
 // UpdateGameFromRemoteWithFields 从远程数据源更新指定字段。
 func (s *GameService) UpdateGameFromRemoteWithFields(gameID string, fields []enums2.MetadataUpdateField) error {
-	_, err := s.updateGameMetadataFromRemote(gameID, true, fields)
+	return s.UpdateGameFromRemoteWithFieldsContext(s.ctx, gameID, fields)
+}
+
+// UpdateGameFromRemoteWithFieldsContext 同 UpdateGameFromRemoteWithFields，ctx 在拉取完成前取消时不修改游戏。
+func (s *GameService) UpdateGameFromRemoteWithFieldsContext(ctx context.Context, gameID string, fields []enums2.MetadataUpdateField) error {
+	_, err := s.updateGameMetadataFromRemote(ctx, gameID, true, fields)
 	return err
 }
 
 // UpdateGameFromRemoteBySource refreshes a game from one explicitly linked provider.
 func (s *GameService) UpdateGameFromRemoteBySource(gameID string, source enums2.SourceType) error {
-	_, err := s.updateGameMetadataFromRemoteBySource(gameID, source, true, nil)
+	return s.UpdateGameFromRemoteBySourceContext(s.ctx, gameID, source)
+}
+
+// UpdateGameFromRemoteBySourceContext 同 UpdateGameFromRemoteBySource，ctx 在拉取完成前取消时不修改游戏。
+func (s *GameService) UpdateGameFromRemoteBySourceContext(ctx context.Context, gameID string, source enums2.SourceType) error {
+	_, err := s.updateGameMetadataFromRemoteBySource(ctx, gameID, source, true, nil)
 	return err
 }
 
-func (s *GameService) updateGameMetadataFromRemote(gameID string, downloadCoverImmediately bool, fields []enums2.MetadataUpdateField) (string, error) {
-	return s.updateGameMetadataFromRemoteBySource(gameID, "", downloadCoverImmediately, fields)
+func (s *GameService) updateGameMetadataFromRemote(ctx context.Context, gameID string, downloadCoverImmediately bool, fields []enums2.MetadataUpdateField) (string, error) {
+	return s.updateGameMetadataFromRemoteBySource(ctx, gameID, "", downloadCoverImmediately, fields)
 }
 
-func (s *GameService) updateGameMetadataFromRemoteBySource(gameID string, requestedSource enums2.SourceType, downloadCoverImmediately bool, fields []enums2.MetadataUpdateField) (string, error) {
+func (s *GameService) updateGameMetadataFromRemoteBySource(ctx context.Context, gameID string, requestedSource enums2.SourceType, downloadCoverImmediately bool, fields []enums2.MetadataUpdateField) (string, error) {
 	// 获取现有游戏信息
 	existingGame, err := s.GetGameByID(gameID)
 	if err != nil {
@@ -1696,9 +1719,12 @@ func (s *GameService) updateGameMetadataFromRemoteBySource(gameID string, reques
 	}
 
 	sourceId := strings.ToLower(sourceID)
-	metaResult, err := s.fetchMetadataResultBySource(sourceType, sourceId)
+	metaResult, err := s.fetchMetadataResultBySource(ctx, sourceType, sourceId)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch metadata from remote: %w", err)
+	}
+	if err := ctx.Err(); err != nil {
+		return "", err
 	}
 
 	remoteCoverURL, err := s.applyRemoteMetadataResult(existingGame, metaResult, downloadCoverImmediately, fieldSet)
@@ -1920,7 +1946,7 @@ func (s *GameService) refreshGamesMetadata(games []models.Game, logPrefix string
 			continue
 		}
 
-		remoteCoverURL, err := s.updateGameMetadataFromRemote(game.ID, false, fields)
+		remoteCoverURL, err := s.updateGameMetadataFromRemote(s.ctx, game.ID, false, fields)
 		if err != nil {
 			result.FailedGames++
 			result.FailedGameIDs = append(result.FailedGameIDs, game.ID)
@@ -2397,10 +2423,10 @@ func (s *GameService) findGameIDByPath(path string) (string, bool) {
 	return id, true
 }
 
-func (s *GameService) getConfiguredMetadataSearchSources() []metadataSearchSource {
+func (s *GameService) getConfiguredMetadataSearchSources(ctx context.Context) []metadataSearchSource {
 	vndbToken := ""
 	language := ""
-	getterOptions := gamehelper.MetadataGetterOptions(s.config)
+	getterOptions := gamehelper.MetadataGetterOptionsContext(ctx, s.config)
 	if s.config != nil {
 		vndbToken = s.config.VNDBAccessToken
 		language = s.config.Language
@@ -2416,10 +2442,10 @@ func (s *GameService) getConfiguredMetadataSearchSources() []metadataSearchSourc
 			sources = append(sources, metadataSearchSource{
 				source: enums2.Bangumi,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return s.bangumiService.fetchMetadataByName(s.ctx, name)
+					return s.bangumiService.fetchMetadataByName(ctx, name)
 				},
 				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
-					return s.bangumiService.fetchMetadataCandidatesByName(s.ctx, name)
+					return s.bangumiService.fetchMetadataCandidatesByName(ctx, name)
 				},
 			})
 		case enums2.VNDB:
@@ -2495,10 +2521,10 @@ func (s *GameService) getConfiguredMetadataSearchSources() []metadataSearchSourc
 			sources = append(sources, metadataSearchSource{
 				source: enums2.Hikarinagi,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return s.hikarinagiService.fetchMetadataByName(s.ctx, name)
+					return s.hikarinagiService.fetchMetadataByName(ctx, name)
 				},
 				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
-					return s.hikarinagiService.fetchMetadataCandidatesByName(s.ctx, name)
+					return s.hikarinagiService.fetchMetadataCandidatesByName(ctx, name)
 				},
 			})
 		case enums2.Kungal:
@@ -2508,10 +2534,10 @@ func (s *GameService) getConfiguredMetadataSearchSources() []metadataSearchSourc
 			sources = append(sources, metadataSearchSource{
 				source: enums2.Kungal,
 				fetchByName: func(name string) (metadata.MetadataResult, error) {
-					return s.kungalService.fetchMetadataByName(s.ctx, name)
+					return s.kungalService.fetchMetadataByName(ctx, name)
 				},
 				fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
-					return s.kungalService.fetchMetadataCandidatesByName(s.ctx, name)
+					return s.kungalService.fetchMetadataCandidatesByName(ctx, name)
 				},
 			})
 		}

@@ -90,8 +90,10 @@ func (e *editor) searchResultsStep(c *ui.Context, closeModal func()) {
 			})
 		},
 		Footer: func() {
-			// flex items-center justify-between border-t border-brand-200 pt-4 dark:border-brand-700
-			ui.Row(c.Key("footer")).Padding(16, 0, 0, 0).BorderWidth(t.HL, 0, 0, 0).BorderColor(t.Divider).Children(func() {
+			// flex items-center justify-between border-t border-brand-200 pt-4 dark:border-brand-700；
+			// 应用结果时从远端更新（“更新元数据”）进行中，右边是“取消”。
+			ui.Row(c.Key("footer")).Padding(16, 0, 0, 0).AlignItems(ui.Center).Justify(ui.SpaceBetween).
+				BorderWidth(t.HL, 0, 0, 0).BorderColor(t.Divider).Children(func() {
 				back := ui.ButtonBase(c.Key("back")).FocusRing(false).Label(locales.AddGameModalGoBack())
 				color := t.Pick(theme.Brand500, theme.Brand400)
 				if s.applying {
@@ -102,6 +104,16 @@ func (e *editor) searchResultsStep(c *ui.Context, closeModal func()) {
 				back.OnClick(closeModal).Children(func() {
 					components.Text(c, "←"+locales.AddGameModalGoBack(), theme.TextSM, theme.WeightNormal, color).NoWrap()
 				})
+				if s.applying && s.apply.Active() {
+					cancel := ui.ButtonBase(c.Key("cancel-apply")).FocusRing(false).Label(locales.CommonCancel())
+					color := t.Pick(theme.Error600, theme.Error400)
+					if cancel.Hovered() {
+						color = t.Pick(theme.Error700, theme.Error300)
+					}
+					cancel.OnClick(s.cancelApply).Children(func() {
+						components.Text(c, locales.CommonCancel(), theme.TextSM, theme.WeightNormal, color).NoWrap()
+					})
+				}
 			})
 		},
 	})

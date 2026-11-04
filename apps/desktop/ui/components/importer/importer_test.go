@@ -1,6 +1,7 @@
 package importer
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"slices"
@@ -183,6 +184,7 @@ func TestDragDropImport(t *testing.T) {
 type fakeImport struct {
 	api.ImportService
 	match      func(name string) (vo.BatchImportMetadataMatchResult, error)
+	matchCtx   context.Context // 最近一次匹配请求的 ctx
 	duplicates []vo.ImportMetadataDuplicateResult
 	imported   []vo.BatchImportCandidate
 	result     service.ImportResult
@@ -193,7 +195,8 @@ type fakeImport struct {
 	samePath   string
 }
 
-func (f *fakeImport) FetchMetadataForCandidateWithPreference(name string, _ enums.SourceType) (vo.BatchImportMetadataMatchResult, error) {
+func (f *fakeImport) FetchMetadataForCandidateWithPreferenceContext(ctx context.Context, name string, _ enums.SourceType) (vo.BatchImportMetadataMatchResult, error) {
+	f.matchCtx = ctx
 	return f.match(name)
 }
 
@@ -301,6 +304,28 @@ func TestMatchPausesWhenRateLimited(t *testing.T) {
 	runMatch(t, f, matchSettings{preferred: enums.Bangumi, preferredLabel: "Bangumi", all: []enums.SourceType{enums.Bangumi}})
 	if f.Pause != locales.BatchImportModalPreferredSourceRateLimitedPause("Bangumi", "429") || f.Candidates[1].MatchStatus != MatchPending {
 		t.Fatalf("pause %q, candidates %+v", f.Pause, f.Candidates)
+	}
+}
+
+// 停止匹配时取消进行中的那一次请求：它的结果被丢弃，候选项保持待匹配，之后的不再请求。
+func TestStopCancelsInFlightMatch(t *testing.T) {
+	var f *Flow
+	calls := 0
+	fake := &fakeImport{}
+	fake.match = func(name string) (vo.BatchImportMetadataMatchResult, error) {
+		calls++
+		f.Stop() // 请求还没返回时用户点了“停止匹配”
+		return vo.BatchImportMetadataMatchResult{Matches: []vo.GameMetadataFromWebVO{meta(enums.Bangumi, "b-"+name, "1")}}, nil
+	}
+	f = flowWith(fake, "a", "b")
+	if runMatch(t, f, matchSettings{all: []enums.SourceType{enums.Bangumi}}) {
+		t.Fatal("onDone should not be called after Stop")
+	}
+	if fake.matchCtx == nil || fake.matchCtx.Err() == nil {
+		t.Fatal("Stop should cancel the in-flight request")
+	}
+	if calls != 1 || f.Candidates[0].MatchStatus != MatchPending || f.Candidates[1].MatchStatus != MatchPending {
+		t.Fatalf("calls %d, candidates %+v", calls, f.Candidates)
 	}
 }
 
@@ -455,4 +480,78 @@ func TestAddGameLocalNeedsExecutable(t *testing.T) {
 	if path != `D:\Games\Sakura\sakura.exe` || status != string(enums.StatusNotStarted) {
 		t.Fatalf("path %q, status %q", path, status)
 	}
+}
+
+// fakeMetadataGame 替换真实服务的按名称获取元数据：during 在请求返回之前调用（模拟用户在等待时点了取消）。
+type fakeMetadataGame struct {
+	api.GameService
+	during  func()
+	ctx     context.Context
+	results []vo.GameMetadataFromWebVO
+}
+
+func (f *fakeMetadataGame) FetchMetadataByNameContext(ctx context.Context, _ string) ([]vo.GameMetadataFromWebVO, error) {
+	f.ctx = ctx
+	if f.during != nil {
+		f.during()
+	}
+	return f.results, nil
+}
+
+// 按名称搜索时可以取消：取消按钮复位搜索状态并取消请求；请求返回前取消的，结果被丢弃，不进入结果步骤。
+func TestAddGameCancelSearch(t *testing.T) {
+	var a *AddGame
+	h := newHarness(t)
+	fake := &fakeMetadataGame{GameService: h.env.Svc.Game, results: []vo.GameMetadataFromWebVO{meta(enums.Bangumi, "Sakura", "1")}}
+	h.env.Svc.Game = fake
+	view := func(h *harness, c *ui.Context, th *theme.Theme) { a.View(c, th, nil) }
+	a = NewAddGame(h.env)
+	h.run(view)
+	a.Open()
+	h.frames(2)
+	h.click(t, locales.AddGameModalRemoteGame())
+	a.name = "Sakura"
+	h.frames(1)
+
+	fake.during = func() { a.cancelSearch() }
+	h.click(t, locales.AddGameModalSearchMeta())
+	if fake.ctx == nil || fake.ctx.Err() == nil {
+		t.Fatal("cancel should cancel the request")
+	}
+	if a.step != "remote" || a.loading || a.search.Active() || len(a.results) != 0 {
+		t.Fatalf("after cancel: step %q, loading %v, results %d", a.step, a.loading, len(a.results))
+	}
+
+	// 等待中搜索按钮旁边多出“取消”（关闭按钮的标签也是“取消”，所以数个数），取消后消失。
+	cancels := func() int { return countText(h.tt.Texts(), locales.CommonCancel()) }
+	idle := cancels()
+	a.loading, a.searchBy = true, "name"
+	ctx := a.search.Start()
+	h.frames(1)
+	h.expect(t, locales.CommonSearching())
+	if got := cancels(); got <= idle {
+		t.Fatalf("cancel buttons while searching: %d, idle %d", got, idle)
+	}
+	a.cancelSearch()
+	h.frames(1)
+	if ctx.Err() == nil || a.loading || cancels() != idle {
+		t.Fatalf("after cancel: ctx %v, loading %v, cancel buttons %d", ctx.Err(), a.loading, cancels())
+	}
+
+	// 不取消时照常进入结果步骤。
+	fake.during = nil
+	h.click(t, locales.AddGameModalSearchMeta())
+	if a.step != "results" || len(a.results) != 1 {
+		t.Fatalf("search: step %q, results %d", a.step, len(a.results))
+	}
+}
+
+func countText(texts []string, s string) int {
+	n := 0
+	for _, text := range texts {
+		if text == s {
+			n++
+		}
+	}
+	return n
 }

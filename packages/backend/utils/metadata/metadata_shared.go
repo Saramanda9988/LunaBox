@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"context"
 	"io"
 	enums2 "lunabox/backend/common/enums"
 	"lunabox/backend/models"
@@ -94,6 +95,7 @@ const (
 )
 
 type getterConfig struct {
+	ctx                   context.Context
 	client                *http.Client
 	tagLimit              int
 	hasTagLimit           bool
@@ -140,6 +142,21 @@ func WithProxyConfig(proxyConfig proxyutils.ProxyConfigProvider) GetterOption {
 		}
 		config.client = client
 	}
+}
+
+// WithContext 让数据源的请求（包括限流等待）随 ctx 取消；不设置时不会被取消。
+func WithContext(ctx context.Context) GetterOption {
+	return func(config *getterConfig) {
+		config.ctx = ctx
+	}
+}
+
+// metadataContext 是请求使用的 ctx；直接构造的 getter 没有 ctx 时不取消。
+func metadataContext(ctx context.Context) context.Context {
+	if ctx == nil {
+		return context.Background()
+	}
+	return ctx
 }
 
 func WithTagLimit(limit int) GetterOption {

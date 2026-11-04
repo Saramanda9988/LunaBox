@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 
 type BangumiInfoGetter struct {
 	client      *http.Client
+	ctx         context.Context
 	tagLimit    int
 	coverSource enums.MetadataCoverSource
 }
@@ -26,6 +28,7 @@ func NewBangumiInfoGetter(options ...GetterOption) *BangumiInfoGetter {
 	config := newGetterConfig(options)
 	return &BangumiInfoGetter{
 		client:      config.client,
+		ctx:         config.ctx,
 		tagLimit:    config.tagLimit,
 		coverSource: config.bangumiCoverSource,
 	}
@@ -102,7 +105,7 @@ func (b BangumiInfoGetter) FetchMetadata(id string, token string) (MetadataResul
 	}
 
 	reqURL := fmt.Sprintf("%s/%s", bangumiIDQueryAPIURL, id)
-	req, err := http.NewRequest("GET", reqURL, nil)
+	req, err := http.NewRequestWithContext(metadataContext(b.ctx), "GET", reqURL, nil)
 	if err != nil {
 		return MetadataResult{}, err
 	}
@@ -169,7 +172,7 @@ func (b BangumiInfoGetter) FetchMetadataCandidatesByName(name string, token stri
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", fullURL, bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequestWithContext(metadataContext(b.ctx), "POST", fullURL, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 
 type TouchGalInfoGetter struct {
 	client   *http.Client
+	ctx      context.Context
 	tagLimit int
 }
 
@@ -23,6 +25,7 @@ func NewTouchGalInfoGetter(options ...GetterOption) *TouchGalInfoGetter {
 	config := newGetterConfig(options)
 	return &TouchGalInfoGetter{
 		client:   config.client,
+		ctx:      config.ctx,
 		tagLimit: config.tagLimit,
 	}
 }
@@ -119,7 +122,7 @@ func (t TouchGalInfoGetter) FetchMetadata(id string, token string) (MetadataResu
 	}
 
 	reqURL := fmt.Sprintf("%s/games/%s?allowNsfw=%s", touchGalAPIBaseURL, url.PathEscape(uniqueID), touchGalAllowNSFW)
-	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
+	req, err := http.NewRequestWithContext(metadataContext(t.ctx), http.MethodGet, reqURL, nil)
 	if err != nil {
 		return MetadataResult{}, err
 	}
@@ -177,7 +180,7 @@ func (t TouchGalInfoGetter) FetchMetadataCandidatesByName(name string, token str
 	params.Set("limit", touchGalSearchLimit)
 	params.Set("allowNsfw", touchGalAllowNSFW)
 
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/games/search?%s", touchGalAPIBaseURL, params.Encode()), nil)
+	req, err := http.NewRequestWithContext(metadataContext(t.ctx), http.MethodGet, fmt.Sprintf("%s/games/search?%s", touchGalAPIBaseURL, params.Encode()), nil)
 	if err != nil {
 		return nil, err
 	}

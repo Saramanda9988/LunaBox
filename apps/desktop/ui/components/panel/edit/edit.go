@@ -64,18 +64,21 @@ type State struct {
 	sourceDraftID   string
 	sourceEdits     map[enums.SourceType]string // sourceIDEdits
 	sourceSaves     map[enums.SourceType]pendingSave
-	busySource      string // "add"、"<source>:default"、"<source>:delete"
-	searching       bool   // isSearchingMetadataByName
+	busySource      string      // "add"、"<source>:default"、"<source>:delete"
+	searching       bool        // isSearchingMetadataByName
+	search          env.Request // 按当前名称搜索元数据的请求，可以取消
 
 	fieldsOpen bool                        // isMetadataFieldModalOpen
 	fields     []enums.MetadataUpdateField // 弹窗里勾选的字段
 	lastFields []enums.MetadataUpdateField // selectedMetadataFields：上次更新用的字段
 	updating   bool                        // isUpdatingFromRemote
+	update     env.Request                 // 从远端更新的请求，可以取消
 
 	searchOpen bool // isMetadataSearchModalOpen
 	searchMode searchMode
 	results    []vo.GameMetadataFromWebVO
-	applying   bool // isApplyingMetadataResult
+	applying   bool        // isApplyingMetadataResult
+	apply      env.Request // 应用搜索结果时从远端更新的请求，可以取消
 	resultsUI  importer.SearchResults
 
 	deleteOpen bool
@@ -88,6 +91,8 @@ func (s *State) init(g *models.Game) {
 	if s.gameID == g.ID {
 		return
 	}
+	// 搜索结果属于原来的游戏，换游戏时不再需要；更新与应用结果照常在后台完成（不能再取消）。
+	s.search.Cancel()
 	*s = State{
 		gameID:          g.ID,
 		rating:          formatRating(g.Rating),
@@ -513,11 +518,18 @@ func (e *editor) footerButtons(c *ui.Context) {
 	t, s := e.t, e.s
 	locked := e.g.MetadataLocked
 	ui.Row(c.Key("footer")).Padding(16, 0, 0, 0).Gap(16).Justify(ui.End).Children(func() {
+		// 更新进行中时按钮显示加载，旁边是“取消”。
+		if s.updating && s.update.Active() {
+			better.Button(c, t, "update-cancel", better.ButtonProps{
+				Variant: better.ButtonSecondary, Icon: "close", Label: locales.CommonCancel(),
+			}).OnClick(s.cancelUpdate)
+		}
 		better.Button(c, t, "update-remote", better.ButtonProps{
 			Variant: better.ButtonPrimary, Icon: "cloud-sync", Label: locales.GameEditUpdateFromRemote(), Disabled: locked,
+			Loading: s.updating,
 		}).OnClick(func() {
 			// handleOpenUpdateFromRemote：打开字段选择弹窗，勾选上次用过的字段。
-			if !locked {
+			if !locked && !s.updating {
 				s.fields = slices.Clone(s.lastFields)
 				s.fieldsOpen = true
 			}

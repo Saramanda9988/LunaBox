@@ -195,5 +195,10 @@ func (e *editor) searchButtons(c *ui.Context) {
 			Variant: better.ButtonPrimary, Icon: "database-refresh-outline", Loading: s.searching,
 			Label: label(locales.GameEditSearchMetadataAndUpdateByCurrentName()),
 		}).FillWidth().OnClick(func() { e.searchByName(c, searchUpdateMetadata) })
+		if s.searching && s.search.Active() {
+			better.Button(c, t, "search-cancel", better.ButtonProps{
+				Variant: better.ButtonGhost, Icon: "close", Label: locales.CommonCancel(),
+			}).FillWidth().OnClick(s.cancelSearch)
+		}
 	})
 }

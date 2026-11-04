@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,6 +33,7 @@ func IsHikarinagiUnauthorizedError(err error) bool {
 
 type HikarinagiInfoGetter struct {
 	client   *http.Client
+	ctx      context.Context
 	tagLimit int
 }
 
@@ -39,6 +41,7 @@ func NewHikarinagiInfoGetter(options ...GetterOption) *HikarinagiInfoGetter {
 	config := newGetterConfig(options)
 	return &HikarinagiInfoGetter{
 		client:   config.client,
+		ctx:      config.ctx,
 		tagLimit: config.tagLimit,
 	}
 }
@@ -262,7 +265,7 @@ func (h HikarinagiInfoGetter) getAccessToken() (string, error) {
 	form := url.Values{}
 	form.Set("grant_type", "client_credentials")
 	form.Set("scope", hikarinagiScope)
-	req, err := http.NewRequest(http.MethodPost, hikarinagiTokenURL, bytes.NewBufferString(form.Encode()))
+	req, err := http.NewRequestWithContext(metadataContext(h.ctx), http.MethodPost, hikarinagiTokenURL, bytes.NewBufferString(form.Encode()))
 	if err != nil {
 		return "", fmt.Errorf("create Hikarinagi token request: %w", err)
 	}
@@ -342,7 +345,7 @@ func (h HikarinagiInfoGetter) doAuthorizedGet(reqURL, providedToken string) ([]b
 }
 
 func (h HikarinagiInfoGetter) doGetWithToken(reqURL, accessToken string) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
+	req, err := http.NewRequestWithContext(metadataContext(h.ctx), http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create Hikarinagi API request: %w", err)
 	}

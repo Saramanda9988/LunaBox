@@ -1795,5 +1795,6 @@
   "mygo.clipboardRead": "プログラムがクリップボードの読み取りを要求しています",
   "mygo.clipboardReadAllow": "許可",
   "mygo.clipboardReadDeny": "拒否",
-  "mygo.clipboardReadEmpty": "クリップボードは空です。"
+  "mygo.clipboardReadEmpty": "クリップボードは空です。",
+  "native_authCancelled": "認証をキャンセルしました"
 }

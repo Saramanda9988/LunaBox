@@ -4,6 +4,7 @@
 package api
 
 import (
+	"context"
 	"time"
 
 	"lunabox/backend/appconf"
@@ -98,12 +99,13 @@ type GameService interface {
 	FindGameGuideDocuments(gameID string) ([]vo.GameGuideDocument, error)
 	OpenGameGuideDocument(gameID string, relativePath string) error
 
-	FetchMetadataByName(name string) ([]vo.GameMetadataFromWebVO, error)
-	FetchMetadataFromWeb(req vo.MetadataRequest) (vo.GameMetadataFromWebVO, error)
+	// 按名称或 ID 获取元数据、从远程更新游戏都会请求网络，界面用 ctx 取消（*Context 版本）。
+	FetchMetadataByNameContext(ctx context.Context, name string) ([]vo.GameMetadataFromWebVO, error)
+	FetchMetadataFromWebContext(ctx context.Context, req vo.MetadataRequest) (vo.GameMetadataFromWebVO, error)
 	AddGameFromWebMetadata(meta vo.GameMetadataFromWebVO) error
 	SelectCoverImageWithTempID() (string, error)
-	UpdateGameFromRemoteBySource(gameID string, source enums.SourceType) error
-	UpdateGameFromRemoteWithFields(gameID string, fields []enums.MetadataUpdateField) error
+	UpdateGameFromRemoteBySourceContext(ctx context.Context, gameID string, source enums.SourceType) error
+	UpdateGameFromRemoteWithFieldsContext(ctx context.Context, gameID string, fields []enums.MetadataUpdateField) error
 	RefreshGamesMetadataWithFields(gameIDs []string, fields []enums.MetadataUpdateField) (vo.MetadataRefreshResult, error)
 	RefreshAllGamesMetadataWithFields(fields []enums.MetadataUpdateField) (vo.MetadataRefreshResult, error)
 	SetDefaultMetadataSource(gameID string, source enums.SourceType) error
@@ -197,7 +199,7 @@ type BackupService interface {
 	TestOneDriveConnection(config appconf.AppConfig) error
 	TestWebDAVConnection(config appconf.AppConfig) error
 	TestUmbraConnection(config appconf.AppConfig) error
-	StartOneDriveAuth(clientID string) (string, error)
+	StartOneDriveAuthContext(ctx context.Context, clientID string) (string, error)
 	StartUmbraAuth(config appconf.AppConfig) error
 	CancelUmbraAuth() bool
 	GetUmbraUserProfile(config appconf.AppConfig) (*vo.UmbraUserProfile, error)
@@ -240,10 +242,11 @@ type GameReviewService interface {
 }
 
 // AccountService 是 Bangumi、Hikarinagi、Kungal 三个账号来源共有的授权与同步方法，Status、Profile 是各自的 vo 类型。
+// StartAuthContext 等待浏览器里的授权回调，ctx 取消时停止等待。
 type AccountService[Status, Profile any] interface {
 	GetAuthStatus() (Status, error)
 	GetProfile() (Profile, error)
-	StartAuth() (Status, error)
+	StartAuthContext(ctx context.Context) (Status, error)
 	Disconnect() (Status, error)
 	SyncAllGameStatuses() (vo.RemoteStatusSyncProgress, error)
 }
@@ -322,7 +325,7 @@ type ImportService interface {
 	SelectLibraryDirectory(initialDirectory string) (service.LibraryDirectorySelection, error)
 	ScanLibraryDirectoryWithOptions(libraryPath string, options vo.BatchImportScanOptions) (vo.BatchImportScanResult, error)
 	ProcessDroppedPathsWithOptions(paths []string, options vo.BatchImportScanOptions) (vo.BatchImportScanResult, error)
-	FetchMetadataForCandidateWithPreference(searchName string, preferredSource enums.SourceType) (vo.BatchImportMetadataMatchResult, error)
+	FetchMetadataForCandidateWithPreferenceContext(ctx context.Context, searchName string, preferredSource enums.SourceType) (vo.BatchImportMetadataMatchResult, error)
 	CheckImportMetadataDuplicates(requests []vo.ImportMetadataDuplicateRequest) ([]vo.ImportMetadataDuplicateResult, error)
 	BatchImportGames(candidates []vo.BatchImportCandidate) (service.ImportResult, error)
 }

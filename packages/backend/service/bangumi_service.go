@@ -223,6 +223,12 @@ func (s *BangumiService) GetProfile() (vo.BangumiProfile, error) {
 }
 
 func (s *BangumiService) StartAuth() (vo.BangumiAuthStatus, error) {
+	return s.StartAuthContext(s.ctx)
+}
+
+// StartAuthContext 同 StartAuth，ctx 取消时停止等待授权回调并返回 ctx 的错误。
+func (s *BangumiService) StartAuthContext(ctx context.Context) (vo.BangumiAuthStatus, error) {
+	ctx = s.resolveContext(ctx)
 	if strings.TrimSpace(s.clientID) == "" || strings.TrimSpace(s.clientSecret) == "" {
 		return vo.BangumiAuthStatus{}, fmt.Errorf("Bangumi OAuth 未配置，请在构建时通过 %s 和 %s 注入", bangumiOAuthClientIDEnv, bangumiOAuthClientSecretEnv)
 	}
@@ -247,11 +253,11 @@ func (s *BangumiService) StartAuth() (vo.BangumiAuthStatus, error) {
 			return vo.BangumiAuthStatus{}, fmt.Errorf("Bangumi 授权失败: %s", result.Error)
 		}
 
-		tokenResp, err := s.exchangeAuthorizationCode(s.ctx, result.Code, session.redirectURI, session.state)
+		tokenResp, err := s.exchangeAuthorizationCode(ctx, result.Code, session.redirectURI, session.state)
 		if err != nil {
 			return vo.BangumiAuthStatus{}, err
 		}
-		user, err := s.fetchCurrentUser(s.ctx, tokenResp.AccessToken)
+		user, err := s.fetchCurrentUser(ctx, tokenResp.AccessToken)
 		if err != nil {
 			return vo.BangumiAuthStatus{}, fmt.Errorf("获取 Bangumi 当前用户信息失败: %w", err)
 		}
@@ -268,8 +274,8 @@ func (s *BangumiService) StartAuth() (vo.BangumiAuthStatus, error) {
 		return status, nil
 	case <-timer.C:
 		return vo.BangumiAuthStatus{}, fmt.Errorf("Bangumi 授权超时")
-	case <-s.resolveContext(s.ctx).Done():
-		return vo.BangumiAuthStatus{}, s.resolveContext(s.ctx).Err()
+	case <-ctx.Done():
+		return vo.BangumiAuthStatus{}, ctx.Err()
 	}
 }
 
@@ -313,7 +319,7 @@ func (s *BangumiService) refreshAccessToken(ctx context.Context) (string, error)
 }
 
 func (s *BangumiService) fetchMetadataByID(ctx context.Context, sourceID string) (metadata.MetadataResult, error) {
-	getter := metadata.NewBangumiInfoGetter(gamehelper.MetadataGetterOptions(s.config)...)
+	getter := metadata.NewBangumiInfoGetter(gamehelper.MetadataGetterOptionsContext(ctx, s.config)...)
 
 	token, err := s.getValidAccessToken(ctx)
 	if err != nil {
@@ -342,7 +348,7 @@ func (s *BangumiService) fetchMetadataByName(ctx context.Context, name string) (
 }
 
 func (s *BangumiService) fetchMetadataCandidatesByName(ctx context.Context, name string) ([]metadata.MetadataResult, error) {
-	getter := metadata.NewBangumiInfoGetter(gamehelper.MetadataGetterOptions(s.config)...)
+	getter := metadata.NewBangumiInfoGetter(gamehelper.MetadataGetterOptionsContext(ctx, s.config)...)
 
 	token, err := s.getValidAccessToken(ctx)
 	if err != nil {

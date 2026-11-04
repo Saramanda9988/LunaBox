@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -19,6 +20,7 @@ import (
 
 type DLsiteInfoGetter struct {
 	client   *http.Client
+	ctx      context.Context
 	tagLimit int
 }
 
@@ -26,6 +28,7 @@ func NewDLsiteInfoGetter(options ...GetterOption) *DLsiteInfoGetter {
 	config := newGetterConfig(options)
 	return &DLsiteInfoGetter{
 		client:   config.client,
+		ctx:      config.ctx,
 		tagLimit: config.tagLimit,
 	}
 }
@@ -179,7 +182,7 @@ func (d DLsiteInfoGetter) searchByName(keyword string) ([]dlsiteSearchItem, erro
 }
 
 func (d DLsiteInfoGetter) fetchDocument(reqURL string) (*goquery.Document, error) {
-	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
+	req, err := http.NewRequestWithContext(metadataContext(d.ctx), http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, err
 	}

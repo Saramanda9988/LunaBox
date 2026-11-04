@@ -1,6 +1,7 @@
 package edit
 
 import (
+	"context"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"lunabox/backend/common/enums"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
+	"lunabox/desktop/api"
 	"lunabox/desktop/host"
 	"lunabox/desktop/host/hosttest"
 	"lunabox/desktop/ui/components/panel"
@@ -594,4 +596,102 @@ func TestScreenshotDump(t *testing.T) {
 	h.state.deleteOpen = true
 	h.frames(2)
 	save(h, "edit-delete.png")
+}
+
+// remoteGame 替换真实服务里请求网络的两个方法：during 在请求返回之前调用（模拟用户在等待时点了取消）。
+type remoteGame struct {
+	api.GameService
+	during  func()
+	ctx     context.Context
+	updates int
+}
+
+func (r *remoteGame) FetchMetadataByNameContext(ctx context.Context, _ string) ([]vo.GameMetadataFromWebVO, error) {
+	r.ctx = ctx
+	if r.during != nil {
+		r.during()
+	}
+	return searchResults(), nil
+}
+
+func (r *remoteGame) UpdateGameFromRemoteWithFieldsContext(ctx context.Context, _ string, _ []enums.MetadataUpdateField) error {
+	r.ctx = ctx
+	if r.during != nil {
+		r.during()
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	r.updates++
+	return nil
+}
+
+func countText(texts []string, s string) int {
+	n := 0
+	for _, text := range texts {
+		if text == s {
+			n++
+		}
+	}
+	return n
+}
+
+// 按名称搜索与从远端更新都可以取消：等待时显示“取消”，请求返回前取消的不打开结果、不提示。
+func TestCancelRemoteRequests(t *testing.T) {
+	h := newHarness(t, testGame())
+	fake := &remoteGame{GameService: h.env.Svc.Game}
+	h.env.Svc.Game = fake
+	cancels := func() int { return countText(h.tt.Texts(), "取消") }
+
+	h.click(t, "编辑")
+	h.waitAnimation()
+	idle := cancels()
+	fake.during = h.state.cancelSearch
+	h.click(t, "根据当前游戏名称重新搜索（更新元数据）")
+	if fake.ctx == nil || fake.ctx.Err() == nil || h.state.searching || h.state.searchOpen {
+		t.Fatalf("cancelled search: ctx %v, searching %v, open %v", fake.ctx, h.state.searching, h.state.searchOpen)
+	}
+	h.state.searching = true
+	h.state.search.Start()
+	h.frames(1)
+	if cancels() <= idle {
+		t.Fatalf("no cancel button while searching in %q", h.tt.Texts())
+	}
+	h.state.cancelSearch()
+	h.frames(1)
+	if cancels() != idle || h.state.search.Active() {
+		t.Fatalf("cancel button after cancel: %d, idle %d", cancels(), idle)
+	}
+	fake.during = nil
+	h.click(t, "根据当前游戏名称重新搜索（更新元数据）")
+	if !h.state.searchOpen || len(h.state.results) != len(searchResults()) {
+		t.Fatalf("search: open %v, results %d", h.state.searchOpen, len(h.state.results))
+	}
+	h.state.searchOpen, h.state.drawerOpen = false, false
+	h.waitAnimation()
+
+	idle = cancels()
+	fake.during = h.state.cancelUpdate
+	h.click(t, "从远端更新信息")
+	h.click(t, "开始更新")
+	if fake.ctx.Err() == nil || h.state.updating || fake.updates != 0 {
+		t.Fatalf("cancelled update: ctx %v, updating %v, updates %d", fake.ctx.Err(), h.state.updating, fake.updates)
+	}
+	h.state.updating = true
+	h.state.update.Start()
+	h.frames(1)
+	if cancels() <= idle {
+		t.Fatalf("no cancel button while updating in %q", h.tt.Texts())
+	}
+	h.state.cancelUpdate()
+	h.frames(1)
+	if cancels() != idle {
+		t.Fatalf("cancel button after cancel: %d, idle %d", cancels(), idle)
+	}
+	fake.during = nil
+	h.click(t, "从远端更新信息")
+	h.click(t, "开始更新")
+	if fake.updates != 1 || h.state.updating {
+		t.Fatalf("update: updates %d, updating %v", fake.updates, h.state.updating)
+	}
 }

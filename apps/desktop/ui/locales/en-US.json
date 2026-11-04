@@ -1612,5 +1612,6 @@
   "native_settingsSaveFailed": "Failed to save settings",
   "native_trayShowMainWindow": "Show Main Window",
   "native_trayQuit": "Exit",
-  "native_templateExportWebViewUnavailable": "No WebView component found, so templates cannot be previewed or exported (Windows needs the WebView2 Runtime, Linux needs WebKitGTK)"
+  "native_templateExportWebViewUnavailable": "No WebView component found, so templates cannot be previewed or exported (Windows needs the WebView2 Runtime, Linux needs WebKitGTK)",
+  "native_authCancelled": "Authorization cancelled"
 }
