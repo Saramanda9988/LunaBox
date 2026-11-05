@@ -537,9 +537,8 @@ jobs:
         include:
           - arch: amd64
             runner: ubuntu-24.04
-          # 暂停 Linux ARM64 构建，待托管运行器环境恢复后重新启用。
-          # - arch: arm64
-          #   runner: ubuntu-24.04-arm
+          - arch: arm64
+            runner: ubuntu-24.04-arm
 
     steps:
       - name: Checkout code
@@ -685,7 +684,7 @@ jobs:
         run: |
           mkdir -p release
           find ./artifacts -maxdepth 1 -type f \( -name "*.zip" -o -name "*.exe" -o -name "*.dmg" -o -name "*.tar.gz" -o -name "*.deb" -o -name "*.rpm" -o -name "*.AppImage" \) -exec cp {} ./release/ \;
-          test "$(find ./release -maxdepth 1 -type f | wc -l | tr -d ' ')" -eq 9
+          test "$(find ./release -maxdepth 1 -type f | wc -l | tr -d ' ')" -eq 12
           ls -lh ./release
 
       - name: Find previous stable release
@@ -850,7 +849,7 @@ jobs:
           echo "| \`*-linux-*.deb\` | Linux Debian/Ubuntu 安装包 |" >> release_notes.md
           echo "| \`*-linux-*.rpm\` | Linux Fedora/RHEL/openSUSE 安装包 |" >> release_notes.md
           echo "" >> release_notes.md
-          echo "Windows 提供 AMD64、ARM64；macOS 提供 Intel AMD64、Apple Silicon ARM64；Linux 提供 AMD64。" >> release_notes.md
+          echo "Windows 提供 AMD64、ARM64；macOS 提供 Intel AMD64、Apple Silicon ARM64；Linux 提供 AMD64、ARM64。" >> release_notes.md
           echo "" >> release_notes.md
           echo "### 🔗 相关链接" >> release_notes.md
           echo "" >> release_notes.md
