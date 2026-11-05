@@ -1805,5 +1805,14 @@
   "native_tags": "タグ",
   "native_addGameCoverEmpty": "クリックで選択、または貼り付け",
   "native_addGameTagsHint": "Enter で新しいタグを追加、またはライブラリにある既存のタグから選択",
-  "native_addGameSourcesHint": "星印がデフォルトのソースです。追加後はこれらのソースからメタデータを更新できます"
+  "native_addGameSourcesHint": "星印がデフォルトのソースです。追加後はこれらのソースからメタデータを更新できます",
+  "native_startupRestoreTitle": "データを復元しています",
+  "native_startupRestoreDetail": "復元が完了するとメイン画面が開きます。LunaBox を終了しないでください",
+  "native_startupRestoreSubtitle": "復元の進行状況",
+  "native_startupRestoreStep": "ステップ {step}/{steps}",
+  "native_startupRestoreExtract": "バックアップを展開しています",
+  "native_startupRestoreDatabase": "データベースをインポートしています",
+  "native_startupRestoreFiles": "カバー画像や背景画像などのデータをコピーしています",
+  "native_startupRestoreConfig": "設定を復元しています",
+  "native_startupRestoreStarting": "復元が完了しました。起動しています"
 }

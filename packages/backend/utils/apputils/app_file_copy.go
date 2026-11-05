@@ -9,6 +9,11 @@ import (
 
 // CopyDir 递归复制目录
 func CopyDir(src, dst string) error {
+	return CopyDirWithProgress(src, dst, nil)
+}
+
+// CopyDirWithProgress 同 CopyDir，每写入一段数据就以写入的字节数调用 onWrite（可为 nil）。
+func CopyDirWithProgress(src, dst string, onWrite func(n int64)) error {
 	srcInfo, err := os.Stat(src)
 	if err != nil {
 		return err
@@ -31,13 +36,13 @@ func CopyDir(src, dst string) error {
 		dstPath := filepath.Join(dst, entry.Name())
 
 		if entry.IsDir() {
-			if err := CopyDir(srcPath, dstPath); err != nil {
+			if err := CopyDirWithProgress(srcPath, dstPath, onWrite); err != nil {
 				return err
 			}
 			continue
 		}
 
-		if err := CopyFile(srcPath, dstPath); err != nil {
+		if err := copyFile(srcPath, dstPath, onWrite); err != nil {
 			return err
 		}
 	}
@@ -47,6 +52,10 @@ func CopyDir(src, dst string) error {
 
 // CopyFile 复制单个文件
 func CopyFile(src, dst string) error {
+	return copyFile(src, dst, nil)
+}
+
+func copyFile(src, dst string, onWrite func(n int64)) error {
 	srcFile, err := os.Open(src)
 	if err != nil {
 		return err
@@ -71,6 +80,22 @@ func CopyFile(src, dst string) error {
 	}
 	defer dstFile.Close()
 
-	_, err = io.Copy(dstFile, srcFile)
+	var w io.Writer = dstFile
+	if onWrite != nil {
+		w = countingWriter{w: dstFile, onWrite: onWrite}
+	}
+	_, err = io.Copy(w, srcFile)
 	return err
+}
+
+// countingWriter 把写入转给 w，并以每次写入的字节数调用 onWrite。
+type countingWriter struct {
+	w       io.Writer
+	onWrite func(n int64)
+}
+
+func (c countingWriter) Write(p []byte) (int, error) {
+	n, err := c.w.Write(p)
+	c.onWrite(int64(n))
+	return n, err
 }

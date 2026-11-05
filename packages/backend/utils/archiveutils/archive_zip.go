@@ -67,13 +67,18 @@ func ExtractZip(zipReader *zip.ReadCloser, destDir string) error {
 
 // UnzipForRestore 解压文件用于恢复，并保留归档中记录的修改时间。
 func UnzipForRestore(src, dest string) error {
+	return UnzipForRestoreWithProgress(src, dest, nil)
+}
+
+// UnzipForRestoreWithProgress 同 UnzipForRestore，开始时与每写入一段数据后以已解压、总的未压缩字节数调用 progress（可为 nil）。
+func UnzipForRestoreWithProgress(src, dest string, progress func(done, total int64)) error {
 	reader, err := zip.OpenReader(src)
 	if err != nil {
 		return err
 	}
 	defer reader.Close()
 
-	return extractZipFilesForRestore(reader.File, dest)
+	return extractZipFilesForRestore(reader.File, dest, progress)
 }
 
 func createZipArchive(target string, writeEntries func(*zip.Writer) error) (int64, error) {
@@ -175,14 +180,29 @@ func extractZipFile(file *zip.File, cleanTarget string) error {
 	return err
 }
 
-func extractZipFilesForRestore(files []*zip.File, destDir string) error {
+func extractZipFilesForRestore(files []*zip.File, destDir string, progress func(done, total int64)) error {
 	cleanTarget, err := filepath.Abs(filepath.Clean(destDir))
 	if err != nil {
 		return err
 	}
 
+	var onWrite func(n int)
+	if progress != nil {
+		var done, total int64
+		for _, file := range files {
+			if !file.FileInfo().IsDir() {
+				total += int64(file.UncompressedSize64)
+			}
+		}
+		progress(0, total)
+		onWrite = func(n int) {
+			done += int64(n)
+			progress(done, total)
+		}
+	}
+
 	for _, file := range files {
-		if err := extractZipFileForRestore(file, cleanTarget); err != nil {
+		if err := extractZipFileForRestore(file, cleanTarget, onWrite); err != nil {
 			return err
 		}
 	}
@@ -190,7 +210,7 @@ func extractZipFilesForRestore(files []*zip.File, destDir string) error {
 	return nil
 }
 
-func extractZipFileForRestore(file *zip.File, cleanTarget string) error {
+func extractZipFileForRestore(file *zip.File, cleanTarget string, onWrite func(n int)) error {
 	cleanPath, err := safeJoinWithinBase(cleanTarget, file.Name)
 	if err != nil {
 		return err
@@ -218,7 +238,11 @@ func extractZipFileForRestore(file *zip.File, cleanTarget string) error {
 		return err
 	}
 
-	_, copyErr := io.Copy(dstFile, srcFile)
+	var dst io.Writer = dstFile
+	if onWrite != nil {
+		dst = countingWriter{w: dstFile, onWrite: onWrite}
+	}
+	_, copyErr := io.Copy(dst, srcFile)
 	closeSourceErr := srcFile.Close()
 	closeDestErr := dstFile.Close()
 	if copyErr != nil {
@@ -231,6 +255,18 @@ func extractZipFileForRestore(file *zip.File, cleanTarget string) error {
 		return closeDestErr
 	}
 	return os.Chtimes(cleanPath, file.ModTime(), file.ModTime())
+}
+
+// countingWriter 把写入转给 w，并以每次写入的字节数调用 onWrite。
+type countingWriter struct {
+	w       io.Writer
+	onWrite func(n int)
+}
+
+func (c countingWriter) Write(p []byte) (int, error) {
+	n, err := c.w.Write(p)
+	c.onWrite(n)
+	return n, err
 }
 
 func safeJoinWithinBase(baseDir, relativePath string) (string, error) {

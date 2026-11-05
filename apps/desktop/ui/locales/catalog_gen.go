@@ -24220,3 +24220,131 @@ func NativeAddGameSourcesHint() string { return In(i18n.Locale()).NativeAddGameS
 func (msgs Messages) NativeAddGameSourcesHint() string {
 	return Catalog.Format(msgs.locale, "native_addGameSourcesHint", nil)
 }
+
+// NativeStartupRestoreTitle says "正在恢复数据"
+// in the language the app shows.
+//
+// extra:native.startupRestoreTitle
+func NativeStartupRestoreTitle() string { return In(i18n.Locale()).NativeStartupRestoreTitle() }
+
+// NativeStartupRestoreTitle says "正在恢复数据"
+// in the language of msgs.
+//
+// extra:native.startupRestoreTitle
+func (msgs Messages) NativeStartupRestoreTitle() string {
+	return Catalog.Format(msgs.locale, "native_startupRestoreTitle", nil)
+}
+
+// NativeStartupRestoreDetail says "恢复完成后会自动打开主界面，请勿关闭 LunaBox"
+// in the language the app shows.
+//
+// extra:native.startupRestoreDetail
+func NativeStartupRestoreDetail() string { return In(i18n.Locale()).NativeStartupRestoreDetail() }
+
+// NativeStartupRestoreDetail says "恢复完成后会自动打开主界面，请勿关闭 LunaBox"
+// in the language of msgs.
+//
+// extra:native.startupRestoreDetail
+func (msgs Messages) NativeStartupRestoreDetail() string {
+	return Catalog.Format(msgs.locale, "native_startupRestoreDetail", nil)
+}
+
+// NativeStartupRestoreSubtitle says "恢复进度"
+// in the language the app shows.
+//
+// extra:native.startupRestoreSubtitle
+func NativeStartupRestoreSubtitle() string { return In(i18n.Locale()).NativeStartupRestoreSubtitle() }
+
+// NativeStartupRestoreSubtitle says "恢复进度"
+// in the language of msgs.
+//
+// extra:native.startupRestoreSubtitle
+func (msgs Messages) NativeStartupRestoreSubtitle() string {
+	return Catalog.Format(msgs.locale, "native_startupRestoreSubtitle", nil)
+}
+
+// NativeStartupRestoreStep says "第 {step}/{steps} 步"
+// in the language the app shows.
+//
+// extra:native.startupRestoreStep
+func NativeStartupRestoreStep(step string, steps string) string {
+	return In(i18n.Locale()).NativeStartupRestoreStep(step, steps)
+}
+
+// NativeStartupRestoreStep says "第 {step}/{steps} 步"
+// in the language of msgs.
+//
+// extra:native.startupRestoreStep
+func (msgs Messages) NativeStartupRestoreStep(step string, steps string) string {
+	return Catalog.Format(msgs.locale, "native_startupRestoreStep", map[string]any{"step": step, "steps": steps})
+}
+
+// NativeStartupRestoreExtract says "正在解压备份"
+// in the language the app shows.
+//
+// extra:native.startupRestoreExtract
+func NativeStartupRestoreExtract() string { return In(i18n.Locale()).NativeStartupRestoreExtract() }
+
+// NativeStartupRestoreExtract says "正在解压备份"
+// in the language of msgs.
+//
+// extra:native.startupRestoreExtract
+func (msgs Messages) NativeStartupRestoreExtract() string {
+	return Catalog.Format(msgs.locale, "native_startupRestoreExtract", nil)
+}
+
+// NativeStartupRestoreDatabase says "正在导入数据库"
+// in the language the app shows.
+//
+// extra:native.startupRestoreDatabase
+func NativeStartupRestoreDatabase() string { return In(i18n.Locale()).NativeStartupRestoreDatabase() }
+
+// NativeStartupRestoreDatabase says "正在导入数据库"
+// in the language of msgs.
+//
+// extra:native.startupRestoreDatabase
+func (msgs Messages) NativeStartupRestoreDatabase() string {
+	return Catalog.Format(msgs.locale, "native_startupRestoreDatabase", nil)
+}
+
+// NativeStartupRestoreFiles says "正在复制封面、背景图等数据"
+// in the language the app shows.
+//
+// extra:native.startupRestoreFiles
+func NativeStartupRestoreFiles() string { return In(i18n.Locale()).NativeStartupRestoreFiles() }
+
+// NativeStartupRestoreFiles says "正在复制封面、背景图等数据"
+// in the language of msgs.
+//
+// extra:native.startupRestoreFiles
+func (msgs Messages) NativeStartupRestoreFiles() string {
+	return Catalog.Format(msgs.locale, "native_startupRestoreFiles", nil)
+}
+
+// NativeStartupRestoreConfig says "正在恢复设置"
+// in the language the app shows.
+//
+// extra:native.startupRestoreConfig
+func NativeStartupRestoreConfig() string { return In(i18n.Locale()).NativeStartupRestoreConfig() }
+
+// NativeStartupRestoreConfig says "正在恢复设置"
+// in the language of msgs.
+//
+// extra:native.startupRestoreConfig
+func (msgs Messages) NativeStartupRestoreConfig() string {
+	return Catalog.Format(msgs.locale, "native_startupRestoreConfig", nil)
+}
+
+// NativeStartupRestoreStarting says "恢复完成，正在启动"
+// in the language the app shows.
+//
+// extra:native.startupRestoreStarting
+func NativeStartupRestoreStarting() string { return In(i18n.Locale()).NativeStartupRestoreStarting() }
+
+// NativeStartupRestoreStarting says "恢复完成，正在启动"
+// in the language of msgs.
+//
+// extra:native.startupRestoreStarting
+func (msgs Messages) NativeStartupRestoreStarting() string {
+	return Catalog.Format(msgs.locale, "native_startupRestoreStarting", nil)
+}

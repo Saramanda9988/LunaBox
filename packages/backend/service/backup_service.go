@@ -1908,13 +1908,68 @@ func cloudBackupTimeFromName(name string) (time.Time, bool) {
 	return createdAt, ok
 }
 
+// ========== 启动时恢复的进度 ==========
+
+// RestoreStage 是启动时恢复备份的阶段。
+type RestoreStage string
+
+const (
+	RestoreStageExtract  RestoreStage = "extract"  // 解压备份
+	RestoreStageDatabase RestoreStage = "database" // 导入数据库
+	RestoreStageFiles    RestoreStage = "files"    // 复制封面、背景图等数据目录
+	RestoreStageConfig   RestoreStage = "config"   // 恢复设置文件
+	RestoreStageDone     RestoreStage = "done"     // 恢复结束（成功或失败），之后打开数据库并启动
+)
+
+// RestoreProgress 是启动时恢复备份的进度。Step 是当前阶段的序号（从 1 开始），Steps 是这次恢复的阶段数；
+// Done、Total 是阶段内已处理与总的字节数，Total 为 0 时阶段内的进度未知（如导入数据库）。
+type RestoreProgress struct {
+	Stage RestoreStage
+	Step  int
+	Steps int
+	Done  int64
+	Total int64
+}
+
+// RestoreProgressFunc 接收恢复进度，在执行恢复的 goroutine 上同步调用；复制文件时每写一段数据调用一次，接收方自己节流。
+type RestoreProgressFunc func(RestoreProgress)
+
+func (f RestoreProgressFunc) report(stage RestoreStage, step, steps int, done, total int64) {
+	if f != nil {
+		f(RestoreProgress{Stage: stage, Step: step, Steps: steps, Done: done, Total: total})
+	}
+}
+
+// filesCounter 开始复制文件阶段：先报告 root 下 names 目录的总字节数，返回的函数在每次写入后累加并报告。
+func (f RestoreProgressFunc) filesCounter(step, steps int, root string, names ...string) func(n int64) {
+	var done, total int64
+	for _, name := range names {
+		_ = filepath.WalkDir(filepath.Join(root, name), func(_ string, d os.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return nil
+			}
+			if info, err := d.Info(); err == nil {
+				total += info.Size()
+			}
+			return nil
+		})
+	}
+	f.report(RestoreStageFiles, step, steps, 0, total)
+	return func(n int64) {
+		done += n
+		f.report(RestoreStageFiles, step, steps, done, total)
+	}
+}
+
 // ========== 全量数据恢复（启动时调用）==========
 
-// ExecuteFullDataRestore 执行全量数据恢复（在 OnStartup 中、打开数据库前调用）
-func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
+// ExecuteFullDataRestore 执行全量数据恢复（在 OnStartup 中、打开数据库前调用）：依次解压、导入数据库、
+// 复制数据目录、恢复设置文件，进度交给 progress（可为 nil）。
+func ExecuteFullDataRestore(config *appconf.AppConfig, progress RestoreProgressFunc) (bool, error) {
 	if config.PendingFullRestore == "" {
 		return false, nil
 	}
+	const steps = 4
 
 	backupPath := config.PendingFullRestore
 	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
@@ -1938,11 +1993,14 @@ func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	if err := archiveutils.UnzipForRestore(backupPath, tempDir); err != nil {
+	if err := archiveutils.UnzipForRestoreWithProgress(backupPath, tempDir, func(done, total int64) {
+		progress.report(RestoreStageExtract, 1, steps, done, total)
+	}); err != nil {
 		return false, fmt.Errorf("解压全量备份失败: %w", err)
 	}
 
 	// 先恢复数据库
+	progress.report(RestoreStageDatabase, 2, steps, 0, 0)
 	dbPath := filepath.Join(dataDir, "lunabox.db")
 	dbImportDir := filepath.Join(tempDir, "database")
 	rawDBPath := filepath.Join(tempDir, "lunabox.db")
@@ -1971,7 +2029,9 @@ func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
 
 	// 恢复关键应用数据目录。
 	// logs 目录中的当前日志文件在 Windows 下可能被本进程占用，不能让它阻塞整次恢复。
-	for _, dirName := range []string{"covers", "backgrounds", "backups"} {
+	dataDirs := []string{"covers", "backgrounds", "backups"}
+	onWrite := progress.filesCounter(3, steps, tempDir, append(dataDirs, "logs")...)
+	for _, dirName := range dataDirs {
 		srcDir := filepath.Join(tempDir, dirName)
 		if _, err := os.Stat(srcDir); err != nil {
 			continue
@@ -1981,7 +2041,7 @@ func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
 		if err := os.RemoveAll(dstDir); err != nil {
 			return false, fmt.Errorf("清理目录 %s 失败: %w", dirName, err)
 		}
-		if err := apputils.CopyDir(srcDir, dstDir); err != nil {
+		if err := apputils.CopyDirWithProgress(srcDir, dstDir, onWrite); err != nil {
 			return false, fmt.Errorf("恢复目录 %s 失败: %w", dirName, err)
 		}
 	}
@@ -1991,12 +2051,13 @@ func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
 		logsDstDir := filepath.Join(dataDir, "logs")
 		if err := os.RemoveAll(logsDstDir); err != nil {
 			fmt.Printf("警告: 跳过恢复 logs 目录，当前日志文件可能被占用: %v\n", err)
-		} else if err := apputils.CopyDir(logsSrcDir, logsDstDir); err != nil {
+		} else if err := apputils.CopyDirWithProgress(logsSrcDir, logsDstDir, onWrite); err != nil {
 			fmt.Printf("警告: 恢复 logs 目录失败，已跳过: %v\n", err)
 		}
 	}
 
 	// 恢复配置文件
+	progress.report(RestoreStageConfig, 4, steps, 0, 0)
 	backupConfigPath := filepath.Join(tempDir, "appconf.json")
 	if _, err := os.Stat(backupConfigPath); err == nil {
 		configPath := filepath.Join(configDir, "appconf.json")
@@ -2022,12 +2083,14 @@ func ExecuteFullDataRestore(config *appconf.AppConfig) (bool, error) {
 
 // ========== 数据库恢复（启动时调用）==========
 
-// ExecuteDBRestore 执行数据库恢复（在 OnStartup 中、打开数据库前调用）
+// ExecuteDBRestore 执行数据库恢复（在 OnStartup 中、打开数据库前调用）：依次解压、导入数据库、复制封面，
+// 进度交给 progress（可为 nil）。
 // 支持新格式（包含 database/ 和 covers/ 子目录）和旧格式（直接是数据库导出文件）
-func ExecuteDBRestore(config *appconf.AppConfig) (bool, error) {
+func ExecuteDBRestore(config *appconf.AppConfig, progress RestoreProgressFunc) (bool, error) {
 	if config.PendingDBRestore == "" {
 		return false, nil
 	}
+	const steps = 3
 
 	backupPath := config.PendingDBRestore
 
@@ -2049,7 +2112,9 @@ func ExecuteDBRestore(config *appconf.AppConfig) (bool, error) {
 		return false, fmt.Errorf("创建临时目录失败: %w", err)
 	}
 
-	if err := archiveutils.UnzipForRestore(backupPath, tempDir); err != nil {
+	if err := archiveutils.UnzipForRestoreWithProgress(backupPath, tempDir, func(done, total int64) {
+		progress.report(RestoreStageExtract, 1, steps, done, total)
+	}); err != nil {
 		os.RemoveAll(tempDir)
 		return false, fmt.Errorf("解压备份失败: %w", err)
 	}
@@ -2063,6 +2128,7 @@ func ExecuteDBRestore(config *appconf.AppConfig) (bool, error) {
 		coversBackupDir = filepath.Join(tempDir, "covers")
 	}
 
+	progress.report(RestoreStageDatabase, 2, steps, 0, 0)
 	os.Remove(dbPath)
 	os.Remove(dbPath + ".wal")
 
@@ -2083,10 +2149,11 @@ func ExecuteDBRestore(config *appconf.AppConfig) (bool, error) {
 	// 恢复 covers 文件夹（如果备份中包含）
 	if coversBackupDir != "" {
 		if _, err := os.Stat(coversBackupDir); err == nil {
+			onWrite := progress.filesCounter(3, steps, tempDir, "covers")
 			coversDestDir := filepath.Join(dataDir, "covers")
 			// 先清空现有 covers 目录
 			os.RemoveAll(coversDestDir)
-			if err := apputils.CopyDir(coversBackupDir, coversDestDir); err != nil {
+			if err := apputils.CopyDirWithProgress(coversBackupDir, coversDestDir, onWrite); err != nil {
 				// 封面恢复失败不影响整体恢复，只记录警告
 				fmt.Printf("警告: 恢复封面图片失败: %v\n", err)
 			}

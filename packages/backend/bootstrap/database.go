@@ -18,9 +18,16 @@ import (
 var duckDBThreads = max(1, min(4, runtime.NumCPU()))
 
 // RunPendingRestores 执行设置页安排的恢复：先恢复完整数据，再恢复数据库，都要在打开数据库之前。
-func RunPendingRestores(config *appconf.AppConfig, logger *applog.FileLogger) {
+// 有恢复要执行时把各阶段的进度交给 progress（可为 nil），全部结束（成功或失败）后再报告一次 service.RestoreStageDone。
+func RunPendingRestores(config *appconf.AppConfig, logger *applog.FileLogger, progress service.RestoreProgressFunc) {
+	if config.PendingFullRestore == "" && config.PendingDBRestore == "" {
+		return
+	}
+	if progress != nil {
+		defer progress(service.RestoreProgress{Stage: service.RestoreStageDone})
+	}
 	if config.PendingFullRestore != "" {
-		restored, err := service.ExecuteFullDataRestore(config)
+		restored, err := service.ExecuteFullDataRestore(config, progress)
 		if err != nil {
 			logger.Error("full data restore failed: " + err.Error())
 		} else if restored {
@@ -28,7 +35,7 @@ func RunPendingRestores(config *appconf.AppConfig, logger *applog.FileLogger) {
 		}
 	}
 	if config.PendingDBRestore != "" {
-		restored, err := service.ExecuteDBRestore(config)
+		restored, err := service.ExecuteDBRestore(config, progress)
 		if err != nil {
 			logger.Error("database restore failed: " + err.Error())
 		} else if restored {

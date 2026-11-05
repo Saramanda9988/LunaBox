@@ -52,6 +52,8 @@ type Options struct {
 	Isolated bool
 	// KeepWindowState 为 true 时不把主窗口的尺寸写回配置（截图时用固定尺寸）。
 	KeepWindowState bool
+	// RestoreProgress 接收 Open 里执行设置页安排的恢复时的进度（见 RunPendingRestores），在调用 Open 的 goroutine 上调用；可为 nil。
+	RestoreProgress service.RestoreProgressFunc
 }
 
 // App 持有一次运行的服务、数据库与生命周期状态。
@@ -149,7 +151,7 @@ func (a *App) Open(ctx context.Context) error {
 	a.Config = config
 
 	repairStaleAppImageProtocolRegistration(a.logger)
-	RunPendingRestores(config, a.logger)
+	RunPendingRestores(config, a.logger, a.o.RestoreProgress)
 
 	dataDir, err := apputils.GetDataDir()
 	if err != nil {

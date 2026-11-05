@@ -1622,5 +1622,14 @@
   "native_tags": "標籤",
   "native_addGameCoverEmpty": "點擊選擇或貼上封面",
   "native_addGameTagsHint": "按 Enter 新增標籤，或從庫裡已有的標籤中選擇",
-  "native_addGameSourcesHint": "星標的是預設來源，新增後可以從這些來源更新中繼資料"
+  "native_addGameSourcesHint": "星標的是預設來源，新增後可以從這些來源更新中繼資料",
+  "native_startupRestoreTitle": "正在恢復資料",
+  "native_startupRestoreDetail": "恢復完成後會自動開啟主介面，請勿關閉 LunaBox",
+  "native_startupRestoreSubtitle": "恢復進度",
+  "native_startupRestoreStep": "第 {step}/{steps} 步",
+  "native_startupRestoreExtract": "正在解壓縮備份",
+  "native_startupRestoreDatabase": "正在匯入資料庫",
+  "native_startupRestoreFiles": "正在複製封面、背景圖等資料",
+  "native_startupRestoreConfig": "正在恢復設定",
+  "native_startupRestoreStarting": "恢復完成，正在啟動"
 }

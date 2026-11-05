@@ -1622,5 +1622,14 @@
   "native_tags": "Tags",
   "native_addGameCoverEmpty": "Click to choose or paste a cover",
   "native_addGameTagsHint": "Press Enter to add a new tag, or pick one already in your library",
-  "native_addGameSourcesHint": "The starred source is the default; metadata can be updated from these sources later"
+  "native_addGameSourcesHint": "The starred source is the default; metadata can be updated from these sources later",
+  "native_startupRestoreTitle": "Restoring data",
+  "native_startupRestoreDetail": "The main window opens when the restore finishes. Please keep LunaBox running",
+  "native_startupRestoreSubtitle": "Restore progress",
+  "native_startupRestoreStep": "Step {step} of {steps}",
+  "native_startupRestoreExtract": "Extracting backup",
+  "native_startupRestoreDatabase": "Importing database",
+  "native_startupRestoreFiles": "Copying covers, backgrounds and other data",
+  "native_startupRestoreConfig": "Restoring settings",
+  "native_startupRestoreStarting": "Restore finished. Starting LunaBox"
 }

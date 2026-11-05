@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"time"
 
 	"github.com/egoist/mygo"
 	mygoui "github.com/egoist/mygo/ui"
@@ -16,6 +17,7 @@ import (
 	"lunabox/backend/appconf"
 	"lunabox/backend/applog"
 	"lunabox/backend/bootstrap"
+	"lunabox/backend/service"
 	"lunabox/desktop/host"
 	"lunabox/desktop/ui"
 	"lunabox/desktop/ui/env"
@@ -57,6 +59,13 @@ type app struct {
 
 	tray        *mygo.Tray
 	relabelTray func()
+
+	// 启动时恢复备份的进度窗（启动错误窗的恢复模式）：恢复开始时创建，启动结束后关闭；只在主线程上访问。
+	restoreWin  *mygo.Window
+	restorePage *startup.Page
+	// 上次刷新进度窗时的阶段与时间，用于节流；只在执行恢复的 goroutine 上访问。
+	restoreStage service.RestoreStage
+	restoreAt    time.Time
 }
 
 // Run 启动应用并运行到退出。
@@ -85,6 +94,7 @@ func Run(o Options) error {
 		InitialRequest:  req,
 		Isolated:        o.Dev,
 		KeepWindowState: o.Screenshot != "",
+		RestoreProgress: a.onRestoreProgress,
 	})
 	mygo.App.OnSecondInstance(a.onSecondInstance)
 	if runtime.GOOS == "darwin" {
@@ -143,10 +153,46 @@ func (a *app) ready() {
 			})
 			return err
 		}, a.o.Autostart)
-		if err != nil {
-			mygo.RunOnMain(func() { a.showStartupFailure(err) })
-		}
+		// 主窗口（或启动错误窗）显示之后再关闭恢复进度窗，中间不会出现没有窗口的空档。
+		mygo.RunOnMain(func() {
+			if err != nil {
+				a.showStartupFailure(err)
+			}
+			a.closeRestoreWindow()
+		})
 	}()
+}
+
+// onRestoreProgress 显示启动时恢复备份的进度（bootstrap.Options.RestoreProgress，在执行恢复的 goroutine 上调用）：
+// 第一次调用时创建进度窗，之后同一阶段内最多每 50ms 刷新一次，换阶段与阶段完成时立即刷新。
+func (a *app) onRestoreProgress(p service.RestoreProgress) {
+	now := time.Now()
+	if p.Stage == a.restoreStage && p.Done < p.Total && now.Sub(a.restoreAt) < 50*time.Millisecond {
+		return
+	}
+	a.restoreStage, a.restoreAt = p.Stage, now
+	// 与 Open 在同一个 goroutine 上，配置已经读好（全量恢复在恢复设置后换成备份里的配置）。
+	lang, theme := a.core.Config.Language, a.core.Config.Theme
+	mygo.RunOnMain(func() {
+		if a.restoreWin != nil {
+			a.restoreWin.Update(func() { a.restorePage.Restore = &p })
+			return
+		}
+		env.ApplyLanguage(lang)
+		env.ApplyTheme(theme)
+		a.restorePage = &startup.Page{Restore: &p}
+		a.restoreWin = a.newStartupWindow(a.restorePage)
+		// 恢复不能中途停下：拦住 Alt+F4 之类的关闭；closeRestoreWindow 用 Destroy 关闭，不经过这里。
+		a.restoreWin.OnClose(func(e *mygo.CloseEvent) { e.PreventDefault() })
+	})
+}
+
+// closeRestoreWindow 在主线程上关闭恢复进度窗，没有时什么也不做。
+func (a *app) closeRestoreWindow() {
+	if a.restoreWin != nil {
+		a.restoreWin.Destroy()
+		a.restoreWin, a.restorePage = nil, nil
+	}
 }
 
 // attach 创建界面、主窗口与托盘，并把窗口交给 bootstrap（主线程）。
@@ -243,24 +289,23 @@ func (a *app) onSecondInstance(args []string, _ string) {
 
 // showStartupFailure 显示启动错误窗，关闭它即退出。
 func (a *app) showStartupFailure(err error) {
-	a.newStartupWindow(err.Error(), mygo.App.Quit)
+	a.newStartupWindow(&startup.Page{Message: err.Error(), OnExit: mygo.App.Quit})
 }
 
 // showStartupErrorPreview 显示一个示例启动错误窗，对应 Wails 版托盘里开发运行才有的“开发：预览启动错误窗”。
 // 只用来检查界面样式：“退出”只关闭这个窗口，不退出应用；可以同时打开多个。
 func (a *app) showStartupErrorPreview() {
 	var win *mygo.Window
-	win = a.newStartupWindow(
-		"开发预览：数据库启动失败\n\n"+
-			"打开数据库失败: IO Error: 无法打开 lunabox.db，文件可能正由另一个进程使用\n\n"+
+	win = a.newStartupWindow(&startup.Page{
+		Message: "开发预览：数据库启动失败\n\n" +
+			"打开数据库失败: IO Error: 无法打开 lunabox.db，文件可能正由另一个进程使用\n\n" +
 			"此信息仅用于检查启动错误窗的界面样式。",
-		func() { win.Close() },
-	)
+		OnExit: func() { win.Close() },
+	})
 }
 
-// newStartupWindow 创建并显示启动错误窗：固定尺寸、置顶、无边框，“退出”按钮调用 onExit。
-func (a *app) newStartupWindow(msg string, onExit func()) *mygo.Window {
-	page := &startup.Page{Message: msg, OnExit: onExit}
+// newStartupWindow 用 page 创建并显示启动错误窗（或恢复进度窗）：固定尺寸、置顶、无边框。
+func (a *app) newStartupWindow(page *startup.Page) *mygo.Window {
 	bg := "#ffffff"
 	if mygo.Theme.IsDark() {
 		bg = "#1c1e1f"
