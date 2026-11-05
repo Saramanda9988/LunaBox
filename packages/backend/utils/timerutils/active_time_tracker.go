@@ -59,7 +59,12 @@ var (
 	isProcessPresent       = processutils.IsProcessPresentByPID
 	getProcessCommandInfo  = processutils.GetProcessCommandInfo
 	isProcessFocused       = focusing.IsProcessFocused
+	getIdleDuration        = focusing.GetIdleDuration
 )
+
+// IdlePauseThreshold 开启空闲暂停后，超过该时长没有任何输入即停止累计活跃时长。
+// 判定前已累计的这段时间不回滚。
+const IdlePauseThreshold = 5 * time.Minute
 
 // TrackingSession 正在追踪的会话
 type TrackingSession struct {
@@ -70,7 +75,8 @@ type TrackingSession struct {
 	ActiveTrack        ActiveTrack
 	StartTime          time.Time
 	cancel             context.CancelFunc
-	accumulatedSeconds int // 累加的活跃秒数
+	accumulatedSeconds int  // 累加的活跃秒数
+	idlePaused         bool // 是否因长时间无输入而暂停计时
 	mu                 sync.Mutex
 }
 
@@ -107,7 +113,8 @@ func (t *TrackingSession) focusUpdateProcessID() uint32 {
 }
 
 // ActiveTimeTracker 活跃时间追踪服务
-// 使用轮询方式检测窗口焦点状态，仅当游戏窗口处于前台时记录游玩时长
+// 使用轮询方式检测窗口焦点状态，仅当游戏窗口处于前台时记录游玩时长；
+// 启用空闲暂停后，长时间没有输入也不再记录
 type ActiveTimeTracker struct {
 	ctx             context.Context
 	db              *sql.DB
@@ -117,6 +124,8 @@ type ActiveTimeTracker struct {
 	updateHandler   ActiveTimeUpdateHandler
 	focusHandlerMu  sync.RWMutex
 	focusHandler    FocusUpdateHandler
+	idlePauseMu     sync.RWMutex
+	idlePause       func() bool
 }
 
 // NewActiveTimeTracker 创建活跃时间追踪器（内部服务，由 StartService 管理）
@@ -138,6 +147,51 @@ func (s *ActiveTimeTracker) SetFocusUpdateHandler(handler FocusUpdateHandler) {
 	s.focusHandlerMu.Lock()
 	defer s.focusHandlerMu.Unlock()
 	s.focusHandler = handler
+}
+
+// SetIdlePauseEnabled 设置是否启用空闲暂停；传入函数以便运行中切换设置立即生效。
+func (s *ActiveTimeTracker) SetIdlePauseEnabled(enabled func() bool) {
+	s.idlePauseMu.Lock()
+	defer s.idlePauseMu.Unlock()
+	s.idlePause = enabled
+}
+
+func (s *ActiveTimeTracker) idlePauseEnabled() bool {
+	s.idlePauseMu.RLock()
+	enabled := s.idlePause
+	s.idlePauseMu.RUnlock()
+	return enabled != nil && enabled()
+}
+
+// shouldCountTick 判断这一秒是否计入活跃时长：窗口在前台，且（启用空闲暂停时）用户近期有输入。
+// 无法获取空闲时长的平台按有输入处理，保持原有行为。
+func (s *ActiveTimeTracker) shouldCountTick(session *TrackingSession, isFocused bool) bool {
+	if !isFocused {
+		return false
+	}
+
+	idle := false
+	if s.idlePauseEnabled() {
+		if duration, ok := getIdleDuration(); ok {
+			idle = duration >= IdlePauseThreshold
+		}
+	}
+
+	session.mu.Lock()
+	changed := session.idlePaused != idle
+	session.idlePaused = idle
+	session.mu.Unlock()
+
+	if changed {
+		if idle {
+			applog.LogInfof(s.ctx, "[ActiveTimeTracker] Game %s paused: no input for %v", session.GameID, IdlePauseThreshold)
+			log.Printf("[ActiveTimeTracker] Game %s paused: no input for %v", session.GameID, IdlePauseThreshold)
+		} else {
+			applog.LogInfof(s.ctx, "[ActiveTimeTracker] Game %s resumed after input", session.GameID)
+			log.Printf("[ActiveTimeTracker] Game %s resumed after input", session.GameID)
+		}
+	}
+	return !idle
 }
 
 // StartTracking 开始追踪指定游戏的活跃游玩时间
@@ -281,8 +335,8 @@ func (s *ActiveTimeTracker) trackActiveTime(ctx context.Context, session *Tracki
 
 		case <-ticker.C:
 			s.emitFocusUpdate(session, isFocused)
-			if isFocused {
-				// 窗口有焦点，累加时间
+			if s.shouldCountTick(session, isFocused) {
+				// 窗口有焦点且用户未长时间离开，累加时间
 				s.incrementPlayTime(session.GameID, 1)
 				s.emitActiveTimeUpdate(session, isFocused)
 			}
@@ -329,7 +383,7 @@ func (s *ActiveTimeTracker) trackActiveTimeByPolling(ctx context.Context, sessio
 				s.emitActiveTimeUpdate(session, isFocused)
 			}
 			s.emitFocusUpdate(session, isFocused)
-			if isFocused {
+			if s.shouldCountTick(session, isFocused) {
 				s.incrementPlayTime(session.GameID, 1)
 				s.emitActiveTimeUpdate(session, isFocused)
 			}

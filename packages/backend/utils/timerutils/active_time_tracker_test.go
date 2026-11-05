@@ -4,6 +4,7 @@ import (
 	"context"
 	"lunabox/backend/utils/processutils"
 	"testing"
+	"time"
 )
 
 func TestFocusUpdateIncludesCurrentProcess(t *testing.T) {
@@ -328,6 +329,7 @@ func stubFocusFunctions(t *testing.T) func() {
 	origPresent := isProcessPresent
 	origProcessCommandInfo := getProcessCommandInfo
 	origFocused := isProcessFocused
+	origIdle := getIdleDuration
 
 	isBundlePathFocused = func(bundlePath string) bool { return false }
 	getForegroundProcessID = func() (uint32, bool) { return 0, false }
@@ -338,6 +340,7 @@ func stubFocusFunctions(t *testing.T) func() {
 		return processutils.ProcessCommandInfo{}, nil
 	}
 	isProcessFocused = func(processID uint32) bool { return false }
+	getIdleDuration = func() (time.Duration, bool) { return 0, false }
 
 	return func() {
 		isBundlePathFocused = origBundleFocused
@@ -347,5 +350,60 @@ func stubFocusFunctions(t *testing.T) func() {
 		isProcessPresent = origPresent
 		getProcessCommandInfo = origProcessCommandInfo
 		isProcessFocused = origFocused
+		getIdleDuration = origIdle
+	}
+}
+
+func TestShouldCountTickPausesAfterIdleThreshold(t *testing.T) {
+	restore := stubFocusFunctions(t)
+	defer restore()
+
+	idle := time.Duration(0)
+	getIdleDuration = func() (time.Duration, bool) { return idle, true }
+
+	tracker := NewActiveTimeTracker(context.Background(), nil)
+	tracker.SetIdlePauseEnabled(func() bool { return true })
+	session := &TrackingSession{GameID: "game-1"}
+
+	if !tracker.shouldCountTick(session, true) {
+		t.Fatal("expected recent input to count")
+	}
+	idle = IdlePauseThreshold - time.Second
+	if !tracker.shouldCountTick(session, true) {
+		t.Fatal("expected idle below threshold to count")
+	}
+	idle = IdlePauseThreshold
+	if tracker.shouldCountTick(session, true) || !session.idlePaused {
+		t.Fatal("expected idle at threshold to pause")
+	}
+	idle = 0
+	if !tracker.shouldCountTick(session, true) || session.idlePaused {
+		t.Fatal("expected new input to resume")
+	}
+}
+
+func TestShouldCountTickIgnoresIdleWhenDisabledOrUnsupported(t *testing.T) {
+	restore := stubFocusFunctions(t)
+	defer restore()
+
+	tracker := NewActiveTimeTracker(context.Background(), nil)
+	session := &TrackingSession{GameID: "game-1"}
+
+	getIdleDuration = func() (time.Duration, bool) { return time.Hour, true }
+	if !tracker.shouldCountTick(session, true) {
+		t.Fatal("expected idle to be ignored without a setting")
+	}
+	tracker.SetIdlePauseEnabled(func() bool { return false })
+	if !tracker.shouldCountTick(session, true) {
+		t.Fatal("expected idle to be ignored when disabled")
+	}
+
+	tracker.SetIdlePauseEnabled(func() bool { return true })
+	getIdleDuration = func() (time.Duration, bool) { return 0, false }
+	if !tracker.shouldCountTick(session, true) {
+		t.Fatal("expected unsupported idle detection to keep counting")
+	}
+	if tracker.shouldCountTick(session, false) {
+		t.Fatal("expected unfocused tick not to count")
 	}
 }

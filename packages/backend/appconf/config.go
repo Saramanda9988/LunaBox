@@ -172,6 +172,7 @@ type AppConfig struct {
 	LaunchAtLogin    bool    `json:"launch_at_login"`    // Windows 登录后自动启动应用
 	// 活跃时间追踪配置
 	RecordActiveTimeOnly       bool `json:"record_active_time_only"`       // 仅记录活跃游玩时长（窗口在前台时）
+	PauseActiveTimeWhenIdle    bool `json:"pause_active_time_when_idle"`   // 仅记录活跃时长时，长时间无输入也暂停计时
 	MuteGameInBackground       bool `json:"mute_game_in_background"`       // 游戏窗口进入后台时静音
 	ProcessDetectionTimeoutSec int  `json:"process_detection_timeout_sec"` // 启动后检测实际游戏进程的最长等待时间
 	// 自动更新配置
@@ -315,6 +316,7 @@ func LoadConfig() (*AppConfig, error) {
 		WindowZoomFactor:           1.0,
 		LaunchAtLogin:              false,
 		RecordActiveTimeOnly:       false, // 默认关闭，向后兼容
+		PauseActiveTimeWhenIdle:    false,
 		MuteGameInBackground:       false,
 		ProcessDetectionTimeoutSec: DefaultProcessDetectionTimeoutSec,
 		CheckUpdateOnStartup:       true, // 默认开启启动时检查更新

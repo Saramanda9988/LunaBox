@@ -23,3 +23,8 @@ char *lunabox_frontmost_bundle_path(void) {
         return strdup(path);
     }
 }
+
+double lunabox_seconds_since_last_input(void) {
+    // HID 系统状态记录的是全局键鼠输入，读取它不需要辅助功能权限。
+    return CGEventSourceSecondsSinceLastEventType(kCGEventSourceStateHIDSystemState, kCGAnyInputEventType);
+}

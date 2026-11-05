@@ -3,16 +3,18 @@
 package focusing
 
 /*
-#cgo darwin LDFLAGS: -framework AppKit
+#cgo darwin LDFLAGS: -framework AppKit -framework CoreGraphics
 #include <stdint.h>
 #include <stdlib.h>
 
 uint32_t lunabox_frontmost_process_id(void);
 char *lunabox_frontmost_bundle_path(void);
+double lunabox_seconds_since_last_input(void);
 */
 import "C"
 
 import (
+	"math"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -132,6 +134,15 @@ func GetForegroundProcessID() (uint32, bool) {
 		return 0, false
 	}
 	return pid, true
+}
+
+// GetIdleDuration 返回用户最近一次键鼠输入距今的时长。
+func GetIdleDuration() (time.Duration, bool) {
+	seconds := float64(C.lunabox_seconds_since_last_input())
+	if seconds < 0 || math.IsNaN(seconds) || math.IsInf(seconds, 0) {
+		return 0, false
+	}
+	return time.Duration(seconds * float64(time.Second)), true
 }
 
 func GetForegroundBundlePath() (string, bool) {

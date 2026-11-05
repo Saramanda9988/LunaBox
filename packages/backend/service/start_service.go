@@ -149,6 +149,9 @@ func (s *StartService) Init(ctx context.Context, db *sql.DB, config *appconf.App
 	s.activeTimeTracker = timerutils.NewActiveTimeTracker(ctx, db)
 	s.activeTimeTracker.SetUpdateHandler(s.handleActiveTimeUpdate)
 	s.activeTimeTracker.SetFocusUpdateHandler(s.handleFocusUpdate)
+	s.activeTimeTracker.SetIdlePauseEnabled(func() bool {
+		return s.config != nil && s.config.RecordActiveTimeOnly && s.config.PauseActiveTimeWhenIdle
+	})
 	if s.activeSessions == nil {
 		s.activeSessions = make(map[string]*activePlaySession)
 	}

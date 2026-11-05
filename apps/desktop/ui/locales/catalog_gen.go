@@ -14665,6 +14665,66 @@ func (msgs Messages) SettingsGameRecordActiveOnlyHint() string {
 	return Catalog.Format(msgs.locale, "settings_game_recordActiveOnlyHint", nil)
 }
 
+// SettingsGamePauseWhenIdle says "长时间无操作时暂停计时"
+// in the language the app shows.
+//
+// settings.game.pauseWhenIdle
+func SettingsGamePauseWhenIdle() string { return In(i18n.Locale()).SettingsGamePauseWhenIdle() }
+
+// SettingsGamePauseWhenIdle says "长时间无操作时暂停计时"
+// in the language of msgs.
+//
+// settings.game.pauseWhenIdle
+func (msgs Messages) SettingsGamePauseWhenIdle() string {
+	return Catalog.Format(msgs.locale, "settings_game_pauseWhenIdle", nil)
+}
+
+// SettingsGamePauseWhenIdleHint says "启用后，游戏窗口在前台但连续 5 …"
+// in the language the app shows.
+//
+// settings.game.pauseWhenIdleHint
+func SettingsGamePauseWhenIdleHint() string { return In(i18n.Locale()).SettingsGamePauseWhenIdleHint() }
+
+// SettingsGamePauseWhenIdleHint says "启用后，游戏窗口在前台但连续 5 …"
+// in the language of msgs.
+//
+// settings.game.pauseWhenIdleHint
+func (msgs Messages) SettingsGamePauseWhenIdleHint() string {
+	return Catalog.Format(msgs.locale, "settings_game_pauseWhenIdleHint", nil)
+}
+
+// SettingsGamePauseWhenIdleHintMacOS says "启用后，游戏窗口在前台但连续 5 …"
+// in the language the app shows.
+//
+// settings.game.pauseWhenIdleHintMacOS
+func SettingsGamePauseWhenIdleHintMacOS() string {
+	return In(i18n.Locale()).SettingsGamePauseWhenIdleHintMacOS()
+}
+
+// SettingsGamePauseWhenIdleHintMacOS says "启用后，游戏窗口在前台但连续 5 …"
+// in the language of msgs.
+//
+// settings.game.pauseWhenIdleHintMacOS
+func (msgs Messages) SettingsGamePauseWhenIdleHintMacOS() string {
+	return Catalog.Format(msgs.locale, "settings_game_pauseWhenIdleHintMacOS", nil)
+}
+
+// SettingsGamePauseWhenIdleHintLinux says "启用后，游戏窗口在前台但连续 5 …"
+// in the language the app shows.
+//
+// settings.game.pauseWhenIdleHintLinux
+func SettingsGamePauseWhenIdleHintLinux() string {
+	return In(i18n.Locale()).SettingsGamePauseWhenIdleHintLinux()
+}
+
+// SettingsGamePauseWhenIdleHintLinux says "启用后，游戏窗口在前台但连续 5 …"
+// in the language of msgs.
+//
+// settings.game.pauseWhenIdleHintLinux
+func (msgs Messages) SettingsGamePauseWhenIdleHintLinux() string {
+	return Catalog.Format(msgs.locale, "settings_game_pauseWhenIdleHintLinux", nil)
+}
+
 // SettingsGameWarningTitle says "注意："
 // in the language the app shows.
 //

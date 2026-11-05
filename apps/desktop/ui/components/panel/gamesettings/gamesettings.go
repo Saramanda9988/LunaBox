@@ -85,6 +85,20 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 			cfg.RecordActiveTimeOnly, func(v bool) {
 				p.Change(func(cfg *appconf.AppConfig) { cfg.RecordActiveTimeOnly = v })
 			})
+		// 空闲暂停只在“仅记录活跃时长”开启时生效，关闭时不显示。
+		if cfg.RecordActiveTimeOnly {
+			hint := locales.SettingsGamePauseWhenIdleHint()
+			if isDarwin {
+				hint = locales.SettingsGamePauseWhenIdleHintMacOS()
+			} else if isLinux {
+				hint = locales.SettingsGamePauseWhenIdleHintLinux()
+			}
+			ui.Column(c.Key("idle")).FillWidth().Padding(8, 0, 0, 0).Children(func() {
+				switchRow(c, t, "row", locales.SettingsGamePauseWhenIdle(), hint, cfg.PauseActiveTimeWhenIdle, func(v bool) {
+					p.Change(func(cfg *appconf.AppConfig) { cfg.PauseActiveTimeWhenIdle = v })
+				})
+			})
+		}
 	})
 
 	if s.muteSupported {
