@@ -81,6 +81,9 @@ jobs:
     permissions:
       actions: read
       contents: read
+    env:
+      LLVM_MINGW_VERSION: '20261006'
+      LLVM_MINGW_SHA256: 9a835d5179c9f3a5a783c11a7f14062a249b4765dd11add64a66786864e82ab2
     strategy:
       fail-fast: true
       matrix:
@@ -91,16 +94,12 @@ jobs:
           - arch: arm64
             mode: portable
             runner: windows-11-arm
-            msystem: CLANGARM64
-            toolchain: mingw-w64-clang-aarch64-toolchain
           - arch: amd64
             mode: installer
             runner: windows-2025
           - arch: arm64
             mode: installer
             runner: windows-11-arm
-            msystem: CLANGARM64
-            toolchain: mingw-w64-clang-aarch64-toolchain
 
     steps:
       - name: Checkout code
@@ -119,32 +118,80 @@ jobs:
             packages/backend/go.sum
             packages/updater/go.sum
 
-      - name: Setup ARM64 CGO toolchain
-        id: msys2-arm64
+      # arm64 的 cgo 用 llvm-mingw 预编译工具链（clang + lld + UCRT，与 MSYS2 CLANGARM64 同一套），按版本缓存。
+      - name: Restore ARM64 llvm-mingw toolchain
+        id: llvm-mingw-cache
         if: matrix.arch == 'arm64'
-        uses: msys2/setup-msys2@v2
+        uses: actions/cache@v4
         with:
-          msystem: ${{ matrix.msystem }}
-          path-type: inherit
-          install: ${{ matrix.toolchain }}
+          path: ${{ runner.temp }}/llvm-mingw
+          key: llvm-mingw-${{ env.LLVM_MINGW_VERSION }}-ucrt-aarch64
 
-      # tools/release 在 MSYS2_LOCATION/clangarm64/bin 下找 clang。
-      - name: Export ARM64 MSYS2 location
+      - name: Download ARM64 llvm-mingw toolchain
+        if: matrix.arch == 'arm64' && steps.llvm-mingw-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ProgressPreference = 'SilentlyContinue'
+          $Name = "llvm-mingw-$env:LLVM_MINGW_VERSION-ucrt-aarch64"
+          $Zip = Join-Path $env:RUNNER_TEMP "$Name.zip"
+          Invoke-WebRequest -Uri "https://github.com/mstorsjo/llvm-mingw/releases/download/$env:LLVM_MINGW_VERSION/$Name.zip" -OutFile $Zip
+          $Hash = (Get-FileHash -LiteralPath $Zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($Hash -ne $env:LLVM_MINGW_SHA256) {
+            throw "llvm-mingw checksum mismatch: expected $env:LLVM_MINGW_SHA256, got $Hash"
+          }
+          $ExtractDir = Join-Path $env:RUNNER_TEMP 'llvm-mingw-extract'
+          if (Test-Path -LiteralPath $ExtractDir) { Remove-Item -LiteralPath $ExtractDir -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $ExtractDir | Out-Null
+          # 系统自带的 bsdtar 解 zip 比 Expand-Archive 快得多。
+          & (Join-Path $env:SystemRoot 'System32\tar.exe') -xf $Zip -C $ExtractDir
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $Dest = Join-Path $env:RUNNER_TEMP 'llvm-mingw'
+          if (Test-Path -LiteralPath $Dest) { Remove-Item -LiteralPath $Dest -Recurse -Force }
+          Move-Item -LiteralPath (Join-Path $ExtractDir $Name) -Destination $Dest
+          Remove-Item -LiteralPath $Zip -Force
+
+      # tools/release 找不到 MSYS2 时沿用 CC，并用 -dumpmachine 检查它的目标架构。
+      - name: Export ARM64 C compiler
         if: matrix.arch == 'arm64'
         shell: pwsh
         run: |
-          $Location = '${{ steps.msys2-arm64.outputs.msys2-location }}'
-          if ([string]::IsNullOrWhiteSpace($Location)) {
-            throw 'MSYS2 location output is empty.'
+          $ErrorActionPreference = 'Stop'
+          $Bin = Join-Path (Join-Path $env:RUNNER_TEMP 'llvm-mingw') 'bin'
+          $Cc = Join-Path $Bin 'aarch64-w64-mingw32-clang.exe'
+          $Cxx = Join-Path $Bin 'aarch64-w64-mingw32-clang++.exe'
+          foreach ($Path in @($Cc, $Cxx)) {
+            if (!(Test-Path -LiteralPath $Path -PathType Leaf)) {
+              throw "llvm-mingw is missing $Path."
+            }
           }
-          "MSYS2_LOCATION=$Location" >> $env:GITHUB_ENV
+          & $Cc --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $Bin >> $env:GITHUB_PATH
+          "CC=$Cc" >> $env:GITHUB_ENV
+          "CXX=$Cxx" >> $env:GITHUB_ENV
 
-      - name: Install NSIS
+      # 运行器镜像自带 NSIS 时直接用，找不到才用 choco 安装。
+      - name: Ensure NSIS
         if: matrix.mode == 'installer'
         shell: pwsh
         run: |
-          choco install nsis --no-progress -y
-          'C:\Program Files (x86)\NSIS' >> $env:GITHUB_PATH
+          $ErrorActionPreference = 'Stop'
+          $Makensis = (Get-Command makensis -ErrorAction SilentlyContinue).Source
+          if (!$Makensis) {
+            $Makensis = @(${env:ProgramFiles(x86)}, $env:ProgramFiles) |
+              Where-Object { $_ } |
+              ForEach-Object { Join-Path $_ 'NSIS\makensis.exe' } |
+              Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+              Select-Object -First 1
+          }
+          if (!$Makensis) {
+            choco install nsis --no-progress -y
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $Makensis = 'C:\Program Files (x86)\NSIS\makensis.exe'
+          }
+          Split-Path -Parent $Makensis >> $env:GITHUB_PATH
+          & $Makensis /VERSION
 
       - name: Build portable package
         if: matrix.mode == 'portable'
@@ -430,49 +477,6 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-
-      - name: Free disk space for macOS build
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "Disk space before cleanup:"
-          df -h /
-
-          developer_dir="$(xcode-select -p)"
-          selected_xcode="$(cd "$developer_dir/../.." && pwd -P)"
-
-          shopt -s nullglob
-          for xcode_app in /Applications/Xcode*.app; do
-            if [[ ! -d "$xcode_app" ]]; then
-              echo "Skipping unavailable Xcode entry: $xcode_app"
-              continue
-            fi
-            resolved_xcode="$(cd "$xcode_app" && pwd -P)"
-            if [[ "$resolved_xcode" != "$selected_xcode" ]]; then
-              sudo rm -rf "$xcode_app"
-            fi
-          done
-
-          while IFS= read -r -d '' platform_dir; do
-            sudo rm -rf "$platform_dir"
-          done < <(
-            find "$developer_dir/Platforms" \
-              -mindepth 1 \
-              -maxdepth 1 \
-              -type d \
-              ! -name 'MacOSX.platform' \
-              -print0
-          )
-
-          sudo rm -rf \
-            /Library/Developer/CoreSimulator \
-            "$HOME/Library/Developer/CoreSimulator" \
-            "$HOME/Library/Android" \
-            "$HOME/.android"
-
-          xcodebuild -version
-          echo "Disk space after cleanup:"
-          df -h /
 
       - name: Setup Go
         uses: actions/setup-go@v5

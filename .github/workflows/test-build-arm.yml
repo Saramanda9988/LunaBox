@@ -1,0 +1,369 @@
+name: Test Build ARM
+
+# 只验证能否编译打包：不签名、不注入凭据、不发布 release。产物保留 3 天，供本地试用。
+on:
+  workflow_dispatch:
+    inputs:
+      windows-arm64:
+        description: 构建 Windows arm64（便携版 + 安装版，未签名）
+        type: boolean
+        default: true
+      linux-arm64:
+        description: 构建 Linux arm64（AppImage、deb、rpm）
+        type: boolean
+        default: true
+      macos-amd64:
+        description: 构建 macOS amd64（DMG，不清理磁盘）
+        type: boolean
+        default: true
+
+concurrency:
+  group: lunabox-test-build-arm
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  VERSION: 0.0.0-test.${{ github.run_number }}
+
+jobs:
+  windows-arm64:
+    name: Windows arm64 / portable + installer
+    if: inputs.windows-arm64
+    runs-on: windows-11-arm
+    defaults:
+      run:
+        working-directory: apps/desktop
+    env:
+      LLVM_MINGW_VERSION: '20261006'
+      LLVM_MINGW_SHA256: 9a835d5179c9f3a5a783c11a7f14062a249b4765dd11add64a66786864e82ab2
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/desktop/go.mod
+          cache: true
+          cache-dependency-path: |
+            apps/desktop/go.sum
+            packages/backend/go.sum
+            packages/updater/go.sum
+
+      # 与 autobuild.yml、release.yml 相同：llvm-mingw 预编译工具链，按版本缓存。
+      - name: Restore ARM64 llvm-mingw toolchain
+        id: llvm-mingw-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/llvm-mingw
+          key: llvm-mingw-${{ env.LLVM_MINGW_VERSION }}-ucrt-aarch64
+
+      - name: Download ARM64 llvm-mingw toolchain
+        if: steps.llvm-mingw-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ProgressPreference = 'SilentlyContinue'
+          $Name = "llvm-mingw-$env:LLVM_MINGW_VERSION-ucrt-aarch64"
+          $Zip = Join-Path $env:RUNNER_TEMP "$Name.zip"
+          Invoke-WebRequest -Uri "https://github.com/mstorsjo/llvm-mingw/releases/download/$env:LLVM_MINGW_VERSION/$Name.zip" -OutFile $Zip
+          $Hash = (Get-FileHash -LiteralPath $Zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($Hash -ne $env:LLVM_MINGW_SHA256) {
+            throw "llvm-mingw checksum mismatch: expected $env:LLVM_MINGW_SHA256, got $Hash"
+          }
+          $ExtractDir = Join-Path $env:RUNNER_TEMP 'llvm-mingw-extract'
+          if (Test-Path -LiteralPath $ExtractDir) { Remove-Item -LiteralPath $ExtractDir -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $ExtractDir | Out-Null
+          & (Join-Path $env:SystemRoot 'System32\tar.exe') -xf $Zip -C $ExtractDir
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $Dest = Join-Path $env:RUNNER_TEMP 'llvm-mingw'
+          if (Test-Path -LiteralPath $Dest) { Remove-Item -LiteralPath $Dest -Recurse -Force }
+          Move-Item -LiteralPath (Join-Path $ExtractDir $Name) -Destination $Dest
+          Remove-Item -LiteralPath $Zip -Force
+
+      - name: Export ARM64 C compiler
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Bin = Join-Path (Join-Path $env:RUNNER_TEMP 'llvm-mingw') 'bin'
+          $Cc = Join-Path $Bin 'aarch64-w64-mingw32-clang.exe'
+          $Cxx = Join-Path $Bin 'aarch64-w64-mingw32-clang++.exe'
+          foreach ($Path in @($Cc, $Cxx)) {
+            if (!(Test-Path -LiteralPath $Path -PathType Leaf)) {
+              throw "llvm-mingw is missing $Path."
+            }
+          }
+          & $Cc --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $Bin >> $env:GITHUB_PATH
+          "CC=$Cc" >> $env:GITHUB_ENV
+          "CXX=$Cxx" >> $env:GITHUB_ENV
+
+      - name: Ensure NSIS
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Makensis = (Get-Command makensis -ErrorAction SilentlyContinue).Source
+          if (!$Makensis) {
+            $Makensis = @(${env:ProgramFiles(x86)}, $env:ProgramFiles) |
+              Where-Object { $_ } |
+              ForEach-Object { Join-Path $_ 'NSIS\makensis.exe' } |
+              Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+              Select-Object -First 1
+          }
+          if (!$Makensis) {
+            Write-Host 'NSIS not found on the runner image, installing with choco.'
+            choco install nsis --no-progress -y
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $Makensis = 'C:\Program Files (x86)\NSIS\makensis.exe'
+          }
+          Write-Host "Using $Makensis"
+          Split-Path -Parent $Makensis >> $env:GITHUB_PATH
+          & $Makensis /VERSION
+
+      - name: Build portable package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          go run ./tools/release -version $env:VERSION -arch arm64 -mode portable
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $Name = "LunaBox-$env:VERSION-windows-arm64-portable"
+          $Artifact = "build/release/$Name.zip"
+          if (!(Test-Path -LiteralPath $Artifact)) {
+            throw "Portable artifact not found: $Artifact"
+          }
+          $ExtractDir = Join-Path $env:RUNNER_TEMP 'lunabox-portable-check'
+          if (Test-Path -LiteralPath $ExtractDir) { Remove-Item -LiteralPath $ExtractDir -Recurse -Force }
+          Expand-Archive -LiteralPath $Artifact -DestinationPath $ExtractDir -Force
+          $Root = Join-Path $ExtractDir $Name
+          foreach ($Path in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe', '7z/7z.exe', '7z/7z.dll', 'duckdb.dll', 'README.txt')) {
+            if (!(Test-Path -LiteralPath (Join-Path $Root $Path) -PathType Leaf)) {
+              throw "Portable artifact is missing $Name/$Path."
+            }
+          }
+          foreach ($Path in @('backups', 'covers', 'backgrounds', 'logs')) {
+            if (!(Test-Path -LiteralPath (Join-Path $Root $Path) -PathType Container)) {
+              throw "Portable artifact is missing directory $Name/$Path."
+            }
+          }
+
+          # PE 头的 Machine 字段必须是 0xAA64（ARM64）。
+          foreach ($Path in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe', 'duckdb.dll')) {
+            $Stream = [System.IO.File]::OpenRead((Join-Path $Root $Path))
+            try {
+              $Header = New-Object byte[] 4096
+              [void]$Stream.Read($Header, 0, $Header.Length)
+            } finally {
+              $Stream.Dispose()
+            }
+            $PeOffset = [BitConverter]::ToInt32($Header, 0x3C)
+            $Machine = [BitConverter]::ToUInt16($Header, $PeOffset + 4)
+            if ($Machine -ne 0xAA64) {
+              throw ('{0} is not an ARM64 binary (PE machine 0x{1:X4}).' -f $Path, $Machine)
+            }
+            Write-Host "$Path is ARM64."
+          }
+
+      - name: Build installer (unsigned)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          go run ./tools/release -version $env:VERSION -arch arm64 -mode installer-payload
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $PayloadDir = "build/release/LunaBox-$env:VERSION-windows-arm64-installer"
+          foreach ($Path in @('LunaBox.exe', 'lunacli.exe', 'LunaBoxUpdater.exe', '7z/7z.exe', '7z/7z.dll', 'duckdb.dll')) {
+            if (!(Test-Path -LiteralPath (Join-Path $PayloadDir $Path) -PathType Leaf)) {
+              throw "Installer payload is missing $Path."
+            }
+          }
+
+          go run ./tools/release -version $env:VERSION -arch arm64 -mode installer-package
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $Artifact = "build/release/LunaBox-$env:VERSION-windows-arm64-setup.exe"
+          if (!(Test-Path -LiteralPath $Artifact)) {
+            throw "Installer artifact not found: $Artifact"
+          }
+
+      - name: Upload Windows arm64 packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-lunabox-${{ env.VERSION }}-windows-arm64
+          path: |
+            apps/desktop/build/release/LunaBox-${{ env.VERSION }}-windows-arm64-portable.zip
+            apps/desktop/build/release/LunaBox-${{ env.VERSION }}-windows-arm64-setup.exe
+          if-no-files-found: error
+          retention-days: 3
+
+  linux-arm64:
+    name: Linux arm64 / Packages
+    if: inputs.linux-arm64
+    runs-on: ubuntu-24.04-arm
+    defaults:
+      run:
+        working-directory: apps/desktop
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/desktop/go.mod
+          cache: true
+          cache-dependency-path: |
+            apps/desktop/go.sum
+            packages/backend/go.sum
+            packages/updater/go.sum
+
+      - name: Install Linux build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential ca-certificates curl desktop-file-utils
+
+      - name: Install nFPM
+        shell: bash
+        run: |
+          set -euo pipefail
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+          nfpm --version
+
+      - name: Install appimagetool
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool_path="${RUNNER_TEMP:-/tmp}/appimagetool-aarch64.AppImage"
+          curl -fsSL \
+            "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-aarch64.AppImage" \
+            -o "$tool_path"
+          chmod 755 "$tool_path"
+          sudo install -m 0755 "$tool_path" /usr/local/bin/appimagetool
+          APPIMAGE_EXTRACT_AND_RUN=1 appimagetool --version
+
+      - name: Build Linux packages
+        shell: bash
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: |
+          set -euo pipefail
+          go run ./tools/release -version "$VERSION" -arch arm64 -mode all
+
+          base="$PWD/build/release/LunaBox-${VERSION}-linux-arm64"
+          test -x "$base.AppImage"
+          test -f "$base.deb"
+          test -f "$base.rpm"
+
+          extract_dir="${RUNNER_TEMP}/lunabox-appimage-check"
+          rm -rf "$extract_dir"
+          mkdir -p "$extract_dir"
+          (cd "$extract_dir" && env -u APPIMAGE_EXTRACT_AND_RUN "$base.AppImage" --appimage-extract >/dev/null)
+          for path in AppRun usr/bin/LunaBox usr/bin/lunacli usr/bin/7zz; do
+            if [[ ! -x "$extract_dir/squashfs-root/$path" ]]; then
+              echo "AppImage is missing executable $path." >&2
+              exit 1
+            fi
+          done
+          for path in usr/bin/LunaBox usr/bin/lunacli usr/bin/7zz; do
+            file "$extract_dir/squashfs-root/$path"
+            if ! file -L "$extract_dir/squashfs-root/$path" | grep -q 'ARM aarch64'; then
+              echo "$path is not an aarch64 binary." >&2
+              exit 1
+            fi
+          done
+
+          deb_files="$(dpkg-deb -c "$base.deb")"
+          for path in ./usr/bin/LunaBox ./usr/bin/lunacli ./usr/lib/lunabox/LunaBox ./usr/lib/lunabox/7zz; do
+            if ! grep -Eq "^-rwxr-xr-x .* ${path}\$" <<<"$deb_files"; then
+              echo "deb is missing executable $path." >&2
+              exit 1
+            fi
+          done
+          test "$(dpkg-deb -f "$base.deb" Architecture)" = 'arm64'
+
+      - name: Upload Linux arm64 packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-lunabox-${{ env.VERSION }}-linux-arm64
+          path: |
+            apps/desktop/build/release/LunaBox-${{ env.VERSION }}-linux-arm64.deb
+            apps/desktop/build/release/LunaBox-${{ env.VERSION }}-linux-arm64.rpm
+            apps/desktop/build/release/LunaBox-${{ env.VERSION }}-linux-arm64.AppImage
+          if-no-files-found: error
+          retention-days: 3
+
+  macos-amd64:
+    name: macOS amd64 / DMG (no disk cleanup)
+    if: inputs.macos-amd64
+    runs-on: macos-15-intel
+    defaults:
+      run:
+        working-directory: apps/desktop
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Show disk space before build
+        shell: bash
+        run: df -h /
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/desktop/go.mod
+          cache: true
+          cache-dependency-path: |
+            apps/desktop/go.sum
+            packages/backend/go.sum
+            packages/updater/go.sum
+
+      - name: Build app bundle and DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./tools/release -version "$VERSION" -arch amd64 -mode installer
+
+          artifact="build/release/LunaBox-${VERSION}-macos-amd64.dmg"
+          test -f "$artifact"
+
+          mount_dir="${RUNNER_TEMP}/lunabox-dmg-check"
+          mkdir -p "$mount_dir"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mount_dir" "$artifact" >/dev/null
+          trap 'hdiutil detach "$mount_dir" >/dev/null || true' EXIT
+          for path in LunaBox.app/Contents/MacOS/LunaBox LunaBox.app/Contents/Resources/bin/lunacli LunaBox.app/Contents/Resources/bin/7zz; do
+            if [[ ! -x "$mount_dir/$path" ]]; then
+              echo "DMG is missing executable $path." >&2
+              exit 1
+            fi
+          done
+          lipo -archs "$mount_dir/LunaBox.app/Contents/MacOS/LunaBox" | grep -qw x86_64
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$mount_dir/LunaBox.app/Contents/Info.plist")" = 'io.github.saramanda9988.lunabox'
+          test -L "$mount_dir/Applications"
+          codesign --verify --deep --strict "$mount_dir/LunaBox.app"
+
+      - name: Show disk space after build
+        if: always()
+        shell: bash
+        run: df -h /
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-lunabox-${{ env.VERSION }}-macos-amd64
+          path: apps/desktop/build/release/LunaBox-${{ env.VERSION }}-macos-amd64.dmg
+          if-no-files-found: error
+          retention-days: 3
