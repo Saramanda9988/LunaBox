@@ -63,10 +63,17 @@ type app struct {
 	// 启动时恢复备份的进度窗（启动错误窗的恢复模式）：恢复开始时创建，启动结束后关闭；只在主线程上访问。
 	restoreWin  *mygo.Window
 	restorePage *startup.Page
-	// 上次刷新进度窗时的阶段与时间，用于节流；只在执行恢复的 goroutine 上访问。
-	restoreStage service.RestoreStage
-	restoreAt    time.Time
+	// 上次刷新进度窗时的阶段与时间，用于节流；进度窗出现的时间，用于最短显示时间。只在执行恢复的 goroutine 上访问。
+	restoreStage   service.RestoreStage
+	restoreAt      time.Time
+	restoreShownAt time.Time
 }
+
+// 恢复进度窗的最短显示时间：恢复很快（备份很小）时进度窗也不会一闪而过，主窗口紧跟着弹出。
+const (
+	restoreMinVisible = 1500 * time.Millisecond // 从出现到恢复结束至少这么久
+	restoreDoneMin    = 500 * time.Millisecond  // “恢复完成，正在启动”至少显示这么久
+)
 
 // Run 启动应用并运行到退出。
 func Run(o Options) error {
@@ -165,12 +172,22 @@ func (a *app) ready() {
 
 // onRestoreProgress 显示启动时恢复备份的进度（bootstrap.Options.RestoreProgress，在执行恢复的 goroutine 上调用）：
 // 第一次调用时创建进度窗，之后同一阶段内最多每 50ms 刷新一次，换阶段与阶段完成时立即刷新。
+// 恢复成功（service.RestoreStageDone）时在这里等到满足最短显示时间（restoreMinVisible、restoreDoneMin）
+// 再返回，之后才打开数据库并显示主窗口；恢复失败时不等，直接换成启动错误窗。
 func (a *app) onRestoreProgress(p service.RestoreProgress) {
 	now := time.Now()
 	if p.Stage == a.restoreStage && p.Done < p.Total && now.Sub(a.restoreAt) < 50*time.Millisecond {
 		return
 	}
 	a.restoreStage, a.restoreAt = p.Stage, now
+	if a.restoreShownAt.IsZero() {
+		a.restoreShownAt = now
+	}
+	if p.Stage == service.RestoreStageDone {
+		defer func() {
+			time.Sleep(max(restoreMinVisible-time.Since(a.restoreShownAt), restoreDoneMin))
+		}()
+	}
 	// 与 Open 在同一个 goroutine 上，配置已经读好（全量恢复在恢复设置后换成备份里的配置）。
 	lang, theme := a.core.Config.Language, a.core.Config.Theme
 	mygo.RunOnMain(func() {
