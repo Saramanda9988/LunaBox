@@ -19,16 +19,23 @@ var trayIcon []byte
 //go:embed tray-template.png
 var trayTemplateIcon []byte
 
-// setupTray 创建通知区域图标，对应 Wails 版的 configureTray：单击显示主窗口，右键菜单是“显示主窗口”“退出”。
-// 必须在 WhenReady 里调用。
+// setupTray 创建通知区域图标，对应 Wails 版的 configureTray：单击显示主窗口，右键菜单是“显示主窗口”“退出”，
+// 开发运行时中间多一项“开发：预览启动错误窗”。必须在 WhenReady 里调用。
 func (a *app) setupTray() {
 	show := &mygo.MenuItem{Label: locales.NativeTrayShowMainWindow(), Click: func(*mygo.MenuItem, *mygo.Window) { a.core.ShowMainWindow() }}
 	quit := &mygo.MenuItem{Label: locales.NativeTrayQuit(), Click: func(*mygo.MenuItem, *mygo.Window) { a.core.RequestQuit("tray-menu") }}
+	items := []*mygo.MenuItem{show}
+	if a.o.Dev {
+		// 只给开发者看，同 Wails 版不翻译。
+		preview := &mygo.MenuItem{Label: "开发：预览启动错误窗", Click: func(*mygo.MenuItem, *mygo.Window) { a.showStartupErrorPreview() }}
+		items = append(items, mygo.Separator(), preview)
+	}
+	items = append(items, mygo.Separator(), quit)
 	opts := mygo.TrayOptions{
 		ID:      "main", // 跨启动保留用户的选择：Windows 上显示在任务栏还是溢出区，macOS 上菜单栏里的位置
 		Icon:    trayIcon,
 		ToolTip: "LunaBox",
-		Menu:    mygo.NewMenu([]*mygo.MenuItem{show, mygo.Separator(), quit}),
+		Menu:    mygo.NewMenu(items),
 	}
 	switch runtime.GOOS {
 	case "darwin":

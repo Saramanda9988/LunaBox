@@ -243,7 +243,24 @@ func (a *app) onSecondInstance(args []string, _ string) {
 
 // showStartupFailure 显示启动错误窗，关闭它即退出。
 func (a *app) showStartupFailure(err error) {
-	page := &startup.Page{Message: err.Error(), OnExit: mygo.App.Quit}
+	a.newStartupWindow(err.Error(), mygo.App.Quit)
+}
+
+// showStartupErrorPreview 显示一个示例启动错误窗，对应 Wails 版托盘里开发运行才有的“开发：预览启动错误窗”。
+// 只用来检查界面样式：“退出”只关闭这个窗口，不退出应用；可以同时打开多个。
+func (a *app) showStartupErrorPreview() {
+	var win *mygo.Window
+	win = a.newStartupWindow(
+		"开发预览：数据库启动失败\n\n"+
+			"打开数据库失败: IO Error: 无法打开 lunabox.db，文件可能正由另一个进程使用\n\n"+
+			"此信息仅用于检查启动错误窗的界面样式。",
+		func() { win.Close() },
+	)
+}
+
+// newStartupWindow 创建并显示启动错误窗：固定尺寸、置顶、无边框，“退出”按钮调用 onExit。
+func (a *app) newStartupWindow(msg string, onExit func()) *mygo.Window {
+	page := &startup.Page{Message: msg, OnExit: onExit}
 	bg := "#ffffff"
 	if mygo.Theme.IsDark() {
 		bg = "#1c1e1f"
@@ -264,6 +281,7 @@ func (a *app) showStartupFailure(err error) {
 	page.Scale = mygo.Screen.DisplayMatching(win.Bounds()).ScaleFactor
 	win.Center()
 	win.Focus()
+	return win
 }
 
 // shutdown 在事件循环结束后按 bootstrap 的顺序关闭服务。
