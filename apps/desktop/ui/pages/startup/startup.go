@@ -179,10 +179,8 @@ func restoreStageText(stage service.RestoreStage) string {
 		return locales.NativeStartupRestoreExtract()
 	case service.RestoreStageDatabase:
 		return locales.NativeStartupRestoreDatabase()
-	case service.RestoreStageFiles:
-		return locales.NativeStartupRestoreFiles()
-	case service.RestoreStageConfig:
-		return locales.NativeStartupRestoreConfig()
+	case service.RestoreStageApply:
+		return locales.NativeStartupRestoreApply()
 	default:
 		return locales.NativeStartupRestoreStarting()
 	}

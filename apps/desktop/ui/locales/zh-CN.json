@@ -3258,10 +3258,8 @@
   "@native_startupRestoreExtract": {"description": "extra:native.startupRestoreExtract"},
   "native_startupRestoreDatabase": "正在导入数据库",
   "@native_startupRestoreDatabase": {"description": "extra:native.startupRestoreDatabase"},
-  "native_startupRestoreFiles": "正在复制封面、背景图等数据",
-  "@native_startupRestoreFiles": {"description": "extra:native.startupRestoreFiles"},
-  "native_startupRestoreConfig": "正在恢复设置",
-  "@native_startupRestoreConfig": {"description": "extra:native.startupRestoreConfig"},
+  "native_startupRestoreApply": "正在替换为恢复的数据",
+  "@native_startupRestoreApply": {"description": "extra:native.startupRestoreApply"},
   "native_startupRestoreStarting": "恢复完成，正在启动",
   "@native_startupRestoreStarting": {"description": "extra:native.startupRestoreStarting"}
 }

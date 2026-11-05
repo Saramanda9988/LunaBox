@@ -18,30 +18,39 @@ import (
 var duckDBThreads = max(1, min(4, runtime.NumCPU()))
 
 // RunPendingRestores 执行设置页安排的恢复：先恢复完整数据，再恢复数据库，都要在打开数据库之前。
-// 有恢复要执行时把各阶段的进度交给 progress（可为 nil），全部结束（成功或失败）后再报告一次 service.RestoreStageDone。
-func RunPendingRestores(config *appconf.AppConfig, logger *applog.FileLogger, progress service.RestoreProgressFunc) {
-	if config.PendingFullRestore == "" && config.PendingDBRestore == "" {
-		return
+// 开始前先还原上次替换到一半就退出的恢复（service.RecoverInterruptedRestore）。
+// 有恢复要执行时把各阶段的进度交给 progress（可为 nil），全部成功后再报告一次 service.RestoreStageDone。
+// 恢复是原子的：失败时现有数据保持不变，返回的错误由调用方显示在启动错误窗里，不再继续启动。
+func RunPendingRestores(config *appconf.AppConfig, logger *applog.FileLogger, progress service.RestoreProgressFunc) error {
+	rolledBack, err := service.RecoverInterruptedRestore()
+	if err != nil {
+		logger.Error("rolling back interrupted restore failed: " + err.Error())
+		return err
 	}
-	if progress != nil {
-		defer progress(service.RestoreProgress{Stage: service.RestoreStageDone})
+	if rolledBack {
+		logger.Warning("rolled back a restore that was interrupted while replacing data")
+	}
+	if config.PendingFullRestore == "" && config.PendingDBRestore == "" {
+		return nil
 	}
 	if config.PendingFullRestore != "" {
-		restored, err := service.ExecuteFullDataRestore(config, progress)
-		if err != nil {
+		if _, err := service.ExecuteFullDataRestore(config, progress); err != nil {
 			logger.Error("full data restore failed: " + err.Error())
-		} else if restored {
-			logger.Info("full data restore completed")
+			return err
 		}
+		logger.Info("full data restore completed")
 	}
 	if config.PendingDBRestore != "" {
-		restored, err := service.ExecuteDBRestore(config, progress)
-		if err != nil {
+		if _, err := service.ExecuteDBRestore(config, progress); err != nil {
 			logger.Error("database restore failed: " + err.Error())
-		} else if restored {
-			logger.Info("database restore completed")
+			return err
 		}
+		logger.Info("database restore completed")
 	}
+	if progress != nil {
+		progress(service.RestoreProgress{Stage: service.RestoreStageDone})
+	}
+	return nil
 }
 
 // OpenDatabase 打开数据库（WAL 损坏时恢复）并设置时区，再初始化结构、执行迁移与索引。

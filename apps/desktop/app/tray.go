@@ -20,7 +20,7 @@ var trayIcon []byte
 var trayTemplateIcon []byte
 
 // setupTray 创建通知区域图标，对应 Wails 版的 configureTray：单击显示主窗口，右键菜单是“显示主窗口”“退出”，
-// 开发运行时中间多一项“开发：预览启动错误窗”。必须在 WhenReady 里调用。
+// 开发运行时中间多两项“开发：预览启动错误窗”“开发：预览恢复进度窗”。必须在 WhenReady 里调用。
 func (a *app) setupTray() {
 	show := &mygo.MenuItem{Label: locales.NativeTrayShowMainWindow(), Click: func(*mygo.MenuItem, *mygo.Window) { a.core.ShowMainWindow() }}
 	quit := &mygo.MenuItem{Label: locales.NativeTrayQuit(), Click: func(*mygo.MenuItem, *mygo.Window) { a.core.RequestQuit("tray-menu") }}
@@ -28,7 +28,8 @@ func (a *app) setupTray() {
 	if a.o.Dev {
 		// 只给开发者看，同 Wails 版不翻译。
 		preview := &mygo.MenuItem{Label: "开发：预览启动错误窗", Click: func(*mygo.MenuItem, *mygo.Window) { a.showStartupErrorPreview() }}
-		items = append(items, mygo.Separator(), preview)
+		restore := &mygo.MenuItem{Label: "开发：预览恢复进度窗", Click: func(*mygo.MenuItem, *mygo.Window) { a.showRestorePreview() }}
+		items = append(items, mygo.Separator(), preview, restore)
 	}
 	items = append(items, mygo.Separator(), quit)
 	opts := mygo.TrayOptions{

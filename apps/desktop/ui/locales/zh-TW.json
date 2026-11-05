@@ -1629,7 +1629,6 @@
   "native_startupRestoreStep": "第 {step}/{steps} 步",
   "native_startupRestoreExtract": "正在解壓縮備份",
   "native_startupRestoreDatabase": "正在匯入資料庫",
-  "native_startupRestoreFiles": "正在複製封面、背景圖等資料",
-  "native_startupRestoreConfig": "正在恢復設定",
+  "native_startupRestoreApply": "正在替換為恢復的資料",
   "native_startupRestoreStarting": "恢復完成，正在啟動"
 }

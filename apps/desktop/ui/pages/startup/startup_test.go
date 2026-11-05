@@ -11,11 +11,11 @@ import (
 )
 
 func TestShowsRestoreProgress(t *testing.T) {
-	p := &Page{Restore: &service.RestoreProgress{Stage: service.RestoreStageFiles, Step: 3, Steps: 4, Done: 512, Total: 1024}}
+	p := &Page{Restore: &service.RestoreProgress{Stage: service.RestoreStageExtract, Step: 1, Steps: 3, Done: 512, Total: 1024}}
 	tt := newTester(p)
 	for _, s := range []string{
 		locales.NativeStartupRestoreTitle(), locales.NativeStartupRestoreSubtitle(),
-		locales.NativeStartupRestoreStep("3", "4"), locales.NativeStartupRestoreFiles(), "50%", "512.0 B / 1.0 KB",
+		locales.NativeStartupRestoreStep("1", "3"), locales.NativeStartupRestoreExtract(), "50%", "512.0 B / 1.0 KB",
 	} {
 		if !tt.HasText(s) {
 			t.Errorf("missing %q in %q", s, tt.Texts())
@@ -28,14 +28,19 @@ func TestShowsRestoreProgress(t *testing.T) {
 	}
 
 	// 进度未知的阶段不显示百分比；恢复结束后显示正在启动、不再显示第几步。
-	p.Restore = &service.RestoreProgress{Stage: service.RestoreStageDatabase, Step: 2, Steps: 4}
+	p.Restore = &service.RestoreProgress{Stage: service.RestoreStageDatabase, Step: 2, Steps: 3}
 	tt.Frame()
 	if !tt.HasText(locales.NativeStartupRestoreDatabase()) || tt.HasText("0%") {
 		t.Errorf("database stage texts = %q", tt.Texts())
 	}
+	p.Restore = &service.RestoreProgress{Stage: service.RestoreStageApply, Step: 3, Steps: 3}
+	tt.Frame()
+	if !tt.HasText(locales.NativeStartupRestoreApply()) {
+		t.Errorf("apply stage texts = %q", tt.Texts())
+	}
 	p.Restore = &service.RestoreProgress{Stage: service.RestoreStageDone}
 	tt.Frame()
-	if !tt.HasText(locales.NativeStartupRestoreStarting()) || tt.HasText(locales.NativeStartupRestoreStep("2", "4")) {
+	if !tt.HasText(locales.NativeStartupRestoreStarting()) || tt.HasText(locales.NativeStartupRestoreStep("3", "3")) {
 		t.Errorf("done stage texts = %q", tt.Texts())
 	}
 }

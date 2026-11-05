@@ -1812,7 +1812,6 @@
   "native_startupRestoreStep": "ステップ {step}/{steps}",
   "native_startupRestoreExtract": "バックアップを展開しています",
   "native_startupRestoreDatabase": "データベースをインポートしています",
-  "native_startupRestoreFiles": "カバー画像や背景画像などのデータをコピーしています",
-  "native_startupRestoreConfig": "設定を復元しています",
+  "native_startupRestoreApply": "復元したデータに置き換えています",
   "native_startupRestoreStarting": "復元が完了しました。起動しています"
 }

@@ -304,6 +304,41 @@ func (a *app) showStartupErrorPreview() {
 	})
 }
 
+// showRestorePreview 显示一个示例恢复进度窗，按启动时恢复的阶段走一遍假的进度（解压 3 秒、导入数据库 2 秒、
+// 替换 1 秒、正在启动 1.5 秒）后自动关闭。只用来检查恢复进度窗的界面样式，不碰数据；可以同时打开多个，Alt+F4 可提前关闭。
+func (a *app) showRestorePreview() {
+	const total = 384 << 20 // 示例备份解压后的大小
+	page := &startup.Page{Restore: &service.RestoreProgress{Stage: service.RestoreStageExtract, Step: 1, Steps: 3, Total: total}}
+	win := a.newStartupWindow(page)
+	go func() {
+		set := func(p service.RestoreProgress) bool {
+			if win.IsDestroyed() {
+				return false
+			}
+			win.Update(func() { page.Restore = &p })
+			return true
+		}
+		wait := func(d time.Duration, p service.RestoreProgress) bool {
+			if !set(p) {
+				return false
+			}
+			time.Sleep(d)
+			return true
+		}
+		const frames = 60
+		for i := 0; i <= frames; i++ {
+			if !wait(50*time.Millisecond, service.RestoreProgress{Stage: service.RestoreStageExtract, Step: 1, Steps: 3, Done: total * int64(i) / frames, Total: total}) {
+				return
+			}
+		}
+		if wait(2*time.Second, service.RestoreProgress{Stage: service.RestoreStageDatabase, Step: 2, Steps: 3}) &&
+			wait(time.Second, service.RestoreProgress{Stage: service.RestoreStageApply, Step: 3, Steps: 3}) &&
+			wait(1500*time.Millisecond, service.RestoreProgress{Stage: service.RestoreStageDone}) {
+			win.Destroy()
+		}
+	}()
+}
+
 // newStartupWindow 用 page 创建并显示启动错误窗（或恢复进度窗）：固定尺寸、置顶、无边框。
 func (a *app) newStartupWindow(page *startup.Page) *mygo.Window {
 	bg := "#ffffff"

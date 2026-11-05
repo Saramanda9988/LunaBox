@@ -151,7 +151,9 @@ func (a *App) Open(ctx context.Context) error {
 	a.Config = config
 
 	repairStaleAppImageProtocolRegistration(a.logger)
-	RunPendingRestores(config, a.logger, a.o.RestoreProgress)
+	if err := RunPendingRestores(config, a.logger, a.o.RestoreProgress); err != nil {
+		return err
+	}
 
 	dataDir, err := apputils.GetDataDir()
 	if err != nil {

@@ -24307,32 +24307,18 @@ func (msgs Messages) NativeStartupRestoreDatabase() string {
 	return Catalog.Format(msgs.locale, "native_startupRestoreDatabase", nil)
 }
 
-// NativeStartupRestoreFiles says "正在复制封面、背景图等数据"
+// NativeStartupRestoreApply says "正在替换为恢复的数据"
 // in the language the app shows.
 //
-// extra:native.startupRestoreFiles
-func NativeStartupRestoreFiles() string { return In(i18n.Locale()).NativeStartupRestoreFiles() }
+// extra:native.startupRestoreApply
+func NativeStartupRestoreApply() string { return In(i18n.Locale()).NativeStartupRestoreApply() }
 
-// NativeStartupRestoreFiles says "正在复制封面、背景图等数据"
+// NativeStartupRestoreApply says "正在替换为恢复的数据"
 // in the language of msgs.
 //
-// extra:native.startupRestoreFiles
-func (msgs Messages) NativeStartupRestoreFiles() string {
-	return Catalog.Format(msgs.locale, "native_startupRestoreFiles", nil)
-}
-
-// NativeStartupRestoreConfig says "正在恢复设置"
-// in the language the app shows.
-//
-// extra:native.startupRestoreConfig
-func NativeStartupRestoreConfig() string { return In(i18n.Locale()).NativeStartupRestoreConfig() }
-
-// NativeStartupRestoreConfig says "正在恢复设置"
-// in the language of msgs.
-//
-// extra:native.startupRestoreConfig
-func (msgs Messages) NativeStartupRestoreConfig() string {
-	return Catalog.Format(msgs.locale, "native_startupRestoreConfig", nil)
+// extra:native.startupRestoreApply
+func (msgs Messages) NativeStartupRestoreApply() string {
+	return Catalog.Format(msgs.locale, "native_startupRestoreApply", nil)
 }
 
 // NativeStartupRestoreStarting says "恢复完成，正在启动"
