@@ -175,7 +175,8 @@ func (f *Flow) manualByID(c *ui.Context, t *theme.Theme, enabled []enums.SourceT
 	ui.Column(c.Key("by-id")).Margin(16, 0, 0, 0).Padding(16, 0, 0, 0).BorderWidth(t.HL, 0, 0, 0).
 		BorderColor(t.Pick(theme.Brand200, theme.Brand700)).Children(func() {
 		components.TextMargin(c, locales.BatchImportModalSearchById(), theme.TextSM, theme.WeightNormal, theme.Brand500, 0, 0, 12, 0)
-		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+		// flex 默认 items-stretch：输入框与搜索按钮拉到与来源下拉框同高。
+		ui.Row(c).Gap(8).AlignItems(ui.Stretch).Children(func() {
 			opts := make([]better.SelectOption, len(enabled))
 			for i, s := range enabled {
 				opts[i] = better.SelectOption{Label: SourceLabel(s), Value: string(s)}
