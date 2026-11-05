@@ -8,7 +8,34 @@ import (
 
 	"lunabox/backend/service"
 	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
+
+// 进度条的填充部分要真的画出来：30% 时左端是填充色，右端仍是轨道色。
+func TestRestoreProgressBarIsFilled(t *testing.T) {
+	p := &Page{Restore: &service.RestoreProgress{Stage: service.RestoreStageExtract, Step: 1, Steps: 3, Done: 300, Total: 1000}}
+	tt := newTester(p)
+	tt.Advance(time.Second) // 等宽度动画结束
+	tt.Frame()
+	label, ok := tt.Find(locales.NativeStartupRestoreExtract())
+	if !ok {
+		t.Fatalf("missing stage text in %q", tt.Texts())
+	}
+	percent, ok := tt.Find("30%")
+	if !ok {
+		t.Fatalf("missing percent in %q", tt.Texts())
+	}
+	img := tt.Image()
+	y := int(label.Y + label.H + 10 + 3) // 阶段说明下面 gap 10，进度条高 6，取中线
+	filled := img.RGBAAt(int(label.X)+8, y)
+	track := img.RGBAAt(int(percent.X+percent.W)-8, y)
+	if filled == track {
+		t.Fatalf("progress bar fill not drawn: left %v equals track %v", filled, track)
+	}
+	if want := theme.Primary400; filled.R != want.R || filled.G != want.G || filled.B != want.B {
+		t.Fatalf("progress bar fill = %v, want %v", filled, want)
+	}
+}
 
 func TestShowsRestoreProgress(t *testing.T) {
 	p := &Page{Restore: &service.RestoreProgress{Stage: service.RestoreStageExtract, Step: 1, Steps: 3, Done: 512, Total: 1024}}

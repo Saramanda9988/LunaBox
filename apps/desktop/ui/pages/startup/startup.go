@@ -147,21 +147,14 @@ func restoreBox(c *ui.Context, t *theme.Theme, pr service.RestoreProgress) {
 						Font("Consolas").NoWrap().Shrink(0)
 				}
 			})
-			// 每个阶段一条进度条（按阶段区分元素），换阶段时从头开始，不会从上一阶段的 100% 倒退回去。
-			track := ui.Row(c.Key("bar-" + string(pr.Stage))).FillWidth().Height(6).Radius(999).Clip().Background(t.Pick(theme.Brand200, theme.Brand700))
-			frac := float32(1)
+			// 每个阶段一条进度条（按阶段区分元素），换阶段时从头开始，不会从上一阶段的 100% 倒退回去；
+			// 进度未知（导入数据库、替换、正在启动）时是来回滑动的填充。
+			value := -1.0
 			if known {
-				frac = float32(max(2, percent)) / 100
+				value = float64(max(2, percent)) / 100
 			}
-			frac = track.AnimateWith("width", frac, 300*time.Millisecond, theme.EaseTailwind)
-			track.Children(func() {
-				bar := ui.Box(c).Grow(frac).Basis(0).Radius(999).Background(t.Pick(theme.Primary500, theme.Primary400))
-				if !known {
-					bar.Opacity(components.Pulse(bar))
-				}
-				if frac < 1 {
-					ui.Box(c).Grow(1 - frac).Basis(0)
-				}
+			ui.Column(c.Key("bar-" + string(pr.Stage))).FillWidth().Children(func() {
+				components.ProgressBar(c, t, value, t.Pick(theme.Primary500, theme.Primary400))
 			})
 			size := ""
 			if known {

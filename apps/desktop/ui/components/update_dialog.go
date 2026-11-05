@@ -347,19 +347,15 @@ func updateDialogProgress(c *ui.Context, t *theme.Theme, s *UpdateDialogState) {
 					Font(monoFont).NoWrap().Shrink(0)
 			}
 		})
-		track := ui.Row(c.Key("bar")).FillWidth().Height(6).Radius(999).Clip().Background(t.Pick(theme.Brand200, theme.Brand700))
-		frac := float32(1)
+		value := 1.0
 		if downloading {
-			frac = float32(max(2, min(100, pr.Percent))) / 100
+			value = float64(max(2, min(100, pr.Percent))) / 100
 		}
-		frac = track.AnimateWith("width", frac, 300*time.Millisecond, theme.EaseTailwind)
-		track.Children(func() {
-			bar := ui.Box(c).Grow(frac).Basis(0).Radius(999).Background(accent500)
+		// 下面垫一层轨道色：闪烁时 ui.Progress 连同自己的轨道一起变淡，原版只有填充变淡，露出的是轨道。
+		ui.Column(c.Key("bar")).FillWidth().Radius(999).Background(t.Pick(theme.Brand200, theme.Brand700)).Children(func() {
+			bar := ProgressBar(c, t, value, accent500)
 			if !downloading {
 				bar.Opacity(Pulse(bar))
-			}
-			if frac < 1 {
-				ui.Box(c).Grow(1 - frac).Basis(0)
 			}
 		})
 		muted := t.Pick(theme.Brand500, theme.Brand400)
