@@ -9,6 +9,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/common/enums"
+	"lunabox/backend/common/importpath"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
 	"lunabox/desktop/ui/assets"
@@ -84,8 +85,13 @@ func (a *AddGame) entryStep() string {
 	return "local"
 }
 
-// inferName 对应 inferGameNameFromPath：.app 去掉扩展名，否则取可执行文件所在的文件夹名。
+// inferName 对应 inferGameNameFromPath：.app 去掉扩展名，否则取可执行文件所在的文件夹名；
+// 再清洗掉日期、品牌、版本等与搜索无关的内容。
 func inferName(path string) string {
+	return importpath.CleanSearchName(rawInferName(path))
+}
+
+func rawInferName(path string) string {
 	parts := strings.FieldsFunc(strings.ReplaceAll(path, "\\", "/"), func(r rune) bool { return r == '/' })
 	if len(parts) == 0 {
 		return ""

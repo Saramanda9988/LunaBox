@@ -620,7 +620,7 @@ func (s *ImportService) scanDirectoryByHierarchy(
 			FolderName:    folderName,
 			Executables:   []string{},
 			SelectedExe:   dir,
-			SearchName:    filepath.Base(dir),
+			SearchName:    importpath.CleanSearchName(filepath.Base(dir)),
 			IsSelected:    true,
 			MatchStatus:   "pending",
 		}
@@ -628,7 +628,12 @@ func (s *ImportService) scanDirectoryByHierarchy(
 	return nil
 }
 
+// scanSearchName 取扫描到的游戏目录的搜索名，并清洗掉日期、品牌、版本等无关内容。
 func scanSearchName(rootPath string, currentPath string, scanNameMode string, nameDepth int) string {
+	return importpath.CleanSearchName(rawScanSearchName(rootPath, currentPath, scanNameMode, nameDepth))
+}
+
+func rawScanSearchName(rootPath string, currentPath string, scanNameMode string, nameDepth int) string {
 	if scanNameMode == "parent" {
 		return filepath.Base(currentPath)
 	}
@@ -1405,7 +1410,7 @@ func (s *ImportService) scanDroppedDirectoryByHierarchy(
 			FolderName:    filepath.Base(dir),
 			Executables:   []string{},
 			SelectedExe:   dir,
-			SearchName:    filepath.Base(dir),
+			SearchName:    importpath.CleanSearchName(filepath.Base(dir)),
 			IsSelected:    true,
 			MatchStatus:   "pending",
 		}
@@ -1432,6 +1437,10 @@ func shouldExcludeExecutable(fileName string, excludeKeywords []string) bool {
 }
 
 func searchNameForExecutable(fileName string, folderPath string) string {
+	return importpath.CleanSearchName(rawSearchNameForExecutable(fileName, folderPath))
+}
+
+func rawSearchNameForExecutable(fileName string, folderPath string) string {
 	searchName := filepath.Base(folderPath)
 	exeName := strings.TrimSuffix(fileName, filepath.Ext(fileName))
 	genericNames := []string{"game", "main", "start", "launch", "run", "play"}
