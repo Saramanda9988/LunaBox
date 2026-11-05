@@ -238,6 +238,9 @@ func trustedImageURL(s string) template.URL {
 	return ""
 }
 
+// posterLeaderboardSize 是总结海报模板拿到的排行榜条数。
+const posterLeaderboardSize = 10
+
 // PrepareExportData 准备导出数据（处理图片等）
 func (s *TemplateService) PrepareExportData(stats vo.PeriodStats, aiSummary string) (vo.StatsExportData, error) {
 	data := vo.StatsExportData{
@@ -314,8 +317,9 @@ func (s *TemplateService) PrepareExportData(stats vo.PeriodStats, aiSummary stri
 		data.GameTrendData = string(trendJSON)
 	}
 
-	// 处理排行榜数据
-	for i, game := range stats.PlayTimeLeaderboard {
+	// 处理排行榜数据：海报只展示前 posterLeaderboardSize 名（统计接口返回的榜单更长，供“查看更多”使用）
+	leaderboard := stats.PlayTimeLeaderboard[:min(posterLeaderboardSize, len(stats.PlayTimeLeaderboard))]
+	for i, game := range leaderboard {
 		item := vo.StatsGameItem{
 			Rank:          i + 1,
 			GameID:        game.GameID,

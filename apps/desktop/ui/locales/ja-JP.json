@@ -1407,7 +1407,7 @@
   "stats_timeOfDay_peakHour": "ピーク {hour} · {duration}",
   "stats_timeOfDay_peakWeekday": "ピーク {day} · {duration}",
   "stats_leaderboard_fullTitle": "プレイ時間ランキング Top 10",
-  "stats_leaderboard_modalTitle": "プレイ時間ランキング Top 20",
+  "stats_leaderboard_modalTitle": "プレイ時間ランキング Top 50",
   "stats_leaderboard_viewMore": "もっと見る",
   "stats_leaderboard_noData": "データがありません",
   "stats_leaderboard_countHint": "全 {count} 件",

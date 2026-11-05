@@ -17,7 +17,7 @@ import (
 const (
 	skeletonDelay   = 300 * time.Millisecond // 原版显示骨架屏前的等待，数据很快返回时不闪一下骨架
 	previewCount    = 10                     // 页面上的排行榜条数
-	leaderboardSize = 20                     // StatsLeaderboardModal 的条数
+	leaderboardSize = 50                     // StatsLeaderboardModal 的条数
 )
 
 // Page 是统计页面的状态。原版每次进入页面重新挂载组件，Open 重置除 AI 总结以外的状态；

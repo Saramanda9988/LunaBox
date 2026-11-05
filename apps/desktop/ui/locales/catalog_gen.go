@@ -21073,13 +21073,13 @@ func (msgs Messages) StatsLeaderboardFullTitle() string {
 	return Catalog.Format(msgs.locale, "stats_leaderboard_fullTitle", nil)
 }
 
-// StatsLeaderboardModalTitle says "游玩时长排行榜 Top 20"
+// StatsLeaderboardModalTitle says "游玩时长排行榜 Top 50"
 // in the language the app shows.
 //
 // stats.leaderboard.modalTitle
 func StatsLeaderboardModalTitle() string { return In(i18n.Locale()).StatsLeaderboardModalTitle() }
 
-// StatsLeaderboardModalTitle says "游玩时长排行榜 Top 20"
+// StatsLeaderboardModalTitle says "游玩时长排行榜 Top 50"
 // in the language of msgs.
 //
 // stats.leaderboard.modalTitle

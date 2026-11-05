@@ -34,7 +34,7 @@ func NewStatsService() *StatsService {
 }
 
 // GetPosterGames returns every played game in the inclusive local calendar range.
-// The statistics dashboard keeps its existing top-20 leaderboard independently.
+// The statistics dashboard keeps its existing top-50 leaderboard independently.
 func (s *StatsService) GetPosterGames(startDate, endDate string) ([]vo.PosterGame, error) {
 	start, err := time.Parse("2006-01-02", startDate)
 	if err != nil {
@@ -498,7 +498,7 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 		WHERE ps.start_time >= %s AND ps.start_time <= %s + INTERVAL 1 DAY
 		GROUP BY ps.game_id, g.name, g.cover_url, g.is_nsfw
 		ORDER BY total DESC
-		LIMIT 20
+		LIMIT 50
 	`, startDateExpr, endDateExpr)
 
 	// 构建Leaderboard

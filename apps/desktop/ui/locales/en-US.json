@@ -1407,7 +1407,7 @@
   "stats_timeOfDay_peakHour": "Peak {hour} · {duration}",
   "stats_timeOfDay_peakWeekday": "Peak {day} · {duration}",
   "stats_leaderboard_fullTitle": "Play Time Leaderboard · Top 10",
-  "stats_leaderboard_modalTitle": "Play Time Leaderboard · Top 20",
+  "stats_leaderboard_modalTitle": "Play Time Leaderboard · Top 50",
   "stats_leaderboard_viewMore": "View more",
   "stats_leaderboard_noData": "No data yet",
   "stats_leaderboard_countHint": "{count} entries",

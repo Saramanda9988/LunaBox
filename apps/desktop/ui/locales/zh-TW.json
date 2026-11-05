@@ -1407,7 +1407,7 @@
   "stats_timeOfDay_peakHour": "高峰 {hour} · {duration}",
   "stats_timeOfDay_peakWeekday": "高峰 {day} · {duration}",
   "stats_leaderboard_fullTitle": "遊玩時長排行榜 Top 10",
-  "stats_leaderboard_modalTitle": "遊玩時長排行榜 Top 20",
+  "stats_leaderboard_modalTitle": "遊玩時長排行榜 Top 50",
   "stats_leaderboard_viewMore": "查看更多",
   "stats_leaderboard_noData": "暫無資料",
   "stats_leaderboard_countHint": "共 {count} 項",

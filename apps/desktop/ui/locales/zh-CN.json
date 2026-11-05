@@ -2814,7 +2814,7 @@
   "@stats_timeOfDay_peakWeekday": {"description": "stats.timeOfDay.peakWeekday", "placeholders": {"day": {"type": "String"}, "duration": {"type": "String"}}},
   "stats_leaderboard_fullTitle": "游玩时长排行榜 Top 10",
   "@stats_leaderboard_fullTitle": {"description": "stats.leaderboard.fullTitle"},
-  "stats_leaderboard_modalTitle": "游玩时长排行榜 Top 20",
+  "stats_leaderboard_modalTitle": "游玩时长排行榜 Top 50",
   "@stats_leaderboard_modalTitle": {"description": "stats.leaderboard.modalTitle"},
   "stats_leaderboard_viewMore": "查看更多",
   "@stats_leaderboard_viewMore": {"description": "stats.leaderboard.viewMore"},

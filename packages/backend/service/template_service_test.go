@@ -29,3 +29,20 @@ func TestRenderTemplateKeepsCoverDataURL(t *testing.T) {
 		}
 	}
 }
+
+func TestPrepareExportDataKeepsTopTenLeaderboard(t *testing.T) {
+	var stats vo.PeriodStats
+	for i := range 15 {
+		stats.PlayTimeLeaderboard = append(stats.PlayTimeLeaderboard, vo.GamePlayStats{GameID: string(rune('a' + i)), TotalDuration: 100 - i})
+	}
+	data, err := NewTemplateService().PrepareExportData(stats, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(data.Leaderboard) != posterLeaderboardSize {
+		t.Fatalf("poster leaderboard has %d games, want %d", len(data.Leaderboard), posterLeaderboardSize)
+	}
+	if last := data.Leaderboard[len(data.Leaderboard)-1]; last.Rank != posterLeaderboardSize || last.GameID != "j" {
+		t.Fatalf("last poster game = rank %d %q, want rank %d %q", last.Rank, last.GameID, posterLeaderboardSize, "j")
+	}
+}
