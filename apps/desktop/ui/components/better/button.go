@@ -129,8 +129,7 @@ func Button(c *ui.Context, t *theme.Theme, key string, p ButtonProps) ui.Element
 	if btn.Pressed() && !disabled {
 		scale = 0.95
 	}
-	s := btn.AnimateWith("press", scale, 200*time.Millisecond, theme.EaseTailwind)
-	btn.Scale(s, s)
+	components.PressScale(btn, btn.AnimateWith("press", scale, 200*time.Millisecond, theme.EaseTailwind))
 	if disabled {
 		components.Disable(btn, 0.5)
 	}

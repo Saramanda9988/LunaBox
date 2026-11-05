@@ -29,7 +29,7 @@ func Tooltip(c *ui.Context, t *theme.Theme, anchor ui.Element, content string) {
 		return
 	}
 	ui.Overlay(c, func() {
-		ui.Box(c).AttachTo(anchor, ui.AnchorTop, ui.AnchorBottom).Translate(0, -8).
+		components.AttachPopover(ui.Box(c), anchor, ui.AnchorTop, ui.AnchorBottom).Translate(0, -8).
 			Padding(6, 10).Radius(6).MaxWidth(288).Background(t.TooltipBg).Border(t.HL, t.TooltipBorder).
 			PassThrough().DrawOver(func(p *ui.Painter, r ui.Rect) {
 			p.FillPath(tooltipArrow(r.X+r.W/2, r.Y+r.H), t.TooltipBg)

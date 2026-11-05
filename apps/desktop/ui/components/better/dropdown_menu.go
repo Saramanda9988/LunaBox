@@ -74,7 +74,7 @@ func DropdownMenu(c *ui.Context, t *theme.Theme, trigger ui.Element, p MenuProps
 	}
 	overPanel := false
 	ui.PopoverBase(c, trigger, open, func(panel ui.Element) {
-		panel.AttachTo(trigger, from, to).Top(12).MinWidth(minWidth).
+		components.AttachPopover(panel, trigger, from, to).Top(12).MinWidth(minWidth).
 			Padding(6).Radius(12).Background(t.PanelBg).Border(t.HL, t.PanelBorder)
 		if p.Width > 0 {
 			winW, _ := c.Size()

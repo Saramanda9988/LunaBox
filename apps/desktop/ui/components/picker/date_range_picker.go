@@ -133,7 +133,7 @@ func DateRangePicker(c *ui.Context, t *theme.Theme, key string, p DateRangeProps
 		if p.PanelAnchor == AnchorBottom {
 			at, self = ui.AnchorBottom, ui.AnchorTop
 		}
-		panel.AttachTo(btn, at, self).Margin(16, 0, 0, 0).MaxWidth(winW-32).
+		components.AttachPopover(panel, btn, at, self, 16).MaxWidth(winW-32).
 			Radius(12).Background(t.PanelBg).Border(t.HL, t.PanelBorder).OnShortcut(0, ui.KeyEscape, closePanel)
 		content := func(box ui.Element) {
 			box.Column().Gap(12).Children(func() {
