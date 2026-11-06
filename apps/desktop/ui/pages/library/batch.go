@@ -54,6 +54,7 @@ func (l *Page) selectedIDs() []string {
 func (l *Page) endBatch() {
 	clear(l.selected)
 	l.filters.Batch = false
+	l.exitMissingPaths()
 }
 
 // batchSetStatus 对应 handleBatchStatusUpdate：BatchUpdateStatus 后刷新游戏库。

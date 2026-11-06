@@ -3261,5 +3261,19 @@
   "native_startupRestoreApply": "正在替换为恢复的数据",
   "@native_startupRestoreApply": {"description": "extra:native.startupRestoreApply"},
   "native_startupRestoreStarting": "恢复完成，正在启动",
-  "@native_startupRestoreStarting": {"description": "extra:native.startupRestoreStarting"}
+  "@native_startupRestoreStarting": {"description": "extra:native.startupRestoreStarting"},
+  "native_missingPathScan": "检查失效路径",
+  "@native_missingPathScan": {"description": "extra:native.missingPathScan"},
+  "native_missingPathScanFailed": "检查失效路径失败",
+  "@native_missingPathScanFailed": {"description": "extra:native.missingPathScanFailed"},
+  "native_missingPathNone": "没有发现启动路径失效的游戏",
+  "@native_missingPathNone": {"description": "extra:native.missingPathNone"},
+  "native_missingPathFound": "{count} 个游戏的启动路径已不存在，已全部选中",
+  "@native_missingPathFound": {"description": "extra:native.missingPathFound"},
+  "native_missingPathUnavailable": "{count} 个游戏所在的磁盘不可用，已跳过",
+  "@native_missingPathUnavailable": {"description": "extra:native.missingPathUnavailable"},
+  "native_missingPathFilter": "只显示启动路径失效的游戏（{count} 个）",
+  "@native_missingPathFilter": {"description": "extra:native.missingPathFilter"},
+  "native_missingPathFilterExit": "显示全部游戏",
+  "@native_missingPathFilterExit": {"description": "extra:native.missingPathFilterExit"}
 }

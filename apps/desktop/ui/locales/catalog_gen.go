@@ -24334,3 +24334,107 @@ func NativeStartupRestoreStarting() string { return In(i18n.Locale()).NativeStar
 func (msgs Messages) NativeStartupRestoreStarting() string {
 	return Catalog.Format(msgs.locale, "native_startupRestoreStarting", nil)
 }
+
+// NativeMissingPathScan says "检查失效路径"
+// in the language the app shows.
+//
+// extra:native.missingPathScan
+func NativeMissingPathScan() string { return In(i18n.Locale()).NativeMissingPathScan() }
+
+// NativeMissingPathScan says "检查失效路径"
+// in the language of msgs.
+//
+// extra:native.missingPathScan
+func (msgs Messages) NativeMissingPathScan() string {
+	return Catalog.Format(msgs.locale, "native_missingPathScan", nil)
+}
+
+// NativeMissingPathScanFailed says "检查失效路径失败"
+// in the language the app shows.
+//
+// extra:native.missingPathScanFailed
+func NativeMissingPathScanFailed() string { return In(i18n.Locale()).NativeMissingPathScanFailed() }
+
+// NativeMissingPathScanFailed says "检查失效路径失败"
+// in the language of msgs.
+//
+// extra:native.missingPathScanFailed
+func (msgs Messages) NativeMissingPathScanFailed() string {
+	return Catalog.Format(msgs.locale, "native_missingPathScanFailed", nil)
+}
+
+// NativeMissingPathNone says "没有发现启动路径失效的游戏"
+// in the language the app shows.
+//
+// extra:native.missingPathNone
+func NativeMissingPathNone() string { return In(i18n.Locale()).NativeMissingPathNone() }
+
+// NativeMissingPathNone says "没有发现启动路径失效的游戏"
+// in the language of msgs.
+//
+// extra:native.missingPathNone
+func (msgs Messages) NativeMissingPathNone() string {
+	return Catalog.Format(msgs.locale, "native_missingPathNone", nil)
+}
+
+// NativeMissingPathFound says "{count} 个游戏的启动路径已不存在，已全部选中"
+// in the language the app shows.
+//
+// extra:native.missingPathFound
+func NativeMissingPathFound(count string) string {
+	return In(i18n.Locale()).NativeMissingPathFound(count)
+}
+
+// NativeMissingPathFound says "{count} 个游戏的启动路径已不存在，已全部选中"
+// in the language of msgs.
+//
+// extra:native.missingPathFound
+func (msgs Messages) NativeMissingPathFound(count string) string {
+	return Catalog.Format(msgs.locale, "native_missingPathFound", map[string]any{"count": count})
+}
+
+// NativeMissingPathUnavailable says "{count} 个游戏所在的磁盘不可用，已跳过"
+// in the language the app shows.
+//
+// extra:native.missingPathUnavailable
+func NativeMissingPathUnavailable(count string) string {
+	return In(i18n.Locale()).NativeMissingPathUnavailable(count)
+}
+
+// NativeMissingPathUnavailable says "{count} 个游戏所在的磁盘不可用，已跳过"
+// in the language of msgs.
+//
+// extra:native.missingPathUnavailable
+func (msgs Messages) NativeMissingPathUnavailable(count string) string {
+	return Catalog.Format(msgs.locale, "native_missingPathUnavailable", map[string]any{"count": count})
+}
+
+// NativeMissingPathFilter says "只显示启动路径失效的游戏（{count} 个）"
+// in the language the app shows.
+//
+// extra:native.missingPathFilter
+func NativeMissingPathFilter(count string) string {
+	return In(i18n.Locale()).NativeMissingPathFilter(count)
+}
+
+// NativeMissingPathFilter says "只显示启动路径失效的游戏（{count} 个）"
+// in the language of msgs.
+//
+// extra:native.missingPathFilter
+func (msgs Messages) NativeMissingPathFilter(count string) string {
+	return Catalog.Format(msgs.locale, "native_missingPathFilter", map[string]any{"count": count})
+}
+
+// NativeMissingPathFilterExit says "显示全部游戏"
+// in the language the app shows.
+//
+// extra:native.missingPathFilterExit
+func NativeMissingPathFilterExit() string { return In(i18n.Locale()).NativeMissingPathFilterExit() }
+
+// NativeMissingPathFilterExit says "显示全部游戏"
+// in the language of msgs.
+//
+// extra:native.missingPathFilterExit
+func (msgs Messages) NativeMissingPathFilterExit() string {
+	return Catalog.Format(msgs.locale, "native_missingPathFilterExit", nil)
+}

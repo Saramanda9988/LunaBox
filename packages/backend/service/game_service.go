@@ -716,6 +716,20 @@ func (s *GameService) GetGames(req vo.GameListRequest) (vo.GameListResponse, err
 	return resp, nil
 }
 
+// FindGamesWithMissingPath 检查库中每个游戏的启动路径是否还存在（如改了文件夹名后重新入库，留下的旧条目）。
+// 所在磁盘不可用的游戏单独列出，不算作失效。
+func (s *GameService) FindGamesWithMissingPath() (vo.MissingPathScanResult, error) {
+	games, err := s.listAllGamesInternal()
+	if err != nil {
+		applog.LogErrorf(s.ctx, "FindGamesWithMissingPath: failed to list games: %v", err)
+		return vo.MissingPathScanResult{}, err
+	}
+	result := gamehelper.CheckGamePaths(s.ctx, games)
+	applog.LogInfof(s.ctx, "FindGamesWithMissingPath: checked %d, missing %d, volume unavailable %d",
+		result.Checked, len(result.Missing), len(result.Unavailable))
+	return result, nil
+}
+
 // ListAllGames 返回库中全部游戏（自动分页取完）
 //
 //wails:ignore

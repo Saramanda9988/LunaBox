@@ -31,6 +31,7 @@ type Page struct {
 	randomLoading bool
 	grid          grid.Geometry
 	batch         batchState
+	missing       missingPaths // 批量模式下“检查失效路径”后只显示扫描结果
 
 	// 添加与导入游戏的弹窗（AddGameModal、BatchImportModal、GameImportModal）
 	addGame     *importer.AddGame
@@ -93,7 +94,8 @@ func (l *Page) SetDebugState(state string) {
 // Reload 在查询条件变化后重新请求第一页；旧数据保留到新结果返回（期间显示“加载中”）。
 func (l *Page) Reload() {
 	req := l.filters.GameListRequest()
-	l.pages.Reload(l.filters.Key(), func(offset, limit int) ([]models.Game, int, error) {
+	req.IDs = l.missing.ids
+	l.pages.Reload(l.filters.Key()+l.missing.listKey(), func(offset, limit int) ([]models.Game, int, error) {
 		r := req
 		r.Offset, r.Limit = offset, limit
 		resp, err := l.env.Backend.GetGames(r)

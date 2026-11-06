@@ -1813,5 +1813,12 @@
   "native_startupRestoreExtract": "バックアップを展開しています",
   "native_startupRestoreDatabase": "データベースをインポートしています",
   "native_startupRestoreApply": "復元したデータに置き換えています",
-  "native_startupRestoreStarting": "復元が完了しました。起動しています"
+  "native_startupRestoreStarting": "復元が完了しました。起動しています",
+  "native_missingPathScan": "存在しないパスを検索",
+  "native_missingPathScanFailed": "パスの確認に失敗しました",
+  "native_missingPathNone": "起動パスが存在しないゲームはありません",
+  "native_missingPathFound": "{count} 件のゲームの起動パスが存在しません。すべて選択しました",
+  "native_missingPathUnavailable": "ドライブが利用できない {count} 件のゲームをスキップしました",
+  "native_missingPathFilter": "起動パスが存在しないゲームのみ表示中（{count} 件）",
+  "native_missingPathFilterExit": "すべてのゲームを表示"
 }

@@ -57,6 +57,20 @@ type GameListResponse struct {
 	HasMore bool          `json:"has_more"`
 }
 
+// MissingPathGame 是启动路径检查结果里的一个游戏。
+type MissingPathGame struct {
+	GameID string `json:"game_id"`
+	Name   string `json:"name"`
+	Path   string `json:"path"`
+}
+
+// MissingPathScanResult 是 FindGamesWithMissingPath 的结果。
+type MissingPathScanResult struct {
+	Checked     int               `json:"checked"`     // 检查过的游戏数（有启动路径的）
+	Missing     []MissingPathGame `json:"missing"`     // 所在磁盘可用但路径不存在
+	Unavailable []MissingPathGame `json:"unavailable"` // 所在磁盘或挂载点不可用，无法判断，不计入 Missing
+}
+
 // GameGuideDocument 是游戏安装目录中可供打开的说明文档。
 type GameGuideDocument struct {
 	Name         string `json:"name"`

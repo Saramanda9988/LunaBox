@@ -157,3 +157,22 @@ func TestNormalizeGameListRequestClearsDuplicateSecondarySort(t *testing.T) {
 		t.Fatalf("expected duplicate secondary sorting to be cleared: %#v", req)
 	}
 }
+
+func TestQueryGameListFiltersIDs(t *testing.T) {
+	db := setupGameListQueryTest(t)
+	resp, err := QueryGameList(context.Background(), db, vo.GameListRequest{
+		IDs:       []string{"local", "steam", "local", "not-exist"},
+		SortBy:    enums.GameListSortByName,
+		SortOrder: enums.SortOrderAsc,
+	}, GameListScope{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, g := range resp.Games {
+		got = append(got, g.ID)
+	}
+	if want := []string{"local", "steam"}; resp.Total != 2 || !reflect.DeepEqual(got, want) {
+		t.Fatalf("total %d, ids %v, want %v", resp.Total, got, want)
+	}
+}

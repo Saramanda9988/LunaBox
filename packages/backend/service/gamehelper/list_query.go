@@ -43,6 +43,7 @@ func normalizeGameListRequest(req vo.GameListRequest) vo.GameListRequest {
 		req.SortBy,
 	)
 	req.Tags = utils.UniqueNonEmptyStrings(req.Tags)
+	req.IDs = utils.UniqueNonEmptyStrings(req.IDs)
 	return req
 }
 
@@ -185,6 +186,12 @@ func QueryGameList(ctx context.Context, db *sql.DB, req vo.GameListRequest, scop
 	if strings.TrimSpace(scope.WhereClause) != "" {
 		whereParts = append(whereParts, scope.WhereClause)
 		args = append(args, scope.Args...)
+	}
+	if len(req.IDs) > 0 {
+		whereParts = append(whereParts, fmt.Sprintf("g.id IN (%s)", utils.BuildPlaceholders(len(req.IDs))))
+		for _, id := range req.IDs {
+			args = append(args, id)
+		}
 	}
 	if req.SearchQuery != "" {
 		whereParts = append(whereParts, "(LOWER(COALESCE(g.name, '')) LIKE ? OR LOWER(COALESCE(g.company, '')) LIKE ? OR LOWER(COALESCE(g.aliases, '[]')) LIKE ?)")

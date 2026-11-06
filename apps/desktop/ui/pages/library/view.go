@@ -47,6 +47,7 @@ func (l *Page) View(c *ui.Context) {
 					components.TextMargin(c, l.filters.CountText(l.pages.Total), theme.TextBase, theme.WeightNormal, t.TextMuted, 8, 0, 0, 0)
 				})
 				bar.FilterBar(c, t, fp)
+				l.missingPathsBanner(c, t)
 				l.content(c, t, winH)
 			})
 		})
@@ -162,7 +163,7 @@ func (l *Page) loadingGrid(c *ui.Context, t *theme.Theme) {
 // emptyState 对应 total === 0 时的两种空状态。
 func (l *Page) emptyState(c *ui.Context, t *theme.Theme) {
 	ui.Column(c).Grow(1).FillWidth().Center().Padding(80, 0).Children(func() {
-		if l.filters.HasActiveFilters() {
+		if l.filters.HasActiveFilters() || l.missing.active() {
 			components.Icon(c, "magnify", 60, t.TextMuted).Margin(0, 0, 16, 0)
 			components.Text(c, locales.LibraryNotFound(), theme.TextXL, theme.WeightNormal, t.TextMuted)
 			return

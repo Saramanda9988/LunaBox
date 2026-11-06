@@ -3,6 +3,7 @@ package envtest
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 	"lunabox/backend/models"
 )
 
-// Backend 在内存中实现 env.Backend，按名称搜索与状态筛选，其余条件忽略。
+// Backend 在内存中实现 env.Backend，按名称搜索、状态与游戏 ID 筛选，其余条件忽略。
 type Backend struct {
 	Games []models.Game
 	Tags  []string // 库里的标签名（SearchTagsInLibrary、FilterExistingTagNames）
@@ -42,6 +43,9 @@ func (b *Backend) GetGames(req vo.GameListRequest) (vo.GameListResponse, error) 
 	b.Reqs = append(b.Reqs, req)
 	var match []models.Game
 	for _, g := range b.Games {
+		if len(req.IDs) > 0 && !slices.Contains(req.IDs, g.ID) {
+			continue
+		}
 		if req.SearchQuery != "" && !strings.Contains(strings.ToLower(g.Name), strings.ToLower(req.SearchQuery)) {
 			continue
 		}

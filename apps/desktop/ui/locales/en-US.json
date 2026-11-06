@@ -1630,5 +1630,12 @@
   "native_startupRestoreExtract": "Extracting backup",
   "native_startupRestoreDatabase": "Importing database",
   "native_startupRestoreApply": "Applying restored data",
-  "native_startupRestoreStarting": "Restore finished. Starting LunaBox"
+  "native_startupRestoreStarting": "Restore finished. Starting LunaBox",
+  "native_missingPathScan": "Find missing game paths",
+  "native_missingPathScanFailed": "Failed to check game paths",
+  "native_missingPathNone": "No games with a missing launch path",
+  "native_missingPathFound": "{count} games have a missing launch path and are now selected",
+  "native_missingPathUnavailable": "Skipped {count} games on drives that are not available",
+  "native_missingPathFilter": "Showing only games with a missing launch path ({count})",
+  "native_missingPathFilterExit": "Show all games"
 }

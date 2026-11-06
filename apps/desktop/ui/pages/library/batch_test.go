@@ -31,7 +31,12 @@ type fakeBatch struct {
 	steam      service.SteamLaunchStatus
 	steamItems map[string]service.SteamBatchImportItemResult
 	steamCalls [][]string
+	missing    vo.MissingPathScanResult
 	err        error
+}
+
+func (f *fakeBatch) FindGamesWithMissingPath() (vo.MissingPathScanResult, error) {
+	return f.missing, f.err
 }
 
 func (f *fakeBatch) BatchUpdateStatus(ids []string, status string) error {
@@ -254,5 +259,87 @@ func TestBatchRightPressSelects(t *testing.T) {
 	tt.Frame()
 	if !l.selected["1"] || len(l.selected) != 1 {
 		t.Fatalf("selected %v after a click", l.selected)
+	}
+}
+
+// 检查失效路径：只显示并选中失效的游戏，清除搜索；删除后回到全部游戏。所在磁盘不可用的游戏只提示，不选中。
+func TestMissingPathsSelectsAndFilters(t *testing.T) {
+	l, f, tt := newBatchPage(t, 6)
+	f.missing = vo.MissingPathScanResult{
+		Checked:     5,
+		Missing:     []vo.MissingPathGame{{GameID: "1"}, {GameID: "4"}},
+		Unavailable: []vo.MissingPathGame{{GameID: "5"}},
+	}
+	l.filters.SearchFor("summer")
+	l.Reload()
+	tt.Frame()
+
+	if err := tt.Click(locales.NativeMissingPathScan()); err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		tt.Frame()
+	}
+	if l.filters.Debounced != "" || l.pages.Total != 2 || len(l.selected) != 2 || !l.selected["1"] || !l.selected["4"] {
+		t.Fatalf("search %q, total %d, selected %v", l.filters.Debounced, l.pages.Total, l.selected)
+	}
+	if !tt.HasText(locales.NativeMissingPathFilter("2")) {
+		t.Errorf("missing banner in %q", tt.Texts())
+	}
+	toasts := tt.Announcements()
+	if !slices.Contains(toasts, locales.NativeMissingPathFound("2")) || !slices.Contains(toasts, locales.NativeMissingPathUnavailable("1")) {
+		t.Errorf("toasts %q", toasts)
+	}
+
+	l.batch.confirmDelete = true
+	tt.Frame()
+	if err := tt.Click(locales.CommonConfirm()); err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		tt.Frame()
+	}
+	if !slices.Equal(f.deleted, []string{"1", "4"}) || l.missing.active() || l.filters.Batch || l.pages.Total != 4 {
+		t.Fatalf("deleted %v, missing %v, batch %v, total %d", f.deleted, l.missing.ids, l.filters.Batch, l.pages.Total)
+	}
+}
+
+func TestMissingPathsNoneKeepsLibrary(t *testing.T) {
+	l, _, tt := newBatchPage(t, 3)
+	if err := tt.Click(locales.NativeMissingPathScan()); err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		tt.Frame()
+	}
+	if l.missing.active() || l.pages.Total != 3 || len(l.selected) != 0 {
+		t.Fatalf("missing %v, total %d, selected %v", l.missing.ids, l.pages.Total, l.selected)
+	}
+	if !slices.Contains(tt.Announcements(), locales.NativeMissingPathNone()) {
+		t.Errorf("toasts %q", tt.Announcements())
+	}
+}
+
+// 退出批量模式时一并回到全部游戏。
+func TestMissingPathsExitWithBatch(t *testing.T) {
+	l, f, tt := newBatchPage(t, 4)
+	f.missing = vo.MissingPathScanResult{Missing: []vo.MissingPathGame{{GameID: "2"}}}
+	if err := tt.Click(locales.NativeMissingPathScan()); err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		tt.Frame()
+	}
+	if l.pages.Total != 1 {
+		t.Fatalf("total %d", l.pages.Total)
+	}
+	if err := tt.Click(locales.NativeBatchSelect()); err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		tt.Frame()
+	}
+	if l.missing.active() || l.filters.Batch || l.pages.Total != 4 {
+		t.Fatalf("missing %v, batch %v, total %d", l.missing.ids, l.filters.Batch, l.pages.Total)
 	}
 }

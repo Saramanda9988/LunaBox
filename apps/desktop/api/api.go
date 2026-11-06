@@ -82,6 +82,7 @@ type GameService interface {
 	DeleteGame(id string) error
 	DeleteGames(ids []string) error
 	BatchUpdateStatus(ids []string, status string) error
+	FindGamesWithMissingPath() (vo.MissingPathScanResult, error)
 	UpdateGameProcessName(gameID string, processName string) error
 	GetRunningProcesses() ([]processutils.ProcessInfo, error)
 

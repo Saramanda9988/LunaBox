@@ -11,9 +11,15 @@ import (
 	"lunabox/desktop/ui/theme"
 )
 
-// batchActions 是 library.tsx 传给 FilterBar 的 batchActions：导入到 Steam（只在 Windows 上）、设为状态、加入收藏夹、删除。
+// batchActions 是 library.tsx 传给 FilterBar 的 batchActions：导入到 Steam（只在 Windows 上）、设为状态、加入收藏夹、删除；
+// 前面加了原版没有的“检查失效路径”。
 func (l *Page) batchActions(c *ui.Context, t *theme.Theme) {
 	none := len(l.selected) == 0
+	scanIcon := "folder-alert-outline"
+	if l.missing.scanning {
+		scanIcon = "loading"
+	}
+	l.batchAction(c, t, "missing-paths", scanIcon, locales.NativeMissingPathScan(), l.missing.scanning || l.env.Svc == nil, t.NavText, func() { l.scanMissingPaths(c) })
 	if launch.For(l.env).GOOS() == "windows" {
 		icon := "steam"
 		if l.batch.steamImporting {

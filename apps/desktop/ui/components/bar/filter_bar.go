@@ -173,11 +173,16 @@ func (f *Filters) FilterByTag(tag string) {
 	f.Tags, f.TagsInverted, f.TagInput, f.TagSuggestions = []string{tag}, false, "", nil
 }
 
-func (f *Filters) clear(p FilterBarProps) {
+// ClearConditions 清除搜索词与标签、状态、元数据来源筛选，保留排序。
+func (f *Filters) ClearConditions() {
 	f.Search, f.Debounced = "", ""
 	f.Status, f.StatusInverted = "", false
 	f.Source, f.SourceInverted = "", false
 	f.Tags, f.TagsInverted, f.TagInput, f.TagSuggestions = nil, false, "", nil
+}
+
+func (f *Filters) clear(p FilterBarProps) {
+	f.ClearConditions()
 	f.SortBy, f.SortOrder = p.DefaultSortBy, p.DefaultSortOrder
 	f.SecondarySortBy, f.SecondarySortOrder = "", enums.SortOrderAsc
 }

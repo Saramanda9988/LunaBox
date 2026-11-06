@@ -1630,5 +1630,12 @@
   "native_startupRestoreExtract": "正在解壓縮備份",
   "native_startupRestoreDatabase": "正在匯入資料庫",
   "native_startupRestoreApply": "正在替換為恢復的資料",
-  "native_startupRestoreStarting": "恢復完成，正在啟動"
+  "native_startupRestoreStarting": "恢復完成，正在啟動",
+  "native_missingPathScan": "檢查失效路徑",
+  "native_missingPathScanFailed": "檢查失效路徑失敗",
+  "native_missingPathNone": "沒有發現啟動路徑失效的遊戲",
+  "native_missingPathFound": "{count} 個遊戲的啟動路徑已不存在，已全部選取",
+  "native_missingPathUnavailable": "{count} 個遊戲所在的磁碟無法使用，已略過",
+  "native_missingPathFilter": "只顯示啟動路徑失效的遊戲（{count} 個）",
+  "native_missingPathFilterExit": "顯示全部遊戲"
 }

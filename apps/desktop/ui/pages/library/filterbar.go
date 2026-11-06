@@ -38,6 +38,7 @@ func (l *Page) filterProps(c *ui.Context, t *theme.Theme) bar.FilterBarProps {
 			f.Batch = on
 			if !on {
 				clear(l.selected)
+				l.exitMissingPaths()
 			}
 		},
 		SelectedCount: len(l.selected),

@@ -63,6 +63,8 @@ type GameListRequest struct {
 	SortOrder             enums.SortOrder      `json:"sort_order"`
 	SecondarySortBy       enums.GameListSortBy `json:"secondary_sort_by"`
 	SecondarySortOrder    enums.SortOrder      `json:"secondary_sort_order"`
+	// IDs 非空时只返回这些游戏（与其他条件同时生效），用于“检查失效路径”后只显示扫描结果。
+	IDs []string `json:"ids,omitempty"`
 }
 
 type SaveGameFilterPresetRequest struct {
