@@ -122,6 +122,21 @@ func (h *harness) click(t *testing.T, s string) {
 	h.frames(2)
 }
 
+// clickBlocked 点击 s 所在的位置，用来验证内容隐藏（pointer-events-none）时它不响应。MyGo 0.8 起 Tester.Click
+// 遇到不接收输入的元素会直接报错、不发送输入，所以这里先断言它不是输入目标，再照样在它的位置点一下。
+func (h *harness) clickBlocked(t *testing.T, s string) {
+	t.Helper()
+	r, ok := h.tt.Find(s)
+	if !ok {
+		t.Fatalf("%q not shown; texts %q", s, h.tt.Texts())
+	}
+	if err := h.tt.Click(s); err == nil {
+		t.Fatalf("%q still takes input while hidden", s)
+	}
+	h.tt.ClickAt(r.X+r.W/2, r.Y+r.H/2)
+	h.frames(2)
+}
+
 // clickConfirm 点击确认弹窗的确认按钮（它在“取消”右边 gap-3 处；文字可能与卡片上按钮的无障碍名称相同）。
 func (h *harness) clickConfirm(t *testing.T) {
 	t.Helper()
@@ -189,7 +204,7 @@ func TestCollapsedUnauthorized(t *testing.T) {
 	// 内容隐藏（isContentVisible=false，pointer-events-none）时点击不展开。
 	h.hidden = true
 	h.frames(3)
-	h.click(t, "Bangumi")
+	h.clickBlocked(t, "Bangumi")
 	if len(h.expands) != 1 {
 		t.Errorf("hidden card expanded: %v", h.expands)
 	}
@@ -276,7 +291,7 @@ func TestDisconnectConfirm(t *testing.T) {
 	// 内容淡出期间（pointer-events-none）按钮不响应。
 	h.hidden = true
 	h.frames(2)
-	h.click(t, locales.SettingsBasicHikarinagiDisconnect())
+	h.clickBlocked(t, locales.SettingsBasicHikarinagiDisconnect())
 	h.expectNot(t, locales.SettingsBasicHikarinagiDisconnectConfirmTitle())
 	h.hidden = false
 	h.frames(2)

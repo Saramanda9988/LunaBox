@@ -10,7 +10,7 @@ import (
 
 // ScrollBar 是 ScrollArea 的状态：滚动位置与滑块拖动。放在页面状态里，页面可以读写滚动位置。
 type ScrollBar struct {
-	State ui.ScrollState
+	State  ui.ScrollState
 	thumb  ui.Point // 拖动滑块时的偏移
 	viewH  float32
 	hidden bool // 上一帧是区域刚出现、没有绘制内容的一帧

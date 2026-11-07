@@ -297,6 +297,10 @@ func (st *wheelState) input(ev ui.InputEvent, items []WheelOption, value int, on
 		}
 		d := st.drag
 		st.drag = wheelDrag{}
+		if ev.Canceled { // 系统收走了这次按下（失去鼠标捕获等）：回到按下前的位置，不选也不甩
+			st.shown = st.pos
+			return true
+		}
 		if d.isClick {
 			if off, ok := clickIndex(d.startY); ok {
 				st.scrollBy(float64(off))

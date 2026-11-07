@@ -56,7 +56,7 @@ func Drawer(c *ui.Context, t *theme.Theme, key string, p DrawerProps) {
 
 			// translate-x-full 用 right 偏移代替 Translate：变换下的裁剪（滚动区、圆角控件）每帧都要在 CPU 上重新光栅化
 			// 裁剪蒙版，滑入时会卡顿；按布局移动的裁剪由着色器直接裁，与静止时一样快。
-			panel := ui.Column(c.Key("panel")).Absolute().Top(0).Right(-(1-k)*width).Bottom(0).Width(width).
+			panel := ui.Column(c.Key("panel")).Absolute().Top(0).Right(-(1 - k) * width).Bottom(0).Width(width).
 				Material(glass.Blur{Radius: 20}).Opacity(0.95 + 0.05*k)
 			panel.Children(func() {
 				ui.Column(c).Fill().Background(t.PanelBg.Alpha(0.96)).BorderWidth(0, 0, 0, t.HL).BorderColor(t.PanelBorder).Children(func() {

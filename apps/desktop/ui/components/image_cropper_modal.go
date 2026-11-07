@@ -393,6 +393,15 @@ func (s *cropperState) pointerUp() {
 	}
 }
 
+// pointerCancel 在系统收走这次按下时（失去鼠标捕获等）调用：裁剪框回到上一次完成的位置，不调用 onComplete。
+func (s *cropperState) pointerCancel() {
+	s.pressing, s.dragStarted, s.newCrop = false, false, false
+	if s.completed != nil {
+		done := *s.completed
+		s.crop = &done
+	}
+}
+
 // dragCrop 对应 dragCrop：平移裁剪框，限制在图片里。
 func (s *cropperState) dragCrop(w, h float64) cropBox {
 	next := toPixelCrop(*s.crop, w, h)
@@ -839,7 +848,11 @@ func cropStage(c *ui.Context, t *theme.Theme, s *cropperState, img *CropImage, w
 			if !s.pressing {
 				return false
 			}
-			s.pointerUp()
+			if ev.Canceled {
+				s.pointerCancel()
+			} else {
+				s.pointerUp()
+			}
 			return true
 		case ui.InputKeyDown:
 			return s.keyDown(ev.Key, ev.Mods, fw, fh)

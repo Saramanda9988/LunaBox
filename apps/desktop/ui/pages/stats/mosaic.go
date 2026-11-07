@@ -510,7 +510,7 @@ func (p *Page) posterPreview(c *ui.Context, t *theme.Theme, sc *posterScene) {
 			if ev.Button != 0 || (ev.Kind != ui.InputPointerDown && ev.Kind != ui.InputPointerUp) {
 				return false
 			}
-			if ev.Kind == ui.InputPointerUp && !x.exporting {
+			if ev.Kind == ui.InputPointerUp && !ev.Canceled && !x.exporting {
 				if hit, ok := hitPosterTile(sc.tiles, float64(ev.X/k), float64(ev.Y/k)); ok && m.images[hit.game.GameID] != nil {
 					m.openEditor(hit.game.GameID)
 				}
@@ -630,6 +630,9 @@ func (p *Page) posterEditor(c *ui.Context, t *theme.Theme, sc *posterScene) {
 					}
 					m.setCrop(id, panPosterCrop(m.drag.crop, float64(ev.X-m.drag.x), float64(ev.Y-m.drag.y), float64(iw), float64(ih), float64(w), float64(h)))
 				case ui.InputPointerUp:
+					if ev.Canceled && m.drag != nil { // 系统收走了这次按下：平移撤回到按下时
+						m.setCrop(id, m.drag.crop)
+					}
 					m.drag = nil
 				case ui.InputScroll:
 					cur := normalizeCrop(m.crops[id]) // 两帧之间可能来好几次

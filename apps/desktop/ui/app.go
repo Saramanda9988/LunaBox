@@ -324,6 +324,8 @@ func applyTheme(c *ui.Context, t *theme.Theme) {
 	// 跟输入框文字（TextStrong）一致；neutral-600 在暗色输入框底色上几乎看不见。
 	// 应用里没用到其它靠 Accent 着色的 MyGo 自带控件（ui.Link 自己设了颜色）。
 	mt.Accent = t.TextStrong
+	// MyGo 0.8 起非活动窗口的 Accent 默认褪成灰色；这里的 Accent 只是光标色，保持原样。
+	mt.InactiveAccent = mt.Accent
 	mt.Text = t.Text
 	mt.TextMuted = t.Placeholder
 	mt.Background = t.AppBg
