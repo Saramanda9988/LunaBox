@@ -22,12 +22,12 @@
 
 ## ✨ 主な機能
 
-- **ゲームカテゴリ管理** - カスタムカテゴリでライブラリを柔軟に整理
-- **プレイ時間トラッキング** - ゲーム起動時にプレイ時間を自動記録
+- **ネイティブ描画** - UI は [MyGo](https://github.com/egoist/mygo) によってネイティブに描画され、軽量でなめらか。Windows、macOS、Linux に対応
+- **ゲームカテゴリ管理とプレイ時間トラッキング** - カスタムカテゴリでライブラリを柔軟に整理し、ゲーム起動時にプレイ時間を自動記録
 - **多次元統計** - 日/週/月/年などでプレイデータを集計し、統計カードをワンクリックで出力
 - **AI 分析** - プレイデータを分析して、パーソナライズされた楽しいレポートを生成。MCP 公開と CLI skill にも対応し、データ活用シーンを広げます
-- **便利なデータインポート** - PotatoVN、Playnite、Vnite、Steam からの取り込み、フォルダ一括/ドラッグ＆ドロップに対応
-- **バックアップと同期(beta)** - ローカルバックアップとマルチデバイス同期、AWS S3、七牛云、阿里云 OSS（S3 互換）、OneDrive に対応
+- **便利なデータインポート** - Playnite、PotatoVN、Vnite、ReinaManager、YukiHub、Steam からの取り込み、フォルダ一括/ドラッグ＆ドロップに対応
+- **バックアップと同期(beta)** - ローカルバックアップとマルチデバイス同期、AWS S3、七牛云、阿里云 OSS などの S3 互換ストレージ、および OneDrive、WebDAV、Umbra のクラウドバックアップに対応
 - **CLI モード** - コマンドラインによるゲームの管理、起動、バックアップ、およびプログラムデータの修正に対応
 - **プライバシーとセキュリティ** - 機密データはすべてローカルに保存
 
@@ -158,9 +158,14 @@
 
 [AutoBuild](https://github.com/Saramanda9988/LunaBox/releases/tag/dev-latest) から Nightly ビルドをダウンロードして、最新機能を試すこともできます。
 
+使い方や機能の説明は [LunaBox ドキュメント](https://box.lunarain.top)（中国語）をご覧ください。
+
 ## 🤝 コントリビューション
 
-Issue と Pull Request を歓迎します。
+Issue と Pull Request を歓迎します！開発環境の構築、ローカルでの実行、パッケージングについては [開発ガイド](https://box.lunarain.top/guide/installation/)（中国語）を参照してください。
+
+> [!IMPORTANT]
+> v2.0.0 以降、LunaBox の UI は Wails v3 + React から MyGo に移行しました。旧 Wails 版のコードはタグ [`wails-final`](https://github.com/Saramanda9988/LunaBox/tree/wails-final) の `/apps/desktop` に残されています。
 
 ## 😀 オープンソースから、オープンソースへ
 

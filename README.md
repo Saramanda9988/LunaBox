@@ -22,12 +22,12 @@
 
 ## ✨ Features
 
-- **Game category management** - Organize your library with custom categories
-- **Playtime tracking** - Automatically track session time when launching games
+- **Native rendering** - The UI is drawn natively by [MyGo](https://github.com/egoist/mygo), lightweight and smooth, on Windows, macOS, and Linux
+- **Game categories and playtime tracking** - Organize your library with custom categories and automatically track session time when launching games
 - **Multi-dimensional statistics** - View play data by day/week/month/year and export shareable stat cards
 - **AI insights** - Analyze gameplay data to generate personalized, playful reports, with MCP exposure and CLI skill support for broader data-use scenarios
-- **Convenient data import** - Import from PotatoVN, Playnite, Vnite, and Steam; supports folder batch import and drag-and-drop
-- **Backup and sync (beta)** - Local backup and multi-device sync, AWS S3, Qiniu, Alibaba Cloud OSS (S3-compatible), and OneDrive backup
+- **Convenient data import** - Import from Playnite, PotatoVN, Vnite, ReinaManager, YukiHub, and Steam; supports folder batch import and drag-and-drop
+- **Backup and sync (beta)** - Local backup and multi-device sync, S3-compatible storage such as AWS S3, Qiniu, and Alibaba Cloud OSS, plus OneDrive, WebDAV, and Umbra cloud backup
 - **CLI Mode** - Support for managing, launching, and backing up games, and modifying program data via command line
 - **Privacy and security** - All sensitive data is stored locally
 
@@ -158,9 +158,14 @@ Go to the [Releases](https://github.com/Saramanda9988/LunaBox/releases) page and
 
 You can also download a Nightly build from [AutoBuild](https://github.com/Saramanda9988/LunaBox/releases/tag/dev-latest) to try the latest features.
 
+For guides and feature documentation, see the [LunaBox Docs](https://box.lunarain.top) (in Chinese).
+
 ## 🤝 Contributing
 
-Issues and Pull Requests are welcome.
+Issues and Pull Requests are welcome! For setting up the development environment, running locally, and packaging, see the [Development Guide](https://box.lunarain.top/guide/installation/) (in Chinese).
+
+> [!IMPORTANT]
+> Since v2.0.0, LunaBox's UI has moved from Wails v3 + React to MyGo. The code of the original Wails version is kept under `/apps/desktop` in the [`wails-final`](https://github.com/Saramanda9988/LunaBox/tree/wails-final) tag.
 
 ## 😀 From Open Source to Open Source
 

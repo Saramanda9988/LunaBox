@@ -22,12 +22,12 @@
 
 ## ✨ 特性
 
-- **游戏分类管理** - 自定义分类，灵活管理游戏库
-- **游玩时长追踪** - 启动游戏自动追踪游玩时长
+- **原生渲染** - 界面由 [MyGo](https://github.com/egoist/mygo) 原生绘制，轻量流畅，支持 Windows、macOS、Linux
+- **游戏分类管理与时长追踪** - 自定义分类，灵活管理游戏库，启动游戏自动追踪游玩时长
 - **多维度统计** - 支持按日/周/月/年等多维度统计游玩数据，一键导出统计卡片分享保存
 - **AI 分析** - AI 分析游玩数据，生成个性化趣味报告，支持mcp暴露与cli-skill能力，丰富数据使用场景
-- **便捷的数据导入** - 支持从 PotatoVN, Playnite，Vnite，Steam 中导入数据，支持选择文件夹批量导入/拖动导入游戏
-- **备份与同步(beta)** - 支持本地备份与多端同步, AWS S3、七牛云、阿里云 OSS 等兼容 S3 协议的存储服务与 OneDrive 云端备份
+- **便捷的数据导入** - 支持从 Playnite、PotatoVN、Vnite、ReinaManager、YukiHub、Steam 中导入数据，支持选择文件夹批量导入/拖动导入游戏
+- **备份与同步(beta)** - 支持本地备份与多端同步，AWS S3、七牛云、阿里云 OSS 等兼容 S3 协议的存储服务，以及 OneDrive、WebDAV、Umbra 云端备份
 - **Cli模式** - 支持使用命令行管理，启动，备份游戏，修改程序数据
 - **隐私与安全** - 所有敏感数据均保存在本地中
 
@@ -158,9 +158,14 @@
 
 您也可以在 [AutoBuild](https://github.com/Saramanda9988/LunaBox/releases/tag/dev-latest) 中下载 Nightly 版本，以体验最新的功能
 
+使用教程与功能说明请查看 [LunaBox 文档](https://box.lunarain.top)。
+
 ## 🤝 贡献
 
-欢迎提交 Issue 和 Pull Request！
+欢迎提交 Issue 和 Pull Request！开发环境配置、本地运行与打包请参考 [开发指南](https://box.lunarain.top/guide/installation/)。
+
+> [!IMPORTANT]
+> 自 v2.0.0 起，LunaBox 的界面从 Wails v3 + React 迁移到 MyGo，原 Wails 版本的代码保留在标签 [`wails-final`](https://github.com/Saramanda9988/LunaBox/tree/wails-final)中的/apps/desktop中
 
 ## 😀 从开源到开源
 
