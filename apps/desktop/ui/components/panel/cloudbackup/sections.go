@@ -22,7 +22,7 @@ import (
 const monoFont = "Consolas"
 
 // oneDriveDocsURL 是 Client ID 提示里的文档链接。
-const oneDriveDocsURL = "https://box.lunarain.site/configuration/onedrive-cloud-backup.html"
+const oneDriveDocsURL = "https://box.lunarain.top/configuration/onedrive-cloud-backup/"
 
 // hintColor：text-brand-500 dark:text-brand-400。
 func hintColor(t *theme.Theme) ui.Color { return t.Pick(theme.Brand500, theme.Brand400) }
