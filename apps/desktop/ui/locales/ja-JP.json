@@ -1853,7 +1853,5 @@
   "native_metadataStrategy_cardSource": "組み合わせ · 基準 {base}",
   "native_metadataStrategy_cardHint": "組み合わせ戦略で各ソースの結果を組み合わせる",
   "native_metadataStrategy_buttonMixed": "{base} · 組み合わせ",
-  "native_metadataStrategy_fieldFrom": "{source} から",
-  "native_metadataStrategy_refreshNoticeSingle": "高度な組み合わせ戦略がオンです：{base} を基準に、印の付いた項目は指定ソースから取得し、取得できない場合は {base} を使います。",
-  "native_metadataStrategy_refreshNoticeAll": "高度な組み合わせ戦略がオンです：各ゲームのデフォルトソースを基準に、印の付いた項目は指定ソースから取得し、取得できない場合は基準のデータを使います。"
+  "native_metadataStrategy_fieldFrom": "{source} から"
 }

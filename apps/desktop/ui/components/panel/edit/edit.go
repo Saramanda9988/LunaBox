@@ -21,6 +21,7 @@ import (
 	"lunabox/desktop/ui/components/gamefield"
 	"lunabox/desktop/ui/components/importer"
 	"lunabox/desktop/ui/components/panel"
+	metadatapanel "lunabox/desktop/ui/components/panel/metadata"
 	"lunabox/desktop/ui/env"
 	"lunabox/desktop/ui/locales"
 	"lunabox/desktop/ui/metasource"
@@ -47,6 +48,8 @@ type pendingSave struct {
 // State 是面板跨帧保留的状态，由详情页持有；进入另一个游戏时清零。
 type State struct {
 	gameID string // 状态所属的游戏；异步结果回来时游戏已切换则丢弃
+
+	strategy metadatapanel.StrategyModal // 从更新字段弹窗打开的高级组合策略弹窗
 
 	rating      string  // 评分输入框里的文字（number input 允许“8.”这样的中间状态）
 	ratingValue float64 // rating 对应的评分；页面里的评分从别处改变时重新填入
@@ -192,6 +195,7 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Game) {
 	e.metadataDrawer(c)
 	e.deleteModal(c)
 	e.fieldSelectModal(c)
+	e.strategyModal(c)
 	e.searchModal(c)
 }
 
@@ -408,7 +412,7 @@ func (e *editor) metadataSection(c *ui.Context) {
 						ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 							components.Text(c, label, theme.TextSM, theme.WeightSemibold, t.Pick(theme.Brand800, theme.Brand100)).NoWrap()
 							// 从默认来源更新时会套用高级组合策略（原版没有）。
-							if _, notes := e.strategyNotes(); len(notes) > 0 {
+							if len(e.strategyNotes()) > 0 {
 								ui.Row(c.Key("strategy")).Gap(4).Padding(1, 6).Radius(999).AlignItems(ui.Center).Shrink(0).
 									Background(t.Pick(theme.Sky100, theme.Sky900.Alpha(0.5))).Children(func() {
 									components.Icon(c, "layers-triple-outline", 12, t.Pick(theme.Sky700, theme.Sky300))

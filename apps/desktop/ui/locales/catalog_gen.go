@@ -24956,35 +24956,3 @@ func NativeMetadataStrategyFieldFrom(source string) string {
 func (msgs Messages) NativeMetadataStrategyFieldFrom(source string) string {
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_fieldFrom", map[string]any{"source": source})
 }
-
-// NativeMetadataStrategyRefreshNoticeSingle says "已开启高级组合策略：以 {base} 为基底，标注的字段改用指定的来源，取不到时用 {base}。"
-// in the language the app shows.
-//
-// extra:native.metadataStrategy.refreshNoticeSingle
-func NativeMetadataStrategyRefreshNoticeSingle(base string) string {
-	return In(i18n.Locale()).NativeMetadataStrategyRefreshNoticeSingle(base)
-}
-
-// NativeMetadataStrategyRefreshNoticeSingle says "已开启高级组合策略：以 {base} 为基底，标注的字段改用指定的来源，取不到时用 {base}。"
-// in the language of msgs.
-//
-// extra:native.metadataStrategy.refreshNoticeSingle
-func (msgs Messages) NativeMetadataStrategyRefreshNoticeSingle(base string) string {
-	return Catalog.Format(msgs.locale, "native_metadataStrategy_refreshNoticeSingle", map[string]any{"base": base})
-}
-
-// NativeMetadataStrategyRefreshNoticeAll says "…"
-// in the language the app shows.
-//
-// extra:native.metadataStrategy.refreshNoticeAll
-func NativeMetadataStrategyRefreshNoticeAll() string {
-	return In(i18n.Locale()).NativeMetadataStrategyRefreshNoticeAll()
-}
-
-// NativeMetadataStrategyRefreshNoticeAll says "…"
-// in the language of msgs.
-//
-// extra:native.metadataStrategy.refreshNoticeAll
-func (msgs Messages) NativeMetadataStrategyRefreshNoticeAll() string {
-	return Catalog.Format(msgs.locale, "native_metadataStrategy_refreshNoticeAll", nil)
-}

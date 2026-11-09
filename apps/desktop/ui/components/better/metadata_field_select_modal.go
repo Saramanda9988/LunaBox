@@ -24,8 +24,8 @@ type MetadataFieldSelectProps struct {
 	Fields     *[]enums.MetadataUpdateField
 	Submitting bool // isSubmitting：确认按钮禁用并显示旋转图标
 	TopOffset  float32
-	// Notice 不为空时显示在说明下面的提示框里（原版没有：高级组合策略的说明）。
-	Notice string
+	// OnStrategy 不为 nil 时，底部的“取消”换成打开高级组合策略的按钮（原版没有；关闭弹窗用右上角的关闭按钮）。
+	OnStrategy func()
 	// FieldNotes 是字段名后面的小标签（原版没有：组合策略里这个字段改用的来源）。
 	FieldNotes map[enums.MetadataUpdateField]string
 	OnClose    func()
@@ -72,13 +72,6 @@ func MetadataFieldSelectModal(c *ui.Context, t *theme.Theme, key string, p Metad
 				})
 				fieldModalCloseButton(c, t, "close", locales.CommonClose(), closeModal)
 			})
-			if p.Notice != "" {
-				ui.Row(c.Key("notice")).Margin(16, 0, 0, 0).Gap(8).Padding(10, 12).Radius(8).AlignItems(ui.Start).
-					Background(t.Pick(theme.Sky50, theme.Sky900.Alpha(0.25))).Border(t.HL, t.Pick(theme.Sky200, theme.Sky800)).Children(func() {
-					components.Icon(c, "layers-triple-outline", 16, t.Pick(theme.Sky600, theme.Sky400))
-					components.Text(c, p.Notice, theme.FontStep{Size: 12, Line: 19.5}, theme.WeightNormal, t.Pick(theme.Sky800, theme.Sky200)).Grow(1).Basis(0).MinWidth(0)
-				})
-			}
 			// mt-5 rounded-lg border border-brand-200 bg-brand-50 p-3 dark:border-brand-700 dark:bg-brand-700/40
 			ui.Row(c.Key("all")).Margin(20, 0, 0, 0).Gap(16).Padding(12).Radius(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).
 				Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).Background(t.Pick(theme.Brand50, theme.Brand700.Alpha(0.4))).
@@ -118,7 +111,11 @@ func MetadataFieldSelectModal(c *ui.Context, t *theme.Theme, key string, p Metad
 			}
 			// mt-8 flex justify-end gap-3
 			ui.Row(c).Margin(32, 0, 0, 0).Gap(12).Justify(ui.End).Children(func() {
-				Button(c, t, "cancel", ButtonProps{Label: locales.CommonCancel()}).OnClick(closeModal)
+				if p.OnStrategy != nil {
+					Button(c, t, "strategy", ButtonProps{Icon: "layers-triple-outline", Label: locales.NativeMetadataStrategySettingsLabel()}).OnClick(p.OnStrategy)
+				} else {
+					Button(c, t, "cancel", ButtonProps{Label: locales.CommonCancel()}).OnClick(closeModal)
+				}
 				Button(c, t, "confirm", ButtonProps{
 					Variant: ButtonPrimary, Icon: "cloud-sync", Label: p.ConfirmText, Disabled: !canConfirm, Loading: p.Submitting,
 				}).OnClick(func() {

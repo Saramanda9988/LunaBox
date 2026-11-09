@@ -135,10 +135,9 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 		},
 		onConfirm: func() { s.runEnrichment(p) },
 	})
-	strategyNotice, strategyNotes := StrategyRefreshNotes(p.Config, "")
 	better.MetadataFieldSelectModal(c, t, "metadata-refresh-fields", better.MetadataFieldSelectProps{
-		Notice:      strategyNotice,
-		FieldNotes:  strategyNotes,
+		FieldNotes:  StrategyRefreshNotes(p.Config, ""),
+		OnStrategy:  func() { s.strategy.Open(p.Config) },
 		Open:        s.fieldsOpen,
 		Title:       locales.MetadataUpdateFieldsModalFullTitle(),
 		Description: locales.MetadataUpdateFieldsModalFullDescription(),

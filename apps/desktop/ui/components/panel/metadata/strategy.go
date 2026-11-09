@@ -64,6 +64,9 @@ func (m *StrategyModal) Open(cfg *appconf.AppConfig) {
 	*m = StrategyModal{open: true, draft: cfg.Strategy(), trialName: m.trialName}
 }
 
+// IsOpen 报告弹窗是否打开。
+func (m *StrategyModal) IsOpen() bool { return m.open }
+
 func (m *StrategyModal) close() {
 	m.trialReq.Cancel()
 	m.open, m.trialLoading = false, false
@@ -122,22 +125,21 @@ func StrategySummary(s appconf.MetadataStrategy, enabled []enums.SourceType) []s
 	return []string{first, strings.Join(clauses, locales.NativeMetadataStrategyClauseSeparator())}
 }
 
-// StrategyRefreshNotes 是更新元数据时组合策略的说明与各字段改用的来源（给 MetadataFieldSelectModal 的 Notice、FieldNotes）。
+// StrategyRefreshNotes 是更新元数据时组合策略里各字段改用的来源（给 MetadataFieldSelectModal 的 FieldNotes）。
 // base 是单个游戏的默认来源；为空时是全量更新（每个游戏以自己的默认来源为基底，标注按策略的基底算）。
-// 策略没有基底、或者对这次更新没有影响时都为空。
-func StrategyRefreshNotes(cfg *appconf.AppConfig, base enums.SourceType) (string, map[enums.MetadataUpdateField]string) {
+// 策略没有基底、或者对这次更新没有影响时为空。
+func StrategyRefreshNotes(cfg *appconf.AppConfig, base enums.SourceType) map[enums.MetadataUpdateField]string {
 	strategy := cfg.Strategy()
 	if strategy.Base == "" || (base != "" && !metasource.Known(base)) {
-		return "", nil
+		return nil
 	}
-	notice := locales.NativeMetadataStrategyRefreshNoticeAll()
 	ref := strategy.Base
 	if base != "" {
-		notice, ref = locales.NativeMetadataStrategyRefreshNoticeSingle(StrategyLabel(base)), base
+		ref = base
 	}
 	fields := gamehelper.StrategyOverridesFor(strategy, ref, EnabledSources(cfg))
 	if len(fields) == 0 {
-		return "", nil
+		return nil
 	}
 	notes := make(map[enums.MetadataUpdateField]string, len(fields))
 	for _, f := range fields {
@@ -147,7 +149,7 @@ func StrategyRefreshNotes(cfg *appconf.AppConfig, base enums.SourceType) (string
 			notes[f] = StrategyLabel(src)
 		}
 	}
-	return notice, notes
+	return notes
 }
 
 // sourceOptionLabel 是来源的名称，没有启用时加上“（未启用）”。

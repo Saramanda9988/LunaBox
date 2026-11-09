@@ -1670,7 +1670,5 @@
   "native_metadataStrategy_cardSource": "組合策略 · 基底 {base}",
   "native_metadataStrategy_cardHint": "按進階組合策略組合各來源的結果",
   "native_metadataStrategy_buttonMixed": "{base} · 組合",
-  "native_metadataStrategy_fieldFrom": "來自 {source}",
-  "native_metadataStrategy_refreshNoticeSingle": "已開啟進階組合策略：以 {base} 為基底，標註的欄位改用指定的來源，取不到時用 {base}。",
-  "native_metadataStrategy_refreshNoticeAll": "已開啟進階組合策略：以每個遊戲的預設來源為基底，標註的欄位改用指定的來源，取不到時用基底的資料。"
+  "native_metadataStrategy_fieldFrom": "來自 {source}"
 }

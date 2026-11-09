@@ -3341,9 +3341,5 @@
   "native_metadataStrategy_buttonMixed": "{base} · 组合",
   "@native_metadataStrategy_buttonMixed": {"description": "extra:native.metadataStrategy.buttonMixed", "placeholders": {"base": {"type": "String"}}},
   "native_metadataStrategy_fieldFrom": "来自 {source}",
-  "@native_metadataStrategy_fieldFrom": {"description": "extra:native.metadataStrategy.fieldFrom", "placeholders": {"source": {"type": "String"}}},
-  "native_metadataStrategy_refreshNoticeSingle": "已开启高级组合策略：以 {base} 为基底，标注的字段改用指定的来源，取不到时用 {base}。",
-  "@native_metadataStrategy_refreshNoticeSingle": {"description": "extra:native.metadataStrategy.refreshNoticeSingle", "placeholders": {"base": {"type": "String"}}},
-  "native_metadataStrategy_refreshNoticeAll": "已开启高级组合策略：以每个游戏的默认来源为基底，标注的字段改用指定的来源，取不到时用基底的数据。",
-  "@native_metadataStrategy_refreshNoticeAll": {"description": "extra:native.metadataStrategy.refreshNoticeAll"}
+  "@native_metadataStrategy_fieldFrom": {"description": "extra:native.metadataStrategy.fieldFrom", "placeholders": {"source": {"type": "String"}}}
 }

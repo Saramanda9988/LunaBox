@@ -1670,7 +1670,5 @@
   "native_metadataStrategy_cardSource": "Mixed · base {base}",
   "native_metadataStrategy_cardHint": "Combine the results using your metadata mix",
   "native_metadataStrategy_buttonMixed": "{base} · mixed",
-  "native_metadataStrategy_fieldFrom": "from {source}",
-  "native_metadataStrategy_refreshNoticeSingle": "Advanced metadata mix is on: {base} is the base, marked fields come from the chosen sources, and fall back to {base} when missing.",
-  "native_metadataStrategy_refreshNoticeAll": "Advanced metadata mix is on: each game's default source is the base, marked fields come from the chosen sources, and fall back to the base when missing."
+  "native_metadataStrategy_fieldFrom": "from {source}"
 }

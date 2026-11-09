@@ -371,7 +371,8 @@ func TestFieldSelectModal(t *testing.T) {
 	}
 }
 
-// 高级组合策略对这个游戏的默认来源生效时，默认来源旁边标出“组合策略”，更新字段的弹窗说明策略并标出各字段的来源。
+// 高级组合策略对这个游戏的默认来源生效时，默认来源旁边标出“组合策略”，更新字段的弹窗标出各字段改用的来源；
+// 弹窗底部的“取消”换成了打开组合策略弹窗的按钮。
 func TestFieldSelectModalShowsStrategy(t *testing.T) {
 	h := newHarness(t, testGame()) // 默认来源 Bangumi
 	h.expectNot(t, locales.NativeMetadataStrategyButton())
@@ -382,8 +383,8 @@ func TestFieldSelectModalShowsStrategy(t *testing.T) {
 	h.expectTexts(t, locales.NativeMetadataStrategyButton())
 
 	h.click(t, "从远端更新信息")
-	h.expectTexts(t, locales.NativeMetadataStrategyRefreshNoticeSingle("Bangumi"), locales.NativeMetadataStrategyFieldFrom("VNDB"))
-	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("Bangumi"))
+	h.expectTexts(t, locales.NativeMetadataStrategyFieldFrom("VNDB"), locales.NativeMetadataStrategySettingsLabel())
+	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("Bangumi"), locales.CommonCancel())
 	if dir := os.Getenv("DESKTOP_MYGO_PNG"); dir != "" {
 		f, err := os.Create(filepath.Join(dir, "edit-fields-strategy.png"))
 		if err != nil {
@@ -395,10 +396,17 @@ func TestFieldSelectModalShowsStrategy(t *testing.T) {
 		}
 	}
 
+	h.click(t, locales.NativeMetadataStrategySettingsLabel())
+	h.expectTexts(t, locales.NativeMetadataStrategyBase(), locales.NativeMetadataStrategySummaryBase("VNDB"))
+	h.click(t, locales.CommonCancel()) // 组合策略弹窗的取消，回到字段弹窗
+	if !h.state.fieldsOpen || h.state.strategy.IsOpen() {
+		t.Fatalf("fields open %v, strategy open %v", h.state.fieldsOpen, h.state.strategy.IsOpen())
+	}
+
 	// 没有基底时策略不生效。
 	h.svc.Config.SetStrategy(appconf.MetadataStrategy{}.WithFieldSource(enums.MetadataUpdateFieldTags, enums.VNDB))
 	h.frames(2)
-	h.expectNot(t, locales.NativeMetadataStrategyRefreshNoticeSingle("Bangumi"))
+	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("VNDB"))
 }
 
 func TestMetadataDrawer(t *testing.T) {

@@ -1,10 +1,12 @@
 package edit
 
 import (
+	"log"
 	"slices"
 
 	"github.com/egoist/mygo/ui"
 
+	"lunabox/backend/appconf"
 	"lunabox/backend/common/enums"
 	"lunabox/backend/common/vo"
 	"lunabox/desktop/ui/components"
@@ -33,10 +35,9 @@ func (e *editor) deleteModal(c *ui.Context) {
 // 按勾选的字段从默认来源更新（handleUpdateFromRemote）。
 func (e *editor) fieldSelectModal(c *ui.Context) {
 	s := e.s
-	notice, notes := e.strategyNotes()
 	better.MetadataFieldSelectModal(c, e.t, "metadata-fields", better.MetadataFieldSelectProps{
-		Notice:      notice,
-		FieldNotes:  notes,
+		FieldNotes:  e.strategyNotes(),
+		OnStrategy:  func() { s.strategy.Open(e.p.Env.Config()) },
 		Open:        s.fieldsOpen,
 		Title:       locales.MetadataUpdateFieldsModalSingleTitle(),
 		Description: locales.MetadataUpdateFieldsModalSingleDescription(),
@@ -49,14 +50,27 @@ func (e *editor) fieldSelectModal(c *ui.Context) {
 	})
 }
 
-// strategyNotes 是从默认来源更新时高级组合策略的说明与各字段改用的来源（以游戏的默认来源为基底）；
+// strategyNotes 是从默认来源更新时高级组合策略里各字段改用的来源（以游戏的默认来源为基底）；
 // 没有默认来源或者策略没有影响时为空。
-func (e *editor) strategyNotes() (string, map[enums.MetadataUpdateField]string) {
+func (e *editor) strategyNotes() map[enums.MetadataUpdateField]string {
 	src, _ := defaultSource(&e.g)
 	if src == "" || src == enums.Local || e.p.Env == nil {
-		return "", nil
+		return nil
 	}
 	return metadatapanel.StrategyRefreshNotes(e.p.Env.Config(), src)
+}
+
+// strategyModal 是从更新字段弹窗打开的高级组合策略弹窗，画在字段弹窗之上；保存后立即写进配置。
+func (e *editor) strategyModal(c *ui.Context) {
+	cfg := e.p.Env.Config()
+	e.s.strategy.View(c, e.t, metadatapanel.StrategyModalProps{
+		Env: e.p.Env, Enabled: metadatapanel.EnabledSources(cfg), TopOffset: panel.TopOffset,
+		OnSave: func(strategy appconf.MetadataStrategy) {
+			if err := e.p.Env.PatchConfig(func(cfg *appconf.AppConfig) { cfg.SetStrategy(strategy) }); err != nil {
+				log.Printf("edit: save metadata strategy: %v", err)
+			}
+		},
+	})
 }
 
 // searchModal 对应 MetadataSourceSearchModal：max-w-2xl rounded-xl bg-white p-6 shadow-2xl dark:bg-brand-800，
