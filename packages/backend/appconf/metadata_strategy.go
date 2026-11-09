@@ -10,18 +10,23 @@ import (
 // MetadataStrategyAllSources 是别名字段特有的取值：合并所有匹配到的来源的名称与别名。
 const MetadataStrategyAllSources enums2.SourceType = "all"
 
-// MetadataStrategy 是高级组合策略：以 Base 识别游戏（Base 没找到即视为没找到），
-// Fields 指定个别字段改用哪个来源；没有指定、指定的来源没找到这个游戏或这个字段为空时用 Base 的数据。
+// MetadataStrategy 是高级组合策略：Base 是批量导入的必选数据源（以它识别游戏，没找到即视为没找到），不受 Enabled 影响；
+// Enabled 打开并且有 Base 时组合策略生效：Base 是基底，Fields 指定个别字段改用哪个来源，
+// 没有指定、指定的来源没找到这个游戏或这个字段为空时用 Base 的数据。
 //
 // Fields 的值是来源列表，为以后的多级回退留位置；目前只用第一项，最后总是回退到 Base。
 type MetadataStrategy struct {
-	Base   enums2.SourceType                                  `json:"base,omitempty"`
-	Fields map[enums2.MetadataUpdateField][]enums2.SourceType `json:"fields,omitempty"`
+	Base    enums2.SourceType                                  `json:"base,omitempty"`
+	Enabled bool                                               `json:"enabled,omitempty"`
+	Fields  map[enums2.MetadataUpdateField][]enums2.SourceType `json:"fields,omitempty"`
 }
+
+// Active 报告组合策略是否生效：打开了开关，并且指定了必选数据源（基底）。
+func (s MetadataStrategy) Active() bool { return s.Enabled && s.Base != "" }
 
 // Clone 返回深拷贝。
 func (s MetadataStrategy) Clone() MetadataStrategy {
-	out := MetadataStrategy{Base: s.Base}
+	out := MetadataStrategy{Base: s.Base, Enabled: s.Enabled}
 	if len(s.Fields) > 0 {
 		out.Fields = make(map[enums2.MetadataUpdateField][]enums2.SourceType, len(s.Fields))
 		for field, sources := range s.Fields {
@@ -93,7 +98,7 @@ func NormalizeMetadataStrategy(config *AppConfig) bool {
 		config.MetadataStrategy = &MetadataStrategy{Base: enums2.SourceType(config.BatchImportPreferredSource)}
 		changed = true
 	}
-	next := MetadataStrategy{Base: normalizeStrategySource(config.MetadataStrategy.Base)}
+	next := MetadataStrategy{Base: normalizeStrategySource(config.MetadataStrategy.Base), Enabled: config.MetadataStrategy.Enabled}
 	for _, field := range enums2.DefaultMetadataUpdateFields {
 		var sources []enums2.SourceType
 		for _, raw := range config.MetadataStrategy.Fields[field] {
@@ -129,7 +134,7 @@ func normalizeStrategySource(source enums2.SourceType) enums2.SourceType {
 }
 
 func strategyEqual(a, b MetadataStrategy) bool {
-	if a.Base != b.Base || len(a.Fields) != len(b.Fields) {
+	if a.Base != b.Base || a.Enabled != b.Enabled || len(a.Fields) != len(b.Fields) {
 		return false
 	}
 	for field, sources := range a.Fields {

@@ -38,7 +38,7 @@ func TestMappedMetadataSourceIDs(t *testing.T) {
 
 func TestComposeImportMatchesFollowsStrategyBase(t *testing.T) {
 	config := &appconf.AppConfig{}
-	config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}.WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi))
+	config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB, Enabled: true}.WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi))
 	s := &ImportService{config: config}
 	matches := []vo.GameMetadataFromWebVO{
 		{Source: enums.VNDB, Game: models.Game{Name: "Title", SourceID: "v1"}},

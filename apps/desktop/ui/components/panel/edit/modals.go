@@ -64,7 +64,7 @@ func (e *editor) strategyNotes() map[enums.MetadataUpdateField]string {
 func (e *editor) strategyModal(c *ui.Context) {
 	cfg := e.p.Env.Config()
 	e.s.strategy.View(c, e.t, metadatapanel.StrategyModalProps{
-		Env: e.p.Env, Enabled: metadatapanel.EnabledSources(cfg), TopOffset: panel.TopOffset,
+		Enabled: metadatapanel.EnabledSources(cfg), TopOffset: panel.TopOffset,
 		OnSave: func(strategy appconf.MetadataStrategy) {
 			if err := e.p.Env.PatchConfig(func(cfg *appconf.AppConfig) { cfg.SetStrategy(strategy) }); err != nil {
 				log.Printf("edit: save metadata strategy: %v", err)

@@ -153,7 +153,7 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 		},
 	})
 	s.strategy.View(c, t, StrategyModalProps{
-		Env: p.Env, Enabled: EnabledSources(p.Config), TopOffset: panel.TopOffset,
+		Enabled: EnabledSources(p.Config), TopOffset: panel.TopOffset,
 		OnSave: func(strategy appconf.MetadataStrategy) {
 			p.PatchLive(func(cfg *appconf.AppConfig) { cfg.SetStrategy(strategy) })
 		},
@@ -195,8 +195,8 @@ func (s *State) sourceGrid(c *ui.Context, t *theme.Theme, p panel.Settings) {
 	})
 }
 
-// strategyRow 是高级组合策略的入口（原版没有）：与来源卡片同样的 glass-panel 卡片，左边名称、说明与当前策略的文字说明，
-// 右边打开弹窗的按钮。
+// strategyRow 是高级组合策略的入口（原版没有）：与来源卡片同样的 glass-panel 卡片，左边名称与说明，
+// 策略生效（打开了开关并且指定了必选数据源）时名称后面有“已启用”标签；右边打开弹窗的按钮。
 func (s *State) strategyRow(c *ui.Context, t *theme.Theme, p panel.Settings) {
 	bg, border := t.GlassPanel(ui.Transparent, t.Pick(theme.Brand200, theme.Brand700))
 	ui.Row(c.Key("strategy")).FillWidth().Gap(16).Padding(16).Radius(8).AlignItems(ui.Center).
@@ -205,13 +205,13 @@ func (s *State) strategyRow(c *ui.Context, t *theme.Theme, p panel.Settings) {
 			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 				components.Icon(c, "layers-triple-outline", 20, t.Pick(theme.Sky600, theme.Sky400))
 				components.Text(c, locales.NativeMetadataStrategySettingsLabel(), theme.TextSM, theme.WeightMedium, t.SectionLabel)
+				if p.Config.Strategy().Active() {
+					ui.Box(c.Key("active")).Padding(2, 8).Radius(999).Background(t.Pick(theme.Sky100, theme.Sky900.Alpha(0.5))).Children(func() {
+						components.Text(c, locales.NativeMetadataStrategyActive(), theme.TextXS, theme.WeightMedium, t.Pick(theme.Sky700, theme.Sky300)).NoWrap()
+					})
+				}
 			})
 			panel.FieldHint(c, t, locales.NativeMetadataStrategySettingsHint())
-			for i, line := range StrategySummary(p.Config.Strategy(), EnabledSources(p.Config)) {
-				ui.Box(c.Key(i)).Children(func() {
-					components.Text(c, line, theme.TextXS, theme.WeightMedium, t.Pick(theme.Sky700, theme.Sky300))
-				})
-			}
 		})
 		better.Button(c, t, "open", better.ButtonProps{
 			Icon: "tune-variant", Label: locales.NativeMetadataStrategySettingsButton(),

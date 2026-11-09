@@ -12,7 +12,7 @@ import (
 )
 
 func strategyOf(base enums.SourceType, fields map[enums.MetadataUpdateField]enums.SourceType) appconf.MetadataStrategy {
-	s := appconf.MetadataStrategy{Base: base}
+	s := appconf.MetadataStrategy{Base: base, Enabled: true}
 	for f, src := range fields {
 		s = s.WithFieldSource(f, src)
 	}
@@ -86,7 +86,7 @@ func TestComposeMetadataMergesAllAliases(t *testing.T) {
 
 func TestStrategyActive(t *testing.T) {
 	enabled := []enums.SourceType{enums.VNDB, enums.Bangumi}
-	if StrategyActive(appconf.MetadataStrategy{Base: enums.VNDB}, enabled) {
+	if StrategyActive(appconf.MetadataStrategy{Base: enums.VNDB, Enabled: true}, enabled) {
 		t.Fatal("no overrides should be inactive")
 	}
 	if StrategyActive(strategyOf(enums.VNDB, map[enums.MetadataUpdateField]enums.SourceType{enums.MetadataUpdateFieldName: enums.VNDB}), enabled) {
@@ -95,6 +95,11 @@ func TestStrategyActive(t *testing.T) {
 	s := strategyOf(enums.VNDB, map[enums.MetadataUpdateField]enums.SourceType{enums.MetadataUpdateFieldName: enums.Bangumi})
 	if !StrategyActive(s, enabled) {
 		t.Fatal("expected active")
+	}
+	off := s.Clone()
+	off.Enabled = false
+	if StrategyActive(off, enabled) {
+		t.Fatal("switched off strategy should be inactive")
 	}
 	if StrategyActive(s, []enums.SourceType{enums.Bangumi}) {
 		t.Fatal("disabled base should be inactive")

@@ -802,7 +802,7 @@ func (s *ImportService) fetchMetadataForCandidateWithPreference(ctx context.Cont
 	// 高级组合策略要用到的来源：按名称没匹配上但查得到 ID 时按 ID 获取。
 	var strategySources []enums.SourceType
 	if s.config != nil {
-		if strategy := s.config.Strategy(); strategy.Base == result.PreferredSource {
+		if strategy := s.config.Strategy(); strategy.Active() && strategy.Base == result.PreferredSource {
 			strategySources = gamehelper.StrategySources(strategy, result.PreferredSource)
 		}
 	}

@@ -38,7 +38,7 @@ func TestMatchUsesComposedResult(t *testing.T) {
 func TestAddGameStrategyLeadCard(t *testing.T) {
 	var a *AddGame
 	h := newHarness(t)
-	h.env.Svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}.WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi))
+	h.env.Svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB, Enabled: true}.WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi))
 	vndb := meta(enums.VNDB, "Original Title", "v17")
 	vndb.Game.Summary = "from vndb"
 	h.env.Svc.Game = &fakeMetadataGame{GameService: h.env.Svc.Game, results: []vo.GameMetadataFromWebVO{meta(enums.Bangumi, "组合后的名称", "20"), vndb}}
@@ -77,7 +77,7 @@ func TestAddGameStrategyLeadCard(t *testing.T) {
 // 策略没有生效（没有改用其他来源）时不显示组合卡片。
 func TestAddGameNoLeadCardWithoutOverrides(t *testing.T) {
 	a := NewAddGame(newHarness(t).env)
-	a.env.Svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB})
+	a.env.Svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB, Enabled: true})
 	a.results = []vo.GameMetadataFromWebVO{meta(enums.VNDB, "A", "v1"), meta(enums.Bangumi, "B", "2")}
 	if a.leadResult(nil, nil) != nil {
 		t.Fatal("lead card shown without overrides")
@@ -103,15 +103,24 @@ func TestBatchImportStrategyButton(t *testing.T) {
 	b = NewBatchImport(h.env)
 	h.run(func(h *harness, c *ui.Context, th *theme.Theme) { b.View(c, th, nil) })
 	h.svc.Config.GameLibraryPath = gameLibrary(t)
-	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}.WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi))
+	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB, Enabled: true}.WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi))
 	b.Open()
 	h.frames(2)
 	h.click(t, locales.BatchImportModalBtnScanGameLibrary())
 	mixed := locales.NativeMetadataStrategyButtonMixed("VNDB")
 	h.expect(t, locales.NativeMetadataStrategyBase(), mixed)
-	if h.tt.HasText(locales.BatchImportModalPreferredSourceLabel()) {
-		t.Fatal("the old preferred source select should be gone")
+
+	// 关掉组合策略时只显示必选数据源。
+	off := h.svc.Config.Strategy()
+	off.Enabled = false
+	h.svc.Config.SetStrategy(off)
+	h.frames(2)
+	h.expect(t, "VNDB")
+	if h.tt.HasText(mixed) {
+		t.Fatal("switched off strategy should not show the mixed label")
 	}
+	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB, Enabled: true}.WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi))
+	h.frames(2)
 
 	h.click(t, mixed)
 	h.expect(t, locales.NativeMetadataStrategyTitle(), locales.NativeMetadataStrategySummaryBase("VNDB"))

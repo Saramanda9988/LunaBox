@@ -13,10 +13,10 @@ import (
 // FieldSources 记下组合结果里每个字段实际来自哪个来源。只给界面展示用，不入库。
 type FieldSources map[enums.MetadataUpdateField]enums.SourceType
 
-// StrategyActive 判断组合策略对新刮削的游戏是否生效：基底已启用，并且至少有一个字段实际改用了其他来源
+// StrategyActive 判断组合策略对新刮削的游戏是否生效：打开了开关，基底已启用，并且至少有一个字段实际改用了其他来源
 // （见 StrategyOverridesFor）。
 func StrategyActive(strategy appconf.MetadataStrategy, enabled []enums.SourceType) bool {
-	return strategy.Base != "" && slices.Contains(enabled, strategy.Base) && len(StrategyOverridesFor(strategy, strategy.Base, enabled)) > 0
+	return strategy.Active() && slices.Contains(enabled, strategy.Base) && len(StrategyOverridesFor(strategy, strategy.Base, enabled)) > 0
 }
 
 // StrategyOverridesFor 返回以 base 为基底时实际改用其他来源的字段：指定的来源已启用，或者别名合并所有来源。

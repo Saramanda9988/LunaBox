@@ -376,7 +376,7 @@ func TestFieldSelectModal(t *testing.T) {
 func TestFieldSelectModalShowsStrategy(t *testing.T) {
 	h := newHarness(t, testGame()) // 默认来源 Bangumi
 	h.expectNot(t, locales.NativeMetadataStrategyButton())
-	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}.
+	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB, Enabled: true}.
 		WithFieldSource(enums.MetadataUpdateFieldTags, enums.VNDB).
 		WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi)) // 与默认来源相同，不算
 	h.frames(2)
@@ -398,13 +398,13 @@ func TestFieldSelectModalShowsStrategy(t *testing.T) {
 
 	h.click(t, locales.NativeMetadataStrategySettingsLabel())
 	h.expectTexts(t, locales.NativeMetadataStrategyBase(), locales.NativeMetadataStrategySummaryBase("VNDB"))
-	h.click(t, locales.CommonCancel()) // 组合策略弹窗的取消，回到字段弹窗
+	h.click(t, locales.CommonSave()) // 组合策略弹窗的保存，回到字段弹窗
 	if !h.state.fieldsOpen || h.state.strategy.IsOpen() {
 		t.Fatalf("fields open %v, strategy open %v", h.state.fieldsOpen, h.state.strategy.IsOpen())
 	}
 
 	// 没有基底时策略不生效。
-	h.svc.Config.SetStrategy(appconf.MetadataStrategy{}.WithFieldSource(enums.MetadataUpdateFieldTags, enums.VNDB))
+	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Enabled: true}.WithFieldSource(enums.MetadataUpdateFieldTags, enums.VNDB))
 	h.frames(2)
 	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("VNDB"))
 }

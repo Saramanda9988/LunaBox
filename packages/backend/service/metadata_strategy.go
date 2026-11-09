@@ -59,7 +59,7 @@ func (s *GameService) composeRefreshResult(ctx context.Context, game models.Game
 		return base, ""
 	}
 	strategy := s.config.Strategy()
-	if strategy.Base == "" { // 没有基底时组合策略不生效
+	if !strategy.Active() { // 没有打开开关或没有基底时组合策略不生效
 		return base, ""
 	}
 	var needed []enums2.SourceType
@@ -116,7 +116,7 @@ func (s *ImportService) composeImportMatches(base enums2.SourceType, matches []v
 		return nil, nil
 	}
 	strategy := s.config.Strategy()
-	if strategy.Base != base || len(strategy.Overrides(base)) == 0 {
+	if !strategy.Active() || strategy.Base != base || len(strategy.Overrides(base)) == 0 {
 		return nil, nil
 	}
 	composed, sources := gamehelper.ComposeMetadata(strategy, matches[0], matches[1:])

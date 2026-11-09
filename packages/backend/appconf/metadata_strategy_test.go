@@ -24,7 +24,7 @@ func TestNormalizeMetadataStrategyMigratesPreferredSource(t *testing.T) {
 
 func TestNormalizeMetadataStrategyDropsUnknownValues(t *testing.T) {
 	config := &AppConfig{MetadataStrategy: &MetadataStrategy{
-		Base: " Bangumi ",
+		Base: " Bangumi ", Enabled: true,
 		Fields: map[enums2.MetadataUpdateField][]enums2.SourceType{
 			enums2.MetadataUpdateFieldName:    {"unknown", "VNDB", "vndb"},
 			enums2.MetadataUpdateFieldAliases: {"all"},
@@ -34,8 +34,8 @@ func TestNormalizeMetadataStrategyDropsUnknownValues(t *testing.T) {
 	}}
 	NormalizeMetadataStrategy(config)
 	got := config.Strategy()
-	if got.Base != enums2.Bangumi {
-		t.Fatalf("base = %q", got.Base)
+	if got.Base != enums2.Bangumi || !got.Enabled {
+		t.Fatalf("base = %q, enabled = %v", got.Base, got.Enabled)
 	}
 	if len(got.Fields) != 2 || got.FieldSource(enums2.MetadataUpdateFieldName) != enums2.VNDB ||
 		len(got.Fields[enums2.MetadataUpdateFieldName]) != 1 ||
