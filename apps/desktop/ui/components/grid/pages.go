@@ -54,19 +54,29 @@ func (p *Pages) Waiting(settling bool) bool {
 }
 
 // Ensure 在可见范围 [start, end] 有缺口时请求覆盖它的窗口，用作 VirtualGrid 的 OnRange。
+// 与 requestMissingVisibleWindow 相同：窗口从第一个缺失的下标算起，而不是从 start 算起。
+// 否则 start 靠近页尾时窗口（offset 向前缓冲一页）只覆盖到 start 附近，
+// 返回后重算出的还是同一个已加载的窗口，可见范围剩下的部分就一直是占位卡片。
 func (p *Pages) Ensure(start, end int) {
 	if p.Total == 0 || p.Loading {
 		return
 	}
-	bufferedStart := max(0, start-windowBufferSize)
-	offset := bufferedStart / PageSize * PageSize
-	reqEnd := min(p.Total, offset+windowRequestSize, max(end+1, offset+PageSize))
-	for i := offset; i < reqEnd; i++ {
+	end = min(end, p.Total-1)
+	for i := max(0, start); i <= end; i++ {
 		if p.Games[i] == nil {
-			p.load(offset, max(1, reqEnd-offset), false)
+			offset, limit := windowRequest(i, end, p.Total)
+			p.load(offset, limit, false)
 			return
 		}
 	}
+}
+
+// windowRequest 对应 getWindowRequest：以 start 为起点向前缓冲一页、按页对齐，最多请求两页。
+func windowRequest(start, end, total int) (offset, limit int) {
+	bufferedStart := max(0, start-windowBufferSize)
+	offset = bufferedStart / PageSize * PageSize
+	reqEnd := min(total, offset+windowRequestSize, max(end+1, offset+PageSize))
+	return offset, max(1, reqEnd-offset)
 }
 
 func (p *Pages) load(offset, limit int, replace bool) {
