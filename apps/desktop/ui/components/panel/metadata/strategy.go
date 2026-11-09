@@ -122,6 +122,34 @@ func StrategySummary(s appconf.MetadataStrategy, enabled []enums.SourceType) []s
 	return []string{first, strings.Join(clauses, locales.NativeMetadataStrategyClauseSeparator())}
 }
 
+// StrategyRefreshNotes 是更新元数据时组合策略的说明与各字段改用的来源（给 MetadataFieldSelectModal 的 Notice、FieldNotes）。
+// base 是单个游戏的默认来源；为空时是全量更新（每个游戏以自己的默认来源为基底，标注按策略的基底算）。
+// 策略没有基底、或者对这次更新没有影响时都为空。
+func StrategyRefreshNotes(cfg *appconf.AppConfig, base enums.SourceType) (string, map[enums.MetadataUpdateField]string) {
+	strategy := cfg.Strategy()
+	if strategy.Base == "" || (base != "" && !metasource.Known(base)) {
+		return "", nil
+	}
+	notice := locales.NativeMetadataStrategyRefreshNoticeAll()
+	ref := strategy.Base
+	if base != "" {
+		notice, ref = locales.NativeMetadataStrategyRefreshNoticeSingle(StrategyLabel(base)), base
+	}
+	fields := gamehelper.StrategyOverridesFor(strategy, ref, EnabledSources(cfg))
+	if len(fields) == 0 {
+		return "", nil
+	}
+	notes := make(map[enums.MetadataUpdateField]string, len(fields))
+	for _, f := range fields {
+		src := strategy.FieldSource(f)
+		notes[f] = locales.NativeMetadataStrategyFieldFrom(StrategyLabel(src))
+		if src == appconf.MetadataStrategyAllSources {
+			notes[f] = StrategyLabel(src)
+		}
+	}
+	return notice, notes
+}
+
 // sourceOptionLabel 是来源的名称，没有启用时加上“（未启用）”。
 func sourceOptionLabel(s enums.SourceType, enabled []enums.SourceType) string {
 	if s != appconf.MetadataStrategyAllSources && !slices.Contains(enabled, s) {

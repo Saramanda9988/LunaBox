@@ -59,6 +59,9 @@ func (s *GameService) composeRefreshResult(ctx context.Context, game models.Game
 		return base, ""
 	}
 	strategy := s.config.Strategy()
+	if strategy.Base == "" { // 没有基底时组合策略不生效
+		return base, ""
+	}
 	var needed []enums2.SourceType
 	for _, field := range strategy.Overrides(baseSource) {
 		src := strategy.FieldSource(field)

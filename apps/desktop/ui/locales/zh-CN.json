@@ -3328,8 +3328,6 @@
   "@native_metadataStrategy_empty": {"description": "extra:native.metadataStrategy.empty"},
   "native_metadataStrategy_button": "组合策略",
   "@native_metadataStrategy_button": {"description": "extra:native.metadataStrategy.button"},
-  "native_metadataStrategy_buttonActive": "组合策略：已开启",
-  "@native_metadataStrategy_buttonActive": {"description": "extra:native.metadataStrategy.buttonActive"},
   "native_metadataStrategy_settingsLabel": "高级组合策略",
   "@native_metadataStrategy_settingsLabel": {"description": "extra:native.metadataStrategy.settingsLabel"},
   "native_metadataStrategy_settingsHint": "分别指定游戏名、封面、标签、简介等字段从哪个来源获取。",
@@ -3339,5 +3337,13 @@
   "native_metadataStrategy_cardSource": "组合策略 · 基底 {base}",
   "@native_metadataStrategy_cardSource": {"description": "extra:native.metadataStrategy.cardSource", "placeholders": {"base": {"type": "String"}}},
   "native_metadataStrategy_cardHint": "按高级组合策略组合各来源的结果",
-  "@native_metadataStrategy_cardHint": {"description": "extra:native.metadataStrategy.cardHint"}
+  "@native_metadataStrategy_cardHint": {"description": "extra:native.metadataStrategy.cardHint"},
+  "native_metadataStrategy_buttonMixed": "{base} · 组合",
+  "@native_metadataStrategy_buttonMixed": {"description": "extra:native.metadataStrategy.buttonMixed", "placeholders": {"base": {"type": "String"}}},
+  "native_metadataStrategy_fieldFrom": "来自 {source}",
+  "@native_metadataStrategy_fieldFrom": {"description": "extra:native.metadataStrategy.fieldFrom", "placeholders": {"source": {"type": "String"}}},
+  "native_metadataStrategy_refreshNoticeSingle": "已开启高级组合策略：以 {base} 为基底，标注的字段改用指定的来源，取不到时用 {base}。",
+  "@native_metadataStrategy_refreshNoticeSingle": {"description": "extra:native.metadataStrategy.refreshNoticeSingle", "placeholders": {"base": {"type": "String"}}},
+  "native_metadataStrategy_refreshNoticeAll": "已开启高级组合策略：以每个游戏的默认来源为基底，标注的字段改用指定的来源，取不到时用基底的数据。",
+  "@native_metadataStrategy_refreshNoticeAll": {"description": "extra:native.metadataStrategy.refreshNoticeAll"}
 }

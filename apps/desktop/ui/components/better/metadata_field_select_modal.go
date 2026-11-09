@@ -24,6 +24,10 @@ type MetadataFieldSelectProps struct {
 	Fields     *[]enums.MetadataUpdateField
 	Submitting bool // isSubmitting：确认按钮禁用并显示旋转图标
 	TopOffset  float32
+	// Notice 不为空时显示在说明下面的提示框里（原版没有：高级组合策略的说明）。
+	Notice string
+	// FieldNotes 是字段名后面的小标签（原版没有：组合策略里这个字段改用的来源）。
+	FieldNotes map[enums.MetadataUpdateField]string
 	OnClose    func()
 	OnConfirm  func(fields []enums.MetadataUpdateField)
 }
@@ -68,6 +72,13 @@ func MetadataFieldSelectModal(c *ui.Context, t *theme.Theme, key string, p Metad
 				})
 				fieldModalCloseButton(c, t, "close", locales.CommonClose(), closeModal)
 			})
+			if p.Notice != "" {
+				ui.Row(c.Key("notice")).Margin(16, 0, 0, 0).Gap(8).Padding(10, 12).Radius(8).AlignItems(ui.Start).
+					Background(t.Pick(theme.Sky50, theme.Sky900.Alpha(0.25))).Border(t.HL, t.Pick(theme.Sky200, theme.Sky800)).Children(func() {
+					components.Icon(c, "layers-triple-outline", 16, t.Pick(theme.Sky600, theme.Sky400))
+					components.Text(c, p.Notice, theme.FontStep{Size: 12, Line: 19.5}, theme.WeightNormal, t.Pick(theme.Sky800, theme.Sky200)).Grow(1).Basis(0).MinWidth(0)
+				})
+			}
 			// mt-5 rounded-lg border border-brand-200 bg-brand-50 p-3 dark:border-brand-700 dark:bg-brand-700/40
 			ui.Row(c.Key("all")).Margin(20, 0, 0, 0).Gap(16).Padding(12).Radius(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).
 				Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).Background(t.Pick(theme.Brand50, theme.Brand700.Alpha(0.4))).
@@ -91,7 +102,7 @@ func MetadataFieldSelectModal(c *ui.Context, t *theme.Theme, key string, p Metad
 			}
 			ui.Grid(c.Key("fields")).Columns(cols).GapX(12).GapY(12).Margin(16, 0, 0, 0).Children(func() {
 				for _, f := range all {
-					metadataFieldToggle(c.Key(string(f)), t, metadataFieldText(f), slices.Contains(fields, f), func(on bool) {
+					metadataFieldToggle(c.Key(string(f)), t, metadataFieldText(f), p.FieldNotes[f], slices.Contains(fields, f), func(on bool) {
 						next := slices.DeleteFunc(slices.Clone(*p.Fields), func(x enums.MetadataUpdateField) bool { return x == f })
 						if on {
 							next = append(next, f)
@@ -122,13 +133,21 @@ func MetadataFieldSelectModal(c *ui.Context, t *theme.Theme, key string, p Metad
 
 // metadataFieldToggle：flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3，左侧 label（点击也切换）是 text-sm
 // font-medium 的名称与 text-xs leading-relaxed 的说明（space-y-1）。
-func metadataFieldToggle(c *ui.Context, t *theme.Theme, text [2]string, checked bool, onChange func(bool)) {
+// note 不为空时是名称后面天蓝色的小标签。
+func metadataFieldToggle(c *ui.Context, t *theme.Theme, text [2]string, note string, checked bool, onChange func(bool)) {
 	ui.Row(c).MinWidth(0).Gap(12).Padding(12).Radius(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).
 		Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).Children(func() {
 		lb := ui.ButtonBase(c.Key("label")).Column().Grow(1).Basis(0).MinWidth(0).Gap(4).AlignItems(ui.Start).
 			FocusRing(false).Label(text[0])
 		lb.OnClick(func() { onChange(!checked) }).Children(func() {
-			components.Text(c, text[0], theme.TextSM, theme.WeightMedium, t.Pick(theme.Brand800, theme.Brand200))
+			ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+				components.Text(c, text[0], theme.TextSM, theme.WeightMedium, t.Pick(theme.Brand800, theme.Brand200))
+				if note != "" {
+					ui.Box(c.Key("note")).Padding(1, 6).Radius(999).Shrink(0).Background(t.Pick(theme.Sky100, theme.Sky900.Alpha(0.5))).Children(func() {
+						components.Text(c, note, theme.TextXS, theme.WeightMedium, t.Pick(theme.Sky700, theme.Sky300)).NoWrap()
+					})
+				}
+			})
 			components.Text(c, text[1], theme.FontStep{Size: 12, Line: 19.5}, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400))
 		})
 		Switch(c, t, "switch", checked, false, onChange)

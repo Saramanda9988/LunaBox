@@ -24845,22 +24845,6 @@ func (msgs Messages) NativeMetadataStrategyButton() string {
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_button", nil)
 }
 
-// NativeMetadataStrategyButtonActive says "组合策略：已开启"
-// in the language the app shows.
-//
-// extra:native.metadataStrategy.buttonActive
-func NativeMetadataStrategyButtonActive() string {
-	return In(i18n.Locale()).NativeMetadataStrategyButtonActive()
-}
-
-// NativeMetadataStrategyButtonActive says "组合策略：已开启"
-// in the language of msgs.
-//
-// extra:native.metadataStrategy.buttonActive
-func (msgs Messages) NativeMetadataStrategyButtonActive() string {
-	return Catalog.Format(msgs.locale, "native_metadataStrategy_buttonActive", nil)
-}
-
 // NativeMetadataStrategySettingsLabel says "高级组合策略"
 // in the language the app shows.
 //
@@ -24939,4 +24923,68 @@ func NativeMetadataStrategyCardHint() string {
 // extra:native.metadataStrategy.cardHint
 func (msgs Messages) NativeMetadataStrategyCardHint() string {
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_cardHint", nil)
+}
+
+// NativeMetadataStrategyButtonMixed says "{base} · 组合"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.buttonMixed
+func NativeMetadataStrategyButtonMixed(base string) string {
+	return In(i18n.Locale()).NativeMetadataStrategyButtonMixed(base)
+}
+
+// NativeMetadataStrategyButtonMixed says "{base} · 组合"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.buttonMixed
+func (msgs Messages) NativeMetadataStrategyButtonMixed(base string) string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_buttonMixed", map[string]any{"base": base})
+}
+
+// NativeMetadataStrategyFieldFrom says "来自 {source}"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.fieldFrom
+func NativeMetadataStrategyFieldFrom(source string) string {
+	return In(i18n.Locale()).NativeMetadataStrategyFieldFrom(source)
+}
+
+// NativeMetadataStrategyFieldFrom says "来自 {source}"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.fieldFrom
+func (msgs Messages) NativeMetadataStrategyFieldFrom(source string) string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_fieldFrom", map[string]any{"source": source})
+}
+
+// NativeMetadataStrategyRefreshNoticeSingle says "已开启高级组合策略：以 {base} 为基底，标注的字段改用指定的来源，取不到时用 {base}。"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.refreshNoticeSingle
+func NativeMetadataStrategyRefreshNoticeSingle(base string) string {
+	return In(i18n.Locale()).NativeMetadataStrategyRefreshNoticeSingle(base)
+}
+
+// NativeMetadataStrategyRefreshNoticeSingle says "已开启高级组合策略：以 {base} 为基底，标注的字段改用指定的来源，取不到时用 {base}。"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.refreshNoticeSingle
+func (msgs Messages) NativeMetadataStrategyRefreshNoticeSingle(base string) string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_refreshNoticeSingle", map[string]any{"base": base})
+}
+
+// NativeMetadataStrategyRefreshNoticeAll says "…"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.refreshNoticeAll
+func NativeMetadataStrategyRefreshNoticeAll() string {
+	return In(i18n.Locale()).NativeMetadataStrategyRefreshNoticeAll()
+}
+
+// NativeMetadataStrategyRefreshNoticeAll says "…"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.refreshNoticeAll
+func (msgs Messages) NativeMetadataStrategyRefreshNoticeAll() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_refreshNoticeAll", nil)
 }

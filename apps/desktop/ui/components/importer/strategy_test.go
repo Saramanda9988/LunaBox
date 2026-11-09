@@ -84,19 +84,10 @@ func TestAddGameNoLeadCardWithoutOverrides(t *testing.T) {
 	}
 }
 
-// 批量导入的“必选数据源”就是组合策略的基底：改它只改基底，保留各字段的来源，不再写 batch_import_preferred_source。
+// 批量导入用组合策略的基底作为必选数据源（基底没有启用时没有），不再读 batch_import_preferred_source。
 func TestPreferredSourceIsStrategyBase(t *testing.T) {
-	h := newHarness(t)
-	h.env.Svc.Config.SetStrategy(appconf.MetadataStrategy{}.WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi))
-	s := &scanSteps{env: h.env}
-	s.setPreferredSource("vndb")
-	cfg := h.env.Config()
-	if got := cfg.Strategy(); got.Base != enums.VNDB || got.FieldSource(enums.MetadataUpdateFieldName) != enums.Bangumi {
-		t.Fatalf("strategy = %+v", got)
-	}
-	if cfg.BatchImportPreferredSource != "" {
-		t.Fatalf("batch_import_preferred_source = %q", cfg.BatchImportPreferredSource)
-	}
+	cfg := &appconf.AppConfig{BatchImportPreferredSource: "bangumi"}
+	cfg.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB})
 	if got := preferredSource(cfg, []enums.SourceType{enums.Bangumi, enums.VNDB}); got != enums.VNDB {
 		t.Fatalf("preferred = %q", got)
 	}
@@ -105,7 +96,7 @@ func TestPreferredSourceIsStrategyBase(t *testing.T) {
 	}
 }
 
-// 批量导入的预览里，必选数据源后面是组合策略按钮：策略生效时显示“已开启”，点它打开组合策略弹窗。
+// 批量导入的预览里，原来的必选数据源换成了组合策略的入口：显示基底来源，策略生效时加上“组合”，点它打开组合策略弹窗。
 func TestBatchImportStrategyButton(t *testing.T) {
 	var b *BatchImport
 	h := newHarness(t)
@@ -116,9 +107,13 @@ func TestBatchImportStrategyButton(t *testing.T) {
 	b.Open()
 	h.frames(2)
 	h.click(t, locales.BatchImportModalBtnScanGameLibrary())
-	h.expect(t, locales.BatchImportModalPreferredSourceLabel(), "VNDB", locales.NativeMetadataStrategyButtonActive())
+	mixed := locales.NativeMetadataStrategyButtonMixed("VNDB")
+	h.expect(t, locales.NativeMetadataStrategyBase(), mixed)
+	if h.tt.HasText(locales.BatchImportModalPreferredSourceLabel()) {
+		t.Fatal("the old preferred source select should be gone")
+	}
 
-	h.click(t, locales.NativeMetadataStrategyButtonActive())
+	h.click(t, mixed)
 	h.expect(t, locales.NativeMetadataStrategyTitle(), locales.NativeMetadataStrategySummaryBase("VNDB"))
 	if dir := os.Getenv("DESKTOP_MYGO_PNG"); dir != "" {
 		b.strategy = metadatapanel.StrategyModal{}

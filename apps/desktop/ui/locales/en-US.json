@@ -1664,10 +1664,13 @@
   "native_metadataStrategy_trialFailed": "Trial failed: {error}",
   "native_metadataStrategy_empty": "(empty)",
   "native_metadataStrategy_button": "Metadata mix",
-  "native_metadataStrategy_buttonActive": "Metadata mix: on",
   "native_metadataStrategy_settingsLabel": "Advanced metadata mix",
   "native_metadataStrategy_settingsHint": "Choose which source provides the name, cover, tags, summary and other fields.",
   "native_metadataStrategy_settingsButton": "Configure",
   "native_metadataStrategy_cardSource": "Mixed · base {base}",
-  "native_metadataStrategy_cardHint": "Combine the results using your metadata mix"
+  "native_metadataStrategy_cardHint": "Combine the results using your metadata mix",
+  "native_metadataStrategy_buttonMixed": "{base} · mixed",
+  "native_metadataStrategy_fieldFrom": "from {source}",
+  "native_metadataStrategy_refreshNoticeSingle": "Advanced metadata mix is on: {base} is the base, marked fields come from the chosen sources, and fall back to {base} when missing.",
+  "native_metadataStrategy_refreshNoticeAll": "Advanced metadata mix is on: each game's default source is the base, marked fields come from the chosen sources, and fall back to the base when missing."
 }

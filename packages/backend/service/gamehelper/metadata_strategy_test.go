@@ -99,6 +99,13 @@ func TestStrategyActive(t *testing.T) {
 	if StrategyActive(s, []enums.SourceType{enums.Bangumi}) {
 		t.Fatal("disabled base should be inactive")
 	}
+	if StrategyActive(s, []enums.SourceType{enums.VNDB}) {
+		t.Fatal("override with a disabled source should be inactive")
+	}
+	aliases := strategyOf(enums.VNDB, map[enums.MetadataUpdateField]enums.SourceType{enums.MetadataUpdateFieldAliases: appconf.MetadataStrategyAllSources})
+	if !StrategyActive(aliases, []enums.SourceType{enums.VNDB}) {
+		t.Fatal("merging aliases should be active")
+	}
 	if got := StrategySources(s, enums.VNDB); !slices.Equal(got, []enums.SourceType{enums.Bangumi}) {
 		t.Fatalf("StrategySources = %v", got)
 	}

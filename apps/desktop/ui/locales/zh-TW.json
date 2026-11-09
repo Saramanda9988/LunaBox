@@ -1664,10 +1664,13 @@
   "native_metadataStrategy_trialFailed": "試刮失敗：{error}",
   "native_metadataStrategy_empty": "（空）",
   "native_metadataStrategy_button": "組合策略",
-  "native_metadataStrategy_buttonActive": "組合策略：已開啟",
   "native_metadataStrategy_settingsLabel": "進階組合策略",
   "native_metadataStrategy_settingsHint": "分別指定遊戲名、封面、標籤、簡介等欄位從哪個來源取得。",
   "native_metadataStrategy_settingsButton": "設定組合策略",
   "native_metadataStrategy_cardSource": "組合策略 · 基底 {base}",
-  "native_metadataStrategy_cardHint": "按進階組合策略組合各來源的結果"
+  "native_metadataStrategy_cardHint": "按進階組合策略組合各來源的結果",
+  "native_metadataStrategy_buttonMixed": "{base} · 組合",
+  "native_metadataStrategy_fieldFrom": "來自 {source}",
+  "native_metadataStrategy_refreshNoticeSingle": "已開啟進階組合策略：以 {base} 為基底，標註的欄位改用指定的來源，取不到時用 {base}。",
+  "native_metadataStrategy_refreshNoticeAll": "已開啟進階組合策略：以每個遊戲的預設來源為基底，標註的欄位改用指定的來源，取不到時用基底的資料。"
 }

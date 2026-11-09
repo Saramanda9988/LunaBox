@@ -11,6 +11,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"lunabox/backend/appconf"
 	"lunabox/backend/common/enums"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
@@ -20,6 +21,7 @@ import (
 	"lunabox/desktop/ui/components/panel"
 	"lunabox/desktop/ui/covers"
 	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
 	"lunabox/desktop/ui/theme"
 )
 
@@ -136,6 +138,16 @@ func (h *harness) expectTexts(t *testing.T, texts ...string) {
 }
 
 // waitAnimation 等抽屉、弹窗的进出动画走完。先构建一帧，让测试从外部改的状态（drawerOpen）开始动画。
+// expectNot 检查没有显示（完全相同的）文字。
+func (h *harness) expectNot(t *testing.T, texts ...string) {
+	t.Helper()
+	for _, s := range texts {
+		if _, ok := h.tt.Find(s); ok {
+			t.Fatalf("unexpected %q", s)
+		}
+	}
+}
+
 func (h *harness) waitAnimation() {
 	h.tt.Frame()
 	h.tt.Advance(350 * time.Millisecond)
@@ -357,6 +369,36 @@ func TestFieldSelectModal(t *testing.T) {
 	if h.state.fieldsOpen {
 		t.Fatal("modal still open")
 	}
+}
+
+// 高级组合策略对这个游戏的默认来源生效时，默认来源旁边标出“组合策略”，更新字段的弹窗说明策略并标出各字段的来源。
+func TestFieldSelectModalShowsStrategy(t *testing.T) {
+	h := newHarness(t, testGame()) // 默认来源 Bangumi
+	h.expectNot(t, locales.NativeMetadataStrategyButton())
+	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}.
+		WithFieldSource(enums.MetadataUpdateFieldTags, enums.VNDB).
+		WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi)) // 与默认来源相同，不算
+	h.frames(2)
+	h.expectTexts(t, locales.NativeMetadataStrategyButton())
+
+	h.click(t, "从远端更新信息")
+	h.expectTexts(t, locales.NativeMetadataStrategyRefreshNoticeSingle("Bangumi"), locales.NativeMetadataStrategyFieldFrom("VNDB"))
+	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("Bangumi"))
+	if dir := os.Getenv("DESKTOP_MYGO_PNG"); dir != "" {
+		f, err := os.Create(filepath.Join(dir, "edit-fields-strategy.png"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+		if err := png.Encode(f, h.tt.Image()); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// 没有基底时策略不生效。
+	h.svc.Config.SetStrategy(appconf.MetadataStrategy{}.WithFieldSource(enums.MetadataUpdateFieldTags, enums.VNDB))
+	h.frames(2)
+	h.expectNot(t, locales.NativeMetadataStrategyRefreshNoticeSingle("Bangumi"))
 }
 
 func TestMetadataDrawer(t *testing.T) {

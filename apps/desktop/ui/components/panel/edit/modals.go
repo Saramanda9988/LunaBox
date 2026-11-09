@@ -11,6 +11,7 @@ import (
 	"lunabox/desktop/ui/components/better"
 	"lunabox/desktop/ui/components/importer"
 	"lunabox/desktop/ui/components/panel"
+	metadatapanel "lunabox/desktop/ui/components/panel/metadata"
 	"lunabox/desktop/ui/locales"
 	"lunabox/desktop/ui/theme"
 )
@@ -32,7 +33,10 @@ func (e *editor) deleteModal(c *ui.Context) {
 // 按勾选的字段从默认来源更新（handleUpdateFromRemote）。
 func (e *editor) fieldSelectModal(c *ui.Context) {
 	s := e.s
+	notice, notes := e.strategyNotes()
 	better.MetadataFieldSelectModal(c, e.t, "metadata-fields", better.MetadataFieldSelectProps{
+		Notice:      notice,
+		FieldNotes:  notes,
 		Open:        s.fieldsOpen,
 		Title:       locales.MetadataUpdateFieldsModalSingleTitle(),
 		Description: locales.MetadataUpdateFieldsModalSingleDescription(),
@@ -43,6 +47,16 @@ func (e *editor) fieldSelectModal(c *ui.Context) {
 		OnClose:     func() { s.fieldsOpen = false },
 		OnConfirm:   func(fields []enums.MetadataUpdateField) { e.updateFromRemote(c, fields) },
 	})
+}
+
+// strategyNotes 是从默认来源更新时高级组合策略的说明与各字段改用的来源（以游戏的默认来源为基底）；
+// 没有默认来源或者策略没有影响时为空。
+func (e *editor) strategyNotes() (string, map[enums.MetadataUpdateField]string) {
+	src, _ := defaultSource(&e.g)
+	if src == "" || src == enums.Local || e.p.Env == nil {
+		return "", nil
+	}
+	return metadatapanel.StrategyRefreshNotes(e.p.Env.Config(), src)
 }
 
 // searchModal 对应 MetadataSourceSearchModal：max-w-2xl rounded-xl bg-white p-6 shadow-2xl dark:bg-brand-800，
