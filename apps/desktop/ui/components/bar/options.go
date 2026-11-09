@@ -4,6 +4,7 @@ import (
 	"lunabox/backend/common/enums"
 	"lunabox/desktop/ui/components/better"
 	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/metasource"
 )
 
 // StatusOptions 对应 consts/options.ts 的 statusOptions。
@@ -30,23 +31,24 @@ func StatusLabel(s enums.GameStatus) string {
 	return string(s)
 }
 
-func literal(s string) func() string { return func() string { return s } }
-
-// SourceOptions 对应 metadataSourceOptions（来源名称同 importFlow.sourceLabel）。
-var SourceOptions = []struct {
+// SourceOption 是来源筛选的一项。
+type SourceOption struct {
 	Label func() string
 	Value enums.SourceType
-}{
-	{locales.FilterBarAllMetadataSources, ""},
-	{locales.FilterBarNoMetadataSource, enums.Local},
-	{literal("Bangumi"), enums.Bangumi},
-	{literal("VNDB"), enums.VNDB},
-	{locales.GameEditSourceYmgal, enums.Ymgal},
-	{locales.GameEditSourceDlsite, enums.DLsite},
-	{locales.GameEditSourceTouchGal, enums.TouchGal},
-	{locales.GameEditSourceHikarinagi, enums.Hikarinagi},
-	{locales.GameEditSourceErogameScape, enums.ErogameScape},
-	{literal("Steam"), enums.Steam},
+}
+
+// SourceOptions 对应 metadataSourceOptions：全部、无元数据来源，再按 ALL_METADATA_SOURCES 列出来源。
+var SourceOptions = sourceOptions()
+
+func sourceOptions() []SourceOption {
+	opts := []SourceOption{
+		{locales.FilterBarAllMetadataSources, ""},
+		{locales.FilterBarNoMetadataSource, enums.Local},
+	}
+	for _, s := range metasource.All() {
+		opts = append(opts, SourceOption{func() string { return metasource.Label(s) }, s})
+	}
+	return opts
 }
 
 // GameSortOptions 对应 consts/options.ts 的 sortOptions。文字按当前语言取，每帧重建。

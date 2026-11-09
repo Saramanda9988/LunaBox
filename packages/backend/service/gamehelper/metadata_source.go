@@ -2,6 +2,7 @@ package gamehelper
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"lunabox/backend/common/enums"
@@ -9,13 +10,7 @@ import (
 )
 
 func IsSupportedMetadataSource(source enums.SourceType) bool {
-	switch NormalizeMetadataSourceType(source) {
-	case enums.Bangumi, enums.VNDB, enums.Ymgal, enums.Steam, enums.DLsite,
-		enums.TouchGal, enums.Hikarinagi, enums.Kungal, enums.ErogameScape:
-		return true
-	default:
-		return false
-	}
+	return slices.Contains(enums.MetadataSourceTypes, NormalizeMetadataSourceType(source))
 }
 
 func NormalizeMetadataSource(source enums.SourceType, sourceID string) (enums.SourceType, string, error) {

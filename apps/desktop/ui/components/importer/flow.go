@@ -20,6 +20,7 @@ import (
 	"lunabox/backend/utils/metadata"
 	"lunabox/desktop/ui/env"
 	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/metasource"
 )
 
 // MatchStatus 是 ImportMatchStatus。
@@ -207,25 +208,10 @@ func pickBestMatch(matches []vo.GameMetadataFromWebVO, preferred enums.SourceTyp
 
 // SourceLabel 对应 importFlow.ts 的 sourceLabel：未知来源显示为 Steam。
 func SourceLabel(s enums.SourceType) string {
-	switch s {
-	case enums.Bangumi:
-		return "Bangumi"
-	case enums.VNDB:
-		return "VNDB"
-	case enums.Ymgal:
-		return locales.GameEditSourceYmgal()
-	case enums.DLsite:
-		return locales.GameEditSourceDlsite()
-	case enums.TouchGal:
-		return locales.GameEditSourceTouchGal()
-	case enums.Hikarinagi:
-		return locales.GameEditSourceHikarinagi()
-	case enums.Kungal:
-		return locales.GameEditSourceKungal()
-	case enums.ErogameScape:
-		return locales.GameEditSourceErogameScape()
+	if !metasource.Known(s) {
+		return "Steam"
 	}
-	return "Steam"
+	return metasource.Label(s)
 }
 
 // Progress 是 MatchProgressState。

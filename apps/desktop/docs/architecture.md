@@ -36,6 +36,7 @@
 | `ui/theme`、`ui/assets` | `uno.config.ts` 的色板、字号、过渡曲线、像素吸附与玻璃模式（`theme/glass.go`）；图标、元数据来源图标、表情数据与图片 |
 | `ui/env`、`ui/covers`、`ui/perf`、`ui/timefmt` | 页面共享的运行环境（后端、路由、主题、语言）、封面缓存与自定义背景图、性能 HUD 与压测、`utils/time.ts` 的时长与日期格式 |
 | `ui/tagname` | `utils/tagTranslation.ts`：VNDB 标签按界面语言显示译名、按译名搜索标签 |
+| `ui/metasource` | `utils/metadataSources.ts`：元数据来源的名称、链接、图标、设置页说明的唯一出处。来源有哪些、默认顺序在后端 `enums.MetadataSourceTypes`；新增来源只改这两处，各面板的列表、下拉框、筛选项都从这里取（面板自己的顺序用 `metasource.Ordered`） |
 | `cmd/lunacli` | 命令行工具 lunacli（随包发布） |
 | `tools/mygo`、`tools/release` | 设好 `CGO_ENABLED=1` 再运行 `go tool mygo`；按 Wails 版的布局构建 Windows 便携版与安装版、macOS DMG、Linux AppImage、deb 与 rpm |
 | `packaging/`、`lib/` | 安装包脚本（NSIS、deb 与 rpm 的安装脚本）；随包的 7z 与 Windows arm64 的 DuckDB |

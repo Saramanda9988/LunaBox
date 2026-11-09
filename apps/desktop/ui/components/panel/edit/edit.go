@@ -23,6 +23,7 @@ import (
 	"lunabox/desktop/ui/components/panel"
 	"lunabox/desktop/ui/env"
 	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/metasource"
 	"lunabox/desktop/ui/theme"
 )
 
@@ -436,7 +437,7 @@ func (e *editor) metadataSection(c *ui.Context) {
 const monoFont = "Consolas"
 
 // defaultSourceIcon：flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-200 text-brand-700
-// dark:bg-brand-700 dark:text-brand-200。Bangumi、Hikarinagi 的方形图标 h-full w-full object-cover，其他 logo
+// dark:bg-brand-700 dark:text-brand-200。方形图标（metasource.SquareIcon） h-full w-full object-cover，其他 logo
 // max-h-6 max-w-8 object-contain 的轮廓。没有图标时原版是 i-mdi-database-star-outline，但 MDI 没有这个图标，什么也不显示。
 func defaultSourceIcon(c *ui.Context, t *theme.Theme, source enums.SourceType) {
 	ui.Box(c.Key("source-icon")).Size(40, 40).Radius(8).Clip().Center().Shrink(0).
@@ -447,7 +448,7 @@ func defaultSourceIcon(c *ui.Context, t *theme.Theme, source enums.SourceType) {
 		l := sourceCompactIcon(source)
 		switch {
 		case l == nil:
-		case source == enums.Bangumi || source == enums.Hikarinagi:
+		case metasource.SquareIcon(source):
 			ui.Image(c, l.color).Size(40, 40).Fit(ui.Cover)
 		default:
 			logoImage(c, t, l, 24, 32)

@@ -14,6 +14,7 @@ import (
 	"lunabox/desktop/ui/components/panel/edit"
 	"lunabox/desktop/ui/env"
 	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/metasource"
 	"lunabox/desktop/ui/theme"
 )
 
@@ -39,30 +40,8 @@ type InstallConfirmProps struct {
 	TopOffset float32
 }
 
-// installSourceLabels 是 META_SOURCE_LABELS；没有的来源显示原名。
-func installSourceLabel(source string) string {
-	switch enums.SourceType(source) {
-	case enums.VNDB:
-		return "VNDB"
-	case enums.Bangumi:
-		return "Bangumi"
-	case enums.Ymgal:
-		return locales.GameEditSourceYmgal()
-	case enums.Steam:
-		return "Steam"
-	case enums.DLsite:
-		return "DLsite"
-	case enums.TouchGal:
-		return "TouchGAL"
-	case enums.Hikarinagi:
-		return "Hikarinagi"
-	case enums.Kungal:
-		return locales.GameEditSourceKungal()
-	case enums.ErogameScape:
-		return "ErogameScape"
-	}
-	return source
-}
+// installSourceLabel 是 META_SOURCE_LABELS（名称同 metasource.Label）；没有的来源显示原名。
+func installSourceLabel(source string) string { return metasource.Label(enums.SourceType(source)) }
 
 // formatInstallSize 是 InstallConfirmModal.tsx 的 formatSize：GB 两位小数、MB 一位、KB 取整。
 func formatInstallSize(bytes int64) string {

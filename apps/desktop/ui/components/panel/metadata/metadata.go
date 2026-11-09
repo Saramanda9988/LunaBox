@@ -19,6 +19,7 @@ import (
 	"lunabox/desktop/ui/components/panel"
 	"lunabox/desktop/ui/env"
 	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/metasource"
 	"lunabox/desktop/ui/theme"
 )
 
@@ -158,23 +159,23 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 func (s *State) sourceGrid(c *ui.Context, t *theme.Theme, p panel.Settings) {
 	selected := normalizeEnabledSources(p.Config.MetadataSources)
 	ui.Grid(c.Key("sources")).Columns(2).GapX(12).GapY(12).FillWidth().Children(func() {
-		for _, item := range sourceItems {
-			checked := slices.Contains(selected, item.value)
-			toggle := func(on bool) { s.toggleSource(p, selected, item.value, on) }
-			label := item.label()
+		for _, source := range sourceItems {
+			checked := slices.Contains(selected, source)
+			toggle := func(on bool) { s.toggleSource(p, selected, source, on) }
+			label := sourceItemLabel(source)
 			bg, border := t.GlassPanel(ui.Transparent, t.Pick(theme.Brand200, theme.Brand700))
-			ui.Row(c.Key(string(item.value))).MinWidth(0).Padding(16).Radius(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).
+			ui.Row(c.Key(string(source))).MinWidth(0).Padding(16).Radius(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).
 				Background(bg).Border(t.HL, border).Children(func() {
 				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(8).Children(func() {
 					ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-						if l := sourceLogo(item.value); l != nil {
+						if l := sourceLogo(source); l != nil {
 							logoImage(c, t, l, 22)
 						}
 						ui.Box(c.Key("label")).MinWidth(0).OnClick(func() { toggle(!checked) }).Children(func() {
 							components.Text(c, label, theme.TextSM, theme.WeightMedium, t.SectionLabel)
 						})
 					})
-					panel.FieldHint(c, t, item.hint())
+					panel.FieldHint(c, t, metasource.Hint(source))
 				})
 				better.Switch(c, t, "switch", checked, false, toggle)
 			})

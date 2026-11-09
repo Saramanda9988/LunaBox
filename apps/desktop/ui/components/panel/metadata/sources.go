@@ -15,14 +15,9 @@ import (
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/enums"
 	"lunabox/desktop/ui/assets"
-	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/metasource"
 	"lunabox/desktop/ui/theme"
 )
-
-// allSources 对应 utils/metadataSources.ts 的 ALL_METADATA_SOURCES。
-var allSources = []enums.SourceType{
-	enums.Bangumi, enums.VNDB, enums.Ymgal, enums.DLsite, enums.TouchGal, enums.Hikarinagi, enums.Kungal, enums.ErogameScape, enums.Steam,
-}
 
 // defaultEnabledSources 对应 DEFAULT_ENABLED_METADATA_SOURCES。
 var defaultEnabledSources = []enums.SourceType{enums.Bangumi, enums.VNDB, enums.Ymgal, enums.Steam}
@@ -33,7 +28,7 @@ func normalizeEnabledSources(sources []string) []enums.SourceType {
 	seen := map[enums.SourceType]bool{}
 	for _, s := range sources {
 		v := enums.SourceType(strings.ToLower(strings.TrimSpace(s)))
-		if seen[v] || !isKnownSource(v) {
+		if seen[v] || !metasource.Known(v) {
 			continue
 		}
 		seen[v] = true
@@ -46,7 +41,7 @@ func normalizeEnabledSources(sources []string) []enums.SourceType {
 }
 
 // AllSources 是 ALL_METADATA_SOURCES（也是 importFlow.ts 的 DEFAULT_METADATA_SOURCE_ORDER）。
-func AllSources() []enums.SourceType { return append([]enums.SourceType(nil), allSources...) }
+func AllSources() []enums.SourceType { return metasource.All() }
 
 // EnabledSources 对应 store 的 enabledMetadataSources：配置里启用的元数据来源（normalizeEnabledMetadataSources）。
 func EnabledSources(cfg *appconf.AppConfig) []enums.SourceType {
@@ -56,48 +51,18 @@ func EnabledSources(cfg *appconf.AppConfig) []enums.SourceType {
 	return normalizeEnabledSources(cfg.MetadataSources)
 }
 
-func isKnownSource(s enums.SourceType) bool {
-	for _, v := range allSources {
-		if v == s {
-			return true
-		}
+// sourceItems 是 MetadataSettingsPanel 的 sourceItems 的顺序：与 ALL_METADATA_SOURCES 不同，同原版。
+var sourceItems = metasource.Ordered(
+	enums.Bangumi, enums.VNDB, enums.Hikarinagi, enums.Kungal, enums.Steam,
+	enums.DLsite, enums.TouchGal, enums.Ymgal, enums.ErogameScape,
+)
+
+// sourceItemLabel 是 sourceItems 的 label：原版这里 Ymgal 不翻译，其余同 metasource.Label。
+func sourceItemLabel(source enums.SourceType) string {
+	if source == enums.Ymgal {
+		return "Ymgal"
 	}
-	return false
-}
-
-// sourceItem 是面板 sourceItems 的一项。文字存函数，切换语言后随之更新。
-type sourceItem struct {
-	value enums.SourceType
-	label func() string
-	hint  func() string
-}
-
-func literal(s string) func() string { return func() string { return s } }
-
-// sourceItems 是 MetadataSettingsPanel 的 sourceItems：显示顺序与 ALL_METADATA_SOURCES 不同，同原版。
-var sourceItems = []sourceItem{
-	{enums.Bangumi, literal("Bangumi"), locales.SettingsMetadataSourceHintsBangumi},
-	{enums.VNDB, literal("VNDB"), locales.SettingsMetadataSourceHintsVndb},
-	{enums.Hikarinagi, literal("Hikarinagi"), locales.SettingsMetadataSourceHintsHikarinagi},
-	{enums.Kungal, locales.GameEditSourceKungal, locales.SettingsMetadataSourceHintsKungal},
-	{enums.Steam, literal("Steam"), locales.SettingsMetadataSourceHintsSteam},
-	{enums.DLsite, literal("DLsite"), locales.SettingsMetadataSourceHintsDlsite},
-	{enums.TouchGal, literal("TouchGAL"), locales.SettingsMetadataSourceHintsTouchgal},
-	{enums.Ymgal, literal("Ymgal"), locales.SettingsMetadataSourceHintsYmgal},
-	{enums.ErogameScape, literal("ErogameScape"), locales.SettingsMetadataSourceHintsErogamescape},
-}
-
-// logoFiles 是 getMetadataSourceIcon(source) 的 logo（ui/assets/providers，复制自原版 assets/providers）。
-var logoFiles = map[enums.SourceType]string{
-	enums.Bangumi:      "bangumi-logo.png",
-	enums.VNDB:         "vndb-logo.svg",
-	enums.Ymgal:        "ymgal-logo.png",
-	enums.Steam:        "steam-logo.png",
-	enums.DLsite:       "dlsite-logo.png",
-	enums.TouchGal:     "touchgal-logo.webp",
-	enums.Hikarinagi:   "hikarinagi-logo.svg",
-	enums.Kungal:       "kungal-logo.webp",
-	enums.ErogameScape: "erogamescape-logo.png",
+	return metasource.Label(source)
 }
 
 // logoHeight 是位图解码后保留的最大高度（像素）：图标高 22px，200% 缩放下 44px，留些余量。
@@ -118,7 +83,7 @@ var (
 
 // sourceLogo 返回来源的 logo；没有时为 nil。
 func sourceLogo(source enums.SourceType) *logo {
-	name := logoFiles[source]
+	name := metasource.LogoFile(source, false)
 	if name == "" {
 		return nil
 	}

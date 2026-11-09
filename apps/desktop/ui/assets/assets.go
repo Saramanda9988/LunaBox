@@ -12,6 +12,9 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	_ "golang.org/x/image/webp"
+
+	"lunabox/backend/common/enums"
+	"lunabox/desktop/ui/metasource"
 )
 
 //go:embed icons importers providers *.png *.webp
@@ -106,33 +109,16 @@ func bitmap(name string, maxWidth int) *ui.Bitmap {
 	return ui.NewBitmap(Downscale(img, maxWidth))
 }
 
-// 元数据来源的图标，对应 utils/metadataSources.ts 的 METADATA_SOURCE_ICONS 与 METADATA_SOURCE_COMPACT_ICONS。
-var providerFiles = map[string][2]string{ // 来源 → {logo, compact}
-	"bangumi":      {"bangumi-logo.png", "bangumi-icon.png"},
-	"vndb":         {"vndb-logo.svg", "vndb-logo.svg"},
-	"ymgal":        {"ymgal-logo.png", "ymgal-logo.png"},
-	"steam":        {"steam-logo.png", "steam-logo.png"},
-	"dlsite":       {"dlsite-logo.png", "dlsite-logo.png"},
-	"touchgal":     {"touchgal-logo.webp", "touchgal-logo.webp"},
-	"hikarinagi":   {"hikarinagi-logo.svg", "hikarinagi-icon.webp"},
-	"kungal":       {"kungal-logo.webp", "kungal-logo.webp"},
-	"erogamescape": {"erogamescape-logo.png", "erogamescape-logo.png"},
-}
-
 var (
 	providersMu sync.Mutex
 	providers   = map[string]ui.ImageSource{}
 )
 
-// Provider 对应 getMetadataSourceIcon：来源（enums.SourceType 的值）的图标，compact 为紧凑版；没有图标时为 nil。
+// Provider 对应 getMetadataSourceIcon：来源（enums.SourceType 的值）的图标（文件名见 metasource），compact 为紧凑版；没有图标时为 nil。
 func Provider(source string, compact bool) ui.ImageSource {
-	pair, ok := providerFiles[source]
-	if !ok {
+	name := metasource.LogoFile(enums.SourceType(source), compact)
+	if name == "" {
 		return nil
-	}
-	name := pair[0]
-	if compact {
-		name = pair[1]
 	}
 	providersMu.Lock()
 	defer providersMu.Unlock()

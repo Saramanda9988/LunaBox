@@ -13,6 +13,7 @@ import (
 
 	"lunabox/backend/common/enums"
 	"lunabox/desktop/ui/assets"
+	"lunabox/desktop/ui/metasource"
 	"lunabox/desktop/ui/theme"
 )
 
@@ -23,26 +24,9 @@ const logoHeight = 96
 // 也就是只保留轮廓：位图预先做成黑、白两份；SVG 用 ui.Icon 按文字颜色画轮廓。
 type logo struct {
 	black, white *ui.Bitmap // 只保留透明度的黑色、白色位图
-	color        *ui.Bitmap // 原色（bangumi、hikarinagi 的方形图标用 object-cover 原样显示）
+	color        *ui.Bitmap // 原色（metasource.SquareIcon 的方形图标用 object-cover 原样显示）
 	svg          *ui.SVG
 	w, h         float32 // 原始尺寸（SVG 是 viewBox），用于 w-auto 按比例算宽度
-}
-
-var logoFiles = map[enums.SourceType]string{
-	enums.Bangumi:      "bangumi-logo.png",
-	enums.VNDB:         "vndb-logo.svg",
-	enums.Ymgal:        "ymgal-logo.png",
-	enums.Steam:        "steam-logo.png",
-	enums.DLsite:       "dlsite-logo.png",
-	enums.TouchGal:     "touchgal-logo.webp",
-	enums.Hikarinagi:   "hikarinagi-logo.svg",
-	enums.ErogameScape: "erogamescape-logo.png",
-}
-
-// compactFiles 是 getMetadataSourceIcon(source, "compact") 与 logo 不同的来源。
-var compactFiles = map[enums.SourceType]string{
-	enums.Bangumi:    "bangumi-icon.png",
-	enums.Hikarinagi: "hikarinagi-icon.webp",
 }
 
 var (
@@ -51,14 +35,11 @@ var (
 )
 
 // sourceLogo 对应 getMetadataSourceIcon(source)；没有图标时返回 nil。只在主线程调用。
-func sourceLogo(source enums.SourceType) *logo { return loadLogo(logoFiles[source]) }
+func sourceLogo(source enums.SourceType) *logo { return loadLogo(metasource.LogoFile(source, false)) }
 
 // sourceCompactIcon 对应 getMetadataSourceIcon(source, "compact")。
 func sourceCompactIcon(source enums.SourceType) *logo {
-	if name, ok := compactFiles[source]; ok {
-		return loadLogo(name)
-	}
-	return sourceLogo(source)
+	return loadLogo(metasource.LogoFile(source, true))
 }
 
 func loadLogo(name string) *logo {
