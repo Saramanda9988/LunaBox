@@ -97,6 +97,7 @@ type AppConfig struct {
 	AllowDuplicateMetadataImport  bool                         `json:"allow_duplicate_metadata_import"`   // 批量/外部导入时允许相同 source_type + source_id
 	BangumiCoverSource            enums2.MetadataCoverSource   `json:"bangumi_cover_source,omitempty"`    // Bangumi 封面来源
 	VNDBCoverSource               enums2.MetadataCoverSource   `json:"vndb_cover_source,omitempty"`       // VNDB 封面来源
+	MetadataStrategy              *MetadataStrategy            `json:"metadata_strategy,omitempty"`       // 高级组合策略（基底来源与各字段来源）
 	SteamCoverOrientation         enums2.SteamCoverOrientation `json:"steam_cover_orientation,omitempty"` // Steam 封面方向
 	Theme                         string                       `json:"theme"`                             // light or dark
 	Language                      string                       `json:"language"`                          // zh, en, etc.
@@ -206,10 +207,10 @@ type AppConfig struct {
 	// 游戏库路径配置
 	GameLibraryPath string `json:"game_library_path,omitempty"` // 游戏库主目录（下载的游戏将解压到此）
 	// 批量导入偏好
-	BatchImportScanPreset      string `json:"batch_import_scan_preset,omitempty"` // 批量导入扫描预设
-	BatchImportHierarchyDepth  int    `json:"batch_import_hierarchy_depth"`       // 批量导入按目录导入层级
-	BatchImportPreferredSource string `json:"batch_import_preferred_source,omitempty"`
-	BatchImportLastDirectory   string `json:"batch_import_last_directory,omitempty"` // 批量导入目录选择器上次打开的目录
+	BatchImportScanPreset      string `json:"batch_import_scan_preset,omitempty"`      // 批量导入扫描预设
+	BatchImportHierarchyDepth  int    `json:"batch_import_hierarchy_depth"`            // 批量导入按目录导入层级
+	BatchImportPreferredSource string `json:"batch_import_preferred_source,omitempty"` // 已不再使用：旧版的必选数据源，迁移为 MetadataStrategy.Base
+	BatchImportLastDirectory   string `json:"batch_import_last_directory,omitempty"`   // 批量导入目录选择器上次打开的目录
 	// 网络代理配置
 	NetworkProxyMode string `json:"network_proxy_mode,omitempty"` // 全局网络代理模式：system / manual / direct
 	NetworkProxyURL  string `json:"network_proxy_url,omitempty"`  // 全局手动代理 URL
@@ -426,6 +427,7 @@ func LoadConfig() (*AppConfig, error) {
 	config.ProcessDetectionTimeoutSec = NormalizeProcessDetectionTimeoutSec(config.ProcessDetectionTimeoutSec)
 	config.GameCardLayout = NormalizeGameCardLayout(config.GameCardLayout)
 	NormalizeBatchImportPreferences(config)
+	NormalizeMetadataStrategy(config)
 
 	shouldSaveSanitizedConfig := recoveredFromBackup
 	if SanitizeErogameScapeConfig(config) {
@@ -536,6 +538,7 @@ func SaveConfig(config *AppConfig) error {
 	config.ProcessDetectionTimeoutSec = NormalizeProcessDetectionTimeoutSec(config.ProcessDetectionTimeoutSec)
 	config.GameCardLayout = NormalizeGameCardLayout(config.GameCardLayout)
 	NormalizeBatchImportPreferences(config)
+	NormalizeMetadataStrategy(config)
 	config.LocalDBBackupRetention = NormalizeLocalDBBackupRetention(config.LocalDBBackupRetention)
 	NormalizeScheduledDBBackup(config)
 	configCopy := *config

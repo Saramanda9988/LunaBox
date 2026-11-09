@@ -168,13 +168,13 @@ func getScanConfig(cfg *appconf.AppConfig) scanConfig {
 
 func clampDepth(d int) int { return min(maxHierarchyDepth, max(0, d)) }
 
-// preferredSource 对应 getPreferredSource：配置的优先来源已启用时用它，否则没有优先来源（""）。
+// preferredSource 对应 getPreferredSource：必选数据源就是高级组合策略的基底来源，已启用时用它，否则没有（""）。
 func preferredSource(cfg *appconf.AppConfig, enabled []enums.SourceType) enums.SourceType {
-	if cfg == nil || cfg.BatchImportPreferredSource == "" {
+	if cfg == nil {
 		return ""
 	}
-	s := enums.SourceType(cfg.BatchImportPreferredSource)
-	if slices.Contains(enabled, s) {
+	s := cfg.Strategy().Base
+	if s != "" && slices.Contains(enabled, s) {
 		return s
 	}
 	return ""
@@ -438,7 +438,11 @@ func (m *matcher) apply(i int, r vo.BatchImportMetadataMatchResult, err error) s
 	}
 	m.failures = 0
 	cand.AllMatches = r.Matches
-	if best := pickBestMatch(r.Matches, m.s.preferred, m.s.all); best != nil {
+	best := r.Composed // 高级组合策略生效时用组合好的结果
+	if best == nil {
+		best = pickBestMatch(r.Matches, m.s.preferred, m.s.all)
+	}
+	if best != nil {
 		g := best.Game
 		cand.clearMatch(MatchMatched, "")
 		cand.MatchedGame, cand.MatchedTags, cand.MatchSource = &g, best.Tags, best.Source

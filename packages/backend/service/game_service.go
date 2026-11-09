@@ -1794,7 +1794,16 @@ func (s *GameService) updateGameMetadataFromRemoteBySource(ctx context.Context, 
 		return "", err
 	}
 
-	remoteCoverURL, err := s.applyRemoteMetadataResult(existingGame, metaResult, downloadCoverImmediately, fieldSet)
+	// 没有指定来源时是默认的刷新：套用高级组合策略（游戏的默认来源作为基底）。
+	tagSource := enums2.SourceType("")
+	if requestedSource == "" {
+		metaResult, tagSource = s.composeRefreshResult(ctx, existingGame, metaResult, fieldSet)
+		if err := ctx.Err(); err != nil {
+			return "", err
+		}
+	}
+
+	remoteCoverURL, err := s.applyComposedMetadataResult(existingGame, metaResult, tagSource, downloadCoverImmediately, fieldSet)
 	if err != nil {
 		return "", err
 	}
@@ -1821,6 +1830,12 @@ func (s *GameService) updateMetadataSourceCachedAt(gameID string, sourceType enu
 }
 
 func (s *GameService) applyRemoteMetadataResult(existingGame models.Game, metaResult metadata.MetadataResult, downloadCoverImmediately bool, fieldSet gamehelper.MetadataUpdateFieldSet) (string, error) {
+	return s.applyComposedMetadataResult(existingGame, metaResult, "", downloadCoverImmediately, fieldSet)
+}
+
+// applyComposedMetadataResult 同 applyRemoteMetadataResult；tagSource 不为空时标签记为这个来源
+// （组合策略的标签可能来自基底以外的来源），否则记为结果的来源。
+func (s *GameService) applyComposedMetadataResult(existingGame models.Game, metaResult metadata.MetadataResult, tagSource enums2.SourceType, downloadCoverImmediately bool, fieldSet gamehelper.MetadataUpdateFieldSet) (string, error) {
 	remoteGame := metaResult.Game
 	remoteCoverURL := strings.TrimSpace(remoteGame.CoverURL)
 
@@ -1868,7 +1883,9 @@ func (s *GameService) applyRemoteMetadataResult(existingGame models.Game, metaRe
 
 	// 写入 tags（先删除刮削来源的旧 tag，再批量插入新 tag，保留用户 tag）
 	if fieldSet.Has(enums2.MetadataUpdateFieldTags) && s.tagService != nil {
-		tagSource := gamehelper.NormalizeMetadataSourceType(remoteGame.SourceType)
+		if tagSource == "" {
+			tagSource = gamehelper.NormalizeMetadataSourceType(remoteGame.SourceType)
+		}
 		if tagSource == "" {
 			tagSource = gamehelper.NormalizeMetadataSourceType(existingGame.SourceType)
 		}
@@ -1985,7 +2002,8 @@ func (s *GameService) refreshGamesMetadata(games []models.Game, logPrefix string
 
 		batchKey := gamehelper.MetadataRefreshBatchKeyForGame(game)
 		if metaResult, ok := batchResults.results[batchKey]; ok {
-			remoteCoverURL, err := s.applyRemoteMetadataResult(game, metaResult, false, fieldSet)
+			metaResult, tagSource := s.composeRefreshResult(s.ctx, game, metaResult, fieldSet)
+			remoteCoverURL, err := s.applyComposedMetadataResult(game, metaResult, tagSource, false, fieldSet)
 			if err != nil {
 				result.FailedGames++
 				result.FailedGameIDs = append(result.FailedGameIDs, game.ID)

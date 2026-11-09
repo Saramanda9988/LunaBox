@@ -98,6 +98,7 @@ func (d *DragDrop) View(c *ui.Context, t *theme.Theme, onComplete func()) {
 	})
 	enabled, _ := d.sources()
 	d.flow.manualModal(c, t, enabled)
+	d.strategyModal(c, t)
 }
 
 // DropOverlay 是根布局拖着文件经过窗口时的提示：absolute inset-0 z-50 bg-primary-500/20 backdrop-blur-sm，

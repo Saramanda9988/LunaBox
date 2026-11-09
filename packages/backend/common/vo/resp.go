@@ -47,6 +47,9 @@ type BatchImportMetadataMatchResult struct {
 	PreferredError       string                           `json:"preferred_error,omitempty"`
 	Matches              []GameMetadataFromWebVO          `json:"matches"`
 	SourceErrors         []BatchImportMetadataSourceError `json:"source_errors,omitempty"`
+	// Composed 是按高级组合策略拼好的结果（基底匹配成功且策略生效时才有），FieldSources 是它每个字段的实际来源。
+	Composed     *GameMetadataFromWebVO                         `json:"composed,omitempty"`
+	FieldSources map[enums.MetadataUpdateField]enums.SourceType `json:"field_sources,omitempty"`
 }
 
 type GameListResponse struct {

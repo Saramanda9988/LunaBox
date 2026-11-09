@@ -133,6 +133,7 @@ func (b *BatchImport) View(c *ui.Context, t *theme.Theme, onComplete func()) {
 	})
 	enabled, _ := b.sources()
 	b.flow.manualModal(c, t, enabled)
+	b.strategyModal(c, t)
 }
 
 // selectStep：py-8 text-center 的说明（i-mdi-folder-open text-6xl），下面是扫描游戏库、选择目录与扫描方式三个按钮。

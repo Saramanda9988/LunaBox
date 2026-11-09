@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	goruntime "runtime"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -796,20 +797,68 @@ func (s *ImportService) fetchMetadataForCandidateWithPreference(ctx context.Cont
 		}
 	}
 
+	// 内置 ID 对照表能由基底的 ID 查出其他来源的 ID 时，以它为准挑选同一个游戏，比按名称相似度可靠。
+	mappedIDs := s.gameService.mappedMetadataSourceIDs(map[enums.SourceType]string{result.PreferredSource: preferredMatch.Game.SourceID})
+	// 高级组合策略要用到的来源：按名称没匹配上但查得到 ID 时按 ID 获取。
+	var strategySources []enums.SourceType
+	if s.config != nil {
+		if strategy := s.config.Strategy(); strategy.Base == result.PreferredSource {
+			strategySources = gamehelper.StrategySources(strategy, result.PreferredSource)
+		}
+	}
+
 	for _, sourceResult := range fetchImportMetadataSources(remainingSources, searchName) {
+		source := gamehelper.NormalizeMetadataSourceType(sourceResult.source)
+		mappedID := mappedIDs[source]
 		if sourceResult.sourceErr != nil {
 			result.SourceErrors = append(result.SourceErrors, *sourceResult.sourceErr)
 			applog.LogWarningf(s.ctx, "FetchMetadataForCandidateWithPreference: source %s failed for %s: %s", sourceResult.source, searchName, sourceResult.sourceErr.Error)
-			continue
 		}
-		match, matched := selectBestImportMetadataMatch(sourceResult.matches, referenceNames, importMetadataNameSimilarityThreshold)
+		match, matched := selectImportMetadataMatchByID(sourceResult.matches, mappedID)
+		if !matched && (mappedID == "" || !slices.Contains(strategySources, source)) {
+			match, matched = selectBestImportMetadataMatch(sourceResult.matches, referenceNames, importMetadataNameSimilarityThreshold)
+		}
+		if !matched && mappedID != "" && slices.Contains(strategySources, source) {
+			match, matched = s.fetchImportMetadataByID(ctx, source, mappedID)
+		}
 		if matched {
 			selected = append(selected, match)
 		}
 	}
 
 	result.Matches = attachImportMetadataSources(selected)
+	result.Composed, result.FieldSources = s.composeImportMatches(result.PreferredSource, result.Matches)
 	return result, nil
+}
+
+// selectImportMetadataMatchByID 在候选里找 ID 为 sourceID 的结果。
+func selectImportMetadataMatchByID(matches []vo.GameMetadataFromWebVO, sourceID string) (vo.GameMetadataFromWebVO, bool) {
+	sourceID = strings.ToLower(strings.TrimSpace(sourceID))
+	if sourceID == "" {
+		return vo.GameMetadataFromWebVO{}, false
+	}
+	for _, match := range matches {
+		if strings.ToLower(strings.TrimSpace(match.Game.SourceID)) == sourceID {
+			return match, true
+		}
+	}
+	return vo.GameMetadataFromWebVO{}, false
+}
+
+// fetchImportMetadataByID 按来源与 ID 获取元数据（组合策略要用到、但按名称没有搜到的来源）。
+func (s *ImportService) fetchImportMetadataByID(ctx context.Context, source enums.SourceType, sourceID string) (vo.GameMetadataFromWebVO, bool) {
+	if s.gameService == nil {
+		return vo.GameMetadataFromWebVO{}, false
+	}
+	result, err := s.gameService.fetchMetadataResultBySource(ctx, source, strings.ToLower(sourceID))
+	if err != nil {
+		applog.LogWarningf(s.ctx, "FetchMetadataForCandidateWithPreference: fetch %s/%s by mapped ID failed: %v", source, sourceID, err)
+		return vo.GameMetadataFromWebVO{}, false
+	}
+	if gamehelper.IsEmptyGame(result.Game) || strings.TrimSpace(result.Game.SourceID) == "" {
+		return vo.GameMetadataFromWebVO{}, false
+	}
+	return vo.GameMetadataFromWebVO{Source: source, Game: result.Game, Tags: result.Tags}, true
 }
 
 type importMetadataSourceResult struct {

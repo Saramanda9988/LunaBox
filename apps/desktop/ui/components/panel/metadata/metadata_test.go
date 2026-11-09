@@ -11,8 +11,10 @@ import (
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/enums"
+	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
 	"lunabox/backend/service"
+	"lunabox/backend/service/gamehelper"
 	"lunabox/desktop/host"
 	"lunabox/desktop/host/hosttest"
 	"lunabox/desktop/ui/components/panel"
@@ -436,4 +438,22 @@ func TestScreenshotDump(t *testing.T) {
 	h.state.refreshOpen = false
 	h.state.previewOpen, h.state.preview = true, fakePreview()
 	save("metadata-preview.png")
+	h.state.previewOpen = false
+	h.cfg.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}.
+		WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi).
+		WithFieldSource(enums.MetadataUpdateFieldCover, enums.Bangumi).
+		WithFieldSource(enums.MetadataUpdateFieldAliases, appconf.MetadataStrategyAllSources).
+		WithFieldSource(enums.MetadataUpdateFieldSummary, enums.Ymgal))
+	save("metadata-strategy-entry.png")
+	h.state.strategy.Open(&h.cfg)
+	save("metadata-strategy.png")
+	h.state.strategy.trial = &strategyTrial{
+		result: vo.GameMetadataFromWebVO{Source: enums.VNDB, Game: models.Game{Name: "千恋＊万花", Aliases: []string{"Senren Banka"}, Company: "ゆずソフト", Summary: "穂織の町に伝わる神刀「叢雨丸」。", Rating: 8.6}},
+		sources: gamehelper.FieldSources{enums.MetadataUpdateFieldName: enums.Bangumi, enums.MetadataUpdateFieldAliases: appconf.MetadataStrategyAllSources,
+			enums.MetadataUpdateFieldCompany: enums.VNDB, enums.MetadataUpdateFieldSummary: enums.VNDB, enums.MetadataUpdateFieldRating: enums.VNDB, enums.MetadataUpdateFieldCover: enums.Bangumi},
+	}
+	h.tt.SetSize(1100, 1800)
+	save("metadata-strategy-trial.png")
+	h.tt.SetSize(1100, 760)
+	save("metadata-strategy-small.png")
 }

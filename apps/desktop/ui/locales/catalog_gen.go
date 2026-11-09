@@ -24438,3 +24438,505 @@ func NativeMissingPathFilterExit() string { return In(i18n.Locale()).NativeMissi
 func (msgs Messages) NativeMissingPathFilterExit() string {
 	return Catalog.Format(msgs.locale, "native_missingPathFilterExit", nil)
 }
+
+// NativeMetadataStrategyTitle says "高级组合策略"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.title
+func NativeMetadataStrategyTitle() string { return In(i18n.Locale()).NativeMetadataStrategyTitle() }
+
+// NativeMetadataStrategyTitle says "高级组合策略"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.title
+func (msgs Messages) NativeMetadataStrategyTitle() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_title", nil)
+}
+
+// NativeMetadataStrategyDescription says "…"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.description
+func NativeMetadataStrategyDescription() string {
+	return In(i18n.Locale()).NativeMetadataStrategyDescription()
+}
+
+// NativeMetadataStrategyDescription says "…"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.description
+func (msgs Messages) NativeMetadataStrategyDescription() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_description", nil)
+}
+
+// NativeMetadataStrategyBase says "基底来源"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.base
+func NativeMetadataStrategyBase() string { return In(i18n.Locale()).NativeMetadataStrategyBase() }
+
+// NativeMetadataStrategyBase says "基底来源"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.base
+func (msgs Messages) NativeMetadataStrategyBase() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_base", nil)
+}
+
+// NativeMetadataStrategyBaseHint says "基底来源没有找到的游戏视为未找到。"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.baseHint
+func NativeMetadataStrategyBaseHint() string {
+	return In(i18n.Locale()).NativeMetadataStrategyBaseHint()
+}
+
+// NativeMetadataStrategyBaseHint says "基底来源没有找到的游戏视为未找到。"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.baseHint
+func (msgs Messages) NativeMetadataStrategyBaseHint() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_baseHint", nil)
+}
+
+// NativeMetadataStrategyFollowBase says "跟随基底"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.followBase
+func NativeMetadataStrategyFollowBase() string {
+	return In(i18n.Locale()).NativeMetadataStrategyFollowBase()
+}
+
+// NativeMetadataStrategyFollowBase says "跟随基底"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.followBase
+func (msgs Messages) NativeMetadataStrategyFollowBase() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_followBase", nil)
+}
+
+// NativeMetadataStrategyFollowBaseWith says "跟随基底（{source}）"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.followBaseWith
+func NativeMetadataStrategyFollowBaseWith(source string) string {
+	return In(i18n.Locale()).NativeMetadataStrategyFollowBaseWith(source)
+}
+
+// NativeMetadataStrategyFollowBaseWith says "跟随基底（{source}）"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.followBaseWith
+func (msgs Messages) NativeMetadataStrategyFollowBaseWith(source string) string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_followBaseWith", map[string]any{"source": source})
+}
+
+// NativeMetadataStrategyMergeAll says "合并所有来源"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.mergeAll
+func NativeMetadataStrategyMergeAll() string {
+	return In(i18n.Locale()).NativeMetadataStrategyMergeAll()
+}
+
+// NativeMetadataStrategyMergeAll says "合并所有来源"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.mergeAll
+func (msgs Messages) NativeMetadataStrategyMergeAll() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_mergeAll", nil)
+}
+
+// NativeMetadataStrategySourceDisabled says "{source}（未启用）"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.sourceDisabled
+func NativeMetadataStrategySourceDisabled(source string) string {
+	return In(i18n.Locale()).NativeMetadataStrategySourceDisabled(source)
+}
+
+// NativeMetadataStrategySourceDisabled says "{source}（未启用）"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.sourceDisabled
+func (msgs Messages) NativeMetadataStrategySourceDisabled(source string) string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_sourceDisabled", map[string]any{"source": source})
+}
+
+// NativeMetadataStrategySummaryBase says "以 {base} 识别游戏，找不到即视为未找到。"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.summaryBase
+func NativeMetadataStrategySummaryBase(base string) string {
+	return In(i18n.Locale()).NativeMetadataStrategySummaryBase(base)
+}
+
+// NativeMetadataStrategySummaryBase says "以 {base} 识别游戏，找不到即视为未找到。"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.summaryBase
+func (msgs Messages) NativeMetadataStrategySummaryBase(base string) string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_summaryBase", map[string]any{"base": base})
+}
+
+// NativeMetadataStrategySummaryField says "{fields}来自 {source}"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.summaryField
+func NativeMetadataStrategySummaryField(fields string, source string) string {
+	return In(i18n.Locale()).NativeMetadataStrategySummaryField(fields, source)
+}
+
+// NativeMetadataStrategySummaryField says "{fields}来自 {source}"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.summaryField
+func (msgs Messages) NativeMetadataStrategySummaryField(fields string, source string) string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_summaryField", map[string]any{"fields": fields, "source": source})
+}
+
+// NativeMetadataStrategySummaryAliasesAll says "别名合并所有来源"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.summaryAliasesAll
+func NativeMetadataStrategySummaryAliasesAll() string {
+	return In(i18n.Locale()).NativeMetadataStrategySummaryAliasesAll()
+}
+
+// NativeMetadataStrategySummaryAliasesAll says "别名合并所有来源"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.summaryAliasesAll
+func (msgs Messages) NativeMetadataStrategySummaryAliasesAll() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_summaryAliasesAll", nil)
+}
+
+// NativeMetadataStrategySummaryRest says "其余字段，以及指定来源缺失的字段，使用 {base}。"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.summaryRest
+func NativeMetadataStrategySummaryRest(base string) string {
+	return In(i18n.Locale()).NativeMetadataStrategySummaryRest(base)
+}
+
+// NativeMetadataStrategySummaryRest says "其余字段，以及指定来源缺失的字段，使用 {base}。"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.summaryRest
+func (msgs Messages) NativeMetadataStrategySummaryRest(base string) string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_summaryRest", map[string]any{"base": base})
+}
+
+// NativeMetadataStrategySummaryAllBase says "所有字段都来自 {base}。"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.summaryAllBase
+func NativeMetadataStrategySummaryAllBase(base string) string {
+	return In(i18n.Locale()).NativeMetadataStrategySummaryAllBase(base)
+}
+
+// NativeMetadataStrategySummaryAllBase says "所有字段都来自 {base}。"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.summaryAllBase
+func (msgs Messages) NativeMetadataStrategySummaryAllBase(base string) string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_summaryAllBase", map[string]any{"base": base})
+}
+
+// NativeMetadataStrategySummaryNoBase says "未指定基底来源，组合策略不生效：批量导入时从所有已启用的来源中挑选结果。"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.summaryNoBase
+func NativeMetadataStrategySummaryNoBase() string {
+	return In(i18n.Locale()).NativeMetadataStrategySummaryNoBase()
+}
+
+// NativeMetadataStrategySummaryNoBase says "未指定基底来源，组合策略不生效：批量导入时从所有已启用的来源中挑选结果。"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.summaryNoBase
+func (msgs Messages) NativeMetadataStrategySummaryNoBase() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_summaryNoBase", nil)
+}
+
+// NativeMetadataStrategyListSeparator says "、"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.listSeparator
+func NativeMetadataStrategyListSeparator() string {
+	return In(i18n.Locale()).NativeMetadataStrategyListSeparator()
+}
+
+// NativeMetadataStrategyListSeparator says "、"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.listSeparator
+func (msgs Messages) NativeMetadataStrategyListSeparator() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_listSeparator", nil)
+}
+
+// NativeMetadataStrategyClauseSeparator says "；"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.clauseSeparator
+func NativeMetadataStrategyClauseSeparator() string {
+	return In(i18n.Locale()).NativeMetadataStrategyClauseSeparator()
+}
+
+// NativeMetadataStrategyClauseSeparator says "；"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.clauseSeparator
+func (msgs Messages) NativeMetadataStrategyClauseSeparator() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_clauseSeparator", nil)
+}
+
+// NativeMetadataStrategyRefreshHint says "更新元数据时同样适用：以游戏的默认来源为基底，按上面的设置取各字段。"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.refreshHint
+func NativeMetadataStrategyRefreshHint() string {
+	return In(i18n.Locale()).NativeMetadataStrategyRefreshHint()
+}
+
+// NativeMetadataStrategyRefreshHint says "更新元数据时同样适用：以游戏的默认来源为基底，按上面的设置取各字段。"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.refreshHint
+func (msgs Messages) NativeMetadataStrategyRefreshHint() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_refreshHint", nil)
+}
+
+// NativeMetadataStrategyReset says "全部跟随基底"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.reset
+func NativeMetadataStrategyReset() string { return In(i18n.Locale()).NativeMetadataStrategyReset() }
+
+// NativeMetadataStrategyReset says "全部跟随基底"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.reset
+func (msgs Messages) NativeMetadataStrategyReset() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_reset", nil)
+}
+
+// NativeMetadataStrategyTrialTitle says "试刮一个游戏"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.trialTitle
+func NativeMetadataStrategyTrialTitle() string {
+	return In(i18n.Locale()).NativeMetadataStrategyTrialTitle()
+}
+
+// NativeMetadataStrategyTrialTitle says "试刮一个游戏"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.trialTitle
+func (msgs Messages) NativeMetadataStrategyTrialTitle() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_trialTitle", nil)
+}
+
+// NativeMetadataStrategyTrialPlaceholder says "输入游戏名称"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.trialPlaceholder
+func NativeMetadataStrategyTrialPlaceholder() string {
+	return In(i18n.Locale()).NativeMetadataStrategyTrialPlaceholder()
+}
+
+// NativeMetadataStrategyTrialPlaceholder says "输入游戏名称"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.trialPlaceholder
+func (msgs Messages) NativeMetadataStrategyTrialPlaceholder() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_trialPlaceholder", nil)
+}
+
+// NativeMetadataStrategyTrialButton says "试刮"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.trialButton
+func NativeMetadataStrategyTrialButton() string {
+	return In(i18n.Locale()).NativeMetadataStrategyTrialButton()
+}
+
+// NativeMetadataStrategyTrialButton says "试刮"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.trialButton
+func (msgs Messages) NativeMetadataStrategyTrialButton() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_trialButton", nil)
+}
+
+// NativeMetadataStrategyTrialNeedBase says "先选择基底来源。"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.trialNeedBase
+func NativeMetadataStrategyTrialNeedBase() string {
+	return In(i18n.Locale()).NativeMetadataStrategyTrialNeedBase()
+}
+
+// NativeMetadataStrategyTrialNeedBase says "先选择基底来源。"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.trialNeedBase
+func (msgs Messages) NativeMetadataStrategyTrialNeedBase() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_trialNeedBase", nil)
+}
+
+// NativeMetadataStrategyTrialNotFound says "{base} 没有找到这个游戏。"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.trialNotFound
+func NativeMetadataStrategyTrialNotFound(base string) string {
+	return In(i18n.Locale()).NativeMetadataStrategyTrialNotFound(base)
+}
+
+// NativeMetadataStrategyTrialNotFound says "{base} 没有找到这个游戏。"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.trialNotFound
+func (msgs Messages) NativeMetadataStrategyTrialNotFound(base string) string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_trialNotFound", map[string]any{"base": base})
+}
+
+// NativeMetadataStrategyTrialFailed says "试刮失败：{error}"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.trialFailed
+func NativeMetadataStrategyTrialFailed(error string) string {
+	return In(i18n.Locale()).NativeMetadataStrategyTrialFailed(error)
+}
+
+// NativeMetadataStrategyTrialFailed says "试刮失败：{error}"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.trialFailed
+func (msgs Messages) NativeMetadataStrategyTrialFailed(error string) string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_trialFailed", map[string]any{"error": error})
+}
+
+// NativeMetadataStrategyEmpty says "（空）"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.empty
+func NativeMetadataStrategyEmpty() string { return In(i18n.Locale()).NativeMetadataStrategyEmpty() }
+
+// NativeMetadataStrategyEmpty says "（空）"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.empty
+func (msgs Messages) NativeMetadataStrategyEmpty() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_empty", nil)
+}
+
+// NativeMetadataStrategyButton says "组合策略"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.button
+func NativeMetadataStrategyButton() string { return In(i18n.Locale()).NativeMetadataStrategyButton() }
+
+// NativeMetadataStrategyButton says "组合策略"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.button
+func (msgs Messages) NativeMetadataStrategyButton() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_button", nil)
+}
+
+// NativeMetadataStrategyButtonActive says "组合策略：已开启"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.buttonActive
+func NativeMetadataStrategyButtonActive() string {
+	return In(i18n.Locale()).NativeMetadataStrategyButtonActive()
+}
+
+// NativeMetadataStrategyButtonActive says "组合策略：已开启"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.buttonActive
+func (msgs Messages) NativeMetadataStrategyButtonActive() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_buttonActive", nil)
+}
+
+// NativeMetadataStrategySettingsLabel says "高级组合策略"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.settingsLabel
+func NativeMetadataStrategySettingsLabel() string {
+	return In(i18n.Locale()).NativeMetadataStrategySettingsLabel()
+}
+
+// NativeMetadataStrategySettingsLabel says "高级组合策略"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.settingsLabel
+func (msgs Messages) NativeMetadataStrategySettingsLabel() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_settingsLabel", nil)
+}
+
+// NativeMetadataStrategySettingsHint says "分别指定游戏名、封面、标签、简介等字段从哪个来源获取。"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.settingsHint
+func NativeMetadataStrategySettingsHint() string {
+	return In(i18n.Locale()).NativeMetadataStrategySettingsHint()
+}
+
+// NativeMetadataStrategySettingsHint says "分别指定游戏名、封面、标签、简介等字段从哪个来源获取。"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.settingsHint
+func (msgs Messages) NativeMetadataStrategySettingsHint() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_settingsHint", nil)
+}
+
+// NativeMetadataStrategySettingsButton says "设置组合策略"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.settingsButton
+func NativeMetadataStrategySettingsButton() string {
+	return In(i18n.Locale()).NativeMetadataStrategySettingsButton()
+}
+
+// NativeMetadataStrategySettingsButton says "设置组合策略"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.settingsButton
+func (msgs Messages) NativeMetadataStrategySettingsButton() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_settingsButton", nil)
+}
+
+// NativeMetadataStrategyCardSource says "组合策略 · 基底 {base}"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.cardSource
+func NativeMetadataStrategyCardSource(base string) string {
+	return In(i18n.Locale()).NativeMetadataStrategyCardSource(base)
+}
+
+// NativeMetadataStrategyCardSource says "组合策略 · 基底 {base}"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.cardSource
+func (msgs Messages) NativeMetadataStrategyCardSource(base string) string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_cardSource", map[string]any{"base": base})
+}
+
+// NativeMetadataStrategyCardHint says "按高级组合策略组合各来源的结果"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.cardHint
+func NativeMetadataStrategyCardHint() string {
+	return In(i18n.Locale()).NativeMetadataStrategyCardHint()
+}
+
+// NativeMetadataStrategyCardHint says "按高级组合策略组合各来源的结果"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.cardHint
+func (msgs Messages) NativeMetadataStrategyCardHint() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_cardHint", nil)
+}

@@ -12,6 +12,7 @@ import (
 	"lunabox/backend/common/importpath"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
+	"lunabox/backend/service/gamehelper"
 	"lunabox/desktop/ui/assets"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/better"
@@ -488,6 +489,29 @@ func (a *AddGame) remoteStep(c *ui.Context, t *theme.Theme, opts []better.Select
 	})
 }
 
+// leadResult 是排在候选最前面的组合结果：高级组合策略生效、并且结果里有基底来源时，用当前的候选（用户移除的不算）
+// 组合；否则为 nil。选中它时以基底作为默认来源，各候选的 ID 都记下。
+func (a *AddGame) leadResult(c *ui.Context, onAdded func()) *LeadResult {
+	cfg := a.env.Config()
+	strategy := cfg.Strategy()
+	if !gamehelper.StrategyActive(strategy, metadatapanel.EnabledSources(cfg)) {
+		return nil
+	}
+	i := slices.IndexFunc(a.results, func(r vo.GameMetadataFromWebVO) bool {
+		return r.Source == strategy.Base && (r.Game.Name != "" || r.Game.SourceID != "")
+	})
+	if i < 0 {
+		return nil
+	}
+	others := slices.Delete(slices.Clone(a.results), i, i+1)
+	composed, _ := gamehelper.ComposeMetadata(strategy, a.results[i], others)
+	return &LeadResult{
+		Result:   composed,
+		Subtitle: locales.NativeMetadataStrategyCardSource(SourceLabel(strategy.Base)),
+		OnSelect: func() { a.selectResult(c, composed, onAdded) },
+	}
+}
+
 // resultsStep 是 MetadataSearchResultsStep：底部 border-t pt-4 的“← 返回”与“都不是？手动填写 / 按 ID 搜索”。
 func (a *AddGame) resultsStep(c *ui.Context, t *theme.Theme, onAdded func()) {
 	a.resultsUI.View(c, t, SearchResultsProps{
@@ -496,6 +520,7 @@ func (a *AddGame) resultsStep(c *ui.Context, t *theme.Theme, onAdded func()) {
 		Disabled: a.loading,
 		OnSelect: func(r vo.GameMetadataFromWebVO) { a.selectResult(c, r, onAdded) },
 		OnRemove: func(i int) { a.results = slices.Delete(slices.Clone(a.results), i, i+1) },
+		Lead:     a.leadResult(c, onAdded),
 		Footer: func() {
 			ui.Row(c.Key("footer")).Padding(16, 0, 0, 0).AlignItems(ui.Center).Justify(ui.SpaceBetween).
 				BorderWidth(t.HL, 0, 0, 0).BorderColor(t.Pick(theme.Brand200, theme.Brand700)).Children(func() {

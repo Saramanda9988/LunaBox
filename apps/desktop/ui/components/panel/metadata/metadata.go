@@ -1,6 +1,7 @@
 // Package metadata 对应原版 components/panel/MetadataSettingsPanel.tsx（设置页“元数据”分区）：元数据来源的开关、
 // Bangumi / VNDB 封面来源、ErogameScape 地址、Steam 竖版封面等选项，以及批量更新元数据、下载远程封面与补全游戏 ID
 // 三个操作（含 MetadataFieldSelectModal、MetadataRefreshProgressModal、GameIDEnrichmentPreviewModal）。
+// 另有原版没有的高级组合策略（strategy.go 的 StrategyModal，批量导入也用它）。
 package metadata
 
 import (
@@ -50,6 +51,8 @@ type State struct {
 	confirmFields []enums.MetadataUpdateField // confirmConfig.onConfirm 要用的字段
 
 	toasts []env.Notice // 待显示的提示（后台结果的 apply 拿不到 Context），下一次构建时显示
+
+	strategy StrategyModal // 高级组合策略弹窗
 }
 
 func (s *State) toast(n env.Notice) { s.toasts = append(s.toasts, n) }
@@ -83,6 +86,7 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 	ui.Column(c.Key("metadata-options")).FillWidth().Gap(16).Children(func() {
 		panel.GroupTitle(c, t, locales.SettingsMetadataSourceTitle())
 		s.sourceGrid(c, t, p)
+		s.strategyRow(c, t, p)
 		coverSources(c, t, p, sm)
 		erogameScapeField(c, t, p)
 		cfg := p.Config
@@ -146,6 +150,12 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 			s.confirmOpen, s.confirmFields = true, fields
 		},
 	})
+	s.strategy.View(c, t, StrategyModalProps{
+		Env: p.Env, Enabled: EnabledSources(p.Config), TopOffset: panel.TopOffset,
+		OnSave: func(strategy appconf.MetadataStrategy) {
+			p.PatchLive(func(cfg *appconf.AppConfig) { cfg.SetStrategy(strategy) })
+		},
+	})
 	progressModal(c, t, progressModalProps{
 		open: s.refreshOpen, progress: s.progress, refreshing: s.refreshing,
 		onRetryFailed: func() { s.retryFailed(p) },
@@ -180,6 +190,31 @@ func (s *State) sourceGrid(c *ui.Context, t *theme.Theme, p panel.Settings) {
 				better.Switch(c, t, "switch", checked, false, toggle)
 			})
 		}
+	})
+}
+
+// strategyRow 是高级组合策略的入口（原版没有）：与来源卡片同样的 glass-panel 卡片，左边名称、说明与当前策略的文字说明，
+// 右边打开弹窗的按钮。
+func (s *State) strategyRow(c *ui.Context, t *theme.Theme, p panel.Settings) {
+	bg, border := t.GlassPanel(ui.Transparent, t.Pick(theme.Brand200, theme.Brand700))
+	ui.Row(c.Key("strategy")).FillWidth().Gap(16).Padding(16).Radius(8).AlignItems(ui.Center).
+		Background(bg).Border(t.HL, border).Children(func() {
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(6).Children(func() {
+			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+				components.Icon(c, "layers-triple-outline", 20, t.Pick(theme.Sky600, theme.Sky400))
+				components.Text(c, locales.NativeMetadataStrategySettingsLabel(), theme.TextSM, theme.WeightMedium, t.SectionLabel)
+			})
+			panel.FieldHint(c, t, locales.NativeMetadataStrategySettingsHint())
+			for i, line := range StrategySummary(p.Config.Strategy(), EnabledSources(p.Config)) {
+				ui.Box(c.Key(i)).Children(func() {
+					components.Text(c, line, theme.TextXS, theme.WeightMedium, t.Pick(theme.Sky700, theme.Sky300))
+				})
+			}
+		})
+		better.Button(c, t, "open", better.ButtonProps{
+			Icon: "tune-variant", Label: locales.NativeMetadataStrategySettingsButton(),
+			OnClick: func() { s.strategy.Open(p.Config) },
+		})
 	})
 }
 

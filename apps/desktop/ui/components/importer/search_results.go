@@ -34,6 +34,15 @@ type SearchResultsProps struct {
 	OnRemove func(index int)
 	Empty    func() // 没有结果时的内容；为 nil 时不显示
 	Footer   func()
+	// Lead 不为 nil 时排在所有候选前面（原版没有）：按高级组合策略组合好的结果。
+	Lead *LeadResult
+}
+
+// LeadResult 是排在最前面的组合结果卡片。
+type LeadResult struct {
+	Result   vo.GameMetadataFromWebVO
+	Subtitle string // 卡片名称下的说明（如“组合策略 · 基底 VNDB”）
+	OnSelect func()
 }
 
 // View 对应 MetadataSearchResultsStep（space-y-6）：提示与选择说明，横向滚动的候选卡片（两侧翻页按钮），
@@ -109,6 +118,9 @@ func (s *SearchResults) cards(c *ui.Context, t *theme.Theme, p SearchResultsProp
 	wrap.Children(func() {
 		ui.ScrollHorizontal(c.Key("scroller")).FillWidth().TrackScroll(st).Children(func() {
 			ui.Row(c).Gap(16).Padding(8, 8, 24, 8).AlignItems(ui.Start).Children(func() {
+				if p.Lead != nil {
+					leadCard(c.Key("lead"), t, p, cardW)
+				}
 				for i, item := range p.Results {
 					if item.Game.Name == "" && item.Game.SourceID == "" {
 						continue // 原版跳过没有 Game 的结果
@@ -180,6 +192,43 @@ func resultCard(c *ui.Context, t *theme.Theme, p SearchResultsProps, item vo.Gam
 				Shadow(0, 4, 6, -1, ui.RGBA(0, 0, 0, 0.1)).Shadow(0, 2, 4, -2, ui.RGBA(0, 0, 0, 0.1)).Children(func() {
 				components.Icon(c, "close", 18, theme.White)
 			})
+		})
+	})
+}
+
+// leadCard 是组合结果的卡片：与候选卡片同样的布局，天蓝色的边框与左上角的组合策略图标，没有移除按钮。
+func leadCard(c *ui.Context, t *theme.Theme, p SearchResultsProps, width float32) {
+	lead := p.Lead
+	card := ui.Column(c).Width(width).Shrink(0).Radius(12).Background(t.Pick(theme.Sky50, theme.Sky900.Alpha(0.3)))
+	border := t.Pick(theme.Sky300, theme.Sky700)
+	if card.Hovered() {
+		border = t.Pick(theme.Sky500, theme.Sky500)
+		card.Shadow(0, 4, 6, -1, ui.RGBA(0, 0, 0, 0.1)).Shadow(0, 2, 4, -2, ui.RGBA(0, 0, 0, 0.1))
+	} else {
+		card.Shadow(0, 1, 3, 0, ui.RGBA(0, 0, 0, 0.1)).Shadow(0, 1, 2, -1, ui.RGBA(0, 0, 0, 0.1))
+	}
+	card.Border(2*t.HL, border).Transition(theme.ColorsTransition(150 * time.Millisecond))
+	g := lead.Result.Game
+	card.Children(func() {
+		btn := ui.ButtonBase(c.Key("select")).Column().FillWidth().Padding(12).AlignItems(ui.Stretch).FocusRing(false).
+			Cursor(ui.CursorPointer).Label(locales.NativeMetadataStrategyCardHint())
+		if p.Disabled {
+			components.Disable(btn, 0.6)
+		}
+		btn.OnClick(func() {
+			if lead.OnSelect != nil {
+				lead.OnSelect()
+			}
+		}).Children(func() {
+			ui.Box(c).FillWidth().AspectRatio(3.0 / 4).Radius(6).Clip().Center().Background(t.Pick(theme.Brand200, theme.Brand700)).Children(func() {
+				coverImage(c, p.Covers, g, 36)
+			})
+			components.TextMargin(c, g.Name, theme.TextSM, theme.WeightBold, t.TextStrong, 8, 0, 0, 0).SingleLine()
+			components.Text(c, lead.Subtitle, theme.TextXS, theme.WeightMedium, t.Pick(theme.Sky700, theme.Sky300)).SingleLine()
+		})
+		ui.Box(c.Key("badge")).Absolute().Top(-10).Left(-10).Size(28, 28).Radius(999).Center().PassThrough().
+			Background(t.Pick(theme.Sky500, theme.Sky600)).Border(2, t.Pick(theme.White, theme.Brand800)).Children(func() {
+			components.Icon(c, "layers-triple-outline", 16, theme.White)
 		})
 	})
 }

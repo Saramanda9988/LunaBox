@@ -112,6 +112,28 @@ func (m *Mapper) Resolve(source enums.SourceType, sourceID string) (IDs, bool) {
 	return m.records[index], true
 }
 
+// SourceID 返回对照记录里 source 的 ID（格式同游戏里存的：VNDB 带 v 前缀）；没有时 ok 为假。
+func (ids IDs) SourceID(source enums.SourceType) (string, bool) {
+	var id int64
+	switch source {
+	case enums.VNDB:
+		id = ids.VNDBID
+	case enums.Bangumi:
+		id = ids.BangumiID
+	case enums.Steam:
+		id = ids.SteamID
+	case enums.Hikarinagi:
+		id = ids.HikarinagiID
+	}
+	if id <= 0 {
+		return "", false
+	}
+	if source == enums.VNDB {
+		return "v" + strconv.FormatInt(id, 10), true
+	}
+	return strconv.FormatInt(id, 10), true
+}
+
 func loadEmbeddedDatabase() (*Mapper, error) {
 	databaseBytes, err := embeddedDatabase.ReadFile(embeddedDatabaseName)
 	if err != nil {

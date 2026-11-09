@@ -7,6 +7,7 @@ import (
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/enums"
+	"lunabox/backend/service/gamehelper"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/better"
 	"lunabox/desktop/ui/components/panel/metadata"
@@ -21,6 +22,8 @@ type scanSteps struct {
 	flow    *Flow
 	step    string // preview、match、importing（以及各弹窗自己的 select、scan、processing、result）
 	preview previewState
+
+	strategy metadata.StrategyModal // 高级组合策略弹窗
 }
 
 // sources 是 enabledMetadataSources 与由它得到的匹配设置。
@@ -49,11 +52,28 @@ func (s *scanSteps) importCandidates(c *ui.Context, matchedOnly bool, onComplete
 	s.flow.Import(c, matchedOnly, back, back, onComplete)
 }
 
-// setPreferredSource 对应 handlePreferredSourceChange：patchLiveConfig({ batch_import_preferred_source })。
+// setPreferredSource 对应 handlePreferredSourceChange：必选数据源保存为高级组合策略的基底来源。
 func (s *scanSteps) setPreferredSource(v string) {
-	if err := s.env.PatchConfig(func(cfg *appconf.AppConfig) { cfg.BatchImportPreferredSource = v }); err != nil {
+	if err := s.env.PatchConfig(func(cfg *appconf.AppConfig) {
+		strategy := cfg.Strategy()
+		strategy.Base = enums.SourceType(v)
+		cfg.SetStrategy(strategy)
+	}); err != nil {
 		log.Printf("import: save preferred source: %v", err)
 	}
+}
+
+// strategyModal 构建高级组合策略弹窗，在各弹窗的最后调用（画在最上面）。
+func (s *scanSteps) strategyModal(c *ui.Context, t *theme.Theme) {
+	enabled, _ := s.sources()
+	s.strategy.View(c, t, metadata.StrategyModalProps{
+		Env: s.env, Enabled: enabled, TopOffset: env.TopbarHeight,
+		OnSave: func(strategy appconf.MetadataStrategy) {
+			if err := s.env.PatchConfig(func(cfg *appconf.AppConfig) { cfg.SetStrategy(strategy) }); err != nil {
+				log.Printf("import: save metadata strategy: %v", err)
+			}
+		},
+	})
 }
 
 // previewProps 返回两个弹窗相同的 ImportPreviewStep 属性。
@@ -74,12 +94,27 @@ func (s *scanSteps) previewProps(c *ui.Context, t *theme.Theme, onComplete func(
 }
 
 // sourceToolbar 是 actionToolbar：h-11 的“优先来源”标签（rounded-l-lg border-r-0 bg-white/80 px-3 text-xs font-medium shadow-sm）
-// 与 w-40 的 BetterSelect。
+// 与 w-40 的 BetterSelect，后面是打开高级组合策略的按钮（原版没有；策略生效时显示“已开启”）。
 func (s *scanSteps) sourceToolbar(c *ui.Context, t *theme.Theme, enabled []enums.SourceType, preferred enums.SourceType) {
 	opts := []better.SelectOption{{Label: locales.BatchImportModalPreferredSourceNone(), Value: ""}}
 	for _, src := range enabled {
 		opts = append(opts, better.SelectOption{Label: SourceLabel(src), Value: string(src)})
 	}
+	ui.Row(c.Key("source-toolbar")).Gap(8).AlignItems(ui.Stretch).Children(func() {
+		s.preferredSourceSelect(c, t, opts, preferred)
+		label := locales.NativeMetadataStrategyButton()
+		if gamehelper.StrategyActive(s.env.Config().Strategy(), enabled) {
+			label = locales.NativeMetadataStrategyButtonActive()
+		}
+		better.Button(c, t, "strategy", better.ButtonProps{
+			Size: better.ButtonLG, Icon: "layers-triple-outline", Label: label,
+			OnClick: func() { s.strategy.Open(s.env.Config()) },
+		})
+	})
+}
+
+// preferredSourceSelect 是“必选数据源”标签与下拉框。
+func (s *scanSteps) preferredSourceSelect(c *ui.Context, t *theme.Theme, opts []better.SelectOption, preferred enums.SourceType) {
 	ui.Row(c.Key("preferred-source")).AlignItems(ui.Stretch).Children(func() {
 		fg := t.Pick(theme.Brand600, theme.Brand300)
 		ui.Row(c).Height(44).Padding(0, 12).Gap(6).AlignItems(ui.Center).Shrink(0).Radius(8, 0, 0, 8).
