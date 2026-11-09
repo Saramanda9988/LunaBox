@@ -256,12 +256,15 @@ func (a *app) attach() {
 // newMainWindow 创建隐藏的主窗口（启动完成后显示，开机自启动时留在托盘），尺寸与最大化状态取自配置。
 func (a *app) newMainWindow() *mygo.Window {
 	cfg := a.core.Config
+	// 配置里的尺寸可能来自更大的屏幕（换了显示器、导入了别人的配置），缩到主显示器的工作区以内，
+	// 否则窗口会超出屏幕。命令行指定的尺寸（截图用）不改。
+	sw, sh := fitWorkArea(cfg.WindowWidth, cfg.WindowHeight, mygo.Screen.PrimaryDisplay().WorkArea)
 	w, h := a.o.Width, a.o.Height
 	if w == 0 {
-		w = max(cfg.WindowWidth, minWidth)
+		w = sw
 	}
 	if h == 0 {
-		h = max(cfg.WindowHeight, minHeight)
+		h = sh
 	}
 	bg := "#f3f4f6"
 	if mygo.Theme.IsDark() {
@@ -290,6 +293,16 @@ func (a *app) newMainWindow() *mygo.Window {
 		opts.HideWindowButtons = false
 	}
 	return mygo.NewWindow(opts)
+}
+
+// fitWorkArea 返回窗口的初始尺寸：至少 minWidth × minHeight，超出工作区 wa 时缩到工作区以内（工作区比最小尺寸还小时
+// 用最小尺寸）。wa 为空（拿不到显示器）时不限制。
+func fitWorkArea(w, h int, wa mygo.Rectangle) (int, int) {
+	w, h = max(w, minWidth), max(h, minHeight)
+	if wa.Width > 0 && wa.Height > 0 {
+		w, h = max(min(w, wa.Width), minWidth), max(min(h, wa.Height), minHeight)
+	}
+	return w, h
 }
 
 // onSecondInstance 在又启动了一次时调用：处理它带来的 lunabox:// 链接（没有 IPC 服务转交时），否则显示主窗口。
