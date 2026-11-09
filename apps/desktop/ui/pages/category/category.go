@@ -22,7 +22,7 @@ const (
 	candidatePageSize = 80                     // CANDIDATE_PAGE_SIZE
 )
 
-// Page 是收藏详情页的状态。筛选与排序跨收藏夹保留（原版存进 localStorage 的 category_*），
+// Page 是收藏详情页的状态。筛选与排序跨收藏夹保留，并存进 env.Storage 的 category 跨重启恢复（原版 localStorage 的 category_*），
 // 其余每次进入页面（Open）时重置，与原版路由重新挂载组件一致。
 type Page struct {
 	env *env.Env
@@ -68,6 +68,7 @@ func New(e *env.Env) *Page {
 		p.blurNSFW = cfg.BlurNSFWGameCovers
 		p.landscape = cfg.GameCardLayout == "landscape"
 	}
+	p.filters.Restore(e.Storage, "category", bar.GameSortOptions())
 	return p
 }
 

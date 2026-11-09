@@ -56,6 +56,7 @@ type Env struct {
 	Win     *mygo.Window  // 测试时为 nil
 	Router  *ui.Router
 	Covers  *covers.Cache
+	Storage *Storage // 原版 localStorage 里的界面状态（筛选与排序），重启后恢复；测试里可能为 nil
 
 	// SidebarOpen 报告侧边栏是否展开（store 的 isSidebarOpen）：保存配置时 sidebar_open 取它（withSidebarState）。
 	// 测试里为 nil，保存时保留配置里的值。

@@ -46,6 +46,7 @@ type Filters struct {
 
 	Presets    []models.GameFilterPreset
 	presetUI   presetMenu
+	store      filterStore // 跨重启保存（Restore）
 	DrawerOpen bool
 	Batch      bool
 }
@@ -268,6 +269,7 @@ func (p FilterBarProps) changed() {
 // 筛选抽屉由 FilterDrawer 在页面最后构建。
 func FilterBar(c *ui.Context, t *theme.Theme, p FilterBarProps) {
 	f := p.Filters
+	f.persist()
 	ui.Column(c.Key("filterbar")).Margin(16, 0).Gap(16).Children(func() {
 		ui.Row(c).Justify(ui.SpaceBetween).AlignItems(ui.Center).Gap(16).Children(func() {
 			searchInput(c, t, p)

@@ -59,6 +59,7 @@ func New(e *env.Env) *Page {
 		l.blurNSFW = cfg.BlurNSFWGameCovers
 		l.landscape = cfg.GameCardLayout == "landscape"
 	}
+	l.filters.Restore(e.Storage, "library", bar.GameSortOptions())
 	return l
 }
 

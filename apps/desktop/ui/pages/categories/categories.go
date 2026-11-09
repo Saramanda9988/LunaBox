@@ -29,7 +29,8 @@ const (
 
 const skeletonDelay = 300 * time.Millisecond // 延迟显示骨架屏
 
-// Page 是收藏夹列表页面的状态。搜索与排序跨页面保留（原版存进 localStorage），其余每次进入页面时重置。
+// Page 是收藏夹列表页面的状态。搜索与排序跨页面保留，并存进 env.Storage 跨重启恢复（原版的 localStorage），
+// 其余每次进入页面时重置。
 type Page struct {
 	env *env.Env
 
@@ -51,11 +52,13 @@ type Page struct {
 
 // New 创建页面；数据在 Open 时加载。
 func New(e *env.Env) *Page {
-	return &Page{
+	p := &Page{
 		env:      e,
 		filters:  bar.Filters{SortBy: sortByName, SortOrder: enums.SortOrderAsc},
 		selected: map[string]bool{},
 	}
+	p.filters.Restore(e.Storage, "categories", sortOptions())
+	return p
 }
 
 // Open 进入页面：与原版路由重新挂载组件一致，清空列表、退出批量模式并重新加载。

@@ -114,7 +114,8 @@ func New(list Backend, svc *api.Services, opts Options) *App {
 	}
 	router := ui.NewRouter(route)
 	router.Transition = ui.TransitionNone // 原版切换页面没有过渡
-	e := &env.Env{Backend: list, Svc: svc, Router: router, Covers: covers.New(), Theme: theme.New(true, 1)}
+	e := &env.Env{Backend: list, Svc: svc, Router: router, Covers: covers.New(), Storage: env.NewStorage(list.DataDir()),
+		Theme: theme.New(true, 1)}
 	cfg := list.Config()
 	p := perf.New()
 	lib := library.New(e)
