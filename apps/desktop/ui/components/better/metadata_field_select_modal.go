@@ -28,14 +28,19 @@ type MetadataFieldSelectProps struct {
 	OnStrategy func()
 	// FieldNotes 是字段名后面的小标签（原版没有：这个字段将从哪个来源更新，或者那个来源没有元数据 ID）。
 	FieldNotes map[enums.MetadataUpdateField]FieldNote
-	OnClose    func()
-	OnConfirm  func(fields []enums.MetadataUpdateField)
+	// OnUseStrategy 不为 nil 时，“更新全部字段”下面有“使用高级组合策略”的开关（原版没有），UseStrategy 是它的状态。
+	UseStrategy   bool
+	OnUseStrategy func(on bool)
+	OnClose       func()
+	OnConfirm     func(fields []enums.MetadataUpdateField)
 }
 
-// FieldNote 是字段名后面的小标签：Warn 时用琥珀色（来源没有元数据 ID），否则是天蓝色。
+// FieldNote 是字段名后面的小标签：Warn 时用琥珀色（回退到了后面的来源，或者没有元数据 ID），否则是天蓝色。
+// Reason 不为空时标签前面有 info 图标，悬停显示原因。
 type FieldNote struct {
-	Text string
-	Warn bool
+	Text   string
+	Warn   bool
+	Reason string
 }
 
 // InitialMetadataFields 是 initialSelectedFields：initialFields 为空时用 DEFAULT_METADATA_UPDATE_FIELDS。返回副本。
@@ -94,6 +99,18 @@ func MetadataFieldSelectModal(c *ui.Context, t *theme.Theme, key string, p Metad
 						}
 					})
 				})
+			if p.OnUseStrategy != nil {
+				// 与“更新全部字段”同样的行：名称、说明与开关。
+				ui.Row(c.Key("use-strategy")).Margin(12, 0, 0, 0).Gap(16).Padding(12).Radius(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).
+					Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).Background(t.Pick(theme.Brand50, theme.Brand700.Alpha(0.4))).
+					Children(func() {
+						ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4).Children(func() {
+							components.Text(c, locales.NativeMetadataRefreshUseStrategy(), theme.TextSM, theme.WeightSemibold, t.Pick(theme.Brand800, theme.Brand200))
+							components.Text(c, locales.NativeMetadataRefreshUseStrategyHint(), theme.TextXS, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400))
+						})
+						Switch(c, t, "switch", p.UseStrategy, false, p.OnUseStrategy)
+					})
+			}
 			// mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2
 			cols := 1
 			if winW, _ := c.Size(); winW >= 640 {
@@ -146,19 +163,35 @@ func metadataFieldToggle(c *ui.Context, t *theme.Theme, text [2]string, note Fie
 			ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 				components.Text(c, text[0], theme.TextSM, theme.WeightMedium, t.Pick(theme.Brand800, theme.Brand200))
 				if note.Text != "" {
-					bg, fg := t.Pick(theme.Sky100, theme.Sky900.Alpha(0.5)), t.Pick(theme.Sky700, theme.Sky300)
-					if note.Warn {
-						bg, fg = t.Pick(theme.Warning100, theme.Warning900.Alpha(0.5)), t.Pick(theme.Warning700, theme.Warning300)
-					}
-					ui.Box(c.Key("note")).Padding(1, 6).Radius(999).Shrink(0).Background(bg).Children(func() {
-						components.Text(c, note.Text, theme.TextXS, theme.WeightMedium, fg).NoWrap()
-					})
+					fieldNoteBadge(c, t, note)
 				}
 			})
 			components.Text(c, text[1], theme.FontStep{Size: 12, Line: 19.5}, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400))
 		})
 		Switch(c, t, "switch", checked, false, onChange)
 	})
+}
+
+// fieldNoteBadge 是字段名后面的小标签。有原因时前面是 info 图标，悬停显示原因；标签自己接住点击，
+// 点它不会切换字段。
+func fieldNoteBadge(c *ui.Context, t *theme.Theme, note FieldNote) {
+	bg, fg := t.Pick(theme.Sky100, theme.Sky900.Alpha(0.5)), t.Pick(theme.Sky700, theme.Sky300)
+	if note.Warn {
+		bg, fg = t.Pick(theme.Warning100, theme.Warning900.Alpha(0.5)), t.Pick(theme.Warning700, theme.Warning300)
+	}
+	if note.Reason == "" {
+		ui.Box(c.Key("note")).Padding(1, 6).Radius(999).Shrink(0).Background(bg).Children(func() {
+			components.Text(c, note.Text, theme.TextXS, theme.WeightMedium, fg).NoWrap()
+		})
+		return
+	}
+	badge := ui.ButtonBase(c.Key("note")).Row().Gap(3).Padding(1, 6, 1, 4).Radius(999).Shrink(0).AlignItems(ui.Center).
+		Background(bg).FocusRing(false).Label(note.Reason)
+	badge.OnClick(func() {}).Children(func() {
+		components.Icon(c, "information-outline", 13, fg)
+		components.Text(c, note.Text, theme.TextXS, theme.WeightMedium, fg).NoWrap()
+	})
+	Tooltip(c, t, badge, note.Reason)
 }
 
 // fieldModalCloseButton 是右上角的关闭按钮：rounded-lg p-2 text-brand-500 hover:bg-brand-100 hover:text-brand-800

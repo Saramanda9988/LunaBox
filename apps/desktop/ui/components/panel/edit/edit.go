@@ -412,8 +412,8 @@ func (e *editor) metadataSection(c *ui.Context) {
 						}
 						ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 							components.Text(c, label, theme.TextSM, theme.WeightSemibold, t.Pick(theme.Brand800, theme.Brand100)).NoWrap()
-							// 从默认来源更新时会套用高级组合策略（原版没有）。
-							if len(e.strategyNotes()) > 0 {
+							// 更新元数据时会套用高级组合策略（原版没有）。
+							if metadatapanel.RefreshUsesStrategy(e.config(), defType) {
 								ui.Row(c.Key("strategy")).Gap(4).Padding(1, 6).Radius(999).AlignItems(ui.Center).Shrink(0).
 									Background(t.Pick(theme.Sky100, theme.Sky900.Alpha(0.5))).Children(func() {
 									components.Icon(c, "layers-triple-outline", 12, t.Pick(theme.Sky700, theme.Sky300))

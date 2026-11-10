@@ -1641,7 +1641,7 @@
   "native_metadataStrategy_title": "Advanced metadata mix",
   "native_metadataStrategy_description": "Games are identified with the required source as the base, and you can pick other sources for individual fields. When the chosen source cannot find the game or the field is empty, the base data is used.",
   "native_metadataStrategy_enable": "Enable metadata mix",
-  "native_metadataStrategy_enableHint": "When off, all fields come from a single source and the settings below are ignored.",
+  "native_metadataStrategy_enableHint": "Affects imports only: when off, imported fields all come from the required source. Whether metadata refresh uses it is set when choosing fields to update.",
   "native_metadataStrategy_base": "Required source",
   "native_metadataStrategy_baseHint": "Batch import identifies games with this source and treats games it cannot find as not found. It is also the base of the metadata mix.",
   "native_metadataStrategy_baseRequired": "Choose a required source to enable the metadata mix.",
@@ -1656,7 +1656,7 @@
   "native_metadataStrategy_summaryAllBase": "All fields come from {base}.",
   "native_metadataStrategy_listSeparator": ", ",
   "native_metadataStrategy_clauseSeparator": "; ",
-  "native_metadataStrategy_refreshHint": "Metadata refresh follows the same rules, using each game's default source as the base.",
+  "native_metadataStrategy_refreshHint": "When refreshing metadata, turn on \"Use advanced metadata mix\" in the field picker to take each field from its assigned source, then the required source, then the game's default source.",
   "native_metadataStrategy_reset": "Reset",
   "native_metadataStrategy_button": "Metadata mix",
   "native_metadataStrategy_settingsLabel": "Advanced metadata mix",
@@ -1668,5 +1668,8 @@
   "native_metadataStrategy_buttonMixed": "{base} · mixed",
   "native_metadataStrategy_fieldFrom": "Updates from {source}",
   "native_metadataStrategy_noSourceID": "No {source} metadata ID",
-  "native_metadataStrategy_noMetadataID": "No metadata ID"
+  "native_metadataStrategy_noMetadataID": "No metadata ID",
+  "native_metadataStrategy_reasonDisabled": "{source} is disabled",
+  "native_metadataRefresh_useStrategy": "Use advanced metadata mix",
+  "native_metadataRefresh_useStrategyHint": "Each field tries its assigned source, then the required source, then the game's default source, moving on when a source has no ID or the field is empty. Fields empty everywhere keep their local value."
 }

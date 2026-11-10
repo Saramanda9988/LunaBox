@@ -22,6 +22,7 @@ import (
 	"lunabox/desktop/ui/covers"
 	"lunabox/desktop/ui/env"
 	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/metasource"
 	"lunabox/desktop/ui/theme"
 )
 
@@ -371,21 +372,43 @@ func TestFieldSelectModal(t *testing.T) {
 	}
 }
 
-// 高级组合策略对这个游戏的默认来源生效时，默认来源旁边标出“组合策略”，更新字段的弹窗标出各字段将从哪个来源更新
-// （改用的来源或默认来源）；弹窗底部的“取消”换成了打开组合策略弹窗的按钮。
-func TestFieldSelectModalShowsStrategy(t *testing.T) {
-	h := newHarness(t, testGame()) // 默认来源 Bangumi
-	h.expectNot(t, locales.NativeMetadataStrategyButton())
-	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB, Enabled: true}.
-		WithFieldSource(enums.MetadataUpdateFieldTags, enums.VNDB).
-		WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi)) // 与默认来源相同，不算
+// clickUseStrategy 点击字段弹窗里“使用高级组合策略”的开关：在那一行的右端（与关闭按钮的右边对齐），上下居中。
+func (h *harness) clickUseStrategy(t *testing.T) {
+	t.Helper()
+	cl, ok1 := h.tt.Find(locales.CommonClose())
+	title, ok2 := h.tt.Find(locales.NativeMetadataRefreshUseStrategy())
+	hint, ok3 := h.tt.Find(locales.NativeMetadataRefreshUseStrategyHint())
+	if !ok1 || !ok2 || !ok3 {
+		t.Fatalf("no strategy switch in %q", h.tt.Texts())
+	}
+	h.tt.ClickAt(cl.X+cl.W-12-22, (title.Y+hint.Y+hint.H)/2)
 	h.frames(2)
-	h.expectTexts(t, locales.NativeMetadataStrategyButton())
+}
+
+// 更新元数据时的组合策略由字段弹窗里的开关单独控制（默认关闭，保存在设置里，与导入的开关无关）。关闭时每个字段都
+// 标“将从 默认来源 更新”；打开后按 字段指定的来源 → 必选数据源 → 默认来源 标出，默认来源旁边标出“组合策略”。
+// 弹窗底部的“取消”换成了打开组合策略弹窗的按钮。
+func TestFieldSelectModalShowsStrategy(t *testing.T) {
+	h := newHarness(t, testGame())                                       // 默认来源 Bangumi，另有 VNDB 的 ID
+	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}. // 导入的开关关闭
+										WithFieldSource(enums.MetadataUpdateFieldCover, enums.Bangumi))
+	h.frames(2)
+	h.expectNot(t, locales.NativeMetadataStrategyButton())
 
 	h.click(t, "从远端更新信息")
-	h.expectTexts(t, locales.NativeMetadataStrategyFieldFrom("VNDB"), locales.NativeMetadataStrategyFieldFrom("Bangumi"),
+	h.expectTexts(t, locales.NativeMetadataRefreshUseStrategy(), locales.NativeMetadataStrategyFieldFrom("Bangumi"),
 		locales.NativeMetadataStrategySettingsLabel())
-	h.expectNot(t, locales.CommonCancel(), locales.NativeMetadataStrategyNoSourceID("VNDB"))
+	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("VNDB"), locales.CommonCancel())
+
+	h.clickUseStrategy(t)
+	if !h.env.Config().MetadataRefreshUseStrategy {
+		t.Fatal("switch should be saved in the config")
+	}
+	// 没有指定来源的字段取必选数据源 VNDB，封面指定了 Bangumi；都有 ID，不回退。
+	h.expectTexts(t, locales.NativeMetadataStrategyFieldFrom("VNDB"), locales.NativeMetadataStrategyFieldFrom("Bangumi"),
+		locales.NativeMetadataStrategyButton())
+	h.expectNot(t, locales.NativeMetadataStrategyNoSourceID("VNDB"))
+	h.waitAnimation()
 	if dir := os.Getenv("DESKTOP_MYGO_PNG"); dir != "" {
 		f, err := os.Create(filepath.Join(dir, "edit-fields-strategy.png"))
 		if err != nil {
@@ -398,31 +421,57 @@ func TestFieldSelectModalShowsStrategy(t *testing.T) {
 	}
 
 	h.click(t, locales.NativeMetadataStrategySettingsLabel())
-	h.expectTexts(t, locales.NativeMetadataStrategyBase(), locales.NativeMetadataStrategySummaryBase("VNDB"))
+	h.expectTexts(t, locales.NativeMetadataStrategyBase())
 	h.click(t, locales.CommonSave()) // 组合策略弹窗的保存，回到字段弹窗
 	if !h.state.fieldsOpen || h.state.strategy.IsOpen() {
 		t.Fatalf("fields open %v, strategy open %v", h.state.fieldsOpen, h.state.strategy.IsOpen())
 	}
 
-	// 没有基底时策略不生效：都从默认来源更新。
-	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Enabled: true}.WithFieldSource(enums.MetadataUpdateFieldTags, enums.VNDB))
-	h.frames(2)
+	// 再关掉开关：都从默认来源更新。
+	h.clickUseStrategy(t)
+	if h.env.Config().MetadataRefreshUseStrategy {
+		t.Fatal("switch should be off")
+	}
 	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("VNDB"))
-	h.expectTexts(t, locales.NativeMetadataStrategyFieldFrom("Bangumi"))
 }
 
-// 游戏没有组合策略改用的来源的元数据 ID（也查不到对照）时，那个字段标出“暂无 X 元数据 ID”；本地游戏都标“暂无元数据 ID”。
-func TestFieldSelectModalShowsMissingSourceID(t *testing.T) {
+// 字段指定的来源与必选数据源不可用（没有启用、没有元数据 ID 也查不到对照）时回退到默认来源：琥珀色的“将从 默认来源 更新”，
+// 原因在标签的提示里，点标签不会切换字段。本地游戏都标“暂无元数据 ID”。
+func TestFieldSelectModalShowsFallback(t *testing.T) {
 	g := testGame()
 	g.SourceID = "999999999" // 对照表里没有
 	g.MetadataSources = []models.GameMetadataSource{{SourceType: enums.Bangumi, SourceID: g.SourceID}}
 	h := newHarness(t, g)
-	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB, Enabled: true}.
-		WithFieldSource(enums.MetadataUpdateFieldTags, enums.VNDB))
+	h.svc.Config.MetadataRefreshUseStrategy = true
+	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}.
+		WithFieldSource(enums.MetadataUpdateFieldName, enums.Ymgal)) // 默认没有启用 YMGAL
 	h.frames(2)
 	h.click(t, "从远端更新信息")
-	h.expectTexts(t, locales.NativeMetadataStrategyNoSourceID("VNDB"), locales.NativeMetadataStrategyFieldFrom("Bangumi"))
+	sep := locales.NativeMetadataStrategyClauseSeparator()
+	noVNDB := locales.NativeMetadataStrategyNoSourceID("VNDB")
+	nameReason := locales.NativeMetadataStrategyReasonDisabled(metasource.Label(enums.Ymgal)) + sep + noVNDB
+	h.expectTexts(t, locales.NativeMetadataStrategyFieldFrom("Bangumi"), noVNDB, nameReason)
 	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("VNDB"))
+	h.click(t, nameReason)
+	if len(h.state.fields) != len(enums.DefaultMetadataUpdateFields) {
+		t.Fatalf("clicking the badge toggled a field: %q", h.state.fields)
+	}
+	// 悬停标签显示原因。
+	r, _ := h.tt.Find(nameReason)
+	h.tt.Move(r.X+r.W/2, r.Y+r.H/2)
+	h.frames(1)
+	h.tt.Advance(350 * time.Millisecond)
+	h.frames(2)
+	if dir := os.Getenv("DESKTOP_MYGO_PNG"); dir != "" {
+		f, err := os.Create(filepath.Join(dir, "edit-fields-fallback.png"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+		if err := png.Encode(f, h.tt.Image()); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	local := testGame()
 	local.SourceType, local.SourceID, local.MetadataSources = enums.Local, "", nil

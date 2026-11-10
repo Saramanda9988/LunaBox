@@ -198,7 +198,7 @@ func TestFieldSelectModal(t *testing.T) {
 		t.Fatal("field modal not open")
 	}
 	h.expect(t, locales.MetadataUpdateFieldsModalFullTitle(), locales.MetadataUpdateFieldsModalFullDescription(),
-		locales.MetadataUpdateFieldsSelectAll(), "已选择 8 / 8 个字段", locales.MetadataUpdateFieldsModalContinue())
+		locales.MetadataUpdateFieldsSelectAll(), "已选择 8 / 8 个字段", locales.MetadataUpdateFieldsModalContinue(), locales.NativeMetadataRefreshUseStrategy())
 
 	h.click(t, locales.Key("metadataUpdateFields.tags.label"))
 	h.expect(t, "已选择 7 / 8 个字段")

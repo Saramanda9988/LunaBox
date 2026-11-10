@@ -6,6 +6,7 @@ import (
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/enums"
+	"lunabox/desktop/ui/components/better"
 	"lunabox/desktop/ui/locales"
 )
 
@@ -75,4 +76,55 @@ func TestStrategyModal(t *testing.T) {
 		t.Fatalf("saved strategy = %+v", got)
 	}
 	h.expect(t, locales.NativeMetadataStrategyActive())
+}
+
+// 更新字段弹窗的标签：没有打开“使用高级组合策略”时全量更新不标、单个游戏都是默认来源；打开后按
+// 字段指定的来源 → 必选数据源 → 默认来源 找第一个可用的，回退时琥珀色并给出原因。
+func TestRefreshNotes(t *testing.T) {
+	cfg := &appconf.AppConfig{MetadataSources: []string{"bangumi", "vndb"}}
+	cfg.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}.
+		WithFieldSource(enums.MetadataUpdateFieldCover, enums.Bangumi).
+		WithFieldSource(enums.MetadataUpdateFieldAliases, appconf.MetadataStrategyAllSources).
+		WithFieldSource(enums.MetadataUpdateFieldSummary, enums.Ymgal)) // 没有启用
+	from := locales.NativeMetadataStrategyFieldFrom
+	ymgal := locales.NativeMetadataStrategyReasonDisabled(StrategyLabel(enums.Ymgal))
+	noVNDB := locales.NativeMetadataStrategyNoSourceID("VNDB")
+	sep := locales.NativeMetadataStrategyClauseSeparator()
+
+	if notes := BatchRefreshNotes(cfg); notes != nil || RefreshUsesStrategy(cfg, enums.Bangumi) {
+		t.Fatalf("switch off: notes %v", notes)
+	}
+	if got := GameRefreshNotes(cfg, enums.Bangumi, nil)[enums.MetadataUpdateFieldName]; got != (better.FieldNote{Text: from("Bangumi")}) {
+		t.Fatalf("switch off: name note %+v", got)
+	}
+
+	cfg.MetadataRefreshUseStrategy = true
+	if !RefreshUsesStrategy(cfg, enums.Bangumi) {
+		t.Fatal("strategy should apply")
+	}
+	batch := BatchRefreshNotes(cfg)
+	for f, want := range map[enums.MetadataUpdateField]better.FieldNote{
+		enums.MetadataUpdateFieldCover:   {Text: from("Bangumi")},
+		enums.MetadataUpdateFieldName:    {Text: from("VNDB")},
+		enums.MetadataUpdateFieldAliases: {Text: locales.NativeMetadataStrategyMergeAll()},
+		enums.MetadataUpdateFieldSummary: {Text: from("VNDB"), Warn: true, Reason: ymgal},
+	} {
+		if batch[f] != want {
+			t.Errorf("batch %s = %+v, want %+v", f, batch[f], want)
+		}
+	}
+
+	game := GameRefreshNotes(cfg, enums.Bangumi, map[enums.SourceType]string{enums.Bangumi: "1"}) // VNDB 没有 ID
+	for f, want := range map[enums.MetadataUpdateField]better.FieldNote{
+		enums.MetadataUpdateFieldCover:   {Text: from("Bangumi")},
+		enums.MetadataUpdateFieldName:    {Text: from("Bangumi"), Warn: true, Reason: noVNDB},
+		enums.MetadataUpdateFieldSummary: {Text: from("Bangumi"), Warn: true, Reason: ymgal + sep + noVNDB},
+	} {
+		if game[f] != want {
+			t.Errorf("game %s = %+v, want %+v", f, game[f], want)
+		}
+	}
+	if got := GameRefreshNotes(cfg, enums.Bangumi, nil)[enums.MetadataUpdateFieldName]; got != (better.FieldNote{Text: from("VNDB")}) {
+		t.Errorf("ids not loaded: name note %+v", got)
+	}
 }

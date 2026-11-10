@@ -136,7 +136,11 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 		onConfirm: func() { s.runEnrichment(p) },
 	})
 	better.MetadataFieldSelectModal(c, t, "metadata-refresh-fields", better.MetadataFieldSelectProps{
-		FieldNotes:  StrategyRefreshNotes(p.Config, ""),
+		FieldNotes:  BatchRefreshNotes(p.Config),
+		UseStrategy: p.Config.MetadataRefreshUseStrategy,
+		OnUseStrategy: func(on bool) {
+			p.PatchLive(func(cfg *appconf.AppConfig) { cfg.MetadataRefreshUseStrategy = on })
+		},
 		OnStrategy:  func() { s.strategy.Open(p.Config) },
 		Open:        s.fieldsOpen,
 		Title:       locales.MetadataUpdateFieldsModalFullTitle(),

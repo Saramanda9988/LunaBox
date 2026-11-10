@@ -24483,7 +24483,7 @@ func (msgs Messages) NativeMetadataStrategyEnable() string {
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_enable", nil)
 }
 
-// NativeMetadataStrategyEnableHint says "关闭时各字段都取自同一个来源，下面的设置不生效。"
+// NativeMetadataStrategyEnableHint says "…"
 // in the language the app shows.
 //
 // extra:native.metadataStrategy.enableHint
@@ -24491,7 +24491,7 @@ func NativeMetadataStrategyEnableHint() string {
 	return In(i18n.Locale()).NativeMetadataStrategyEnableHint()
 }
 
-// NativeMetadataStrategyEnableHint says "关闭时各字段都取自同一个来源，下面的设置不生效。"
+// NativeMetadataStrategyEnableHint says "…"
 // in the language of msgs.
 //
 // extra:native.metadataStrategy.enableHint
@@ -24721,7 +24721,7 @@ func (msgs Messages) NativeMetadataStrategyClauseSeparator() string {
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_clauseSeparator", nil)
 }
 
-// NativeMetadataStrategyRefreshHint says "更新元数据时同样适用：以游戏的默认来源为基底，按上面的设置取各字段。"
+// NativeMetadataStrategyRefreshHint says "…"
 // in the language the app shows.
 //
 // extra:native.metadataStrategy.refreshHint
@@ -24729,7 +24729,7 @@ func NativeMetadataStrategyRefreshHint() string {
 	return In(i18n.Locale()).NativeMetadataStrategyRefreshHint()
 }
 
-// NativeMetadataStrategyRefreshHint says "更新元数据时同样适用：以游戏的默认来源为基底，按上面的设置取各字段。"
+// NativeMetadataStrategyRefreshHint says "…"
 // in the language of msgs.
 //
 // extra:native.metadataStrategy.refreshHint
@@ -24921,4 +24921,52 @@ func NativeMetadataStrategyNoMetadataID() string {
 // extra:native.metadataStrategy.noMetadataID
 func (msgs Messages) NativeMetadataStrategyNoMetadataID() string {
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_noMetadataID", nil)
+}
+
+// NativeMetadataStrategyReasonDisabled says "{source} 未启用"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.reasonDisabled
+func NativeMetadataStrategyReasonDisabled(source string) string {
+	return In(i18n.Locale()).NativeMetadataStrategyReasonDisabled(source)
+}
+
+// NativeMetadataStrategyReasonDisabled says "{source} 未启用"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.reasonDisabled
+func (msgs Messages) NativeMetadataStrategyReasonDisabled(source string) string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_reasonDisabled", map[string]any{"source": source})
+}
+
+// NativeMetadataRefreshUseStrategy says "使用高级组合策略"
+// in the language the app shows.
+//
+// extra:native.metadataRefresh.useStrategy
+func NativeMetadataRefreshUseStrategy() string {
+	return In(i18n.Locale()).NativeMetadataRefreshUseStrategy()
+}
+
+// NativeMetadataRefreshUseStrategy says "使用高级组合策略"
+// in the language of msgs.
+//
+// extra:native.metadataRefresh.useStrategy
+func (msgs Messages) NativeMetadataRefreshUseStrategy() string {
+	return Catalog.Format(msgs.locale, "native_metadataRefresh_useStrategy", nil)
+}
+
+// NativeMetadataRefreshUseStrategyHint says "按“字段指定的来源 → 必选数据源 → 游戏默认来源”依次取数据：前面的来源没有 ID …"
+// in the language the app shows.
+//
+// extra:native.metadataRefresh.useStrategyHint
+func NativeMetadataRefreshUseStrategyHint() string {
+	return In(i18n.Locale()).NativeMetadataRefreshUseStrategyHint()
+}
+
+// NativeMetadataRefreshUseStrategyHint says "按“字段指定的来源 → 必选数据源 → 游戏默认来源”依次取数据：前面的来源没有 ID …"
+// in the language of msgs.
+//
+// extra:native.metadataRefresh.useStrategyHint
+func (msgs Messages) NativeMetadataRefreshUseStrategyHint() string {
+	return Catalog.Format(msgs.locale, "native_metadataRefresh_useStrategyHint", nil)
 }

@@ -105,29 +105,6 @@ func StrategySummary(s appconf.MetadataStrategy, enabled []enums.SourceType) []s
 	return []string{first, strings.Join(clauses, locales.NativeMetadataStrategyClauseSeparator())}
 }
 
-// StrategyRefreshNotes 是更新元数据时组合策略里各字段改用的来源（给 MetadataFieldSelectModal 的 FieldNotes）。
-// base 是单个游戏的默认来源；为空时是全量更新（每个游戏以自己的默认来源为基底，标注按策略的基底算）。
-// 策略不生效、或者对这次更新没有影响时为空。
-func StrategyRefreshNotes(cfg *appconf.AppConfig, base enums.SourceType) map[enums.MetadataUpdateField]better.FieldNote {
-	strategy := cfg.Strategy()
-	if !strategy.Active() || (base != "" && !metasource.Known(base)) {
-		return nil
-	}
-	ref := strategy.Base
-	if base != "" {
-		ref = base
-	}
-	fields := gamehelper.StrategyOverridesFor(strategy, ref, EnabledSources(cfg))
-	if len(fields) == 0 {
-		return nil
-	}
-	notes := make(map[enums.MetadataUpdateField]better.FieldNote, len(fields))
-	for _, f := range fields {
-		notes[f] = strategyFieldNote(strategy.FieldSource(f))
-	}
-	return notes
-}
-
 // strategyFieldNote 是“将从 X 更新”；别名合并所有来源时是“合并所有来源”。
 func strategyFieldNote(src enums.SourceType) better.FieldNote {
 	if src == appconf.MetadataStrategyAllSources {
@@ -136,10 +113,37 @@ func strategyFieldNote(src enums.SourceType) better.FieldNote {
 	return better.FieldNote{Text: locales.NativeMetadataStrategyFieldFrom(StrategyLabel(src))}
 }
 
-// GameRefreshNotes 是从默认来源 base 更新单个游戏时每个字段将从哪个来源更新（给 FieldNotes）：组合策略改用的来源，
-// 其余是 base。ids 是游戏在各来源可用的元数据 ID（GameService.ResolveMetadataSourceIDs，含 ID 对照表查到的），
-// 来源没有 ID 时标出“暂无 X 元数据 ID”（组合策略改用的来源没有 ID 时，这个字段实际用 base 的数据）；
-// ids 为 nil 表示还没查到，先不标。游戏没有默认来源（本地游戏）时每个字段都标“暂无元数据 ID”。
+// refreshStrategy 是更新元数据时用的组合策略：设置里没有打开“更新时使用高级组合策略”时为空（只用游戏的默认来源）。
+func refreshStrategy(cfg *appconf.AppConfig) (appconf.MetadataStrategy, bool) {
+	if cfg == nil || !cfg.MetadataRefreshUseStrategy {
+		return appconf.MetadataStrategy{}, false
+	}
+	return cfg.Strategy(), true
+}
+
+// chainNote 沿着来源链找第一个可用的来源（skip 返回不可用的原因）：第一个就可用时是天蓝色的“将从 X 更新”，
+// 回退到后面的来源时是琥珀色并带上原因；都不可用时 ok 为 false，原因照样返回。
+func chainNote(chain []enums.SourceType, skip func(enums.SourceType) string) (note better.FieldNote, ok bool) {
+	var reasons []string
+	for _, src := range chain {
+		if r := skip(src); r != "" {
+			reasons = append(reasons, r)
+			continue
+		}
+		note = strategyFieldNote(src)
+		if len(reasons) > 0 {
+			note.Warn, note.Reason = true, strings.Join(reasons, locales.NativeMetadataStrategyClauseSeparator())
+		}
+		return note, true
+	}
+	return better.FieldNote{Reason: strings.Join(reasons, locales.NativeMetadataStrategyClauseSeparator())}, false
+}
+
+// GameRefreshNotes 是更新单个游戏时每个字段将从哪个来源更新（给 FieldNotes）。base 是游戏的默认来源；
+// 打开了“更新时使用高级组合策略”时按 字段指定的来源 → 必选数据源 → base 找第一个可用的来源，否则都是 base。
+// ids 是游戏在各来源可用的元数据 ID（GameService.ResolveMetadataSourceIDs，含 ID 对照表查到的），没有 ID 或者
+// 没有启用的来源跳过；ids 为 nil 表示还没查到，先不按 ID 判断。字段为空时的回退要拿到数据才知道，这里标不出来。
+// 游戏没有默认来源（本地游戏）或者都不可用时标“暂无元数据 ID”。
 func GameRefreshNotes(cfg *appconf.AppConfig, base enums.SourceType, ids map[enums.SourceType]string) map[enums.MetadataUpdateField]better.FieldNote {
 	notes := make(map[enums.MetadataUpdateField]better.FieldNote, len(enums.DefaultMetadataUpdateFields))
 	if base == "" || base == enums.Local {
@@ -148,30 +152,73 @@ func GameRefreshNotes(cfg *appconf.AppConfig, base enums.SourceType, ids map[enu
 		}
 		return notes
 	}
-	note := func(src enums.SourceType) better.FieldNote {
-		if ids != nil && strings.TrimSpace(ids[src]) == "" {
-			return better.FieldNote{Text: locales.NativeMetadataStrategyNoSourceID(StrategyLabel(src)), Warn: true}
+	enabled := EnabledSources(cfg)
+	skip := func(src enums.SourceType) string {
+		if !slices.Contains(enabled, src) {
+			return locales.NativeMetadataStrategyReasonDisabled(StrategyLabel(src))
 		}
-		return strategyFieldNote(src)
+		if ids != nil && strings.TrimSpace(ids[src]) == "" {
+			return locales.NativeMetadataStrategyNoSourceID(StrategyLabel(src))
+		}
+		return ""
 	}
+	strategy, on := refreshStrategy(cfg)
 	for _, f := range enums.DefaultMetadataUpdateFields {
-		notes[f] = note(base)
+		if on && strategy.FieldSource(f) == appconf.MetadataStrategyAllSources {
+			notes[f] = strategyFieldNote(appconf.MetadataStrategyAllSources)
+			continue
+		}
+		note, ok := chainNote(gamehelper.RefreshChain(strategy, f, base), skip)
+		if !ok {
+			note.Text, note.Warn = locales.NativeMetadataStrategyNoMetadataID(), true
+		}
+		notes[f] = note
 	}
-	if cfg == nil || !metasource.Known(base) {
-		return notes
+	return notes
+}
+
+// BatchRefreshNotes 是全量更新时各字段将从哪个来源更新（给 FieldNotes）：打开了“更新时使用高级组合策略”时按
+// 字段指定的来源 → 必选数据源 找第一个启用的来源；都没有时用各游戏自己的默认来源，不标。没有打开时为空。
+// 各游戏有没有那个来源的 ID 要逐个看，这里不标。
+func BatchRefreshNotes(cfg *appconf.AppConfig) map[enums.MetadataUpdateField]better.FieldNote {
+	strategy, on := refreshStrategy(cfg)
+	if !on {
+		return nil
 	}
-	strategy := cfg.Strategy()
-	if !strategy.Active() {
-		return notes
+	enabled := EnabledSources(cfg)
+	skip := func(src enums.SourceType) string {
+		if !slices.Contains(enabled, src) {
+			return locales.NativeMetadataStrategyReasonDisabled(StrategyLabel(src))
+		}
+		return ""
 	}
-	for _, f := range gamehelper.StrategyOverridesFor(strategy, base, EnabledSources(cfg)) {
-		if src := strategy.FieldSource(f); src == appconf.MetadataStrategyAllSources {
-			notes[f] = strategyFieldNote(src)
-		} else {
-			notes[f] = note(src)
+	notes := map[enums.MetadataUpdateField]better.FieldNote{}
+	for _, f := range enums.DefaultMetadataUpdateFields {
+		if strategy.FieldSource(f) == appconf.MetadataStrategyAllSources {
+			notes[f] = strategyFieldNote(appconf.MetadataStrategyAllSources)
+		} else if note, ok := chainNote(gamehelper.RefreshChain(strategy, f, ""), skip); ok {
+			notes[f] = note
 		}
 	}
 	return notes
+}
+
+// RefreshUsesStrategy 报告更新以 base 为默认来源的游戏时组合策略有没有影响：打开了“更新时使用高级组合策略”，
+// 并且有字段会先去取 base 以外的来源。
+func RefreshUsesStrategy(cfg *appconf.AppConfig, base enums.SourceType) bool {
+	strategy, on := refreshStrategy(cfg)
+	if !on {
+		return false
+	}
+	for _, f := range enums.DefaultMetadataUpdateFields {
+		if strategy.FieldSource(f) == appconf.MetadataStrategyAllSources {
+			return true
+		}
+		if chain := gamehelper.RefreshChain(strategy, f, base); len(chain) > 0 && chain[0] != base {
+			return true
+		}
+	}
+	return false
 }
 
 // sourceOptionLabel 是来源的名称，没有启用时加上“（未启用）”。
@@ -219,14 +266,15 @@ func (m *StrategyModal) fieldOptions(f enums.MetadataUpdateField, enabled []enum
 	return opts
 }
 
-// overridden 判断字段是否改用了基底以外的来源（策略不生效时都不算）。
+// overridden 判断字段是否改用了基底以外的来源。
 func (m *StrategyModal) overridden(f enums.MetadataUpdateField) bool {
 	src := m.draft.FieldSource(f)
-	return m.draft.Active() && src != "" && src != m.draft.Base
+	return src != "" && src != m.draft.Base
 }
 
 // View 构建弹窗：标题与说明、必选数据源、开关、各字段的来源、文字说明，底部重置与保存。
-// 必选数据源不受开关影响；开关关闭时字段的下拉框不可用，也没有文字说明。
+// 必选数据源与各字段的来源都不受开关影响（开关只管导入；更新元数据时由字段选择弹窗里的开关决定）；
+// 开关关闭时没有文字说明。
 func (m *StrategyModal) View(c *ui.Context, t *theme.Theme, p StrategyModalProps) {
 	components.Modal(c, t, "metadata-strategy", components.ModalProps{
 		Open: m.open, TopOffset: p.TopOffset, MaxWidth: 760, OnClose: m.close, Label: locales.NativeMetadataStrategyTitle(),
@@ -334,7 +382,7 @@ func (m *StrategyModal) fieldRows(c *ui.Context, t *theme.Theme, enabled []enums
 				})
 				ui.Column(c).Width(200).Shrink(0).Children(func() {
 					better.Select(c, t, "select", better.SelectProps{
-						Value: string(value), Options: m.fieldOptions(f, enabled), Font: theme.TextSM, Disabled: !m.draft.Enabled,
+						Value: string(value), Options: m.fieldOptions(f, enabled), Font: theme.TextSM,
 						OnChange: func(v string) { m.draft = m.draft.WithFieldSource(f, enums.SourceType(v)) },
 						Style:    func(btn ui.Element) { btn.Height(34).Padding(0, 32, 0, 12).AlignItems(ui.Center) },
 					})

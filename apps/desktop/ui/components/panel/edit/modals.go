@@ -37,6 +37,12 @@ func (e *editor) fieldSelectModal(c *ui.Context) {
 	s := e.s
 	better.MetadataFieldSelectModal(c, e.t, "metadata-fields", better.MetadataFieldSelectProps{
 		FieldNotes:  metadatapanel.GameRefreshNotes(e.config(), e.defaultSourceType(), s.sourceIDs),
+		UseStrategy: e.config() != nil && e.config().MetadataRefreshUseStrategy,
+		OnUseStrategy: func(on bool) {
+			if err := e.p.Env.PatchConfig(func(cfg *appconf.AppConfig) { cfg.MetadataRefreshUseStrategy = on }); err != nil {
+				log.Printf("edit: save metadata refresh strategy switch: %v", err)
+			}
+		},
 		OnStrategy:  func() { s.strategy.Open(e.p.Env.Config()) },
 		Open:        s.fieldsOpen,
 		Title:       locales.MetadataUpdateFieldsModalSingleTitle(),
@@ -79,16 +85,6 @@ func (e *editor) config() *appconf.AppConfig {
 		return nil
 	}
 	return e.p.Env.Config()
-}
-
-// strategyNotes 是从默认来源更新时高级组合策略里各字段改用的来源（以游戏的默认来源为基底）；
-// 没有默认来源或者策略没有影响时为空。
-func (e *editor) strategyNotes() map[enums.MetadataUpdateField]better.FieldNote {
-	src, _ := defaultSource(&e.g)
-	if src == "" || src == enums.Local || e.p.Env == nil {
-		return nil
-	}
-	return metadatapanel.StrategyRefreshNotes(e.p.Env.Config(), src)
 }
 
 // strategyModal 是从更新字段弹窗打开的高级组合策略弹窗，画在字段弹窗之上；保存后立即写进配置。

@@ -115,3 +115,54 @@ func TestStrategyActive(t *testing.T) {
 		t.Fatalf("StrategySources = %v", got)
 	}
 }
+
+func TestRefreshChain(t *testing.T) {
+	s := strategyOf(enums.VNDB, map[enums.MetadataUpdateField]enums.SourceType{
+		enums.MetadataUpdateFieldName:    enums.Bangumi,
+		enums.MetadataUpdateFieldAliases: appconf.MetadataStrategyAllSources,
+	})
+	if got := RefreshChain(s, enums.MetadataUpdateFieldName, enums.TouchGal); !slices.Equal(got, []enums.SourceType{enums.Bangumi, enums.VNDB, enums.TouchGal}) {
+		t.Fatalf("name chain = %v", got)
+	}
+	if got := RefreshChain(s, enums.MetadataUpdateFieldSummary, enums.VNDB); !slices.Equal(got, []enums.SourceType{enums.VNDB}) {
+		t.Fatalf("summary chain = %v", got)
+	}
+	if got := RefreshChain(s, enums.MetadataUpdateFieldAliases, enums.TouchGal); !slices.Equal(got, []enums.SourceType{enums.VNDB, enums.TouchGal}) {
+		t.Fatalf("aliases chain = %v", got)
+	}
+	if got := RefreshChain(appconf.MetadataStrategy{}, enums.MetadataUpdateFieldName, enums.TouchGal); !slices.Equal(got, []enums.SourceType{enums.TouchGal}) {
+		t.Fatalf("empty strategy chain = %v", got)
+	}
+}
+
+// 更新时每个字段按 字段指定的来源 → 必选数据源 → 游戏默认来源 取第一个有数据的；都为空的字段列为 missing。
+func TestComposeRefreshFallsBackAlongChain(t *testing.T) {
+	s := strategyOf(enums.VNDB, map[enums.MetadataUpdateField]enums.SourceType{
+		enums.MetadataUpdateFieldName:        enums.Bangumi, // 没有 Bangumi 的结果：回退到 VNDB
+		enums.MetadataUpdateFieldReleaseDate: enums.Bangumi, // VNDB 也没有：回退到默认来源
+		enums.MetadataUpdateFieldCompany:     enums.Bangumi, // 哪里都没有
+	})
+	base := vo.GameMetadataFromWebVO{Source: enums.TouchGal, Game: models.Game{Name: "TG", ReleaseDate: "2020-01-01", Summary: "tg"}}
+	vndb := vo.GameMetadataFromWebVO{Source: enums.VNDB, Game: models.Game{Name: "VN", Summary: "vn"},
+		Tags: []metadata.TagItem{{Name: "tag"}}}
+	got, sources, missing := ComposeRefresh(s, base, []vo.GameMetadataFromWebVO{vndb})
+	if got.Game.Name != "VN" || sources[enums.MetadataUpdateFieldName] != enums.VNDB {
+		t.Fatalf("name = %q from %q", got.Game.Name, sources[enums.MetadataUpdateFieldName])
+	}
+	if got.Game.ReleaseDate != "2020-01-01" || sources[enums.MetadataUpdateFieldReleaseDate] != enums.TouchGal {
+		t.Fatalf("release date = %q from %q", got.Game.ReleaseDate, sources[enums.MetadataUpdateFieldReleaseDate])
+	}
+	if got.Game.Summary != "vn" || sources[enums.MetadataUpdateFieldSummary] != enums.VNDB { // 没有指定：必选数据源优先
+		t.Fatalf("summary = %q from %q", got.Game.Summary, sources[enums.MetadataUpdateFieldSummary])
+	}
+	if len(got.Tags) != 1 || got.Tags[0].Source != string(enums.VNDB) {
+		t.Fatalf("tags = %+v", got.Tags)
+	}
+	if got.Source != enums.TouchGal || !slices.Contains(got.Game.Aliases, "TG") {
+		t.Fatalf("source %q aliases %v", got.Source, got.Game.Aliases)
+	}
+	want := []enums.MetadataUpdateField{enums.MetadataUpdateFieldCover, enums.MetadataUpdateFieldCompany, enums.MetadataUpdateFieldRating}
+	if !slices.Equal(missing, want) {
+		t.Fatalf("missing = %v, want %v", missing, want)
+	}
+}

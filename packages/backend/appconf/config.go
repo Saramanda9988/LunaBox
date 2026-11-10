@@ -92,17 +92,18 @@ type AppConfig struct {
 	KungalAuthError               string                       `json:"kungal_auth_error,omitempty"`
 	KungalStatusPushEnabled       *bool                        `json:"kungal_status_push_enabled,omitempty"`
 	VNDBAccessToken               string                       `json:"vndb_access_token,omitempty"`
-	ErogameScapeBaseURL           string                       `json:"erogamescape_base_url,omitempty"`   // ErogameScape 站点地址
-	MetadataSources               []string                     `json:"metadata_sources,omitempty"`        // 元数据拉取来源列表（bangumi/vndb/ymgal/steam/dlsite/touchgal/hikarinagi/erogamescape）
-	AllowDuplicateMetadataImport  bool                         `json:"allow_duplicate_metadata_import"`   // 批量/外部导入时允许相同 source_type + source_id
-	BangumiCoverSource            enums2.MetadataCoverSource   `json:"bangumi_cover_source,omitempty"`    // Bangumi 封面来源
-	VNDBCoverSource               enums2.MetadataCoverSource   `json:"vndb_cover_source,omitempty"`       // VNDB 封面来源
-	MetadataStrategy              *MetadataStrategy            `json:"metadata_strategy,omitempty"`       // 高级组合策略（基底来源与各字段来源）
-	SteamCoverOrientation         enums2.SteamCoverOrientation `json:"steam_cover_orientation,omitempty"` // Steam 封面方向
-	Theme                         string                       `json:"theme"`                             // light or dark
-	Language                      string                       `json:"language"`                          // zh, en, etc.
-	SidebarOpen                   bool                         `json:"sidebar_open"`                      // 侧边栏是否展开
-	CloseToTray                   bool                         `json:"close_to_tray"`                     // 关闭时最小化到托盘
+	ErogameScapeBaseURL           string                       `json:"erogamescape_base_url,omitempty"`         // ErogameScape 站点地址
+	MetadataSources               []string                     `json:"metadata_sources,omitempty"`              // 元数据拉取来源列表（bangumi/vndb/ymgal/steam/dlsite/touchgal/hikarinagi/erogamescape）
+	AllowDuplicateMetadataImport  bool                         `json:"allow_duplicate_metadata_import"`         // 批量/外部导入时允许相同 source_type + source_id
+	BangumiCoverSource            enums2.MetadataCoverSource   `json:"bangumi_cover_source,omitempty"`          // Bangumi 封面来源
+	VNDBCoverSource               enums2.MetadataCoverSource   `json:"vndb_cover_source,omitempty"`             // VNDB 封面来源
+	MetadataStrategy              *MetadataStrategy            `json:"metadata_strategy,omitempty"`             // 高级组合策略（基底来源与各字段来源）
+	MetadataRefreshUseStrategy    bool                         `json:"metadata_refresh_use_strategy,omitempty"` // 更新元数据时套用高级组合策略（与导入时的开关分开）
+	SteamCoverOrientation         enums2.SteamCoverOrientation `json:"steam_cover_orientation,omitempty"`       // Steam 封面方向
+	Theme                         string                       `json:"theme"`                                   // light or dark
+	Language                      string                       `json:"language"`                                // zh, en, etc.
+	SidebarOpen                   bool                         `json:"sidebar_open"`                            // 侧边栏是否展开
+	CloseToTray                   bool                         `json:"close_to_tray"`                           // 关闭时最小化到托盘
 	// AI 配置
 	AIProvider     string `json:"ai_provider,omitempty"`      // openai, deepseek, etc.
 	AIBaseURL      string `json:"ai_base_url,omitempty"`      // API base URL

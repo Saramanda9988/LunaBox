@@ -1797,7 +1797,7 @@ func (s *GameService) updateGameMetadataFromRemoteBySource(ctx context.Context, 
 	// 没有指定来源时是默认的刷新：套用高级组合策略（游戏的默认来源作为基底）。
 	tagSource := enums2.SourceType("")
 	if requestedSource == "" {
-		metaResult, tagSource = s.composeRefreshResult(ctx, existingGame, metaResult, fieldSet)
+		metaResult, tagSource, fieldSet = s.composeRefreshResult(ctx, existingGame, metaResult, fieldSet)
 		if err := ctx.Err(); err != nil {
 			return "", err
 		}
@@ -2002,8 +2002,8 @@ func (s *GameService) refreshGamesMetadata(games []models.Game, logPrefix string
 
 		batchKey := gamehelper.MetadataRefreshBatchKeyForGame(game)
 		if metaResult, ok := batchResults.results[batchKey]; ok {
-			metaResult, tagSource := s.composeRefreshResult(s.ctx, game, metaResult, fieldSet)
-			remoteCoverURL, err := s.applyComposedMetadataResult(game, metaResult, tagSource, false, fieldSet)
+			metaResult, tagSource, gameFields := s.composeRefreshResult(s.ctx, game, metaResult, fieldSet)
+			remoteCoverURL, err := s.applyComposedMetadataResult(game, metaResult, tagSource, false, gameFields)
 			if err != nil {
 				result.FailedGames++
 				result.FailedGameIDs = append(result.FailedGameIDs, game.ID)

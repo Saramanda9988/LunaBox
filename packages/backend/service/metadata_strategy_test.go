@@ -1,13 +1,16 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/enums"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
+	"lunabox/backend/service/gamehelper"
 	"lunabox/backend/service/gamehelper/idmapper"
+	"lunabox/backend/utils/metadata"
 )
 
 func TestSelectImportMetadataMatchByID(t *testing.T) {
@@ -70,5 +73,31 @@ func TestResolveMetadataSourceIDs(t *testing.T) {
 	}
 	if got := s.ResolveMetadataSourceIDs(models.Game{SourceType: enums.Local}); len(got) != 0 {
 		t.Fatalf("local game ids = %v", got)
+	}
+}
+
+// 更新时的组合策略由 MetadataRefreshUseStrategy 单独控制（与导入的开关无关）；打开时所有来源都为空的字段不更新，保留本地内容。
+func TestComposeRefreshResultUsesRefreshSwitch(t *testing.T) {
+	config := &appconf.AppConfig{MetadataSources: []string{"bangumi", "vndb"}}
+	config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}.WithFieldSource(enums.MetadataUpdateFieldName, enums.VNDB)) // 导入开关关闭
+	s := &GameService{config: config}
+	s.SetGameIDMapper(idmapper.New(nil)) // VNDB 没有 ID，不会请求网络
+	game := models.Game{Name: "本地", SourceType: enums.Bangumi, SourceID: "20",
+		MetadataSources: []models.GameMetadataSource{{SourceType: enums.Bangumi, SourceID: "20"}}}
+	base := metadata.MetadataResult{Game: models.Game{Name: "BGM", SourceType: enums.Bangumi}}
+	fields := gamehelper.NormalizeMetadataUpdateFields(nil)
+
+	got, _, gotFields := s.composeRefreshResult(context.Background(), game, base, fields)
+	if got.Game.Name != "BGM" || len(gotFields) != len(fields) {
+		t.Fatalf("switch off: name %q, fields %v", got.Game.Name, gotFields)
+	}
+
+	config.MetadataRefreshUseStrategy = true
+	got, _, gotFields = s.composeRefreshResult(context.Background(), game, base, fields)
+	if got.Game.Name != "BGM" || !gotFields.Has(enums.MetadataUpdateFieldName) || !gotFields.Has(enums.MetadataUpdateFieldAliases) {
+		t.Fatalf("switch on: name %q, fields %v", got.Game.Name, gotFields)
+	}
+	if gotFields.Has(enums.MetadataUpdateFieldSummary) || gotFields.Has(enums.MetadataUpdateFieldTags) {
+		t.Fatalf("empty fields should be kept local: %v", gotFields)
 	}
 }
