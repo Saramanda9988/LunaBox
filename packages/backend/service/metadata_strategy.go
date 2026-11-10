@@ -50,6 +50,24 @@ func (s *GameService) mappedMetadataSourceIDs(known map[enums2.SourceType]string
 	return nil
 }
 
+// ResolveMetadataSourceIDs 返回刷新元数据时游戏在各来源可用的 ID：已关联的来源与默认来源的 ID，
+// 再加上按内置 ID 对照表查到的其他来源的 ID（已关联的优先）。界面据此标出组合策略里哪些字段的来源没有 ID。
+func (s *GameService) ResolveMetadataSourceIDs(game models.Game) map[enums2.SourceType]string {
+	known := map[enums2.SourceType]string{}
+	for _, ref := range game.MetadataSources {
+		if id := strings.TrimSpace(ref.SourceID); id != "" {
+			known[gamehelper.NormalizeMetadataSourceType(ref.SourceType)] = id
+		}
+	}
+	if id, base := strings.TrimSpace(game.SourceID), gamehelper.NormalizeMetadataSourceType(game.SourceType); id != "" && base != "" {
+		known[base] = id
+	}
+	for src, id := range s.mappedMetadataSourceIDs(known) {
+		known[src] = id
+	}
+	return known
+}
+
 // composeRefreshResult 在刷新元数据时套用高级组合策略：游戏的默认来源是基底（base 是它的结果），
 // 要更新的字段里改用其他来源的，按游戏已关联的 ID（没有时按 ID 对照表查）取那个来源的元数据再组合；
 // 取不到的字段仍用基底的数据。返回组合后的结果与标签的来源。策略对这次要更新的字段没有影响时原样返回。
@@ -74,23 +92,10 @@ func (s *GameService) composeRefreshResult(ctx context.Context, game models.Game
 		return base, ""
 	}
 
-	known := map[enums2.SourceType]string{}
-	for _, ref := range game.MetadataSources {
-		if id := strings.TrimSpace(ref.SourceID); id != "" {
-			known[gamehelper.NormalizeMetadataSourceType(ref.SourceType)] = id
-		}
-	}
-	if id := strings.TrimSpace(game.SourceID); id != "" && baseSource != "" {
-		known[baseSource] = id
-	}
-	mapped := s.mappedMetadataSourceIDs(known)
-
+	ids := s.ResolveMetadataSourceIDs(game)
 	var others []vo.GameMetadataFromWebVO
 	for _, src := range needed {
-		id := known[src]
-		if id == "" {
-			id = mapped[src]
-		}
+		id := ids[src]
 		if id == "" || !s.isMetadataSourceEnabled(src) {
 			continue
 		}

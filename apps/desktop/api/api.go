@@ -108,6 +108,7 @@ type GameService interface {
 	SaveCoverImageDataURLWithTempID(dataURL string) (string, error)
 	UpdateGameFromRemoteBySourceContext(ctx context.Context, gameID string, source enums.SourceType) error
 	UpdateGameFromRemoteWithFieldsContext(ctx context.Context, gameID string, fields []enums.MetadataUpdateField) error
+	ResolveMetadataSourceIDs(game models.Game) map[enums.SourceType]string
 	RefreshGamesMetadataWithFields(gameIDs []string, fields []enums.MetadataUpdateField) (vo.MetadataRefreshResult, error)
 	RefreshAllGamesMetadataWithFields(fields []enums.MetadataUpdateField) (vo.MetadataRefreshResult, error)
 	SetDefaultMetadataSource(gameID string, source enums.SourceType) error

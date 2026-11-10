@@ -36,7 +36,7 @@ func (e *editor) deleteModal(c *ui.Context) {
 func (e *editor) fieldSelectModal(c *ui.Context) {
 	s := e.s
 	better.MetadataFieldSelectModal(c, e.t, "metadata-fields", better.MetadataFieldSelectProps{
-		FieldNotes:  e.strategyNotes(),
+		FieldNotes:  metadatapanel.GameRefreshNotes(e.config(), e.defaultSourceType(), s.sourceIDs),
 		OnStrategy:  func() { s.strategy.Open(e.p.Env.Config()) },
 		Open:        s.fieldsOpen,
 		Title:       locales.MetadataUpdateFieldsModalSingleTitle(),
@@ -50,9 +50,40 @@ func (e *editor) fieldSelectModal(c *ui.Context) {
 	})
 }
 
+// loadSourceIDs 在后台查出游戏在各来源可用的元数据 ID（含内置 ID 对照表查到的），弹窗据此标出没有 ID 的来源。
+func (e *editor) loadSourceIDs() {
+	s, svc, g := e.s, e.p.Env.Svc, e.g
+	s.sourceIDs = nil
+	e.p.Env.Async(func() func() {
+		ids := svc.Game.ResolveMetadataSourceIDs(g)
+		if ids == nil {
+			ids = map[enums.SourceType]string{}
+		}
+		return func() {
+			if s.gameID == g.ID {
+				s.sourceIDs = ids
+			}
+		}
+	})
+}
+
+// defaultSourceType 是游戏的默认来源。
+func (e *editor) defaultSourceType() enums.SourceType {
+	src, _ := defaultSource(&e.g)
+	return src
+}
+
+// config 是当前配置；没有环境（测试）时为 nil。
+func (e *editor) config() *appconf.AppConfig {
+	if e.p.Env == nil {
+		return nil
+	}
+	return e.p.Env.Config()
+}
+
 // strategyNotes 是从默认来源更新时高级组合策略里各字段改用的来源（以游戏的默认来源为基底）；
 // 没有默认来源或者策略没有影响时为空。
-func (e *editor) strategyNotes() map[enums.MetadataUpdateField]string {
+func (e *editor) strategyNotes() map[enums.MetadataUpdateField]better.FieldNote {
 	src, _ := defaultSource(&e.g)
 	if src == "" || src == enums.Local || e.p.Env == nil {
 		return nil

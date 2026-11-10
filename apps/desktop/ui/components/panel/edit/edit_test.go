@@ -371,8 +371,8 @@ func TestFieldSelectModal(t *testing.T) {
 	}
 }
 
-// 高级组合策略对这个游戏的默认来源生效时，默认来源旁边标出“组合策略”，更新字段的弹窗标出各字段改用的来源；
-// 弹窗底部的“取消”换成了打开组合策略弹窗的按钮。
+// 高级组合策略对这个游戏的默认来源生效时，默认来源旁边标出“组合策略”，更新字段的弹窗标出各字段将从哪个来源更新
+// （改用的来源或默认来源）；弹窗底部的“取消”换成了打开组合策略弹窗的按钮。
 func TestFieldSelectModalShowsStrategy(t *testing.T) {
 	h := newHarness(t, testGame()) // 默认来源 Bangumi
 	h.expectNot(t, locales.NativeMetadataStrategyButton())
@@ -383,8 +383,9 @@ func TestFieldSelectModalShowsStrategy(t *testing.T) {
 	h.expectTexts(t, locales.NativeMetadataStrategyButton())
 
 	h.click(t, "从远端更新信息")
-	h.expectTexts(t, locales.NativeMetadataStrategyFieldFrom("VNDB"), locales.NativeMetadataStrategySettingsLabel())
-	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("Bangumi"), locales.CommonCancel())
+	h.expectTexts(t, locales.NativeMetadataStrategyFieldFrom("VNDB"), locales.NativeMetadataStrategyFieldFrom("Bangumi"),
+		locales.NativeMetadataStrategySettingsLabel())
+	h.expectNot(t, locales.CommonCancel(), locales.NativeMetadataStrategyNoSourceID("VNDB"))
 	if dir := os.Getenv("DESKTOP_MYGO_PNG"); dir != "" {
 		f, err := os.Create(filepath.Join(dir, "edit-fields-strategy.png"))
 		if err != nil {
@@ -403,10 +404,31 @@ func TestFieldSelectModalShowsStrategy(t *testing.T) {
 		t.Fatalf("fields open %v, strategy open %v", h.state.fieldsOpen, h.state.strategy.IsOpen())
 	}
 
-	// 没有基底时策略不生效。
+	// 没有基底时策略不生效：都从默认来源更新。
 	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Enabled: true}.WithFieldSource(enums.MetadataUpdateFieldTags, enums.VNDB))
 	h.frames(2)
 	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("VNDB"))
+	h.expectTexts(t, locales.NativeMetadataStrategyFieldFrom("Bangumi"))
+}
+
+// 游戏没有组合策略改用的来源的元数据 ID（也查不到对照）时，那个字段标出“暂无 X 元数据 ID”；本地游戏都标“暂无元数据 ID”。
+func TestFieldSelectModalShowsMissingSourceID(t *testing.T) {
+	g := testGame()
+	g.SourceID = "999999999" // 对照表里没有
+	g.MetadataSources = []models.GameMetadataSource{{SourceType: enums.Bangumi, SourceID: g.SourceID}}
+	h := newHarness(t, g)
+	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB, Enabled: true}.
+		WithFieldSource(enums.MetadataUpdateFieldTags, enums.VNDB))
+	h.frames(2)
+	h.click(t, "从远端更新信息")
+	h.expectTexts(t, locales.NativeMetadataStrategyNoSourceID("VNDB"), locales.NativeMetadataStrategyFieldFrom("Bangumi"))
+	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("VNDB"))
+
+	local := testGame()
+	local.SourceType, local.SourceID, local.MetadataSources = enums.Local, "", nil
+	h = newHarness(t, local)
+	h.click(t, "从远端更新信息")
+	h.expectTexts(t, locales.NativeMetadataStrategyNoMetadataID())
 }
 
 func TestMetadataDrawer(t *testing.T) {

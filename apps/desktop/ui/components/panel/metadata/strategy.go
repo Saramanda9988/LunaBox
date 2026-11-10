@@ -108,7 +108,7 @@ func StrategySummary(s appconf.MetadataStrategy, enabled []enums.SourceType) []s
 // StrategyRefreshNotes 是更新元数据时组合策略里各字段改用的来源（给 MetadataFieldSelectModal 的 FieldNotes）。
 // base 是单个游戏的默认来源；为空时是全量更新（每个游戏以自己的默认来源为基底，标注按策略的基底算）。
 // 策略不生效、或者对这次更新没有影响时为空。
-func StrategyRefreshNotes(cfg *appconf.AppConfig, base enums.SourceType) map[enums.MetadataUpdateField]string {
+func StrategyRefreshNotes(cfg *appconf.AppConfig, base enums.SourceType) map[enums.MetadataUpdateField]better.FieldNote {
 	strategy := cfg.Strategy()
 	if !strategy.Active() || (base != "" && !metasource.Known(base)) {
 		return nil
@@ -121,12 +121,54 @@ func StrategyRefreshNotes(cfg *appconf.AppConfig, base enums.SourceType) map[enu
 	if len(fields) == 0 {
 		return nil
 	}
-	notes := make(map[enums.MetadataUpdateField]string, len(fields))
+	notes := make(map[enums.MetadataUpdateField]better.FieldNote, len(fields))
 	for _, f := range fields {
-		src := strategy.FieldSource(f)
-		notes[f] = locales.NativeMetadataStrategyFieldFrom(StrategyLabel(src))
-		if src == appconf.MetadataStrategyAllSources {
-			notes[f] = StrategyLabel(src)
+		notes[f] = strategyFieldNote(strategy.FieldSource(f))
+	}
+	return notes
+}
+
+// strategyFieldNote 是“将从 X 更新”；别名合并所有来源时是“合并所有来源”。
+func strategyFieldNote(src enums.SourceType) better.FieldNote {
+	if src == appconf.MetadataStrategyAllSources {
+		return better.FieldNote{Text: StrategyLabel(src)}
+	}
+	return better.FieldNote{Text: locales.NativeMetadataStrategyFieldFrom(StrategyLabel(src))}
+}
+
+// GameRefreshNotes 是从默认来源 base 更新单个游戏时每个字段将从哪个来源更新（给 FieldNotes）：组合策略改用的来源，
+// 其余是 base。ids 是游戏在各来源可用的元数据 ID（GameService.ResolveMetadataSourceIDs，含 ID 对照表查到的），
+// 来源没有 ID 时标出“暂无 X 元数据 ID”（组合策略改用的来源没有 ID 时，这个字段实际用 base 的数据）；
+// ids 为 nil 表示还没查到，先不标。游戏没有默认来源（本地游戏）时每个字段都标“暂无元数据 ID”。
+func GameRefreshNotes(cfg *appconf.AppConfig, base enums.SourceType, ids map[enums.SourceType]string) map[enums.MetadataUpdateField]better.FieldNote {
+	notes := make(map[enums.MetadataUpdateField]better.FieldNote, len(enums.DefaultMetadataUpdateFields))
+	if base == "" || base == enums.Local {
+		for _, f := range enums.DefaultMetadataUpdateFields {
+			notes[f] = better.FieldNote{Text: locales.NativeMetadataStrategyNoMetadataID(), Warn: true}
+		}
+		return notes
+	}
+	note := func(src enums.SourceType) better.FieldNote {
+		if ids != nil && strings.TrimSpace(ids[src]) == "" {
+			return better.FieldNote{Text: locales.NativeMetadataStrategyNoSourceID(StrategyLabel(src)), Warn: true}
+		}
+		return strategyFieldNote(src)
+	}
+	for _, f := range enums.DefaultMetadataUpdateFields {
+		notes[f] = note(base)
+	}
+	if cfg == nil || !metasource.Known(base) {
+		return notes
+	}
+	strategy := cfg.Strategy()
+	if !strategy.Active() {
+		return notes
+	}
+	for _, f := range gamehelper.StrategyOverridesFor(strategy, base, EnabledSources(cfg)) {
+		if src := strategy.FieldSource(f); src == appconf.MetadataStrategyAllSources {
+			notes[f] = strategyFieldNote(src)
+		} else {
+			notes[f] = note(src)
 		}
 	}
 	return notes

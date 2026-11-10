@@ -1666,5 +1666,7 @@
   "native_metadataStrategy_cardSource": "Mixed · base {base}",
   "native_metadataStrategy_cardHint": "Combine the results using your metadata mix",
   "native_metadataStrategy_buttonMixed": "{base} · mixed",
-  "native_metadataStrategy_fieldFrom": "from {source}"
+  "native_metadataStrategy_fieldFrom": "Updates from {source}",
+  "native_metadataStrategy_noSourceID": "No {source} metadata ID",
+  "native_metadataStrategy_noMetadataID": "No metadata ID"
 }

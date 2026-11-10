@@ -24875,7 +24875,7 @@ func (msgs Messages) NativeMetadataStrategyButtonMixed(base string) string {
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_buttonMixed", map[string]any{"base": base})
 }
 
-// NativeMetadataStrategyFieldFrom says "来自 {source}"
+// NativeMetadataStrategyFieldFrom says "将从 {source} 更新"
 // in the language the app shows.
 //
 // extra:native.metadataStrategy.fieldFrom
@@ -24883,10 +24883,42 @@ func NativeMetadataStrategyFieldFrom(source string) string {
 	return In(i18n.Locale()).NativeMetadataStrategyFieldFrom(source)
 }
 
-// NativeMetadataStrategyFieldFrom says "来自 {source}"
+// NativeMetadataStrategyFieldFrom says "将从 {source} 更新"
 // in the language of msgs.
 //
 // extra:native.metadataStrategy.fieldFrom
 func (msgs Messages) NativeMetadataStrategyFieldFrom(source string) string {
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_fieldFrom", map[string]any{"source": source})
+}
+
+// NativeMetadataStrategyNoSourceID says "暂无 {source} 元数据 ID"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.noSourceID
+func NativeMetadataStrategyNoSourceID(source string) string {
+	return In(i18n.Locale()).NativeMetadataStrategyNoSourceID(source)
+}
+
+// NativeMetadataStrategyNoSourceID says "暂无 {source} 元数据 ID"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.noSourceID
+func (msgs Messages) NativeMetadataStrategyNoSourceID(source string) string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_noSourceID", map[string]any{"source": source})
+}
+
+// NativeMetadataStrategyNoMetadataID says "暂无元数据 ID"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.noMetadataID
+func NativeMetadataStrategyNoMetadataID() string {
+	return In(i18n.Locale()).NativeMetadataStrategyNoMetadataID()
+}
+
+// NativeMetadataStrategyNoMetadataID says "暂无元数据 ID"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.noMetadataID
+func (msgs Messages) NativeMetadataStrategyNoMetadataID() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_noMetadataID", nil)
 }

@@ -3332,6 +3332,10 @@
   "@native_metadataStrategy_cardHint": {"description": "extra:native.metadataStrategy.cardHint"},
   "native_metadataStrategy_buttonMixed": "{base} · 组合",
   "@native_metadataStrategy_buttonMixed": {"description": "extra:native.metadataStrategy.buttonMixed", "placeholders": {"base": {"type": "String"}}},
-  "native_metadataStrategy_fieldFrom": "来自 {source}",
-  "@native_metadataStrategy_fieldFrom": {"description": "extra:native.metadataStrategy.fieldFrom", "placeholders": {"source": {"type": "String"}}}
+  "native_metadataStrategy_fieldFrom": "将从 {source} 更新",
+  "@native_metadataStrategy_fieldFrom": {"description": "extra:native.metadataStrategy.fieldFrom", "placeholders": {"source": {"type": "String"}}},
+  "native_metadataStrategy_noSourceID": "暂无 {source} 元数据 ID",
+  "@native_metadataStrategy_noSourceID": {"description": "extra:native.metadataStrategy.noSourceID", "placeholders": {"source": {"type": "String"}}},
+  "native_metadataStrategy_noMetadataID": "暂无元数据 ID",
+  "@native_metadataStrategy_noMetadataID": {"description": "extra:native.metadataStrategy.noMetadataID"}
 }

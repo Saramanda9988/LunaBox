@@ -52,3 +52,23 @@ func TestComposeImportMatchesFollowsStrategyBase(t *testing.T) {
 		t.Fatal("strategy for another base should not apply")
 	}
 }
+
+func TestResolveMetadataSourceIDs(t *testing.T) {
+	s := &GameService{}
+	s.SetGameIDMapper(idmapper.New([]idmapper.IDs{{VNDBID: 10, BangumiID: 20, HikarinagiID: 40}}))
+	game := models.Game{
+		SourceType: enums.Bangumi, SourceID: "20",
+		MetadataSources: []models.GameMetadataSource{
+			{SourceType: enums.Bangumi, SourceID: "20"},
+			{SourceType: enums.Hikarinagi, SourceID: "99"}, // 已关联的 ID 优先于对照表
+			{SourceType: enums.Ymgal, SourceID: " "},
+		},
+	}
+	got := s.ResolveMetadataSourceIDs(game)
+	if got[enums.Bangumi] != "20" || got[enums.VNDB] != "v10" || got[enums.Hikarinagi] != "99" || got[enums.Ymgal] != "" || len(got) != 3 {
+		t.Fatalf("ids = %v", got)
+	}
+	if got := s.ResolveMetadataSourceIDs(models.Game{SourceType: enums.Local}); len(got) != 0 {
+		t.Fatalf("local game ids = %v", got)
+	}
+}

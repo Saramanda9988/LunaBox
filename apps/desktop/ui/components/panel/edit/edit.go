@@ -76,6 +76,7 @@ type State struct {
 	fieldsOpen bool                        // isMetadataFieldModalOpen
 	fields     []enums.MetadataUpdateField // 弹窗里勾选的字段
 	lastFields []enums.MetadataUpdateField // selectedMetadataFields：上次更新用的字段
+	sourceIDs  map[enums.SourceType]string // 打开弹窗时查到的各来源可用的元数据 ID；nil 表示还没查到
 	updating   bool                        // isUpdatingFromRemote
 	update     env.Request                 // 从远端更新的请求，可以取消
 
@@ -506,6 +507,7 @@ func (e *editor) footerButtons(c *ui.Context) {
 				if !locked && !s.updating {
 					s.fields = slices.Clone(s.lastFields)
 					s.fieldsOpen = true
+					e.loadSourceIDs()
 				}
 			},
 		}

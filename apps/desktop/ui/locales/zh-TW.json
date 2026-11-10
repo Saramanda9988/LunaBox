@@ -1666,5 +1666,7 @@
   "native_metadataStrategy_cardSource": "組合策略 · 基底 {base}",
   "native_metadataStrategy_cardHint": "按進階組合策略組合各來源的結果",
   "native_metadataStrategy_buttonMixed": "{base} · 組合",
-  "native_metadataStrategy_fieldFrom": "來自 {source}"
+  "native_metadataStrategy_fieldFrom": "將從 {source} 更新",
+  "native_metadataStrategy_noSourceID": "暫無 {source} 中繼資料 ID",
+  "native_metadataStrategy_noMetadataID": "暫無中繼資料 ID"
 }

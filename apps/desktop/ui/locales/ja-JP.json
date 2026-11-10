@@ -1849,5 +1849,7 @@
   "native_metadataStrategy_cardSource": "組み合わせ · 基準 {base}",
   "native_metadataStrategy_cardHint": "組み合わせ戦略で各ソースの結果を組み合わせる",
   "native_metadataStrategy_buttonMixed": "{base} · 組み合わせ",
-  "native_metadataStrategy_fieldFrom": "{source} から"
+  "native_metadataStrategy_fieldFrom": "{source} から更新",
+  "native_metadataStrategy_noSourceID": "{source} のメタデータ ID なし",
+  "native_metadataStrategy_noMetadataID": "メタデータ ID なし"
 }

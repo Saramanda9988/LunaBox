@@ -26,10 +26,16 @@ type MetadataFieldSelectProps struct {
 	TopOffset  float32
 	// OnStrategy 不为 nil 时，底部的“取消”换成打开高级组合策略的按钮（原版没有；关闭弹窗用右上角的关闭按钮）。
 	OnStrategy func()
-	// FieldNotes 是字段名后面的小标签（原版没有：组合策略里这个字段改用的来源）。
-	FieldNotes map[enums.MetadataUpdateField]string
+	// FieldNotes 是字段名后面的小标签（原版没有：这个字段将从哪个来源更新，或者那个来源没有元数据 ID）。
+	FieldNotes map[enums.MetadataUpdateField]FieldNote
 	OnClose    func()
 	OnConfirm  func(fields []enums.MetadataUpdateField)
+}
+
+// FieldNote 是字段名后面的小标签：Warn 时用琥珀色（来源没有元数据 ID），否则是天蓝色。
+type FieldNote struct {
+	Text string
+	Warn bool
 }
 
 // InitialMetadataFields 是 initialSelectedFields：initialFields 为空时用 DEFAULT_METADATA_UPDATE_FIELDS。返回副本。
@@ -130,8 +136,8 @@ func MetadataFieldSelectModal(c *ui.Context, t *theme.Theme, key string, p Metad
 
 // metadataFieldToggle：flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3，左侧 label（点击也切换）是 text-sm
 // font-medium 的名称与 text-xs leading-relaxed 的说明（space-y-1）。
-// note 不为空时是名称后面天蓝色的小标签。
-func metadataFieldToggle(c *ui.Context, t *theme.Theme, text [2]string, note string, checked bool, onChange func(bool)) {
+// note.Text 不为空时是名称后面的小标签（天蓝色，Warn 时琥珀色）。
+func metadataFieldToggle(c *ui.Context, t *theme.Theme, text [2]string, note FieldNote, checked bool, onChange func(bool)) {
 	ui.Row(c).MinWidth(0).Gap(12).Padding(12).Radius(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).
 		Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).Children(func() {
 		lb := ui.ButtonBase(c.Key("label")).Column().Grow(1).Basis(0).MinWidth(0).Gap(4).AlignItems(ui.Start).
@@ -139,9 +145,13 @@ func metadataFieldToggle(c *ui.Context, t *theme.Theme, text [2]string, note str
 		lb.OnClick(func() { onChange(!checked) }).Children(func() {
 			ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 				components.Text(c, text[0], theme.TextSM, theme.WeightMedium, t.Pick(theme.Brand800, theme.Brand200))
-				if note != "" {
-					ui.Box(c.Key("note")).Padding(1, 6).Radius(999).Shrink(0).Background(t.Pick(theme.Sky100, theme.Sky900.Alpha(0.5))).Children(func() {
-						components.Text(c, note, theme.TextXS, theme.WeightMedium, t.Pick(theme.Sky700, theme.Sky300)).NoWrap()
+				if note.Text != "" {
+					bg, fg := t.Pick(theme.Sky100, theme.Sky900.Alpha(0.5)), t.Pick(theme.Sky700, theme.Sky300)
+					if note.Warn {
+						bg, fg = t.Pick(theme.Warning100, theme.Warning900.Alpha(0.5)), t.Pick(theme.Warning700, theme.Warning300)
+					}
+					ui.Box(c.Key("note")).Padding(1, 6).Radius(999).Shrink(0).Background(bg).Children(func() {
+						components.Text(c, note.Text, theme.TextXS, theme.WeightMedium, fg).NoWrap()
 					})
 				}
 			})
