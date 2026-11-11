@@ -92,6 +92,10 @@ type msg struct {
 	Pt      point
 }
 
+// Start 在单独线程的隐藏窗口上监听会话结束。WM_QUERYENDSESSION 时返回 FALSE 并设置 ShutdownBlockReason，
+// 系统关机界面显示 Reason 并等 LunaBox 自己退出（关闭 DuckDB 需要几秒），同时调用 OnQueryEndSession 开始退出。
+// MyGo 只在 WM_ENDSESSION 时同步运行退出监听（mygo.QuitEvent.SessionEnding），不阻止关机，
+// 返回后进程随时会被结束，所以这里保留，MyGo 的处理作兜底（见 apps/desktop/app 的 OnBeforeQuit）。
 func Start(options Options) (*Hook, error) {
 	if options.Reason == "" {
 		options.Reason = "LunaBox is saving application data"

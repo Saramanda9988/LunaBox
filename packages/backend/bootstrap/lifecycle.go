@@ -91,10 +91,16 @@ func (a *App) RequestQuit(reason string) {
 	a.QuitApplication()
 }
 
+// MarkSystemSessionEnding 记下系统正在结束会话（注销、重启、关机），退出时跳过退出前同步与自动备份。
+// 框架自己报告会话结束（mygo.QuitEvent.SessionEnding）时调用，退出由框架进行。
+func (a *App) MarkSystemSessionEnding() {
+	a.systemSessionEnding.Store(true)
+}
+
 // QuitForSystemSessionEnd 在系统注销、关机时立即退出，不做退出前同步与退出时的自动备份。
 func (a *App) QuitForSystemSessionEnd() {
 	a.CaptureWindowState()
-	a.systemSessionEnding.Store(true)
+	a.MarkSystemSessionEnding()
 	a.forceQuit.Store(true)
 
 	_, quit := a.attached()

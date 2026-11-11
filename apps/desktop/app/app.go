@@ -110,7 +110,15 @@ func Run(o Options) error {
 		// Windows 与 Linux 的链接在命令行里，由 TakeProtocolRequest 与 onSecondInstance 处理。
 		mygo.App.OnOpenURL(a.core.HandleLaunchedWithURL)
 	}
-	mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) { a.core.ForceQuit() })
+	mygo.App.OnBeforeQuit(func(e *mygo.QuitEvent) {
+		// 系统结束会话（Windows 的 WM_ENDSESSION、macOS 的 applicationWillTerminate:）时，框架在返回后
+		// 随时可能结束进程：OnQuit 里的 shutdown 跳过耗时的自动备份。Windows 上通常已由 sessionend 钩子
+		// 在 WM_QUERYENDSESSION 时提前开始退出，这里是它没能先完成时的兜底（如强制关机）。
+		if e.SessionEnding {
+			a.core.MarkSystemSessionEnding()
+		}
+		a.core.ForceQuit()
+	})
 	mygo.App.OnQuit(a.shutdown)
 	mygo.App.WhenReady(a.ready)
 	return mygo.App.Run()

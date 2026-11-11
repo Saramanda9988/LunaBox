@@ -5,7 +5,7 @@ go 1.27.3
 tool github.com/egoist/mygo/cmd/mygo
 
 require (
-	github.com/egoist/mygo v0.8.1
+	github.com/egoist/mygo v0.9.0
 	github.com/gen2brain/avif v0.6.0
 	golang.org/x/image v0.46.0
 	golang.org/x/sys v0.48.0
@@ -14,6 +14,7 @@ require (
 )
 
 require (
+	github.com/ProtonMail/go-crypto v1.4.1 // indirect
 	github.com/PuerkitoBio/goquery v1.10.3 // indirect
 	github.com/Umbrae-Labs/umbra-sdk/umbra-go v0.3.0 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
@@ -46,6 +47,7 @@ require (
 	github.com/cavaliergopher/rpm v1.3.0 // indirect
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.4.0 // indirect
+	github.com/cloudflare/circl v1.6.2 // indirect
 	github.com/duckdb/duckdb-go-bindings v0.3.5 // indirect
 	github.com/duckdb/duckdb-go-bindings/lib/darwin-amd64 v0.3.5 // indirect
 	github.com/duckdb/duckdb-go-bindings/lib/darwin-arm64 v0.3.5 // indirect
@@ -65,7 +67,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/kdomanski/iso9660 v0.4.0 // indirect
-	github.com/klauspost/compress v1.18.4 // indirect
+	github.com/klauspost/compress v1.18.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
@@ -88,6 +90,7 @@ require (
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
+	go.digitalxero.dev/rpm v0.3.4 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
