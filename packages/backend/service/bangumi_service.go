@@ -608,7 +608,7 @@ func (s *BangumiService) persistAuthorizedStateLocked(tokenResp *bangumiTokenRes
 	s.config.BangumiTokenExpiresAt = expiresAt.Format(time.RFC3339)
 	s.config.BangumiAuthorizedUserID = strconv.Itoa(user.ID)
 	s.config.BangumiAuthorizedUsername = strings.TrimSpace(user.Username)
-	s.config.BangumiAuthorizedAvatarURL = s.resolveCachedBangumiAvatarURL(user)
+	s.config.BangumiAuthorizedAvatarURL = s.resolveCachedBangumiAvatarURL(user, true)
 	s.config.BangumiAuthError = ""
 	appconf.SanitizeBangumiOAuthConfig(s.config)
 
@@ -756,7 +756,7 @@ func (s *BangumiService) buildBangumiProfileAndCache(user *bangumiCurrentUser) v
 		return profile
 	}
 
-	avatarURL := s.resolveCachedBangumiAvatarURL(user)
+	avatarURL := s.resolveCachedBangumiAvatarURL(user, false)
 	profile.AvatarURL = avatarURL
 	if avatarURL != "" {
 		profile.AvatarLarge = avatarURL
@@ -777,7 +777,7 @@ func (s *BangumiService) buildBangumiProfileAndCache(user *bangumiCurrentUser) v
 	return profile
 }
 
-func (s *BangumiService) resolveCachedBangumiAvatarURL(user *bangumiCurrentUser) string {
+func (s *BangumiService) resolveCachedBangumiAvatarURL(user *bangumiCurrentUser, force bool) string {
 	if user == nil {
 		return ""
 	}
@@ -787,27 +787,17 @@ func (s *BangumiService) resolveCachedBangumiAvatarURL(user *bangumiCurrentUser)
 		return ""
 	}
 
-	_, cachedURL, err := imageutils.FindManagedAvatarFile("bangumi", userID)
-	if err == nil && cachedURL != "" {
-		return cachedURL
-	}
-
 	sourceURL := firstNonEmptyString(
 		strings.TrimSpace(user.Avatar.Large),
 		strings.TrimSpace(user.Avatar.Medium),
 		strings.TrimSpace(user.Avatar.Small),
 	)
-	if sourceURL == "" {
-		return ""
-	}
-
-	localURL, err := imageutils.DownloadAndSaveAvatarImageWithClient(s.httpClient, sourceURL, "bangumi", userID)
+	localURL, err := imageutils.ResolveManagedAvatar(s.httpClient, sourceURL, "bangumi", userID, force)
 	if err != nil {
 		applog.LogWarningf(s.ctx, "failed to cache Bangumi avatar for user %s: %v", userID, err)
-		if s.config != nil {
+		if localURL == "" && s.config != nil {
 			return strings.TrimSpace(s.config.BangumiAuthorizedAvatarURL)
 		}
-		return ""
 	}
 
 	return localURL

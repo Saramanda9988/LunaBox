@@ -568,7 +568,7 @@ func (s *HikarinagiService) persistAuthorizedStateLocked(tokenResp *hikarinagiTo
 	s.config.HikarinagiTokenExpiresAt = s.now().Add(tokenExpiryDuration(tokenResp.ExpiresIn)).Format(time.RFC3339)
 	s.config.HikarinagiAuthorizedUserID = strconv.FormatInt(user.ID, 10)
 	s.config.HikarinagiAuthorizedUsername = strings.TrimSpace(user.Name)
-	s.config.HikarinagiAuthorizedAvatarURL = s.resolveCachedAvatarURL(user)
+	s.config.HikarinagiAuthorizedAvatarURL = s.resolveCachedAvatarURL(user, true)
 	s.config.HikarinagiAuthError = ""
 	appconf.SanitizeHikarinagiOAuthConfig(s.config)
 
@@ -696,7 +696,7 @@ func (s *HikarinagiService) buildProfileAndCache(user *hikarinagiCurrentUser) vo
 	if user == nil {
 		return vo.HikarinagiProfile{}
 	}
-	avatarURL := s.resolveCachedAvatarURL(user)
+	avatarURL := s.resolveCachedAvatarURL(user, false)
 	profile := vo.HikarinagiProfile{
 		UserID:    strconv.FormatInt(user.ID, 10),
 		Username:  strings.TrimSpace(user.Name),
@@ -718,29 +718,22 @@ func (s *HikarinagiService) buildProfileAndCache(user *hikarinagiCurrentUser) vo
 	return profile
 }
 
-func (s *HikarinagiService) resolveCachedAvatarURL(user *hikarinagiCurrentUser) string {
+// resolveCachedAvatarURL 返回本地缓存的头像地址；force 为 true（刚授权）或缓存超过一天时重新下载。
+func (s *HikarinagiService) resolveCachedAvatarURL(user *hikarinagiCurrentUser, force bool) string {
 	if user == nil || user.ID <= 0 {
 		return ""
 	}
 	userID := strconv.FormatInt(user.ID, 10)
-	_, cachedURL, err := imageutils.FindManagedAvatarFile("hikarinagi", userID)
-	if err == nil && cachedURL != "" {
-		return cachedURL
+	sourceURL := ""
+	if user.Avatar != nil {
+		sourceURL = resolveHikarinagiAssetURL(user.Avatar.Src)
 	}
-	if user.Avatar == nil {
-		return ""
-	}
-	sourceURL := resolveHikarinagiAssetURL(user.Avatar.Src)
-	if sourceURL == "" {
-		return ""
-	}
-	localURL, err := imageutils.DownloadAndSaveAvatarImageWithClient(s.httpClient, sourceURL, "hikarinagi", userID)
+	localURL, err := imageutils.ResolveManagedAvatar(s.httpClient, sourceURL, "hikarinagi", userID, force)
 	if err != nil {
 		applog.LogWarningf(s.ctx, "failed to cache Hikarinagi avatar for user %s: %v", userID, err)
-		if s.config != nil {
+		if localURL == "" && s.config != nil {
 			return strings.TrimSpace(s.config.HikarinagiAuthorizedAvatarURL)
 		}
-		return ""
 	}
 	return localURL
 }

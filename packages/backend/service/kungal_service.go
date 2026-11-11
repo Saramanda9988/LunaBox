@@ -220,7 +220,7 @@ func (s *KungalService) GetProfile() (vo.KungalProfile, error) {
 		return vo.KungalProfile{}, err
 	}
 
-	avatarURL := s.resolveCachedAvatarURL(user)
+	avatarURL := s.resolveCachedAvatarURL(user, false)
 	s.mu.Lock()
 	if s.config != nil && (s.config.KungalAuthorizedAvatarURL != avatarURL || s.config.KungalAuthorizedUsername != user.Name) {
 		s.config.KungalAuthorizedAvatarURL = avatarURL
@@ -741,7 +741,7 @@ func (s *KungalService) persistAuthorizedStateLocked(tokenResp *kungalTokenRespo
 	s.config.KungalTokenExpiresAt = s.now().Add(tokenExpiryDuration(tokenResp.ExpiresIn)).Format(time.RFC3339)
 	s.config.KungalAuthorizedUserID = strings.TrimSpace(user.Sub)
 	s.config.KungalAuthorizedUsername = strings.TrimSpace(user.Name)
-	s.config.KungalAuthorizedAvatarURL = s.resolveCachedAvatarURL(user)
+	s.config.KungalAuthorizedAvatarURL = s.resolveCachedAvatarURL(user, true)
 	s.config.KungalAuthError = ""
 	appconf.SanitizeKungalOAuthConfig(s.config)
 
@@ -871,21 +871,18 @@ func (s *KungalService) fetchUserInfo(ctx context.Context, accessToken string) (
 	return &user, nil
 }
 
-func (s *KungalService) resolveCachedAvatarURL(user *kungalUserInfo) string {
+// resolveCachedAvatarURL 返回本地缓存的头像地址；force 为 true（刚授权）或缓存超过一天时重新下载。
+func (s *KungalService) resolveCachedAvatarURL(user *kungalUserInfo, force bool) string {
 	if user == nil || user.Sub == "" {
 		return ""
 	}
-	if _, cachedURL, err := imageutils.FindManagedAvatarFile("kungal", user.Sub); err == nil && cachedURL != "" {
-		return cachedURL
-	}
 	sourceURL := strings.TrimSpace(user.Picture)
-	if sourceURL == "" {
-		return ""
-	}
-	localURL, err := imageutils.DownloadAndSaveAvatarImageWithClient(s.httpClient, sourceURL, "kungal", user.Sub)
+	localURL, err := imageutils.ResolveManagedAvatar(s.httpClient, sourceURL, "kungal", user.Sub, force)
 	if err != nil {
 		applog.LogWarningf(s.ctx, "failed to cache Kungal avatar for user %s: %v", user.Sub, err)
-		return sourceURL
+		if localURL == "" {
+			return sourceURL
+		}
 	}
 	return localURL
 }
