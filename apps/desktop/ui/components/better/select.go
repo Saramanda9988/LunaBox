@@ -1,6 +1,8 @@
 package better
 
 import (
+	"time"
+
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/desktop/ui/components"
@@ -114,4 +116,69 @@ func selectOptions(c *ui.Context, t *theme.Theme, p SelectProps, open *bool) {
 			components.Text(c, o.Label, theme.TextBase, weight, t.SelectText).SingleLine()
 		})
 	}
+}
+
+// InlineSelectProps 是 InlineSelect 的属性。
+type InlineSelectProps struct {
+	Value    string
+	Options  []SelectOption
+	Disabled bool
+	OnChange func(value string)
+	Font     theme.FontStep // 触发文字的字号，默认 text-xs
+	Color    ui.Color       // 触发文字与箭头的颜色
+	MinWidth float32        // 弹出列表至少这么宽（默认 160），比触发文字宽时不截断选项
+}
+
+// InlineSelect 是行内的下拉选择（原版没有）：触发器只有选中项的文字与小箭头（没有边框与背景，高度就是文字的行高，
+// 可以放进一行说明文字里），弹出列表与 Select 相同，宽度至少 MinWidth。
+func InlineSelect(c *ui.Context, t *theme.Theme, key string, p InlineSelectProps) ui.Element {
+	label := ""
+	for _, o := range p.Options {
+		if o.Value == p.Value {
+			label = o.Label
+		}
+	}
+	font := p.Font
+	if font.Size == 0 {
+		font = theme.TextXS
+	}
+	btn := ui.ButtonBase(c.Key(key)).Gap(2).MinWidth(0).AlignItems(ui.Center).Justify(ui.Start).FocusRing(false).Label(label)
+	open := ui.Local(btn, "open", func() bool { return false })
+	if p.Disabled {
+		components.Disable(btn, 0.5)
+		*open = false
+	}
+	color := p.Color
+	if btn.Hovered() || *open {
+		color = t.SelectText
+	}
+	btn.Transition(theme.ColorsTransition(150 * time.Millisecond))
+	btn.OnClick(func() { *open = !*open }).Children(func() {
+		components.Text(c, label, font, theme.WeightMedium, color).SingleLine().Shrink(1).MinWidth(0)
+		components.Icon(c, "chevron-down", font.Line*0.875, color).Shrink(0)
+	})
+	minW := p.MinWidth
+	if minW == 0 {
+		minW = 160
+	}
+	width := max(btn.Bounds().W, minW)
+	sb := ui.Local(btn, "scroll", func() components.ScrollBar { return components.ScrollBar{} })
+	sp := SelectProps{Value: p.Value, Options: p.Options, OnChange: p.OnChange}
+	ui.PopoverBase(c, btn, open, func(panel ui.Element) {
+		panel.Width(width).Margin(4, 0, 0, 0).Radius(6).Background(t.PanelBg).Border(t.HL, t.SelectBorder)
+		panel.Children(func() {
+			components.ScrollArea(c, t, "scroll", sb, func(w ui.Element) {
+				w.FillWidth().MaxHeight(240 - 2*t.HL).Radius(6 - t.HL)
+			}, func(sc ui.Element) {
+				gutter := float32(0)
+				if sb.Overflowing() {
+					gutter = t.Gutter()
+				}
+				sc.Children(func() {
+					ui.Column(c).FillWidth().Padding(4, gutter, 4, 0).Children(func() { selectOptions(c, t, sp, open) })
+				})
+			})
+		})
+	})
+	return btn
 }

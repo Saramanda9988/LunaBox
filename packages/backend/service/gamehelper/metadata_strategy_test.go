@@ -114,6 +114,16 @@ func TestStrategyActive(t *testing.T) {
 	if got := StrategySources(s, enums.VNDB); !slices.Equal(got, []enums.SourceType{enums.Bangumi}) {
 		t.Fatalf("StrategySources = %v", got)
 	}
+
+	// 以用户选的来源为基底：与必选数据源无关，指定的来源就是基底时不算。
+	noBase := s.Clone()
+	noBase.Base = ""
+	if !StrategyActiveFor(noBase, enums.VNDB, enabled) || StrategyActiveFor(noBase, enums.Bangumi, enabled) {
+		t.Fatal("StrategyActiveFor should depend on the chosen base only")
+	}
+	if StrategyActiveFor(off, enums.VNDB, enabled) {
+		t.Fatal("switched off strategy should be inactive for any base")
+	}
 }
 
 func TestRefreshChain(t *testing.T) {
@@ -121,13 +131,16 @@ func TestRefreshChain(t *testing.T) {
 		enums.MetadataUpdateFieldName:    enums.Bangumi,
 		enums.MetadataUpdateFieldAliases: appconf.MetadataStrategyAllSources,
 	})
-	if got := RefreshChain(s, enums.MetadataUpdateFieldName, enums.TouchGal); !slices.Equal(got, []enums.SourceType{enums.Bangumi, enums.VNDB, enums.TouchGal}) {
+	if got := RefreshChain(s, enums.MetadataUpdateFieldName, enums.TouchGal); !slices.Equal(got, []enums.SourceType{enums.Bangumi, enums.TouchGal}) {
 		t.Fatalf("name chain = %v", got)
 	}
-	if got := RefreshChain(s, enums.MetadataUpdateFieldSummary, enums.VNDB); !slices.Equal(got, []enums.SourceType{enums.VNDB}) {
+	if got := RefreshChain(s, enums.MetadataUpdateFieldName, enums.Bangumi); !slices.Equal(got, []enums.SourceType{enums.Bangumi}) {
+		t.Fatalf("name chain on its own source = %v", got)
+	}
+	if got := RefreshChain(s, enums.MetadataUpdateFieldSummary, enums.TouchGal); !slices.Equal(got, []enums.SourceType{enums.TouchGal}) {
 		t.Fatalf("summary chain = %v", got)
 	}
-	if got := RefreshChain(s, enums.MetadataUpdateFieldAliases, enums.TouchGal); !slices.Equal(got, []enums.SourceType{enums.VNDB, enums.TouchGal}) {
+	if got := RefreshChain(s, enums.MetadataUpdateFieldAliases, enums.TouchGal); !slices.Equal(got, []enums.SourceType{enums.TouchGal}) {
 		t.Fatalf("aliases chain = %v", got)
 	}
 	if got := RefreshChain(appconf.MetadataStrategy{}, enums.MetadataUpdateFieldName, enums.TouchGal); !slices.Equal(got, []enums.SourceType{enums.TouchGal}) {
@@ -135,11 +148,12 @@ func TestRefreshChain(t *testing.T) {
 	}
 }
 
-// 更新时每个字段按 字段指定的来源 → 必选数据源 → 游戏默认来源 取第一个有数据的；都为空的字段列为 missing。
+// 更新时每个字段按 字段指定的来源 → 游戏默认来源 取第一个有数据的（必选数据源不参与）；都为空的字段列为 missing。
 func TestComposeRefreshFallsBackAlongChain(t *testing.T) {
 	s := strategyOf(enums.VNDB, map[enums.MetadataUpdateField]enums.SourceType{
-		enums.MetadataUpdateFieldName:        enums.Bangumi, // 没有 Bangumi 的结果：回退到 VNDB
-		enums.MetadataUpdateFieldReleaseDate: enums.Bangumi, // VNDB 也没有：回退到默认来源
+		enums.MetadataUpdateFieldName:        enums.VNDB,    // 有 VNDB 的结果
+		enums.MetadataUpdateFieldTags:        enums.VNDB,    // 有 VNDB 的结果
+		enums.MetadataUpdateFieldReleaseDate: enums.Bangumi, // 没有 Bangumi 的结果：回退到默认来源
 		enums.MetadataUpdateFieldCompany:     enums.Bangumi, // 哪里都没有
 	})
 	base := vo.GameMetadataFromWebVO{Source: enums.TouchGal, Game: models.Game{Name: "TG", ReleaseDate: "2020-01-01", Summary: "tg"}}
@@ -152,7 +166,7 @@ func TestComposeRefreshFallsBackAlongChain(t *testing.T) {
 	if got.Game.ReleaseDate != "2020-01-01" || sources[enums.MetadataUpdateFieldReleaseDate] != enums.TouchGal {
 		t.Fatalf("release date = %q from %q", got.Game.ReleaseDate, sources[enums.MetadataUpdateFieldReleaseDate])
 	}
-	if got.Game.Summary != "vn" || sources[enums.MetadataUpdateFieldSummary] != enums.VNDB { // 没有指定：必选数据源优先
+	if got.Game.Summary != "tg" || sources[enums.MetadataUpdateFieldSummary] != enums.TouchGal { // 没有指定：默认来源，不看必选数据源
 		t.Fatalf("summary = %q from %q", got.Game.Summary, sources[enums.MetadataUpdateFieldSummary])
 	}
 	if len(got.Tags) != 1 || got.Tags[0].Source != string(enums.VNDB) {

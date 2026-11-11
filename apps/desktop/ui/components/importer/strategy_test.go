@@ -4,6 +4,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -34,7 +35,8 @@ func TestMatchUsesComposedResult(t *testing.T) {
 	}
 }
 
-// 单个添加：策略生效时，搜索结果最前面是组合卡片；选它保存组合后的游戏，默认来源是基底，各候选的 ID 都关联上。
+// 单个添加：刮削时使用组合策略时，搜索结果最前面是组合卡片，默认以必选数据源为基底；选它保存组合后的游戏，
+// 默认来源是基底，各候选的 ID 都关联上。
 func TestAddGameStrategyLeadCard(t *testing.T) {
 	var a *AddGame
 	h := newHarness(t)
@@ -51,7 +53,7 @@ func TestAddGameStrategyLeadCard(t *testing.T) {
 	a.name = "Original"
 	h.frames(1)
 	h.click(t, locales.AddGameModalSearchMeta())
-	h.expect(t, locales.NativeMetadataStrategyCardSource("VNDB"))
+	h.expect(t, locales.NativeMetadataStrategyCardBase(), "VNDB")
 
 	h.click(t, locales.NativeMetadataStrategyCardHint())
 	h.frames(2)
@@ -96,7 +98,94 @@ func TestPreferredSourceIsStrategyBase(t *testing.T) {
 	}
 }
 
-// 批量导入的预览里，原来的必选数据源换成了组合策略的入口：显示基底来源，策略生效时加上“组合”，点它打开组合策略弹窗。
+// 组合卡片的基底：默认是 preferred 里第一个在候选里的来源，没有时用第一个候选的来源；卡片上选的优先。
+// 以基底组合时没有字段取自其他候选、或者候选只有一个来源时没有组合卡片。
+func TestStrategyLeadBase(t *testing.T) {
+	cfg := &appconf.AppConfig{MetadataSources: []string{"bangumi", "vndb"}}
+	cfg.SetStrategy(appconf.MetadataStrategy{Enabled: true}.WithFieldSource(enums.MetadataUpdateFieldSummary, enums.VNDB))
+	bgm, vndb := meta(enums.Bangumi, "BGM", "2"), meta(enums.VNDB, "VN", "v1")
+	bgm.Game.Summary, vndb.Game.Summary = "from bgm", "from vndb"
+	results := []vo.GameMetadataFromWebVO{bgm, vndb}
+	var base enums.SourceType
+	var picked vo.GameMetadataFromWebVO
+	pick := func(r vo.GameMetadataFromWebVO) { picked = r }
+
+	lead := StrategyLead(cfg, results, &base, []enums.SourceType{enums.Steam}, pick) // Steam 不在候选里：用能作基底的 Bangumi
+	if lead == nil || lead.Base != enums.Bangumi || lead.Result.Game.Name != "BGM" || lead.Result.Game.Summary != "from vndb" {
+		t.Fatalf("lead = %+v", lead)
+	}
+	if lead.Fields != locales.NativeMetadataStrategySummaryField(locales.Key("metadataUpdateFields.summary.label"), "VNDB") {
+		t.Fatalf("fields = %q", lead.Fields)
+	}
+	lead.OnSelect()
+	if picked.Source != enums.Bangumi || picked.Game.Summary != "from vndb" {
+		t.Fatalf("picked %+v", picked)
+	}
+
+	// VNDB 作基底时简介就取自基底，没有字段取自其他候选：不能作基底，卡片上不列，选了也回到默认。
+	if !slices.Equal(lead.Bases, []enums.SourceType{enums.Bangumi}) {
+		t.Fatalf("bases = %v", lead.Bases)
+	}
+	lead.OnBase(enums.VNDB)
+	if lead := StrategyLead(cfg, results, &base, nil, pick); base != enums.VNDB || lead == nil || lead.Base != enums.Bangumi {
+		t.Fatalf("a base without overrides should fall back: base %q, lead %+v", base, lead)
+	}
+	// 选的基底不在候选里时回到默认。
+	base = enums.Steam
+	if lead := StrategyLead(cfg, results, &base, []enums.SourceType{enums.Bangumi}, pick); lead == nil || lead.Base != enums.Bangumi {
+		t.Fatalf("fallback lead = %+v", lead)
+	}
+	base = ""
+	if StrategyLead(cfg, results[:1], &base, nil, pick) != nil {
+		t.Fatal("a single source should not have a lead card")
+	}
+	off := cfg.Strategy()
+	off.Enabled = false
+	cfg.SetStrategy(off)
+	if StrategyLead(cfg, results, &base, nil, pick) != nil {
+		t.Fatal("switched off strategy should not have a lead card")
+	}
+}
+
+// 默认基底是策略里手动指定字段最多的来源（必选数据源与候选的顺序都排在后面）；一样多时按 preferred 的顺序。
+func TestStrategyLeadDefaultsToMostUsedSource(t *testing.T) {
+	cfg := &appconf.AppConfig{MetadataSources: []string{"bangumi", "vndb", "touchgal"}}
+	cfg.SetStrategy(appconf.MetadataStrategy{Enabled: true}.
+		WithFieldSource(enums.MetadataUpdateFieldName, enums.VNDB).
+		WithFieldSource(enums.MetadataUpdateFieldAliases, enums.VNDB).
+		WithFieldSource(enums.MetadataUpdateFieldReleaseDate, enums.VNDB).
+		WithFieldSource(enums.MetadataUpdateFieldCover, enums.Bangumi).
+		WithFieldSource(enums.MetadataUpdateFieldRating, enums.TouchGal))
+	results := []vo.GameMetadataFromWebVO{meta(enums.Bangumi, "BGM", "2"), meta(enums.TouchGal, "TG", "t"), meta(enums.VNDB, "VN", "v1")}
+	for i := range results {
+		results[i].Game.CoverURL, results[i].Game.Rating = "https://example.com/"+results[i].Game.SourceID, 7
+	}
+	var base enums.SourceType
+	pick := func(vo.GameMetadataFromWebVO) {}
+
+	lead := StrategyLead(cfg, results, &base, []enums.SourceType{enums.Bangumi}, pick) // 必选数据源 Bangumi 只指定了 1 个字段
+	if lead == nil || lead.Base != enums.VNDB || lead.Result.Game.Name != "VN" || lead.Result.Game.CoverURL != "https://example.com/2" {
+		t.Fatalf("lead = %+v", lead)
+	}
+	if !slices.Equal(lead.Bases, []enums.SourceType{enums.Bangumi, enums.TouchGal, enums.VNDB}) {
+		t.Fatalf("bases = %v", lead.Bases)
+	}
+
+	// Bangumi 与 TouchGAL 各 1 个：按 preferred；preferred 里都没有时按候选的顺序。
+	tie := appconf.MetadataStrategy{Enabled: true}.
+		WithFieldSource(enums.MetadataUpdateFieldCover, enums.Bangumi).
+		WithFieldSource(enums.MetadataUpdateFieldRating, enums.TouchGal)
+	cfg.SetStrategy(tie)
+	if lead := StrategyLead(cfg, results, &base, []enums.SourceType{enums.TouchGal}, pick); lead == nil || lead.Base != enums.TouchGal {
+		t.Fatalf("tie with preferred: %+v", lead)
+	}
+	if lead := StrategyLead(cfg, results, &base, nil, pick); lead == nil || lead.Base != enums.Bangumi {
+		t.Fatalf("tie in result order: %+v", lead)
+	}
+}
+
+// 批量导入的预览里是“必选数据源”的下拉框（改它写进配置），旁边是组合策略的入口：打开了刮削的开关时标“已启用”，
+// 点它打开组合策略弹窗并标出刮削的开关。
 func TestBatchImportStrategyButton(t *testing.T) {
 	var b *BatchImport
 	h := newHarness(t)
@@ -107,23 +196,22 @@ func TestBatchImportStrategyButton(t *testing.T) {
 	b.Open()
 	h.frames(2)
 	h.click(t, locales.BatchImportModalBtnScanGameLibrary())
-	mixed := locales.NativeMetadataStrategyButtonMixed("VNDB")
-	h.expect(t, locales.NativeMetadataStrategyBase(), mixed)
+	on := locales.NativeMetadataStrategyButtonOn()
+	h.expect(t, locales.NativeMetadataStrategyBase(), "VNDB", on)
 
-	// 关掉组合策略时只显示必选数据源。
+	// 关掉刮削的开关时按钮不标“已启用”。
 	off := h.svc.Config.Strategy()
 	off.Enabled = false
 	h.svc.Config.SetStrategy(off)
 	h.frames(2)
-	h.expect(t, "VNDB")
-	if h.tt.HasText(mixed) {
-		t.Fatal("switched off strategy should not show the mixed label")
+	if h.tt.HasText(on) {
+		t.Fatal("switched off strategy should not show the enabled label")
 	}
 	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB, Enabled: true}.WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi))
 	h.frames(2)
 
-	h.click(t, mixed)
-	h.expect(t, locales.NativeMetadataStrategyTitle(), locales.NativeMetadataStrategySummaryBase("VNDB"))
+	h.click(t, locales.NativeMetadataStrategySettingsLabel())
+	h.expect(t, locales.NativeMetadataStrategyTitle(), locales.NativeMetadataStrategySummaryScrape())
 	if dir := os.Getenv("DESKTOP_MYGO_PNG"); dir != "" {
 		b.strategy = metadatapanel.StrategyModal{}
 		h.frames(2)

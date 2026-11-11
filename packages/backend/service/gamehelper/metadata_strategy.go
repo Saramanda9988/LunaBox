@@ -13,10 +13,16 @@ import (
 // FieldSources 记下组合结果里每个字段实际来自哪个来源。只给界面展示用，不入库。
 type FieldSources map[enums.MetadataUpdateField]enums.SourceType
 
-// StrategyActive 判断组合策略对新刮削的游戏是否生效：打开了开关，基底已启用，并且至少有一个字段实际改用了其他来源
-// （见 StrategyOverridesFor）。
+// StrategyActive 判断组合策略对批量导入是否生效：打开了刮削的开关，必选数据源（批量导入的基底）已启用，
+// 并且至少有一个字段实际改用了其他来源（见 StrategyOverridesFor）。
 func StrategyActive(strategy appconf.MetadataStrategy, enabled []enums.SourceType) bool {
 	return strategy.Active() && slices.Contains(enabled, strategy.Base) && len(StrategyOverridesFor(strategy, strategy.Base, enabled)) > 0
+}
+
+// StrategyActiveFor 判断以 base 为基底刮削时组合策略是否生效（单个添加、按名称重新搜索时基底是用户选的来源）：
+// 打开了刮削的开关，并且至少有一个字段实际改用了 base 以外的来源。
+func StrategyActiveFor(strategy appconf.MetadataStrategy, base enums.SourceType, enabled []enums.SourceType) bool {
+	return strategy.Enabled && base != "" && len(StrategyOverridesFor(strategy, base, enabled)) > 0
 }
 
 // StrategyOverridesFor 返回以 base 为基底时实际改用其他来源的字段：指定的来源已启用，或者别名合并所有来源。
@@ -44,8 +50,8 @@ func StrategySources(strategy appconf.MetadataStrategy, base enums.SourceType) [
 	return out
 }
 
-// RefreshChain 是更新元数据时字段 field 依次尝试的来源：字段指定的来源 → 策略的必选数据源 → 游戏的默认来源
-// gameSource（去掉空的与重复的）。别名合并所有来源时只有 gameSource（合并在 ComposeRefresh 里做）。
+// RefreshChain 是更新元数据时字段 field 依次尝试的来源：字段指定的来源 → 游戏的默认来源 gameSource
+// （去掉空的与重复的；必选数据源只用于批量导入，不参与更新）。别名合并所有来源时只有 gameSource（合并在 ComposeRefresh 里做）。
 func RefreshChain(strategy appconf.MetadataStrategy, field enums.MetadataUpdateField, gameSource enums.SourceType) []enums.SourceType {
 	var out []enums.SourceType
 	add := func(src enums.SourceType) {
@@ -54,7 +60,6 @@ func RefreshChain(strategy appconf.MetadataStrategy, field enums.MetadataUpdateF
 		}
 	}
 	add(strategy.FieldSource(field))
-	add(strategy.Base)
 	add(gameSource)
 	return out
 }

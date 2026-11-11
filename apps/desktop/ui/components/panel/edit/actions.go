@@ -403,7 +403,7 @@ func (e *editor) searchByName(c *ui.Context, mode searchMode) {
 			case err != nil:
 				e.toast(c, env.Error(locales.GameEditMetadataSearchFailed(err.Error())))
 			default:
-				s.results = results
+				s.results, s.leadBase = results, ""
 				s.searchMode = mode
 				s.resultsUI.Reset()
 				s.searchOpen = true

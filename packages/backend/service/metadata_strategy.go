@@ -73,7 +73,7 @@ func (s *GameService) refreshUsesStrategy() bool {
 }
 
 // composeRefreshResult 在更新元数据时套用高级组合策略（要不要套用由调用方决定）：base 是 gameSource 的结果；
-// 要更新的每个字段按“字段指定的来源 → 必选数据源 → gameSource”依次取第一个有数据的来源，
+// 要更新的每个字段按“字段指定的来源 → gameSource”依次取第一个有数据的来源，
 // 来源没有 ID（已关联的或者 ID 对照表查到的）、没有启用、获取失败或者这一项为空时往后回退，需要时才去获取。
 // 返回组合后的结果、标签的来源，以及要更新的字段：所有来源都为空的字段去掉，保留本地内容。没有配置时原样返回。
 func (s *GameService) composeRefreshResult(ctx context.Context, game models.Game, gameSource enums2.SourceType, base metadata.MetadataResult, fieldSet gamehelper.MetadataUpdateFieldSet) (metadata.MetadataResult, enums2.SourceType, gamehelper.MetadataUpdateFieldSet) {

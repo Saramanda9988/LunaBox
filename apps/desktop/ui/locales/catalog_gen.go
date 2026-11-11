@@ -24527,38 +24527,6 @@ func (msgs Messages) NativeMetadataStrategyBase() string {
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_base", nil)
 }
 
-// NativeMetadataStrategyBaseHint says "批量导入以这个来源识别游戏，没有找到的视为未找到；同时作为组合策略的基底。"
-// in the language the app shows.
-//
-// extra:native.metadataStrategy.baseHint
-func NativeMetadataStrategyBaseHint() string {
-	return In(i18n.Locale()).NativeMetadataStrategyBaseHint()
-}
-
-// NativeMetadataStrategyBaseHint says "批量导入以这个来源识别游戏，没有找到的视为未找到；同时作为组合策略的基底。"
-// in the language of msgs.
-//
-// extra:native.metadataStrategy.baseHint
-func (msgs Messages) NativeMetadataStrategyBaseHint() string {
-	return Catalog.Format(msgs.locale, "native_metadataStrategy_baseHint", nil)
-}
-
-// NativeMetadataStrategyBaseRequired says "启用组合策略时必须指定必选数据源。"
-// in the language the app shows.
-//
-// extra:native.metadataStrategy.baseRequired
-func NativeMetadataStrategyBaseRequired() string {
-	return In(i18n.Locale()).NativeMetadataStrategyBaseRequired()
-}
-
-// NativeMetadataStrategyBaseRequired says "启用组合策略时必须指定必选数据源。"
-// in the language of msgs.
-//
-// extra:native.metadataStrategy.baseRequired
-func (msgs Messages) NativeMetadataStrategyBaseRequired() string {
-	return Catalog.Format(msgs.locale, "native_metadataStrategy_baseRequired", nil)
-}
-
 // NativeMetadataStrategyFollowBase says "跟随基底"
 // in the language the app shows.
 //
@@ -24573,22 +24541,6 @@ func NativeMetadataStrategyFollowBase() string {
 // extra:native.metadataStrategy.followBase
 func (msgs Messages) NativeMetadataStrategyFollowBase() string {
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_followBase", nil)
-}
-
-// NativeMetadataStrategyFollowBaseWith says "跟随基底（{source}）"
-// in the language the app shows.
-//
-// extra:native.metadataStrategy.followBaseWith
-func NativeMetadataStrategyFollowBaseWith(source string) string {
-	return In(i18n.Locale()).NativeMetadataStrategyFollowBaseWith(source)
-}
-
-// NativeMetadataStrategyFollowBaseWith says "跟随基底（{source}）"
-// in the language of msgs.
-//
-// extra:native.metadataStrategy.followBaseWith
-func (msgs Messages) NativeMetadataStrategyFollowBaseWith(source string) string {
-	return Catalog.Format(msgs.locale, "native_metadataStrategy_followBaseWith", map[string]any{"source": source})
 }
 
 // NativeMetadataStrategyMergeAll says "合并所有来源"
@@ -24623,22 +24575,6 @@ func (msgs Messages) NativeMetadataStrategySourceDisabled(source string) string 
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_sourceDisabled", map[string]any{"source": source})
 }
 
-// NativeMetadataStrategySummaryBase says "以 {base} 识别游戏，找不到即视为未找到。"
-// in the language the app shows.
-//
-// extra:native.metadataStrategy.summaryBase
-func NativeMetadataStrategySummaryBase(base string) string {
-	return In(i18n.Locale()).NativeMetadataStrategySummaryBase(base)
-}
-
-// NativeMetadataStrategySummaryBase says "以 {base} 识别游戏，找不到即视为未找到。"
-// in the language of msgs.
-//
-// extra:native.metadataStrategy.summaryBase
-func (msgs Messages) NativeMetadataStrategySummaryBase(base string) string {
-	return Catalog.Format(msgs.locale, "native_metadataStrategy_summaryBase", map[string]any{"base": base})
-}
-
 // NativeMetadataStrategySummaryField says "{fields}来自 {source}"
 // in the language the app shows.
 //
@@ -24669,38 +24605,6 @@ func NativeMetadataStrategySummaryAliasesAll() string {
 // extra:native.metadataStrategy.summaryAliasesAll
 func (msgs Messages) NativeMetadataStrategySummaryAliasesAll() string {
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_summaryAliasesAll", nil)
-}
-
-// NativeMetadataStrategySummaryRest says "其余字段，以及指定来源缺失的字段，使用 {base}。"
-// in the language the app shows.
-//
-// extra:native.metadataStrategy.summaryRest
-func NativeMetadataStrategySummaryRest(base string) string {
-	return In(i18n.Locale()).NativeMetadataStrategySummaryRest(base)
-}
-
-// NativeMetadataStrategySummaryRest says "其余字段，以及指定来源缺失的字段，使用 {base}。"
-// in the language of msgs.
-//
-// extra:native.metadataStrategy.summaryRest
-func (msgs Messages) NativeMetadataStrategySummaryRest(base string) string {
-	return Catalog.Format(msgs.locale, "native_metadataStrategy_summaryRest", map[string]any{"base": base})
-}
-
-// NativeMetadataStrategySummaryAllBase says "所有字段都来自 {base}。"
-// in the language the app shows.
-//
-// extra:native.metadataStrategy.summaryAllBase
-func NativeMetadataStrategySummaryAllBase(base string) string {
-	return In(i18n.Locale()).NativeMetadataStrategySummaryAllBase(base)
-}
-
-// NativeMetadataStrategySummaryAllBase says "所有字段都来自 {base}。"
-// in the language of msgs.
-//
-// extra:native.metadataStrategy.summaryAllBase
-func (msgs Messages) NativeMetadataStrategySummaryAllBase(base string) string {
-	return Catalog.Format(msgs.locale, "native_metadataStrategy_summaryAllBase", map[string]any{"base": base})
 }
 
 // NativeMetadataStrategyListSeparator says "、"
@@ -24811,36 +24715,6 @@ func (msgs Messages) NativeMetadataStrategySettingsButton() string {
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_settingsButton", nil)
 }
 
-// NativeMetadataStrategyActive says "已启用"
-// in the language the app shows.
-//
-// extra:native.metadataStrategy.active
-func NativeMetadataStrategyActive() string { return In(i18n.Locale()).NativeMetadataStrategyActive() }
-
-// NativeMetadataStrategyActive says "已启用"
-// in the language of msgs.
-//
-// extra:native.metadataStrategy.active
-func (msgs Messages) NativeMetadataStrategyActive() string {
-	return Catalog.Format(msgs.locale, "native_metadataStrategy_active", nil)
-}
-
-// NativeMetadataStrategyCardSource says "组合策略 · 基底 {base}"
-// in the language the app shows.
-//
-// extra:native.metadataStrategy.cardSource
-func NativeMetadataStrategyCardSource(base string) string {
-	return In(i18n.Locale()).NativeMetadataStrategyCardSource(base)
-}
-
-// NativeMetadataStrategyCardSource says "组合策略 · 基底 {base}"
-// in the language of msgs.
-//
-// extra:native.metadataStrategy.cardSource
-func (msgs Messages) NativeMetadataStrategyCardSource(base string) string {
-	return Catalog.Format(msgs.locale, "native_metadataStrategy_cardSource", map[string]any{"base": base})
-}
-
 // NativeMetadataStrategyCardHint says "按高级组合策略组合各来源的结果"
 // in the language the app shows.
 //
@@ -24855,22 +24729,6 @@ func NativeMetadataStrategyCardHint() string {
 // extra:native.metadataStrategy.cardHint
 func (msgs Messages) NativeMetadataStrategyCardHint() string {
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_cardHint", nil)
-}
-
-// NativeMetadataStrategyButtonMixed says "{base} · 组合"
-// in the language the app shows.
-//
-// extra:native.metadataStrategy.buttonMixed
-func NativeMetadataStrategyButtonMixed(base string) string {
-	return In(i18n.Locale()).NativeMetadataStrategyButtonMixed(base)
-}
-
-// NativeMetadataStrategyButtonMixed says "{base} · 组合"
-// in the language of msgs.
-//
-// extra:native.metadataStrategy.buttonMixed
-func (msgs Messages) NativeMetadataStrategyButtonMixed(base string) string {
-	return Catalog.Format(msgs.locale, "native_metadataStrategy_buttonMixed", map[string]any{"base": base})
 }
 
 // NativeMetadataStrategyFieldFrom says "将从 {source} 更新"
@@ -24937,6 +24795,150 @@ func (msgs Messages) NativeMetadataStrategyReasonDisabled(source string) string 
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_reasonDisabled", map[string]any{"source": source})
 }
 
+// NativeMetadataStrategySummaryScrape says "刮削时：批量导入以必选数据源为基底，添加游戏与重新搜索以选中的来源为基底。"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.summaryScrape
+func NativeMetadataStrategySummaryScrape() string {
+	return In(i18n.Locale()).NativeMetadataStrategySummaryScrape()
+}
+
+// NativeMetadataStrategySummaryScrape says "刮削时：批量导入以必选数据源为基底，添加游戏与重新搜索以选中的来源为基底。"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.summaryScrape
+func (msgs Messages) NativeMetadataStrategySummaryScrape() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_summaryScrape", nil)
+}
+
+// NativeMetadataStrategySummaryRefresh says "更新元数据时：以游戏的默认来源为基底。"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.summaryRefresh
+func NativeMetadataStrategySummaryRefresh() string {
+	return In(i18n.Locale()).NativeMetadataStrategySummaryRefresh()
+}
+
+// NativeMetadataStrategySummaryRefresh says "更新元数据时：以游戏的默认来源为基底。"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.summaryRefresh
+func (msgs Messages) NativeMetadataStrategySummaryRefresh() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_summaryRefresh", nil)
+}
+
+// NativeMetadataStrategySummaryRestBase says "其余字段，以及指定来源缺失的字段，使用基底的数据。"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.summaryRestBase
+func NativeMetadataStrategySummaryRestBase() string {
+	return In(i18n.Locale()).NativeMetadataStrategySummaryRestBase()
+}
+
+// NativeMetadataStrategySummaryRestBase says "其余字段，以及指定来源缺失的字段，使用基底的数据。"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.summaryRestBase
+func (msgs Messages) NativeMetadataStrategySummaryRestBase() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_summaryRestBase", nil)
+}
+
+// NativeMetadataStrategySummaryAllFromBase says "所有字段都使用基底的数据。"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.summaryAllFromBase
+func NativeMetadataStrategySummaryAllFromBase() string {
+	return In(i18n.Locale()).NativeMetadataStrategySummaryAllFromBase()
+}
+
+// NativeMetadataStrategySummaryAllFromBase says "所有字段都使用基底的数据。"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.summaryAllFromBase
+func (msgs Messages) NativeMetadataStrategySummaryAllFromBase() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_summaryAllFromBase", nil)
+}
+
+// NativeMetadataStrategyFieldFromDefault says "将从默认来源更新"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.fieldFromDefault
+func NativeMetadataStrategyFieldFromDefault() string {
+	return In(i18n.Locale()).NativeMetadataStrategyFieldFromDefault()
+}
+
+// NativeMetadataStrategyFieldFromDefault says "将从默认来源更新"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.fieldFromDefault
+func (msgs Messages) NativeMetadataStrategyFieldFromDefault() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_fieldFromDefault", nil)
+}
+
+// NativeMetadataStrategyButtonOn says "高级组合策略 · 已启用"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.buttonOn
+func NativeMetadataStrategyButtonOn() string {
+	return In(i18n.Locale()).NativeMetadataStrategyButtonOn()
+}
+
+// NativeMetadataStrategyButtonOn says "高级组合策略 · 已启用"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.buttonOn
+func (msgs Messages) NativeMetadataStrategyButtonOn() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_buttonOn", nil)
+}
+
+// NativeMetadataStrategyActiveScrape says "刮削时启用"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.activeScrape
+func NativeMetadataStrategyActiveScrape() string {
+	return In(i18n.Locale()).NativeMetadataStrategyActiveScrape()
+}
+
+// NativeMetadataStrategyActiveScrape says "刮削时启用"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.activeScrape
+func (msgs Messages) NativeMetadataStrategyActiveScrape() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_activeScrape", nil)
+}
+
+// NativeMetadataStrategyActiveRefresh says "更新时启用"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.activeRefresh
+func NativeMetadataStrategyActiveRefresh() string {
+	return In(i18n.Locale()).NativeMetadataStrategyActiveRefresh()
+}
+
+// NativeMetadataStrategyActiveRefresh says "更新时启用"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.activeRefresh
+func (msgs Messages) NativeMetadataStrategyActiveRefresh() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_activeRefresh", nil)
+}
+
+// NativeMetadataStrategyCardBase says "基底"
+// in the language the app shows.
+//
+// extra:native.metadataStrategy.cardBase
+func NativeMetadataStrategyCardBase() string {
+	return In(i18n.Locale()).NativeMetadataStrategyCardBase()
+}
+
+// NativeMetadataStrategyCardBase says "基底"
+// in the language of msgs.
+//
+// extra:native.metadataStrategy.cardBase
+func (msgs Messages) NativeMetadataStrategyCardBase() string {
+	return Catalog.Format(msgs.locale, "native_metadataStrategy_cardBase", nil)
+}
+
 // NativeMetadataRefreshUseStrategy says "更新元数据时使用组合策略"
 // in the language the app shows.
 //
@@ -24953,7 +24955,7 @@ func (msgs Messages) NativeMetadataRefreshUseStrategy() string {
 	return Catalog.Format(msgs.locale, "native_metadataRefresh_useStrategy", nil)
 }
 
-// NativeMetadataRefreshUseStrategyHint says "按“字段指定的来源 → 必选数据源 → 游戏默认来源”依次取数据：前面的来源没有 ID …"
+// NativeMetadataRefreshUseStrategyHint says "以游戏的默认来源为基底，按下方各字段指定的来源更新：指定的来源没有 ID …"
 // in the language the app shows.
 //
 // extra:native.metadataRefresh.useStrategyHint
@@ -24961,7 +24963,7 @@ func NativeMetadataRefreshUseStrategyHint() string {
 	return In(i18n.Locale()).NativeMetadataRefreshUseStrategyHint()
 }
 
-// NativeMetadataRefreshUseStrategyHint says "按“字段指定的来源 → 必选数据源 → 游戏默认来源”依次取数据：前面的来源没有 ID …"
+// NativeMetadataRefreshUseStrategyHint says "以游戏的默认来源为基底，按下方各字段指定的来源更新：指定的来源没有 ID …"
 // in the language of msgs.
 //
 // extra:native.metadataRefresh.useStrategyHint

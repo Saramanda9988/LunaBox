@@ -37,7 +37,8 @@ func (e *editor) fieldSelectModal(c *ui.Context) {
 	s := e.s
 	better.MetadataFieldSelectModal(c, e.t, "metadata-fields", better.MetadataFieldSelectProps{
 		FieldNotes:  metadatapanel.GameRefreshNotes(e.config(), e.defaultSourceType(), s.sourceIDs),
-		OnStrategy:  func() { s.strategy.Open(e.p.Env.Config()) },
+		StrategyOn:  e.config() != nil && e.config().MetadataRefreshUseStrategy,
+		OnStrategy:  func() { s.strategy.OpenFor(e.p.Env.Config(), metadatapanel.FocusRefresh) },
 		Open:        s.fieldsOpen,
 		Title:       locales.MetadataUpdateFieldsModalSingleTitle(),
 		Description: locales.MetadataUpdateFieldsModalSingleDescription(),
@@ -121,14 +122,15 @@ func (e *editor) searchModal(c *ui.Context) {
 }
 
 // searchResultsStep 是 MetadataSearchResultsStep（importer.SearchResults）：没有结果时 min-h-64 的空状态，
-// 底部 border-t pt-4 的“← 返回”。“更新元数据”时（原版没有）：刮削时使用组合策略的话最前面是组合结果，
-// 底部右边有打开高级组合策略的按钮。
+// 底部 border-t pt-4 的“← 返回”。“更新元数据”时（原版没有）：刮削时使用组合策略的话最前面是组合结果
+// （默认基底是策略里指定字段最多的来源，一样多时依次优先游戏的默认来源、必选数据源），底部右边有打开高级组合策略的按钮。
 func (e *editor) searchResultsStep(c *ui.Context, closeModal func()) {
 	t, s := e.t, e.s
 	update := s.searchMode == searchUpdateMetadata
 	var lead *importer.LeadResult
 	if cfg := e.config(); update && cfg != nil {
-		lead = importer.StrategyLead(cfg, s.results, func(composed vo.GameMetadataFromWebVO) { e.selectSearchResult(c, composed, true) })
+		lead = importer.StrategyLead(cfg, s.results, &s.leadBase, []enums.SourceType{e.defaultSourceType(), cfg.Strategy().Base},
+			func(composed vo.GameMetadataFromWebVO) { e.selectSearchResult(c, composed, true) })
 	}
 	s.resultsUI.View(c, t, importer.SearchResultsProps{
 		Results:  s.results,
@@ -172,8 +174,8 @@ func (e *editor) searchResultsStep(c *ui.Context, closeModal func()) {
 				} else if update && e.config() != nil {
 					better.Button(c, t, "strategy", better.ButtonProps{
 						Variant: better.ButtonGhost, Size: better.ButtonSM, Icon: "layers-triple-outline",
-						Label: locales.NativeMetadataStrategySettingsLabel(), Disabled: s.applying,
-					}).OnClick(func() { s.strategy.Open(e.config()) })
+						Label: metadatapanel.StrategyButtonLabel(e.config().Strategy().Enabled), Disabled: s.applying,
+					}).Label(locales.NativeMetadataStrategySettingsLabel()).OnClick(func() { s.strategy.OpenFor(e.config(), metadatapanel.FocusScrape) })
 				}
 			})
 		},

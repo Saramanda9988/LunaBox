@@ -1749,7 +1749,7 @@ func (s *GameService) UpdateGameFromRemoteBySourceContext(ctx context.Context, g
 }
 
 // UpdateGameFromRemoteWithStrategyContext 是按名称重新搜索后选中组合结果时的更新：以 source 为基底，全部字段按高级组合策略
-// （字段指定的来源 → 必选数据源 → source）取数据，不看“更新元数据时使用组合策略”的开关；所有来源都为空的字段保留本地内容。
+// （字段指定的来源 → source）取数据，不看“更新元数据时使用组合策略”的开关；所有来源都为空的字段保留本地内容。
 func (s *GameService) UpdateGameFromRemoteWithStrategyContext(ctx context.Context, gameID string, source enums2.SourceType) error {
 	_, err := s.updateGameMetadataFromRemoteBySource(ctx, gameID, source, true, nil, true)
 	return err

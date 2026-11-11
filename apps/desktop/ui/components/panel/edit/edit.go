@@ -83,8 +83,9 @@ type State struct {
 	searchOpen bool // isMetadataSearchModalOpen
 	searchMode searchMode
 	results    []vo.GameMetadataFromWebVO
-	applying   bool        // isApplyingMetadataResult
-	apply      env.Request // 应用搜索结果时从远端更新的请求，可以取消
+	leadBase   enums.SourceType // 组合卡片上选的基底；为空时用默认的（见 importer.StrategyLead）
+	applying   bool             // isApplyingMetadataResult
+	apply      env.Request      // 应用搜索结果时从远端更新的请求，可以取消
 	resultsUI  importer.SearchResults
 
 	deleteOpen bool

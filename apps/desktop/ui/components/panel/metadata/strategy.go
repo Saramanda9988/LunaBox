@@ -29,31 +29,58 @@ var strategyFields = []enums.MetadataUpdateField{
 	enums.MetadataUpdateFieldSummary,
 }
 
+// StrategyFocus 是打开弹窗的场景：对应的开关用天蓝色标出。
+type StrategyFocus int
+
+const (
+	FocusNone    StrategyFocus = iota
+	FocusScrape                // 刮削：批量导入、重新搜索（更新元数据）
+	FocusRefresh               // 更新元数据：选择更新字段的弹窗
+)
+
 // StrategyModal 是“高级组合策略”弹窗：设置页的元数据分区、批量导入、详情页的更新字段与重新搜索共用。
-// 弹窗里改的是草稿（组合策略与“更新元数据时使用”的开关），保存时才写进配置。
+// 弹窗里只有各字段指定的来源与刮削、更新元数据两个开关；基底随场景而定（批量导入是必选数据源，在批量导入里设置；
+// 单个添加与重新搜索是选中的来源；更新元数据是游戏的默认来源）。每次修改立即写进配置（没有保存按钮）。
 type StrategyModal struct {
 	open    bool
+	focus   StrategyFocus
 	draft   appconf.MetadataStrategy
 	refresh bool // 更新元数据时使用组合策略（AppConfig.MetadataRefreshUseStrategy）
+	onSave  func(apply func(cfg *appconf.AppConfig))
 }
 
 // StrategyModalProps 是弹窗的属性。
 type StrategyModalProps struct {
 	Enabled   []enums.SourceType // 已启用的元数据来源（可选的来源）
 	TopOffset float32
-	// OnSave 在保存时调用：apply 把草稿写进配置，调用方用它修改配置（如 PatchConfig(apply)）。
+	// OnSave 在每次修改后调用：apply 把弹窗里的策略与开关写进配置，调用方用它修改配置（如 PatchConfig(apply)）。
 	OnSave func(apply func(cfg *appconf.AppConfig))
 }
 
-// Open 用配置里的组合策略与两个开关打开弹窗。
-func (m *StrategyModal) Open(cfg *appconf.AppConfig) {
-	*m = StrategyModal{open: true, draft: cfg.Strategy(), refresh: cfg != nil && cfg.MetadataRefreshUseStrategy}
+// Open 用配置里的组合策略与两个开关打开弹窗，不标出哪个开关。
+func (m *StrategyModal) Open(cfg *appconf.AppConfig) { m.OpenFor(cfg, FocusNone) }
+
+// OpenFor 同 Open，focus 对应的开关用天蓝色标出。
+func (m *StrategyModal) OpenFor(cfg *appconf.AppConfig, focus StrategyFocus) {
+	*m = StrategyModal{open: true, focus: focus, draft: cfg.Strategy(), refresh: cfg != nil && cfg.MetadataRefreshUseStrategy}
 }
 
 // IsOpen 报告弹窗是否打开。
 func (m *StrategyModal) IsOpen() bool { return m.open }
 
 func (m *StrategyModal) close() { m.open = false }
+
+// commit 把当前的策略与开关写进配置（每次修改后调用）。
+func (m *StrategyModal) commit() {
+	if m.onSave == nil {
+		return
+	}
+	strategy, refresh := m.draft.Clone(), m.refresh
+	m.onSave(func(cfg *appconf.AppConfig) {
+		cfg.SetStrategy(strategy)
+		cfg.MetadataRefreshUseStrategy = refresh
+	})
+}
 
 // StrategyLabel 是来源在组合策略里的名称；“合并所有来源”与未知来源也有名称。
 func StrategyLabel(s enums.SourceType) string {
@@ -68,30 +95,34 @@ func fieldLabel(f enums.MetadataUpdateField) string {
 	return locales.Key("metadataUpdateFields." + string(f) + ".label")
 }
 
-// StrategySummary 是组合策略的文字说明：第一句说基底，第二句说各字段的来源；策略不生效时为空。
-// 改用了未启用的来源时标出来（这些字段实际会用基底的数据）。
-func StrategySummary(s appconf.MetadataStrategy, enabled []enums.SourceType) []string {
-	if !s.Active() {
+// StrategySummary 是组合策略的文字说明：先按打开的开关各说一句基底是谁，最后一句说各字段的来源。
+// 两个开关都关闭时为空。改用了未启用的来源时标出来（这些字段实际会用基底的数据）。
+func StrategySummary(s appconf.MetadataStrategy, refresh bool, enabled []enums.SourceType) []string {
+	var lines []string
+	if s.Enabled {
+		lines = append(lines, locales.NativeMetadataStrategySummaryScrape())
+	}
+	if refresh {
+		lines = append(lines, locales.NativeMetadataStrategySummaryRefresh())
+	}
+	if len(lines) == 0 {
 		return nil
 	}
-	base := sourceOptionLabel(s.Base, enabled)
-	first := locales.NativeMetadataStrategySummaryBase(base)
 	var order []enums.SourceType
 	groups := map[enums.SourceType][]string{}
 	mergeAliases := false
 	for _, f := range strategyFields {
-		src := s.FieldSource(f)
-		switch {
-		case src == "" || src == s.Base:
+		switch src := s.FieldSource(f); src {
+		case "":
 			continue
-		case src == appconf.MetadataStrategyAllSources:
+		case appconf.MetadataStrategyAllSources:
 			mergeAliases = true
-			continue
+		default:
+			if _, ok := groups[src]; !ok {
+				order = append(order, src)
+			}
+			groups[src] = append(groups[src], fieldLabel(f))
 		}
-		if _, ok := groups[src]; !ok {
-			order = append(order, src)
-		}
-		groups[src] = append(groups[src], fieldLabel(f))
 	}
 	var clauses []string
 	for _, src := range order {
@@ -102,10 +133,10 @@ func StrategySummary(s appconf.MetadataStrategy, enabled []enums.SourceType) []s
 		clauses = append(clauses, locales.NativeMetadataStrategySummaryAliasesAll())
 	}
 	if len(clauses) == 0 {
-		return []string{first, locales.NativeMetadataStrategySummaryAllBase(base)}
+		return append(lines, locales.NativeMetadataStrategySummaryAllFromBase())
 	}
-	clauses = append(clauses, locales.NativeMetadataStrategySummaryRest(base))
-	return []string{first, strings.Join(clauses, locales.NativeMetadataStrategyClauseSeparator())}
+	clauses = append(clauses, locales.NativeMetadataStrategySummaryRestBase())
+	return append(lines, strings.Join(clauses, locales.NativeMetadataStrategyClauseSeparator()))
 }
 
 // strategyFieldNote 是“将从 X 更新”；别名合并所有来源时是“合并所有来源”。
@@ -116,7 +147,7 @@ func strategyFieldNote(src enums.SourceType) better.FieldNote {
 	return better.FieldNote{Text: locales.NativeMetadataStrategyFieldFrom(StrategyLabel(src))}
 }
 
-// refreshStrategy 是更新元数据时用的组合策略：设置里没有打开“更新时使用高级组合策略”时为空（只用游戏的默认来源）。
+// refreshStrategy 是更新元数据时用的组合策略：设置里没有打开“更新元数据时使用组合策略”时为空（只用游戏的默认来源）。
 func refreshStrategy(cfg *appconf.AppConfig) (appconf.MetadataStrategy, bool) {
 	if cfg == nil || !cfg.MetadataRefreshUseStrategy {
 		return appconf.MetadataStrategy{}, false
@@ -143,7 +174,7 @@ func chainNote(chain []enums.SourceType, skip func(enums.SourceType) string) (no
 }
 
 // GameRefreshNotes 是更新单个游戏时每个字段将从哪个来源更新（给 FieldNotes）。base 是游戏的默认来源；
-// 打开了“更新时使用高级组合策略”时按 字段指定的来源 → 必选数据源 → base 找第一个可用的来源；否则都是 base，
+// 打开了“更新元数据时使用组合策略”时按 字段指定的来源 → base 找第一个可用的来源；否则都是 base，
 // 不标来源，只在 base 不可用时标“暂无元数据 ID”。
 // ids 是游戏在各来源可用的元数据 ID（GameService.ResolveMetadataSourceIDs，含 ID 对照表查到的），没有 ID 或者
 // 没有启用的来源跳过；ids 为 nil 表示还没查到，先不按 ID 判断。字段为空时的回退要拿到数据才知道，这里标不出来。
@@ -183,33 +214,30 @@ func GameRefreshNotes(cfg *appconf.AppConfig, base enums.SourceType, ids map[enu
 	return notes
 }
 
-// BatchRefreshNotes 是全量更新时各字段将从哪个来源更新（给 FieldNotes）：打开了“更新时使用高级组合策略”时按
-// 字段指定的来源 → 必选数据源 找第一个启用的来源；都没有时用各游戏自己的默认来源，不标。没有打开时为空。
-// 各游戏有没有那个来源的 ID 要逐个看，这里不标。
+// BatchRefreshNotes 是全量更新时各字段将从哪个来源更新（给 FieldNotes）：打开了“更新元数据时使用组合策略”时，
+// 指定了来源的字段标“将从 X 更新”，指定的来源没有启用时是琥珀色的“将从默认来源更新”；没有指定的字段用各游戏自己的
+// 默认来源，不标。没有打开时为空。各游戏有没有那个来源的 ID 要逐个看，这里不标。
 func BatchRefreshNotes(cfg *appconf.AppConfig) map[enums.MetadataUpdateField]better.FieldNote {
 	strategy, on := refreshStrategy(cfg)
 	if !on {
 		return nil
 	}
 	enabled := EnabledSources(cfg)
-	skip := func(src enums.SourceType) string {
-		if !slices.Contains(enabled, src) {
-			return locales.NativeMetadataStrategyReasonDisabled(StrategyLabel(src))
-		}
-		return ""
-	}
 	notes := map[enums.MetadataUpdateField]better.FieldNote{}
 	for _, f := range enums.DefaultMetadataUpdateFields {
-		if strategy.FieldSource(f) == appconf.MetadataStrategyAllSources {
-			notes[f] = strategyFieldNote(appconf.MetadataStrategyAllSources)
-		} else if note, ok := chainNote(gamehelper.RefreshChain(strategy, f, ""), skip); ok {
-			notes[f] = note
+		switch src := strategy.FieldSource(f); {
+		case src == "":
+		case src == appconf.MetadataStrategyAllSources || slices.Contains(enabled, src):
+			notes[f] = strategyFieldNote(src)
+		default:
+			notes[f] = better.FieldNote{Text: locales.NativeMetadataStrategyFieldFromDefault(), Warn: true,
+				Reason: locales.NativeMetadataStrategyReasonDisabled(StrategyLabel(src))}
 		}
 	}
 	return notes
 }
 
-// RefreshUsesStrategy 报告更新以 base 为默认来源的游戏时组合策略有没有影响：打开了“更新时使用高级组合策略”，
+// RefreshUsesStrategy 报告更新以 base 为默认来源的游戏时组合策略有没有影响：打开了“更新元数据时使用组合策略”，
 // 并且有字段会先去取 base 以外的来源。
 func RefreshUsesStrategy(cfg *appconf.AppConfig, base enums.SourceType) bool {
 	strategy, on := refreshStrategy(cfg)
@@ -235,52 +263,38 @@ func sourceOptionLabel(s enums.SourceType, enabled []enums.SourceType) string {
 	return StrategyLabel(s)
 }
 
-// baseOptions 是必选数据源的选项：不指定与已启用的来源（当前值没有启用时也列出）。
-func (m *StrategyModal) baseOptions(enabled []enums.SourceType) []better.SelectOption {
+// BaseOptions 是批量导入的必选数据源的选项：不指定与已启用的来源（当前值 base 没有启用时也列出）。
+func BaseOptions(base enums.SourceType, enabled []enums.SourceType) []better.SelectOption {
 	opts := []better.SelectOption{{Label: locales.BatchImportModalPreferredSourceNone(), Value: ""}}
 	for _, s := range enabled {
 		opts = append(opts, better.SelectOption{Label: StrategyLabel(s), Value: string(s)})
 	}
-	if m.draft.Base != "" && !slices.Contains(enabled, m.draft.Base) {
-		opts = append(opts, better.SelectOption{Label: sourceOptionLabel(m.draft.Base, enabled), Value: string(m.draft.Base)})
+	if base != "" && !slices.Contains(enabled, base) {
+		opts = append(opts, better.SelectOption{Label: sourceOptionLabel(base, enabled), Value: string(base)})
 	}
 	return opts
 }
 
-// missingBase 报告打开了组合策略却没有指定必选数据源（不能保存）。
-func (m *StrategyModal) missingBase() bool { return m.draft.Enabled && m.draft.Base == "" }
-
-// fieldOptions 是字段来源的选项：跟随基底、（别名）合并所有来源、基底以外已启用的来源（当前值没有启用时也列出）。
+// fieldOptions 是字段来源的选项：跟随基底、（别名）合并所有来源、已启用的来源（当前值没有启用时也列出）。
 func (m *StrategyModal) fieldOptions(f enums.MetadataUpdateField, enabled []enums.SourceType) []better.SelectOption {
-	follow := locales.NativeMetadataStrategyFollowBase()
-	if m.draft.Base != "" {
-		follow = locales.NativeMetadataStrategyFollowBaseWith(StrategyLabel(m.draft.Base))
-	}
-	opts := []better.SelectOption{{Label: follow, Value: ""}}
+	opts := []better.SelectOption{{Label: locales.NativeMetadataStrategyFollowBase(), Value: ""}}
 	if f == enums.MetadataUpdateFieldAliases {
 		opts = append(opts, better.SelectOption{Label: locales.NativeMetadataStrategyMergeAll(), Value: string(appconf.MetadataStrategyAllSources)})
 	}
 	for _, s := range enabled {
-		if s != m.draft.Base {
-			opts = append(opts, better.SelectOption{Label: StrategyLabel(s), Value: string(s)})
-		}
+		opts = append(opts, better.SelectOption{Label: StrategyLabel(s), Value: string(s)})
 	}
 	cur := m.draft.FieldSource(f)
-	if cur != "" && cur != m.draft.Base && !slices.ContainsFunc(opts, func(o better.SelectOption) bool { return o.Value == string(cur) }) {
+	if cur != "" && !slices.ContainsFunc(opts, func(o better.SelectOption) bool { return o.Value == string(cur) }) {
 		opts = append(opts, better.SelectOption{Label: sourceOptionLabel(cur, enabled), Value: string(cur)})
 	}
 	return opts
 }
 
-// overridden 判断字段是否改用了基底以外的来源。
-func (m *StrategyModal) overridden(f enums.MetadataUpdateField) bool {
-	src := m.draft.FieldSource(f)
-	return src != "" && src != m.draft.Base
-}
-
-// View 构建弹窗：标题、必选数据源、刮削与更新元数据两个开关、各字段的来源、文字说明，底部重置与保存。
-// 必选数据源与各字段的来源都不受开关影响；刮削的开关关闭时没有文字说明（说明讲的是刮削时怎么识别与组合）。
+// View 构建弹窗：标题、刮削与更新元数据两个开关、各字段的来源、文字说明，底部右边是重置。
+// 各字段的来源不受开关影响；两个开关都关闭时没有文字说明。修改立即保存。
 func (m *StrategyModal) View(c *ui.Context, t *theme.Theme, p StrategyModalProps) {
+	m.onSave = p.OnSave
 	components.Modal(c, t, "metadata-strategy", components.ModalProps{
 		Open: m.open, TopOffset: p.TopOffset, MaxWidth: 760, OnClose: m.close, Label: locales.NativeMetadataStrategyTitle(),
 	}, func(pnl ui.Element) {
@@ -293,15 +307,14 @@ func (m *StrategyModal) View(c *ui.Context, t *theme.Theme, p StrategyModalProps
 				// 滚动区伸进面板右侧的内边距，滚动条落在那里。
 				ui.Scroll(c.Key("body")).MaxHeight(bodyH).Margin(0, -14, 0, 0).Children(func() {
 					ui.Column(c).Padding(2, 14, 2, 2).Gap(20).Children(func() {
-						m.baseRow(c, t, p.Enabled)
 						m.switchRows(c, t)
 						m.fieldRows(c, t, p.Enabled)
-						if m.draft.Active() {
-							m.summary(c, t, p.Enabled)
+						if lines := StrategySummary(m.draft, m.refresh, p.Enabled); len(lines) > 0 {
+							m.summary(c, t, lines)
 						}
 					})
 				})
-				m.footer(c, t, p)
+				m.footer(c, t)
 			})
 		})
 	})
@@ -326,63 +339,41 @@ func (m *StrategyModal) header(c *ui.Context, t *theme.Theme) {
 	})
 }
 
-// settingRow 是必选数据源与开关共用的行：左边名称与说明（errText 不为空时在下面用红字提示），右边控件。
-func settingRow(c *ui.Context, t *theme.Theme, key, label, hint, errText string, control func()) {
-	border := t.Pick(theme.Brand200, theme.Brand700)
-	if errText != "" {
-		border = t.Pick(theme.Error400, theme.Error600)
+// settingRow 是开关的行：左边名称与说明，右边控件。highlight 时（从对应的场景打开）用天蓝色标出。
+func settingRow(c *ui.Context, t *theme.Theme, key, label, hint string, highlight bool, control func()) {
+	bg, border := t.Pick(theme.Brand50, theme.Brand700.Alpha(0.4)), t.Pick(theme.Brand200, theme.Brand700)
+	if highlight {
+		bg, border = t.Pick(theme.Sky50, theme.Sky900.Alpha(0.3)), t.Pick(theme.Sky300, theme.Sky700)
 	}
 	ui.Row(c.Key(key)).Gap(16).Padding(12).Radius(8).AlignItems(ui.Center).
-		Border(t.HL, border).Background(t.Pick(theme.Brand50, theme.Brand700.Alpha(0.4))).Children(func() {
+		Border(t.HL, border).Background(bg).Children(func() {
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4).Children(func() {
 			components.Text(c, label, theme.TextSM, theme.WeightSemibold, t.Pick(theme.Brand800, theme.Brand200))
 			components.Text(c, hint, theme.TextXS, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400))
-			if errText != "" {
-				components.Text(c, errText, theme.TextXS, theme.WeightMedium, t.Pick(theme.Error600, theme.Error400))
-			}
 		})
 		control()
 	})
 }
 
-// baseRow：必选数据源（组合策略的基底）的下拉框与说明，不受开关影响。打开了组合策略却选了“不指定”时红字提示。
-func (m *StrategyModal) baseRow(c *ui.Context, t *theme.Theme, enabled []enums.SourceType) {
-	var errText string
-	if m.missingBase() {
-		errText = locales.NativeMetadataStrategyBaseRequired()
-	}
-	settingRow(c, t, "base", locales.NativeMetadataStrategyBase(), locales.NativeMetadataStrategyBaseHint(), errText, func() {
-		ui.Column(c).Width(200).Shrink(0).Children(func() {
-			better.Select(c, t, "select", better.SelectProps{
-				Value: string(m.draft.Base), Options: m.baseOptions(enabled), Font: theme.TextSM,
-				OnChange: func(v string) { m.draft.Base = enums.SourceType(v) },
-			})
-		})
-	})
-}
-
-// switchRows：组合策略分别用于刮削（导入、添加游戏、按名称重新搜索）与更新元数据的两个开关。
+// switchRows：组合策略分别用于刮削（批量导入、添加游戏、按名称重新搜索）与更新元数据的两个开关。
 func (m *StrategyModal) switchRows(c *ui.Context, t *theme.Theme) {
 	ui.Column(c.Key("switches")).Gap(8).Children(func() {
-		settingRow(c, t, "switch", locales.NativeMetadataStrategyEnable(), locales.NativeMetadataStrategyEnableHint(), "", func() {
-			better.Switch(c, t, "switch", m.draft.Enabled, false, func(on bool) { m.draft.Enabled = on })
+		settingRow(c, t, "switch", locales.NativeMetadataStrategyEnable(), locales.NativeMetadataStrategyEnableHint(), m.focus == FocusScrape, func() {
+			better.Switch(c, t, "switch", m.draft.Enabled, false, func(on bool) { m.draft.Enabled = on; m.commit() })
 		})
-		settingRow(c, t, "refresh-switch", locales.NativeMetadataRefreshUseStrategy(), locales.NativeMetadataRefreshUseStrategyHint(), "", func() {
-			better.Switch(c, t, "switch", m.refresh, false, func(on bool) { m.refresh = on })
+		settingRow(c, t, "refresh-switch", locales.NativeMetadataRefreshUseStrategy(), locales.NativeMetadataRefreshUseStrategyHint(), m.focus == FocusRefresh, func() {
+			better.Switch(c, t, "switch", m.refresh, false, func(on bool) { m.refresh = on; m.commit() })
 		})
 	})
 }
 
-// fieldRows 是各字段的来源：每行左边字段名，右边来源下拉框。改用其他来源的行用天蓝色标出。
+// fieldRows 是各字段的来源：每行左边字段名，右边来源下拉框。指定了来源的行用天蓝色标出。
 func (m *StrategyModal) fieldRows(c *ui.Context, t *theme.Theme, enabled []enums.SourceType) {
 	ui.Column(c.Key("fields")).Gap(8).Children(func() {
 		for _, f := range strategyFields {
 			value := m.draft.FieldSource(f)
-			if value == m.draft.Base {
-				value = "" // 指定的就是基底来源，与跟随基底相同
-			}
 			bg, border := t.Pick(theme.Brand50, theme.Brand700.Alpha(0.3)), t.Pick(theme.Brand200, theme.Brand700)
-			if m.overridden(f) {
+			if value != "" {
 				bg, border = t.Pick(theme.Sky50, theme.Sky900.Alpha(0.3)), t.Pick(theme.Sky300, theme.Sky700)
 			}
 			ui.Row(c.Key(string(f))).Gap(12).Padding(8, 12).Radius(8).AlignItems(ui.Center).Background(bg).Border(t.HL, border).Children(func() {
@@ -392,7 +383,7 @@ func (m *StrategyModal) fieldRows(c *ui.Context, t *theme.Theme, enabled []enums
 				ui.Column(c).Width(200).Shrink(0).Children(func() {
 					better.Select(c, t, "select", better.SelectProps{
 						Value: string(value), Options: m.fieldOptions(f, enabled), Font: theme.TextSM,
-						OnChange: func(v string) { m.draft = m.draft.WithFieldSource(f, enums.SourceType(v)) },
+						OnChange: func(v string) { m.draft = m.draft.WithFieldSource(f, enums.SourceType(v)); m.commit() },
 						Style:    func(btn ui.Element) { btn.Height(34).Padding(0, 32, 0, 12).AlignItems(ui.Center) },
 					})
 				})
@@ -402,12 +393,12 @@ func (m *StrategyModal) fieldRows(c *ui.Context, t *theme.Theme, enabled []enums
 }
 
 // summary 是自动生成的文字说明。
-func (m *StrategyModal) summary(c *ui.Context, t *theme.Theme, enabled []enums.SourceType) {
+func (m *StrategyModal) summary(c *ui.Context, t *theme.Theme, lines []string) {
 	ui.Row(c.Key("summary")).Gap(10).Padding(12).Radius(8).AlignItems(ui.Start).
 		Background(t.Pick(theme.Sky50.Alpha(0.6), theme.Sky900.Alpha(0.2))).Children(func() {
 		components.Icon(c, "information-outline", 18, t.Pick(theme.Sky600, theme.Sky400))
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4).Children(func() {
-			for i, line := range StrategySummary(m.draft, enabled) {
+			for i, line := range lines {
 				ui.Box(c.Key(i)).Children(func() {
 					components.Text(c, line, theme.FontStep{Size: 13, Line: 20}, theme.WeightMedium, t.Pick(theme.Brand800, theme.Brand100))
 				})
@@ -416,25 +407,20 @@ func (m *StrategyModal) summary(c *ui.Context, t *theme.Theme, enabled []enums.S
 	})
 }
 
-// footer：右边重置（所有字段跟随基底）与保存。
-func (m *StrategyModal) footer(c *ui.Context, t *theme.Theme, p StrategyModalProps) {
+// footer：右边重置（所有字段跟随基底，立即保存）。
+func (m *StrategyModal) footer(c *ui.Context, t *theme.Theme) {
 	ui.Row(c.Key("footer")).Gap(12).AlignItems(ui.Center).Justify(ui.End).Children(func() {
 		better.Button(c, t, "reset", better.ButtonProps{
 			Label: locales.NativeMetadataStrategyReset(), Disabled: len(m.draft.Fields) == 0,
-			OnClick: func() { m.draft.Fields = nil },
-		})
-		better.Button(c, t, "save", better.ButtonProps{
-			Variant: better.ButtonPrimary, Icon: "check", Label: locales.CommonSave(), Disabled: m.missingBase(),
-			OnClick: func() {
-				if p.OnSave != nil {
-					strategy, refresh := m.draft.Clone(), m.refresh
-					p.OnSave(func(cfg *appconf.AppConfig) {
-						cfg.SetStrategy(strategy)
-						cfg.MetadataRefreshUseStrategy = refresh
-					})
-				}
-				m.close()
-			},
+			OnClick: func() { m.draft.Fields = nil; m.commit() },
 		})
 	})
+}
+
+// StrategyButtonLabel 是各入口打开组合策略弹窗的按钮文字：on（这个场景的开关打开了）时加上“已启用”。
+func StrategyButtonLabel(on bool) string {
+	if on {
+		return locales.NativeMetadataStrategyButtonOn()
+	}
+	return locales.NativeMetadataStrategySettingsLabel()
 }

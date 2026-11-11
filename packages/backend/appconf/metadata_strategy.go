@@ -10,18 +10,19 @@ import (
 // MetadataStrategyAllSources 是别名字段特有的取值：合并所有匹配到的来源的名称与别名。
 const MetadataStrategyAllSources enums2.SourceType = "all"
 
-// MetadataStrategy 是高级组合策略：Base 是批量导入的必选数据源（以它识别游戏，没找到即视为没找到），不受 Enabled 影响；
-// Enabled 打开并且有 Base 时组合策略生效：Base 是基底，Fields 指定个别字段改用哪个来源，
-// 没有指定、指定的来源没找到这个游戏或这个字段为空时用 Base 的数据。
+// MetadataStrategy 是高级组合策略：Fields 指定个别字段改用哪个来源，没有指定、指定的来源没找到这个游戏或这个字段为空时
+// 用基底的数据。基底随场景而定：批量导入是 Base（必选数据源，以它识别游戏，没找到即视为没找到，不受开关影响），
+// 单个添加与按名称重新搜索是用户选中的来源，更新元数据是游戏的默认来源。
+// Enabled 是刮削（导入、添加、重新搜索）时的开关；更新元数据时的开关是 AppConfig.MetadataRefreshUseStrategy。
 //
-// Fields 的值是来源列表，为以后的多级回退留位置；目前只用第一项，最后总是回退到 Base。
+// Fields 的值是来源列表，为以后的多级回退留位置；目前只用第一项，最后总是回退到基底。
 type MetadataStrategy struct {
 	Base    enums2.SourceType                                  `json:"base,omitempty"`
 	Enabled bool                                               `json:"enabled,omitempty"`
 	Fields  map[enums2.MetadataUpdateField][]enums2.SourceType `json:"fields,omitempty"`
 }
 
-// Active 报告组合策略是否生效：打开了开关，并且指定了必选数据源（基底）。
+// Active 报告组合策略对批量导入是否生效：打开了刮削的开关，并且指定了必选数据源（基底）。
 func (s MetadataStrategy) Active() bool { return s.Enabled && s.Base != "" }
 
 // Clone 返回深拷贝。

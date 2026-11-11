@@ -7,6 +7,7 @@ import (
 	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
 
+	"lunabox/backend/common/enums"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
 	"lunabox/desktop/ui/components"
@@ -41,7 +42,10 @@ type SearchResultsProps struct {
 // LeadResult 是排在最前面的组合结果卡片。
 type LeadResult struct {
 	Result   vo.GameMetadataFromWebVO
-	Subtitle string // 卡片名称下的说明（如“组合策略 · 基底 VNDB”）
+	Base     enums.SourceType   // 组合的基底，卡片底部可以改
+	Bases    []enums.SourceType // 可选的基底：候选里出现的来源
+	Fields   string             // 悬停提示：取自基底以外来源的字段
+	OnBase   func(source enums.SourceType)
 	OnSelect func()
 }
 
@@ -196,7 +200,9 @@ func resultCard(c *ui.Context, t *theme.Theme, p SearchResultsProps, item vo.Gam
 	})
 }
 
-// leadCard 是组合结果的卡片：与候选卡片同样的布局，天蓝色的边框与左上角的组合策略图标，没有移除按钮。
+// leadCard 是组合结果的卡片：与候选卡片同样的布局，天蓝色的边框与左上角的组合策略图标，没有移除按钮；
+// 名称下面是“基底 X ▾”的行内下拉框（与候选卡片的“来自 X”同样高，在选择按钮外面，点它不会选中卡片），
+// 悬停按钮时提示各字段取自哪个来源。边框比候选卡片粗一倍，内边距相应减小，卡片与候选同高。
 func leadCard(c *ui.Context, t *theme.Theme, p SearchResultsProps, width float32) {
 	lead := p.Lead
 	card := ui.Column(c).Width(width).Shrink(0).Radius(12).Background(t.Pick(theme.Sky50, theme.Sky900.Alpha(0.3)))
@@ -210,7 +216,8 @@ func leadCard(c *ui.Context, t *theme.Theme, p SearchResultsProps, width float32
 	card.Border(2*t.HL, border).Transition(theme.ColorsTransition(150 * time.Millisecond))
 	g := lead.Result.Game
 	card.Children(func() {
-		btn := ui.ButtonBase(c.Key("select")).Column().FillWidth().Padding(12).AlignItems(ui.Stretch).FocusRing(false).
+		pad := 12 - t.HL // 抵消加粗的边框
+		btn := ui.ButtonBase(c.Key("select")).Column().FillWidth().Padding(pad, pad, 0, pad).AlignItems(ui.Stretch).FocusRing(false).
 			Cursor(ui.CursorPointer).Label(locales.NativeMetadataStrategyCardHint())
 		if p.Disabled {
 			components.Disable(btn, 0.6)
@@ -224,7 +231,25 @@ func leadCard(c *ui.Context, t *theme.Theme, p SearchResultsProps, width float32
 				coverImage(c, p.Covers, g, 36)
 			})
 			components.TextMargin(c, g.Name, theme.TextSM, theme.WeightBold, t.TextStrong, 8, 0, 0, 0).SingleLine()
-			components.Text(c, lead.Subtitle, theme.TextXS, theme.WeightMedium, t.Pick(theme.Sky700, theme.Sky300)).SingleLine()
+		})
+		if lead.Fields != "" {
+			better.TooltipWrap(c, t, btn, lead.Fields)
+		}
+		ui.Row(c.Key("base")).Gap(4).Padding(0, pad, pad, pad).MinWidth(0).AlignItems(ui.Center).Children(func() {
+			fg := t.Pick(theme.Sky700, theme.Sky300)
+			components.Text(c, locales.NativeMetadataStrategyCardBase(), theme.TextXS, theme.WeightNormal, fg).NoWrap().Shrink(0)
+			opts := make([]better.SelectOption, len(lead.Bases))
+			for i, s := range lead.Bases {
+				opts[i] = better.SelectOption{Label: SourceLabel(s), Value: string(s)}
+			}
+			better.InlineSelect(c, t, "base-select", better.InlineSelectProps{
+				Value: string(lead.Base), Options: opts, Disabled: p.Disabled, Color: fg,
+				OnChange: func(v string) {
+					if lead.OnBase != nil {
+						lead.OnBase(enums.SourceType(v))
+					}
+				},
+			})
 		})
 		ui.Box(c.Key("badge")).Absolute().Top(-10).Left(-10).Size(28, 28).Radius(999).Center().PassThrough().
 			Background(t.Pick(theme.Sky500, theme.Sky600)).Border(2, t.Pick(theme.White, theme.Brand800)).Children(func() {

@@ -34,6 +34,7 @@ type AddGame struct {
 	name      string // gameName
 	results   []vo.GameMetadataFromWebVO
 	resultsUI SearchResults
+	leadBase  enums.SourceType // 组合卡片上选的基底；为空时用默认的（见 StrategyLead）
 	loading   bool
 	search    env.Request // 进行中的按名称或 ID 获取元数据，可以取消
 	searchBy  string      // 进行中的是 "name" 还是 "id"：对应的按钮显示加载并可以点击取消
@@ -161,7 +162,7 @@ func (a *AddGame) searchByName(c *ui.Context) {
 				a.env.Toast(c, env.Error(locales.AddGameModalToastFetchMetaFailed()))
 				return
 			}
-			a.results = results
+			a.results, a.leadBase = results, ""
 			a.resultsUI.Reset()
 			a.step = "results"
 		}
@@ -490,32 +491,121 @@ func (a *AddGame) remoteStep(c *ui.Context, t *theme.Theme, opts []better.Select
 	})
 }
 
-// leadResult 是排在候选最前面的组合结果：高级组合策略生效、并且结果里有基底来源时，用当前的候选（用户移除的不算）
-// 组合；否则为 nil。选中它时以基底作为默认来源，各候选的 ID 都记下。
+// leadResult 是排在候选最前面的组合结果（见 StrategyLead）：默认基底是策略里指定字段最多的来源，一样多时优先必选数据源。
+// 选中它时以基底作为默认来源，各候选的 ID 都记下。
 func (a *AddGame) leadResult(c *ui.Context, onAdded func()) *LeadResult {
-	return StrategyLead(a.env.Config(), a.results, func(composed vo.GameMetadataFromWebVO) { a.selectResult(c, composed, onAdded) })
+	cfg := a.env.Config()
+	return StrategyLead(cfg, a.results, &a.leadBase, []enums.SourceType{cfg.Strategy().Base},
+		func(composed vo.GameMetadataFromWebVO) { a.selectResult(c, composed, onAdded) })
 }
 
-// StrategyLead 是候选最前面的组合结果卡片：刮削时使用组合策略（并且策略对新刮削的游戏生效）、候选里有基底来源时，
-// 用基底的第一个结果与其余候选组合；否则为 nil。添加游戏与详情页按名称重新搜索（更新元数据）共用。
-func StrategyLead(cfg *appconf.AppConfig, results []vo.GameMetadataFromWebVO, onSelect func(composed vo.GameMetadataFromWebVO)) *LeadResult {
+// StrategyLead 是候选最前面的组合结果卡片（添加游戏与详情页按名称重新搜索（更新元数据）共用）：打开了“刮削时使用组合策略”，
+// 并且候选里有能作基底的来源时，用基底的第一个结果与其余候选（用户移除的不算）组合；否则为 nil。
+// 能作基底的来源：以它组合时至少有一个字段实际取自其他候选（否则组合结果就是它自己的卡片）。卡片上只列这些来源。
+// 基底是 *base（卡片上选的）；没有选或者不能作基底时，用策略里手动指定字段最多的来源，一样多时按 preferred 的顺序，
+// 再按候选的顺序。
+func StrategyLead(cfg *appconf.AppConfig, results []vo.GameMetadataFromWebVO, base *enums.SourceType, preferred []enums.SourceType,
+	onSelect func(composed vo.GameMetadataFromWebVO)) *LeadResult {
 	strategy := cfg.Strategy()
-	if !gamehelper.StrategyActive(strategy, metadatapanel.EnabledSources(cfg)) {
+	if !strategy.Enabled {
 		return nil
 	}
-	i := slices.IndexFunc(results, func(r vo.GameMetadataFromWebVO) bool {
-		return r.Source == strategy.Base && (r.Game.Name != "" || r.Game.SourceID != "")
-	})
-	if i < 0 {
+	var order []enums.SourceType // 候选里的来源，按出现的顺序
+	first := map[enums.SourceType]int{}
+	for i, r := range results {
+		if r.Game.Name == "" && r.Game.SourceID == "" {
+			continue
+		}
+		if _, ok := first[r.Source]; !ok {
+			first[r.Source] = i
+			order = append(order, r.Source)
+		}
+	}
+	if len(order) < 2 {
 		return nil
 	}
-	others := slices.Delete(slices.Clone(results), i, i+1)
-	composed, _ := gamehelper.ComposeMetadata(strategy, results[i], others)
+	enabled := metadatapanel.EnabledSources(cfg)
+	type option struct {
+		composed vo.GameMetadataFromWebVO
+		fields   string
+	}
+	options := map[enums.SourceType]option{}
+	var bases []enums.SourceType
+	for _, src := range order {
+		if !gamehelper.StrategyActiveFor(strategy, src, enabled) {
+			continue
+		}
+		i := first[src]
+		composed, sources := gamehelper.ComposeMetadata(strategy, results[i], slices.Delete(slices.Clone(results), i, i+1))
+		if fields := leadFieldSources(sources, src); fields != "" { // 为空：指定的来源都不在候选里
+			options[src] = option{composed, fields}
+			bases = append(bases, src)
+		}
+	}
+	if len(bases) == 0 {
+		return nil
+	}
+	cur := *base
+	if _, ok := options[cur]; !ok {
+		cur = defaultLeadBase(strategy, bases, preferred)
+	}
+	opt := options[cur]
 	return &LeadResult{
-		Result:   composed,
-		Subtitle: locales.NativeMetadataStrategyCardSource(SourceLabel(strategy.Base)),
-		OnSelect: func() { onSelect(composed) },
+		Result: opt.composed, Base: cur, Bases: bases, Fields: opt.fields,
+		OnBase:   func(s enums.SourceType) { *base = s },
+		OnSelect: func() { onSelect(opt.composed) },
 	}
+}
+
+// defaultLeadBase 是组合卡片默认的基底：bases 里策略手动指定字段最多的来源；一样多时 preferred 里靠前的优先，
+// 再按 bases 的顺序。
+func defaultLeadBase(strategy appconf.MetadataStrategy, bases, preferred []enums.SourceType) enums.SourceType {
+	count := map[enums.SourceType]int{}
+	for _, f := range enums.DefaultMetadataUpdateFields {
+		count[strategy.FieldSource(f)]++
+	}
+	rank := func(s enums.SourceType) int {
+		if i := slices.Index(preferred, s); i >= 0 {
+			return i
+		}
+		return len(preferred) + slices.Index(bases, s)
+	}
+	best := bases[0]
+	for _, s := range bases[1:] {
+		if count[s] > count[best] || (count[s] == count[best] && rank(s) < rank(best)) {
+			best = s
+		}
+	}
+	return best
+}
+
+// leadFieldSources 是组合卡片的悬停提示：取自基底以外来源的字段，每个来源一行，如“名称来自 Bangumi”“评分来自 TouchGAL”；
+// 别名合并所有来源时加上“别名合并所有来源”。没有这样的字段时为空。
+func leadFieldSources(sources gamehelper.FieldSources, base enums.SourceType) string {
+	var order []enums.SourceType
+	groups := map[enums.SourceType][]string{}
+	merge := false
+	for _, f := range enums.DefaultMetadataUpdateFields {
+		switch src := sources[f]; src {
+		case "", base:
+		case appconf.MetadataStrategyAllSources:
+			merge = true
+		default:
+			if _, ok := groups[src]; !ok {
+				order = append(order, src)
+			}
+			groups[src] = append(groups[src], locales.Key("metadataUpdateFields."+string(f)+".label"))
+		}
+	}
+	var clauses []string
+	for _, src := range order {
+		clauses = append(clauses, locales.NativeMetadataStrategySummaryField(
+			strings.Join(groups[src], locales.NativeMetadataStrategyListSeparator()), SourceLabel(src)))
+	}
+	if merge {
+		clauses = append(clauses, locales.NativeMetadataStrategySummaryAliasesAll())
+	}
+	return strings.Join(clauses, "\n")
 }
 
 // resultsStep 是 MetadataSearchResultsStep：底部 border-t pt-4 的“← 返回”与“都不是？手动填写 / 按 ID 搜索”。

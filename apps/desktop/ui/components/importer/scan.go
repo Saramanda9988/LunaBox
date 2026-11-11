@@ -2,14 +2,13 @@ package importer
 
 import (
 	"log"
-	"time"
 
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/enums"
-	"lunabox/backend/service/gamehelper"
 	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/better"
 	"lunabox/desktop/ui/components/panel/metadata"
 	"lunabox/desktop/ui/env"
 	"lunabox/desktop/ui/locales"
@@ -82,37 +81,40 @@ func (s *scanSteps) previewProps(c *ui.Context, t *theme.Theme, onComplete func(
 	}
 }
 
-// sourceToolbar 是 actionToolbar：原版是“必选数据源”的标签与下拉框，这里换成高级组合策略的入口——h-11 的“基底来源”标签
-// （rounded-l-lg border-r-0 bg-white/80 px-3 text-xs font-medium shadow-sm），接着是下拉框样式的按钮，显示基底来源
-// （策略生效时加上“组合”），点击打开组合策略弹窗。
+// sourceToolbar 是 actionToolbar：h-11 的“必选数据源”标签（rounded-l-lg border-r-0 bg-white/80 px-3 text-xs font-medium shadow-sm）
+// 与下拉框（批量导入以它识别游戏，也是组合时的基底），右边是打开高级组合策略弹窗的按钮（打开了刮削的开关时标“已启用”）。
 func (s *scanSteps) sourceToolbar(c *ui.Context, t *theme.Theme, enabled []enums.SourceType, preferred enums.SourceType) {
-	value := locales.BatchImportModalPreferredSourceNone()
-	if preferred != "" {
-		value = SourceLabel(preferred)
-		if gamehelper.StrategyActive(s.env.Config().Strategy(), enabled) {
-			value = locales.NativeMetadataStrategyButtonMixed(value)
-		}
-	}
-	ui.Row(c.Key("preferred-source")).AlignItems(ui.Stretch).Children(func() {
-		fg := t.Pick(theme.Brand600, theme.Brand300)
-		ui.Row(c).Height(44).Padding(0, 12).Gap(6).AlignItems(ui.Center).Shrink(0).Radius(8, 0, 0, 8).
-			Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).BorderWidth(t.HL, 0, t.HL, t.HL).
-			Background(t.Pick(theme.White.Alpha(0.8), theme.Brand800.Alpha(0.6))).Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.05)).Children(func() {
-			components.Icon(c, "database-search-outline", 16, theme.Brand400)
-			components.Text(c, locales.NativeMetadataStrategyBase(), theme.TextXS, theme.WeightMedium, fg).NoWrap()
+	cfg := s.env.Config()
+	ui.Row(c.Key("preferred-source")).Gap(8).AlignItems(ui.Stretch).Children(func() {
+		ui.Row(c).AlignItems(ui.Stretch).Children(func() {
+			fg := t.Pick(theme.Brand600, theme.Brand300)
+			ui.Row(c).Height(44).Padding(0, 12).Gap(6).AlignItems(ui.Center).Shrink(0).Radius(8, 0, 0, 8).
+				Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).BorderWidth(t.HL, 0, t.HL, t.HL).
+				Background(t.Pick(theme.White.Alpha(0.8), theme.Brand800.Alpha(0.6))).Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.05)).Children(func() {
+				components.Icon(c, "database-search-outline", 16, theme.Brand400)
+				components.Text(c, locales.NativeMetadataStrategyBase(), theme.TextXS, theme.WeightMedium, fg).NoWrap()
+			})
+			ui.Box(c).Width(160).Children(func() {
+				better.Select(c, t, "preferred", better.SelectProps{
+					Value: string(preferred), Options: metadata.BaseOptions(preferred, enabled), Font: theme.TextSM,
+					OnChange: func(v string) {
+						if err := s.env.PatchConfig(func(cfg *appconf.AppConfig) {
+							strategy := cfg.Strategy()
+							strategy.Base = enums.SourceType(v)
+							cfg.SetStrategy(strategy)
+						}); err != nil {
+							log.Printf("import: save preferred source: %v", err)
+						}
+					},
+					Style: func(btn ui.Element) { btn.Height(44).Radius(0, 8, 8, 0).AlignItems(ui.Center) },
+				})
+			})
 		})
-		btn := ui.ButtonBase(c.Key("strategy")).Height(44).MinWidth(160).Padding(0, 12).Gap(8).AlignItems(ui.Center).
-			Radius(0, 8, 8, 0).FocusRing(false).Label(locales.NativeMetadataStrategyTitle()).
-			Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.05))
-		bg, border := t.GlassInput(t.SelectBg, t.SelectBorder)
-		if btn.Hovered() {
-			border = t.Pick(theme.Sky400, theme.Sky600)
-		}
-		btn.Background(bg).Border(t.HL, border).Transition(theme.ColorsTransition(150 * time.Millisecond))
-		btn.OnClick(func() { s.strategy.Open(s.env.Config()) }).Children(func() {
-			components.Text(c, value, theme.TextSM, theme.WeightNormal, t.SelectText).NoWrap().Grow(1)
-			components.Icon(c, "layers-triple-outline", 18, t.Pick(theme.Sky600, theme.Sky400))
-		})
+		on := cfg.Strategy().Enabled
+		better.Button(c, t, "strategy", better.ButtonProps{
+			Icon: "layers-triple-outline", Label: metadata.StrategyButtonLabel(on),
+			OnClick: func() { s.strategy.OpenFor(cfg, metadata.FocusScrape) },
+		}).Height(44).Label(locales.NativeMetadataStrategySettingsLabel())
 	})
 }
 

@@ -25,7 +25,9 @@ type MetadataFieldSelectProps struct {
 	Submitting bool // isSubmitting：确认按钮禁用并显示旋转图标
 	TopOffset  float32
 	// OnStrategy 不为 nil 时，底部的“取消”换成打开高级组合策略的按钮（原版没有；关闭弹窗用右上角的关闭按钮）。
+	// StrategyOn 是“更新元数据时使用组合策略”是否打开：打开时按钮上标“已启用”。
 	OnStrategy func()
+	StrategyOn bool
 	// FieldNotes 是字段名后面的小标签（原版没有：这个字段将从哪个来源更新，或者那个来源没有元数据 ID）。
 	// 更新元数据时是否使用组合策略在高级组合策略弹窗里设置（OnStrategy 打开）。
 	FieldNotes map[enums.MetadataUpdateField]FieldNote
@@ -121,7 +123,12 @@ func MetadataFieldSelectModal(c *ui.Context, t *theme.Theme, key string, p Metad
 			// mt-8 flex justify-end gap-3
 			ui.Row(c).Margin(32, 0, 0, 0).Gap(12).Justify(ui.End).Children(func() {
 				if p.OnStrategy != nil {
-					Button(c, t, "strategy", ButtonProps{Icon: "layers-triple-outline", Label: locales.NativeMetadataStrategySettingsLabel()}).OnClick(p.OnStrategy)
+					label := locales.NativeMetadataStrategySettingsLabel()
+					if p.StrategyOn {
+						label = locales.NativeMetadataStrategyButtonOn()
+					}
+					Button(c, t, "strategy", ButtonProps{Icon: "layers-triple-outline", Label: label}).
+						Label(locales.NativeMetadataStrategySettingsLabel()).OnClick(p.OnStrategy)
 				} else {
 					Button(c, t, "cancel", ButtonProps{Label: locales.CommonCancel()}).OnClick(closeModal)
 				}

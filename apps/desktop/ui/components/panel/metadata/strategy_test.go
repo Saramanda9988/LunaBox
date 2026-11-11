@@ -10,89 +10,68 @@ import (
 	"lunabox/desktop/ui/locales"
 )
 
-// 设置页的入口在策略生效时显示“已启用”；弹窗里编辑草稿：必选数据源不受开关影响，打开开关时必须指定，
-// 重置让字段跟随基底，保存后才写进配置。
+// 设置页的入口按打开的开关分别显示“刮削时启用”“更新时启用”。弹窗里没有必选数据源，只有两个开关与各字段的来源；
+// 文字说明按打开的开关说基底是谁。修改立即写进配置（没有保存按钮，必选数据源原样保留）；重置让字段跟随基底。
 func TestStrategyModal(t *testing.T) {
 	h := newHarness(t)
-	h.cfg.SetStrategy(appconf.MetadataStrategy{})
+	h.cfg.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB})
 	h.frames(2)
 	h.expect(t, locales.NativeMetadataStrategySettingsLabel())
-	h.expectNot(t, locales.NativeMetadataStrategyActive())
+	h.expectNot(t, locales.NativeMetadataStrategyActiveScrape(), locales.NativeMetadataStrategyActiveRefresh())
 
 	h.click(t, locales.NativeMetadataStrategySettingsButton())
-	h.expect(t, locales.NativeMetadataStrategyBase(), locales.NativeMetadataStrategyEnable(), locales.NativeMetadataRefreshUseStrategy(),
-		fieldLabel(enums.MetadataUpdateFieldCover))
-	h.expectNot(t, locales.CommonCancel(), locales.NativeMetadataStrategyBaseRequired())
+	h.expect(t, locales.NativeMetadataStrategyEnable(), locales.NativeMetadataRefreshUseStrategy(), fieldLabel(enums.MetadataUpdateFieldCover),
+		locales.NativeMetadataStrategyReset())
+	h.expectNot(t, locales.CommonCancel(), locales.CommonSave(), locales.NativeMetadataStrategyBase(), locales.NativeMetadataStrategySummaryScrape())
 
-	// 打开开关却没有必选数据源：红字提示，不能保存。
-	h.state.strategy.draft.Enabled = true
-	h.frames(2)
-	h.expect(t, locales.NativeMetadataStrategyBaseRequired())
-	h.click(t, locales.CommonSave())
-	if !h.state.strategy.open {
-		t.Fatal("save should be disabled without a required source")
-	}
-
-	// 关闭开关时可以只设必选数据源，保存后策略不生效。
-	h.state.strategy.draft = appconf.MetadataStrategy{Base: enums.VNDB}
-	h.click(t, locales.CommonSave())
-	if got := h.cfg.Strategy(); got.Base != enums.VNDB || got.Enabled {
-		t.Fatalf("saved strategy = %+v", got)
-	}
-	h.frames(2)
-	h.expectNot(t, locales.NativeMetadataStrategyActive())
-	h.click(t, locales.NativeMetadataStrategySettingsButton())
-
-	h.state.strategy.draft = appconf.MetadataStrategy{Base: enums.VNDB, Enabled: true}.
+	m := &h.state.strategy
+	m.draft = m.draft.
 		WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi).
 		WithFieldSource(enums.MetadataUpdateFieldSummary, enums.Hikarinagi) // 默认没有启用 Hikarinagi
+	m.draft.Enabled = true
+	m.commit()
 	h.frames(2)
 	name, summary := fieldLabel(enums.MetadataUpdateFieldName), fieldLabel(enums.MetadataUpdateFieldSummary)
 	sep := locales.NativeMetadataStrategyClauseSeparator()
-	h.expect(t, locales.NativeMetadataStrategySummaryBase("VNDB"), strings.Join([]string{
+	h.expect(t, locales.NativeMetadataStrategySummaryScrape(), strings.Join([]string{
 		locales.NativeMetadataStrategySummaryField(name, "Bangumi"),
 		locales.NativeMetadataStrategySummaryField(summary, locales.NativeMetadataStrategySourceDisabled("Hikarinagi")),
-		locales.NativeMetadataStrategySummaryRest("VNDB"),
+		locales.NativeMetadataStrategySummaryRestBase(),
 	}, sep))
-	if h.cfg.Strategy().Enabled {
-		t.Fatal("draft should not be saved before clicking save")
-	}
-
-	// 重置：字段跟随基底，基底不变；再改回来以便保存。
-	h.click(t, locales.NativeMetadataStrategyReset())
-	if d := h.state.strategy.draft; d.Base != enums.VNDB || !d.Enabled || len(d.Fields) != 0 {
-		t.Fatalf("draft after reset = %+v", d)
-	}
-	h.state.strategy.draft = h.state.strategy.draft.
-		WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi).
-		WithFieldSource(enums.MetadataUpdateFieldSummary, enums.Hikarinagi)
-	h.frames(2)
-
-	h.click(t, locales.CommonSave())
-	if h.state.strategy.open {
-		t.Fatal("modal should close after saving")
-	}
-	got := h.cfg.Strategy()
-	if got.Base != enums.VNDB || got.FieldSource(enums.MetadataUpdateFieldName) != enums.Bangumi || got.FieldSource(enums.MetadataUpdateFieldSummary) != enums.Hikarinagi {
+	h.expectNot(t, locales.NativeMetadataStrategySummaryRefresh())
+	if got := h.cfg.Strategy(); got.Base != enums.VNDB || !got.Enabled || got.FieldSource(enums.MetadataUpdateFieldName) != enums.Bangumi {
 		t.Fatalf("saved strategy = %+v", got)
 	}
-	h.expect(t, locales.NativeMetadataStrategyActive())
-	if h.cfg.MetadataRefreshUseStrategy {
-		t.Fatal("refresh switch should stay off")
-	}
 
-	// 更新元数据时使用的开关与刮削的开关分开保存；只打开它时入口也显示“已启用”。
-	h.click(t, locales.NativeMetadataStrategySettingsButton())
-	if h.state.strategy.refresh {
-		t.Fatal("refresh draft should start from the config")
+	// 重置：字段跟随基底，开关不变，立即保存。
+	h.click(t, locales.NativeMetadataStrategyReset())
+	if got := h.cfg.Strategy(); !got.Enabled || len(got.Fields) != 0 || got.Base != enums.VNDB {
+		t.Fatalf("saved after reset = %+v", got)
 	}
-	h.state.strategy.draft.Enabled, h.state.strategy.refresh = false, true
+	h.expect(t, locales.NativeMetadataStrategySummaryAllFromBase())
+
+	m.refresh = true
+	m.commit()
 	h.frames(2)
-	h.click(t, locales.CommonSave())
-	if !h.cfg.MetadataRefreshUseStrategy || h.cfg.Strategy().Enabled {
-		t.Fatalf("saved: refresh %v, strategy %+v", h.cfg.MetadataRefreshUseStrategy, h.cfg.Strategy())
+	h.expect(t, locales.NativeMetadataStrategySummaryScrape(), locales.NativeMetadataStrategySummaryRefresh())
+	if !h.cfg.MetadataRefreshUseStrategy {
+		t.Fatal("refresh switch should be saved")
 	}
-	h.expect(t, locales.NativeMetadataStrategyActive())
+	m.close()
+	h.frames(2)
+	h.expect(t, locales.NativeMetadataStrategyActiveScrape(), locales.NativeMetadataStrategyActiveRefresh())
+
+	// 只打开更新时的开关：入口只标“更新时启用”。
+	h.click(t, locales.NativeMetadataStrategySettingsButton())
+	if !m.refresh || m.focus != FocusNone {
+		t.Fatalf("draft should start from the config: refresh %v, focus %v", m.refresh, m.focus)
+	}
+	m.draft.Enabled = false
+	m.commit()
+	m.close()
+	h.frames(2)
+	h.expect(t, locales.NativeMetadataStrategyActiveRefresh())
+	h.expectNot(t, locales.NativeMetadataStrategyActiveScrape())
 }
 
 // 更新字段弹窗的标签：没有打开“使用高级组合策略”时全量更新不标、单个游戏都是默认来源；打开后按
@@ -106,7 +85,6 @@ func TestRefreshNotes(t *testing.T) {
 	from := locales.NativeMetadataStrategyFieldFrom
 	ymgal := locales.NativeMetadataStrategyReasonDisabled(StrategyLabel(enums.Ymgal))
 	noVNDB := locales.NativeMetadataStrategyNoSourceID("VNDB")
-	sep := locales.NativeMetadataStrategyClauseSeparator()
 
 	if notes := BatchRefreshNotes(cfg); notes != nil || RefreshUsesStrategy(cfg, enums.Bangumi) {
 		t.Fatalf("switch off: notes %v", notes)
@@ -122,23 +100,27 @@ func TestRefreshNotes(t *testing.T) {
 	if !RefreshUsesStrategy(cfg, enums.Bangumi) {
 		t.Fatal("strategy should apply")
 	}
+	// 全量更新：只标指定了来源的字段；没有指定的用各游戏自己的默认来源（必选数据源 VNDB 不参与）。
 	batch := BatchRefreshNotes(cfg)
 	for f, want := range map[enums.MetadataUpdateField]better.FieldNote{
 		enums.MetadataUpdateFieldCover:   {Text: from("Bangumi")},
-		enums.MetadataUpdateFieldName:    {Text: from("VNDB")},
+		enums.MetadataUpdateFieldName:    {},
 		enums.MetadataUpdateFieldAliases: {Text: locales.NativeMetadataStrategyMergeAll()},
-		enums.MetadataUpdateFieldSummary: {Text: from("VNDB"), Warn: true, Reason: ymgal},
+		enums.MetadataUpdateFieldSummary: {Text: locales.NativeMetadataStrategyFieldFromDefault(), Warn: true, Reason: ymgal},
 	} {
 		if batch[f] != want {
 			t.Errorf("batch %s = %+v, want %+v", f, batch[f], want)
 		}
 	}
 
+	// 单个游戏：字段指定的来源 → 默认来源 Bangumi。名称指定了 VNDB（没有 ID）。
+	cfg.SetStrategy(cfg.Strategy().WithFieldSource(enums.MetadataUpdateFieldName, enums.VNDB))
 	game := GameRefreshNotes(cfg, enums.Bangumi, map[enums.SourceType]string{enums.Bangumi: "1"}) // VNDB 没有 ID
 	for f, want := range map[enums.MetadataUpdateField]better.FieldNote{
 		enums.MetadataUpdateFieldCover:   {Text: from("Bangumi")},
 		enums.MetadataUpdateFieldName:    {Text: from("Bangumi"), Warn: true, Reason: noVNDB},
-		enums.MetadataUpdateFieldSummary: {Text: from("Bangumi"), Warn: true, Reason: ymgal + sep + noVNDB},
+		enums.MetadataUpdateFieldSummary: {Text: from("Bangumi"), Warn: true, Reason: ymgal},
+		enums.MetadataUpdateFieldCompany: {Text: from("Bangumi")},
 	} {
 		if game[f] != want {
 			t.Errorf("game %s = %+v, want %+v", f, game[f], want)

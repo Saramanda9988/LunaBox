@@ -15,6 +15,7 @@ import (
 	"lunabox/backend/common/enums"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
+	"lunabox/backend/utils/metadata"
 	"lunabox/desktop/api"
 	"lunabox/desktop/host"
 	"lunabox/desktop/host/hosttest"
@@ -372,23 +373,24 @@ func TestFieldSelectModal(t *testing.T) {
 	}
 }
 
-// setRefreshStrategy 从字段弹窗打开组合策略弹窗，把“更新元数据时使用组合策略”改为 on 并保存，回到字段弹窗。
+// setRefreshStrategy 从字段弹窗打开组合策略弹窗，把“更新元数据时使用组合策略”改为 on（立即保存），按 Esc 回到字段弹窗。
 func (h *harness) setRefreshStrategy(t *testing.T, on bool) {
 	t.Helper()
 	h.click(t, locales.NativeMetadataStrategySettingsLabel())
 	h.expectTexts(t, locales.NativeMetadataStrategyBase(), locales.NativeMetadataRefreshUseStrategy())
 	if h.env.Config().MetadataRefreshUseStrategy != on {
-		// 开关在那一行的右端（与底部保存按钮的右边对齐，行有 p-3），上下居中。
-		save, ok1 := h.tt.Find(locales.CommonSave())
+		// 开关在那一行的右端（与底部重置按钮的右边对齐，行有 p-3），上下居中。
+		reset, ok1 := h.tt.Find(locales.NativeMetadataStrategyReset())
 		title, ok2 := h.tt.Find(locales.NativeMetadataRefreshUseStrategy())
 		hint, ok3 := h.tt.Find(locales.NativeMetadataRefreshUseStrategyHint())
 		if !ok1 || !ok2 || !ok3 {
 			t.Fatalf("no refresh switch in %q", h.tt.Texts())
 		}
-		h.tt.ClickAt(save.X+save.W-12-22, (title.Y+hint.Y+hint.H)/2)
+		h.tt.ClickAt(reset.X+reset.W-12-22, (title.Y+hint.Y+hint.H)/2)
 		h.frames(2)
 	}
-	h.click(t, locales.CommonSave())
+	h.tt.Key(0, ui.KeyEscape)
+	h.frames(2)
 	if !h.state.fieldsOpen || h.state.strategy.IsOpen() {
 		t.Fatalf("fields open %v, strategy open %v", h.state.fieldsOpen, h.state.strategy.IsOpen())
 	}
@@ -403,7 +405,8 @@ func (h *harness) setRefreshStrategy(t *testing.T, on bool) {
 func TestFieldSelectModalShowsStrategy(t *testing.T) {
 	h := newHarness(t, testGame())                                       // 默认来源 Bangumi，另有 VNDB 的 ID
 	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}. // 刮削的开关关闭
-										WithFieldSource(enums.MetadataUpdateFieldCover, enums.Bangumi))
+										WithFieldSource(enums.MetadataUpdateFieldCover, enums.Bangumi).
+										WithFieldSource(enums.MetadataUpdateFieldName, enums.VNDB))
 	h.frames(2)
 	h.expectNot(t, locales.NativeMetadataStrategyButton())
 
@@ -413,7 +416,7 @@ func TestFieldSelectModalShowsStrategy(t *testing.T) {
 		locales.NativeMetadataStrategyFieldFrom("VNDB"), locales.CommonCancel())
 
 	h.setRefreshStrategy(t, true)
-	// 没有指定来源的字段取必选数据源 VNDB，封面指定了 Bangumi；都有 ID，不回退。
+	// 名称指定了 VNDB（有 ID，不回退）；其余字段取游戏的默认来源 Bangumi，必选数据源不参与。
 	h.expectTexts(t, locales.NativeMetadataStrategyFieldFrom("VNDB"), locales.NativeMetadataStrategyFieldFrom("Bangumi"),
 		locales.NativeMetadataStrategyButton())
 	h.expectNot(t, locales.NativeMetadataStrategyNoSourceID("VNDB"))
@@ -443,12 +446,12 @@ func TestFieldSelectModalShowsFallback(t *testing.T) {
 	h := newHarness(t, g)
 	h.svc.Config.MetadataRefreshUseStrategy = true
 	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}.
-		WithFieldSource(enums.MetadataUpdateFieldName, enums.Ymgal)) // 默认没有启用 YMGAL
+		WithFieldSource(enums.MetadataUpdateFieldName, enums.Ymgal). // 默认没有启用 YMGAL
+		WithFieldSource(enums.MetadataUpdateFieldCover, enums.VNDB)) // 没有 VNDB 的 ID
 	h.frames(2)
 	h.click(t, "从远端更新信息")
-	sep := locales.NativeMetadataStrategyClauseSeparator()
 	noVNDB := locales.NativeMetadataStrategyNoSourceID("VNDB")
-	nameReason := locales.NativeMetadataStrategyReasonDisabled(metasource.Label(enums.Ymgal)) + sep + noVNDB
+	nameReason := locales.NativeMetadataStrategyReasonDisabled(metasource.Label(enums.Ymgal))
 	h.expectTexts(t, locales.NativeMetadataStrategyFieldFrom("Bangumi"), noVNDB, nameReason)
 	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("VNDB"))
 	h.click(t, nameReason)
@@ -599,44 +602,102 @@ func TestSearchModal(t *testing.T) {
 	}
 }
 
-// 按名称重新搜索（更新元数据）时，刮削时使用组合策略的话最前面是组合结果：选中它时关联各结果，以基底为默认来源，
-// 按组合策略更新；底部有打开组合策略弹窗的按钮。只更新关联时没有组合结果。
+// 按名称重新搜索（更新元数据）时，刮削时使用组合策略的话最前面是组合结果：默认以游戏的默认来源为基底（不是必选数据源），
+// 卡片上可以改基底；选中它时关联各结果，以基底为默认来源，按组合策略更新。底部有打开组合策略弹窗的按钮（标出刮削的开关）。
+// 只更新关联时没有组合结果。
 func TestSearchModalStrategyLead(t *testing.T) {
-	h := newHarness(t, testGame())
+	h := newHarness(t, testGame()) // 默认来源 Bangumi
 	fake := &remoteGame{GameService: h.env.Svc.Game}
 	h.env.Svc.Game = fake
 	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB, Enabled: true}.
-		WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi))
-	lead := locales.NativeMetadataStrategyCardSource("VNDB")
+		WithFieldSource(enums.MetadataUpdateFieldName, enums.VNDB))
+	cardBase, on := locales.NativeMetadataStrategyCardBase(), locales.NativeMetadataStrategyButtonOn()
 
 	h.state.results, h.state.searchMode, h.state.searchOpen = searchResults(), searchSourceRelations, true
 	h.frames(2)
-	h.expectNot(t, lead, locales.NativeMetadataStrategySettingsLabel())
+	h.expectNot(t, cardBase, on)
 	h.state.searchOpen = false
 	h.frames(2)
 
 	h.state.results, h.state.searchMode, h.state.searchOpen = searchResults(), searchUpdateMetadata, true
 	h.frames(2)
-	h.expectTexts(t, lead, locales.NativeMetadataStrategySettingsLabel())
+	h.expectTexts(t, cardBase, "Bangumi", on)
+	if dir := os.Getenv("DESKTOP_MYGO_PNG"); dir != "" {
+		save := func(name string) {
+			f, err := os.Create(filepath.Join(dir, name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = png.Encode(f, h.tt.Image())
+			f.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		save("edit-search-strategy-lead.png")
+		// 点开卡片上的基底下拉框（“基底”右边）。
+		r, _ := h.tt.Find(cardBase)
+		h.tt.ClickAt(r.X+r.W+20, r.Y+r.H/2)
+		h.frames(2)
+		save("edit-search-strategy-lead-menu.png")
+		h.tt.Key(0, ui.KeyEscape)
+		h.frames(2)
+		// 多个字段取自不同来源时，悬停卡片的提示每个来源一行，在 max-w-72 内换行。
+		saved := h.svc.Config.Strategy()
+		h.svc.Config.SetStrategy(saved.
+			WithFieldSource(enums.MetadataUpdateFieldAliases, enums.VNDB).
+			WithFieldSource(enums.MetadataUpdateFieldReleaseDate, enums.VNDB).
+			WithFieldSource(enums.MetadataUpdateFieldTags, enums.VNDB).
+			WithFieldSource(enums.MetadataUpdateFieldCover, enums.Ymgal).
+			WithFieldSource(enums.MetadataUpdateFieldCompany, enums.Ymgal).
+			WithFieldSource(enums.MetadataUpdateFieldSummary, enums.Ymgal))
+		savedResults := h.state.results
+		rich := slices.Clone(savedResults)
+		for i := range rich {
+			g := &rich[i].Game
+			g.Aliases, g.ReleaseDate, g.CoverURL, g.Company, g.Summary = []string{"别名"}, "2016-07-15", "https://example.com/c.jpg", "ゆずソフト", "简介"
+			rich[i].Tags = []metadata.TagItem{{Name: "标签"}}
+		}
+		h.state.results = rich
+		h.frames(2)
+		r, _ = h.tt.Find(locales.NativeMetadataStrategyCardHint())
+		h.tt.Move(r.X+r.W/2, r.Y+r.H/2)
+		h.frames(1)
+		h.tt.Advance(350 * time.Millisecond)
+		h.frames(2)
+		save("edit-search-strategy-lead-tooltip.png")
+		h.tt.Move(1, 1)
+		h.svc.Config.SetStrategy(saved)
+		h.state.results = savedResults
+		h.frames(2)
+	}
 	h.click(t, locales.NativeMetadataStrategySettingsLabel())
 	if !h.state.strategy.IsOpen() {
 		t.Fatal("strategy modal should open")
 	}
-	h.click(t, locales.CommonSave())
+	h.tt.Key(0, ui.KeyEscape)
+	h.frames(2)
+	if h.state.strategy.IsOpen() || !h.state.searchOpen {
+		t.Fatalf("Esc: strategy open %v, search open %v", h.state.strategy.IsOpen(), h.state.searchOpen)
+	}
 
+	// 卡片上改用月幕gal 作基底，选中组合结果。
+	h.state.leadBase = enums.Ymgal
+	h.frames(2)
 	h.click(t, locales.NativeMetadataStrategyCardHint())
-	if fake.strategyUpdates != 1 || fake.strategySource != enums.VNDB || fake.sourceUpdates != 0 {
+	if fake.strategyUpdates != 1 || fake.strategySource != enums.Ymgal || fake.sourceUpdates != 0 {
 		t.Fatalf("strategy updates %d from %q, source updates %d", fake.strategyUpdates, fake.strategySource, fake.sourceUpdates)
 	}
-	if h.state.searchOpen || h.game.SourceType != enums.VNDB || !configured(&h.game, enums.Bangumi) || !configured(&h.game, enums.Ymgal) {
+	if h.state.searchOpen || h.game.SourceType != enums.Ymgal || !configured(&h.game, enums.Bangumi) || !configured(&h.game, enums.VNDB) {
 		t.Fatalf("open %v, game %q %+v", h.state.searchOpen, h.game.SourceType, h.game.MetadataSources)
 	}
 
-	// 刮削时不使用组合策略：没有组合结果。
-	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}.WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi))
-	h.state.results, h.state.searchOpen = searchResults(), true
+	// 刮削时不使用组合策略：没有组合结果，按钮不标“已启用”。
+	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}.WithFieldSource(enums.MetadataUpdateFieldName, enums.VNDB))
+	h.state.results, h.state.leadBase, h.state.searchOpen = searchResults(), "", true
 	h.frames(2)
-	h.expectNot(t, lead)
+	h.expectNot(t, cardBase, on)
+	h.expectTexts(t, locales.NativeMetadataStrategySettingsLabel())
 }
 
 func TestSearchModalDuplicateSource(t *testing.T) {

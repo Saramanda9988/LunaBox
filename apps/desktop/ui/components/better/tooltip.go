@@ -13,8 +13,21 @@ import (
 const tooltipDelay = 300 * time.Millisecond
 
 // Tooltip 对应 BetterTooltip（side="top"）：悬停 300ms 后在 anchor 上方 8px 处显示
-// rounded-md px-2.5 py-1.5 text-xs font-medium 的提示，max-w-72。
+// rounded-md px-2.5 py-1.5 text-xs font-medium 的提示，max-w-72。文字不换行，用于短的提示。
 func Tooltip(c *ui.Context, t *theme.Theme, anchor ui.Element, content string) {
+	tooltip(c, t, anchor, content, false)
+}
+
+// TooltipWrap 同 Tooltip，但最宽 360（原版没有），文字超出时换行（content 里的换行符也换行），用于较长的提示。
+func TooltipWrap(c *ui.Context, t *theme.Theme, anchor ui.Element, content string) {
+	tooltip(c, t, anchor, content, true)
+}
+
+func tooltip(c *ui.Context, t *theme.Theme, anchor ui.Element, content string, wrap bool) {
+	maxW := float32(288)
+	if wrap {
+		maxW = 360
+	}
 	since := ui.Local(anchor, "tooltip", func() time.Time { return time.Time{} })
 	if !anchor.Hovered() {
 		*since = time.Time{}
@@ -30,11 +43,14 @@ func Tooltip(c *ui.Context, t *theme.Theme, anchor ui.Element, content string) {
 	}
 	ui.Overlay(c, func() {
 		components.AttachPopover(ui.Box(c), anchor, ui.AnchorTop, ui.AnchorBottom).Translate(0, -8).
-			Padding(6, 10).Radius(6).MaxWidth(288).Background(t.TooltipBg).Border(t.HL, t.TooltipBorder).
+			Padding(6, 10).Radius(6).MaxWidth(maxW).Background(t.TooltipBg).Border(t.HL, t.TooltipBorder).
 			PassThrough().DrawOver(func(p *ui.Painter, r ui.Rect) {
 			p.FillPath(tooltipArrow(r.X+r.W/2, r.Y+r.H), t.TooltipBg)
 		}).Children(func() {
-			components.Text(c, content, theme.TextXS, theme.WeightMedium, t.TooltipText).NoWrap()
+			text := components.Text(c, content, theme.TextXS, theme.WeightMedium, t.TooltipText)
+			if !wrap {
+				text.NoWrap()
+			}
 		})
 	})
 }
