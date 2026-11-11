@@ -428,8 +428,9 @@ func (s *State) cancelApply() {
 }
 
 // selectSearchResult 对应 handleSelectMetadataSearchResult：每个来源只能保留一个结果；把保留的结果都关联到游戏，
-// 选中的来源设为默认（“更新元数据”时先从它更新游戏信息）。
-func (e *editor) selectSearchResult(c *ui.Context, result vo.GameMetadataFromWebVO) {
+// 选中的来源设为默认（“更新元数据”时先从它更新游戏信息）。composed 是选中了组合结果（result 是组合后的结果，
+// 来源是基底）：按高级组合策略从各来源更新全部字段。
+func (e *editor) selectSearchResult(c *ui.Context, result vo.GameMetadataFromWebVO, composed bool) {
 	s, svc, old := e.s, e.p.Env.Svc, e.g
 	if strings.TrimSpace(result.Game.SourceID) == "" || s.applying {
 		return
@@ -469,7 +470,11 @@ func (e *editor) selectSearchResult(c *ui.Context, result vo.GameMetadataFromWeb
 				}
 			}
 			if mode == searchUpdateMetadata {
-				if err := svc.Game.UpdateGameFromRemoteBySourceContext(ctx, old.ID, result.Source); err != nil {
+				update := svc.Game.UpdateGameFromRemoteBySourceContext
+				if composed {
+					update = svc.Game.UpdateGameFromRemoteWithStrategyContext
+				}
+				if err := update(ctx, old.ID, result.Source); err != nil {
 					return err
 				}
 			}

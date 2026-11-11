@@ -196,8 +196,8 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Game) {
 	e.metadataDrawer(c)
 	e.deleteModal(c)
 	e.fieldSelectModal(c)
-	e.strategyModal(c)
 	e.searchModal(c)
+	e.strategyModal(c)
 }
 
 // textField 是 label + BetterInput 的一行（游戏名称、开发商）。

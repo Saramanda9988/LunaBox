@@ -29,22 +29,25 @@ var strategyFields = []enums.MetadataUpdateField{
 	enums.MetadataUpdateFieldSummary,
 }
 
-// StrategyModal 是“高级组合策略”弹窗：设置页的元数据分区与批量导入共用。弹窗里改的是草稿，保存时才写进配置。
+// StrategyModal 是“高级组合策略”弹窗：设置页的元数据分区、批量导入、详情页的更新字段与重新搜索共用。
+// 弹窗里改的是草稿（组合策略与“更新元数据时使用”的开关），保存时才写进配置。
 type StrategyModal struct {
-	open  bool
-	draft appconf.MetadataStrategy
+	open    bool
+	draft   appconf.MetadataStrategy
+	refresh bool // 更新元数据时使用组合策略（AppConfig.MetadataRefreshUseStrategy）
 }
 
 // StrategyModalProps 是弹窗的属性。
 type StrategyModalProps struct {
 	Enabled   []enums.SourceType // 已启用的元数据来源（可选的来源）
 	TopOffset float32
-	OnSave    func(strategy appconf.MetadataStrategy)
+	// OnSave 在保存时调用：apply 把草稿写进配置，调用方用它修改配置（如 PatchConfig(apply)）。
+	OnSave func(apply func(cfg *appconf.AppConfig))
 }
 
-// Open 用配置里的组合策略打开弹窗。
+// Open 用配置里的组合策略与两个开关打开弹窗。
 func (m *StrategyModal) Open(cfg *appconf.AppConfig) {
-	*m = StrategyModal{open: true, draft: cfg.Strategy()}
+	*m = StrategyModal{open: true, draft: cfg.Strategy(), refresh: cfg != nil && cfg.MetadataRefreshUseStrategy}
 }
 
 // IsOpen 报告弹窗是否打开。
@@ -275,9 +278,8 @@ func (m *StrategyModal) overridden(f enums.MetadataUpdateField) bool {
 	return src != "" && src != m.draft.Base
 }
 
-// View 构建弹窗：标题与说明、必选数据源、开关、各字段的来源、文字说明，底部重置与保存。
-// 必选数据源与各字段的来源都不受开关影响（开关只管导入；更新元数据时由字段选择弹窗里的开关决定）；
-// 开关关闭时没有文字说明。
+// View 构建弹窗：标题、必选数据源、刮削与更新元数据两个开关、各字段的来源、文字说明，底部重置与保存。
+// 必选数据源与各字段的来源都不受开关影响；刮削的开关关闭时没有文字说明（说明讲的是刮削时怎么识别与组合）。
 func (m *StrategyModal) View(c *ui.Context, t *theme.Theme, p StrategyModalProps) {
 	components.Modal(c, t, "metadata-strategy", components.ModalProps{
 		Open: m.open, TopOffset: p.TopOffset, MaxWidth: 760, OnClose: m.close, Label: locales.NativeMetadataStrategyTitle(),
@@ -292,7 +294,7 @@ func (m *StrategyModal) View(c *ui.Context, t *theme.Theme, p StrategyModalProps
 				ui.Scroll(c.Key("body")).MaxHeight(bodyH).Margin(0, -14, 0, 0).Children(func() {
 					ui.Column(c).Padding(2, 14, 2, 2).Gap(20).Children(func() {
 						m.baseRow(c, t, p.Enabled)
-						m.switchRow(c, t)
+						m.switchRows(c, t)
 						m.fieldRows(c, t, p.Enabled)
 						if m.draft.Active() {
 							m.summary(c, t, p.Enabled)
@@ -312,7 +314,6 @@ func (m *StrategyModal) header(c *ui.Context, t *theme.Theme) {
 				components.Icon(c, "layers-triple-outline", 22, t.Pick(theme.Sky600, theme.Sky400))
 				components.Text(c, locales.NativeMetadataStrategyTitle(), theme.TextXL, theme.WeightBold, t.TextStrong)
 			})
-			components.Text(c, locales.NativeMetadataStrategyDescription(), theme.FontStep{Size: 14, Line: 22.75}, theme.WeightNormal, t.Pick(theme.Brand600, theme.Brand400))
 		})
 		btn := ui.ButtonBase(c.Key("close")).Padding(8).Radius(8).Center().Shrink(0).FocusRing(false).Label(locales.CommonClose())
 		color := t.Pick(theme.Brand500, theme.Brand400)
@@ -360,10 +361,15 @@ func (m *StrategyModal) baseRow(c *ui.Context, t *theme.Theme, enabled []enums.S
 	})
 }
 
-// switchRow：组合策略的开关。
-func (m *StrategyModal) switchRow(c *ui.Context, t *theme.Theme) {
-	settingRow(c, t, "switch", locales.NativeMetadataStrategyEnable(), locales.NativeMetadataStrategyEnableHint(), "", func() {
-		better.Switch(c, t, "switch", m.draft.Enabled, false, func(on bool) { m.draft.Enabled = on })
+// switchRows：组合策略分别用于刮削（导入、添加游戏、按名称重新搜索）与更新元数据的两个开关。
+func (m *StrategyModal) switchRows(c *ui.Context, t *theme.Theme) {
+	ui.Column(c.Key("switches")).Gap(8).Children(func() {
+		settingRow(c, t, "switch", locales.NativeMetadataStrategyEnable(), locales.NativeMetadataStrategyEnableHint(), "", func() {
+			better.Switch(c, t, "switch", m.draft.Enabled, false, func(on bool) { m.draft.Enabled = on })
+		})
+		settingRow(c, t, "refresh-switch", locales.NativeMetadataRefreshUseStrategy(), locales.NativeMetadataRefreshUseStrategyHint(), "", func() {
+			better.Switch(c, t, "switch", m.refresh, false, func(on bool) { m.refresh = on })
+		})
 	})
 }
 
@@ -395,7 +401,7 @@ func (m *StrategyModal) fieldRows(c *ui.Context, t *theme.Theme, enabled []enums
 	})
 }
 
-// summary 是自动生成的文字说明与更新元数据时的规则。
+// summary 是自动生成的文字说明。
 func (m *StrategyModal) summary(c *ui.Context, t *theme.Theme, enabled []enums.SourceType) {
 	ui.Row(c.Key("summary")).Gap(10).Padding(12).Radius(8).AlignItems(ui.Start).
 		Background(t.Pick(theme.Sky50.Alpha(0.6), theme.Sky900.Alpha(0.2))).Children(func() {
@@ -406,7 +412,6 @@ func (m *StrategyModal) summary(c *ui.Context, t *theme.Theme, enabled []enums.S
 					components.Text(c, line, theme.FontStep{Size: 13, Line: 20}, theme.WeightMedium, t.Pick(theme.Brand800, theme.Brand100))
 				})
 			}
-			components.Text(c, locales.NativeMetadataStrategyRefreshHint(), theme.TextXS, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400))
 		})
 	})
 }
@@ -422,7 +427,11 @@ func (m *StrategyModal) footer(c *ui.Context, t *theme.Theme, p StrategyModalPro
 			Variant: better.ButtonPrimary, Icon: "check", Label: locales.CommonSave(), Disabled: m.missingBase(),
 			OnClick: func() {
 				if p.OnSave != nil {
-					p.OnSave(m.draft.Clone())
+					strategy, refresh := m.draft.Clone(), m.refresh
+					p.OnSave(func(cfg *appconf.AppConfig) {
+						cfg.SetStrategy(strategy)
+						cfg.MetadataRefreshUseStrategy = refresh
+					})
 				}
 				m.close()
 			},

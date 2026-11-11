@@ -372,38 +372,47 @@ func TestFieldSelectModal(t *testing.T) {
 	}
 }
 
-// clickUseStrategy 点击字段弹窗里“使用高级组合策略”的开关：在那一行的右端（与关闭按钮的右边对齐），上下居中。
-func (h *harness) clickUseStrategy(t *testing.T) {
+// setRefreshStrategy 从字段弹窗打开组合策略弹窗，把“更新元数据时使用组合策略”改为 on 并保存，回到字段弹窗。
+func (h *harness) setRefreshStrategy(t *testing.T, on bool) {
 	t.Helper()
-	cl, ok1 := h.tt.Find(locales.CommonClose())
-	title, ok2 := h.tt.Find(locales.NativeMetadataRefreshUseStrategy())
-	hint, ok3 := h.tt.Find(locales.NativeMetadataRefreshUseStrategyHint())
-	if !ok1 || !ok2 || !ok3 {
-		t.Fatalf("no strategy switch in %q", h.tt.Texts())
+	h.click(t, locales.NativeMetadataStrategySettingsLabel())
+	h.expectTexts(t, locales.NativeMetadataStrategyBase(), locales.NativeMetadataRefreshUseStrategy())
+	if h.env.Config().MetadataRefreshUseStrategy != on {
+		// 开关在那一行的右端（与底部保存按钮的右边对齐，行有 p-3），上下居中。
+		save, ok1 := h.tt.Find(locales.CommonSave())
+		title, ok2 := h.tt.Find(locales.NativeMetadataRefreshUseStrategy())
+		hint, ok3 := h.tt.Find(locales.NativeMetadataRefreshUseStrategyHint())
+		if !ok1 || !ok2 || !ok3 {
+			t.Fatalf("no refresh switch in %q", h.tt.Texts())
+		}
+		h.tt.ClickAt(save.X+save.W-12-22, (title.Y+hint.Y+hint.H)/2)
+		h.frames(2)
 	}
-	h.tt.ClickAt(cl.X+cl.W-12-22, (title.Y+hint.Y+hint.H)/2)
-	h.frames(2)
+	h.click(t, locales.CommonSave())
+	if !h.state.fieldsOpen || h.state.strategy.IsOpen() {
+		t.Fatalf("fields open %v, strategy open %v", h.state.fieldsOpen, h.state.strategy.IsOpen())
+	}
+	if h.env.Config().MetadataRefreshUseStrategy != on {
+		t.Fatalf("refresh switch should be saved as %v", on)
+	}
 }
 
-// 更新元数据时的组合策略由字段弹窗里的开关单独控制（默认关闭，保存在设置里，与导入的开关无关）。关闭时字段不标
-// 来源；打开后按 字段指定的来源 → 必选数据源 → 默认来源 标出，默认来源旁边标出“组合策略”。
+// 更新元数据时的组合策略由组合策略弹窗里“更新元数据时使用组合策略”的开关单独控制（默认关闭，与刮削的开关无关），
+// 字段弹窗里没有开关。关闭时字段不标来源；打开后按 字段指定的来源 → 必选数据源 → 默认来源 标出，默认来源旁边标出“组合策略”。
 // 弹窗底部的“取消”换成了打开组合策略弹窗的按钮。
 func TestFieldSelectModalShowsStrategy(t *testing.T) {
 	h := newHarness(t, testGame())                                       // 默认来源 Bangumi，另有 VNDB 的 ID
-	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}. // 导入的开关关闭
+	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}. // 刮削的开关关闭
 										WithFieldSource(enums.MetadataUpdateFieldCover, enums.Bangumi))
 	h.frames(2)
 	h.expectNot(t, locales.NativeMetadataStrategyButton())
 
 	h.click(t, "从远端更新信息")
-	h.expectTexts(t, locales.NativeMetadataRefreshUseStrategy(), locales.NativeMetadataStrategySettingsLabel())
-	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("Bangumi"), locales.NativeMetadataStrategyFieldFrom("VNDB"),
-		locales.CommonCancel())
+	h.expectTexts(t, locales.NativeMetadataStrategySettingsLabel())
+	h.expectNot(t, locales.NativeMetadataRefreshUseStrategy(), locales.NativeMetadataStrategyFieldFrom("Bangumi"),
+		locales.NativeMetadataStrategyFieldFrom("VNDB"), locales.CommonCancel())
 
-	h.clickUseStrategy(t)
-	if !h.env.Config().MetadataRefreshUseStrategy {
-		t.Fatal("switch should be saved in the config")
-	}
+	h.setRefreshStrategy(t, true)
 	// 没有指定来源的字段取必选数据源 VNDB，封面指定了 Bangumi；都有 ID，不回退。
 	h.expectTexts(t, locales.NativeMetadataStrategyFieldFrom("VNDB"), locales.NativeMetadataStrategyFieldFrom("Bangumi"),
 		locales.NativeMetadataStrategyButton())
@@ -420,18 +429,8 @@ func TestFieldSelectModalShowsStrategy(t *testing.T) {
 		}
 	}
 
-	h.click(t, locales.NativeMetadataStrategySettingsLabel())
-	h.expectTexts(t, locales.NativeMetadataStrategyBase())
-	h.click(t, locales.CommonSave()) // 组合策略弹窗的保存，回到字段弹窗
-	if !h.state.fieldsOpen || h.state.strategy.IsOpen() {
-		t.Fatalf("fields open %v, strategy open %v", h.state.fieldsOpen, h.state.strategy.IsOpen())
-	}
-
 	// 再关掉开关：都从默认来源更新，不标来源。
-	h.clickUseStrategy(t)
-	if h.env.Config().MetadataRefreshUseStrategy {
-		t.Fatal("switch should be off")
-	}
+	h.setRefreshStrategy(t, false)
 	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("VNDB"), locales.NativeMetadataStrategyFieldFrom("Bangumi"))
 }
 
@@ -600,6 +599,46 @@ func TestSearchModal(t *testing.T) {
 	}
 }
 
+// 按名称重新搜索（更新元数据）时，刮削时使用组合策略的话最前面是组合结果：选中它时关联各结果，以基底为默认来源，
+// 按组合策略更新；底部有打开组合策略弹窗的按钮。只更新关联时没有组合结果。
+func TestSearchModalStrategyLead(t *testing.T) {
+	h := newHarness(t, testGame())
+	fake := &remoteGame{GameService: h.env.Svc.Game}
+	h.env.Svc.Game = fake
+	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB, Enabled: true}.
+		WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi))
+	lead := locales.NativeMetadataStrategyCardSource("VNDB")
+
+	h.state.results, h.state.searchMode, h.state.searchOpen = searchResults(), searchSourceRelations, true
+	h.frames(2)
+	h.expectNot(t, lead, locales.NativeMetadataStrategySettingsLabel())
+	h.state.searchOpen = false
+	h.frames(2)
+
+	h.state.results, h.state.searchMode, h.state.searchOpen = searchResults(), searchUpdateMetadata, true
+	h.frames(2)
+	h.expectTexts(t, lead, locales.NativeMetadataStrategySettingsLabel())
+	h.click(t, locales.NativeMetadataStrategySettingsLabel())
+	if !h.state.strategy.IsOpen() {
+		t.Fatal("strategy modal should open")
+	}
+	h.click(t, locales.CommonSave())
+
+	h.click(t, locales.NativeMetadataStrategyCardHint())
+	if fake.strategyUpdates != 1 || fake.strategySource != enums.VNDB || fake.sourceUpdates != 0 {
+		t.Fatalf("strategy updates %d from %q, source updates %d", fake.strategyUpdates, fake.strategySource, fake.sourceUpdates)
+	}
+	if h.state.searchOpen || h.game.SourceType != enums.VNDB || !configured(&h.game, enums.Bangumi) || !configured(&h.game, enums.Ymgal) {
+		t.Fatalf("open %v, game %q %+v", h.state.searchOpen, h.game.SourceType, h.game.MetadataSources)
+	}
+
+	// 刮削时不使用组合策略：没有组合结果。
+	h.svc.Config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}.WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi))
+	h.state.results, h.state.searchOpen = searchResults(), true
+	h.frames(2)
+	h.expectNot(t, lead)
+}
+
 func TestSearchModalDuplicateSource(t *testing.T) {
 	h := newHarness(t, testGame())
 	h.state.results = append(searchResults(), vo.GameMetadataFromWebVO{Source: enums.VNDB, Game: models.Game{Name: "Other", SourceID: "v1"}})
@@ -718,6 +757,20 @@ type remoteGame struct {
 	during  func()
 	ctx     context.Context
 	updates int
+
+	sourceUpdates, strategyUpdates int              // 选中搜索结果后的从远端更新（按来源 / 按组合策略）
+	strategySource                 enums.SourceType // 按组合策略更新时的基底
+}
+
+func (r *remoteGame) UpdateGameFromRemoteBySourceContext(context.Context, string, enums.SourceType) error {
+	r.sourceUpdates++
+	return nil
+}
+
+func (r *remoteGame) UpdateGameFromRemoteWithStrategyContext(_ context.Context, _ string, source enums.SourceType) error {
+	r.strategyUpdates++
+	r.strategySource = source
+	return nil
 }
 
 func (r *remoteGame) FetchMetadataByNameContext(ctx context.Context, _ string) ([]vo.GameMetadataFromWebVO, error) {

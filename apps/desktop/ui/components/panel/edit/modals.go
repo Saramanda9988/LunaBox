@@ -37,12 +37,6 @@ func (e *editor) fieldSelectModal(c *ui.Context) {
 	s := e.s
 	better.MetadataFieldSelectModal(c, e.t, "metadata-fields", better.MetadataFieldSelectProps{
 		FieldNotes:  metadatapanel.GameRefreshNotes(e.config(), e.defaultSourceType(), s.sourceIDs),
-		UseStrategy: e.config() != nil && e.config().MetadataRefreshUseStrategy,
-		OnUseStrategy: func(on bool) {
-			if err := e.p.Env.PatchConfig(func(cfg *appconf.AppConfig) { cfg.MetadataRefreshUseStrategy = on }); err != nil {
-				log.Printf("edit: save metadata refresh strategy switch: %v", err)
-			}
-		},
 		OnStrategy:  func() { s.strategy.Open(e.p.Env.Config()) },
 		Open:        s.fieldsOpen,
 		Title:       locales.MetadataUpdateFieldsModalSingleTitle(),
@@ -87,13 +81,13 @@ func (e *editor) config() *appconf.AppConfig {
 	return e.p.Env.Config()
 }
 
-// strategyModal 是从更新字段弹窗打开的高级组合策略弹窗，画在字段弹窗之上；保存后立即写进配置。
+// strategyModal 是从更新字段弹窗与重新搜索的结果弹窗打开的高级组合策略弹窗，画在它们之上；保存后立即写进配置。
 func (e *editor) strategyModal(c *ui.Context) {
 	cfg := e.p.Env.Config()
 	e.s.strategy.View(c, e.t, metadatapanel.StrategyModalProps{
 		Enabled: metadatapanel.EnabledSources(cfg), TopOffset: panel.TopOffset,
-		OnSave: func(strategy appconf.MetadataStrategy) {
-			if err := e.p.Env.PatchConfig(func(cfg *appconf.AppConfig) { cfg.SetStrategy(strategy) }); err != nil {
+		OnSave: func(apply func(cfg *appconf.AppConfig)) {
+			if err := e.p.Env.PatchConfig(apply); err != nil {
 				log.Printf("edit: save metadata strategy: %v", err)
 			}
 		},
@@ -127,14 +121,21 @@ func (e *editor) searchModal(c *ui.Context) {
 }
 
 // searchResultsStep 是 MetadataSearchResultsStep（importer.SearchResults）：没有结果时 min-h-64 的空状态，
-// 底部 border-t pt-4 的“← 返回”。
+// 底部 border-t pt-4 的“← 返回”。“更新元数据”时（原版没有）：刮削时使用组合策略的话最前面是组合结果，
+// 底部右边有打开高级组合策略的按钮。
 func (e *editor) searchResultsStep(c *ui.Context, closeModal func()) {
 	t, s := e.t, e.s
+	update := s.searchMode == searchUpdateMetadata
+	var lead *importer.LeadResult
+	if cfg := e.config(); update && cfg != nil {
+		lead = importer.StrategyLead(cfg, s.results, func(composed vo.GameMetadataFromWebVO) { e.selectSearchResult(c, composed, true) })
+	}
 	s.resultsUI.View(c, t, importer.SearchResultsProps{
 		Results:  s.results,
 		Covers:   e.p.Env.Covers,
 		Disabled: s.applying,
-		OnSelect: func(item vo.GameMetadataFromWebVO) { e.selectSearchResult(c, item) },
+		Lead:     lead,
+		OnSelect: func(item vo.GameMetadataFromWebVO) { e.selectSearchResult(c, item, false) },
 		OnRemove: func(i int) { s.results = slices.Delete(slices.Clone(s.results), i, i+1) },
 		Empty: func() {
 			// flex min-h-64 flex-col items-center justify-center gap-3 text-brand-500 dark:text-brand-400
@@ -168,6 +169,11 @@ func (e *editor) searchResultsStep(c *ui.Context, closeModal func()) {
 					cancel.OnClick(s.cancelApply).Children(func() {
 						components.Text(c, locales.CommonCancel(), theme.TextSM, theme.WeightNormal, color).NoWrap()
 					})
+				} else if update && e.config() != nil {
+					better.Button(c, t, "strategy", better.ButtonProps{
+						Variant: better.ButtonGhost, Size: better.ButtonSM, Icon: "layers-triple-outline",
+						Label: locales.NativeMetadataStrategySettingsLabel(), Disabled: s.applying,
+					}).OnClick(func() { s.strategy.Open(e.config()) })
 				}
 			})
 		},

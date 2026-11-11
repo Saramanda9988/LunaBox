@@ -76,7 +76,7 @@ func TestResolveMetadataSourceIDs(t *testing.T) {
 	}
 }
 
-// 更新时的组合策略由 MetadataRefreshUseStrategy 单独控制（与导入的开关无关）；打开时所有来源都为空的字段不更新，保留本地内容。
+// 默认的更新是否套用组合策略由 MetadataRefreshUseStrategy 单独控制（与刮削的开关无关）；套用时所有来源都为空的字段不更新，保留本地内容。
 func TestComposeRefreshResultUsesRefreshSwitch(t *testing.T) {
 	config := &appconf.AppConfig{MetadataSources: []string{"bangumi", "vndb"}}
 	config.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB}.WithFieldSource(enums.MetadataUpdateFieldName, enums.VNDB)) // 导入开关关闭
@@ -87,13 +87,15 @@ func TestComposeRefreshResultUsesRefreshSwitch(t *testing.T) {
 	base := metadata.MetadataResult{Game: models.Game{Name: "BGM", SourceType: enums.Bangumi}}
 	fields := gamehelper.NormalizeMetadataUpdateFields(nil)
 
-	got, _, gotFields := s.composeRefreshResult(context.Background(), game, base, fields)
-	if got.Game.Name != "BGM" || len(gotFields) != len(fields) {
-		t.Fatalf("switch off: name %q, fields %v", got.Game.Name, gotFields)
+	if s.refreshUsesStrategy() {
+		t.Fatal("refresh switch off but refreshUsesStrategy is true")
 	}
 
 	config.MetadataRefreshUseStrategy = true
-	got, _, gotFields = s.composeRefreshResult(context.Background(), game, base, fields)
+	if !s.refreshUsesStrategy() {
+		t.Fatal("refresh switch on but refreshUsesStrategy is false")
+	}
+	got, _, gotFields := s.composeRefreshResult(context.Background(), game, game.SourceType, base, fields)
 	if got.Game.Name != "BGM" || !gotFields.Has(enums.MetadataUpdateFieldName) || !gotFields.Has(enums.MetadataUpdateFieldAliases) {
 		t.Fatalf("switch on: name %q, fields %v", got.Game.Name, gotFields)
 	}

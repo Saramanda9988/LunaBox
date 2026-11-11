@@ -1744,15 +1744,24 @@ func (s *GameService) UpdateGameFromRemoteBySource(gameID string, source enums2.
 
 // UpdateGameFromRemoteBySourceContext 同 UpdateGameFromRemoteBySource，ctx 在拉取完成前取消时不修改游戏。
 func (s *GameService) UpdateGameFromRemoteBySourceContext(ctx context.Context, gameID string, source enums2.SourceType) error {
-	_, err := s.updateGameMetadataFromRemoteBySource(ctx, gameID, source, true, nil)
+	_, err := s.updateGameMetadataFromRemoteBySource(ctx, gameID, source, true, nil, false)
+	return err
+}
+
+// UpdateGameFromRemoteWithStrategyContext 是按名称重新搜索后选中组合结果时的更新：以 source 为基底，全部字段按高级组合策略
+// （字段指定的来源 → 必选数据源 → source）取数据，不看“更新元数据时使用组合策略”的开关；所有来源都为空的字段保留本地内容。
+func (s *GameService) UpdateGameFromRemoteWithStrategyContext(ctx context.Context, gameID string, source enums2.SourceType) error {
+	_, err := s.updateGameMetadataFromRemoteBySource(ctx, gameID, source, true, nil, true)
 	return err
 }
 
 func (s *GameService) updateGameMetadataFromRemote(ctx context.Context, gameID string, downloadCoverImmediately bool, fields []enums2.MetadataUpdateField) (string, error) {
-	return s.updateGameMetadataFromRemoteBySource(ctx, gameID, "", downloadCoverImmediately, fields)
+	return s.updateGameMetadataFromRemoteBySource(ctx, gameID, "", downloadCoverImmediately, fields, false)
 }
 
-func (s *GameService) updateGameMetadataFromRemoteBySource(ctx context.Context, gameID string, requestedSource enums2.SourceType, downloadCoverImmediately bool, fields []enums2.MetadataUpdateField) (string, error) {
+// updateGameMetadataFromRemoteBySource 从 requestedSource（为空时是游戏的默认来源）更新游戏。useStrategy 时以这个来源为基底
+// 套用高级组合策略；没有指定来源的默认更新在设置里打开了“更新元数据时使用组合策略”时也套用。
+func (s *GameService) updateGameMetadataFromRemoteBySource(ctx context.Context, gameID string, requestedSource enums2.SourceType, downloadCoverImmediately bool, fields []enums2.MetadataUpdateField, useStrategy bool) (string, error) {
 	// 获取现有游戏信息
 	existingGame, err := s.GetGameByID(gameID)
 	if err != nil {
@@ -1794,10 +1803,9 @@ func (s *GameService) updateGameMetadataFromRemoteBySource(ctx context.Context, 
 		return "", err
 	}
 
-	// 没有指定来源时是默认的刷新：套用高级组合策略（游戏的默认来源作为基底）。
 	tagSource := enums2.SourceType("")
-	if requestedSource == "" {
-		metaResult, tagSource, fieldSet = s.composeRefreshResult(ctx, existingGame, metaResult, fieldSet)
+	if useStrategy || (requestedSource == "" && s.refreshUsesStrategy()) {
+		metaResult, tagSource, fieldSet = s.composeRefreshResult(ctx, existingGame, sourceType, metaResult, fieldSet)
 		if err := ctx.Err(); err != nil {
 			return "", err
 		}
@@ -2002,7 +2010,10 @@ func (s *GameService) refreshGamesMetadata(games []models.Game, logPrefix string
 
 		batchKey := gamehelper.MetadataRefreshBatchKeyForGame(game)
 		if metaResult, ok := batchResults.results[batchKey]; ok {
-			metaResult, tagSource, gameFields := s.composeRefreshResult(s.ctx, game, metaResult, fieldSet)
+			tagSource, gameFields := enums2.SourceType(""), fieldSet
+			if s.refreshUsesStrategy() {
+				metaResult, tagSource, gameFields = s.composeRefreshResult(s.ctx, game, game.SourceType, metaResult, fieldSet)
+			}
 			remoteCoverURL, err := s.applyComposedMetadataResult(game, metaResult, tagSource, false, gameFields)
 			if err != nil {
 				result.FailedGames++

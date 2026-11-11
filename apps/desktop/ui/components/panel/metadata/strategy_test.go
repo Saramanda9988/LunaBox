@@ -20,8 +20,9 @@ func TestStrategyModal(t *testing.T) {
 	h.expectNot(t, locales.NativeMetadataStrategyActive())
 
 	h.click(t, locales.NativeMetadataStrategySettingsButton())
-	h.expect(t, locales.NativeMetadataStrategyBase(), locales.NativeMetadataStrategyEnable(), fieldLabel(enums.MetadataUpdateFieldCover))
-	h.expectNot(t, locales.CommonCancel(), locales.NativeMetadataStrategyRefreshHint(), locales.NativeMetadataStrategyBaseRequired())
+	h.expect(t, locales.NativeMetadataStrategyBase(), locales.NativeMetadataStrategyEnable(), locales.NativeMetadataRefreshUseStrategy(),
+		fieldLabel(enums.MetadataUpdateFieldCover))
+	h.expectNot(t, locales.CommonCancel(), locales.NativeMetadataStrategyBaseRequired())
 
 	// 打开开关却没有必选数据源：红字提示，不能保存。
 	h.state.strategy.draft.Enabled = true
@@ -74,6 +75,22 @@ func TestStrategyModal(t *testing.T) {
 	got := h.cfg.Strategy()
 	if got.Base != enums.VNDB || got.FieldSource(enums.MetadataUpdateFieldName) != enums.Bangumi || got.FieldSource(enums.MetadataUpdateFieldSummary) != enums.Hikarinagi {
 		t.Fatalf("saved strategy = %+v", got)
+	}
+	h.expect(t, locales.NativeMetadataStrategyActive())
+	if h.cfg.MetadataRefreshUseStrategy {
+		t.Fatal("refresh switch should stay off")
+	}
+
+	// 更新元数据时使用的开关与刮削的开关分开保存；只打开它时入口也显示“已启用”。
+	h.click(t, locales.NativeMetadataStrategySettingsButton())
+	if h.state.strategy.refresh {
+		t.Fatal("refresh draft should start from the config")
+	}
+	h.state.strategy.draft.Enabled, h.state.strategy.refresh = false, true
+	h.frames(2)
+	h.click(t, locales.CommonSave())
+	if !h.cfg.MetadataRefreshUseStrategy || h.cfg.Strategy().Enabled {
+		t.Fatalf("saved: refresh %v, strategy %+v", h.cfg.MetadataRefreshUseStrategy, h.cfg.Strategy())
 	}
 	h.expect(t, locales.NativeMetadataStrategyActive())
 }

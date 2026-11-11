@@ -27,12 +27,10 @@ type MetadataFieldSelectProps struct {
 	// OnStrategy 不为 nil 时，底部的“取消”换成打开高级组合策略的按钮（原版没有；关闭弹窗用右上角的关闭按钮）。
 	OnStrategy func()
 	// FieldNotes 是字段名后面的小标签（原版没有：这个字段将从哪个来源更新，或者那个来源没有元数据 ID）。
+	// 更新元数据时是否使用组合策略在高级组合策略弹窗里设置（OnStrategy 打开）。
 	FieldNotes map[enums.MetadataUpdateField]FieldNote
-	// OnUseStrategy 不为 nil 时，“更新全部字段”下面有“使用高级组合策略”的开关（原版没有），UseStrategy 是它的状态。
-	UseStrategy   bool
-	OnUseStrategy func(on bool)
-	OnClose       func()
-	OnConfirm     func(fields []enums.MetadataUpdateField)
+	OnClose    func()
+	OnConfirm  func(fields []enums.MetadataUpdateField)
 }
 
 // FieldNote 是字段名后面的小标签：Warn 时用琥珀色（回退到了后面的来源，或者没有元数据 ID），否则是天蓝色。
@@ -99,18 +97,6 @@ func MetadataFieldSelectModal(c *ui.Context, t *theme.Theme, key string, p Metad
 						}
 					})
 				})
-			if p.OnUseStrategy != nil {
-				// 与“更新全部字段”同样的行：名称、说明与开关。
-				ui.Row(c.Key("use-strategy")).Margin(12, 0, 0, 0).Gap(16).Padding(12).Radius(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).
-					Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).Background(t.Pick(theme.Brand50, theme.Brand700.Alpha(0.4))).
-					Children(func() {
-						ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4).Children(func() {
-							components.Text(c, locales.NativeMetadataRefreshUseStrategy(), theme.TextSM, theme.WeightSemibold, t.Pick(theme.Brand800, theme.Brand200))
-							components.Text(c, locales.NativeMetadataRefreshUseStrategyHint(), theme.TextXS, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400))
-						})
-						Switch(c, t, "switch", p.UseStrategy, false, p.OnUseStrategy)
-					})
-			}
 			// mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2
 			cols := 1
 			if winW, _ := c.Size(); winW >= 640 {

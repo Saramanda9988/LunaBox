@@ -57,8 +57,8 @@ func (s *scanSteps) strategyModal(c *ui.Context, t *theme.Theme) {
 	enabled, _ := s.sources()
 	s.strategy.View(c, t, metadata.StrategyModalProps{
 		Enabled: enabled, TopOffset: env.TopbarHeight,
-		OnSave: func(strategy appconf.MetadataStrategy) {
-			if err := s.env.PatchConfig(func(cfg *appconf.AppConfig) { cfg.SetStrategy(strategy) }); err != nil {
+		OnSave: func(apply func(cfg *appconf.AppConfig)) {
+			if err := s.env.PatchConfig(apply); err != nil {
 				log.Printf("import: save metadata strategy: %v", err)
 			}
 		},

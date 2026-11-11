@@ -8,6 +8,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"lunabox/backend/appconf"
 	"lunabox/backend/common/enums"
 	"lunabox/backend/common/importpath"
 	"lunabox/backend/common/vo"
@@ -492,23 +493,28 @@ func (a *AddGame) remoteStep(c *ui.Context, t *theme.Theme, opts []better.Select
 // leadResult 是排在候选最前面的组合结果：高级组合策略生效、并且结果里有基底来源时，用当前的候选（用户移除的不算）
 // 组合；否则为 nil。选中它时以基底作为默认来源，各候选的 ID 都记下。
 func (a *AddGame) leadResult(c *ui.Context, onAdded func()) *LeadResult {
-	cfg := a.env.Config()
+	return StrategyLead(a.env.Config(), a.results, func(composed vo.GameMetadataFromWebVO) { a.selectResult(c, composed, onAdded) })
+}
+
+// StrategyLead 是候选最前面的组合结果卡片：刮削时使用组合策略（并且策略对新刮削的游戏生效）、候选里有基底来源时，
+// 用基底的第一个结果与其余候选组合；否则为 nil。添加游戏与详情页按名称重新搜索（更新元数据）共用。
+func StrategyLead(cfg *appconf.AppConfig, results []vo.GameMetadataFromWebVO, onSelect func(composed vo.GameMetadataFromWebVO)) *LeadResult {
 	strategy := cfg.Strategy()
 	if !gamehelper.StrategyActive(strategy, metadatapanel.EnabledSources(cfg)) {
 		return nil
 	}
-	i := slices.IndexFunc(a.results, func(r vo.GameMetadataFromWebVO) bool {
+	i := slices.IndexFunc(results, func(r vo.GameMetadataFromWebVO) bool {
 		return r.Source == strategy.Base && (r.Game.Name != "" || r.Game.SourceID != "")
 	})
 	if i < 0 {
 		return nil
 	}
-	others := slices.Delete(slices.Clone(a.results), i, i+1)
-	composed, _ := gamehelper.ComposeMetadata(strategy, a.results[i], others)
+	others := slices.Delete(slices.Clone(results), i, i+1)
+	composed, _ := gamehelper.ComposeMetadata(strategy, results[i], others)
 	return &LeadResult{
 		Result:   composed,
 		Subtitle: locales.NativeMetadataStrategyCardSource(SourceLabel(strategy.Base)),
-		OnSelect: func() { a.selectResult(c, composed, onAdded) },
+		OnSelect: func() { onSelect(composed) },
 	}
 }
 

@@ -137,10 +137,6 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 	})
 	better.MetadataFieldSelectModal(c, t, "metadata-refresh-fields", better.MetadataFieldSelectProps{
 		FieldNotes:  BatchRefreshNotes(p.Config),
-		UseStrategy: p.Config.MetadataRefreshUseStrategy,
-		OnUseStrategy: func(on bool) {
-			p.PatchLive(func(cfg *appconf.AppConfig) { cfg.MetadataRefreshUseStrategy = on })
-		},
 		OnStrategy:  func() { s.strategy.Open(p.Config) },
 		Open:        s.fieldsOpen,
 		Title:       locales.MetadataUpdateFieldsModalFullTitle(),
@@ -158,9 +154,7 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 	})
 	s.strategy.View(c, t, StrategyModalProps{
 		Enabled: EnabledSources(p.Config), TopOffset: panel.TopOffset,
-		OnSave: func(strategy appconf.MetadataStrategy) {
-			p.PatchLive(func(cfg *appconf.AppConfig) { cfg.SetStrategy(strategy) })
-		},
+		OnSave: func(apply func(cfg *appconf.AppConfig)) { p.PatchLive(apply) },
 	})
 	progressModal(c, t, progressModalProps{
 		open: s.refreshOpen, progress: s.progress, refreshing: s.refreshing,
@@ -200,7 +194,7 @@ func (s *State) sourceGrid(c *ui.Context, t *theme.Theme, p panel.Settings) {
 }
 
 // strategyRow 是高级组合策略的入口（原版没有）：与来源卡片同样的 glass-panel 卡片，左边名称与说明，
-// 策略生效（打开了开关并且指定了必选数据源）时名称后面有“已启用”标签；右边打开弹窗的按钮。
+// 刮削或更新元数据时使用组合策略（刮削还要指定必选数据源）时名称后面有“已启用”标签；右边打开弹窗的按钮。
 func (s *State) strategyRow(c *ui.Context, t *theme.Theme, p panel.Settings) {
 	bg, border := t.GlassPanel(ui.Transparent, t.Pick(theme.Brand200, theme.Brand700))
 	ui.Row(c.Key("strategy")).FillWidth().Gap(16).Padding(16).Radius(8).AlignItems(ui.Center).
@@ -209,7 +203,7 @@ func (s *State) strategyRow(c *ui.Context, t *theme.Theme, p panel.Settings) {
 			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 				components.Icon(c, "layers-triple-outline", 20, t.Pick(theme.Sky600, theme.Sky400))
 				components.Text(c, locales.NativeMetadataStrategySettingsLabel(), theme.TextSM, theme.WeightMedium, t.SectionLabel)
-				if p.Config.Strategy().Active() {
+				if p.Config.Strategy().Active() || p.Config.MetadataRefreshUseStrategy {
 					ui.Box(c.Key("active")).Padding(2, 8).Radius(999).Background(t.Pick(theme.Sky100, theme.Sky900.Alpha(0.5))).Children(func() {
 						components.Text(c, locales.NativeMetadataStrategyActive(), theme.TextXS, theme.WeightMedium, t.Pick(theme.Sky700, theme.Sky300)).NoWrap()
 					})

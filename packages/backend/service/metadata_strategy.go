@@ -67,16 +67,21 @@ func (s *GameService) ResolveMetadataSourceIDs(game models.Game) map[enums2.Sour
 	return known
 }
 
-// composeRefreshResult 在更新元数据时套用高级组合策略（设置里打开了“更新时使用高级组合策略”才生效，与导入时的开关无关）：
-// base 是游戏默认来源的结果；要更新的每个字段按“字段指定的来源 → 必选数据源 → 游戏的默认来源”依次取第一个有数据的来源，
+// refreshUsesStrategy 报告默认的更新元数据是否套用高级组合策略（设置里的“更新元数据时使用组合策略”，与刮削的开关无关）。
+func (s *GameService) refreshUsesStrategy() bool {
+	return s.config != nil && s.config.MetadataRefreshUseStrategy
+}
+
+// composeRefreshResult 在更新元数据时套用高级组合策略（要不要套用由调用方决定）：base 是 gameSource 的结果；
+// 要更新的每个字段按“字段指定的来源 → 必选数据源 → gameSource”依次取第一个有数据的来源，
 // 来源没有 ID（已关联的或者 ID 对照表查到的）、没有启用、获取失败或者这一项为空时往后回退，需要时才去获取。
-// 返回组合后的结果、标签的来源，以及要更新的字段：所有来源都为空的字段去掉，保留本地内容。没有生效时原样返回。
-func (s *GameService) composeRefreshResult(ctx context.Context, game models.Game, base metadata.MetadataResult, fieldSet gamehelper.MetadataUpdateFieldSet) (metadata.MetadataResult, enums2.SourceType, gamehelper.MetadataUpdateFieldSet) {
-	if s.config == nil || !s.config.MetadataRefreshUseStrategy {
+// 返回组合后的结果、标签的来源，以及要更新的字段：所有来源都为空的字段去掉，保留本地内容。没有配置时原样返回。
+func (s *GameService) composeRefreshResult(ctx context.Context, game models.Game, gameSource enums2.SourceType, base metadata.MetadataResult, fieldSet gamehelper.MetadataUpdateFieldSet) (metadata.MetadataResult, enums2.SourceType, gamehelper.MetadataUpdateFieldSet) {
+	if s.config == nil {
 		return base, "", fieldSet
 	}
 	strategy := s.config.Strategy()
-	gameSource := gamehelper.NormalizeMetadataSourceType(game.SourceType)
+	gameSource = gamehelper.NormalizeMetadataSourceType(gameSource)
 	baseItem := vo.GameMetadataFromWebVO{Source: gameSource, Game: base.Game, Tags: base.Tags}
 
 	var ids map[enums2.SourceType]string

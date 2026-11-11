@@ -24483,13 +24483,13 @@ func (msgs Messages) NativeMetadataStrategyDescription() string {
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_description", nil)
 }
 
-// NativeMetadataStrategyEnable says "启用组合策略"
+// NativeMetadataStrategyEnable says "刮削时使用组合策略"
 // in the language the app shows.
 //
 // extra:native.metadataStrategy.enable
 func NativeMetadataStrategyEnable() string { return In(i18n.Locale()).NativeMetadataStrategyEnable() }
 
-// NativeMetadataStrategyEnable says "启用组合策略"
+// NativeMetadataStrategyEnable says "刮削时使用组合策略"
 // in the language of msgs.
 //
 // extra:native.metadataStrategy.enable
@@ -24735,22 +24735,6 @@ func (msgs Messages) NativeMetadataStrategyClauseSeparator() string {
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_clauseSeparator", nil)
 }
 
-// NativeMetadataStrategyRefreshHint says "…"
-// in the language the app shows.
-//
-// extra:native.metadataStrategy.refreshHint
-func NativeMetadataStrategyRefreshHint() string {
-	return In(i18n.Locale()).NativeMetadataStrategyRefreshHint()
-}
-
-// NativeMetadataStrategyRefreshHint says "…"
-// in the language of msgs.
-//
-// extra:native.metadataStrategy.refreshHint
-func (msgs Messages) NativeMetadataStrategyRefreshHint() string {
-	return Catalog.Format(msgs.locale, "native_metadataStrategy_refreshHint", nil)
-}
-
 // NativeMetadataStrategyReset says "重置"
 // in the language the app shows.
 //
@@ -24953,7 +24937,7 @@ func (msgs Messages) NativeMetadataStrategyReasonDisabled(source string) string 
 	return Catalog.Format(msgs.locale, "native_metadataStrategy_reasonDisabled", map[string]any{"source": source})
 }
 
-// NativeMetadataRefreshUseStrategy says "使用高级组合策略"
+// NativeMetadataRefreshUseStrategy says "更新元数据时使用组合策略"
 // in the language the app shows.
 //
 // extra:native.metadataRefresh.useStrategy
@@ -24961,7 +24945,7 @@ func NativeMetadataRefreshUseStrategy() string {
 	return In(i18n.Locale()).NativeMetadataRefreshUseStrategy()
 }
 
-// NativeMetadataRefreshUseStrategy says "使用高级组合策略"
+// NativeMetadataRefreshUseStrategy says "更新元数据时使用组合策略"
 // in the language of msgs.
 //
 // extra:native.metadataRefresh.useStrategy
