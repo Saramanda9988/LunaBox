@@ -11,7 +11,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1115,14 +1114,9 @@ func resolveAllowedAddress(ctx context.Context, address string) (string, error) 
 }
 
 func newSecureHTTPClient(proxyMode string, proxyURL string) (*http.Client, string, error) {
-	selection, proxyDesc, err := proxyutils.ResolveProxy(proxyMode, proxyURL)
+	resolver, proxyDesc, err := proxyutils.NewResolver(proxyMode, proxyURL)
 	if err != nil {
 		return nil, "", fmt.Errorf("resolve download proxy: %w", err)
-	}
-
-	allowedProxyTargets := map[string]struct{}{}
-	if selection != nil {
-		allowedProxyTargets = selection.AllowedDialTargets()
 	}
 
 	dialer := &net.Dialer{}
@@ -1130,14 +1124,9 @@ func newSecureHTTPClient(proxyMode string, proxyURL string) (*http.Client, strin
 		DisableCompression:  true,
 		MaxIdleConns:        32,
 		MaxIdleConnsPerHost: 16,
-		Proxy: func(req *http.Request) (*url.URL, error) {
-			if selection == nil {
-				return nil, nil
-			}
-			return selection.Proxy(req)
-		},
+		Proxy:               resolver.Proxy,
 		DialContext: func(ctx context.Context, network string, address string) (net.Conn, error) {
-			if _, ok := allowedProxyTargets[address]; ok {
+			if resolver.IsProxyDialTarget(address) {
 				return dialer.DialContext(ctx, network, address)
 			}
 

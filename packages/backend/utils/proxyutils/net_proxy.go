@@ -135,7 +135,7 @@ func ResolveProxy(mode string, manualURL string) (*ProxySelection, string, error
 }
 
 func NewHTTPClient(timeout time.Duration, mode string, manualURL string) (*http.Client, string, error) {
-	selection, proxyDesc, err := ResolveProxy(mode, manualURL)
+	resolver, proxyDesc, err := NewResolver(mode, manualURL)
 	if err != nil {
 		return nil, "", err
 	}
@@ -145,10 +145,7 @@ func NewHTTPClient(timeout time.Duration, mode string, manualURL string) (*http.
 		return nil, "", fmt.Errorf("default http transport is %T, not *http.Transport", http.DefaultTransport)
 	}
 	transport := defaultTransport.Clone()
-	transport.Proxy = nil
-	if selection != nil {
-		transport.Proxy = selection.Proxy
-	}
+	transport.Proxy = resolver.Proxy
 
 	return &http.Client{
 		Timeout:   timeout,
