@@ -71,12 +71,8 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 
 	panel.Field(c, t, "theme", locales.SettingsBasicThemeLabel(), "", func() {
 		better.Select(c, t, "select", better.SelectProps{
-			Value: cfg.Theme,
-			Options: []better.SelectOption{
-				{Value: "light", Label: locales.SettingsBasicThemeLight()},
-				{Value: "dark", Label: locales.SettingsBasicThemeDark()},
-				{Value: "system", Label: locales.SettingsBasicThemeSystem()},
-			},
+			Value:    cfg.Theme,
+			Options:  ThemeOptions(),
 			OnChange: func(v string) { p.Change(func(cfg *appconf.AppConfig) { cfg.Theme = v }) },
 		})
 	})
@@ -84,7 +80,7 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 	panel.Field(c, t, "language", locales.SettingsBasicLanguageLabel(), "", func() {
 		better.Select(c, t, "select", better.SelectProps{
 			Value:    cfg.Language,
-			Options:  languageOptions(),
+			Options:  LanguageOptions(),
 			OnChange: func(v string) { p.Change(func(cfg *appconf.AppConfig) { cfg.Language = v }) },
 		})
 	})

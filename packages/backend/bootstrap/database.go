@@ -69,10 +69,7 @@ func OpenDatabase(ctx context.Context, path, timeZone string, logger *applog.Fil
 	if _, err = db.Exec(fmt.Sprintf("SET GLOBAL threads = %d", duckDBThreads)); err != nil {
 		logger.Warning("Failed to limit DuckDB threads; using the default: " + err.Error())
 	}
-	if timeZone == "" {
-		timeZone = "UTC"
-	}
-	if _, err = db.Exec(fmt.Sprintf("SET TimeZone = '%s'", timeZone)); err != nil {
+	if err = dbutils.SetDuckDBTimeZone(ctx, db, timeZone); err != nil {
 		logger.Warning("Failed to set timezone: " + err.Error())
 	}
 

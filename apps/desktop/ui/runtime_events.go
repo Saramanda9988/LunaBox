@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"lunabox/backend/appconf"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/service"
 	"lunabox/desktop/ui/components"
@@ -54,9 +53,6 @@ const (
 	exitSuccessDelay = 700 * time.Millisecond
 	exitErrorDelay   = 1600 * time.Millisecond
 )
-
-// timezoneQuitDelay 是 handleTimezoneConfirm 保存时区后等待退出的时间。
-const timezoneQuitDelay = 500 * time.Millisecond
 
 // toastDismiss 是 notices 里表示 toast.dismiss(id) 的类型。
 const toastDismiss = "dismiss"
@@ -361,13 +357,4 @@ func (a *App) coverImageDownload(data any) {
 		}
 		a.notify(env.Notice{Type: "error", ID: id, Msg: msg})
 	}
-}
-
-// confirmTimezone 对应 handleTimezoneConfirm：保存时区，500ms 后退出（数据库下次启动时用新的时区打开）。
-func (a *App) confirmTimezone(tz string) {
-	if err := a.env.PatchConfig(func(cfg *appconf.AppConfig) { cfg.TimeZone = tz }); err != nil {
-		a.notify(env.Error(locales.NativeSettingsSaveFailed()))
-		return
-	}
-	time.AfterFunc(timezoneQuitDelay, a.env.Svc.AppConfig.SafeQuit)
 }

@@ -342,6 +342,13 @@ func (a *app) showStartupErrorPreview() {
 	})
 }
 
+// showSetupWizard 显示主窗口并从第一步重新打开初始设置向导，用来检查向导的流程与样式。走完会照常保存所选的设置
+// （开发运行用的是 build/data 里的配置，不影响安装版）。
+func (a *app) showSetupWizard() {
+	a.core.ShowMainWindow()
+	a.ui.ShowSetupWizard()
+}
+
 // showRestorePreview 显示一个示例恢复进度窗，按启动时恢复的阶段走一遍假的进度（解压 3 秒、导入数据库 2 秒、
 // 替换 1 秒、正在启动 1.5 秒）后自动关闭。只用来检查恢复进度窗的界面样式，不碰数据；可以同时打开多个，Alt+F4 可提前关闭。
 func (a *app) showRestorePreview() {

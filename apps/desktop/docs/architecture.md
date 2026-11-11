@@ -30,7 +30,7 @@
 | `ui/components` | `components/ui`：Modal / ConfirmModal / CategoryModal、Toaster、SlideButton、GameTags、EmojiPicker、NSFW 封面模糊、游戏状态配色、滚动区域、回到顶部等；`better` 子包是 Better 系列（Button、SplitButton、Select、Switch、Tooltip、DropdownMenu、Drawer、Input、ActionInput、ImageViewer、Textarea、EdgeIconButton、DataTable） |
 | `ui/components/picker` | BetterDateRangePicker、BetterWheelPicker |
 | `ui/components/importer` | 添加与导入游戏（`components/ui/import` 与 AddGameModal、BatchImportModal、DragDropImportModal、GameImportModal、SkippedImportCandidatesModal）：导入流程（`useImportFlow`）、预览表格、手动选择、元数据搜索结果（详情页编辑也用它）；根布局的拖放提示 |
-| `ui/components/modal` | 多个页面共用的弹窗：AddToCategoryModal（详情页、游戏库批量操作）；根布局的 InstallConfirmModal、TimezoneSelectModal |
+| `ui/components/modal` | 多个页面共用的弹窗：AddToCategoryModal（详情页、游戏库批量操作）；根布局的 InstallConfirmModal 与初始设置向导（`setup_wizard.go`，取代原版第一次打开时的 TimezoneSelectModal：依次设置语言、主题、时区与游戏库目录，时区保存后数据库立即改用，不重启） |
 | `ui/components/bar`、`card`、`grid`、`chart` | `components/bar`（TopBar、SideBar、PlayingIsland、FilterBar）、`components/card`（GameCard、CategoryCard、DownloadCard）、`components/grid`（VirtualGameGrid 与分页加载）、`components/chart`（原版用到的全部图表，用 MyGo 的 `ui/chart`） |
 | `ui/locales` | 多语言目录（ARB，直接编辑）与生成的类型化函数，见 [i18n.md](i18n.md) |
 | `ui/theme`、`ui/assets` | `uno.config.ts` 的色板、字号、过渡曲线、像素吸附与玻璃模式（`theme/glass.go`）；图标、元数据来源图标、表情数据与图片 |

@@ -12097,13 +12097,13 @@ func (msgs Messages) SettingsBasicTimezoneLabel() string {
 	return Catalog.Format(msgs.locale, "settings_basic_timezoneLabel", nil)
 }
 
-// SettingsBasicTimezoneHint says "用于正确显示和记录游戏时长,修改后请重启应用"
+// SettingsBasicTimezoneHint says "用于正确显示和记录游戏时长"
 // in the language the app shows.
 //
 // settings.basic.timezoneHint
 func SettingsBasicTimezoneHint() string { return In(i18n.Locale()).SettingsBasicTimezoneHint() }
 
-// SettingsBasicTimezoneHint says "用于正确显示和记录游戏时长,修改后请重启应用"
+// SettingsBasicTimezoneHint says "用于正确显示和记录游戏时长"
 // in the language of msgs.
 //
 // settings.basic.timezoneHint
@@ -24983,4 +24983,148 @@ func NativeMetadataRefreshUseStrategyHint() string {
 // extra:native.metadataRefresh.useStrategyHint
 func (msgs Messages) NativeMetadataRefreshUseStrategyHint() string {
 	return Catalog.Format(msgs.locale, "native_metadataRefresh_useStrategyHint", nil)
+}
+
+// NativeSetupWizardTitle says "欢迎使用 LunaBox"
+// in the language the app shows.
+//
+// extra:native.setupWizard.title
+func NativeSetupWizardTitle() string { return In(i18n.Locale()).NativeSetupWizardTitle() }
+
+// NativeSetupWizardTitle says "欢迎使用 LunaBox"
+// in the language of msgs.
+//
+// extra:native.setupWizard.title
+func (msgs Messages) NativeSetupWizardTitle() string {
+	return Catalog.Format(msgs.locale, "native_setupWizard_title", nil)
+}
+
+// NativeSetupWizardSubtitle says "只需几步完成初始设置，之后可以随时在设置中修改。"
+// in the language the app shows.
+//
+// extra:native.setupWizard.subtitle
+func NativeSetupWizardSubtitle() string { return In(i18n.Locale()).NativeSetupWizardSubtitle() }
+
+// NativeSetupWizardSubtitle says "只需几步完成初始设置，之后可以随时在设置中修改。"
+// in the language of msgs.
+//
+// extra:native.setupWizard.subtitle
+func (msgs Messages) NativeSetupWizardSubtitle() string {
+	return Catalog.Format(msgs.locale, "native_setupWizard_subtitle", nil)
+}
+
+// NativeSetupWizardStep says "第 {current} 步，共 {total} 步"
+// in the language the app shows.
+//
+// extra:native.setupWizard.step
+func NativeSetupWizardStep(current string, total string) string {
+	return In(i18n.Locale()).NativeSetupWizardStep(current, total)
+}
+
+// NativeSetupWizardStep says "第 {current} 步，共 {total} 步"
+// in the language of msgs.
+//
+// extra:native.setupWizard.step
+func (msgs Messages) NativeSetupWizardStep(current string, total string) string {
+	return Catalog.Format(msgs.locale, "native_setupWizard_step", map[string]any{"current": current, "total": total})
+}
+
+// NativeSetupWizardLanguageDesc says "选择界面显示的语言。"
+// in the language the app shows.
+//
+// extra:native.setupWizard.languageDesc
+func NativeSetupWizardLanguageDesc() string { return In(i18n.Locale()).NativeSetupWizardLanguageDesc() }
+
+// NativeSetupWizardLanguageDesc says "选择界面显示的语言。"
+// in the language of msgs.
+//
+// extra:native.setupWizard.languageDesc
+func (msgs Messages) NativeSetupWizardLanguageDesc() string {
+	return Catalog.Format(msgs.locale, "native_setupWizard_languageDesc", nil)
+}
+
+// NativeSetupWizardThemeDesc says "选择浅色、深色，或跟随系统切换。"
+// in the language the app shows.
+//
+// extra:native.setupWizard.themeDesc
+func NativeSetupWizardThemeDesc() string { return In(i18n.Locale()).NativeSetupWizardThemeDesc() }
+
+// NativeSetupWizardThemeDesc says "选择浅色、深色，或跟随系统切换。"
+// in the language of msgs.
+//
+// extra:native.setupWizard.themeDesc
+func (msgs Messages) NativeSetupWizardThemeDesc() string {
+	return Catalog.Format(msgs.locale, "native_setupWizard_themeDesc", nil)
+}
+
+// NativeSetupWizardTimezoneDesc says "用于正确显示和记录游戏时长。"
+// in the language the app shows.
+//
+// extra:native.setupWizard.timezoneDesc
+func NativeSetupWizardTimezoneDesc() string { return In(i18n.Locale()).NativeSetupWizardTimezoneDesc() }
+
+// NativeSetupWizardTimezoneDesc says "用于正确显示和记录游戏时长。"
+// in the language of msgs.
+//
+// extra:native.setupWizard.timezoneDesc
+func (msgs Messages) NativeSetupWizardTimezoneDesc() string {
+	return Catalog.Format(msgs.locale, "native_setupWizard_timezoneDesc", nil)
+}
+
+// NativeSetupWizardLibraryOptional says "可以先留空，之后在设置中配置。"
+// in the language the app shows.
+//
+// extra:native.setupWizard.libraryOptional
+func NativeSetupWizardLibraryOptional() string {
+	return In(i18n.Locale()).NativeSetupWizardLibraryOptional()
+}
+
+// NativeSetupWizardLibraryOptional says "可以先留空，之后在设置中配置。"
+// in the language of msgs.
+//
+// extra:native.setupWizard.libraryOptional
+func (msgs Messages) NativeSetupWizardLibraryOptional() string {
+	return Catalog.Format(msgs.locale, "native_setupWizard_libraryOptional", nil)
+}
+
+// NativeSetupWizardNext says "下一步"
+// in the language the app shows.
+//
+// extra:native.setupWizard.next
+func NativeSetupWizardNext() string { return In(i18n.Locale()).NativeSetupWizardNext() }
+
+// NativeSetupWizardNext says "下一步"
+// in the language of msgs.
+//
+// extra:native.setupWizard.next
+func (msgs Messages) NativeSetupWizardNext() string {
+	return Catalog.Format(msgs.locale, "native_setupWizard_next", nil)
+}
+
+// NativeSetupWizardFinish says "开始使用"
+// in the language the app shows.
+//
+// extra:native.setupWizard.finish
+func NativeSetupWizardFinish() string { return In(i18n.Locale()).NativeSetupWizardFinish() }
+
+// NativeSetupWizardFinish says "开始使用"
+// in the language of msgs.
+//
+// extra:native.setupWizard.finish
+func (msgs Messages) NativeSetupWizardFinish() string {
+	return Catalog.Format(msgs.locale, "native_setupWizard_finish", nil)
+}
+
+// NativeSetupWizardDone says "初始设置已完成"
+// in the language the app shows.
+//
+// extra:native.setupWizard.done
+func NativeSetupWizardDone() string { return In(i18n.Locale()).NativeSetupWizardDone() }
+
+// NativeSetupWizardDone says "初始设置已完成"
+// in the language of msgs.
+//
+// extra:native.setupWizard.done
+func (msgs Messages) NativeSetupWizardDone() string {
+	return Catalog.Format(msgs.locale, "native_setupWizard_done", nil)
 }

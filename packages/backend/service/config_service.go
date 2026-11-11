@@ -8,6 +8,7 @@ import (
 	"lunabox/backend/applog"
 	"lunabox/backend/utils/apputils"
 	"lunabox/backend/utils/archiveutils"
+	"lunabox/backend/utils/dbutils"
 	"lunabox/backend/utils/imageutils"
 	"os"
 	"path/filepath"
@@ -263,8 +264,31 @@ func (s *ConfigService) updateAppConfigLocked(newConfig appconf.AppConfig) error
 		}
 	}
 
+	// 时区立即作用于数据库，不必重启：失败时不保存，之后保存或钩子失败时恢复原来的时区。
+	shouldSyncTimeZone := s.db != nil && strings.TrimSpace(newConfig.TimeZone) != strings.TrimSpace(previousConfig.TimeZone)
+	rollbackTimeZone := func() {
+		if !shouldSyncTimeZone {
+			return
+		}
+		if err := dbutils.SetDuckDBTimeZone(s.ctx, s.db, previousConfig.TimeZone); err != nil {
+			applog.LogErrorf(s.ctx, "failed to rollback database time zone: %v", err)
+		}
+	}
+	if shouldSyncTimeZone {
+		if err := dbutils.SetDuckDBTimeZone(s.ctx, s.db, newConfig.TimeZone); err != nil {
+			applog.LogErrorf(s.ctx, "failed to apply time zone: %v", err)
+			if shouldSyncLaunchAtLogin {
+				if rollbackErr := s.runtime.SetAutostart(previousLaunchAtLogin); rollbackErr != nil {
+					applog.LogErrorf(s.ctx, "failed to rollback launch-at-login after time zone error: %v", rollbackErr)
+				}
+			}
+			return fmt.Errorf("设置时区失败: %w", err)
+		}
+	}
+
 	err := s.saveConfig(&newConfig)
 	if err != nil {
+		rollbackTimeZone()
 		if shouldSyncLaunchAtLogin {
 			if rollbackErr := s.runtime.SetAutostart(previousLaunchAtLogin); rollbackErr != nil {
 				applog.LogErrorf(s.ctx, "failed to rollback launch-at-login after save error: %v", rollbackErr)
@@ -286,6 +310,7 @@ func (s *ConfigService) updateAppConfigLocked(newConfig appconf.AppConfig) error
 			if s.config != nil {
 				*s.config = previousConfig
 			}
+			rollbackTimeZone()
 			if shouldSyncLaunchAtLogin {
 				if rollbackErr := s.runtime.SetAutostart(previousLaunchAtLogin); rollbackErr != nil {
 					applog.LogErrorf(s.ctx, "failed to rollback launch-at-login after update hook error: %v", rollbackErr)

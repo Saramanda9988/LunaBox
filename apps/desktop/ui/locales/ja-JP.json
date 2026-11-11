@@ -824,7 +824,7 @@
   "settings_basic_zoomHint": "Ctrl + / Ctrl - / Ctrl 0 のショートカットでも調整できます。",
   "settings_basic_zoomToast": "UI 拡大率を {value} に変更しました",
   "settings_basic_timezoneLabel": "タイムゾーン",
-  "settings_basic_timezoneHint": "ゲーム時間を正しく表示・記録するために使用します。変更後はアプリを再起動してください",
+  "settings_basic_timezoneHint": "ゲーム時間を正しく表示・記録するために使用します",
   "settings_basic_timezonePlaceholder": "タイムゾーンを選択してください",
   "settings_basic_closeToTray": "ウィンドウを閉じたときにシステムトレイへ最小化",
   "settings_basic_launchAtLogin": "自動起動",
@@ -1855,5 +1855,15 @@
   "native_metadataStrategy_noMetadataID": "メタデータ ID なし",
   "native_metadataStrategy_reasonDisabled": "{source} は無効です",
   "native_metadataRefresh_useStrategy": "高度な組み合わせ戦略を使う",
-  "native_metadataRefresh_useStrategyHint": "項目に指定したソース → 必須データソース → ゲームのデフォルトソースの順に取得します。ソースに ID がないか項目が空のときは次へ進み、どこにもないときはローカルの内容を残します。"
+  "native_metadataRefresh_useStrategyHint": "項目に指定したソース → 必須データソース → ゲームのデフォルトソースの順に取得します。ソースに ID がないか項目が空のときは次へ進み、どこにもないときはローカルの内容を残します。",
+  "native_setupWizard_title": "LunaBox へようこそ",
+  "native_setupWizard_subtitle": "いくつかの手順で初期設定を行います。後から設定でいつでも変更できます。",
+  "native_setupWizard_step": "ステップ {current} / {total}",
+  "native_setupWizard_languageDesc": "画面の表示言語を選択してください。",
+  "native_setupWizard_themeDesc": "ライト、ダーク、またはシステム設定に合わせるかを選択してください。",
+  "native_setupWizard_timezoneDesc": "ゲーム時間を正しく表示・記録するために使用します。",
+  "native_setupWizard_libraryOptional": "空欄のままにして、後で設定から指定することもできます。",
+  "native_setupWizard_next": "次へ",
+  "native_setupWizard_finish": "はじめる",
+  "native_setupWizard_done": "初期設定が完了しました"
 }

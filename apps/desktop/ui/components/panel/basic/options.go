@@ -2,10 +2,12 @@ package basic
 
 import (
 	"math"
+	"slices"
 	"strconv"
 
 	"lunabox/desktop/ui/components/better"
 	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
 )
 
 // appZoomOptions 对应 appZoomOptions：标签是 Math.round(value * 100)%，值是 String(value)。
@@ -20,14 +22,31 @@ func appZoomOptions() []better.SelectOption {
 // zoomValue 是 JavaScript 的 String(number)：1 → "1"，1.25 → "1.25"。
 func zoomValue(v float64) string { return strconv.FormatFloat(v, 'f', -1, 64) }
 
-// languageOptions 对应 languageOptions：每种语言用它自己的名字。
-func languageOptions() []better.SelectOption {
+// LanguageOptions 对应 languageOptions：每种语言用它自己的名字。初始设置向导也用它。
+func LanguageOptions() []better.SelectOption {
 	return []better.SelectOption{
 		{Value: "zh-CN", Label: "简体中文"}, // i18n:keep：语言名称用该语言自己书写
 		{Value: "zh-TW", Label: "繁體中文"}, // i18n:keep：语言名称用该语言自己书写
 		{Value: "en-US", Label: "English"},
 		{Value: "ja-JP", Label: "日本語"}, // i18n:keep：语言名称用该语言自己书写
 	}
+}
+
+// ThemeOptions 是主题的三个选项（浅色、深色、跟随系统）。初始设置向导也用它。
+func ThemeOptions() []better.SelectOption {
+	return []better.SelectOption{
+		{Value: "light", Label: locales.SettingsBasicThemeLight()},
+		{Value: "dark", Label: locales.SettingsBasicThemeDark()},
+		{Value: "system", Label: locales.SettingsBasicThemeSystem()},
+	}
+}
+
+// TimezoneOptions 是时区选项：COMMON_TIMEZONES，detected（系统时区）不在其中时排在最前面。初始设置向导也用它。
+func TimezoneOptions(detected string) []better.SelectOption {
+	if detected == "" || slices.ContainsFunc(commonTimezones, func(o better.SelectOption) bool { return o.Value == detected }) {
+		return commonTimezones
+	}
+	return append([]better.SelectOption{{Value: detected, Label: detected}}, commonTimezones...)
 }
 
 // commonTimezones 对应 BasicSettingsPanel 的 COMMON_TIMEZONES（原版的标签是写死的英文）。

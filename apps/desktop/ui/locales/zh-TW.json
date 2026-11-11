@@ -824,7 +824,7 @@
   "settings_basic_zoomHint": "同時支援 Ctrl + / Ctrl - / Ctrl 0 快捷鍵調整",
   "settings_basic_zoomToast": "介面縮放已調整為 {value}",
   "settings_basic_timezoneLabel": "時區",
-  "settings_basic_timezoneHint": "用於正確顯示和記錄遊戲時長,修改後請重啟應用",
+  "settings_basic_timezoneHint": "用於正確顯示和記錄遊戲時長",
   "settings_basic_timezonePlaceholder": "請選擇時區",
   "settings_basic_closeToTray": "關閉視窗時最小化到系統托盤",
   "settings_basic_launchAtLogin": "開機自啟動",
@@ -1672,5 +1672,15 @@
   "native_metadataStrategy_noMetadataID": "暫無中繼資料 ID",
   "native_metadataStrategy_reasonDisabled": "{source} 未啟用",
   "native_metadataRefresh_useStrategy": "使用進階組合策略",
-  "native_metadataRefresh_useStrategyHint": "按「欄位指定的來源 → 必選資料來源 → 遊戲預設來源」依序取得資料：前面的來源沒有 ID 或這一項為空時往後回退，都為空時保留本機內容。"
+  "native_metadataRefresh_useStrategyHint": "按「欄位指定的來源 → 必選資料來源 → 遊戲預設來源」依序取得資料：前面的來源沒有 ID 或這一項為空時往後回退，都為空時保留本機內容。",
+  "native_setupWizard_title": "歡迎使用 LunaBox",
+  "native_setupWizard_subtitle": "只需幾步完成初始設定，之後可隨時在設定中修改。",
+  "native_setupWizard_step": "第 {current} 步，共 {total} 步",
+  "native_setupWizard_languageDesc": "選擇介面顯示的語言。",
+  "native_setupWizard_themeDesc": "選擇淺色、深色，或跟隨系統切換。",
+  "native_setupWizard_timezoneDesc": "用於正確顯示和記錄遊戲時長。",
+  "native_setupWizard_libraryOptional": "可以先留空，之後在設定中配置。",
+  "native_setupWizard_next": "下一步",
+  "native_setupWizard_finish": "開始使用",
+  "native_setupWizard_done": "初始設定已完成"
 }

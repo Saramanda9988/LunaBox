@@ -97,9 +97,10 @@ type App struct {
 	notices     []env.Notice // 事件回调里产生、下一帧显示的提示
 	quitSyncing bool         // 正在退出前同步（只做一次）
 
-	// App.tsx 的弹窗：lunabox:// 安装确认、没有时区时的时区选择、启动时发现的新版本（useUpdateCheck）。
+	// App.tsx 的弹窗：lunabox:// 安装确认、没有时区时（第一次打开）的初始设置向导、启动时发现的新版本（useUpdateCheck）。
 	install      modal.InstallConfirm
-	timezone     modal.TimezoneSelect
+	setup        modal.SetupWizard
+	setupPreview bool // 开发托盘菜单重新打开了向导（ShowSetupWizard），已有时区也显示
 	updateInfo   *service.UpdateCheckResult
 	updateDialog components.UpdateDialogState
 
@@ -287,8 +288,8 @@ func (a *App) View(c *ui.Context) {
 	a.perf.ViewCalled(time.Now(), time.Since(start))
 }
 
-// appModals 是 App.tsx 在路由之后渲染的 UpdateDialog、TimezoneSelectModal 与 InstallConfirmModal，
-// 都在 #app-modal-root（顶栏下方）里。
+// appModals 是 App.tsx 在路由之后渲染的 UpdateDialog、TimezoneSelectModal（这里换成了初始设置向导）与
+// InstallConfirmModal，都在 #app-modal-root（顶栏下方）里。
 func (a *App) appModals(c *ui.Context, t *theme.Theme) {
 	if a.env.Svc == nil {
 		return
@@ -308,11 +309,12 @@ func (a *App) appModals(c *ui.Context, t *theme.Theme) {
 		})
 	}
 	cfg := a.env.Config()
-	modal.TimezoneSelectView(c, t, &a.timezone, modal.TimezoneSelectProps{
-		Open:      cfg != nil && cfg.TimeZone == "",
+	modal.SetupWizardView(c, t, &a.setup, modal.SetupWizardProps{
+		Env:       a.env,
+		Open:      a.setupPreview || (cfg != nil && strings.TrimSpace(cfg.TimeZone) == ""),
 		Detected:  a.env.Svc.SystemTimeZone,
 		TopOffset: env.TopbarHeight,
-		OnConfirm: a.confirmTimezone,
+		OnDone:    func() { a.setupPreview = false },
 	})
 	modal.InstallConfirmView(c, t, &a.install, modal.InstallConfirmProps{Env: a.env, TopOffset: env.TopbarHeight})
 }
@@ -388,6 +390,17 @@ func (a *App) Screenshot(path string) {
 		log.Printf("screenshot: %v", err)
 	}
 	mygo.App.Quit()
+}
+
+// ShowSetupWizard 从第一步重新打开初始设置向导（开发运行的托盘菜单用），已经设置过时区也显示。
+// 走完会照常保存所选的设置。可以在任何线程调用。
+func (a *App) ShowSetupWizard() {
+	open := func() { a.setup, a.setupPreview = modal.SetupWizard{}, true }
+	if a.env.Win == nil {
+		open()
+		return
+	}
+	a.env.Win.Update(open)
 }
 
 // SetDebugState 让截图直接进入某个界面状态：drawer、addmenu、batch、collapsed，picker（首页展开封面选择面板），

@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -216,35 +218,96 @@ func TestScheduledDBBackupToast(t *testing.T) {
 	}
 }
 
-func TestTimezoneModalSavesAndQuits(t *testing.T) {
+// TestSetupWizard：没有时区（第一次打开）时显示初始设置向导，依次是语言、主题、时区与游戏库目录，可以返回上一步；
+// 完成时保存时区与游戏库目录并关闭向导，不退出应用。
+func TestSetupWizard(t *testing.T) {
 	a, tt, svc := newEventApp(t)
-	if tt.HasText(locales.TimezoneModalTitle()) {
-		t.Fatal("timezone modal shown although time_zone is set")
+	if tt.HasText(locales.NativeSetupWizardTitle()) {
+		t.Fatal("setup wizard shown although time_zone is set")
 	}
 	quit := make(chan struct{}, 1)
 	svc.Services.Config.SetQuitHandler(func() { quit <- struct{}{} })
 	svc.Config.TimeZone = ""
+	svc.Config.GameLibraryPath = ""
 	tt.Frame()
-	if !tt.HasText(locales.TimezoneModalTitle()) {
-		t.Fatalf("timezone modal not shown: %q", tt.Texts())
+	click := func(s string) {
+		t.Helper()
+		if err := tt.Click(s); err != nil {
+			t.Fatalf("click %q: %v (texts %q)", s, err, tt.Texts())
+		}
+		tt.Frame()
 	}
+	expectStep := func(n int, label string) {
+		t.Helper()
+		if !tt.HasText(locales.NativeSetupWizardStep(strconv.Itoa(n), "4")) || !tt.HasText(label) {
+			t.Fatalf("step %d (%q) not shown: %q", n, label, tt.Texts())
+		}
+	}
+
+	expectStep(1, locales.SettingsBasicLanguageLabel())
+	click(locales.NativeSetupWizardNext())
+	expectStep(2, locales.SettingsBasicThemeLabel())
+	// 不在这里切换主题：没有运行 App 时 mygo.Theme.SetSource 会阻塞。
+	click(locales.CommonBack())
+	expectStep(1, locales.SettingsBasicLanguageLabel())
+	click(locales.NativeSetupWizardNext())
+	click(locales.NativeSetupWizardNext())
+	expectStep(3, locales.SettingsBasicTimezoneLabel())
+	click(locales.NativeSetupWizardNext())
+	expectStep(4, locales.SettingsBasicGameLibraryPath())
+
+	library := t.TempDir()
+	click(locales.SettingsBasicGameLibraryPathPlaceholder())
+	tt.Type(library)
+	tt.Frame()
+	click(locales.NativeSetupWizardFinish())
+	tt.Frame()
+
 	want := a.env.Svc.SystemTimeZone
 	if want == "" {
 		want = "Asia/Shanghai"
 	}
-	if err := tt.Click(locales.TimezoneModalConfirmBtn()); err != nil {
-		t.Fatal(err)
-	}
-	tt.Frame()
 	if svc.Config.TimeZone != want {
 		t.Fatalf("time_zone = %q, want %q", svc.Config.TimeZone, want)
 	}
-	if tt.HasText(locales.TimezoneModalTitle()) {
-		t.Fatal("timezone modal still shown after confirming")
+	if filepath.Clean(svc.Config.GameLibraryPath) != filepath.Clean(library) {
+		t.Fatalf("game_library_path = %q, want %q", svc.Config.GameLibraryPath, library)
+	}
+	if tt.HasText(locales.NativeSetupWizardTitle()) {
+		t.Fatal("setup wizard still shown after finishing")
 	}
 	select {
 	case <-quit:
-	case <-time.After(5 * time.Second):
-		t.Fatal("SafeQuit was not called after choosing the time zone")
+		t.Fatal("SafeQuit called after finishing the setup wizard")
+	default:
+	}
+}
+
+// TestShowSetupWizard：开发托盘菜单重新打开向导，已有时区也从第一步显示；走完后关闭，时区不变。
+func TestShowSetupWizard(t *testing.T) {
+	a, tt, svc := newEventApp(t)
+	if tt.HasText(locales.NativeSetupWizardTitle()) {
+		t.Fatal("setup wizard shown although time_zone is set")
+	}
+	a.ShowSetupWizard()
+	tt.Frame()
+	if !tt.HasText(locales.NativeSetupWizardStep("1", "4")) {
+		t.Fatalf("setup wizard not reopened at the first step: %q", tt.Texts())
+	}
+	for range 3 {
+		if err := tt.Click(locales.NativeSetupWizardNext()); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+	}
+	if err := tt.Click(locales.NativeSetupWizardFinish()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if tt.HasText(locales.NativeSetupWizardTitle()) {
+		t.Fatal("setup wizard still shown after finishing")
+	}
+	if svc.Config.TimeZone != "Asia/Shanghai" {
+		t.Fatalf("time_zone = %q, want Asia/Shanghai", svc.Config.TimeZone)
 	}
 }

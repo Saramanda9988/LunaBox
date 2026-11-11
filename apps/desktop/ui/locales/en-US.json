@@ -824,7 +824,7 @@
   "settings_basic_zoomHint": "You can also use Ctrl + / Ctrl - / Ctrl 0 to adjust it.",
   "settings_basic_zoomToast": "Interface zoom set to {value}",
   "settings_basic_timezoneLabel": "Timezone",
-  "settings_basic_timezoneHint": "Used to correctly display and record play time. Restart the app after changing.",
+  "settings_basic_timezoneHint": "Used to correctly display and record play time.",
   "settings_basic_timezonePlaceholder": "Select timezone",
   "settings_basic_closeToTray": "Minimize to system tray on close",
   "settings_basic_launchAtLogin": "Launch at startup",
@@ -1672,5 +1672,15 @@
   "native_metadataStrategy_noMetadataID": "No metadata ID",
   "native_metadataStrategy_reasonDisabled": "{source} is disabled",
   "native_metadataRefresh_useStrategy": "Use advanced metadata mix",
-  "native_metadataRefresh_useStrategyHint": "Each field tries its assigned source, then the required source, then the game's default source, moving on when a source has no ID or the field is empty. Fields empty everywhere keep their local value."
+  "native_metadataRefresh_useStrategyHint": "Each field tries its assigned source, then the required source, then the game's default source, moving on when a source has no ID or the field is empty. Fields empty everywhere keep their local value.",
+  "native_setupWizard_title": "Welcome to LunaBox",
+  "native_setupWizard_subtitle": "A few quick steps to get you set up. You can change these any time in Settings.",
+  "native_setupWizard_step": "Step {current} of {total}",
+  "native_setupWizard_languageDesc": "Choose the language for the interface.",
+  "native_setupWizard_themeDesc": "Choose light, dark, or follow your system.",
+  "native_setupWizard_timezoneDesc": "Used to correctly display and record play time.",
+  "native_setupWizard_libraryOptional": "You can leave this empty and set it later in Settings.",
+  "native_setupWizard_next": "Next",
+  "native_setupWizard_finish": "Get started",
+  "native_setupWizard_done": "Setup complete"
 }
