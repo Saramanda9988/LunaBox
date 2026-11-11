@@ -84,3 +84,53 @@ func TestToaster(t *testing.T) {
 		t.Fatalf("toasts left: %q", tt.Texts())
 	}
 }
+
+// MyGo 的计时按整个视口（盖满窗口）的悬停暂停：按住关闭按钮再移开时，它认为指针仍在视口上而一直停着。
+// 提示应当按卡片本身的悬停与焦点计时：移开、焦点也离开后照常走完、关闭，不会一直显示。
+func TestToasterClockFollowsCardHover(t *testing.T) {
+	th := theme.New(false, 1)
+	var add []ui.Toast
+	tt := ui.NewTester(func(c *ui.Context) {
+		for _, ts := range add {
+			c.AddToast(ts)
+		}
+		add = nil
+		ui.Button(c, "页面按钮")
+		Toaster(c, th, 40)
+	}, 1000, 700)
+	tt.Frame()
+	add = []ui.Toast{{ID: "ok", Title: "授权成功", Type: "success"}}
+	tt.Frame()
+	tt.Advance(time.Second)
+	r, ok := tt.Find(locales.CommonToastDismiss())
+	if !ok {
+		t.Fatalf("no close button: %q", tt.Texts())
+	}
+	x, y := r.X+r.W/2, r.Y+r.H/2
+	tt.Move(x, y)
+	tt.Press(x, y)
+	// 停在卡片上时暂停。
+	tt.Advance(10 * time.Second)
+	if !tt.HasText("授权成功") {
+		t.Fatal("the toast closed while the pointer rested on it")
+	}
+	// 按着移开（不松开，不算点击），焦点移到页面上：剩下的约 3 秒走完后关闭。
+	for i := 1; i <= 10; i++ {
+		tt.Move(x-float32(i)*40, y+float32(i)*40)
+		tt.Advance(16 * time.Millisecond)
+	}
+	for range 4 {
+		if tt.Focused("页面按钮") {
+			break
+		}
+		tt.Key(0, ui.KeyTab)
+	}
+	if !tt.Focused("页面按钮") {
+		t.Fatal("the focus stays in the toast")
+	}
+	tt.Advance(3500 * time.Millisecond)
+	tt.Advance(time.Second)
+	if tt.HasText("授权成功") {
+		t.Fatal("the toast stays after its time once the pointer left it")
+	}
+}

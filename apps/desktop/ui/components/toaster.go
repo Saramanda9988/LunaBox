@@ -108,13 +108,20 @@ func toastDuration(ts ui.Toast) time.Duration {
 // 最新的在最前，后面的缩小并露出 10px；指针停留或焦点在其中时展开成列表、暂停计时。
 // 卡片左侧是按类型（ui.Toast.Type：success、error、loading，其余为普通）着色的图标与倒计时圆环，
 // 长消息拆成标题与可展开的详情，右上角是关闭按钮。每帧在 View 里调用一次。
+//
+// 倒计时由这里自己计（toastClock），圆环、暂停与到时关闭都看同一个状态：MyGo 的计时按整个视口的悬停暂停，
+// 指针移开卡片后它有时一直停着，提示就不再消失，圆环走完又在下一次构建时跳回停住的位置。
 func Toaster(c *ui.Context, t *theme.Theme, top float32) {
 	ui.ToastViewportBase(c, func(viewport ui.Element, toasts []ui.Toast) {
 		winW, _ := c.Size()
 		viewport.Justify(ui.Start).AlignItems(ui.End).Padding(top, toastEdge, 0, toastEdge)
 		stack := ui.Box(c.Key("app-toasts")).Width(min(toastWidth, winW-2*toastEdge))
 		heights := ui.Local(stack, "heights", func() map[string]float32 { return map[string]float32{} })
+		clocks := ui.Local(stack, "clocks", func() map[string]*toastClock { return map[string]*toastClock{} })
 		expanded := stack.Hovered() || stack.FocusWithin()
+		// 与 MyGo 的约定相同：键盘焦点只在窗口有焦点时暂停计时，留在后台窗口的焦点不让提示一直显示。
+		held := stack.Hovered() || stack.FocusWithin() && c.WindowActive()
+		now := c.Now()
 
 		// 最新的在 toasts 末尾，原版 index 0 是最新的一条。
 		n := len(toasts)
@@ -140,7 +147,9 @@ func Toaster(c *ui.Context, t *theme.Theme, top float32) {
 			for k, ts := range toasts {
 				seen[ts.ID] = true
 				idx := n - 1 - k
-				h := toastStackItem(c, t, ts, idx, height(idx), offsets[idx], front, expanded)
+				parts := ui.ToastBase(c, ts)
+				left := tickToast(c, *clocks, ts, parts.Left(), now, held)
+				h := toastStackItem(c, t, ts, parts, left, held, idx, height(idx), offsets[idx], front, expanded)
 				switch {
 				case h <= 0:
 					c.AnimationFrame() // 下一帧量到高度后再排
@@ -156,12 +165,61 @@ func Toaster(c *ui.Context, t *theme.Theme, top float32) {
 				delete(*heights, id)
 			}
 		}
+		for id := range *clocks {
+			if !seen[id] {
+				delete(*clocks, id)
+			}
+		}
 	})
 }
 
+// toastClock 是一条提示自己的倒计时。
+type toastClock struct {
+	spent time.Duration // 之前各段已经走过的时长
+	at    time.Time     // 这一段开始走的时间（暂停时无意义）
+	held  bool          // 上一次构建时是否暂停
+	left  time.Duration // 上一次构建时 ToastBase 的 Left：变大说明同 ID 的提示重新显示、从头计时
+}
+
+// tickToast 推进 ts 的倒计时并返回剩余时间（一直显示的提示返回 0）：held 时暂停；时间到了关闭它，
+// 没到时约好到时的那一帧。新出现的提示从 MyGo 已经计过的时长接着计（被挤到第 4 条以后的提示时间照走）。
+func tickToast(c *ui.Context, clocks map[string]*toastClock, ts ui.Toast, engineLeft time.Duration, now time.Time, held bool) time.Duration {
+	life := toastDuration(ts)
+	if life <= 0 {
+		return 0
+	}
+	k := clocks[ts.ID]
+	if k == nil || engineLeft > k.left {
+		k = &toastClock{spent: life - engineLeft, at: now, held: held}
+		clocks[ts.ID] = k
+	}
+	k.left = engineLeft
+	switch {
+	case held && !k.held:
+		k.spent += now.Sub(k.at)
+	case !held && k.held:
+		k.at = now
+	}
+	k.held = held
+	age := k.spent
+	if !held {
+		age += now.Sub(k.at)
+	}
+	left := life - age
+	if left <= 0 {
+		c.CloseToast(ts.ID)
+		return 0
+	}
+	if !held {
+		c.After(left)
+	}
+	return left
+}
+
 // toastStackItem 对应 ToastStackItem：按层叠位置摆放一条提示（own 是它上一帧的高度），返回这次量到的高度（含边框）。
-func toastStackItem(c *ui.Context, t *theme.Theme, ts ui.Toast, idx int, own, offset, front float32, expanded bool) float32 {
-	parts := ui.ToastBase(c, ts)
+// left 与 held 是 tickToast 给出的剩余时间与是否暂停。
+func toastStackItem(c *ui.Context, t *theme.Theme, ts ui.Toast, parts ui.ToastParts, left time.Duration, held bool,
+	idx int, own, offset, front float32, expanded bool) float32 {
 	item := parts.Root
 	behind := idx > 0 && !expanded
 
@@ -205,13 +263,13 @@ func toastStackItem(c *ui.Context, t *theme.Theme, ts ui.Toast, idx int, own, of
 			outer = m + 2*t.HL
 		}
 		content.Opacity(content.AnimateWith("opacity", 1-theme.Bool(behind), 200*time.Millisecond, theme.EaseTailwind))
-		content.Children(func() { toastCard(c, t, ts, parts, expanded) })
+		content.Children(func() { toastCard(c, t, ts, parts, left, held) })
 	})
 	return outer
 }
 
 // toastCard 对应 ToastCard：图标与倒计时圆环、标题、可展开的详情和关闭按钮。
-func toastCard(c *ui.Context, t *theme.Theme, ts ui.Toast, parts ui.ToastParts, paused bool) {
+func toastCard(c *ui.Context, t *theme.Theme, ts ui.Toast, parts ui.ToastParts, left time.Duration, paused bool) {
 	tone := getToastTone(t, ts.Type)
 	title, details := splitToastMessage(ts.Title)
 	if ts.Description != "" {
@@ -223,7 +281,7 @@ func toastCard(c *ui.Context, t *theme.Theme, ts ui.Toast, parts ui.ToastParts, 
 		wrap := ui.Box(c).Size(36, 36).Radius(999).Center().Background(tone.wrap).Shrink(0)
 		wrap.Children(func() {
 			if life := toastDuration(ts); life > 0 && ts.Type != "loading" {
-				toastRing(c, tone.ring, life, parts.Left(), c.Now(), paused)
+				toastRing(c, tone.ring, life, left, c.Now(), paused)
 			}
 			switch ts.Type {
 			case "success":
@@ -317,7 +375,7 @@ func toastDetails(c *ui.Context, t *theme.Theme, details string) {
 }
 
 // toastRing 是图标外 -inset-1 的倒计时圆环：从 12 点钟方向顺时针剩下的部分随时间缩短。
-// MyGo 只在构建时给出剩余时间，圆环在两次构建之间按绘制时间推算，暂停时不动。
+// 剩余时间只在构建时算出（tickToast），圆环在两次构建之间按绘制时间推算，暂停时不动。
 func toastRing(c *ui.Context, color ui.Color, life, left time.Duration, at time.Time, paused bool) {
 	ui.Box(c).Absolute().Left(-4).Top(-4).Size(44, 44).PassThrough().Draw(func(p *ui.Painter, r ui.Rect) {
 		rem := left
