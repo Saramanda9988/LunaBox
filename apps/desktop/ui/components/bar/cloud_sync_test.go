@@ -39,7 +39,7 @@ func (f *fakeCloudSync) SyncNow() (vo.CloudSyncStatus, error) {
 func newCloudSyncFixture(t *testing.T, cfg *appconf.AppConfig, svc *fakeCloudSync) (*ui.Tester, *Sidebar, *env.Env) {
 	t.Helper()
 	e := &env.Env{Svc: &api.Services{Config: cfg, CloudSync: svc}}
-	s := NewSidebar(true)
+	s := NewSidebar(true, 0)
 	tt := ui.NewTester(func(c *ui.Context) {
 		e.FlushToasts(c)
 		SideBar(c, theme.New(true, 1.5), SideBarProps{State: &s, Router: ui.NewRouter(env.PathLibrary), Config: cfg, Env: e})

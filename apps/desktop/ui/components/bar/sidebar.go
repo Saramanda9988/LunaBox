@@ -1,6 +1,7 @@
 package bar
 
 import (
+	"log"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -16,8 +17,11 @@ import (
 )
 
 const (
-	sidebarOpenWidth   = 256 // 16rem
+	sidebarOpenWidth   = 256 // 16rem，也是拖动调整时的最小宽度
 	sidebarClosedWidth = 64  // 4rem
+	sidebarMaxWidth    = 360 // 拖动调整的最大宽度
+	sidebarMainMin     = 600 // 拖宽侧边栏时给主内容区留的最小宽度
+	sidebarGrip        = 6   // 右边缘拖动条的宽度
 )
 
 // Sidebar 是侧边栏的展开状态。
@@ -28,12 +32,25 @@ type Sidebar struct {
 	toggled     bool      // 刚切换，下一次构建时以 c.Now() 作为 fadeAt
 	width       float32   // 当前动画中的宽度
 
+	openWidth float32 // 展开时的宽度（sidebar_width），用户拖动右边缘调整
+	maxWidth  float32 // 当前窗口下展开宽度的上限
+	resizing  bool    // 正在拖动右边缘
+	dragWidth float32 // 拖动中指针所在的宽度，不受上下限约束，拖出范围再拖回来时边缘仍跟着指针
+
 	Cloud CloudSync // 底部云同步按钮的状态
 }
 
-// NewSidebar 按配置的 sidebar_open 创建状态。
-func NewSidebar(open bool) Sidebar {
-	return Sidebar{Open: open, delayedOpen: open, width: sidebarWidth(open)}
+// NewSidebar 按配置的 sidebar_open、sidebar_width 创建状态；width 为 0 时用默认宽度。
+func NewSidebar(open bool, width int) Sidebar {
+	s := Sidebar{Open: open, delayedOpen: open, openWidth: float32(width), maxWidth: sidebarMaxWidth}
+	s.openWidth = s.clampWidth(s.openWidth)
+	s.width = s.target()
+	return s
+}
+
+// OpenWidth 是展开时的宽度，保存配置时写进 sidebar_width。
+func (s *Sidebar) OpenWidth() int {
+	return int(s.openWidth + 0.5)
 }
 
 // Toggle 展开或收起。
@@ -44,22 +61,32 @@ func (s *Sidebar) Toggle() {
 
 // SetOpen 立即切换到目标状态，不播放动画（截图调试用）。
 func (s *Sidebar) SetOpen(open bool) {
-	s.Open, s.delayedOpen, s.fadeAt, s.toggled, s.width = open, open, time.Time{}, false, sidebarWidth(open)
+	s.Open, s.delayedOpen, s.fadeAt, s.toggled = open, open, time.Time{}, false
+	s.width = s.target()
 }
 
 // Width 是当前帧（动画中）的宽度，主内容区据此计算网格列数。
 func (s *Sidebar) Width() float32 {
 	if s.width == 0 {
-		return sidebarWidth(s.Open)
+		return s.target()
 	}
 	return s.width
 }
 
-func sidebarWidth(open bool) float32 {
-	if open {
+// target 是当前状态下侧边栏应有的宽度：收起时固定，展开时取用户调整的宽度（受当前窗口的上限约束）。
+func (s *Sidebar) target() float32 {
+	if !s.Open {
+		return sidebarClosedWidth
+	}
+	return s.clampWidth(s.openWidth)
+}
+
+// clampWidth 把展开宽度限制在 [sidebarOpenWidth, maxWidth]，0 视为默认宽度。
+func (s *Sidebar) clampWidth(w float32) float32 {
+	if w == 0 {
 		return sidebarOpenWidth
 	}
-	return sidebarClosedWidth
+	return min(max(w, sidebarOpenWidth), max(s.maxWidth, sidebarOpenWidth))
 }
 
 type navItem struct {
@@ -94,9 +121,9 @@ func SideBar(c *ui.Context, t *theme.Theme, p SideBarProps) {
 		bg, border = t.SidebarBg.Alpha(t.BgOpacity), t.Pick(theme.White.Alpha(0.2), theme.White.Alpha(0.1))
 	}
 	aside := ui.Column(c).Shrink(0).Background(bg).BorderWidth(0, t.HL, 0, 0).BorderColor(border)
-	// style={{ transition: "width 300ms ease" }}
-	s.width = aside.AnimateWith("width", sidebarWidth(s.Open), 300*time.Millisecond, theme.EaseCSS)
-	aside.Width(s.width)
+	// 拖宽侧边栏时给主内容区留出 sidebarMainMin；窗口太小时退回最小宽度。
+	winW, _ := c.Size()
+	s.maxWidth = min(sidebarMaxWidth, winW-sidebarMainMin)
 
 	// transition-all duration-300 的标签/标题，展开程度 0..1
 	reveal := aside.AnimateWith("reveal", theme.Bool(s.Open), 300*time.Millisecond, theme.EaseTailwind)
@@ -125,7 +152,49 @@ func SideBar(c *ui.Context, t *theme.Theme, p SideBarProps) {
 			}
 		})
 		sidebarFooter(c, t, p, fadeOpacity)
+		if s.Open {
+			sidebarResizer(c, p)
+		} else if s.resizing {
+			endResize(p) // 拖动中收起了侧边栏
+		}
 	})
+	if s.resizing {
+		// 拖动时宽度直接跟着指针，不走展开/收起的过渡。
+		s.width = aside.Jump("width", s.target())
+	} else {
+		// style={{ transition: "width 300ms ease" }}
+		s.width = aside.AnimateWith("width", s.target(), 300*time.Millisecond, theme.EaseCSS)
+	}
+	aside.Width(s.width)
+}
+
+// endResize 结束拖动并保存 sidebar_width（PatchConfig 通过 env.SidebarState 写入当前的宽度）。
+func endResize(p SideBarProps) {
+	p.State.resizing = false
+	if p.Env == nil {
+		return
+	}
+	if err := p.Env.PatchConfig(func(*appconf.AppConfig) {}); err != nil {
+		log.Printf("sidebar: failed to save width: %v", err)
+	}
+}
+
+// sidebarResizer 是展开时右边缘的拖动条：拖动调整展开宽度（sidebarOpenWidth 到 maxWidth），
+// 松开时保存到 sidebar_width。
+func sidebarResizer(c *ui.Context, p SideBarProps) {
+	s := p.State
+	grip := ui.Box(c.Key("resizer")).Absolute().Top(0).Bottom(0).Right(0).Width(sidebarGrip).Cursor(ui.CursorResizeEW)
+	dx, _, pressed := grip.Dragged()
+	switch {
+	case pressed:
+		if !s.resizing {
+			s.resizing, s.dragWidth = true, s.target()
+		}
+		s.dragWidth += dx
+		s.openWidth = s.clampWidth(s.dragWidth)
+	case s.resizing:
+		endResize(p)
+	}
 }
 
 func sidebarHeader(c *ui.Context, t *theme.Theme, s *Sidebar, reveal float32) {

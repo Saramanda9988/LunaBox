@@ -204,10 +204,10 @@ func (p *Page) loadVersion() {
 	})
 }
 
-// withSidebarState 对应 store 的 withSidebarState：sidebar_open 取侧边栏当前的状态。
+// withSidebarState 对应 store 的 withSidebarState：sidebar_open、sidebar_width 取侧边栏当前的状态。
 func (p *Page) withSidebarState(cfg appconf.AppConfig) appconf.AppConfig {
-	if p.env.SidebarOpen != nil {
-		cfg.SidebarOpen = p.env.SidebarOpen()
+	if p.env.SidebarState != nil {
+		p.env.SidebarState(&cfg)
 	}
 	return cfg
 }
@@ -241,7 +241,7 @@ func (p *Page) patchLive(fn func(cfg *appconf.AppConfig)) {
 	next := p.withSidebarState(*cur)
 	fn(&next)
 	fn(&p.draft)
-	p.draft.SidebarOpen = next.SidebarOpen
+	p.draft.SidebarOpen, p.draft.SidebarWidth = next.SidebarOpen, next.SidebarWidth
 	if !p.update(*cur, next) {
 		p.draft = prevDraft
 	}

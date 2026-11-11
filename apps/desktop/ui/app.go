@@ -125,7 +125,7 @@ func New(list Backend, svc *api.Services, opts Options) *App {
 		perf:     p,
 		bench:    perf.NewBench(p, opts.BenchExit),
 		router:   router,
-		sidebar:  bar.NewSidebar(cfg == nil || cfg.SidebarOpen),
+		sidebar:  bar.NewSidebar(cfg == nil || cfg.SidebarOpen, sidebarWidth(cfg)),
 		launcher: launch.For(e),
 		home:     home.New(e),
 		library:  lib,
@@ -145,7 +145,9 @@ func New(list Backend, svc *api.Services, opts Options) *App {
 
 		downloadStatus: map[string]service.DownloadStatus{},
 	}
-	e.SidebarOpen = func() bool { return a.sidebar.Open }
+	e.SidebarState = func(cfg *appconf.AppConfig) {
+		cfg.SidebarOpen, cfg.SidebarWidth = a.sidebar.Open, a.sidebar.OpenWidth()
+	}
 	e.ConfigSaved = func(prev, next appconf.AppConfig) {
 		applyConfig(prev, next)
 		if opts.ConfigSaved != nil {
@@ -153,6 +155,14 @@ func New(list Backend, svc *api.Services, opts Options) *App {
 		}
 	}
 	return a
+}
+
+// sidebarWidth 是配置里的 sidebar_width，没有配置时为 0（默认宽度）。
+func sidebarWidth(cfg *appconf.AppConfig) int {
+	if cfg == nil {
+		return 0
+	}
+	return cfg.SidebarWidth
 }
 
 // applyConfig 让保存后的配置立即生效，对应原版 App.tsx 的 i18n.changeLanguage 与 useAppTheme。

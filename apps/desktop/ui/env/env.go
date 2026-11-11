@@ -58,9 +58,9 @@ type Env struct {
 	Covers  *covers.Cache
 	Storage *Storage // 原版 localStorage 里的界面状态（筛选与排序），重启后恢复；测试里可能为 nil
 
-	// SidebarOpen 报告侧边栏是否展开（store 的 isSidebarOpen）：保存配置时 sidebar_open 取它（withSidebarState）。
-	// 测试里为 nil，保存时保留配置里的值。
-	SidebarOpen func() bool
+	// SidebarState 把侧边栏当前的状态（store 的 isSidebarOpen，以及拖动调整的宽度）写进 cfg 的
+	// sidebar_open、sidebar_width：保存配置时都经过它（withSidebarState）。测试里为 nil，保存时保留配置里的值。
+	SidebarState func(cfg *appconf.AppConfig)
 	// ConfigSaved 在设置页保存配置之后（主线程）调用，App 用它让语言与主题立即生效；测试里为 nil。
 	ConfigSaved func(prev, next appconf.AppConfig)
 
@@ -80,7 +80,7 @@ func (e *Env) Config() *appconf.AppConfig {
 }
 
 // PatchConfig 对应 store 的 patchLiveConfig（设置页以外的调用方）：在当前配置上改几项并立即保存，
-// sidebar_open 取侧边栏当前的状态。在主线程调用。
+// sidebar_open、sidebar_width 取侧边栏当前的状态。在主线程调用。
 func (e *Env) PatchConfig(fn func(cfg *appconf.AppConfig)) error {
 	cur := e.Config()
 	if cur == nil || e.Svc == nil {
@@ -88,8 +88,8 @@ func (e *Env) PatchConfig(fn func(cfg *appconf.AppConfig)) error {
 	}
 	prev, next := *cur, *cur
 	fn(&next)
-	if e.SidebarOpen != nil {
-		next.SidebarOpen = e.SidebarOpen()
+	if e.SidebarState != nil {
+		e.SidebarState(&next)
 	}
 	if err := e.Svc.AppConfig.UpdateAppConfig(next); err != nil {
 		return err
