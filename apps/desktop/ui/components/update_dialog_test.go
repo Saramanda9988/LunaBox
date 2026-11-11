@@ -135,3 +135,55 @@ func TestFormatFileSize(t *testing.T) {
 		}
 	}
 }
+
+// version.json 的 changelog 逐行拼成 Markdown：相邻列表项留在同一个紧凑列表里，其余各行各自成段。
+func TestChangelogMarkdown(t *testing.T) {
+	got := changelogMarkdown([]string{
+		"迁移说明第一段",
+		"迁移说明第二段",
+		"新增",
+		"- 第一项 `lunabox://`",
+		"- 第二项（#86 by @404-GCross）",
+		"  续行",
+		"修复",
+		"1. 有序项",
+		"2. 有序项",
+	})
+	want := "迁移说明第一段\n\n迁移说明第二段\n\n新增\n\n- 第一项 `lunabox://`\n- 第二项（#86 by @404-GCross）\n  续行\n\n修复\n\n1. 有序项\n2. 有序项"
+	if got != want {
+		t.Errorf("got\n%q\nwant\n%q", got, want)
+	}
+}
+
+// 更新内容按 Markdown 显示：没有列表标记与反引号，#86、@login 是指向 GitHub 的链接。
+func TestUpdateDialogChangelogMarkdown(t *testing.T) {
+	var st UpdateDialogState
+	info := testUpdateInfo()
+	info.Changelog = []string{"新增", "- 支持 `lunabox://` 协议（#86 by @404-GCross）"}
+	th := theme.New(false, 1)
+	tt := ui.NewTester(func(c *ui.Context) {
+		UpdateDialog(c, th, "update", &st, UpdateDialogProps{Info: info, Platform: "darwin"})
+	}, 800, 800)
+	tt.Frame()
+	tt.Advance(400 * time.Millisecond)
+	if !tt.HasText("新增") {
+		t.Errorf("missing heading line in %q", tt.Texts())
+	}
+	for _, s := range []string{"- 支持", "`lunabox://`"} {
+		if tt.HasText(s) {
+			t.Errorf("markdown source %q shown in %q", s, tt.Texts())
+		}
+	}
+	if err := tt.Click("#86"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if err := tt.Click("@404-GCross"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	want := []string{changelogRepo + "/issues/86", "https://github.com/404-GCross"}
+	if got := tt.OpenedURLs(); !slices.Equal(got, want) {
+		t.Errorf("opened %q, want %q", got, want)
+	}
+}

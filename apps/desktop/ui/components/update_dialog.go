@@ -4,10 +4,13 @@ import (
 	"errors"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui/markdown"
+	"github.com/egoist/mygo/ui/markdown/parser"
 
 	"lunabox/backend/service"
 	"lunabox/desktop/ui/locales"
@@ -298,8 +301,106 @@ func updateDialogVersions(c *ui.Context, t *theme.Theme, info *service.UpdateChe
 	})
 }
 
+// changelogRepo 是更新内容里 #86、@404-GCross 链接到的仓库。
+const changelogRepo = "https://github.com/Saramanda9988/LunaBox"
+
+// changelogMarkdown 把 version.json 的 changelog（每项一行）拼成 Markdown。相邻的列表项（- 、* 、1. 开头或缩进的续行）
+// 之间换一行，留在同一个紧凑列表里；其余的行之间空一行，各自成段（直接换行会被 Markdown 并成一段）。
+func changelogMarkdown(lines []string) string {
+	var b strings.Builder
+	prevItem := false
+	for i, line := range lines {
+		line = strings.TrimRight(line, " \t\r")
+		item := isMarkdownListLine(line)
+		if i > 0 {
+			if item && prevItem {
+				b.WriteByte('\n')
+			} else {
+				b.WriteString("\n\n")
+			}
+		}
+		b.WriteString(line)
+		prevItem = item
+	}
+	return b.String()
+}
+
+func isMarkdownListLine(line string) bool {
+	if strings.HasPrefix(line, "  ") || strings.HasPrefix(line, "\t") {
+		return true // 列表项的续行或子项
+	}
+	if strings.HasPrefix(line, "- ") || strings.HasPrefix(line, "* ") || strings.HasPrefix(line, "+ ") {
+		return true
+	}
+	n := 0
+	for n < len(line) && line[n] >= '0' && line[n] <= '9' {
+		n++
+	}
+	return n > 0 && n+1 < len(line) && (line[n] == '.' || line[n] == ')') && line[n+1] == ' '
+}
+
+// changelogResolve 把 #86 链接到仓库的 issue/PR，@login 链接到 GitHub 用户页；别的仓库的引用（owner/repo#1）也链过去。
+func changelogResolve(in parser.Inline) (string, bool) {
+	switch in.Kind {
+	case parser.Mention:
+		if login := in.Login(); login != "" && !strings.Contains(login, "/") {
+			return "https://github.com/" + login, true
+		}
+	case parser.Reference:
+		repo, n := in.Ref()
+		if n <= 0 {
+			return "", false
+		}
+		base := changelogRepo
+		if repo != "" {
+			base = "https://github.com/" + repo
+		}
+		return base + "/issues/" + strconv.Itoa(n), true
+	}
+	return "", false
+}
+
+// changelogOptions 按明暗主题各留一份：Options 里有 View 的缓存，每帧新建会让段落每帧重新排版。
+var changelogOptions [2]*markdown.Options
+
+// changelogMarkdownOptions：正文 text-xs（12px，行高 16px）text-brand-700 dark:text-brand-300，链接用星光蓝。
+func changelogMarkdownOptions(t *theme.Theme) *markdown.Options {
+	i := 0
+	if t.Dark {
+		i = 1
+	}
+	if o := changelogOptions[i]; o != nil {
+		return o
+	}
+	text := t.Pick(theme.Brand700, theme.Brand300)
+	th := &markdown.Theme{
+		FontSize:       theme.TextXS.Size,
+		Font:           theme.UIFont,
+		CodeFont:       monoFont,
+		LineHeight:     theme.TextXS.Line / theme.TextXS.Size,
+		Text:           text,
+		Strong:         t.TextStrong,
+		Muted:          t.Pick(theme.Brand500, theme.Brand400),
+		Link:           t.Pick(accent600, accent400),
+		Code:           text,
+		CodeBackground: text.Alpha(0.08),
+		BlockSpacing:   0.5,
+		ItemSpacing:    1.0 / 3, // space-y-1：4px
+		ListIndent:     1.2,
+	}
+	for l := range th.Headings {
+		// 只在 version.json 写了 ### 新增 这类标题时用到：与“更新内容”同为 text-sm font-semibold。
+		th.Headings[l] = markdown.HeadingStyle{Size: theme.TextSM.Size / theme.TextXS.Size, Weight: theme.WeightSemibold,
+			Color: t.TextStrong, Top: 0.75, Bottom: 0.25}
+	}
+	o := &markdown.Options{Theme: th, Resolve: changelogResolve}
+	changelogOptions[i] = o
+	return o
+}
+
 // updateDialogChangelog：max-h-64 overflow-y-auto p-4 bg-brand-50 dark:bg-brand-900/50 rounded-lg；标题 text-sm
-// font-semibold mb-2，内容 text-xs text-brand-700 dark:text-brand-300 space-y-1 whitespace-pre-wrap，每行一个 div。
+// font-semibold mb-2，内容 text-xs text-brand-700 dark:text-brand-300。原版每行一个 div（whitespace-pre-wrap），
+// 这里把各行拼成 Markdown 渲染（列表、`代码`、**加粗**、链接、#123 与 @login）。
 // 滚动条（::-webkit-scrollbar）在内边距外侧，内容超出时占用右侧的宽度。
 func updateDialogChangelog(c *ui.Context, t *theme.Theme, s *UpdateDialogState, info *service.UpdateCheckResult) {
 	gutter := float32(0)
@@ -312,11 +413,7 @@ func updateDialogChangelog(c *ui.Context, t *theme.Theme, s *UpdateDialogState, 
 		sc.Children(func() {
 			ui.Column(c).FillWidth().Padding(16, 16+gutter, 16, 16).Children(func() {
 				TextMargin(c, locales.UpdateDialogChangelog(), theme.TextSM, theme.WeightSemibold, t.TextStrong, 0, 0, 8, 0)
-				ui.Column(c).FillWidth().Gap(4).Children(func() {
-					for i, line := range info.Changelog {
-						Text(c.Key(i), line, theme.TextXS, theme.WeightNormal, t.Pick(theme.Brand700, theme.Brand300))
-					}
-				})
+				markdown.View(c.Key("changelog-md"), changelogMarkdown(info.Changelog), changelogMarkdownOptions(t)).FillWidth()
 			})
 		})
 	})
