@@ -29,6 +29,12 @@ const (
 	setupStepCount
 )
 
+var (
+	setupTextWelcome = theme.FontStep{Size: 28, Line: 36} // text-[28px] leading-9
+	setupTextTitle   = theme.FontStep{Size: 23, Line: 32} // 同启动窗：text-[23px] leading-8
+	setupTextDetail  = theme.FontStep{Size: 13, Line: 20} // 同启动窗：text-[13px] leading-5
+)
+
 // setupSelectDirectory 打开原生的文件夹对话框，会阻塞，在 Env.Async 里调用。测试里替换掉，不弹对话框。
 var setupSelectDirectory = func(e *env.Env, title string) (string, error) {
 	return e.Svc.AppConfig.SelectDirectory(title)
@@ -55,9 +61,9 @@ type SetupWizardProps struct {
 	OnDone    func() // 完成并保存之后调用
 }
 
-// SetupWizardView 是第一次打开时的初始设置向导：依次设置语言、主题、时区与游戏库目录。语言与主题选了立即保存并生效，
-// 向导本身随之换语言与配色；时区与游戏库目录在最后一步一起保存，时区保存后数据库立即改用它，不用重启。
-// 没有关闭方式，只能走完。要在页面最后构建，浮层才会盖住页面内容。
+// SetupWizardView 是第一次打开时的初始设置向导：盖住顶栏下方的侧边栏与内容区，左边是启动窗那样的图标区，右边依次设置
+// 语言、主题、时区与游戏库目录。语言与主题选了立即保存并生效，向导本身随之换语言与配色；时区与游戏库目录在最后一步
+// 一起保存，时区保存后数据库立即改用它，不用重启。没有关闭方式，只能走完。要在页面最后构建，浮层才会盖住页面内容。
 func SetupWizardView(c *ui.Context, t *theme.Theme, m *SetupWizard, p SetupWizardProps) {
 	e := p.Env
 	cfg := e.Config()
@@ -72,67 +78,89 @@ func SetupWizardView(c *ui.Context, t *theme.Theme, m *SetupWizard, p SetupWizar
 		}
 		m.library = cfg.GameLibraryPath
 	}
-	components.Modal(c, t, "setup-wizard", components.ModalProps{Open: true, TopOffset: p.TopOffset, MaxWidth: 512}, func(panel ui.Element) {
-		components.ModalPanel(t, panel).Children(func() {
-			components.TextMargin(c, locales.NativeSetupWizardTitle(), theme.TextXL, theme.WeightBold, t.TextStrong, 0, 0, 4, 0)
-			components.TextMargin(c, locales.NativeSetupWizardSubtitle(), theme.TextSM, theme.WeightNormal, t.Pick(theme.Brand600, theme.Brand400), 0, 0, 20, 0)
-			setupProgress(c, t, m.step)
-			ui.Column(c.Key("step-"+strconv.Itoa(m.step))).FillWidth().Margin(24, 0, 0, 0).Children(func() {
-				switch m.step {
-				case setupStepLanguage:
-					setupStepHeader(c, t, "web", locales.SettingsBasicLanguageLabel(), locales.NativeSetupWizardLanguageDesc())
-					better.Select(c, t, "language", better.SelectProps{
-						Value:    cfg.Language,
-						Options:  basic.LanguageOptions(),
-						OnChange: func(v string) { setupPatch(e, func(cfg *appconf.AppConfig) { cfg.Language = v }) },
-					})
-				case setupStepTheme:
-					setupStepHeader(c, t, "palette", locales.SettingsBasicThemeLabel(), locales.NativeSetupWizardThemeDesc())
-					better.Select(c, t, "theme", better.SelectProps{
-						Value:    cfg.Theme,
-						Options:  basic.ThemeOptions(),
-						OnChange: func(v string) { setupPatch(e, func(cfg *appconf.AppConfig) { cfg.Theme = v }) },
-					})
-				case setupStepTimezone:
-					setupStepHeader(c, t, "earth", locales.SettingsBasicTimezoneLabel(), locales.NativeSetupWizardTimezoneDesc())
-					// 检测到的时区是 font-semibold text-primary-600 dark:text-primary-400（同原版 TimezoneSelectModal）
-					ui.Row(c.Key("detected")).Wrap().Gap(4).Margin(0, 0, 8, 0).Children(func() {
-						components.Text(c, locales.TimezoneModalDetectedLabel(), theme.TextSM, theme.WeightMedium, t.Pick(theme.Brand700, theme.Brand300))
-						detected := p.Detected
-						if detected == "" {
-							detected = locales.TimezoneModalUnknown()
-						}
-						components.Text(c, detected, theme.TextSM, theme.WeightSemibold, t.Pick(theme.Primary600, theme.Primary400))
-					})
-					better.Select(c, t, "timezone", better.SelectProps{
-						Value:       m.timezone,
-						Options:     basic.TimezoneOptions(p.Detected),
-						Placeholder: locales.TimezoneModalPlaceholder(),
-						OnChange:    func(v string) { m.timezone = v },
-					})
-				case setupStepLibrary:
-					setupStepHeader(c, t, "folder-open-outline", locales.SettingsBasicGameLibraryPath(), locales.SettingsBasicGameLibraryPathHint())
-					m.libraryInput(c, t, e, p.OnDone)
-					components.TextMargin(c, locales.NativeSetupWizardLibraryOptional(), theme.TextXS, theme.WeightNormal, t.TextFaint, 8, 0, 0, 0)
-				}
-			})
-			ui.Row(c.Key("actions")).FillWidth().Margin(32, 0, 0, 0).Gap(12).AlignItems(ui.Center).Children(func() {
-				if m.step > 0 {
-					back := components.ModalTextButton(c, t, "back", locales.CommonBack())
-					if m.busy {
-						components.Disable(back, 0.5)
-					} else {
-						back.OnClick(func() { m.step-- })
-					}
-				}
-				ui.Box(c).Grow(1)
-				if m.step < setupStepCount-1 {
-					setupPrimaryButton(c, t, "next", locales.NativeSetupWizardNext(), false).OnClick(func() { m.step++ })
-					return
-				}
-				setupPrimaryButton(c, t, "finish", locales.NativeSetupWizardFinish(), m.busy).OnClick(func() { m.finish(e, p.OnDone) })
+	// 盖住顶栏下方的整个区域（侧边栏与内容区），排版同启动窗：左边是图标区，右边是当前这一步。
+	components.Overlay(c, t, func() {
+		host := ui.Row(c.Key("setup-wizard")).Absolute().Top(p.TopOffset).Left(0).Right(0).Bottom(0).AlignItems(ui.Stretch).
+			Modal().Background(t.Pick(theme.White, theme.Brand800))
+		host.Children(func() {
+			winW, _ := c.Size()
+			components.BrandAside(c, t, min(600, max(340, winW*0.36)), true) // 约窗口宽度的 36%
+			// flex min-w-0 flex-1 items-center justify-center px-12 py-10：欢迎语、步骤条、当前这一步与按钮是一组（max-w-xl），
+			// 整组在右侧居中。每一步的内容高度不同，留出 min-h 让按钮不随步骤上下跳动。
+			ui.Column(c.Key("main")).Grow(1).Basis(0).MinWidth(0).Padding(40, 48).Center().Children(func() {
+				ui.Column(c.Key("content")).FillWidth().MaxWidth(576).Children(func() {
+					components.Text(c, locales.NativeSetupWizardTitle(), setupTextWelcome, theme.WeightBold, t.Pick(theme.Brand900, theme.White))
+					components.TextMargin(c, locales.NativeSetupWizardSubtitle(), theme.TextSM, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400), 6, 0, 28, 0)
+					setupProgress(c, t, m.step)
+					ui.Column(c.Key("step-"+strconv.Itoa(m.step))).FillWidth().MinHeight(220).Padding(40, 0, 0, 0).
+						Children(func() { m.stepContent(c, t, p) })
+					m.actions(c, t, p)
+				})
 			})
 		})
+	})
+}
+
+// stepContent 是当前这一步的标题、说明与输入。
+func (m *SetupWizard) stepContent(c *ui.Context, t *theme.Theme, p SetupWizardProps) {
+	e := p.Env
+	cfg := e.Config()
+	switch m.step {
+	case setupStepLanguage:
+		setupStepHeader(c, t, "web", locales.SettingsBasicLanguageLabel(), locales.NativeSetupWizardLanguageDesc())
+		better.Select(c, t, "language", better.SelectProps{
+			Value:    cfg.Language,
+			Options:  basic.LanguageOptions(),
+			OnChange: func(v string) { setupPatch(e, func(cfg *appconf.AppConfig) { cfg.Language = v }) },
+		})
+	case setupStepTheme:
+		setupStepHeader(c, t, "palette", locales.SettingsBasicThemeLabel(), locales.NativeSetupWizardThemeDesc())
+		better.Select(c, t, "theme", better.SelectProps{
+			Value:    cfg.Theme,
+			Options:  basic.ThemeOptions(),
+			OnChange: func(v string) { setupPatch(e, func(cfg *appconf.AppConfig) { cfg.Theme = v }) },
+		})
+	case setupStepTimezone:
+		setupStepHeader(c, t, "earth", locales.SettingsBasicTimezoneLabel(), locales.NativeSetupWizardTimezoneDesc())
+		// 检测到的时区是 font-semibold text-primary-600 dark:text-primary-400（同原版 TimezoneSelectModal）
+		ui.Row(c.Key("detected")).Wrap().Gap(4).Margin(0, 0, 8, 0).Children(func() {
+			components.Text(c, locales.TimezoneModalDetectedLabel(), theme.TextSM, theme.WeightMedium, t.Pick(theme.Brand700, theme.Brand300))
+			detected := p.Detected
+			if detected == "" {
+				detected = locales.TimezoneModalUnknown()
+			}
+			components.Text(c, detected, theme.TextSM, theme.WeightSemibold, t.Pick(theme.Primary600, theme.Primary400))
+		})
+		better.Select(c, t, "timezone", better.SelectProps{
+			Value:       m.timezone,
+			Options:     basic.TimezoneOptions(p.Detected),
+			Placeholder: locales.TimezoneModalPlaceholder(),
+			OnChange:    func(v string) { m.timezone = v },
+		})
+	case setupStepLibrary:
+		setupStepHeader(c, t, "folder-open-outline", locales.SettingsBasicGameLibraryPath(), locales.SettingsBasicGameLibraryPathHint())
+		m.libraryInput(c, t, e, p.OnDone)
+		components.TextMargin(c, locales.NativeSetupWizardLibraryOptional(), theme.TextXS, theme.WeightNormal, t.TextFaint, 8, 0, 0, 0)
+	}
+}
+
+// actions 是底部的按钮：左边“返回”（第一步没有），右边“下一步”或“开始使用”。
+func (m *SetupWizard) actions(c *ui.Context, t *theme.Theme, p SetupWizardProps) {
+	ui.Row(c.Key("actions")).FillWidth().Shrink(0).Gap(12).AlignItems(ui.Center).Children(func() {
+		if m.step > 0 {
+			back := components.ModalTextButton(c, t, "back", locales.CommonBack())
+			if m.busy {
+				components.Disable(back, 0.5)
+			} else {
+				back.OnClick(func() { m.step-- })
+			}
+		}
+		ui.Box(c).Grow(1)
+		if m.step < setupStepCount-1 {
+			setupPrimaryButton(c, t, "next", locales.NativeSetupWizardNext(), false).OnClick(func() { m.step++ })
+			return
+		}
+		setupPrimaryButton(c, t, "finish", locales.NativeSetupWizardFinish(), m.busy).OnClick(func() { m.finish(p.Env, p.OnDone) })
 	})
 }
 
@@ -229,16 +257,14 @@ func setupProgress(c *ui.Context, t *theme.Theme, step int) {
 	})
 }
 
-// setupStepHeader 是每一步的标题：左侧 p-2 rounded-full bg-primary-100 的图标（同原版 TimezoneSelectModal 的地球），
-// 右侧 text-lg font-semibold 的标题与 text-sm 的说明。
+// setupStepHeader 是每一步的标题，排版同启动窗的 header：flex items-start gap-3.5，text-[28px] 的图标，
+// text-[23px] font-semibold 的标题与 text-[13px] 的说明；下面 mb-6 是这一步的输入。
 func setupStepHeader(c *ui.Context, t *theme.Theme, icon, title, desc string) {
-	ui.Row(c.Key("header")).FillWidth().AlignItems(ui.Start).Gap(16).Margin(0, 0, 16, 0).Children(func() {
-		ui.Box(c).Padding(8).Radius(999).Shrink(0).Background(t.Pick(theme.Primary100, theme.Primary900.Alpha(0.3))).Children(func() {
-			components.Icon(c, icon, 24, t.Pick(theme.Primary600, theme.Primary400))
-		})
+	ui.Row(c.Key("header")).FillWidth().AlignItems(ui.Start).Gap(14).Margin(0, 0, 24, 0).Children(func() {
+		components.Icon(c, icon, 28, t.Pick(theme.Primary500, theme.Primary400)).Margin(2, 0, 0, 0).Shrink(0)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Children(func() {
-			components.TextMargin(c, title, theme.TextLG, theme.WeightSemibold, t.TextStrong, 0, 0, 4, 0)
-			components.Text(c, desc, theme.FontStep{Size: 14, Line: 22.75}, theme.WeightNormal, t.Pick(theme.Brand600, theme.Brand400))
+			components.Text(c, title, setupTextTitle, theme.WeightSemibold, t.Pick(theme.Brand900, theme.White))
+			components.TextMargin(c, desc, setupTextDetail, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400), 4, 0, 0, 0)
 		})
 	})
 }

@@ -403,13 +403,15 @@ func (a *App) ShowSetupWizard() {
 	a.env.Win.Update(open)
 }
 
-// SetDebugState 让截图直接进入某个界面状态：drawer、addmenu、batch、collapsed，picker（首页展开封面选择面板），
+// SetDebugState 让截图直接进入某个界面状态：drawer、addmenu、batch、collapsed，picker（首页展开封面选择面板），setup（初始设置向导），
 // tab:<key>（详情页的标签页：stats、edit、launch、backup、progress、review），
 // 或 settings:<分区>（设置页只展开这个分区并滚到顶部，settings:collapsed 全部收起）。
 func (a *App) SetDebugState(state string) {
 	switch {
 	case state == "picker":
 		a.home.SetDebugState(state)
+	case state == "setup":
+		a.ShowSetupWizard()
 	case strings.HasPrefix(state, "settings:"):
 		a.settings.SetDebugState(strings.TrimPrefix(state, "settings:"))
 	case strings.HasPrefix(state, "tab:"):

@@ -37,7 +37,7 @@ CGO_ENABLED=1 go build -o build/LunaBox.exe .
 | 参数 | 作用 |
 | --- | --- |
 | `-route <路径>` | 启动时打开的页面，默认 `/`；如 `/library`、`/settings`、`/game/<游戏 ID>`。Git Bash 里要加 `MSYS_NO_PATHCONV=1` |
-| `-state <状态>` | 进入某个界面状态：`drawer`、`addmenu`、`batch`、`addgame`、`batchimport`、`import:<来源>`、`collapsed`、`picker`、`tab:<标签页>`、`settings:<分区>`、`settings:collapsed` |
+| `-state <状态>` | 进入某个界面状态：`drawer`、`addmenu`、`batch`、`addgame`、`batchimport`、`import:<来源>`、`collapsed`、`picker`、`setup`（初始设置向导）、`tab:<标签页>`、`settings:<分区>`、`settings:collapsed` |
 | `-screenshot out.png` | 封面加载完后截图并退出 |
 | `-width`、`-height` | 窗口尺寸（DIP），默认用上次的尺寸 |
 | `-repeat N`、`-bench -bench-exit` | 把游戏库放大 N 倍、自动滚动压测（配合 `MYGO_FRAME_STATS=all`） |

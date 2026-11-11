@@ -10,7 +10,6 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/service"
-	"lunabox/desktop/ui/assets"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/better"
 	"lunabox/desktop/ui/locales"
@@ -56,7 +55,7 @@ func (p *Page) View(c *ui.Context) {
 	}
 	c.Root().Background(t.Pick(theme.White, theme.Brand800))
 	ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
-		p.aside(c, t)
+		components.BrandAside(c, t, 282, false) // aside：w-[282px]
 		// flex min-w-0 flex-1 flex-col bg-white px-9 pb-7 pt-8 dark:bg-brand-800
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Padding(32, 36, 28, 36).
 			Background(t.Pick(theme.White, theme.Brand800)).Children(func() {
@@ -71,27 +70,6 @@ func (p *Page) View(c *ui.Context) {
 			ui.Row(c).FillWidth().Margin(20, 0, 0, 0).Justify(ui.End).Children(func() {
 				p.exitButton(c, t)
 			})
-		})
-	})
-}
-
-// aside：relative flex w-[282px] shrink-0 items-center justify-center overflow-hidden border-r
-// border-brand-200 bg-brand-100 dark:border-white/8 dark:bg-brand-900，两个装饰圆环，中间是图标与标题图。
-func (p *Page) aside(c *ui.Context, t *theme.Theme) {
-	ui.Column(c).Width(282).Shrink(0).Center().Clip().Background(t.Pick(theme.Brand100, theme.Brand900)).
-		BorderWidth(0, t.HL, 0, 0).BorderColor(t.Pick(theme.Brand200, theme.White.Alpha(0.08))).Children(func() {
-		// -left-30 -top-34 h-72 w-72 rounded-full border border-primary-300/25 dark:border-primary-400/12
-		ui.Box(c).Absolute().Left(-120).Top(-136).Size(288, 288).Radius(999).PassThrough().
-			Border(t.HL, t.Pick(theme.Primary300.Alpha(0.25), theme.Primary400.Alpha(0.12)))
-		// -bottom-38 -right-32 h-72 w-72 rounded-full border border-primary-300/18 dark:border-primary-400/10
-		ui.Box(c).Absolute().Right(-128).Bottom(-152).Size(288, 288).Radius(999).PassThrough().
-			Border(t.HL, t.Pick(theme.Primary300.Alpha(0.18), theme.Primary400.Alpha(0.10)))
-		// relative flex -translate-y-1 flex-col items-center gap-5
-		ui.Column(c).AlignItems(ui.Center).Gap(20).Translate(0, -4).Children(func() {
-			ui.Image(c, assets.AppIcon(t.Dark)).Size(96, 96).Radius(23)
-			title := assets.Title(t.Dark)
-			tw, th := title.Size()
-			ui.Image(c, title).Size(152, 152*float32(th)/float32(tw)) // w-38 h-auto
 		})
 	})
 }
