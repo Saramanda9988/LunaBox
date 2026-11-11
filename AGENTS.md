@@ -107,7 +107,8 @@ MyGo 原生 UI 桌面应用（Windows、macOS、Linux 三端），界面与原�
 ## 交付要求
 
 - 界面改动：在 `apps/desktop/` 下 `go build ./...` 通过，改动所在包的 `go test` 通过（`ui/locales` 的 `TestNoHardcodedText` 检查硬编码文字）。
-- 后端改动：在 `packages/backend/` 下 `go test ./...` 通过，并确认 `apps/desktop/` 仍可编译。
+- 后端改动：`pnpm backend:test`（即在 `packages/backend/` 下 `go test -p 4 ./...`）通过，并确认 `apps/desktop/` 仍可编译。
+- MUST 在 `packages/backend/`、`apps/desktop/` 下跑多包测试时加 `-p 4`（或用 `pnpm backend:test` / `pnpm desktop:test`）：这两处大部分测试包都会静态链接约 140MB 的 DuckDB 预编译库，每次链接（`link` + `ld`）峰值约 1.5GB，默认 `-p` 等于 CPU 核数，20 核机器上会同时链接 20 个，内存耗尽导致卡死；限到 4 个总耗时几乎不变。
 - 更新器改动：在 `packages/updater/` 下 `go test ./...` 通过，并确认 `apps/desktop/` 仍可编译。
 - 更新服务改动：在 `apps/update-server/` 下 `pnpm typecheck` 与 `pnpm test` 通过。
 
