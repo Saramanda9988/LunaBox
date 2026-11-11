@@ -82,12 +82,12 @@ func Fragment(dst vec4, pos vec2) vec4 {
 
 var warpStart = time.Now()
 
-// warpColors 是四种颜色，对应 Warp 默认的 #121212、#9470ff、#121212、#8838ff：深色主题是近黑与亮、暗两种主题紫，
-// 浅色主题是近白与两种淡紫。
+// warpColors 是四种颜色，对应 Warp 默认的 #121212、#9470ff、#121212、#8838ff，换成应用主色调的蓝灰（neutral，
+// 主按钮 bg-neutral-600 的那一套）：深色主题是近黑、两种石板蓝与深海军蓝，浅色主题是近白、浅灰蓝与两种淡石板蓝。
 func warpColors(t *theme.Theme) []float32 {
-	cs := []ui.Color{theme.Brand900, theme.Primary500, theme.Brand900, theme.Primary700}
+	cs := []ui.Color{theme.Brand900, theme.Neutral500, theme.Neutral900, theme.Neutral700}
 	if !t.Dark {
-		cs = []ui.Color{theme.Brand50, theme.Primary300, theme.Brand50, theme.Primary400}
+		cs = []ui.Color{theme.Brand50, theme.Neutral400, theme.Neutral100, theme.Neutral300}
 	}
 	out := make([]float32, 0, 16)
 	for _, c := range cs {

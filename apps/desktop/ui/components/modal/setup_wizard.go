@@ -122,14 +122,14 @@ func (m *SetupWizard) stepContent(c *ui.Context, t *theme.Theme, p SetupWizardPr
 		})
 	case setupStepTimezone:
 		setupStepHeader(c, t, "earth", locales.SettingsBasicTimezoneLabel(), locales.NativeSetupWizardTimezoneDesc())
-		// 检测到的时区是 font-semibold text-primary-600 dark:text-primary-400（同原版 TimezoneSelectModal）
+		// 检测到的时区是 font-semibold，原版 TimezoneSelectModal 是 primary 色，这里同主色调 text-neutral-600 dark:text-neutral-400
 		ui.Row(c.Key("detected")).Wrap().Gap(4).Margin(0, 0, 8, 0).Children(func() {
 			components.Text(c, locales.TimezoneModalDetectedLabel(), theme.TextSM, theme.WeightMedium, t.Pick(theme.Brand700, theme.Brand300))
 			detected := p.Detected
 			if detected == "" {
 				detected = locales.TimezoneModalUnknown()
 			}
-			components.Text(c, detected, theme.TextSM, theme.WeightSemibold, t.Pick(theme.Primary600, theme.Primary400))
+			components.Text(c, detected, theme.TextSM, theme.WeightSemibold, t.Pick(theme.Neutral600, theme.Neutral400))
 		})
 		better.Select(c, t, "timezone", better.SelectProps{
 			Value:       m.timezone,
@@ -239,14 +239,14 @@ func setupPatch(e *env.Env, fn func(cfg *appconf.AppConfig)) {
 	}
 }
 
-// setupProgress 是步骤条：每步一段 h-1 rounded-full，已到达的是 primary-600，下面是“第 n 步，共 4 步”。
+// setupProgress 是步骤条：每步一段 h-1 rounded-full，已到达的是 neutral-600 dark:neutral-400，下面是“第 n 步，共 4 步”。
 func setupProgress(c *ui.Context, t *theme.Theme, step int) {
 	ui.Column(c.Key("progress")).FillWidth().Gap(8).Children(func() {
 		ui.Row(c.Key("bars")).FillWidth().Gap(6).Children(func() {
 			for i := range setupStepCount {
 				color := t.Pick(theme.Brand200, theme.Brand700)
 				if i <= step {
-					color = t.Pick(theme.Primary600, theme.Primary400)
+					color = t.Pick(theme.Neutral600, theme.Neutral400)
 				}
 				bar := ui.Box(c.Key("bar-" + strconv.Itoa(i))).Height(4).Grow(1).Basis(0).Radius(999)
 				bar.Background(bar.AnimateColor("bg", color, theme.Tween(200*time.Millisecond)))
@@ -261,7 +261,7 @@ func setupProgress(c *ui.Context, t *theme.Theme, step int) {
 // text-[23px] font-semibold 的标题与 text-[13px] 的说明；下面 mb-6 是这一步的输入。
 func setupStepHeader(c *ui.Context, t *theme.Theme, icon, title, desc string) {
 	ui.Row(c.Key("header")).FillWidth().AlignItems(ui.Start).Gap(14).Margin(0, 0, 24, 0).Children(func() {
-		components.Icon(c, icon, 28, t.Pick(theme.Primary500, theme.Primary400)).Margin(2, 0, 0, 0).Shrink(0)
+		components.Icon(c, icon, 28, t.Pick(theme.Neutral500, theme.Neutral400)).Margin(2, 0, 0, 0).Shrink(0)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Children(func() {
 			components.Text(c, title, setupTextTitle, theme.WeightSemibold, t.Pick(theme.Brand900, theme.White))
 			components.TextMargin(c, desc, setupTextDetail, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400), 4, 0, 0, 0)
@@ -269,17 +269,18 @@ func setupStepHeader(c *ui.Context, t *theme.Theme, icon, title, desc string) {
 	})
 }
 
-// setupPrimaryButton 同原版 TimezoneSelectModal 的确认按钮：px-6 py-2.5 text-sm font-medium text-white bg-primary-600
-// hover:bg-primary-700 rounded-lg shadow-sm shadow-primary-200 dark:shadow-none。busy 时禁用并显示旋转图标。
+// setupPrimaryButton 是原版 TimezoneSelectModal 确认按钮的尺寸（px-6 py-2.5 text-sm font-medium rounded-lg），颜色同主按钮
+// （BetterButton primary）：bg-neutral-600 hover:bg-neutral-700 shadow-sm shadow-neutral-200 dark:shadow-none。
+// busy 时禁用并显示旋转图标。
 func setupPrimaryButton(c *ui.Context, t *theme.Theme, key, label string, busy bool) ui.Element {
 	btn := ui.ButtonBase(c.Key(key)).Padding(10, 24).Radius(8).Gap(8).AlignItems(ui.Center).FocusRing(false)
-	bg := theme.Primary600
+	bg := theme.Neutral600
 	if btn.Hovered() && !busy {
-		bg = theme.Primary700
+		bg = theme.Neutral700
 	}
 	btn.Background(bg).Transition(theme.ColorsTransition(150 * time.Millisecond))
 	if !t.Dark {
-		btn.Shadow(0, 1, 2, 0, theme.Primary200)
+		btn.Shadow(0, 1, 2, 0, theme.Neutral200)
 	}
 	if busy {
 		components.Disable(btn, 0.6)
