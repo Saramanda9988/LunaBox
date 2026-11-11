@@ -254,7 +254,7 @@ type FilterBarProps struct {
 	SelectedCount    int
 	OnSelectAll      func()
 	OnClearSelection func()
-	BatchActions     func() // 批量模式第二行右侧的按钮
+	BatchActions     func() // 批量操作浮动岛（BatchIsland）中间的按钮
 	ActionButton     func() // 右侧的主按钮（actionButton）
 }
 
@@ -265,8 +265,8 @@ func (p FilterBarProps) changed() {
 }
 
 // FilterBar 对应 components/bar/FilterBar.tsx（flex flex-wrap items-center justify-between gap-4 my-4）：
-// 搜索框，右侧随机游戏、批量模式、筛选按钮与 actionButton；批量模式下第二行是批量操作。
-// 筛选抽屉由 FilterDrawer 在页面最后构建。
+// 搜索框，右侧随机游戏、批量模式、筛选按钮与 actionButton。
+// 筛选抽屉由 FilterDrawer、批量操作由 BatchIsland 在页面最后构建。
 func FilterBar(c *ui.Context, t *theme.Theme, p FilterBarProps) {
 	f := p.Filters
 	f.persist()
@@ -286,9 +286,6 @@ func FilterBar(c *ui.Context, t *theme.Theme, p FilterBarProps) {
 				}
 			})
 		})
-		if f.Batch {
-			batchBar(c, t, p)
-		}
 	})
 }
 
@@ -368,49 +365,4 @@ func filterButton(c *ui.Context, t *theme.Theme, f *Filters) {
 		})
 		components.Text(c, locales.FilterBarFilters(), theme.TextSM, theme.WeightNormal, color).NoWrap()
 	})
-}
-
-// batchBar 是批量模式下的第二行：全选 / 清空 / 已选数量 / 帮助，右侧是页面的批量操作（batchActions）。
-func batchBar(c *ui.Context, t *theme.Theme, p FilterBarProps) {
-	bar := ui.Row(c.Key("batch-bar")).Wrap().AlignItems(ui.Center).Gap(8).Padding(8, 12).Radius(8).
-		Border(t.HL, t.Pick(theme.Brand200, theme.Brand700.Alpha(0.5)))
-	if t.Dark {
-		bar.LinearGradient(ui.LinearGradient{From: theme.Brand800.Alpha(0.5), To: theme.Brand900.Alpha(0.3), Angle: 90})
-	} else {
-		bar.LinearGradient(ui.LinearGradient{From: theme.Brand50, To: theme.Brand50.Alpha(0.5), Angle: 90})
-	}
-	bar.Children(func() {
-		ui.Row(c).Gap(6).Children(func() {
-			if p.OnSelectAll != nil {
-				batchPill(c, t, "select-all", locales.CommonSelectAll(), true).OnClick(p.OnSelectAll)
-			}
-			if p.OnClearSelection != nil {
-				batchPill(c, t, "clear-selection", locales.CommonClearStore(), true).OnClick(p.OnClearSelection)
-			}
-		})
-		batchPill(c, t, "selected-count", "", false).Children(func() {
-			components.Text(c, locales.CommonSelected(), theme.TextXS, theme.WeightMedium, t.Text)
-			components.TextMargin(c, fmt.Sprint(p.SelectedCount), theme.TextXS, theme.WeightSemibold, t.Text, 0, 0, 0, 4)
-		})
-		help := ui.ButtonBase(c.Key("batch-help")).Size(28, 28).Radius(999).Center().FocusRing(false).Label(locales.CommonBatchSelectionHelp())
-		help.Children(func() { components.Icon(c, "help-circle-outline", 18, t.TextMuted) })
-		better.Tooltip(c, t, help, locales.CommonBatchSelectionHelp())
-
-		if p.BatchActions != nil {
-			ui.Row(c).Gap(6).Margin(0, 0, 0, ui.Auto).Children(p.BatchActions)
-		}
-	})
-}
-
-func batchPill(c *ui.Context, t *theme.Theme, key, label string, clickable bool) ui.Element {
-	pill := ui.ButtonBase(c.Key(key)).Padding(4, 10).Radius(6).
-		Border(t.HL, t.Pick(theme.Brand200, theme.Brand600)).Background(t.Pick(theme.White, theme.Brand700.Alpha(0.6))).
-		AlignItems(ui.Center).FocusRing(false)
-	if clickable && pill.Hovered() {
-		pill.Background(t.Pick(theme.Brand50, theme.Brand700))
-	}
-	if label != "" {
-		pill.Children(func() { components.Text(c, label, theme.TextXS, theme.WeightMedium, t.NavText) })
-	}
-	return pill
 }

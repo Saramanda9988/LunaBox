@@ -1608,6 +1608,7 @@
   "native_notFoundPage": "ページが見つかりません: {path}",
   "native_featureNotMigrated": "「{feature}」はまだ移行されていません",
   "native_batchSelect": "一括選択",
+  "native_exitBatchSelect": "一括選択を終了",
   "native_removeFromCategory": "コレクションから削除",
   "native_clearTags": "タグをクリア",
   "native_gameDetail": "ゲーム詳細",

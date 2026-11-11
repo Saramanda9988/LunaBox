@@ -1608,6 +1608,7 @@
   "native_notFoundPage": "未找到頁面 {path}",
   "native_featureNotMigrated": "「{feature}」尚未遷移",
   "native_batchSelect": "批次選擇",
+  "native_exitBatchSelect": "退出批次選擇",
   "native_removeFromCategory": "從收藏夾中移除",
   "native_clearTags": "清除標籤",
   "native_gameDetail": "遊戲詳情",

@@ -3216,6 +3216,8 @@
   "@native_featureNotMigrated": {"description": "extra:native.featureNotMigrated", "placeholders": {"feature": {"type": "String"}}},
   "native_batchSelect": "批量选择",
   "@native_batchSelect": {"description": "extra:native.batchSelect"},
+  "native_exitBatchSelect": "退出批量选择",
+  "@native_exitBatchSelect": {"description": "extra:native.exitBatchSelect"},
   "native_removeFromCategory": "从收藏夹中移除",
   "@native_removeFromCategory": {"description": "extra:native.removeFromCategory"},
   "native_clearTags": "清除标签",

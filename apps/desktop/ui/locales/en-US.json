@@ -1608,6 +1608,7 @@
   "native_notFoundPage": "Page not found: {path}",
   "native_featureNotMigrated": "\"{feature}\" has not been migrated yet",
   "native_batchSelect": "Batch select",
+  "native_exitBatchSelect": "Exit batch select",
   "native_removeFromCategory": "Remove from collection",
   "native_clearTags": "Clear tags",
   "native_gameDetail": "Game Details",

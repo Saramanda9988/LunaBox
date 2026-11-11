@@ -24009,6 +24009,20 @@ func (msgs Messages) NativeBatchSelect() string {
 	return Catalog.Format(msgs.locale, "native_batchSelect", nil)
 }
 
+// NativeExitBatchSelect says "退出批量选择"
+// in the language the app shows.
+//
+// extra:native.exitBatchSelect
+func NativeExitBatchSelect() string { return In(i18n.Locale()).NativeExitBatchSelect() }
+
+// NativeExitBatchSelect says "退出批量选择"
+// in the language of msgs.
+//
+// extra:native.exitBatchSelect
+func (msgs Messages) NativeExitBatchSelect() string {
+	return Catalog.Format(msgs.locale, "native_exitBatchSelect", nil)
+}
+
 // NativeRemoveFromCategory says "从收藏夹中移除"
 // in the language the app shows.
 //

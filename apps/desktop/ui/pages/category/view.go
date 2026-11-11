@@ -63,7 +63,7 @@ func (p *Page) View(c *ui.Context) {
 	contentW := p.env.MainWidth - 2*pagePadding - gutter
 	p.geometry = grid.NewGeometry(contentW, p.landscape)
 	components.ScrollArea(c, t, "category-scroll", &p.scroll, func(w ui.Element) { w.Fill() }, func(sc ui.Element) {
-		sc.Padding(pagePadding, pagePadding+gutter, pagePadding, pagePadding)
+		sc.Padding(pagePadding, pagePadding+gutter, pagePadding+bar.BatchIslandInset(p.filters.Batch), pagePadding)
 		sc.Children(func() {
 			ui.Column(c).Width(contentW).Children(func() {
 				p.backButton(c, t)
@@ -80,6 +80,7 @@ func (p *Page) View(c *ui.Context) {
 	components.ScrollToTopButton(c, t, locales.CommonBackToTop(), p.scroll.State.Y > scrollTopMin, func() {
 		p.scroll.State.ScrollTo(0, 0, ui.Animation{Duration: 400 * time.Millisecond, Ease: theme.EaseCSS})
 	})
+	bar.BatchIsland(c, t, fp)
 	bar.FilterDrawer(c, t, fp)
 	p.addGamesView(c, t)
 	components.CategoryModal(c, t, "rename-category", components.CategoryModalProps{
@@ -223,26 +224,10 @@ func (p *Page) actionsMenu(c *ui.Context, t *theme.Theme) {
 	})
 }
 
-// batchRemoveButton 是 batchActions：glass-panel flex gap-2 px-3 py-2 text-sm rounded-lg border bg-white text-error-600
-// 的“移除选中”（dark:bg-brand-800 dark:text-error-400），没有选中时 opacity-50。
+// batchRemoveButton 是 batchActions：批量操作浮动岛里的“移除选中”（原版是 glass-panel 的红色按钮），没有选中时禁用。
 func (p *Page) batchRemoveButton(c *ui.Context, t *theme.Theme) {
-	label := locales.CategoryBatchRemoveBtn()
-	bg, border := t.GlassPanel(t.PanelBg, t.PanelBorder)
-	btn := ui.ButtonBase(c.Key("batch-remove")).Padding(8, 12).Radius(8).Gap(8).Border(t.HL, border).Background(bg).
-		AlignItems(ui.Center).FocusRing(false).Label(label)
-	color := t.Pick(theme.Error600, theme.Error400)
-	if len(p.selected) == 0 {
-		components.Disable(btn, 0.5)
-	} else {
-		if btn.Hovered() && !t.Glass { // glass-panel 的 data-glass:bg 比 hover:bg 更具体
-			btn.Background(t.MenuHover)
-		}
-		btn.OnClick(p.batchRemove)
-	}
-	btn.Children(func() {
-		components.Icon(c, "delete", 18, color)
-		components.Text(c, label, theme.TextSM, theme.WeightNormal, color).NoWrap()
-	})
+	bar.BatchIslandButton(c, t, "batch-remove", bar.BatchButton{Icon: "delete", Label: locales.CategoryBatchRemoveBtn(),
+		ShowText: true, Danger: true, Disabled: len(p.selected) == 0, OnClick: p.batchRemove})
 }
 
 // addGameButton 是 actionButton：glass-btn-neutral rounded-lg bg-neutral-600 px-4 py-2 text-sm font-medium text-white。

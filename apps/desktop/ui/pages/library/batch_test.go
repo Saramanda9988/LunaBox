@@ -343,3 +343,37 @@ func TestMissingPathsExitWithBatch(t *testing.T) {
 		t.Fatalf("missing %v, batch %v, total %d", l.missing.ids, l.filters.Batch, l.pages.Total)
 	}
 }
+
+// 批量操作浮动岛：Ctrl+A 全选，Esc 与“退出批量选择”按钮都退出批量模式并清空选择。
+func TestBatchIslandShortcutsAndExit(t *testing.T) {
+	l, _, tt := newBatchPage(t, 3)
+	tt.Key(ui.Cmd, ui.KeyA)
+	tt.Frame()
+	if len(l.selected) != 3 {
+		t.Fatalf("Ctrl+A selected %v", l.selected)
+	}
+	tt.Key(0, ui.KeyEscape)
+	tt.Frame()
+	if l.filters.Batch || len(l.selected) != 0 {
+		t.Fatalf("after Esc: batch %v, selected %v", l.filters.Batch, l.selected)
+	}
+
+	if err := tt.Click(locales.NativeBatchSelect()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	l.selected["0"] = true
+	if err := tt.Click(locales.NativeExitBatchSelect()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if l.filters.Batch || len(l.selected) != 0 {
+		t.Fatalf("after exit button: batch %v, selected %v", l.filters.Batch, l.selected)
+	}
+	// 不在批量模式时 Esc 与 Ctrl+A 不做任何事。
+	tt.Key(ui.Cmd, ui.KeyA)
+	tt.Frame()
+	if len(l.selected) != 0 {
+		t.Fatalf("Ctrl+A outside batch selected %v", l.selected)
+	}
+}

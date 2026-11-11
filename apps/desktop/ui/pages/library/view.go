@@ -38,10 +38,11 @@ func (l *Page) View(c *ui.Context) {
 	l.grid = grid.NewGeometry(contentW, l.landscape)
 
 	components.ScrollArea(c, t, "library-scroll", &l.scroll, func(w ui.Element) { w.Fill() }, func(sc ui.Element) {
-		// scrollbar-gutter: stable
-		sc.Padding(pagePadding, pagePadding+gutter, pagePadding, pagePadding)
+		// scrollbar-gutter: stable；批量模式下底部给浮动岛留出空白
+		inset := bar.BatchIslandInset(l.filters.Batch)
+		sc.Padding(pagePadding, pagePadding+gutter, pagePadding+inset, pagePadding)
 		sc.Children(func() {
-			ui.Column(c).Width(contentW).Margin(0, ui.Auto).Gap(24).MinHeight(winH - env.TopbarHeight - 2*pagePadding).Children(func() {
+			ui.Column(c).Width(contentW).Margin(0, ui.Auto).Gap(24).MinHeight(winH - env.TopbarHeight - 2*pagePadding - inset).Children(func() {
 				ui.Column(c).Children(func() {
 					components.Text(c, locales.LibraryTitle(), theme.Text4XL, theme.WeightBold, t.TextStrong)
 					components.TextMargin(c, l.filters.CountText(l.pages.Total), theme.TextBase, theme.WeightNormal, t.TextMuted, 8, 0, 0, 0)
@@ -56,6 +57,7 @@ func (l *Page) View(c *ui.Context) {
 	components.ScrollToTopButton(c, t, locales.CommonBackToTop(), l.scroll.State.Y > scrollTopMin, func() {
 		l.scroll.State.ScrollTo(0, 0, ui.Animation{Duration: 400 * time.Millisecond, Ease: theme.EaseCSS})
 	})
+	bar.BatchIsland(c, t, fp)
 	bar.FilterDrawer(c, t, fp)
 	l.batchModals(c, t)
 	// invalidateAndRefreshLibrary

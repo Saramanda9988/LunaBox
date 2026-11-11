@@ -49,7 +49,7 @@ func (p *Page) View(c *ui.Context) {
 			w.Opacity(0.5).PassThrough()
 		}
 	}, func(sc ui.Element) {
-		sc.Padding(pagePadding, pagePadding+gutter, pagePadding, pagePadding)
+		sc.Padding(pagePadding, pagePadding+gutter, pagePadding+bar.BatchIslandInset(p.filters.Batch), pagePadding)
 		sc.Children(func() {
 			ui.Column(c).Width(contentW).Children(func() {
 				components.Text(c, locales.CategoriesTitle(), theme.Text4XL, theme.WeightBold, t.TextStrong)
@@ -58,6 +58,7 @@ func (p *Page) View(c *ui.Context) {
 			})
 		})
 	})
+	bar.BatchIsland(c, t, fp)
 	bar.FilterDrawer(c, t, fp)
 	components.CategoryModal(c, t, "add-category", components.CategoryModalProps{
 		Open:      p.addOpen,
@@ -161,22 +162,10 @@ func (p *Page) grid(c *ui.Context, t *theme.Theme, list []vo.CategoryVO, width f
 	})
 }
 
-// deleteButton 是 batchActions：glass-panel px-3 py-2 rounded-xl border bg-white text-error-600 的删除按钮
-// （dark:bg-brand-800 dark:text-error-400），没有选中时 opacity-50。
+// deleteButton 是 batchActions：批量操作浮动岛里的删除按钮（原版是 glass-panel 的红色图标按钮），没有选中时禁用。
 func (p *Page) deleteButton(c *ui.Context, t *theme.Theme) {
-	label := locales.CategoriesToastBatchDeleteTitle()
-	bg, border := t.GlassPanel(t.PanelBg, t.PanelBorder)
-	btn := ui.ButtonBase(c.Key("batch-delete")).Padding(8, 12).Radius(12).Border(t.HL, border).Background(bg).
-		AlignItems(ui.Center).FocusRing(false).Label(label)
-	if p.selectedCount() == 0 {
-		components.Disable(btn, 0.5)
-	} else {
-		if btn.Hovered() && !t.Glass { // glass-panel 的 data-glass:bg 比 hover:bg 更具体
-			btn.Background(t.MenuHover)
-		}
-		btn.OnClick(func() { p.confirmOpen = true })
-	}
-	btn.Children(func() { components.Icon(c, "delete", 18, t.Pick(theme.Error600, theme.Error400)) })
+	bar.BatchIslandButton(c, t, "batch-delete", bar.BatchButton{Icon: "delete", Label: locales.CategoriesToastBatchDeleteTitle(),
+		ShowText: true, Danger: true, Disabled: p.selectedCount() == 0, OnClick: func() { p.confirmOpen = true }})
 }
 
 // newButton 是 actionButton：glass-btn-primary rounded-xl border border-neutral-500 bg-neutral-600 px-4 py-2
