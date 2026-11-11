@@ -385,8 +385,8 @@ func (h *harness) clickUseStrategy(t *testing.T) {
 	h.frames(2)
 }
 
-// 更新元数据时的组合策略由字段弹窗里的开关单独控制（默认关闭，保存在设置里，与导入的开关无关）。关闭时每个字段都
-// 标“将从 默认来源 更新”；打开后按 字段指定的来源 → 必选数据源 → 默认来源 标出，默认来源旁边标出“组合策略”。
+// 更新元数据时的组合策略由字段弹窗里的开关单独控制（默认关闭，保存在设置里，与导入的开关无关）。关闭时字段不标
+// 来源；打开后按 字段指定的来源 → 必选数据源 → 默认来源 标出，默认来源旁边标出“组合策略”。
 // 弹窗底部的“取消”换成了打开组合策略弹窗的按钮。
 func TestFieldSelectModalShowsStrategy(t *testing.T) {
 	h := newHarness(t, testGame())                                       // 默认来源 Bangumi，另有 VNDB 的 ID
@@ -396,9 +396,9 @@ func TestFieldSelectModalShowsStrategy(t *testing.T) {
 	h.expectNot(t, locales.NativeMetadataStrategyButton())
 
 	h.click(t, "从远端更新信息")
-	h.expectTexts(t, locales.NativeMetadataRefreshUseStrategy(), locales.NativeMetadataStrategyFieldFrom("Bangumi"),
-		locales.NativeMetadataStrategySettingsLabel())
-	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("VNDB"), locales.CommonCancel())
+	h.expectTexts(t, locales.NativeMetadataRefreshUseStrategy(), locales.NativeMetadataStrategySettingsLabel())
+	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("Bangumi"), locales.NativeMetadataStrategyFieldFrom("VNDB"),
+		locales.CommonCancel())
 
 	h.clickUseStrategy(t)
 	if !h.env.Config().MetadataRefreshUseStrategy {
@@ -427,12 +427,12 @@ func TestFieldSelectModalShowsStrategy(t *testing.T) {
 		t.Fatalf("fields open %v, strategy open %v", h.state.fieldsOpen, h.state.strategy.IsOpen())
 	}
 
-	// 再关掉开关：都从默认来源更新。
+	// 再关掉开关：都从默认来源更新，不标来源。
 	h.clickUseStrategy(t)
 	if h.env.Config().MetadataRefreshUseStrategy {
 		t.Fatal("switch should be off")
 	}
-	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("VNDB"))
+	h.expectNot(t, locales.NativeMetadataStrategyFieldFrom("VNDB"), locales.NativeMetadataStrategyFieldFrom("Bangumi"))
 }
 
 // 字段指定的来源与必选数据源不可用（没有启用、没有元数据 ID 也查不到对照）时回退到默认来源：琥珀色的“将从 默认来源 更新”，

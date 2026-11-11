@@ -94,8 +94,11 @@ func TestRefreshNotes(t *testing.T) {
 	if notes := BatchRefreshNotes(cfg); notes != nil || RefreshUsesStrategy(cfg, enums.Bangumi) {
 		t.Fatalf("switch off: notes %v", notes)
 	}
-	if got := GameRefreshNotes(cfg, enums.Bangumi, nil)[enums.MetadataUpdateFieldName]; got != (better.FieldNote{Text: from("Bangumi")}) {
+	if got := GameRefreshNotes(cfg, enums.Bangumi, nil)[enums.MetadataUpdateFieldName]; got != (better.FieldNote{}) {
 		t.Fatalf("switch off: name note %+v", got)
+	}
+	if got := GameRefreshNotes(cfg, enums.Bangumi, map[enums.SourceType]string{})[enums.MetadataUpdateFieldName]; !got.Warn || got.Text != locales.NativeMetadataStrategyNoMetadataID() {
+		t.Fatalf("switch off, no ID: name note %+v", got)
 	}
 
 	cfg.MetadataRefreshUseStrategy = true

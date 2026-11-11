@@ -140,7 +140,8 @@ func chainNote(chain []enums.SourceType, skip func(enums.SourceType) string) (no
 }
 
 // GameRefreshNotes 是更新单个游戏时每个字段将从哪个来源更新（给 FieldNotes）。base 是游戏的默认来源；
-// 打开了“更新时使用高级组合策略”时按 字段指定的来源 → 必选数据源 → base 找第一个可用的来源，否则都是 base。
+// 打开了“更新时使用高级组合策略”时按 字段指定的来源 → 必选数据源 → base 找第一个可用的来源；否则都是 base，
+// 不标来源，只在 base 不可用时标“暂无元数据 ID”。
 // ids 是游戏在各来源可用的元数据 ID（GameService.ResolveMetadataSourceIDs，含 ID 对照表查到的），没有 ID 或者
 // 没有启用的来源跳过；ids 为 nil 表示还没查到，先不按 ID 判断。字段为空时的回退要拿到数据才知道，这里标不出来。
 // 游戏没有默认来源（本地游戏）或者都不可用时标“暂无元数据 ID”。
@@ -171,6 +172,8 @@ func GameRefreshNotes(cfg *appconf.AppConfig, base enums.SourceType, ids map[enu
 		note, ok := chainNote(gamehelper.RefreshChain(strategy, f, base), skip)
 		if !ok {
 			note.Text, note.Warn = locales.NativeMetadataStrategyNoMetadataID(), true
+		} else if !on {
+			continue // 没有打开组合策略时都从默认来源更新，不标来源。
 		}
 		notes[f] = note
 	}
