@@ -342,8 +342,11 @@ func applyTheme(c *ui.Context, t *theme.Theme) {
 	mt.Text = t.Text
 	mt.TextMuted = t.Placeholder
 	mt.Background = t.AppBg
-	mt.Scrollbar = ui.Transparent // 滚动条由 components.ScrollArea 自己画，与 ::-webkit-scrollbar 一致
-	mt.ScrollbarWidth = 0
+	// 所有滚动容器都用 MyGo 原生滚动条，样式还原 ::-webkit-scrollbar。components.ScrollArea 让它常显；
+	// 直接用 ui.Scroll 的地方悬停时浮现。
+	mt.ScrollbarStyle = t.ScrollbarStyle()
+	mt.Scrollbar = mt.ScrollbarStyle.Thumb
+	mt.ScrollbarWidth = mt.ScrollbarStyle.ThumbWidth
 	mt.Inverse, mt.InverseText = t.TooltipBg, t.TooltipText
 	mt.FontSize = theme.TextBase.Size
 	if theme.UIFont != "" {

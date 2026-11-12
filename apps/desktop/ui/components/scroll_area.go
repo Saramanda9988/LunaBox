@@ -8,11 +8,9 @@ import (
 	"lunabox/desktop/ui/theme"
 )
 
-// ScrollBar 是 ScrollArea 的状态：滚动位置与滑块拖动。放在页面状态里，页面可以读写滚动位置。
+// ScrollBar 是 ScrollArea 的状态：滚动位置。放在页面状态里，页面可以读写滚动位置。
 type ScrollBar struct {
 	State  ui.ScrollState
-	thumb  ui.Point // 拖动滑块时的偏移
-	viewH  float32
 	hidden bool // 上一帧是区域刚出现、没有绘制内容的一帧
 }
 
@@ -22,69 +20,32 @@ const overflowEpsilon = 0.01
 // Overflowing 报告内容是否超出视口（上一帧）。
 func (sb *ScrollBar) Overflowing() bool { return sb.State.MaxY > overflowEpsilon }
 
-// ScrollArea 是还原 style.css 里 ::-webkit-scrollbar 的纵向滚动区域：9px 槽、3px 透明左边框、常显的圆角滑块。
-// MyGo 自带的是悬停时浮现的覆盖式滚动条，所以主题里把它关掉（Theme.ScrollbarWidth = 0），在这里自己画。
+// ScrollArea 是还原 style.css 里 ::-webkit-scrollbar 的纵向滚动区域：常显的圆角滑块，9px 槽的右侧 6px。
+// 滑块用 MyGo 原生滚动条画（样式见 theme.Theme.ScrollbarStyle，主题里对所有滚动容器生效），这里让它常显，
+// 与原版一致；原生滚动条常显时一直是悬停的样子，所以把悬停色设回静止色，拖动时才变深。
 //
-// wrap 设置外框尺寸，content 设置滚动容器的内边距并构建内容；需要 scrollbar-gutter: stable 时，
-// 由调用方在右内边距里加上 Theme.Gutter()。
+// 原生滚动条浮在内容上面、不占宽度。wrap 设置外框尺寸，content 设置滚动容器的内边距并构建内容；
+// 滚动条要占宽度（超出时，或 scrollbar-gutter: stable）时，由调用方在右内边距里加上 Theme.Gutter()。
 //
-// 是否超出（Overflowing）与滑块都要等布局之后才知道，MyGo 一帧只布局一次。所以区域刚出现的那一帧（进入页面、
+// 是否超出（Overflowing）要等布局之后才知道，MyGo 一帧只布局一次。所以区域刚出现的那一帧（进入页面、
 // 骨架屏换成内容、打开弹窗）只布局、不绘制内容，紧接着再构建一帧：内容、滚动条与它占的宽度同时出现，
 // 不会先按没有滚动条排一次版、下一帧再变窄。
 func ScrollArea(c *ui.Context, t *theme.Theme, key string, sb *ScrollBar, wrap func(ui.Element), content func(scroll ui.Element)) {
 	w := ui.Box(c.Key(key)).Clip()
 	wrap(w)
 	b := w.Bounds()
-	// 上一帧没有这个区域（Bounds 为空）：sb 里的超出与视口高度还不是它的。连续两帧为空（真的是零大小）时照常构建，
+	// 上一帧没有这个区域（Bounds 为空）：sb 里的超出还不是它的。连续两帧为空（真的是零大小）时照常构建，
 	// 免得每帧都隐藏、重新构建。
 	fresh := b == ui.Rect{} && !sb.hidden
 	sb.hidden = fresh
-	if b.H > 0 {
-		sb.viewH = b.H
-	}
 	w.Children(func() {
-		sc := ui.Scroll(c).Fill().TrackScroll(&sb.State)
+		sc := ui.Scroll(c).Fill().TrackScroll(&sb.State).KeepScrollbars(true).
+			ScrollbarStyle(ui.ScrollbarStyle{Hover: t.ScrollThumb})
 		content(sc)
 		if fresh {
 			sc.Invisible()
 			c.Invalidate()
-			return
 		}
-		scrollThumb(c, t, sb)
-	})
-}
-
-func scrollThumb(c *ui.Context, t *theme.Theme, sb *ScrollBar) {
-	st := &sb.State
-	if st.MaxY <= overflowEpsilon || sb.viewH <= 0 {
-		return
-	}
-	viewH := sb.viewH
-	contentH := viewH + st.MaxY
-	thumbH := max(viewH*viewH/contentH, 20)
-	travel := viewH - thumbH
-	border := theme.DevicePx(3, t.Scale)
-
-	thumb := ui.Box(c.Key("scroll-thumb")).Absolute().Top(0).Right(0).Width(t.Gutter()).Height(thumbH).
-		Padding(0, 0, 0, border)
-	if !thumb.Dragging() {
-		sb.thumb = ui.Point{Y: st.Y / st.MaxY * travel}
-	}
-	thumb.Draggable(&sb.thumb, ui.DraggableOptions{
-		Axis:      ui.Vertical,
-		Bounds:    &ui.Rect{H: travel},
-		Rigid:     true,
-		Animation: ui.Animation{Duration: time.Nanosecond, Ease: ui.Linear},
-	})
-	if thumb.Dragging() && travel > 0 {
-		st.Y = sb.thumb.Y / travel * st.MaxY
-	}
-	color := t.ScrollThumb
-	if thumb.Hovered() || thumb.Dragging() {
-		color = t.ScrollThumbHover
-	}
-	thumb.Children(func() {
-		ui.Box(c).Fill().Background(color).Radius(3, 6, 6, 3)
 	})
 }
 

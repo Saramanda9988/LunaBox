@@ -28,6 +28,17 @@ func New(dark bool, scale float64) *Theme {
 // Gutter 是 style.css 里 9px 滚动条槽吸附到设备像素后的宽度。
 func (t *Theme) Gutter() float32 { return DevicePx(9, t.Scale) }
 
+// ScrollbarStyle 是 style.css 里 ::-webkit-scrollbar 用 MyGo 原生滚动条画出来的样子：9px 槽的左边 3px 是透明边框
+// （background-clip: content-box），滑块是右侧 6px、圆角、贴着两端。轨道只取滑块那 6px，滑块贴在容器右边缘，
+// 与原版的位置一致，也不会出现 MyGo 拖动时把滑块加宽的效果（滑块与轨道同宽时不加宽）。
+func (t *Theme) ScrollbarStyle() ui.ScrollbarStyle {
+	w := t.Gutter() - DevicePx(3, t.Scale)
+	return ui.ScrollbarStyle{
+		TrackWidth: w, ThumbWidth: w, Flush: true, MinLength: 20,
+		Thumb: t.ScrollThumb, Hover: t.ScrollThumbHover, Active: t.ScrollThumbHover,
+	}
+}
+
 // Hairline 返回一个物理像素的 DIP 宽度：Chromium 会把 1px 边框吸附到设备像素。
 func Hairline(scale float64) float32 {
 	if scale <= 0 {

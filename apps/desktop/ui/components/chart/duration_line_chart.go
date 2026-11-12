@@ -141,7 +141,8 @@ func DurationLineChart(c *ui.Context, t *theme.Theme, p DurationLineProps) ui.El
 			return
 		}
 		h := p.Height - scrollbarSize
-		ui.ScrollHorizontal(c.Key("chart-scroll")).Height(h).TrackScroll(&s.scroll).Children(func() {
+		// 滚动条是下面单独一行的 hScrollbar，不要原生的覆盖在图表上。
+		ui.ScrollHorizontal(c.Key("chart-scroll")).Height(h).TrackScroll(&s.scroll).Scrollbars(false).Children(func() {
 			lineCanvas(c, t, p, s, minW, h).Width(minW).Shrink(0)
 		})
 		hScrollbar(c, t, s, contW)

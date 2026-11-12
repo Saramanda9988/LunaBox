@@ -10,7 +10,7 @@ import (
 
 // hScrollbar 是 HorizontalScrollChart 外层 overflow-x-auto 的滚动条：style.css 里 ::-webkit-scrollbar 的
 // 6px 高的槽，滑块左侧 3px 透明边框（background-clip: content-box）、圆角 6、悬停变深，可以拖动。
-// MyGo 自带的滚动条在应用里关掉了（Theme.ScrollbarWidth = 0、透明），所以与 components.ScrollArea 一样自己画。
+// 原版的槽在图表下面、占高度，MyGo 原生滚动条是覆盖式的，所以这里自己画，图表的滚动容器关掉原生滚动条。
 func hScrollbar(c *ui.Context, t *theme.Theme, s *State, viewW float32) {
 	track := ui.Box(c.Key("chart-scrollbar")).Height(scrollbarSize).Shrink(0)
 	st := &s.scroll
