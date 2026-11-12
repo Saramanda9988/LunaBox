@@ -55,7 +55,7 @@ func (p *Page) View(c *ui.Context) {
 	}
 	c.Root().Background(t.Pick(theme.White, theme.Brand800))
 	ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
-		components.BrandAside(c, t, 282, false) // aside：w-[282px]
+		components.BrandAside(c, t, 282) // aside：w-[282px]，背景同初始设置向导
 		// flex min-w-0 flex-1 flex-col bg-white px-9 pb-7 pt-8 dark:bg-brand-800
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Padding(32, 36, 28, 36).
 			Background(t.Pick(theme.White, theme.Brand800)).Children(func() {

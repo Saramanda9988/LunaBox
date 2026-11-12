@@ -84,7 +84,7 @@ func SetupWizardView(c *ui.Context, t *theme.Theme, m *SetupWizard, p SetupWizar
 			Modal().Background(t.Pick(theme.White, theme.Brand800))
 		host.Children(func() {
 			winW, _ := c.Size()
-			components.BrandAside(c, t, min(600, max(340, winW*0.36)), true) // 约窗口宽度的 36%
+			components.BrandAside(c, t, min(600, max(340, winW*0.36))) //约窗口宽度的 36%
 			// flex min-w-0 flex-1 items-center justify-center px-12 py-10：欢迎语、步骤条、当前这一步与按钮是一组（max-w-xl），
 			// 整组在右侧居中。每一步的内容高度不同，留出 min-h 让按钮不随步骤上下跳动。
 			ui.Column(c.Key("main")).Grow(1).Basis(0).MinWidth(0).Padding(40, 48).Center().Children(func() {
