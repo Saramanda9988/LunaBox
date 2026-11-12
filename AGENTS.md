@@ -19,7 +19,7 @@ MyGo 原生 UI 桌面应用（Windows、macOS、Linux 三端），界面与原�
 | `packages/backend/` | 后端（Go module `lunabox/backend`：service、migrations、utils 等；`bootstrap/` 是与界面框架无关的启动、生命周期与退出，`appruntime/` 是桌面端实现的运行时接口） |
 | `packages/updater/` | 独立更新器与更新资产生成器（Go module `lunabox/updater`，桌面应用通过 `replace` 引用） |
 | `sync/` | 版本源 `version.json`（发布流程与 Pages/Netlify 依赖此路径，不要移动） |
-| `docs/` | 专题文档；界面相关的在 `apps/desktop/docs/` |
+| `docs/` | 专题文档 |
 
 - MUST 各子项目独立管理依赖：Go 不使用 `go.work`，JS 不共用根级 pnpm workspace（根 `package.json` 只放脚本，不加依赖）。
 - 本文件与 `docs/` 中未标注前缀的路径（如 `ui/...`、`host/...`），均相对 `apps/desktop/`；桌面应用相关命令在 `apps/desktop/` 下执行。
@@ -80,7 +80,7 @@ MyGo 原生 UI 桌面应用（Windows、macOS、Linux 三端），界面与原�
 按任务复杂度逐层展开，不要一上来通读全部文档：
 
 1. 先看本文件，只确定任务属于界面、后端还是流程问题
-2. 涉及界面：先读 [apps/desktop/README.md](apps/desktop/README.md) 的开发约定，再读 [architecture.md](apps/desktop/docs/architecture.md)
+2. 涉及界面：先读 [frontend.md](docs/frontend.md) 的约束，运行与发布见 [apps/desktop/README.md](apps/desktop/README.md)
 3. 涉及后端 service / DB / migration：先读 [backend.md](docs/backend.md)
 4. 涉及文件、压缩包、图片、进程、代理、元数据抓取等辅助能力：再从 [backend-utils.md](docs/backend-utils.md) 进入对应 `packages/backend/utils/*` 子包
 5. 仍不确定文件落点：回到 [anchors.md](docs/anchors.md)
@@ -93,9 +93,7 @@ MyGo 原生 UI 桌面应用（Windows、macOS、Linux 三端），界面与原�
 
 | 任务类型 | 读取文档 |
 |----------|----------|
-| 新增/修改页面、组件、样式 | [architecture.md](apps/desktop/docs/architecture.md)、[apps/desktop/README.md](apps/desktop/README.md) |
-| 界面文字与多语言 | [i18n.md](apps/desktop/docs/i18n.md) |
-| 尚未迁移的功能、已知差异 | [gaps.md](apps/desktop/docs/gaps.md) |
+| 新增/修改页面、组件、样式、界面文字 | [frontend.md](docs/frontend.md) |
 | 新增/修改后端 service、DB、migration | [backend.md](docs/backend.md) |
 | 需要复用后端工具函数（`packages/backend/utils/*`） | [backend-utils.md](docs/backend-utils.md) |
 | 应用内更新与发布 | [updater.md](docs/updater.md) |

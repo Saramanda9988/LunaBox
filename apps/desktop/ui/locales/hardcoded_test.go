@@ -11,7 +11,7 @@ import (
 	"unicode"
 )
 
-// 界面代码里不应该有写死的中文、日文：文字都要来自 ui/locales（见 docs/i18n.md）。确实不该翻译的
+// 界面代码里不应该有写死的中文、日文：文字都要来自 ui/locales（见仓库根 docs/frontend.md）。确实不该翻译的
 // （游戏数据、给开发者看的文字）在同一行写注释 i18n:keep 并说明原因。测试数据（_test.go、envtest）不检查。
 func TestNoHardcodedText(t *testing.T) {
 	root := ".."
@@ -50,7 +50,7 @@ func TestNoHardcodedText(t *testing.T) {
 				continue
 			}
 			rel, _ := filepath.Rel(root, path)
-			t.Errorf("ui/%s:%d: 写死的文字 %s，改用 ui/locales 的函数（docs/i18n.md）", filepath.ToSlash(rel), p.Line, lit)
+			t.Errorf("ui/%s:%d: 写死的文字 %s，改用 ui/locales 的函数（docs/frontend.md）", filepath.ToSlash(rel), p.Line, lit)
 		}
 		return nil
 	})

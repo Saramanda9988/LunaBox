@@ -8,7 +8,7 @@ LunaBox 的桌面应用：用 [MyGo](https://github.com/egoist/mygo) v0.7.4 的�
 
 已迁移的页面：首页、游戏库、游戏详情页（全部标签页与弹窗）、收藏夹列表与收藏详情、下载管理、统计、设置页（全部分区与弹窗），以及添加与导入游戏、顶栏、侧边栏、灵动岛、自定义背景与玻璃模式，支持与原版相同的四种语言。
 
-主要还缺：筛选条件跨运行保存、首页的触控滑动、macOS 的签名与公证，以及 macOS、Linux 上的实测与对照。完整清单（包括还没对照过的界面和已知的视觉差异）见 [docs/gaps.md](docs/gaps.md)。
+主要还缺：筛选条件跨运行保存、首页的触控滑动、macOS 的签名与公证，以及 macOS、Linux 上的实测。
 
 ## 运行
 
@@ -20,7 +20,13 @@ go run ./tools/mygo dev                     # 构建并启动，代码、配置�
 go run ./tools/mygo dev -lang en-US         # 这次运行显示英语，不写进配置
 ```
 
-开发运行的数据在 `build/data`，第一次运行时从安装版的 `%APPDATA%/LunaBox` **复制**过来，不会改动安装版的数据。但编辑、备份恢复、上传到云端等操作都是真实的，详见 [docs/architecture.md](docs/architecture.md#数据目录)。
+开发运行（`go run`、`go build`、`mygo dev`）的数据在 `build/data`，第一次运行时从安装版的 `%APPDATA%/LunaBox` **复制**过来，不会改动安装版的数据：
+
+- 与安装版隔离：单实例锁是“LunaBox Dev”，不注册开机自启，不启动 CLI 的 IPC 服务与 MCP 服务，不自动云同步。
+- 读取项目目录下的 `.env.build` 与 `.env`（格式见 `.env.build.example`）补上构建期凭据；没有时 Bangumi 与鲲 Galgame 的授权直接失败。
+- 编辑、备份恢复（会覆盖游戏真实的存档目录）、上传到云端（用设置里的云备份账号）都是真实操作。
+- `mygo dev` 重启或退出时直接结束进程，不走退出流程，下次启动由 WAL 恢复；从界面或托盘退出则正常关闭。
+- 日志在数据目录的 `logs/`。
 
 `mygo dev` 不能给应用传参数，需要参数时先构建：
 
@@ -77,15 +83,4 @@ go run ./tools/release -version 1.2.0 -arch arm64 -mode installer
 
 ## 开发约定
 
-- 迁移或对照原版组件时，在 Go 代码的注释里写它对应的原版文件与类名（`对应 GameCard.tsx：rounded-xl border …`）。
-- 文字用 `ui/locales` 的函数，key 与原版组件在同一处用的 key 相同；新文字加到 `ui/locales/*.json`，四种语言都写，再运行 `pnpm i18n`，见 [docs/i18n.md](docs/i18n.md)。
-- 时间相关的状态用帧时钟：构建时用 `c.Now()`，输入事件用 `ev.Time`，异步回调里记一个标记、到下一次构建再取 `c.Now()`。测试里用 `tt.Advance(d)` 推进时钟，不要 `time.Sleep`。
-- 暂时做不了的功能弹 `locales.NativeFeatureNotMigrated`，并记到 [docs/gaps.md](docs/gaps.md)；补上一项就从那里删掉。
-
-## 文档
-
-| 文档 | 内容 |
-| --- | --- |
-| [docs/architecture.md](docs/architecture.md) | 目录结构、与后端的关系、数据目录、构建细节、性能 |
-| [docs/gaps.md](docs/gaps.md) | 与原版的差距：未实现的功能、没对照过的界面、已知的视觉差异 |
-| [docs/i18n.md](docs/i18n.md) | 多语言：语言包的格式、约定与日期格式 |
+界面的约束见仓库根的 [docs/frontend.md](../../docs/frontend.md)。

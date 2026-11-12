@@ -4,7 +4,7 @@
 
 ## 界面
 
-目录与原版前端的对应关系见 [apps/desktop/docs/architecture.md](../apps/desktop/docs/architecture.md)。
+界面的约束见 [frontend.md](frontend.md)。
 
 | 职责                                                   | 路径                                                     |
 | ------------------------------------------------------ | -------------------------------------------------------- |
