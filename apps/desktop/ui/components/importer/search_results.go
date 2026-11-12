@@ -120,7 +120,7 @@ func (s *SearchResults) cards(c *ui.Context, t *theme.Theme, p SearchResultsProp
 	wrap := ui.Box(c.Key("results"))
 	viewW := wrap.Bounds().W
 	wrap.Children(func() {
-		ui.ScrollHorizontal(c.Key("scroller")).FillWidth().TrackScroll(st).Children(func() {
+		ui.ScrollHorizontal(c.Key("scroller")).FillWidth().TrackScroll(st).Scrollbars(false).Children(func() {
 			ui.Row(c).Gap(16).Padding(8, 8, 24, 8).AlignItems(ui.Start).Children(func() {
 				if p.Lead != nil {
 					leadCard(c.Key("lead"), t, p, cardW)

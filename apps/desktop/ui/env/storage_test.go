@@ -70,3 +70,18 @@ func TestStorageFallbacks(t *testing.T) {
 		t.Error("nil storage returned a value")
 	}
 }
+
+// storage.json 的内容是 null 时从空开始，之后保存不会 panic。
+func TestStorageNullFile(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, StorageFile), []byte("null"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s := NewStorage(dir)
+	s.Set("k", 1)
+	waitWritten(t, s)
+	var v int
+	if !s.Get("k", &v) || v != 1 {
+		t.Fatalf("Get k = %d", v)
+	}
+}

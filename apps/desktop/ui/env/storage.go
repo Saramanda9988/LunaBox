@@ -40,6 +40,10 @@ func NewStorage(dir string) *Storage {
 		log.Printf("ui storage: parse: %v", err)
 		s.values = map[string]json.RawMessage{}
 	}
+	// 文件内容是 null 时 Unmarshal 不报错但把 map 置为 nil，之后 Set 会 panic。
+	if s.values == nil {
+		s.values = map[string]json.RawMessage{}
+	}
 	return s
 }
 

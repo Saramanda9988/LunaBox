@@ -206,7 +206,7 @@ func (r *Rail) recent(c *ui.Context, t *theme.Theme, p Props) {
 	viewW := wrap.Bounds().W
 	wrap.Children(func() {
 		// 滚动容器比 h-48 高出上下各 py-2，原版在 items-center 的行里上下各溢出 8px。
-		ui.ScrollHorizontal(c.Key("scroller")).Absolute().Left(0).Right(0).Top(-8).Height(contentH + 16).TrackScroll(st).Children(func() {
+		ui.ScrollHorizontal(c.Key("scroller")).Absolute().Left(0).Right(0).Top(-8).Height(contentH + 16).TrackScroll(st).Scrollbars(false).Children(func() {
 			ui.Row(c).Padding(8, 2).Gap(4).AlignItems(ui.Center).MinWidth(max(0, viewW)).Justify(ui.Center).Children(func() {
 				for _, g := range p.Games {
 					r.card(c, t, p, g)

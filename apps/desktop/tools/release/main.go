@@ -181,18 +181,21 @@ func (t target) builtExe(name string) string {
 // skipBuilt 报告 mygo build 的输出里不放进发布包的文件，exe 是输出的主程序名：
 //   - icon.png：resources/icon.png 是图标，mygo build 当作资源复制到主程序旁边；exe 的图标资源、
 //     AppImage 与 deb、rpm 的图标已经有了，窗口图标用 main.go 嵌入的那份，运行时不读它；
+//   - .mygo-files：mygo 自带更新器的文件清单（LunaBox 用自己的更新器）；
 //   - Windows 的 NSIS 安装包（安装版用 packaging/windows/nsis 的脚本另外打）；
-//   - Linux 的 deb、tar.gz、install.sh 与桌面入口及其图标 <exe>.png（AppImage、deb、rpm 有自己的桌面入口与图标）。
+//   - Linux 的 deb、rpm、tar.gz、install.sh 与桌面入口及其图标 <exe>.png（AppImage、deb、rpm 有自己的桌面入口与图标）。
+//     mygo.json 的 linux.formats 为空，mygo build 本就不写 deb、rpm 与 PKGBUILD，这里仍跳过以防配置变动。
 func (t target) skipBuilt(e fs.DirEntry, exe string) bool {
 	if e.IsDir() {
 		return false
 	}
 	name := strings.ToLower(e.Name())
-	if name == "icon.png" {
+	// .mygo-files 是 mygo 自带更新器的文件清单，LunaBox 用自己的更新器，不需要它。
+	if name == "icon.png" || name == ".mygo-files" {
 		return true
 	}
 	if t.goos == "linux" {
-		return name == "install.sh" || strings.HasSuffix(name, ".deb") || strings.HasSuffix(name, ".tar.gz") ||
+		return name == "install.sh" || strings.HasSuffix(name, ".deb") || strings.HasSuffix(name, ".rpm") || strings.HasSuffix(name, ".tar.gz") ||
 			strings.HasSuffix(name, ".desktop") || strings.HasSuffix(name, ".xml") || name == strings.ToLower(exe)+".png"
 	}
 	return filepath.Ext(name) == ".exe"
