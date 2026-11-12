@@ -1,11 +1,11 @@
 {
   "name": "LunaBox",
   "identifier": "io.github.saramanda9988.lunabox",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "urlSchemes": ["lunabox"],
   "out": "build",
   "i18n": { "dir": "ui/locales", "source": "zh-CN" },
-  "linux": { "webview": false },
+  "linux": { "webview": false, "formats": [] },
   "macos": {
     "infoPlist": {
       "CFBundleGetInfoString": "LunaBox game library manager",

@@ -77,7 +77,6 @@ ${UnStrRep}
 # !define MUI_WELCOMEFINISHPAGE_BITMAP "resources\leftimage.bmp" #Include this to add a bitmap on the left side of the Welcome Page. Must be a size of 164x314
 !define MUI_FINISHPAGE_NOAUTOCLOSE # Wait on the INSTFILES page so the user can take a look into the details of the installation steps
 !define MUI_ABORTWARNING # This will warn the user if they exit from the installer.
-!define MUI_CUSTOMFUNCTION_ABORT onUserAbort
 
 !insertmacro MUI_PAGE_WELCOME # Welcome to the installer page.
 # !insertmacro MUI_PAGE_LICENSE "resources\eula.txt" # Adds a EULA page to the installer
@@ -113,16 +112,13 @@ Var IS_UPDATE
 Var UN_DELETE_USERDATA
 # Variable to store whether to install CLI and add to PATH
 Var INSTALL_CLI_TO_PATH
-# Variable to store whether the updated version had added the install directory to PATH
-Var OLD_CLI_IN_PATH
 # Variable to store the checkbox handle
 Var CHECKBOX_CLI
 
 Function .onInit
    !insertmacro wails.checkArchitecture
 
-   # Only one installer at a time: a second one started while the first is still uninstalling the old
-   # version would install its files, and the first one's old uninstaller would then delete them.
+   # Only one installer at a time: two installers would write the same directory, registry key and PATH at once.
    # 183 = ERROR_ALREADY_EXISTS; the mutex is released when this installer exits.
    System::Call 'kernel32::CreateMutex(p 0, i 0, t "LunaBoxInstallerMutex") p .r0 ?e'
    Pop $0
@@ -162,7 +158,9 @@ Function .onInit
        cli_check_done:
    ${EndIf}
 
-   # Check if old version is installed FIRST (before process check)
+   # An installed version is updated in place, the way Tauri's installer does it: the install section
+   # overwrites its files, uninstaller and registry entries. Its uninstaller is not run, so cancelling or a
+   # failed install leaves it in place, and its PATH entry and shortcuts are kept as they are.
    SetRegView 64
    ReadRegStr $0 HKLM "${UNINST_KEY}" "DisplayVersion"
    ReadRegStr $1 HKLM "${UNINST_KEY}" "UninstallString"
@@ -170,114 +168,69 @@ Function .onInit
 
    ${If} $0 != ""
    ${AndIf} $1 != ""
-      # Old version found - ask user what to do
       StrCpy $IS_UPDATE "1"
 
-      # UninstallString format: "C:\Path\To\uninstall.exe"
-      # Remove quotes from start and end
-      StrCpy $3 $1 "" 1  ; Remove first quote
-      StrCpy $3 $3 -1   ; Remove last quote
-
       ${If} $2 == ""
-         # InstallLocation is empty, extract from UninstallString
-         # Get directory path from uninstaller path
+         # InstallLocation is empty: take the directory of the uninstaller, from "C:\Path\To\uninstall.exe"
+         StrCpy $3 $1 "" 1  ; Remove first quote
+         StrCpy $3 $3 -1   ; Remove last quote
          ${GetParent} $3 $2
       ${EndIf}
 
-      # Store the old install path to $INSTDIR so we install to the same location
+      # Install to the same location (the directory page is skipped)
       StrCpy $INSTDIR $2
 
-      # In silent mode, always update
-      IfSilent run_silent_uninstall
-
-      # Ask user: Update or Cancel
-      MessageBox MB_YESNO|MB_ICONQUESTION "检测到 LunaBox 已安装版本 $0$\n$\n要更新到版本 ${INFO_PRODUCTVERSION} 吗$\n$\n是-自动更新保留数据$\n否-退出安装程序" IDYES run_uninstall IDNO cancel_update
-
-      run_silent_uninstall:
-      run_uninstall:
-         # Check if process is running before uninstall
-         FindWindow $5 "" "LunaBox"
-         ${If} $5 != 0
-            # Terminate the process silently
-            nsExec::ExecToStack 'taskkill /F /IM "${PRODUCT_EXECUTABLE}"'
-            Sleep 2000
-         ${EndIf}
-
-         # Back up PATH before running the old uninstaller. Old uninstallers may still
-         # contain unsafe PATH mutation logic, so the new installer must create the backup first.
-         Call BackupMachinePathBeforeUpdateUninstall
-         ${If} $7 != "0"
-            IfSilent 0 +2
-               Quit
-            MessageBox MB_OK|MB_ICONSTOP "无法备份系统 PATH。为避免旧版卸载器可能破坏环境变量，安装已中止。"
-            Quit
-         ${EndIf}
-
-         # The old uninstaller removes the install directory from PATH, and broadcasts WM_SETTINGCHANGE,
-         # only when CLIInstalled is 1. Uninstallers built before the broadcast timeout was lowered wait
-         # 5000 ms for each window that does not answer, which took minutes with apps such as WPS Office.
-         # The directory stays the same on update, so leave PATH to this installer: clear the flag so the
-         # old uninstaller skips PATH, then keep the entry if the CLI is selected again, or remove it in
-         # the install section if not.
-         SetRegView 64
-         ReadRegStr $OLD_CLI_IN_PATH HKLM "${UNINST_KEY}" "CLIInstalled"
-         ${If} $OLD_CLI_IN_PATH == "1"
-            WriteRegStr HKLM "${UNINST_KEY}" "CLIInstalled" "0"
-         ${EndIf}
-
-         # $3 already contains the uninstaller path without quotes (from lines 110-111)
-         # Execute uninstaller silently from the old install location. The installer window only shows
-         # after .onInit, so show a banner meanwhile, lest the installer look like it never started.
-         ${IfNot} ${Silent}
-            Banner::show /set 76 "正在更新 LunaBox" "正在卸载旧版本…"
-         ${EndIf}
-         ExecWait '"$3" /S _?=$2' $4
-         ${IfNot} ${Silent}
-            Banner::destroy
-         ${EndIf}
-
-         # Check if uninstall succeeded (non-zero return code indicates error)
-         ${If} $4 != "0"
-            # Uninstall failed, log the error but continue
-            DetailPrint "Warning: Uninstaller returned error code $4"
-         ${EndIf}
-
-         # Uninstaller ran, skip process check since we already handled it
-         Goto init_done
-
-      cancel_update:
+      # Nothing has been changed yet, so "No" just quits. Silent mode always updates.
+      ${IfNot} ${Silent}
+         MessageBox MB_YESNO|MB_ICONQUESTION "检测到 LunaBox 已安装版本 $0$\n$\n要更新到版本 ${INFO_PRODUCTVERSION} 吗？$\n$\n是 - 覆盖安装，保留数据与设置$\n否 - 退出安装程序" IDYES +2
          Quit
+      ${EndIf}
    ${EndIf}
-
-   # Check if LunaBox is running
-   check_process:
-   FindWindow $5 "" "LunaBox"
-   ${If} $5 != 0
-      IfSilent silent_kill ask_kill
-
-      ask_kill:
-         MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION '检测到 LunaBox 正在运行。$\n$\n请关闭 LunaBox 后点击"重试"继续安装，或点击"取消"退出安装程序。' IDRETRY check_process IDCANCEL cancel_install
-
-      silent_kill:
-         # Silent mode: automatically terminate the process
-         nsExec::ExecToStack 'taskkill /F /IM "${PRODUCT_EXECUTABLE}"'
-         Sleep 2000
-         Goto init_done
-
-      cancel_install:
-         Quit
-   ${EndIf}
-
-   init_done:
 FunctionEnd
 
-# Cancelled after .onInit uninstalled the updated version: remove the PATH entry its uninstaller left (see .onInit)
-Function onUserAbort
-   ${If} $OLD_CLI_IN_PATH == "1"
-      Call RemoveInstallDirFromPath
-      System::Call 'user32::SendMessageTimeout(p 0xffff, i ${WM_SETTINGCHANGE}, p 0, t "Environment", i 2, i 200, *i .r0)'
-   ${EndIf}
+# Like Tauri's CheckIfAppIsRunning: before files are written or removed, ask to end LunaBox if it is running
+# (silent mode ends it without asking), and abort if it cannot be ended. Files of a running exe can't be replaced.
+# The process is looked up by image name: tasklist /FO CSV prints a line starting with a quote for each match,
+# and a localized "INFO: ..." line when there is none.
+!macro CheckIfAppIsRunningFunction UN
+Function ${UN}CheckIfAppIsRunning
+    nsExec::ExecToStack '"$SYSDIR\tasklist.exe" /FI "IMAGENAME eq ${PRODUCT_EXECUTABLE}" /FO CSV /NH'
+    Pop $0
+    Pop $1
+    StrCpy $1 $1 1
+    ${If} $0 != "0"
+    ${OrIf} $1 != '"'
+        Return
+    ${EndIf}
+
+    ${IfNot} ${Silent}
+        !if "${UN}" == "un."
+            MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION "LunaBox 正在运行。$\n$\n点击“确定”结束 LunaBox 并继续卸载，点击“取消”退出。" IDOK +2
+            Abort "LunaBox 正在运行，卸载已取消。"
+        !else
+            MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION "LunaBox 正在运行。$\n$\n点击“确定”结束 LunaBox 并继续安装，点击“取消”退出。" IDOK +2
+            Abort "LunaBox 正在运行，安装已取消。"
+        !endif
+    ${EndIf}
+
+    # No /T: games started by LunaBox are its child processes and must keep running
+    nsExec::ExecToStack '"$SYSDIR\taskkill.exe" /F /IM "${PRODUCT_EXECUTABLE}"'
+    Pop $0
+    Pop $1
+    Sleep 1000
+
+    nsExec::ExecToStack '"$SYSDIR\tasklist.exe" /FI "IMAGENAME eq ${PRODUCT_EXECUTABLE}" /FO CSV /NH'
+    Pop $0
+    Pop $1
+    StrCpy $1 $1 1
+    ${If} $0 == "0"
+    ${AndIf} $1 == '"'
+        Abort "无法结束 LunaBox，请手动关闭后重试。"
+    ${EndIf}
 FunctionEnd
+!macroend
+!insertmacro CheckIfAppIsRunningFunction ""
+!insertmacro CheckIfAppIsRunningFunction "un."
 
 # Skip directory page when updating (already set $INSTDIR to old location)
 Function skip_directory_page
@@ -337,42 +290,6 @@ FunctionEnd
     FileWrite $8 "  }$\r$\n"
 !macroend
 
-# Back up the machine PATH before executing an old uninstaller during update.
-Function BackupMachinePathBeforeUpdateUninstall
-    SetRegView 64
-    InitPluginsDir
-
-    StrCpy $7 "1"
-    StrCpy $9 "$PLUGINSDIR\lunabox-backup-path-before-update-uninstall.ps1"
-    FileOpen $8 $9 w
-    FileWrite $8 "$$ErrorActionPreference = 'Stop'$\r$\n"
-    FileWrite $8 "$$keyPath = 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment'$\r$\n"
-    FileWrite $8 "$$key = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey($$keyPath, $$false)$\r$\n"
-    FileWrite $8 "if ($$null -eq $$key) { throw 'Environment registry key not found' }$\r$\n"
-    FileWrite $8 "try {$\r$\n"
-    FileWrite $8 "  $$path = [string]$$key.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)$\r$\n"
-    FileWrite $8 "  $$backupDir = Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'LunaBox\environment-backups'$\r$\n"
-    FileWrite $8 "  [void][System.IO.Directory]::CreateDirectory($$backupDir)$\r$\n"
-    FileWrite $8 "  $$backupFile = Join-Path $$backupDir ('machine-path-before-update-uninstall-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '.txt')$\r$\n"
-    FileWrite $8 "  [System.IO.File]::WriteAllText($$backupFile, $$path, [System.Text.Encoding]::UTF8)$\r$\n"
-    FileWrite $8 "  Write-Output ('Backed up machine PATH to ' + $$backupFile)$\r$\n"
-    FileWrite $8 "} finally {$\r$\n"
-    FileWrite $8 "  $$key.Close()$\r$\n"
-    FileWrite $8 "}$\r$\n"
-    FileClose $8
-
-    nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$9"'
-    Pop $6
-    Pop $5
-    ${If} $6 != "0"
-        DetailPrint "Warning: failed to back up machine PATH before update uninstall: $5"
-    ${Else}
-        DetailPrint "$5"
-        StrCpy $7 "0"
-    ${EndIf}
-    Delete $9
-FunctionEnd
-
 # Add $INSTDIR to the machine PATH without round-tripping PATH through NSIS variables.
 # NSIS strings are commonly limited to 1024 chars; long PATH values would otherwise be truncated.
 Function AddInstallDirToPath
@@ -423,8 +340,8 @@ Function AddInstallDirToPath
 FunctionEnd
 
 # Remove $INSTDIR from the machine PATH without round-tripping PATH through NSIS variables.
-# Defined for the uninstaller and for the installer, which removes the PATH entry of an updated
-# version itself when the user no longer selects the CLI (see .onInit).
+# Defined for the uninstaller and for the installer, which removes the PATH entry of the version it
+# overwrites when the user no longer selects the CLI.
 !macro RemoveInstallDirFromPathFunction UN
 Function ${UN}RemoveInstallDirFromPath
     SetRegView 64
@@ -526,6 +443,8 @@ FunctionEnd
 Section
     !insertmacro wails.setShellContext
 
+    Call CheckIfAppIsRunning
+
     !ifndef LUNABOX_NO_WEBVIEW2
         !insertmacro wails.webview2runtime
     !endif
@@ -570,10 +489,16 @@ Section
         SetRegView 64
         WriteRegStr HKLM "${UNINST_KEY}" "CLIInstalled" "1"
     ${Else}
-        # The updated version added the install directory to PATH, and its uninstaller left it (see .onInit)
-        ${If} $OLD_CLI_IN_PATH == "1"
-            Call RemoveInstallDirFromPath
-            System::Call 'user32::SendMessageTimeout(p 0xffff, i ${WM_SETTINGCHANGE}, p 0, t "Environment", i 2, i 200, *i .r0)'
+        # The overwritten version may have installed the CLI: remove it, and its PATH entry unless that
+        # version recorded it had no CLI (versions before the CLIInstalled flag leave it empty)
+        Delete "$INSTDIR\lunacli.exe"
+        ${If} $IS_UPDATE == "1"
+            SetRegView 64
+            ReadRegStr $0 HKLM "${UNINST_KEY}" "CLIInstalled"
+            ${If} $0 != "0"
+                Call RemoveInstallDirFromPath
+                System::Call 'user32::SendMessageTimeout(p 0xffff, i ${WM_SETTINGCHANGE}, p 0, t "Environment", i 2, i 200, *i .r0)'
+            ${EndIf}
         ${EndIf}
 
         # Record that CLI was NOT installed
@@ -605,6 +530,8 @@ SectionEnd
 
 Section "uninstall"
     !insertmacro wails.setShellContext
+
+    Call un.CheckIfAppIsRunning
 
     # Remove install directory from PATH only if it was added during installation
     SetRegView 64

@@ -14,7 +14,7 @@
     !define INFO_PRODUCTNAME "LunaBox"
 !endif
 !ifndef INFO_PRODUCTVERSION
-    !define INFO_PRODUCTVERSION "2.0.0"
+    !define INFO_PRODUCTVERSION "2.1.0"
 !endif
 !ifndef INFO_COPYRIGHT
     !define INFO_COPYRIGHT "Copyright (c) LunaBox contributors"
