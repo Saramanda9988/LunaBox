@@ -57,6 +57,9 @@ type State struct {
 
 func (s *State) toast(n env.Notice) { s.toasts = append(s.toasts, n) }
 
+// Flush 由设置页在离开页面前调用：立即写入高级组合策略弹窗里还没保存的修改（离开后面板不再构建，到期的保存不会执行）。
+func Flush(s *State) { s.strategy.Flush() }
+
 // subscribe 对应挂载时的 useEffect：订阅 metadata:refresh-progress，把事件的内容作为进度。
 func (s *State) subscribe(p panel.Settings) {
 	if s.subscribed || p.Env == nil || p.Env.Svc == nil || p.Env.Svc.Events == nil {

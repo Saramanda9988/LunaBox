@@ -85,8 +85,9 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 			Label:   locales.SettingsCloudBackupServiceEnableLabel(),
 			Hint:    locales.SettingsCloudBackupServiceEnableHint(),
 			Checked: cfg.CloudBackupEnabled,
-			// onServiceEnabledChange：patchLiveConfig({ cloud_backup_enabled })
-			OnChange: func(v bool) { p.PatchLive(func(cfg *appconf.AppConfig) { cfg.CloudBackupEnabled = v }) },
+			// onServiceEnabledChange：原版是 patchLiveConfig({ cloud_backup_enabled })，立即保存。这里与其他开关一样改草稿，
+			// 250ms 后保存：保存要同步写文件，放在点击的那一帧会卡住界面，开关的滑块也没有动画。
+			OnChange: func(v bool) { p.Change(func(cfg *appconf.AppConfig) { cfg.CloudBackupEnabled = v }) },
 		})
 		panel.Field(c, t, "provider", locales.SettingsCloudBackupProviderLabel(), "", func() {
 			value := provider

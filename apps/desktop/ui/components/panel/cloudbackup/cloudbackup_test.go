@@ -135,17 +135,18 @@ func (h *harness) selectProvider(t *testing.T, current, label string) {
 	h.click(t, label)
 }
 
-func TestEnableSwitchPatchesLive(t *testing.T) {
+// 服务开关与其他开关一样只改草稿（由设置页 250ms 后保存），不在点击的那一帧同步写文件。
+func TestEnableSwitchChangesDraft(t *testing.T) {
 	h := newHarness(t, func(cfg *appconf.AppConfig) { cfg.CloudBackupEnabled = false })
 	h.expect(t, locales.SettingsCloudBackupServiceEnableLabel(), locales.SettingsCloudBackupServiceEnableHint(),
 		locales.SettingsCloudBackupProviderLabel())
 	h.click(t, locales.SettingsCloudBackupServiceEnableLabel())
-	if !h.cfg.CloudBackupEnabled || h.patches != 1 || h.changes != 0 {
-		t.Fatalf("enabled %v, patches %d, changes %d", h.cfg.CloudBackupEnabled, h.patches, h.changes)
+	if !h.cfg.CloudBackupEnabled || h.changes != 1 || h.patches != 0 {
+		t.Fatalf("enabled %v, changes %d, patches %d", h.cfg.CloudBackupEnabled, h.changes, h.patches)
 	}
 	h.click(t, locales.SettingsCloudBackupServiceEnableLabel())
-	if h.cfg.CloudBackupEnabled || h.patches != 2 {
-		t.Fatalf("disable: enabled %v, patches %d", h.cfg.CloudBackupEnabled, h.patches)
+	if h.cfg.CloudBackupEnabled || h.changes != 2 || h.patches != 0 {
+		t.Fatalf("disable: enabled %v, changes %d, patches %d", h.cfg.CloudBackupEnabled, h.changes, h.patches)
 	}
 }
 

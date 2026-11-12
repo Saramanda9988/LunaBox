@@ -38,15 +38,22 @@ const (
 	FocusRefresh               // 更新元数据：选择更新字段的弹窗
 )
 
+// strategySaveDelay 是最后一次修改后写进配置的延迟。保存要同步写文件（fsync），放在点击的那一帧里会卡住界面，
+// 并且那一帧重新构建时仍用点击前的时间，开关滑块的动画在卡住期间就走完了。
+const strategySaveDelay = 250 * time.Millisecond
+
 // StrategyModal 是“高级组合策略”弹窗：设置页的元数据分区、批量导入、详情页的更新字段与重新搜索共用。
 // 弹窗里只有各字段指定的来源与刮削、更新元数据两个开关；基底随场景而定（批量导入是必选数据源，在批量导入里设置；
-// 单个添加与重新搜索是选中的来源；更新元数据是游戏的默认来源）。每次修改立即写进配置（没有保存按钮）。
+// 单个添加与重新搜索是选中的来源；更新元数据是游戏的默认来源）。修改自动写进配置（没有保存按钮）：停止修改
+// strategySaveDelay 后、关闭弹窗时或调用方 Flush 时写入。
 type StrategyModal struct {
-	open    bool
-	focus   StrategyFocus
-	draft   appconf.MetadataStrategy
-	refresh bool // 更新元数据时使用组合策略（AppConfig.MetadataRefreshUseStrategy）
-	onSave  func(apply func(cfg *appconf.AppConfig))
+	open      bool
+	focus     StrategyFocus
+	draft     appconf.MetadataStrategy
+	refresh   bool // 更新元数据时使用组合策略（AppConfig.MetadataRefreshUseStrategy）
+	onSave    func(apply func(cfg *appconf.AppConfig))
+	dirty     bool      // 有还没写进配置的修改
+	changedAt time.Time // 最后一次修改之后构建的第一帧的时间；零值表示还没构建
 }
 
 // StrategyModalProps 是弹窗的属性。
@@ -62,24 +69,49 @@ func (m *StrategyModal) Open(cfg *appconf.AppConfig) { m.OpenFor(cfg, FocusNone)
 
 // OpenFor 同 Open，focus 对应的开关用天蓝色标出。
 func (m *StrategyModal) OpenFor(cfg *appconf.AppConfig, focus StrategyFocus) {
+	m.Flush() // 先写入上一次还没保存的修改，cfg 才是最新的
 	*m = StrategyModal{open: true, focus: focus, draft: cfg.Strategy(), refresh: cfg != nil && cfg.MetadataRefreshUseStrategy}
 }
 
 // IsOpen 报告弹窗是否打开。
 func (m *StrategyModal) IsOpen() bool { return m.open }
 
-func (m *StrategyModal) close() { m.open = false }
+func (m *StrategyModal) close() {
+	m.open = false
+	m.Flush()
+}
 
-// commit 把当前的策略与开关写进配置（每次修改后调用）。
+// commit 记下修改（每次修改后调用），停止修改 strategySaveDelay 后由 View 写进配置。
 func (m *StrategyModal) commit() {
-	if m.onSave == nil {
+	m.dirty, m.changedAt = true, time.Time{}
+}
+
+// Flush 立即把还没保存的策略与开关写进配置。调用方在弹窗之后可能不再构建时调用（如离开页面）。
+func (m *StrategyModal) Flush() {
+	if !m.dirty || m.onSave == nil {
 		return
 	}
+	m.dirty, m.changedAt = false, time.Time{}
 	strategy, refresh := m.draft.Clone(), m.refresh
 	m.onSave(func(cfg *appconf.AppConfig) {
 		cfg.SetStrategy(strategy)
 		cfg.MetadataRefreshUseStrategy = refresh
 	})
+}
+
+// tick 在停止修改 strategySaveDelay 后保存，返回还要等多久（0 表示没有要等的）。
+func (m *StrategyModal) tick(now time.Time) time.Duration {
+	if !m.dirty {
+		return 0
+	}
+	if m.changedAt.IsZero() {
+		m.changedAt = now
+	}
+	if wait := strategySaveDelay - now.Sub(m.changedAt); wait > 0 && m.open {
+		return wait
+	}
+	m.Flush()
+	return 0
 }
 
 // StrategyLabel 是来源在组合策略里的名称；“合并所有来源”与未知来源也有名称。
@@ -292,9 +324,13 @@ func (m *StrategyModal) fieldOptions(f enums.MetadataUpdateField, enabled []enum
 }
 
 // View 构建弹窗：标题、刮削与更新元数据两个开关、各字段的来源、文字说明，底部右边是重置。
-// 各字段的来源不受开关影响；两个开关都关闭时没有文字说明。修改立即保存。
+// 各字段的来源不受开关影响；两个开关都关闭时没有文字说明。修改在停止修改 strategySaveDelay 后保存。
+// 调用方每一帧都调用它（关闭时也调用），到期的保存才会执行。
 func (m *StrategyModal) View(c *ui.Context, t *theme.Theme, p StrategyModalProps) {
 	m.onSave = p.OnSave
+	if wait := m.tick(c.Now()); wait > 0 {
+		c.After(wait)
+	}
 	components.Modal(c, t, "metadata-strategy", components.ModalProps{
 		Open: m.open, TopOffset: p.TopOffset, MaxWidth: 760, OnClose: m.close, Label: locales.NativeMetadataStrategyTitle(),
 	}, func(pnl ui.Element) {
@@ -407,7 +443,7 @@ func (m *StrategyModal) summary(c *ui.Context, t *theme.Theme, lines []string) {
 	})
 }
 
-// footer：右边重置（所有字段跟随基底，立即保存）。
+// footer：右边重置（所有字段跟随基底，自动保存）。
 func (m *StrategyModal) footer(c *ui.Context, t *theme.Theme) {
 	ui.Row(c.Key("footer")).Gap(12).AlignItems(ui.Center).Justify(ui.End).Children(func() {
 		better.Button(c, t, "reset", better.ButtonProps{

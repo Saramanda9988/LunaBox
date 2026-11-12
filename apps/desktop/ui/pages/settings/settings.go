@@ -124,6 +124,7 @@ func (p *Page) SetDebugState(state string) { p.debug = state }
 // Flush 在离开页面前补存还没保存的草稿（原版卸载时取消了计时器，草稿留在 store 里，下次进入设置页时被
 // resetDraftConfig 丢掉；这里直接保存，不丢修改），并取消进行中的 Umbra 授权（云配置面板卸载时的 effect）。
 func (p *Page) Flush() {
+	metadata.Flush(&p.panels.metadata) // 先写入组合策略，它同时改草稿
 	if p.dirty {
 		p.save()
 	}

@@ -136,9 +136,10 @@ func (e *editor) set(fn func(g *models.Game)) {
 // toast 显示提示（react-hot-toast）。
 func (e *editor) toast(c *ui.Context, n env.Notice) { e.p.Env.Toast(c, n) }
 
-// Flush 由详情页在离开页面、进入另一个游戏前调用：立即保存待保存的来源 ID（原版依赖 game.id 的 effect 卸载时补存）。
-// 抽屉打开时离开页面，面板之后不再构建，到期的保存不会再执行。
+// Flush 由详情页在离开页面、进入另一个游戏前调用：立即保存待保存的来源 ID（原版依赖 game.id 的 effect 卸载时补存）
+// 与高级组合策略弹窗里还没保存的修改。抽屉打开时离开页面，面板之后不再构建，到期的保存不会再执行。
 func Flush(s *State, p panel.Game) {
+	s.strategy.Flush()
 	if p.Game == nil || p.Game.ID != s.gameID || len(s.sourceSaves) == 0 {
 		return
 	}

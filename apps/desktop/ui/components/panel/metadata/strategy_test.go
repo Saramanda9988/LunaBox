@@ -3,6 +3,7 @@ package metadata
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/enums"
@@ -11,7 +12,8 @@ import (
 )
 
 // 设置页的入口按打开的开关分别显示“刮削时启用”“更新时启用”。弹窗里没有必选数据源，只有两个开关与各字段的来源；
-// 文字说明按打开的开关说基底是谁。修改立即写进配置（没有保存按钮，必选数据源原样保留）；重置让字段跟随基底。
+// 文字说明按打开的开关说基底是谁。修改在停止修改 250ms 后或关闭弹窗时写进配置（没有保存按钮，必选数据源原样保留）；
+// 重置让字段跟随基底。
 func TestStrategyModal(t *testing.T) {
 	h := newHarness(t)
 	h.cfg.SetStrategy(appconf.MetadataStrategy{Base: enums.VNDB})
@@ -24,6 +26,7 @@ func TestStrategyModal(t *testing.T) {
 		locales.NativeMetadataStrategyReset())
 	h.expectNot(t, locales.CommonCancel(), locales.CommonSave(), locales.NativeMetadataStrategyBase(), locales.NativeMetadataStrategySummaryScrape())
 
+	// 修改先只改弹窗里的草稿，不在这一帧写文件；停止修改 250ms 后才写进配置。
 	m := &h.state.strategy
 	m.draft = m.draft.
 		WithFieldSource(enums.MetadataUpdateFieldName, enums.Bangumi).
@@ -39,35 +42,50 @@ func TestStrategyModal(t *testing.T) {
 		locales.NativeMetadataStrategySummaryRestBase(),
 	}, sep))
 	h.expectNot(t, locales.NativeMetadataStrategySummaryRefresh())
+	if h.cfg.Strategy().Enabled {
+		t.Fatal("strategy should not be saved before the delay")
+	}
+	h.tt.Advance(300 * time.Millisecond)
+	h.frames(1)
 	if got := h.cfg.Strategy(); got.Base != enums.VNDB || !got.Enabled || got.FieldSource(enums.MetadataUpdateFieldName) != enums.Bangumi {
 		t.Fatalf("saved strategy = %+v", got)
 	}
 
-	// 重置：字段跟随基底，开关不变，立即保存。
+	// 重置：字段跟随基底，开关不变，稍后保存。
 	h.click(t, locales.NativeMetadataStrategyReset())
+	h.tt.Advance(300 * time.Millisecond)
+	h.frames(1)
 	if got := h.cfg.Strategy(); !got.Enabled || len(got.Fields) != 0 || got.Base != enums.VNDB {
 		t.Fatalf("saved after reset = %+v", got)
 	}
 	h.expect(t, locales.NativeMetadataStrategySummaryAllFromBase())
 
+	// 关闭弹窗时立即写入还没到期的修改。
 	m.refresh = true
 	m.commit()
 	h.frames(2)
 	h.expect(t, locales.NativeMetadataStrategySummaryScrape(), locales.NativeMetadataStrategySummaryRefresh())
-	if !h.cfg.MetadataRefreshUseStrategy {
-		t.Fatal("refresh switch should be saved")
+	if h.cfg.MetadataRefreshUseStrategy {
+		t.Fatal("refresh switch should not be saved before the delay")
 	}
 	m.close()
+	if !h.cfg.MetadataRefreshUseStrategy {
+		t.Fatal("refresh switch should be saved on close")
+	}
 	h.frames(2)
 	h.expect(t, locales.NativeMetadataStrategyActiveScrape(), locales.NativeMetadataStrategyActiveRefresh())
 
-	// 只打开更新时的开关：入口只标“更新时启用”。
+	// 只打开更新时的开关：入口只标“更新时启用”。离开页面（Flush）时也立即写入。
 	h.click(t, locales.NativeMetadataStrategySettingsButton())
 	if !m.refresh || m.focus != FocusNone {
 		t.Fatalf("draft should start from the config: refresh %v, focus %v", m.refresh, m.focus)
 	}
 	m.draft.Enabled = false
 	m.commit()
+	Flush(&h.state)
+	if h.cfg.Strategy().Enabled {
+		t.Fatal("scrape switch should be saved on flush")
+	}
 	m.close()
 	h.frames(2)
 	h.expect(t, locales.NativeMetadataStrategyActiveRefresh())
