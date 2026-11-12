@@ -181,6 +181,26 @@ func TestDragDropImport(t *testing.T) {
 	}
 }
 
+// 拖放提示整个都不接收指针：指针（与拖进来的文件，两者共用命中测试）落到下面的拖放目标上。
+// 提示里的卡片或色块挡住目标时，拖着文件经过窗口会让目标与提示每帧交替出现（闪烁），放下也导入不了。
+func TestDropOverlayPassesPointer(t *testing.T) {
+	th := theme.New(true, 1)
+	var hovered bool
+	tt := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c.Key("target")).Fill().Children(func() {
+			hovered = ui.Box(c.Key("under")).Grow(1).Hovered()
+		})
+		DropOverlay(c, th, 0)
+	}, 800, 600)
+	for _, p := range [][2]float32{{400, 300}, {20, 20}} { // 中间的卡片与四周的色块
+		tt.Move(p[0], p[1])
+		tt.Frame()
+		if !hovered {
+			t.Fatalf("overlay takes the pointer at %v", p)
+		}
+	}
+}
+
 // fakeImport 替换导入服务里会联网的方法。
 type fakeImport struct {
 	api.ImportService

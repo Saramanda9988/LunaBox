@@ -103,10 +103,12 @@ func (d *DragDrop) View(c *ui.Context, t *theme.Theme, onComplete func()) {
 
 // DropOverlay 是根布局拖着文件经过窗口时的提示：absolute inset-0 z-50 bg-primary-500/20 backdrop-blur-sm，
 // 中间 rounded-2xl border-2 border-dashed border-primary-500 bg-white/90 p-8 shadow-2xl dark:bg-brand-800/90 的卡片，
-// 上下跳动的 i-mdi-folder-upload text-6xl，text-xl font-bold 的标题与 mt-1 text-sm 的说明。不接收指针。
+// 上下跳动的 i-mdi-folder-upload text-6xl，text-xl font-bold 的标题与 mt-1 text-sm 的说明。
+// 整个遮罩连同子元素都不接收指针（pointer-events-none）：要用 IgnoreInput，它会传给子元素；PassThrough 只作用于外层，
+// 里面的色块与卡片仍会挡住下面的拖放目标，拖着文件时目标与提示每帧交替出现（闪烁），放下也落不到目标上。
 // top 是顶栏的高度（遮罩只盖住顶栏以下）。
 func DropOverlay(c *ui.Context, t *theme.Theme, top float32) {
-	ui.Column(c.Key("drop-overlay")).Absolute().Top(top).Left(0).Right(0).Bottom(0).Center().PassThrough().
+	ui.Column(c.Key("drop-overlay")).Absolute().Top(top).Left(0).Right(0).Bottom(0).Center().IgnoreInput(true).
 		Material(glass.Blur{Radius: 4}).Children(func() {
 		ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Background(theme.Primary500.Alpha(0.2))
 		ui.Column(c).Gap(16).Padding(32).Radius(16).AlignItems(ui.Center).Border(2, theme.Primary500).BorderStyle(ui.BorderDashed).
