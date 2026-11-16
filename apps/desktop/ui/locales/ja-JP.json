@@ -1874,5 +1874,8 @@
   "native_settings_metadata_replaceTagsOnUpdate": "メタデータ更新時に古いタグを置き換える",
   "native_settings_metadata_replaceTagsOnUpdateHint": "有効にすると、メタデータ更新時に他のソースから自動取得したタグを今回取得したタグで置き換えます。手動で追加したタグや他のアプリから取り込んだタグは残ります。無効のときは同じソースのタグだけを置き換えます。",
   "native_gameEdit_tags": "ゲームタグ",
-  "native_gameEdit_tagsHint": "タグをクリックして選択し、まとめて削除できます。実線のタグは自動取得したもので、メタデータを再取得すると再び表示される場合があります。"
+  "native_gameEdit_tagsHint": "タグをクリックして選択し、まとめて削除できます。実線のタグは自動取得したもので、メタデータを再取得すると再び表示される場合があります。",
+  "native_settings_metadata_coverSection": "カバー画像",
+  "native_settings_metadata_searchImportSection": "検索とインポート",
+  "native_settings_metadata_tagSection": "タグ"
 }

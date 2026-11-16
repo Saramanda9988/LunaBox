@@ -38,7 +38,7 @@ func newHarness(t *testing.T) *harness {
 	h.cfg = *h.svc.Config
 	h.cfg.MetadataSources = nil // 未设置时显示默认来源
 	h.env = &env.Env{Svc: h.svc.API(), Theme: theme.New(true, 1.5), Router: ui.NewRouter("/"), MainWidth: 1024}
-	h.tt = ui.NewTester(h.view, 1100, 1500)
+	h.tt = ui.NewTester(h.view, 1100, 1800)
 	h.tt.SetScale(1.5)
 	h.tt.SetDark(true)
 	h.frames(3)

@@ -73,7 +73,7 @@ func (s *State) subscribe(p panel.Settings) {
 	})
 }
 
-// View 构建面板：space-y-4 的选项列、mt-6 pt-6 的“批量更新”一组（在设置页 space-y-4 的列里 mt-6 被盖成 16），最后是弹窗。
+// View 构建面板：拉取来源、封面、搜索与导入、标签与“批量更新”几组（组之间 border-t pt-6 的分隔线，间距 24），最后是弹窗。
 func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 	s.subscribe(p)
 	for _, msg := range s.toasts {
@@ -86,51 +86,64 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 	winW, _ := c.Size()
 	sm := winW >= 640
 
-	ui.Column(c.Key("metadata-options")).FillWidth().Gap(16).Children(func() {
-		panel.GroupTitle(c, t, locales.SettingsMetadataSourceTitle())
-		s.sourceGrid(c, t, p)
-		s.strategyRow(c, t, p)
-		coverSources(c, t, p, sm)
-		erogameScapeField(c, t, p)
-		cfg := p.Config
-		better.SettingSwitchRow(c, t, "steam-portrait-cover", better.SettingSwitchRowProps{
-			Label: locales.SettingsMetadataSteamPortraitCover(), Hint: locales.SettingsMetadataSteamPortraitCoverHint(),
-			Checked: cfg.SteamCoverOrientation != enums.SteamCoverOrientationLandscape,
-			OnChange: func(on bool) {
-				p.Change(func(cfg *appconf.AppConfig) {
-					cfg.SteamCoverOrientation = enums.SteamCoverOrientationLandscape
-					if on {
-						cfg.SteamCoverOrientation = enums.SteamCoverOrientationPortrait
-					}
-				})
-			},
+	// 按内容分组（原版没有）：拉取来源、封面、搜索与导入、标签，组之间用分隔线隔开，最后是批量更新。
+	cfg := p.Config
+	ui.Column(c.Key("metadata-options")).FillWidth().Gap(24).Children(func() {
+		ui.Column(c.Key("sources-section")).FillWidth().Gap(16).Children(func() {
+			panel.GroupTitle(c, t, locales.SettingsMetadataSourceTitle())
+			s.sourceGrid(c, t, p)
+			s.strategyRow(c, t, p)
 		})
-		better.SettingSwitchRow(c, t, "allow-duplicate-metadata-import", better.SettingSwitchRowProps{
-			Label: locales.SettingsMetadataAllowDuplicateMetadataImport(), Hint: locales.SettingsMetadataAllowDuplicateMetadataImportHint(),
-			Checked:  cfg.AllowDuplicateMetadataImport,
-			OnChange: func(on bool) { p.Change(func(cfg *appconf.AppConfig) { cfg.AllowDuplicateMetadataImport = on }) },
+
+		section(c, t, "cover-section", locales.NativeSettingsMetadataCoverSection(), func() {
+			coverSources(c, t, p, sm)
+			better.SettingSwitchRow(c, t, "steam-portrait-cover", better.SettingSwitchRowProps{
+				Label: locales.SettingsMetadataSteamPortraitCover(), Hint: locales.SettingsMetadataSteamPortraitCoverHint(),
+				Checked: cfg.SteamCoverOrientation != enums.SteamCoverOrientationLandscape,
+				OnChange: func(on bool) {
+					p.Change(func(cfg *appconf.AppConfig) {
+						cfg.SteamCoverOrientation = enums.SteamCoverOrientationLandscape
+						if on {
+							cfg.SteamCoverOrientation = enums.SteamCoverOrientationPortrait
+						}
+					})
+				},
+			})
 		})
-		better.SettingSwitchRow(c, t, "enable-tag-translation", better.SettingSwitchRowProps{
-			Label: locales.SettingsMetadataEnableTagTranslation(), Hint: locales.SettingsMetadataEnableTagTranslationHint(),
-			Checked:  cfg.EnableTagTranslation,
-			OnChange: func(on bool) { p.Change(func(cfg *appconf.AppConfig) { cfg.EnableTagTranslation = on }) },
+
+		section(c, t, "search-import-section", locales.NativeSettingsMetadataSearchImportSection(), func() {
+			erogameScapeField(c, t, p)
+			better.SettingSwitchRow(c, t, "allow-duplicate-metadata-import", better.SettingSwitchRowProps{
+				Label: locales.SettingsMetadataAllowDuplicateMetadataImport(), Hint: locales.SettingsMetadataAllowDuplicateMetadataImportHint(),
+				Checked:  cfg.AllowDuplicateMetadataImport,
+				OnChange: func(on bool) { p.Change(func(cfg *appconf.AppConfig) { cfg.AllowDuplicateMetadataImport = on }) },
+			})
 		})
-		// 属于翻译的子选项：没有开翻译时禁用。
-		better.SettingSwitchRow(c, t, "show-tag-original-name", better.SettingSwitchRowProps{
-			Label: locales.NativeSettingsMetadataShowTagOriginalName(), Hint: locales.NativeSettingsMetadataShowTagOriginalNameHint(),
-			Checked:  cfg.ShowTagOriginalName,
-			Disabled: !cfg.EnableTagTranslation,
-			OnChange: func(on bool) { p.Change(func(cfg *appconf.AppConfig) { cfg.ShowTagOriginalName = on }) },
+
+		section(c, t, "tag-section", locales.NativeSettingsMetadataTagSection(), func() {
+			better.SettingSwitchRow(c, t, "enable-tag-translation", better.SettingSwitchRowProps{
+				Label: locales.SettingsMetadataEnableTagTranslation(), Hint: locales.SettingsMetadataEnableTagTranslationHint(),
+				Checked:  cfg.EnableTagTranslation,
+				OnChange: func(on bool) { p.Change(func(cfg *appconf.AppConfig) { cfg.EnableTagTranslation = on }) },
+			})
+			// 属于翻译的子选项：没有开翻译时禁用。
+			better.SettingSwitchRow(c, t, "show-tag-original-name", better.SettingSwitchRowProps{
+				Label: locales.NativeSettingsMetadataShowTagOriginalName(), Hint: locales.NativeSettingsMetadataShowTagOriginalNameHint(),
+				Checked:  cfg.ShowTagOriginalName,
+				Disabled: !cfg.EnableTagTranslation,
+				OnChange: func(on bool) { p.Change(func(cfg *appconf.AppConfig) { cfg.ShowTagOriginalName = on }) },
+			})
+			tagLimitRow(c, t, p)
+			better.SettingSwitchRow(c, t, "replace-tags-on-metadata-update", better.SettingSwitchRowProps{
+				Label: locales.NativeSettingsMetadataReplaceTagsOnUpdate(), Hint: locales.NativeSettingsMetadataReplaceTagsOnUpdateHint(),
+				Checked:  cfg.ReplaceTagsOnMetadataUpdate,
+				OnChange: func(on bool) { p.Change(func(cfg *appconf.AppConfig) { cfg.ReplaceTagsOnMetadataUpdate = on }) },
+			})
 		})
-		tagLimitRow(c, t, p)
-		better.SettingSwitchRow(c, t, "replace-tags-on-metadata-update", better.SettingSwitchRowProps{
-			Label: locales.NativeSettingsMetadataReplaceTagsOnUpdate(), Hint: locales.NativeSettingsMetadataReplaceTagsOnUpdateHint(),
-			Checked:  cfg.ReplaceTagsOnMetadataUpdate,
-			OnChange: func(on bool) { p.Change(func(cfg *appconf.AppConfig) { cfg.ReplaceTagsOnMetadataUpdate = on }) },
-		})
+
+		s.refreshSection(c, t, p, sm)
 	})
 
-	s.refreshSection(c, t, p, sm)
 
 	components.ConfirmModal(c, t, "metadata-refresh-confirm", components.ConfirmProps{
 		Open:      &s.confirmOpen,
@@ -176,6 +189,16 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 		open: s.refreshOpen, progress: s.progress, refreshing: s.refreshing,
 		onRetryFailed: func() { s.retryFailed(p) },
 		onClose:       func() { s.refreshOpen = false },
+	})
+}
+
+// section 是元数据设置里的一组：分隔线、小标题，下面 space-y-4 的设置项。
+func section(c *ui.Context, t *theme.Theme, key, title string, content func()) {
+	panel.Divided(c, t, key, 24, func() {
+		ui.Column(c).FillWidth().Gap(16).Children(func() {
+			panel.GroupTitle(c, t, title)
+			content()
+		})
 	})
 }
 
@@ -354,7 +377,7 @@ func tagLimitRow(c *ui.Context, t *theme.Theme, p panel.Settings) {
 // refreshSection 是“批量更新”一组：mt-6 border-brand-200 pt-6（没有 border-t，不画线）的标题、mt-2 的提示与 mt-4 flex
 // flex-col gap-3 sm:flex-row sm:flex-wrap 的三个按钮（w-full justify-center sm:w-auto）。
 func (s *State) refreshSection(c *ui.Context, t *theme.Theme, p panel.Settings, sm bool) {
-	ui.Column(c.Key("metadata-refresh")).FillWidth().Padding(24, 0, 0, 0).Children(func() {
+	panel.Divided(c, t, "metadata-refresh", 24, func() {
 		panel.GroupTitle(c, t, locales.SettingsMetadataRefreshTitle())
 		// mt-2 text-xs text-brand-500 dark:text-brand-400
 		components.TextMargin(c, locales.SettingsMetadataRefreshHint(), theme.TextXS, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400), 8, 0, 0, 0)

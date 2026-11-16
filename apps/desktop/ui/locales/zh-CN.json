@@ -3383,5 +3383,11 @@
   "native_gameEdit_tags": "游戏标签",
   "@native_gameEdit_tags": {"description": "extra:native.gameEdit.tags"},
   "native_gameEdit_tagsHint": "点击标签选中，可批量删除；实线是自动获取的标签，重新获取元数据后可能再次出现。",
-  "@native_gameEdit_tagsHint": {"description": "extra:native.gameEdit.tagsHint"}
+  "@native_gameEdit_tagsHint": {"description": "extra:native.gameEdit.tagsHint"},
+  "native_settings_metadata_coverSection": "封面",
+  "@native_settings_metadata_coverSection": {"description": "extra:native.settings.metadata.coverSection"},
+  "native_settings_metadata_searchImportSection": "搜索与导入",
+  "@native_settings_metadata_searchImportSection": {"description": "extra:native.settings.metadata.searchImportSection"},
+  "native_settings_metadata_tagSection": "标签",
+  "@native_settings_metadata_tagSection": {"description": "extra:native.settings.metadata.tagSection"}
 }

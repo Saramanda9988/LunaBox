@@ -25264,3 +25264,51 @@ func NativeGameEditTagsHint() string { return In(i18n.Locale()).NativeGameEditTa
 func (msgs Messages) NativeGameEditTagsHint() string {
 	return Catalog.Format(msgs.locale, "native_gameEdit_tagsHint", nil)
 }
+
+// NativeSettingsMetadataCoverSection says "封面"
+// in the language the app shows.
+//
+// extra:native.settings.metadata.coverSection
+func NativeSettingsMetadataCoverSection() string {
+	return In(i18n.Locale()).NativeSettingsMetadataCoverSection()
+}
+
+// NativeSettingsMetadataCoverSection says "封面"
+// in the language of msgs.
+//
+// extra:native.settings.metadata.coverSection
+func (msgs Messages) NativeSettingsMetadataCoverSection() string {
+	return Catalog.Format(msgs.locale, "native_settings_metadata_coverSection", nil)
+}
+
+// NativeSettingsMetadataSearchImportSection says "搜索与导入"
+// in the language the app shows.
+//
+// extra:native.settings.metadata.searchImportSection
+func NativeSettingsMetadataSearchImportSection() string {
+	return In(i18n.Locale()).NativeSettingsMetadataSearchImportSection()
+}
+
+// NativeSettingsMetadataSearchImportSection says "搜索与导入"
+// in the language of msgs.
+//
+// extra:native.settings.metadata.searchImportSection
+func (msgs Messages) NativeSettingsMetadataSearchImportSection() string {
+	return Catalog.Format(msgs.locale, "native_settings_metadata_searchImportSection", nil)
+}
+
+// NativeSettingsMetadataTagSection says "标签"
+// in the language the app shows.
+//
+// extra:native.settings.metadata.tagSection
+func NativeSettingsMetadataTagSection() string {
+	return In(i18n.Locale()).NativeSettingsMetadataTagSection()
+}
+
+// NativeSettingsMetadataTagSection says "标签"
+// in the language of msgs.
+//
+// extra:native.settings.metadata.tagSection
+func (msgs Messages) NativeSettingsMetadataTagSection() string {
+	return Catalog.Format(msgs.locale, "native_settings_metadata_tagSection", nil)
+}

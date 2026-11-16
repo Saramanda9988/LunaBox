@@ -1691,5 +1691,8 @@
   "native_settings_metadata_replaceTagsOnUpdate": "更新後設資料時取代舊標籤",
   "native_settings_metadata_replaceTagsOnUpdateHint": "開啟後，更新後設資料會用本次獲取的標籤取代其他來源自動獲取的標籤；手動新增或從其他軟體匯入的標籤保留。關閉時只取代同一來源的標籤。",
   "native_gameEdit_tags": "遊戲標籤",
-  "native_gameEdit_tagsHint": "點擊標籤選取，可批次刪除；實線是自動獲取的標籤，重新獲取後設資料後可能再次出現。"
+  "native_gameEdit_tagsHint": "點擊標籤選取，可批次刪除；實線是自動獲取的標籤，重新獲取後設資料後可能再次出現。",
+  "native_settings_metadata_coverSection": "封面",
+  "native_settings_metadata_searchImportSection": "搜尋與匯入",
+  "native_settings_metadata_tagSection": "標籤"
 }

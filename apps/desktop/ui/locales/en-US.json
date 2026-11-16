@@ -1691,5 +1691,8 @@
   "native_settings_metadata_replaceTagsOnUpdate": "Replace old tags when updating metadata",
   "native_settings_metadata_replaceTagsOnUpdateHint": "When enabled, updating metadata replaces auto tags from other sources with the newly fetched tags; tags added manually or imported from other apps are kept. When disabled, only tags from the same source are replaced.",
   "native_gameEdit_tags": "Tags",
-  "native_gameEdit_tagsHint": "Click tags to select them for bulk deletion. Solid-bordered tags were fetched automatically and may come back after refreshing metadata."
+  "native_gameEdit_tagsHint": "Click tags to select them for bulk deletion. Solid-bordered tags were fetched automatically and may come back after refreshing metadata.",
+  "native_settings_metadata_coverSection": "Covers",
+  "native_settings_metadata_searchImportSection": "Search & Import",
+  "native_settings_metadata_tagSection": "Tags"
 }
