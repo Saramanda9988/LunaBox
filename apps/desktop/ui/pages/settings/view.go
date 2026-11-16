@@ -139,8 +139,9 @@ func (p *Page) View(c *ui.Context) {
 	})
 }
 
-// debugScrollTo 把 SetDebugState 指定的分区滚到主内容区顶部下方 24px 处。前几帧的布局可能还是缩放 1 的（细线 1px），
-// 所以打开后 1.5 秒内每帧都重新对齐，之后不再干预滚动。
+// debugScrollTo 把 focus 指定的分区（SetDebugState 或路径里的 section；有 focusGroup 时是分区里的那一组）滚到
+// 主内容区顶部下方 24px 处。前几帧的布局可能还是缩放 1 的（细线 1px），所以打开后 1.5 秒内每帧都重新对齐，
+// 之后不再干预滚动。
 func (p *Page) debugScrollTo(c *ui.Context) {
 	if !p.debugScroll {
 		return
@@ -155,13 +156,28 @@ func (p *Page) debugScrollTo(c *ui.Context) {
 	}
 	c.AnimationFrame()
 	for _, sec := range p.sections() {
-		if sec.key != p.debug {
+		if sec.key != p.focus {
 			continue
 		}
-		if b := p.handles[sec.id].Bounds(c); b.H > 0 && p.scroll.State.MaxY > 0 {
+		h := &p.handles[sec.id]
+		if g := p.focusHandle(sec.id); g != nil {
+			h = g
+		}
+		if b := h.Bounds(c); b.H > 0 && p.scroll.State.MaxY > 0 {
 			p.scroll.State.Y = max(0, min(p.scroll.State.Y+b.Y-(env.TopbarHeight+24), p.scroll.State.MaxY))
 		}
 	}
+}
+
+// focusHandle 是分区里 focusGroup 指定的一组；没有时为 nil（滚到分区本身）。
+func (p *Page) focusHandle(id sectionID) *ui.Handle {
+	if p.focusGroup == "" {
+		return nil
+	}
+	if id == sectionMetadata {
+		return p.panels.metadata.FocusHandle(p.focusGroup)
+	}
+	return nil
 }
 
 // preparing 是读不到配置时的占位：flex min-h-[80vh] flex-col items-center justify-center space-y-4 text-brand-500，

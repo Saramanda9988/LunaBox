@@ -25312,3 +25312,99 @@ func NativeSettingsMetadataTagSection() string {
 func (msgs Messages) NativeSettingsMetadataTagSection() string {
 	return Catalog.Format(msgs.locale, "native_settings_metadata_tagSection", nil)
 }
+
+// NativeMetadataUpdateFieldsTagsHintSource says "只替换同一来源的旧标签"
+// in the language the app shows.
+//
+// extra:native.metadataUpdateFields.tagsHintSource
+func NativeMetadataUpdateFieldsTagsHintSource() string {
+	return In(i18n.Locale()).NativeMetadataUpdateFieldsTagsHintSource()
+}
+
+// NativeMetadataUpdateFieldsTagsHintSource says "只替换同一来源的旧标签"
+// in the language of msgs.
+//
+// extra:native.metadataUpdateFields.tagsHintSource
+func (msgs Messages) NativeMetadataUpdateFieldsTagsHintSource() string {
+	return Catalog.Format(msgs.locale, "native_metadataUpdateFields_tagsHintSource", nil)
+}
+
+// NativeMetadataUpdateFieldsTagsHintReplace says "将替换全部自动标签，只保留手动标签"
+// in the language the app shows.
+//
+// extra:native.metadataUpdateFields.tagsHintReplace
+func NativeMetadataUpdateFieldsTagsHintReplace() string {
+	return In(i18n.Locale()).NativeMetadataUpdateFieldsTagsHintReplace()
+}
+
+// NativeMetadataUpdateFieldsTagsHintReplace says "将替换全部自动标签，只保留手动标签"
+// in the language of msgs.
+//
+// extra:native.metadataUpdateFields.tagsHintReplace
+func (msgs Messages) NativeMetadataUpdateFieldsTagsHintReplace() string {
+	return Catalog.Format(msgs.locale, "native_metadataUpdateFields_tagsHintReplace", nil)
+}
+
+// NativeMetadataUpdateFieldsTagsSettings says "去修改"
+// in the language the app shows.
+//
+// extra:native.metadataUpdateFields.tagsSettings
+func NativeMetadataUpdateFieldsTagsSettings() string {
+	return In(i18n.Locale()).NativeMetadataUpdateFieldsTagsSettings()
+}
+
+// NativeMetadataUpdateFieldsTagsSettings says "去修改"
+// in the language of msgs.
+//
+// extra:native.metadataUpdateFields.tagsSettings
+func (msgs Messages) NativeMetadataUpdateFieldsTagsSettings() string {
+	return Catalog.Format(msgs.locale, "native_metadataUpdateFields_tagsSettings", nil)
+}
+
+// NativeMetadataUpdateFieldsTagsHelpLabel says "标签的更新方式"
+// in the language the app shows.
+//
+// extra:native.metadataUpdateFields.tagsHelpLabel
+func NativeMetadataUpdateFieldsTagsHelpLabel() string {
+	return In(i18n.Locale()).NativeMetadataUpdateFieldsTagsHelpLabel()
+}
+
+// NativeMetadataUpdateFieldsTagsHelpLabel says "标签的更新方式"
+// in the language of msgs.
+//
+// extra:native.metadataUpdateFields.tagsHelpLabel
+func (msgs Messages) NativeMetadataUpdateFieldsTagsHelpLabel() string {
+	return Catalog.Format(msgs.locale, "native_metadataUpdateFields_tagsHelpLabel", nil)
+}
+
+// NativeMetadataUpdateFieldsTagsLabelSource says "更新自动标签"
+// in the language the app shows.
+//
+// extra:native.metadataUpdateFields.tagsLabelSource
+func NativeMetadataUpdateFieldsTagsLabelSource() string {
+	return In(i18n.Locale()).NativeMetadataUpdateFieldsTagsLabelSource()
+}
+
+// NativeMetadataUpdateFieldsTagsLabelSource says "更新自动标签"
+// in the language of msgs.
+//
+// extra:native.metadataUpdateFields.tagsLabelSource
+func (msgs Messages) NativeMetadataUpdateFieldsTagsLabelSource() string {
+	return Catalog.Format(msgs.locale, "native_metadataUpdateFields_tagsLabelSource", nil)
+}
+
+// NativeMetadataUpdateFieldsTagsLabelReplace says "覆盖自动标签"
+// in the language the app shows.
+//
+// extra:native.metadataUpdateFields.tagsLabelReplace
+func NativeMetadataUpdateFieldsTagsLabelReplace() string {
+	return In(i18n.Locale()).NativeMetadataUpdateFieldsTagsLabelReplace()
+}
+
+// NativeMetadataUpdateFieldsTagsLabelReplace says "覆盖自动标签"
+// in the language of msgs.
+//
+// extra:native.metadataUpdateFields.tagsLabelReplace
+func (msgs Messages) NativeMetadataUpdateFieldsTagsLabelReplace() string {
+	return Catalog.Format(msgs.locale, "native_metadataUpdateFields_tagsLabelReplace", nil)
+}

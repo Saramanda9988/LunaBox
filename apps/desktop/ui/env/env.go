@@ -40,6 +40,16 @@ const (
 	PathGame       = "/game/{id}" // 游戏详情，Route.Param("id") 是游戏 ID
 )
 
+// SettingsPath 返回只展开 section 分区（分区的 key，如 metadata）的设置页路径；focus 不为空时滚到分区里的这一组
+// （目前有 metadata 的 tags）。
+func SettingsPath(section, focus string) string {
+	q := url.Values{"section": {section}}
+	if focus != "" {
+		q.Set("focus", focus)
+	}
+	return PathSettings + "?" + q.Encode()
+}
+
 // GamePath 返回游戏详情页的路径。
 func GamePath(id string) string { return "/game/" + url.PathEscape(id) }
 

@@ -34,6 +34,8 @@ const progressEvent = "metadata:refresh-progress"
 type State struct {
 	subscribed bool // 已订阅 metadata:refresh-progress（Events 没有退订，只订阅一次）
 
+	tagSection ui.Handle // “标签”一组，设置页滚到它（FocusHandle）
+
 	refreshing     bool // isRefreshing
 	queueingCover  bool // isQueueingCoverDownload
 	enriching      bool // isEnrichingIDs
@@ -95,7 +97,7 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 			s.strategyRow(c, t, p)
 		})
 
-		section(c, t, "cover-section", locales.NativeSettingsMetadataCoverSection(), func() {
+		section(c, t, "cover-section", locales.NativeSettingsMetadataCoverSection(), nil, func() {
 			coverSources(c, t, p, sm)
 			better.SettingSwitchRow(c, t, "steam-portrait-cover", better.SettingSwitchRowProps{
 				Label: locales.SettingsMetadataSteamPortraitCover(), Hint: locales.SettingsMetadataSteamPortraitCoverHint(),
@@ -111,7 +113,7 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 			})
 		})
 
-		section(c, t, "search-import-section", locales.NativeSettingsMetadataSearchImportSection(), func() {
+		section(c, t, "search-import-section", locales.NativeSettingsMetadataSearchImportSection(), nil, func() {
 			erogameScapeField(c, t, p)
 			better.SettingSwitchRow(c, t, "allow-duplicate-metadata-import", better.SettingSwitchRowProps{
 				Label: locales.SettingsMetadataAllowDuplicateMetadataImport(), Hint: locales.SettingsMetadataAllowDuplicateMetadataImportHint(),
@@ -120,7 +122,7 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 			})
 		})
 
-		section(c, t, "tag-section", locales.NativeSettingsMetadataTagSection(), func() {
+		section(c, t, "tag-section", locales.NativeSettingsMetadataTagSection(), &s.tagSection, func() {
 			better.SettingSwitchRow(c, t, "enable-tag-translation", better.SettingSwitchRowProps{
 				Label: locales.SettingsMetadataEnableTagTranslation(), Hint: locales.SettingsMetadataEnableTagTranslationHint(),
 				Checked:  cfg.EnableTagTranslation,
@@ -166,6 +168,11 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 	better.MetadataFieldSelectModal(c, t, "metadata-refresh-fields", better.MetadataFieldSelectProps{
 		FieldNotes:  BatchRefreshNotes(p.Config),
 		StrategyOn:  p.Config.MetadataRefreshUseStrategy,
+		TagsReplace: p.Config.ReplaceTagsOnMetadataUpdate,
+		OnTagSettings: func() {
+			s.fieldsOpen = false
+			p.Env.Router.Push(env.SettingsPath("metadata", FocusTags))
+		},
 		OnStrategy:  func() { s.strategy.OpenFor(p.Config, FocusRefresh) },
 		Open:        s.fieldsOpen,
 		Title:       locales.MetadataUpdateFieldsModalFullTitle(),
@@ -192,15 +199,29 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 	})
 }
 
-// section 是元数据设置里的一组：分隔线、小标题，下面 space-y-4 的设置项。
-func section(c *ui.Context, t *theme.Theme, key, title string, content func()) {
-	panel.Divided(c, t, key, 24, func() {
+// section 是元数据设置里的一组：分隔线、小标题，下面 space-y-4 的设置项。handle 不为 nil 时绑定这一组（设置页滚到它）。
+func section(c *ui.Context, t *theme.Theme, key, title string, handle *ui.Handle, content func()) {
+	el := panel.Divided(c, t, key, 24, func() {
 		ui.Column(c).FillWidth().Gap(16).Children(func() {
 			panel.GroupTitle(c, t, title)
 			content()
 		})
 	})
+	if handle != nil {
+		el.Bind(handle)
+	}
 }
+
+// FocusHandle 是分区里 focus 对应的一组（设置页打开 env.SettingsPath("metadata", focus) 时滚到它）；没有时为 nil。
+func (s *State) FocusHandle(focus string) *ui.Handle {
+	if focus == FocusTags {
+		return &s.tagSection
+	}
+	return nil
+}
+
+// FocusTags 是“标签”一组（env.SettingsPath 的 focus）。
+const FocusTags = "tags"
 
 // sourceGrid：grid grid-cols-2 gap-3 的来源卡片。每张是 glass-panel flex items-center justify-between rounded-lg border
 // border-brand-200 p-4 dark:border-brand-700：左侧 flex-1 space-y-2 是 logo 与名称（flex items-center gap-2 select-none，

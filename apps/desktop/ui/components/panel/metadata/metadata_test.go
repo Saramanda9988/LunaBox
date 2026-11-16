@@ -201,7 +201,7 @@ func TestFieldSelectModal(t *testing.T) {
 		locales.MetadataUpdateFieldsSelectAll(), "已选择 8 / 8 个字段", locales.MetadataUpdateFieldsModalContinue(), locales.NativeMetadataStrategySettingsLabel())
 	h.expectNot(t, locales.NativeMetadataRefreshUseStrategy()) // 开关在组合策略弹窗里
 
-	h.click(t, locales.Key("metadataUpdateFields.tags.label"))
+	h.click(t, locales.NativeMetadataUpdateFieldsTagsLabelSource())
 	h.expect(t, "已选择 7 / 8 个字段")
 	if slices.Contains(h.state.fieldDraft, enums.MetadataUpdateFieldTags) {
 		t.Fatalf("fields %q", h.state.fieldDraft)

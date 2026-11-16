@@ -23,6 +23,11 @@ func TooltipWrap(c *ui.Context, t *theme.Theme, anchor ui.Element, content strin
 	tooltip(c, t, anchor, content, true)
 }
 
+// showTooltipNow 让 anchor 的提示立刻显示（点击问号时），不等悬停的延迟；指针离开后照常收起。
+func showTooltipNow(c *ui.Context, anchor ui.Element) {
+	*ui.Local(anchor, "tooltip", func() time.Time { return time.Time{} }) = c.Now().Add(-tooltipDelay)
+}
+
 func tooltip(c *ui.Context, t *theme.Theme, anchor ui.Element, content string, wrap bool) {
 	maxW := float32(288)
 	if wrap {

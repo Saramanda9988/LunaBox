@@ -386,8 +386,8 @@ func TestFieldSelectModal(t *testing.T) {
 	h := newHarness(t, testGame())
 	h.click(t, "从远端更新信息")
 	h.expectTexts(t, "选择要更新的字段", "只会从远端覆盖你勾选的字段，未勾选的本地内容会保留。", "更新全部字段",
-		"已选择 8 / 8 个字段", "游戏名称", "使用远端条目标题覆盖本地名称", "自动标签", "开始更新")
-	h.click(t, "自动标签")
+		"已选择 8 / 8 个字段", "游戏名称", "使用远端条目标题覆盖本地名称", "更新自动标签", "开始更新")
+	h.click(t, "更新自动标签")
 	h.expectTexts(t, "已选择 7 / 8 个字段")
 	if slices.Contains(h.state.fields, enums.MetadataUpdateFieldTags) {
 		t.Fatalf("fields %q", h.state.fields)
@@ -1005,4 +1005,30 @@ func TestTags(t *testing.T) {
 		t.Fatalf("tag not deleted: %+v", tags)
 	}
 	h.expectNot(t, "全选")
+}
+
+// 自动标签名称后面的问号提示当前的更新方式（点击即显示），跟着“更新元数据时替换旧标签”变；
+// 下面的“去修改”关闭弹窗，跳到设置里的标签一组。
+func TestFieldSelectModalTagsBehavior(t *testing.T) {
+	h := newHarness(t, testGame())
+	h.click(t, "从远端更新信息")
+	h.expectNot(t, locales.NativeMetadataUpdateFieldsTagsHintSource()) // 只在提示里
+	h.click(t, locales.NativeMetadataUpdateFieldsTagsHelpLabel())
+	h.expectTexts(t, locales.NativeMetadataUpdateFieldsTagsHintSource())
+	if !slices.Contains(h.state.fields, enums.MetadataUpdateFieldTags) {
+		t.Fatalf("clicking the help toggled the field: %q", h.state.fields)
+	}
+
+	h.svc.Config.ReplaceTagsOnMetadataUpdate = true
+	h.frames(2)
+	h.expectTexts(t, locales.NativeMetadataUpdateFieldsTagsHintReplace(), "覆盖自动标签")
+	h.expectNot(t, "更新自动标签")
+
+	h.click(t, locales.NativeMetadataUpdateFieldsTagsSettings())
+	if h.state.fieldsOpen {
+		t.Fatal("modal still open")
+	}
+	if got, want := h.env.Router.Location(), env.SettingsPath("metadata", "tags"); got != want {
+		t.Fatalf("navigated to %q, want %q", got, want)
+	}
 }

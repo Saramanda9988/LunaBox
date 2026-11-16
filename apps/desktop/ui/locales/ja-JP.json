@@ -1877,5 +1877,11 @@
   "native_gameEdit_tagsHint": "タグをクリックして選択し、まとめて削除できます。実線のタグは自動取得したもので、メタデータを再取得すると再び表示される場合があります。",
   "native_settings_metadata_coverSection": "カバー画像",
   "native_settings_metadata_searchImportSection": "検索とインポート",
-  "native_settings_metadata_tagSection": "タグ"
+  "native_settings_metadata_tagSection": "タグ",
+  "native_metadataUpdateFields_tagsHintSource": "同じソースの古いタグだけを置き換えます",
+  "native_metadataUpdateFields_tagsHintReplace": "すべての自動タグを置き換え、手動タグだけを残します",
+  "native_metadataUpdateFields_tagsSettings": "変更する",
+  "native_metadataUpdateFields_tagsHelpLabel": "タグの更新方法",
+  "native_metadataUpdateFields_tagsLabelSource": "自動タグを更新",
+  "native_metadataUpdateFields_tagsLabelReplace": "自動タグを上書き"
 }

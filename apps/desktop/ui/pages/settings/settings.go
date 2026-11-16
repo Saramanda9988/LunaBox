@@ -91,7 +91,9 @@ type Page struct {
 	panels  panels
 
 	debug       string    // 截图调试：collapsed 或分区的 key，见 SetDebugState
-	debugScroll bool      // 还要把 debug 指定的分区滚到顶部
+	focus       string    // 要滚到顶部的分区的 key：debug，或者路径里的 section（env.SettingsPath）
+	focusGroup  string    // 路径里的 focus：滚到分区里的这一组（见 focusHandle）
+	debugScroll bool      // 还要把 focus 指定的分区（或其中的一组）滚到顶部
 	debugUntil  time.Time // 对齐到这个时间为止
 }
 
@@ -99,15 +101,23 @@ type Page struct {
 func New(e *env.Env) *Page { return &Page{env: e} }
 
 // Open 进入页面：与原版重新挂载 SettingsPage 一致，重新读取配置（fetchConfig）与版本信息，分区回到默认的展开状态
-// （只有基础设置展开），账号卡片回到等宽，滚动回到顶部。
+// （只有基础设置展开），账号卡片回到等宽，滚动回到顶部。从 env.SettingsPath 进入时（原版没有）只展开路径里的分区，
+// 并滚到它（或其中 focus 指定的一组）。
 func (p *Page) Open() {
 	p.open = [sectionCount]bool{sectionBasic: true}
 	p.panels.basic.ResetAccounts()
 	p.scroll = components.ScrollBar{}
+	p.focus, p.focusGroup, p.debugScroll, p.debugUntil = "", "", false, time.Time{}
 	if p.debug != "" {
 		p.open = [sectionCount]bool{}
+		p.focus = p.debug
+	} else if r := p.env.Router; r != nil && r.Query("section") != "" {
+		p.focus, p.focusGroup = r.Query("section"), r.Query("focus")
+	}
+	if p.focus != "" {
 		for _, sec := range p.sectionList(true) { // 版本信息还没读到，不按构建模式过滤
-			if sec.key == p.debug {
+			if sec.key == p.focus {
+				p.open = [sectionCount]bool{}
 				p.open[sec.id], p.debugScroll = true, true
 			}
 		}

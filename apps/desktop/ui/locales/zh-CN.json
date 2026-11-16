@@ -3389,5 +3389,17 @@
   "native_settings_metadata_searchImportSection": "搜索与导入",
   "@native_settings_metadata_searchImportSection": {"description": "extra:native.settings.metadata.searchImportSection"},
   "native_settings_metadata_tagSection": "标签",
-  "@native_settings_metadata_tagSection": {"description": "extra:native.settings.metadata.tagSection"}
+  "@native_settings_metadata_tagSection": {"description": "extra:native.settings.metadata.tagSection"},
+  "native_metadataUpdateFields_tagsHintSource": "只替换同一来源的旧标签",
+  "@native_metadataUpdateFields_tagsHintSource": {"description": "extra:native.metadataUpdateFields.tagsHintSource"},
+  "native_metadataUpdateFields_tagsHintReplace": "将替换全部自动标签，只保留手动标签",
+  "@native_metadataUpdateFields_tagsHintReplace": {"description": "extra:native.metadataUpdateFields.tagsHintReplace"},
+  "native_metadataUpdateFields_tagsSettings": "去修改",
+  "@native_metadataUpdateFields_tagsSettings": {"description": "extra:native.metadataUpdateFields.tagsSettings"},
+  "native_metadataUpdateFields_tagsHelpLabel": "标签的更新方式",
+  "@native_metadataUpdateFields_tagsHelpLabel": {"description": "extra:native.metadataUpdateFields.tagsHelpLabel"},
+  "native_metadataUpdateFields_tagsLabelSource": "更新自动标签",
+  "@native_metadataUpdateFields_tagsLabelSource": {"description": "extra:native.metadataUpdateFields.tagsLabelSource"},
+  "native_metadataUpdateFields_tagsLabelReplace": "覆盖自动标签",
+  "@native_metadataUpdateFields_tagsLabelReplace": {"description": "extra:native.metadataUpdateFields.tagsLabelReplace"}
 }

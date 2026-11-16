@@ -1694,5 +1694,11 @@
   "native_gameEdit_tagsHint": "Click tags to select them for bulk deletion. Solid-bordered tags were fetched automatically and may come back after refreshing metadata.",
   "native_settings_metadata_coverSection": "Covers",
   "native_settings_metadata_searchImportSection": "Search & Import",
-  "native_settings_metadata_tagSection": "Tags"
+  "native_settings_metadata_tagSection": "Tags",
+  "native_metadataUpdateFields_tagsHintSource": "Replaces old tags from the same source only",
+  "native_metadataUpdateFields_tagsHintReplace": "Replaces all auto tags; only manual tags are kept",
+  "native_metadataUpdateFields_tagsSettings": "Change",
+  "native_metadataUpdateFields_tagsHelpLabel": "How tags are updated",
+  "native_metadataUpdateFields_tagsLabelSource": "Update auto tags",
+  "native_metadataUpdateFields_tagsLabelReplace": "Overwrite auto tags"
 }

@@ -31,7 +31,11 @@ type MetadataFieldSelectProps struct {
 	// FieldNotes 是字段名后面的小标签（原版没有：这个字段将从哪个来源更新，或者那个来源没有元数据 ID）。
 	// 更新元数据时是否使用组合策略在高级组合策略弹窗里设置（OnStrategy 打开）。
 	FieldNotes map[enums.MetadataUpdateField]FieldNote
-	OnClose    func()
+	// TagsReplace 是设置里的“更新元数据时替换旧标签”（原版没有）：自动标签的说明换成当前的更新方式，打开时高亮；
+	// 名称后面的问号说明当前的行为。OnTagSettings 不为 nil 时说明后面有“去设置”，跳到设置里的标签一组。
+	TagsReplace   bool
+	OnTagSettings func()
+	OnClose       func()
 	OnConfirm  func(fields []enums.MetadataUpdateField)
 }
 
@@ -52,11 +56,62 @@ func InitialMetadataFields(initial []enums.MetadataUpdateField) []enums.Metadata
 }
 
 // metadataFieldText 是 t(`metadataUpdateFields.${field}.label`) 与 t(`metadataUpdateFields.${field}.hint`)。
-func metadataFieldText(f enums.MetadataUpdateField) [2]string {
+// 自动标签（原版没有）的名称按当前的更新方式是“更新自动标签”或“覆盖自动标签”（tagsReplace），说明由
+// tagsFieldHelp 构建，这里为空。
+func metadataFieldText(f enums.MetadataUpdateField, tagsReplace bool) [2]string {
+	if f == enums.MetadataUpdateFieldTags {
+		if tagsReplace {
+			return [2]string{locales.NativeMetadataUpdateFieldsTagsLabelReplace(), ""}
+		}
+		return [2]string{locales.NativeMetadataUpdateFieldsTagsLabelSource(), ""}
+	}
 	return [2]string{
 		locales.Key("metadataUpdateFields." + string(f) + ".label"),
 		locales.Key("metadataUpdateFields." + string(f) + ".hint"),
 	}
+}
+
+// tagsHelpText 是自动标签当前的更新方式（问号里的提示）。
+func tagsHelpText(replace bool) string {
+	if replace {
+		return locales.NativeMetadataUpdateFieldsTagsHintReplace()
+	}
+	return locales.NativeMetadataUpdateFieldsTagsHintSource()
+}
+
+// tagsFieldHelp 是自动标签名称下面的“去修改”链接，跳到设置里的标签一组；链接自己接住点击，点它不会切换字段。
+// 没有 OnTagSettings 时显示当前的更新方式。
+func tagsFieldHelp(c *ui.Context, t *theme.Theme, p MetadataFieldSelectProps) {
+	if p.OnTagSettings == nil {
+		components.Text(c, tagsHelpText(p.TagsReplace), theme.FontStep{Size: 12, Line: 19.5}, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400))
+		return
+	}
+	label := locales.NativeMetadataUpdateFieldsTagsSettings()
+	link := ui.ButtonBase(c.Key("tags-settings")).Row().Gap(1).AlignItems(ui.Center).FocusRing(false).
+		Cursor(ui.CursorPointer).Label(label)
+	fg := t.Pick(theme.Sky600, theme.Sky400)
+	if link.Hovered() {
+		fg = t.Pick(theme.Sky700, theme.Sky300)
+	}
+	link.OnClick(p.OnTagSettings).Children(func() {
+		components.Text(c, label, theme.FontStep{Size: 12, Line: 19.5}, theme.WeightMedium, fg).NoWrap()
+		components.Icon(c, "chevron-right", 14, fg)
+	})
+}
+
+// tagsHelpButton 是自动标签名称后面的问号：悬停或点击时提示当前的更新方式。替换全部自动标签时问号是琥珀色，提醒这里有改动。
+func tagsHelpButton(c *ui.Context, t *theme.Theme, replace bool) {
+	btn := ui.ButtonBase(c.Key("tags-help-icon")).Size(18, 18).Radius(999).Center().Shrink(0).FocusRing(false).
+		Label(locales.NativeMetadataUpdateFieldsTagsHelpLabel())
+	color := t.Pick(theme.Brand400, theme.Brand500)
+	switch {
+	case replace:
+		color = t.Pick(theme.Warning600, theme.Warning400)
+	case btn.Hovered():
+		color = t.Pick(theme.Brand700, theme.Brand200)
+	}
+	btn.OnClick(func() { showTooltipNow(c, btn) }).Children(func() { components.Icon(c, "help-circle-outline", 15, color) })
+	Tooltip(c, t, btn, tagsHelpText(replace))
 }
 
 // MetadataFieldSelectModal 对应 components/modal/MetadataFieldSelectModal.tsx：max-w-2xl rounded-xl border p-6 shadow-xl，
@@ -106,7 +161,11 @@ func MetadataFieldSelectModal(c *ui.Context, t *theme.Theme, key string, p Metad
 			}
 			ui.Grid(c.Key("fields")).Columns(cols).GapX(12).GapY(12).Margin(16, 0, 0, 0).Children(func() {
 				for _, f := range all {
-					metadataFieldToggle(c.Key(string(f)), t, metadataFieldText(f), p.FieldNotes[f], slices.Contains(fields, f), func(on bool) {
+					var tags *MetadataFieldSelectProps
+					if f == enums.MetadataUpdateFieldTags {
+						tags = &p
+					}
+					metadataFieldToggle(c.Key(string(f)), t, metadataFieldText(f, p.TagsReplace), p.FieldNotes[f], tags, slices.Contains(fields, f), func(on bool) {
 						next := slices.DeleteFunc(slices.Clone(*p.Fields), func(x enums.MetadataUpdateField) bool { return x == f })
 						if on {
 							next = append(next, f)
@@ -146,8 +205,9 @@ func MetadataFieldSelectModal(c *ui.Context, t *theme.Theme, key string, p Metad
 
 // metadataFieldToggle：flex min-w-0 items-center justify-between gap-3 rounded-lg border p-3，左侧 label（点击也切换）是 text-sm
 // font-medium 的名称与 text-xs leading-relaxed 的说明（space-y-1）。
-// note.Text 不为空时是名称后面的小标签（天蓝色，Warn 时琥珀色）。
-func metadataFieldToggle(c *ui.Context, t *theme.Theme, text [2]string, note FieldNote, checked bool, onChange func(bool)) {
+// note.Text 不为空时是名称后面的小标签（天蓝色，Warn 时琥珀色）。tags 不为 nil 时（自动标签）名称后面有问号，
+// 说明是当前的更新方式（tagsFieldHelp）。
+func metadataFieldToggle(c *ui.Context, t *theme.Theme, text [2]string, note FieldNote, tags *MetadataFieldSelectProps, checked bool, onChange func(bool)) {
 	ui.Row(c).MinWidth(0).Gap(12).Padding(12).Radius(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).
 		Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).Children(func() {
 		lb := ui.ButtonBase(c.Key("label")).Column().Grow(1).Basis(0).MinWidth(0).Gap(4).AlignItems(ui.Start).
@@ -155,11 +215,18 @@ func metadataFieldToggle(c *ui.Context, t *theme.Theme, text [2]string, note Fie
 		lb.OnClick(func() { onChange(!checked) }).Children(func() {
 			ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 				components.Text(c, text[0], theme.TextSM, theme.WeightMedium, t.Pick(theme.Brand800, theme.Brand200))
+				if tags != nil {
+					tagsHelpButton(c, t, tags.TagsReplace)
+				}
 				if note.Text != "" {
 					fieldNoteBadge(c, t, note)
 				}
 			})
-			components.Text(c, text[1], theme.FontStep{Size: 12, Line: 19.5}, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400))
+			if tags != nil {
+				tagsFieldHelp(c, t, *tags)
+			} else {
+				components.Text(c, text[1], theme.FontStep{Size: 12, Line: 19.5}, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400))
+			}
 		})
 		Switch(c, t, "switch", checked, false, onChange)
 	})

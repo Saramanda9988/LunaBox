@@ -1694,5 +1694,11 @@
   "native_gameEdit_tagsHint": "點擊標籤選取，可批次刪除；實線是自動獲取的標籤，重新獲取後設資料後可能再次出現。",
   "native_settings_metadata_coverSection": "封面",
   "native_settings_metadata_searchImportSection": "搜尋與匯入",
-  "native_settings_metadata_tagSection": "標籤"
+  "native_settings_metadata_tagSection": "標籤",
+  "native_metadataUpdateFields_tagsHintSource": "只取代同一來源的舊標籤",
+  "native_metadataUpdateFields_tagsHintReplace": "將取代全部自動標籤，只保留手動標籤",
+  "native_metadataUpdateFields_tagsSettings": "前往修改",
+  "native_metadataUpdateFields_tagsHelpLabel": "標籤的更新方式",
+  "native_metadataUpdateFields_tagsLabelSource": "更新自動標籤",
+  "native_metadataUpdateFields_tagsLabelReplace": "覆蓋自動標籤"
 }

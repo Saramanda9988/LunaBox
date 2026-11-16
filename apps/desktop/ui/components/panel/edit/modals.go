@@ -14,6 +14,7 @@ import (
 	"lunabox/desktop/ui/components/importer"
 	"lunabox/desktop/ui/components/panel"
 	metadatapanel "lunabox/desktop/ui/components/panel/metadata"
+	"lunabox/desktop/ui/env"
 	"lunabox/desktop/ui/locales"
 	"lunabox/desktop/ui/theme"
 )
@@ -39,6 +40,11 @@ func (e *editor) fieldSelectModal(c *ui.Context) {
 		FieldNotes:  metadatapanel.GameRefreshNotes(e.config(), e.defaultSourceType(), s.sourceIDs),
 		StrategyOn:  e.config() != nil && e.config().MetadataRefreshUseStrategy,
 		OnStrategy:  func() { s.strategy.OpenFor(e.p.Env.Config(), metadatapanel.FocusRefresh) },
+		TagsReplace: e.config() != nil && e.config().ReplaceTagsOnMetadataUpdate,
+		OnTagSettings: func() {
+			s.fieldsOpen = false
+			e.p.Env.Router.Push(env.SettingsPath("metadata", metadatapanel.FocusTags))
+		},
 		Open:        s.fieldsOpen,
 		Title:       locales.MetadataUpdateFieldsModalSingleTitle(),
 		Description: locales.MetadataUpdateFieldsModalSingleDescription(),

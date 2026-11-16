@@ -183,3 +183,31 @@ func TestFlushSavesPendingDraft(t *testing.T) {
 		t.Errorf("proxy %q", tp.svc.Config.NetworkProxyURL)
 	}
 }
+
+// 从 env.SettingsPath 进入时只展开路径里的分区，并把其中 focus 指定的一组滚进视野。
+func TestOpenFocusedSection(t *testing.T) {
+	tp := newTestPage(t)
+	tp.env.Router.Push(env.SettingsPath("metadata", "tags"))
+	tp.Open()
+	for range 10 {
+		tp.tt.Advance(50 * time.Millisecond)
+		tp.frames(1)
+	}
+	if !tp.open[sectionMetadata] || tp.open[sectionBasic] {
+		t.Fatalf("open states %v", tp.open)
+	}
+	r, ok := tp.tt.Find(locales.NativeSettingsMetadataTagSection())
+	if !ok {
+		t.Fatalf("tag group not shown: %q", tp.tt.Texts())
+	}
+	if r.Y < env.TopbarHeight || r.Y > 400 { // 窗口高 800
+		t.Fatalf("tag group at y=%v, want near the top", r.Y)
+	}
+
+	// 普通进入时回到默认：只展开基础设置。
+	tp.env.Router.Push(env.PathSettings)
+	tp.Open()
+	if !tp.open[sectionBasic] || tp.open[sectionMetadata] {
+		t.Fatalf("plain open states %v", tp.open)
+	}
+}
