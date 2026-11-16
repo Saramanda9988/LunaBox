@@ -183,18 +183,32 @@ func (a *App) Attach(win *mygo.Window) {
 	a.subscribe()
 	a.startup()
 	a.env.Covers.Start(win, a.env.Backend.DataDir())
-	a.maximised = win.IsMaximized()
 	a.syncScale()
-	sync := func() { a.maximised = win.IsMaximized(); a.syncScale(); win.Invalidate() }
-	win.OnMaximize(sync)
-	win.OnUnmaximize(sync)
-	win.OnRestore(sync)
+	a.trackMaximisation(win, func() { a.syncScale(); win.Invalidate() })
 	win.OnMove(func() { a.syncScale(); win.Invalidate() })
 	go a.perf.SampleMemory(a.hudOn.Load, win.Invalidate)
 	a.library.Reload()
 	if a.opts.Bench {
 		a.bench.Arm()
 	}
+}
+
+// maximisationEvents 是顶栏跟踪窗口状态用到的查询与事件，实际由 mygo.Window 提供。
+type maximisationEvents interface {
+	IsMaximized() bool
+	OnMaximize(func()) func()
+	OnUnmaximize(func()) func()
+	OnRestore(func()) func()
+}
+
+func (a *App) trackMaximisation(win maximisationEvents, refresh func()) {
+	a.maximised = win.IsMaximized()
+	// GTK 的 window-state-event 回调可能早于 IsMaximized 属性更新。
+	// 以事件表示的新状态为准，避免图标始终落后一次切换。
+	win.OnMaximize(func() { a.maximised = true; refresh() })
+	win.OnUnmaximize(func() { a.maximised = false; refresh() })
+	// Restore 是从最小化恢复，不改变窗口原来的最大化状态。
+	win.OnRestore(refresh)
 }
 
 func (a *App) syncScale() {

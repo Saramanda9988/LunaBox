@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"bytes"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -9,10 +10,87 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/desktop/host/hosttest"
+	"lunabox/desktop/ui/components/bar"
 	"lunabox/desktop/ui/env"
 	"lunabox/desktop/ui/env/envtest"
 	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/theme"
 )
+
+// delayedMaximisation 模拟 GTK 的 window-state-event 先发出、IsMaximized 属性随后才更新。
+type delayedMaximisation struct {
+	maximised                         bool
+	onMaximise, onUnmaximise, restore func()
+}
+
+func (w *delayedMaximisation) IsMaximized() bool { return w.maximised }
+func (w *delayedMaximisation) OnMaximize(fn func()) func() {
+	w.onMaximise = fn
+	return func() { w.onMaximise = nil }
+}
+func (w *delayedMaximisation) OnUnmaximize(fn func()) func() {
+	w.onUnmaximise = fn
+	return func() { w.onUnmaximise = nil }
+}
+func (w *delayedMaximisation) OnRestore(fn func()) func() {
+	w.restore = fn
+	return func() { w.restore = nil }
+}
+
+func TestMaximisationEventsUpdateTopBarBeforeProperty(t *testing.T) {
+	a := &App{}
+	w := &delayedMaximisation{}
+	tt := ui.NewTester(func(c *ui.Context) {
+		bar.TopBar(c, theme.New(false, 1), bar.TopBarProps{Maximised: a.maximised})
+	}, 400, 28)
+	var refreshed []bool
+	a.trackMaximisation(w, func() {
+		refreshed = append(refreshed, a.maximised)
+		tt.Frame()
+	})
+	tt.Frame()
+	normalIcon := append([]byte(nil), tt.Image().Pix...)
+
+	// 最大化已发生，但 GTK 查询仍返回 false；刷新时必须已使用新状态。
+	w.onMaximise()
+	if !a.maximised || len(refreshed) != 1 || !refreshed[0] {
+		t.Fatalf("maximize event used stale state: maximised=%v refresh=%v", a.maximised, refreshed)
+	}
+	maximisedIcon := append([]byte(nil), tt.Image().Pix...)
+	if bytes.Equal(normalIcon, maximisedIcon) {
+		t.Fatal("maximize event did not update the title bar icon")
+	}
+	w.maximised = true
+
+	// 从最小化恢复并不等于取消最大化，应继续显示还原图标。
+	w.restore()
+	if !a.maximised || !bytes.Equal(maximisedIcon, tt.Image().Pix) {
+		t.Fatal("restoring a minimized maximized window changed its icon")
+	}
+
+	// 取消最大化后，查询暂时仍为 true；包括拖动还原等由窗口管理器发起的状态变化。
+	w.onUnmaximise()
+	if a.maximised || len(refreshed) != 3 || refreshed[2] {
+		t.Fatalf("unmaximize event used stale state: maximised=%v refresh=%v", a.maximised, refreshed)
+	}
+	if !bytes.Equal(normalIcon, tt.Image().Pix) {
+		t.Fatal("unmaximize event did not restore the normal title bar icon")
+	}
+	w.maximised = false
+	w.restore()
+	if a.maximised || !bytes.Equal(normalIcon, tt.Image().Pix) {
+		t.Fatal("restoring a minimized normal window changed its icon")
+	}
+}
+
+func TestTrackMaximisationReadsInitialState(t *testing.T) {
+	a := &App{}
+	w := &delayedMaximisation{maximised: true}
+	a.trackMaximisation(w, func() {})
+	if !a.maximised {
+		t.Fatal("an initially maximized window must start with the restore icon state")
+	}
+}
 
 // newTestApp 从游戏库开始（这些用例测的是游戏库与从它出发的导航）；默认的首页见 TestDefaultRouteIsHome。
 func newTestApp(t *testing.T, n int) (*App, *ui.Tester) {
