@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/egoist/mygo/i18n"
+
+	"lunabox/backend/appconf"
 )
 
 func TestLanguage(t *testing.T) {
@@ -37,16 +39,38 @@ func TestDisplay(t *testing.T) {
 	}
 	for _, c := range cases {
 		withLocale(t, c.locale, func() {
-			if got := Display(c.name, true); got != c.want {
+			if got := Display(c.name, TranslatedWithOriginal); got != c.want {
 				t.Errorf("%s: Display(%q) = %q, want %q", c.locale, c.name, got, c.want)
 			}
 		})
 	}
-	if got := Display("ADV", false); got != "ADV" {
+	if got := Display("ADV", Original); got != "ADV" {
 		t.Errorf("disabled: %q", got)
 	}
-	if got := Display("_attribution", true); got != "_attribution" {
+	if got := Display("_attribution", TranslatedWithOriginal); got != "_attribution" {
 		t.Errorf("_attribution: %q", got)
+	}
+	withLocale(t, "zh-CN", func() {
+		if got := Display("Romance", Translated); got != "恋爱" {
+			t.Errorf("translated only: %q", got)
+		}
+	})
+}
+
+func TestModeOf(t *testing.T) {
+	cases := []struct {
+		cfg  *appconf.AppConfig
+		want Mode
+	}{
+		{nil, TranslatedWithOriginal},
+		{&appconf.AppConfig{EnableTagTranslation: true, ShowTagOriginalName: true}, TranslatedWithOriginal},
+		{&appconf.AppConfig{EnableTagTranslation: true}, Translated},
+		{&appconf.AppConfig{ShowTagOriginalName: true}, Original},
+	}
+	for _, c := range cases {
+		if got := ModeOf(c.cfg); got != c.want {
+			t.Errorf("ModeOf(%+v) = %d, want %d", c.cfg, got, c.want)
+		}
 	}
 }
 
@@ -79,16 +103,16 @@ func TestFindRaw(t *testing.T) {
 func TestFilterByDisplay(t *testing.T) {
 	withLocale(t, "zh-CN", func() {
 		names := []string{"ADV", "PC", "Romance", "冒险"}
-		if got, want := FilterByDisplay(names, "冒险", true), []string{"ADV", "冒险"}; !slices.Equal(got, want) {
+		if got, want := FilterByDisplay(names, "冒险", TranslatedWithOriginal), []string{"ADV", "冒险"}; !slices.Equal(got, want) {
 			t.Errorf("translated: %q, want %q", got, want)
 		}
-		if got, want := FilterByDisplay(names, "冒险", false), []string{"冒险"}; !slices.Equal(got, want) {
+		if got, want := FilterByDisplay(names, "冒险", Original), []string{"冒险"}; !slices.Equal(got, want) {
 			t.Errorf("disabled: %q, want %q", got, want)
 		}
-		if got, want := FilterByDisplay(names, "pc", true), []string{"PC"}; !slices.Equal(got, want) {
+		if got, want := FilterByDisplay(names, "pc", TranslatedWithOriginal), []string{"PC"}; !slices.Equal(got, want) {
 			t.Errorf("raw: %q, want %q", got, want)
 		}
-		if got := FilterByDisplay(names, "", true); !slices.Equal(got, names) {
+		if got := FilterByDisplay(names, "", TranslatedWithOriginal); !slices.Equal(got, names) {
 			t.Errorf("empty: %q", got)
 		}
 	})

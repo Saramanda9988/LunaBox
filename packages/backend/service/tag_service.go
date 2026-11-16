@@ -127,11 +127,75 @@ func (s *TagService) DeleteTag(tagID string) error {
 	return nil
 }
 
-// SearchTagsInLibrary 搜索库中匹配的 tag 名称（用于游戏库筛选）
+// DeleteTags 在一个事务里批量删除 tag（详情页的批量删除、合并显示的同名标签），不存在的 ID 忽略。
+func (s *TagService) DeleteTags(tagIDs []string) error {
+	ids := utils.UniqueNonEmptyStrings(tagIDs)
+	if len(ids) == 0 {
+		return nil
+	}
+	tx, err := s.db.BeginTx(s.ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin delete tags tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+	placeholders := utils.BuildPlaceholders(len(ids))
+	rows, err := tx.QueryContext(s.ctx, fmt.Sprintf(`
+		SELECT game_id, source, name
+		FROM game_tags
+		WHERE id IN (%s)
+	`, placeholders), args...)
+	if err != nil {
+		return fmt.Errorf("failed to query tag identities: %w", err)
+	}
+	var identities []string
+	for rows.Next() {
+		var gameID, source, name string
+		if err := rows.Scan(&gameID, &source, &name); err != nil {
+			rows.Close()
+			return fmt.Errorf("failed to scan tag identity: %w", err)
+		}
+		identities = append(identities, cloudsync.TagTombstoneID(gameID, source, name))
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("failed to query tag identities: %w", err)
+	}
+	if len(identities) == 0 {
+		return nil
+	}
+
+	if _, err := tx.ExecContext(s.ctx, fmt.Sprintf(`DELETE FROM game_tags WHERE id IN (%s)`, placeholders), args...); err != nil {
+		return fmt.Errorf("failed to delete tags: %w", err)
+	}
+	now := time.Now()
+	for _, identity := range identities {
+		if err := cloudsync.UpsertTombstone(s.ctx, tx, cloudsync.EntityGameTag, identity, now); err != nil {
+			return err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit delete tags tx: %w", err)
+	}
+	return nil
+}
+
+// SearchTagsInLibrary 搜索库中匹配的 tag 名称（用于游戏库筛选）。只差大小写的名称算同一个标签
+// （筛选也不区分大小写），返回用得最多的写法。
 func (s *TagService) SearchTagsInLibrary(query string) ([]string, error) {
 	rows, err := s.db.QueryContext(s.ctx, `
-		SELECT DISTINCT name FROM game_tags
-		WHERE name ILIKE ?
+		SELECT name FROM (
+			SELECT name, ROW_NUMBER() OVER (PARTITION BY lower(name) ORDER BY COUNT(*) DESC, name) AS rn
+			FROM game_tags
+			WHERE name ILIKE ?
+			GROUP BY name
+		)
+		WHERE rn = 1
 		ORDER BY name
 		LIMIT 50
 	`, "%"+query+"%")
@@ -151,7 +215,7 @@ func (s *TagService) SearchTagsInLibrary(query string) ([]string, error) {
 	return names, rows.Err()
 }
 
-// FilterExistingTagNames 返回输入中已经存在于库内的 tag 名称，保留输入顺序。
+// FilterExistingTagNames 返回输入中已经存在于库内的 tag 名称（不区分大小写），保留输入顺序。
 func (s *TagService) FilterExistingTagNames(names []string) ([]string, error) {
 	candidates := make([]string, 0, len(names))
 	seen := make(map[string]struct{}, len(names))
@@ -160,10 +224,11 @@ func (s *TagService) FilterExistingTagNames(names []string) ([]string, error) {
 		if normalizedName == "" {
 			continue
 		}
-		if _, exists := seen[normalizedName]; exists {
+		key := strings.ToLower(normalizedName)
+		if _, exists := seen[key]; exists {
 			continue
 		}
-		seen[normalizedName] = struct{}{}
+		seen[key] = struct{}{}
 		candidates = append(candidates, normalizedName)
 	}
 	if len(candidates) == 0 {
@@ -172,12 +237,12 @@ func (s *TagService) FilterExistingTagNames(names []string) ([]string, error) {
 
 	args := make([]interface{}, 0, len(candidates))
 	for _, name := range candidates {
-		args = append(args, name)
+		args = append(args, strings.ToLower(name))
 	}
 
 	rows, err := s.db.QueryContext(s.ctx, fmt.Sprintf(`
-		SELECT DISTINCT name FROM game_tags
-		WHERE name IN (%s)
+		SELECT DISTINCT lower(name) FROM game_tags
+		WHERE lower(name) IN (%s)
 	`, utils.BuildPlaceholders(len(candidates))), args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to filter existing tag names: %w", err)
@@ -198,17 +263,17 @@ func (s *TagService) FilterExistingTagNames(names []string) ([]string, error) {
 
 	result := make([]string, 0, len(existing))
 	for _, name := range candidates {
-		if _, exists := existing[name]; exists {
+		if _, exists := existing[strings.ToLower(name)]; exists {
 			result = append(result, name)
 		}
 	}
 	return result, nil
 }
 
-// GetGameIDsByTag 获取包含指定 tag 的所有游戏 ID（用于游戏库筛选）
+// GetGameIDsByTag 获取包含指定 tag 的所有游戏 ID（用于游戏库筛选，不区分大小写）
 func (s *TagService) GetGameIDsByTag(tagName string) ([]string, error) {
 	rows, err := s.db.QueryContext(s.ctx, `
-		SELECT DISTINCT game_id FROM game_tags WHERE name = ?
+		SELECT DISTINCT game_id FROM game_tags WHERE lower(name) = lower(?)
 	`, tagName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get game ids by tag: %w", err)
@@ -245,7 +310,18 @@ func (s *TagService) upsertScrapedTags(gameID string, tags []metadata.TagItem) e
 	return nil
 }
 
+// upsertScrapedTagsForSource 用 tags 替换 source 这一个来源的标签，其他来源与用户标签不动。
 func (s *TagService) upsertScrapedTagsForSource(gameID string, source string, tags []metadata.TagItem) error {
+	return s.writeScrapedTags(gameID, source, tags, false)
+}
+
+// replaceScrapedTags 用 source 的 tags 替换游戏全部自动获取的标签（其他来源的一并删除），只保留 user 来源的标签。
+// 用于设置里开启了“更新元数据时替换旧标签”的更新。
+func (s *TagService) replaceScrapedTags(gameID string, source string, tags []metadata.TagItem) error {
+	return s.writeScrapedTags(gameID, source, tags, true)
+}
+
+func (s *TagService) writeScrapedTags(gameID string, source string, tags []metadata.TagItem, allSources bool) error {
 	source = strings.ToLower(strings.TrimSpace(source))
 	if source == "" || source == "user" {
 		return fmt.Errorf("invalid scraped tag source: %s", source)
@@ -256,11 +332,16 @@ func (s *TagService) upsertScrapedTagsForSource(gameID string, source string, ta
 	}
 	defer tx.Rollback()
 
+	// 要替换的范围：这一个来源；allSources 时是 user 以外的全部来源。
+	scope, scopeArgs := `game_id = ? AND source = ?`, []interface{}{gameID, source}
+	if allSources {
+		scope, scopeArgs = `game_id = ? AND source <> 'user'`, []interface{}{gameID}
+	}
+
 	rows, err := tx.QueryContext(s.ctx, `
 		SELECT game_id, source, name
 		FROM game_tags
-		WHERE game_id = ? AND source = ?
-	`, gameID, source)
+		WHERE `+scope, scopeArgs...)
 	if err != nil {
 		return fmt.Errorf("failed to query existing scraped tags: %w", err)
 	}
@@ -278,9 +359,7 @@ func (s *TagService) upsertScrapedTagsForSource(gameID string, source string, ta
 	}
 	rows.Close()
 
-	if _, err := tx.ExecContext(s.ctx, `
-		DELETE FROM game_tags WHERE game_id = ? AND source = ?
-	`, gameID, source); err != nil {
+	if _, err := tx.ExecContext(s.ctx, `DELETE FROM game_tags WHERE `+scope, scopeArgs...); err != nil {
 		return fmt.Errorf("failed to delete old scraped tags: %w", err)
 	}
 

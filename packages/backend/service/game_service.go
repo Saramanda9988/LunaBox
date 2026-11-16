@@ -1889,7 +1889,8 @@ func (s *GameService) applyComposedMetadataResult(existingGame models.Game, meta
 		go s.asyncDownloadCoverImage(existingGame.ID, existingGame.Name, remoteCoverURL, true)
 	}
 
-	// 写入 tags（先删除刮削来源的旧 tag，再批量插入新 tag，保留用户 tag）
+	// 写入 tags：默认只替换本次来源的旧 tag；设置了“更新元数据时替换旧标签”且本次拿到了 tag 时，
+	// 其他来源自动获取的 tag 一并删除。用户 tag 都保留。
 	if fieldSet.Has(enums2.MetadataUpdateFieldTags) && s.tagService != nil {
 		if tagSource == "" {
 			tagSource = gamehelper.NormalizeMetadataSourceType(remoteGame.SourceType)
@@ -1897,7 +1898,11 @@ func (s *GameService) applyComposedMetadataResult(existingGame models.Game, meta
 		if tagSource == "" {
 			tagSource = gamehelper.NormalizeMetadataSourceType(existingGame.SourceType)
 		}
-		if err := s.tagService.upsertScrapedTagsForSource(existingGame.ID, string(tagSource), metaResult.Tags); err != nil {
+		write := s.tagService.upsertScrapedTagsForSource
+		if s.config != nil && s.config.ReplaceTagsOnMetadataUpdate && len(metaResult.Tags) > 0 {
+			write = s.tagService.replaceScrapedTags
+		}
+		if err := write(existingGame.ID, string(tagSource), metaResult.Tags); err != nil {
 			applog.LogWarningf(s.ctx, "UpdateGameFromRemote: failed to upsert tags for game %s: %v", existingGame.ID, err)
 		}
 	}

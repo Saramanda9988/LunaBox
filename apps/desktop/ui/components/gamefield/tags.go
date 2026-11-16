@@ -19,7 +19,7 @@ type TagsProps struct {
 	Tags        []string
 	Input       *string
 	Suggestions []string
-	Translate   bool // enable_tag_translation：候选与胶囊显示界面语言的译名
+	Translate   tagname.Mode // 候选与胶囊的标签名显示方式（enable_tag_translation、show_tag_original_name）
 	OnInput     func(query string)
 	OnChange    func(tags []string)
 }

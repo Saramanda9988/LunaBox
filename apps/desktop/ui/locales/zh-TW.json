@@ -1681,5 +1681,15 @@
   "native_setupWizard_libraryOptional": "可以先留空，之後在設定中配置。",
   "native_setupWizard_next": "下一步",
   "native_setupWizard_finish": "開始使用",
-  "native_setupWizard_done": "初始設定已完成"
+  "native_setupWizard_done": "初始設定已完成",
+  "native_tags_selectNone": "取消全選",
+  "native_tags_deleteSelected": "刪除所選（{count}）",
+  "native_tags_sources": "來源：{sources}",
+  "native_tags_sourceUser": "手動新增",
+  "native_settings_metadata_showTagOriginalName": "譯名後顯示原文",
+  "native_settings_metadata_showTagOriginalNameHint": "開啟後，翻譯過的標籤顯示為「譯名(原文)」，可以區分譯名相同的不同標籤。",
+  "native_settings_metadata_replaceTagsOnUpdate": "更新後設資料時取代舊標籤",
+  "native_settings_metadata_replaceTagsOnUpdateHint": "開啟後，更新後設資料會用本次獲取的標籤取代其他來源自動獲取的標籤；手動新增或從其他軟體匯入的標籤保留。關閉時只取代同一來源的標籤。",
+  "native_gameEdit_tags": "遊戲標籤",
+  "native_gameEdit_tagsHint": "點擊標籤選取，可批次刪除；實線是自動獲取的標籤，重新獲取後設資料後可能再次出現。"
 }

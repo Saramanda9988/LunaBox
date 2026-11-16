@@ -19,6 +19,7 @@ import (
 	"lunabox/desktop/api"
 	"lunabox/desktop/host"
 	"lunabox/desktop/host/hosttest"
+	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/panel"
 	"lunabox/desktop/ui/covers"
 	"lunabox/desktop/ui/env"
@@ -36,6 +37,7 @@ type harness struct {
 	changes int
 	saved   int
 	deleted int
+	tags    []components.TagGroup // 页面里合并后的标签：OnDeleteTags 删除后重新读取
 	tt      *ui.Tester
 }
 
@@ -96,8 +98,31 @@ func (h *harness) view(c *ui.Context) {
 				}
 			},
 			OnDeleted: func() { h.deleted++ },
+			Tags:      h.tags,
+			OnAddTag: func(_ *ui.Context, name string) {
+				if err := h.svc.Tag.AddUserTag("g1", name); err == nil {
+					h.loadTags()
+				}
+			},
+			OnDeleteTags: func(_ *ui.Context, groups []components.TagGroup) {
+				var ids []string
+				for _, g := range groups {
+					for _, tag := range g.Tags {
+						ids = append(ids, tag.ID)
+					}
+				}
+				if err := h.svc.Tag.DeleteTags(ids); err == nil {
+					h.loadTags()
+				}
+			},
 		})
 	})
+}
+
+// loadTags 读取游戏的标签并合并（同详情页）。
+func (h *harness) loadTags() {
+	tags, _ := h.svc.Tag.GetTagsByGame("g1")
+	h.tags = components.GroupTags(tags)
 }
 
 func (h *harness) frames(n int) {
@@ -914,4 +939,70 @@ func TestCancelRemoteRequests(t *testing.T) {
 	if fake.updates != 1 || h.state.updating {
 		t.Fatalf("update: updates %d, updating %v", fake.updates, h.state.updating)
 	}
+}
+
+// 游戏标签：同名标签合并显示；点标签选中（胶囊尺寸不变），全选、删除所选一次删除；叉删除一个。
+func TestTags(t *testing.T) {
+	h := newHarness(t, testGame())
+	// 没有标签时也显示（可以用“+”添加），但没有全选。
+	h.expectTexts(t, "游戏标签")
+	h.expectNot(t, "全选")
+	h.click(t, "添加标签")
+	h.tt.Type("新标签")
+	h.tt.Key(0, ui.KeyEnter)
+	h.frames(2)
+	if tags, _ := h.svc.Tag.GetTagsByGame("g1"); len(tags) != 1 || tags[0].Name != "新标签" || tags[0].Source != "user" {
+		t.Fatalf("tag not added: %+v", tags)
+	}
+	h.click(t, "删除标签")
+	hosttest.AddTag(t, h.svc, "g1", "t1", "纯爱", "bangumi", false)
+	hosttest.AddTag(t, h.svc, "g1", "t2", "纯爱", "vndb", false)
+	hosttest.AddTag(t, h.svc, "g1", "t3", "Drama", "vndb", false)
+	hosttest.AddTag(t, h.svc, "g1", "t4", "我的标签", "user", false)
+	h.loadTags()
+	h.frames(2)
+	h.expectTexts(t, "游戏标签", "全选")
+	h.expectNot(t, "删除所选（0）") // 没有选中时不显示
+
+	before, ok := h.tt.Find("纯爱")
+	if !ok {
+		t.Fatalf("no tag chip in %q", h.tt.Texts())
+	}
+	h.click(t, "纯爱")
+	after, _ := h.tt.Find("纯爱")
+	if before.W != after.W || before.H != after.H {
+		t.Fatalf("chip size changed when selected: %+v -> %+v", before, after)
+	}
+	h.expectTexts(t, "删除所选（1）")
+	h.click(t, "纯爱") // 再点取消选中
+	h.expectNot(t, "删除所选（1）")
+
+	h.click(t, "全选")
+	h.expectTexts(t, "删除所选（3）", "取消全选")
+	h.click(t, "我的标签") // 去掉一个
+	if dir := os.Getenv("DESKTOP_MYGO_PNG"); dir != "" {
+		f, err := os.Create(filepath.Join(dir, "edit-tags.png"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = png.Encode(f, h.tt.Image())
+		f.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	h.click(t, "删除所选（2）")
+	tags, _ := h.svc.Tag.GetTagsByGame("g1")
+	if len(tags) != 1 || tags[0].Name != "我的标签" {
+		t.Fatalf("remaining tags = %+v", tags)
+	}
+	if len(h.state.tagSelected) != 0 {
+		t.Fatalf("selection kept for deleted tags: %+v", h.state.tagSelected)
+	}
+
+	h.click(t, "删除标签")
+	if tags, _ := h.svc.Tag.GetTagsByGame("g1"); len(tags) != 0 {
+		t.Fatalf("tag not deleted: %+v", tags)
+	}
+	h.expectNot(t, "全选")
 }

@@ -34,7 +34,7 @@ func Aliases(c *ui.Context, t *theme.Theme, key string, p AliasesProps) {
 		if *p.Adding {
 			aliasInput(c, t, p)
 		} else {
-			addAliasButton(c, t, func() { *p.Adding = true })
+			addAliasButton(c, t, "add-alias", locales.GameEditAddAlias(), func() { *p.Adding = true })
 		}
 	})
 	if box.FocusWithin() {
@@ -71,8 +71,9 @@ func aliasChip(c *ui.Context, t *theme.Theme, alias, removeLabel string, onRemov
 // addAliasButton：inline-flex h-7 w-7 rounded-full border border-dashed border-brand-300 text-brand-500
 // hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 dark:border-brand-600 dark:text-brand-400
 // dark:hover:border-brand-400 dark:hover:bg-brand-800/50 dark:hover:text-brand-200，i-mdi-plus text-sm。
-func addAliasButton(c *ui.Context, t *theme.Theme, onClick func()) {
-	btn := ui.ButtonBase(c.Key("add-alias")).Size(28, 28).Radius(999).Center().Shrink(0).FocusRing(false).Label(locales.GameEditAddAlias())
+// 游戏标签的“+”也用它（key、label 不同）。
+func addAliasButton(c *ui.Context, t *theme.Theme, key, label string, onClick func()) {
+	btn := ui.ButtonBase(c.Key(key)).Size(28, 28).Radius(999).Center().Shrink(0).FocusRing(false).Label(label)
 	border, color := t.Pick(theme.Brand300, theme.Brand600), t.Pick(theme.Brand500, theme.Brand400)
 	if btn.Hovered() {
 		border, color = t.Pick(theme.Brand500, theme.Brand400), t.Pick(theme.Brand700, theme.Brand200)

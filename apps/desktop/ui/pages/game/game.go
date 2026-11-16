@@ -60,7 +60,7 @@ type Page struct {
 	id       string
 	gen      int
 	game     *models.Game
-	tags     []models.GameTag
+	tags     []components.TagGroup // 合并了同名标签的标签
 	loading  bool
 	openedAt time.Time
 	dirty    bool      // 编辑后尚未自动保存
@@ -153,7 +153,7 @@ func (p *Page) Open(id string, now time.Time) {
 				p.failed = locales.GameToastLoadDataFailed
 				return
 			}
-			p.game, p.tags = &g, tags
+			p.game, p.tags = &g, components.GroupTags(tags)
 			p.launchMode = defaultLaunchMode(g)
 		}
 	})
@@ -168,6 +168,10 @@ func (p *Page) panel() panel.Game {
 		OnChange:  p.updateGame,
 		OnSaved:   p.reload,
 		OnDeleted: p.deleted,
+
+		Tags:         p.tags,
+		OnAddTag:     p.addTag,
+		OnDeleteTags: p.deleteTags,
 	}
 }
 
@@ -238,7 +242,7 @@ func (p *Page) reload() {
 			if g.LaunchMode != p.game.LaunchMode { // 原版只在 launch_mode 变化时重设临时启动方式
 				p.launchMode = defaultLaunchMode(g)
 			}
-			p.game, p.tags, p.dirty = &g, tags, false
+			p.game, p.tags, p.dirty = &g, components.GroupTags(tags), false
 			if p.links.LibraryChanged != nil {
 				p.links.LibraryChanged()
 			}

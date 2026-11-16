@@ -57,6 +57,10 @@ type State struct {
 	aliasAdding bool // aliasAddingGameId === game.id
 	aliasDraft  string
 
+	tagSelected map[string]bool // 游戏标签里选中的 TagGroup.Key（原版没有）
+	tagAdding   bool
+	tagDraft    string
+
 	dateOpen  bool
 	dateMonth time.Time
 
@@ -180,6 +184,7 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Game) {
 	root.Gap(24).Children(func() {
 		e.textField(c, "name", locales.GameEditName(), e.g.Name, func(g *models.Game, v string) { g.Name = v })
 		e.aliasesField(c)
+		e.tagsField(c)
 		e.coverField(c)
 		e.coverSourceField(c)
 		e.textField(c, "company", locales.GameEditDeveloper(), e.g.Company, func(g *models.Game, v string) { g.Company = v })

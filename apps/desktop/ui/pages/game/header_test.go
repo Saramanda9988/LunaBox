@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -225,4 +226,53 @@ func TestTagTranslation(t *testing.T) {
 	tp.svc.Config.EnableTagTranslation = false
 	tp.frames(2)
 	tp.expectTexts(t, "Romance")
+}
+
+// 关闭 show_tag_original_name 后只显示译名。
+func TestTagTranslationWithoutOriginal(t *testing.T) {
+	tp := newTestPage(t, 1280)
+	hosttest.AddTag(t, tp.svc, "0", "t3", "Romance", "vndb", false)
+	tp.svc.Config.ShowTagOriginalName = false
+	tp.Open("0", time.Now())
+	tp.frames(3)
+	tp.expectTexts(t, "恋爱")
+	if tp.tt.HasText("恋爱(Romance)") {
+		t.Errorf("original name shown: %q", tp.tt.Texts())
+	}
+}
+
+// 不同来源的同名标签（不区分大小写）合并成一个胶囊；删除时合并进来的标签一起删掉。
+func TestTagsMerge(t *testing.T) {
+	tp := newTestPage(t, 1280)
+	hosttest.AddTag(t, tp.svc, "0", "t3", "纯爱", "vndb", false)
+	hosttest.AddTag(t, tp.svc, "0", "t4", "LunaTag", "vndb", false)
+	hosttest.AddTag(t, tp.svc, "0", "t5", "lunatag", "kungal", false)
+	tp.Open("0", time.Now())
+	tp.frames(3)
+	// 每个胶囊有两处文字（按钮的无障碍名称与文字本身），合并前同名的会有 4 处。
+	var lunaTag string // 合并后显示其中一个写法
+	count := func(s string) int {
+		n := 0
+		for _, text := range tp.tt.Texts() {
+			if strings.EqualFold(text, s) {
+				n++
+				lunaTag = text
+			}
+		}
+		return n
+	}
+	if count("纯爱") != 2 || count("lunatag") != 2 {
+		t.Fatalf("tags not merged: %q", tp.tt.Texts())
+	}
+	r, _ := tp.tt.Find(lunaTag)
+	tp.tt.Move(r.X+r.W/2, r.Y+r.H/2)
+	tp.tt.Advance(time.Second) // 等悬停后删除按钮淡入
+	if err := tp.tt.Click("删除标签"); err != nil {
+		t.Fatal(err)
+	}
+	tp.frames(3)
+	tags, _ := tp.svc.Tag.GetTagsByGame("0")
+	if slices.ContainsFunc(tags, func(tag models.GameTag) bool { return strings.EqualFold(tag.Name, "lunatag") }) {
+		t.Fatalf("merged tags not all deleted: %+v", tags)
+	}
 }

@@ -114,19 +114,41 @@ func load(lang string) (*table, error) {
 // Enabled 是配置的 enable_tag_translation（config?.enable_tag_translation ?? true）。
 func Enabled(cfg *appconf.AppConfig) bool { return cfg == nil || cfg.EnableTagTranslation }
 
+// Mode 是标签名的显示方式，由设置里的 enable_tag_translation 与 show_tag_original_name 决定。
+type Mode uint8
+
+const (
+	Original               Mode = iota // 只显示原名（没有开翻译）
+	Translated                         // 只显示译名
+	TranslatedWithOriginal             // “译名(原名)”
+)
+
+// ModeOf 是配置对应的显示方式；没有配置时同默认值（译名(原名)）。
+func ModeOf(cfg *appconf.AppConfig) Mode {
+	switch {
+	case cfg == nil:
+		return TranslatedWithOriginal
+	case !cfg.EnableTagTranslation:
+		return Original
+	case !cfg.ShowTagOriginalName:
+		return Translated
+	}
+	return TranslatedWithOriginal
+}
+
 // normalize 对应 normalizeTagSearchText。
 func normalize(s string) string { return strings.ToLower(strings.TrimSpace(s)) }
 
-// Display 对应 getTagDisplayName：enabled（配置的 enable_tag_translation）时返回“译名(原名)”，
-// 让翻译后同名的标签（如 kungal 的“恋爱”与 VNDB 的 Romance）能区分开；
+// Display 对应 getTagDisplayName：mode 为 Original 时原样返回；有译名时返回译名，TranslatedWithOriginal 时是
+// “译名(原名)”，让翻译后同名的标签（如 kungal 的“恋爱”与 VNDB 的 Romance）能区分开；
 // 没有译名、译名与原名相同或译名里已含原名（如“冒险游戏（ADV）”）时只返回一个。
-func Display(name string, enabled bool) string {
-	if !enabled {
+func Display(name string, mode Mode) string {
+	if mode == Original {
 		return name
 	}
 	if tb := current(); tb != nil {
 		if v, ok := tb.names[name]; ok && v != "" {
-			if strings.Contains(strings.ToLower(v), strings.ToLower(name)) {
+			if mode == Translated || strings.Contains(strings.ToLower(v), strings.ToLower(name)) {
 				return v
 			}
 			return v + "(" + name + ")"
@@ -159,14 +181,14 @@ func FindRaw(query string) []string {
 }
 
 // FilterByDisplay 对应 filterTagNamesByDisplayQuery：原名或显示名包含 query 的标签。
-func FilterByDisplay(names []string, query string, enabled bool) []string {
+func FilterByDisplay(names []string, query string, mode Mode) []string {
 	q := normalize(query)
 	if q == "" {
 		return names
 	}
 	var out []string
 	for _, n := range names {
-		if strings.Contains(normalize(n), q) || strings.Contains(normalize(Display(n, enabled)), q) {
+		if strings.Contains(normalize(n), q) || strings.Contains(normalize(Display(n, mode)), q) {
 			out = append(out, n)
 		}
 	}

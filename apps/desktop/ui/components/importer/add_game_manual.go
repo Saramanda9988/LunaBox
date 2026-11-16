@@ -310,7 +310,7 @@ func (a *AddGame) manualFields(c *ui.Context, t *theme.Theme) {
 	})
 	field("tags", locales.NativeTags(), func() {
 		gamefield.Tags(c, t, "tags", gamefield.TagsProps{
-			Tags: f.tags, Input: &f.tagInput, Suggestions: f.tagSuggestions, Translate: tagname.Enabled(a.env.Config()),
+			Tags: f.tags, Input: &f.tagInput, Suggestions: f.tagSuggestions, Translate: tagname.ModeOf(a.env.Config()),
 			OnInput: func(q string) {
 				a.env.SearchTags(q, f.tags, func(out []string) {
 					if q == f.tagInput {

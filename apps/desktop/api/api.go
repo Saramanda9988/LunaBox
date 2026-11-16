@@ -125,6 +125,7 @@ type TagService interface {
 	GetTagsByGame(gameID string) ([]models.GameTag, error)
 	AddUserTag(gameID string, tagName string) error
 	DeleteTag(tagID string) error
+	DeleteTags(tagIDs []string) error
 }
 
 // StatsService 对应 service.StatsService。

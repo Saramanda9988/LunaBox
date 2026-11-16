@@ -25,7 +25,7 @@ type Backend struct {
 
 // NewBackend 返回 n 个游戏、侧边栏展开、封面显示排序字段、显示标签译名（同默认配置）的后端。
 func NewBackend(n int) *Backend {
-	b := &Backend{Cfg: appconf.AppConfig{SidebarOpen: true, ShowSortFieldOnCover: true, EnableTagTranslation: true}}
+	b := &Backend{Cfg: appconf.AppConfig{SidebarOpen: true, ShowSortFieldOnCover: true, EnableTagTranslation: true, ShowTagOriginalName: true}}
 	names := []string{"橘光柠水随想曲", "Summer Pockets", "星空鉄道とシロの旅"}
 	for i := range n {
 		b.Games = append(b.Games, models.Game{

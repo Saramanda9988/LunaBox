@@ -1864,5 +1864,15 @@
   "native_setupWizard_libraryOptional": "空欄のままにして、後で設定から指定することもできます。",
   "native_setupWizard_next": "次へ",
   "native_setupWizard_finish": "はじめる",
-  "native_setupWizard_done": "初期設定が完了しました"
+  "native_setupWizard_done": "初期設定が完了しました",
+  "native_tags_selectNone": "選択を解除",
+  "native_tags_deleteSelected": "選択を削除（{count}）",
+  "native_tags_sources": "ソース：{sources}",
+  "native_tags_sourceUser": "手動で追加",
+  "native_settings_metadata_showTagOriginalName": "訳語の後に原文を表示",
+  "native_settings_metadata_showTagOriginalNameHint": "有効にすると、翻訳したタグを「訳語(原文)」と表示し、訳語が同じ別のタグを見分けられます。",
+  "native_settings_metadata_replaceTagsOnUpdate": "メタデータ更新時に古いタグを置き換える",
+  "native_settings_metadata_replaceTagsOnUpdateHint": "有効にすると、メタデータ更新時に他のソースから自動取得したタグを今回取得したタグで置き換えます。手動で追加したタグや他のアプリから取り込んだタグは残ります。無効のときは同じソースのタグだけを置き換えます。",
+  "native_gameEdit_tags": "ゲームタグ",
+  "native_gameEdit_tagsHint": "タグをクリックして選択し、まとめて削除できます。実線のタグは自動取得したもので、メタデータを再取得すると再び表示される場合があります。"
 }

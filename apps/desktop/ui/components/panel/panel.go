@@ -4,7 +4,10 @@
 package panel
 
 import (
+	"github.com/egoist/mygo/ui"
+
 	"lunabox/backend/models"
+	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/env"
 )
 
@@ -19,6 +22,12 @@ type Game struct {
 	OnSaved func()
 	// OnDeleted 在游戏被删除后调用：页面回到游戏库并刷新列表。
 	OnDeleted func()
+
+	// Tags 是页面里合并了同名标签的游戏标签；OnAddTag 添加用户标签，OnDeleteTags 删除其中几个（同名的几个来源一起删），
+	// 都由页面更新标签并提示。
+	Tags         []components.TagGroup
+	OnAddTag     func(c *ui.Context, name string)
+	OnDeleteTags func(c *ui.Context, groups []components.TagGroup)
 }
 
 // TopOffset 是弹窗遮罩的起点（原版的 #app-modal-root 在顶栏下方）。

@@ -8,6 +8,7 @@ import (
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
 	"lunabox/backend/utils"
+	"slices"
 	"strings"
 )
 
@@ -239,16 +240,23 @@ func QueryGameList(ctx context.Context, db *sql.DB, req vo.GameListRequest, scop
 		whereParts = append(whereParts, metadataSourceClause)
 	}
 	if len(req.Tags) > 0 {
-		placeholders := utils.BuildPlaceholders(len(req.Tags))
+		// 标签不区分大小写：不同来源可能给出只差大小写的同一个标签。
+		tagKeys := make([]string, 0, len(req.Tags))
+		for _, tag := range req.Tags {
+			if key := strings.ToLower(tag); !slices.Contains(tagKeys, key) {
+				tagKeys = append(tagKeys, key)
+			}
+		}
+		placeholders := utils.BuildPlaceholders(len(tagKeys))
 		if req.ExcludeTags {
 			whereParts = append(whereParts, fmt.Sprintf(`
 				g.id NOT IN (
 					SELECT DISTINCT game_id
 					FROM game_tags
-					WHERE name IN (%s)
+					WHERE lower(name) IN (%s)
 				)
 			`, placeholders))
-			for _, tag := range req.Tags {
+			for _, tag := range tagKeys {
 				args = append(args, tag)
 			}
 		} else {
@@ -256,15 +264,15 @@ func QueryGameList(ctx context.Context, db *sql.DB, req vo.GameListRequest, scop
 				g.id IN (
 					SELECT game_id
 					FROM game_tags
-					WHERE name IN (%s)
+					WHERE lower(name) IN (%s)
 					GROUP BY game_id
-					HAVING COUNT(DISTINCT name) = ?
+					HAVING COUNT(DISTINCT lower(name)) = ?
 				)
 			`, placeholders))
-			for _, tag := range req.Tags {
+			for _, tag := range tagKeys {
 				args = append(args, tag)
 			}
-			args = append(args, len(req.Tags))
+			args = append(args, len(tagKeys))
 		}
 	}
 

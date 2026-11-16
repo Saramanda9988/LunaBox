@@ -124,13 +124,16 @@ func TestGetGlobalPeriodStatsKeepsShortRangeDaily(t *testing.T) {
 	}
 }
 
-// 同一游戏从多个数据源拿到同名标签时，标签时长不能按来源数重复累加，也不能超过期间总时长。
+// 同一游戏从多个数据源拿到同名标签（含只差大小写的）时，标签时长不能按来源数重复累加，也不能超过期间总时长。
 func TestGetGlobalPeriodStatsTagDistributionDedupesSameTagAcrossSources(t *testing.T) {
 	statsService := newTestStatsService(t)
 	for _, query := range []string{
 		`INSERT INTO game_tags VALUES ('game-1', '汉化', FALSE)`, // kungal
 		`INSERT INTO game_tags VALUES ('game-1', '汉化', FALSE)`, // hikarinagi
 		`INSERT INTO game_tags VALUES ('game-1', '纯爱', FALSE)`,
+		`INSERT INTO game_tags VALUES ('game-1', 'ADV', FALSE)`, // vndb
+		`INSERT INTO game_tags VALUES ('game-2', 'ADV', FALSE)`, // 没有游玩记录，只让 ADV 成为用得多的写法
+		`INSERT INTO game_tags VALUES ('game-1', 'adv', FALSE)`, // 其他来源，只差大小写
 	} {
 		if _, err := statsService.db.Exec(query); err != nil {
 			t.Fatalf("insert tag: %v", err)
@@ -144,10 +147,13 @@ func TestGetGlobalPeriodStatsTagDistributionDedupesSameTagAcrossSources(t *testi
 		t.Fatalf("get global period stats: %v", err)
 	}
 
-	if len(stats.TagDistribution) != 2 {
-		t.Fatalf("expected 2 tags, got %+v", stats.TagDistribution)
+	if len(stats.TagDistribution) != 3 {
+		t.Fatalf("expected 3 tags, got %+v", stats.TagDistribution)
 	}
 	for _, tag := range stats.TagDistribution {
+		if tag.Name == "adv" {
+			t.Fatalf("expected the more common spelling ADV, got %+v", stats.TagDistribution)
+		}
 		if tag.TotalDuration != stats.TotalPlayDuration {
 			t.Fatalf("tag %q duration %d, want period total %d", tag.Name, tag.TotalDuration, stats.TotalPlayDuration)
 		}

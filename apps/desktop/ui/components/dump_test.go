@@ -37,7 +37,7 @@ func TestComponentDump(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) {
 		c.Root().Background(th.AppBg)
 		ui.Column(c).Padding(24).Gap(24).Children(func() {
-			GameTags(c, th, GameTagsProps{Tags: tags, Editor: &editor})
+			GameTags(c, th, GameTagsProps{Groups: GroupTags(tags), Editor: &editor})
 			EmojiPicker(c, th, "emoji", EmojiPickerProps{Value: value, CanEdit: true, Compact: true, FallbackIcon: "folder-outline",
 				OnChange: func(e string) { value = e }})
 		})

@@ -263,7 +263,7 @@ func (p *Page) content(c *ui.Context, t *theme.Theme, wide bool, winW float32) {
 
 // translatedTags 对应 translatedTagDistribution：标签名按界面语言显示译名（enable_tag_translation 关闭时原样）。
 func (p *Page) translatedTags() []vo.TagPlayStats {
-	enabled := tagname.Enabled(p.env.Config())
+	enabled := tagname.ModeOf(p.env.Config())
 	tags := make([]vo.TagPlayStats, len(p.stats.TagDistribution))
 	for i, tag := range p.stats.TagDistribution {
 		tag.Name = tagname.Display(tag.Name, enabled)

@@ -115,7 +115,19 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 			Checked:  cfg.EnableTagTranslation,
 			OnChange: func(on bool) { p.Change(func(cfg *appconf.AppConfig) { cfg.EnableTagTranslation = on }) },
 		})
+		// 属于翻译的子选项：没有开翻译时禁用。
+		better.SettingSwitchRow(c, t, "show-tag-original-name", better.SettingSwitchRowProps{
+			Label: locales.NativeSettingsMetadataShowTagOriginalName(), Hint: locales.NativeSettingsMetadataShowTagOriginalNameHint(),
+			Checked:  cfg.ShowTagOriginalName,
+			Disabled: !cfg.EnableTagTranslation,
+			OnChange: func(on bool) { p.Change(func(cfg *appconf.AppConfig) { cfg.ShowTagOriginalName = on }) },
+		})
 		tagLimitRow(c, t, p)
+		better.SettingSwitchRow(c, t, "replace-tags-on-metadata-update", better.SettingSwitchRowProps{
+			Label: locales.NativeSettingsMetadataReplaceTagsOnUpdate(), Hint: locales.NativeSettingsMetadataReplaceTagsOnUpdateHint(),
+			Checked:  cfg.ReplaceTagsOnMetadataUpdate,
+			OnChange: func(on bool) { p.Change(func(cfg *appconf.AppConfig) { cfg.ReplaceTagsOnMetadataUpdate = on }) },
+		})
 	})
 
 	s.refreshSection(c, t, p, sm)

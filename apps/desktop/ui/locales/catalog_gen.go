@@ -25114,3 +25114,153 @@ func NativeSetupWizardDone() string { return In(i18n.Locale()).NativeSetupWizard
 func (msgs Messages) NativeSetupWizardDone() string {
 	return Catalog.Format(msgs.locale, "native_setupWizard_done", nil)
 }
+
+// NativeTagsSelectNone says "取消全选"
+// in the language the app shows.
+//
+// extra:native.tags.selectNone
+func NativeTagsSelectNone() string { return In(i18n.Locale()).NativeTagsSelectNone() }
+
+// NativeTagsSelectNone says "取消全选"
+// in the language of msgs.
+//
+// extra:native.tags.selectNone
+func (msgs Messages) NativeTagsSelectNone() string {
+	return Catalog.Format(msgs.locale, "native_tags_selectNone", nil)
+}
+
+// NativeTagsDeleteSelected says "删除所选（{count}）"
+// in the language the app shows.
+//
+// extra:native.tags.deleteSelected
+func NativeTagsDeleteSelected(count string) string {
+	return In(i18n.Locale()).NativeTagsDeleteSelected(count)
+}
+
+// NativeTagsDeleteSelected says "删除所选（{count}）"
+// in the language of msgs.
+//
+// extra:native.tags.deleteSelected
+func (msgs Messages) NativeTagsDeleteSelected(count string) string {
+	return Catalog.Format(msgs.locale, "native_tags_deleteSelected", map[string]any{"count": count})
+}
+
+// NativeTagsSources says "来源：{sources}"
+// in the language the app shows.
+//
+// extra:native.tags.sources
+func NativeTagsSources(sources string) string { return In(i18n.Locale()).NativeTagsSources(sources) }
+
+// NativeTagsSources says "来源：{sources}"
+// in the language of msgs.
+//
+// extra:native.tags.sources
+func (msgs Messages) NativeTagsSources(sources string) string {
+	return Catalog.Format(msgs.locale, "native_tags_sources", map[string]any{"sources": sources})
+}
+
+// NativeTagsSourceUser says "手动添加"
+// in the language the app shows.
+//
+// extra:native.tags.sourceUser
+func NativeTagsSourceUser() string { return In(i18n.Locale()).NativeTagsSourceUser() }
+
+// NativeTagsSourceUser says "手动添加"
+// in the language of msgs.
+//
+// extra:native.tags.sourceUser
+func (msgs Messages) NativeTagsSourceUser() string {
+	return Catalog.Format(msgs.locale, "native_tags_sourceUser", nil)
+}
+
+// NativeSettingsMetadataShowTagOriginalName says "译名后显示原文"
+// in the language the app shows.
+//
+// extra:native.settings.metadata.showTagOriginalName
+func NativeSettingsMetadataShowTagOriginalName() string {
+	return In(i18n.Locale()).NativeSettingsMetadataShowTagOriginalName()
+}
+
+// NativeSettingsMetadataShowTagOriginalName says "译名后显示原文"
+// in the language of msgs.
+//
+// extra:native.settings.metadata.showTagOriginalName
+func (msgs Messages) NativeSettingsMetadataShowTagOriginalName() string {
+	return Catalog.Format(msgs.locale, "native_settings_metadata_showTagOriginalName", nil)
+}
+
+// NativeSettingsMetadataShowTagOriginalNameHint says "开启后，翻译过的标签显示为“译名(原文)”，可以区分译名相同的不同标签。"
+// in the language the app shows.
+//
+// extra:native.settings.metadata.showTagOriginalNameHint
+func NativeSettingsMetadataShowTagOriginalNameHint() string {
+	return In(i18n.Locale()).NativeSettingsMetadataShowTagOriginalNameHint()
+}
+
+// NativeSettingsMetadataShowTagOriginalNameHint says "开启后，翻译过的标签显示为“译名(原文)”，可以区分译名相同的不同标签。"
+// in the language of msgs.
+//
+// extra:native.settings.metadata.showTagOriginalNameHint
+func (msgs Messages) NativeSettingsMetadataShowTagOriginalNameHint() string {
+	return Catalog.Format(msgs.locale, "native_settings_metadata_showTagOriginalNameHint", nil)
+}
+
+// NativeSettingsMetadataReplaceTagsOnUpdate says "更新元数据时替换旧标签"
+// in the language the app shows.
+//
+// extra:native.settings.metadata.replaceTagsOnUpdate
+func NativeSettingsMetadataReplaceTagsOnUpdate() string {
+	return In(i18n.Locale()).NativeSettingsMetadataReplaceTagsOnUpdate()
+}
+
+// NativeSettingsMetadataReplaceTagsOnUpdate says "更新元数据时替换旧标签"
+// in the language of msgs.
+//
+// extra:native.settings.metadata.replaceTagsOnUpdate
+func (msgs Messages) NativeSettingsMetadataReplaceTagsOnUpdate() string {
+	return Catalog.Format(msgs.locale, "native_settings_metadata_replaceTagsOnUpdate", nil)
+}
+
+// NativeSettingsMetadataReplaceTagsOnUpdateHint says "…"
+// in the language the app shows.
+//
+// extra:native.settings.metadata.replaceTagsOnUpdateHint
+func NativeSettingsMetadataReplaceTagsOnUpdateHint() string {
+	return In(i18n.Locale()).NativeSettingsMetadataReplaceTagsOnUpdateHint()
+}
+
+// NativeSettingsMetadataReplaceTagsOnUpdateHint says "…"
+// in the language of msgs.
+//
+// extra:native.settings.metadata.replaceTagsOnUpdateHint
+func (msgs Messages) NativeSettingsMetadataReplaceTagsOnUpdateHint() string {
+	return Catalog.Format(msgs.locale, "native_settings_metadata_replaceTagsOnUpdateHint", nil)
+}
+
+// NativeGameEditTags says "游戏标签"
+// in the language the app shows.
+//
+// extra:native.gameEdit.tags
+func NativeGameEditTags() string { return In(i18n.Locale()).NativeGameEditTags() }
+
+// NativeGameEditTags says "游戏标签"
+// in the language of msgs.
+//
+// extra:native.gameEdit.tags
+func (msgs Messages) NativeGameEditTags() string {
+	return Catalog.Format(msgs.locale, "native_gameEdit_tags", nil)
+}
+
+// NativeGameEditTagsHint says "点击标签选中，可批量删除；实线是自动获取的标签，重新获取元数据后可能再次出现。"
+// in the language the app shows.
+//
+// extra:native.gameEdit.tagsHint
+func NativeGameEditTagsHint() string { return In(i18n.Locale()).NativeGameEditTagsHint() }
+
+// NativeGameEditTagsHint says "点击标签选中，可批量删除；实线是自动获取的标签，重新获取元数据后可能再次出现。"
+// in the language of msgs.
+//
+// extra:native.gameEdit.tagsHint
+func (msgs Messages) NativeGameEditTagsHint() string {
+	return Catalog.Format(msgs.locale, "native_gameEdit_tagsHint", nil)
+}

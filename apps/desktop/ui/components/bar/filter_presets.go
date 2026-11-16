@@ -62,7 +62,7 @@ func presetRequest(p models.GameFilterPreset) vo.SaveGameFilterPresetRequest {
 }
 
 // describePreset 对应 describeFilters：各条件的摘要，用“ · ”连接。
-func describePreset(r vo.SaveGameFilterPresetRequest, translate bool) string {
+func describePreset(r vo.SaveGameFilterPresetRequest, translate tagname.Mode) string {
 	var parts []string
 	if len(r.Tags) > 0 {
 		names := make([]string, len(r.Tags))
@@ -181,7 +181,7 @@ func (f *Filters) deletePreset(e *env.Env, id string) {
 func presetSection(c *ui.Context, t *theme.Theme, p FilterBarProps) {
 	f := p.Filters
 	m := &f.presetUI
-	translate := tagname.Enabled(p.Env.Config())
+	translate := tagname.ModeOf(p.Env.Config())
 	ui.Column(c.Key("presets")).Padding(6, 8).Gap(8).Children(func() {
 		ui.Row(c).Justify(ui.SpaceBetween).AlignItems(ui.Center).Gap(8).Children(func() {
 			components.SectionLabel(c, t, locales.FilterPresetsTitle())
@@ -214,7 +214,7 @@ func presetSection(c *ui.Context, t *theme.Theme, p FilterBarProps) {
 }
 
 // presetForm：space-y-2 rounded-lg border border-brand-200 bg-brand-50/70 p-2.5 dark:border-brand-700 dark:bg-brand-900/40。
-func presetForm(c *ui.Context, t *theme.Theme, p FilterBarProps, translate bool) {
+func presetForm(c *ui.Context, t *theme.Theme, p FilterBarProps, translate tagname.Mode) {
 	f := p.Filters
 	m := &f.presetUI
 	closeForm := func() { m.formOpen, m.name = false, "" }
@@ -280,7 +280,7 @@ func presetEmpty(c *ui.Context, t *theme.Theme, m *presetMenu) {
 
 // presetRow：group flex items-center gap-1 rounded-lg border bg-white/70 p-1，悬停 border-brand-300（深色 600）；
 // 左边点击应用（名称 truncate text-xs，摘要 line-clamp-3 text-[11px]），右边 ghost sm 的删除按钮。
-func presetRow(c *ui.Context, t *theme.Theme, p FilterBarProps, preset models.GameFilterPreset, translate bool) {
+func presetRow(c *ui.Context, t *theme.Theme, p FilterBarProps, preset models.GameFilterPreset, translate tagname.Mode) {
 	f := p.Filters
 	m := &f.presetUI
 	row := ui.Row(c).Gap(4).AlignItems(ui.Center).Padding(4).Radius(8).

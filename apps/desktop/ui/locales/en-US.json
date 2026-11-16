@@ -1681,5 +1681,15 @@
   "native_setupWizard_libraryOptional": "You can leave this empty and set it later in Settings.",
   "native_setupWizard_next": "Next",
   "native_setupWizard_finish": "Get started",
-  "native_setupWizard_done": "Setup complete"
+  "native_setupWizard_done": "Setup complete",
+  "native_tags_selectNone": "Select none",
+  "native_tags_deleteSelected": "Delete selected ({count})",
+  "native_tags_sources": "Sources: {sources}",
+  "native_tags_sourceUser": "Added manually",
+  "native_settings_metadata_showTagOriginalName": "Show original names after translations",
+  "native_settings_metadata_showTagOriginalNameHint": "When enabled, translated tags are shown as \"Translation(Original)\" so different tags with the same translation stay distinguishable.",
+  "native_settings_metadata_replaceTagsOnUpdate": "Replace old tags when updating metadata",
+  "native_settings_metadata_replaceTagsOnUpdateHint": "When enabled, updating metadata replaces auto tags from other sources with the newly fetched tags; tags added manually or imported from other apps are kept. When disabled, only tags from the same source are replaced.",
+  "native_gameEdit_tags": "Tags",
+  "native_gameEdit_tagsHint": "Click tags to select them for bulk deletion. Solid-bordered tags were fetched automatically and may come back after refreshing metadata."
 }

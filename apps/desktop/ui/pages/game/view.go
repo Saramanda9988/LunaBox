@@ -21,6 +21,7 @@ import (
 	"lunabox/desktop/ui/components/panel/review"
 	"lunabox/desktop/ui/env"
 	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/metasource"
 	"lunabox/desktop/ui/tagname"
 	"lunabox/desktop/ui/theme"
 	"lunabox/desktop/ui/timefmt"
@@ -169,15 +170,32 @@ func (p *Page) header(c *ui.Context, t *theme.Theme, contentW float32) {
 			p.infoGrid(c, t)
 			p.summary(c, t)
 			components.GameTags(c, t, components.GameTagsProps{
-				Tags:      p.tags,
-				Translate: tagname.Enabled(p.env.Config()),
+				Groups:    p.tags,
+				Translate: tagname.ModeOf(p.env.Config()),
 				Editor:    &p.tagEditor,
-				OnClick:   func(tag models.GameTag) { p.links.FilterByTag(tag.Name) },
-				OnDelete:  func(tag models.GameTag) { p.deleteTag(c, tag) },
+				OnClick:   func(g components.TagGroup) { p.links.FilterByTag(g.Name) },
+				OnDelete:  func(g components.TagGroup) { p.deleteTags(c, []components.TagGroup{g}) },
 				OnAdd:     func(name string) { p.addTag(c, name) },
+				Tooltip: func(anchor ui.Element, g components.TagGroup) {
+					better.Tooltip(c, t, anchor, tagSourcesText(g))
+				},
 			})
 		})
 	})
+}
+
+// tagSourcesText 是标签悬停时的提示：这个标签来自哪些来源（合并显示时有多个）。
+func tagSourcesText(g components.TagGroup) string {
+	sources := g.Sources()
+	labels := make([]string, len(sources))
+	for i, src := range sources {
+		if src == "user" {
+			labels[i] = locales.NativeTagsSourceUser()
+		} else {
+			labels[i] = metasource.Label(enums.SourceType(src))
+		}
+	}
+	return locales.NativeTagsSources(strings.Join(labels, " / "))
 }
 
 // addTag 对应 GameTags 的 handleAddTag：AddUserTag 后重新读取标签并收起输入框。
@@ -197,25 +215,39 @@ func (p *Page) addTag(c *ui.Context, name string) {
 				p.env.Toast(c, env.Error(locales.TagsAddFailed()))
 				return
 			}
-			p.tags, p.tagEditor = tags, components.TagEditor{}
+			p.tags, p.tagEditor = components.GroupTags(tags), components.TagEditor{}
 		}
 	})
 }
 
-// deleteTag 对应 handleDeleteTag：删除自动获取的标签时提示它可能在更新元数据后回来。
-func (p *Page) deleteTag(c *ui.Context, tag models.GameTag) {
+// deleteTags 对应 handleDeleteTag：删除合并显示的标签（同名的几个来源一起删；编辑页可以一次删除选中的几个）；
+// 删除了自动获取的标签时提示它可能在更新元数据后回来。
+func (p *Page) deleteTags(c *ui.Context, groups []components.TagGroup) {
+	if len(groups) == 0 {
+		return
+	}
+	var ids []string
+	scraped := false
+	for _, g := range groups {
+		for _, tag := range g.Tags {
+			ids = append(ids, tag.ID)
+		}
+		scraped = scraped || g.Scraped()
+	}
 	gen := p.gen
 	p.env.Async(func() func() {
-		err := p.env.Svc.Tag.DeleteTag(tag.ID)
+		err := p.env.Svc.Tag.DeleteTags(ids)
 		return func() {
 			if err != nil {
 				p.env.Toast(c, env.Error(locales.TagsDeleteFailed()))
 				return
 			}
 			if gen == p.gen {
-				p.tags = slices.DeleteFunc(slices.Clone(p.tags), func(t models.GameTag) bool { return t.ID == tag.ID })
+				p.tags = slices.DeleteFunc(slices.Clone(p.tags), func(g components.TagGroup) bool {
+					return slices.ContainsFunc(groups, func(d components.TagGroup) bool { return d.Key == g.Key })
+				})
 			}
-			if tag.Source != "user" {
+			if scraped {
 				p.env.Toast(c, env.Success(locales.TagsDeleteScrapedHint()))
 			}
 		}

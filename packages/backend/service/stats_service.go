@@ -635,21 +635,34 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 	}
 
 	// 5. Tag Distribution（本期间内出现游玩的游戏对应 tag，按累计时长聚合；过滤剧透标签）
-	// 同一游戏可能从多个数据源拿到同名标签（如 kungal 与 hikarinagi 都有“汉化”），
-	// 先按 (game_id, name) 去重再关联，否则该游戏的时长会按来源数重复累加。
+	// 同一游戏可能从多个数据源拿到同名标签（如 kungal 与 hikarinagi 都有“汉化”，或只差大小写），
+	// 先按 (game_id, lower(name)) 去重再关联，否则该游戏的时长会按来源数重复累加；显示用得最多的写法。
 	stats.TagDistribution = make([]vo.TagPlayStats, 0)
 	queryTagDistribution := fmt.Sprintf(`
-		WITH tags AS (
-			SELECT DISTINCT game_id, name
+		WITH valid AS (
+			SELECT game_id, name
 			FROM game_tags
 			WHERE COALESCE(is_spoiler, FALSE) = FALSE
 			  AND name IS NOT NULL AND name <> ''
+		),
+		tags AS (
+			SELECT DISTINCT game_id, lower(name) AS tag_key FROM valid
+		),
+		names AS (
+			SELECT tag_key, name FROM (
+				SELECT lower(name) AS tag_key, name,
+					ROW_NUMBER() OVER (PARTITION BY lower(name) ORDER BY COUNT(*) DESC, name) AS rn
+				FROM valid
+				GROUP BY name
+			)
+			WHERE rn = 1
 		)
-		SELECT gt.name, SUM(ps.duration) AS total, COUNT(DISTINCT ps.game_id) AS game_count
+		SELECT n.name, SUM(ps.duration) AS total, COUNT(DISTINCT ps.game_id) AS game_count
 		FROM play_sessions ps
 		JOIN tags gt ON gt.game_id = ps.game_id
+		JOIN names n ON n.tag_key = gt.tag_key
 		WHERE ps.start_time >= %s AND ps.start_time <= %s + INTERVAL 1 DAY
-		GROUP BY gt.name
+		GROUP BY n.name
 		HAVING SUM(ps.duration) > 0
 		ORDER BY total DESC
 		LIMIT 10

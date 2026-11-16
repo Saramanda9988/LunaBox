@@ -219,7 +219,10 @@ type AppConfig struct {
 	// Tag 配置
 	ShowNSFWTags         bool `json:"show_nsfw_tags"`         // 是否在详情页展示 NSFW tag，默认 false
 	EnableTagTranslation bool `json:"enable_tag_translation"` // 是否显示 VNDB tag 中文翻译，默认 true
+	ShowTagOriginalName  bool `json:"show_tag_original_name"` // 翻译后的 tag 是否在译名后用括号显示原名，默认 true
 	ScrapedTagLimit      int  `json:"scraped_tag_limit"`      // 刮削 tag 数量上限，-1 表示不限制，0 表示不刮削 tag
+	// 更新元数据时是否用本次来源的 tag 替换全部自动获取的 tag（删除其他来源的），默认 false 只替换同一来源的
+	ReplaceTagsOnMetadataUpdate bool `json:"replace_tags_on_metadata_update"`
 	// 游戏卡片显示
 	GameCardLayout       string `json:"game_card_layout,omitempty"` // 游戏库卡片布局：portrait / landscape
 	ShowSortFieldOnCover bool   `json:"show_sort_field_on_cover"`   // 是否在游戏卡片封面底部展示当前排序字段对应的值
@@ -354,6 +357,7 @@ func LoadConfig() (*AppConfig, error) {
 		NetworkProxyMode:            "system",
 		NetworkProxyURL:             "",
 		EnableTagTranslation:        true,
+		ShowTagOriginalName:         true,
 		ScrapedTagLimit:             DefaultScrapedTagLimit,
 		GameCardLayout:              DefaultGameCardLayout,
 		ShowSortFieldOnCover:        false,

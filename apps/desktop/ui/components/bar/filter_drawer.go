@@ -201,7 +201,7 @@ func chipSection(c *ui.Context, t *theme.Theme, key, title, invertLabel string, 
 // tagFilterSection 对应 TagFilterMenu。
 func tagFilterSection(c *ui.Context, t *theme.Theme, p FilterBarProps) {
 	f := p.Filters
-	translate := tagname.Enabled(p.Env.Config())
+	translate := tagname.ModeOf(p.Env.Config())
 	ui.Column(c.Key("tags")).Padding(6, 8).Gap(8).Children(func() {
 		ui.Row(c).Justify(ui.SpaceBetween).AlignItems(ui.Center).Gap(8).Children(func() {
 			components.SectionLabel(c, t, locales.FilterBarTagFilter())
@@ -259,7 +259,7 @@ func tagFilterSection(c *ui.Context, t *theme.Theme, p FilterBarProps) {
 
 func tagSuggestionList(c *ui.Context, t *theme.Theme, p FilterBarProps, field ui.Element) {
 	f := p.Filters
-	translate := tagname.Enabled(p.Env.Config())
+	translate := tagname.ModeOf(p.Env.Config())
 	components.Overlay(c, t, func() {
 		list := ui.Column(c.Key("tag-suggestions")).AttachTo(field, ui.AnchorBottomLeft, ui.AnchorTopLeft).Top(4).
 			Width(field.Bounds().W).MaxHeight(144).Padding(4).Radius(8).
