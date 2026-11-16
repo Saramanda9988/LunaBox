@@ -124,6 +124,39 @@ func TestGetGlobalPeriodStatsKeepsShortRangeDaily(t *testing.T) {
 	}
 }
 
+// 同一游戏从多个数据源拿到同名标签时，标签时长不能按来源数重复累加，也不能超过期间总时长。
+func TestGetGlobalPeriodStatsTagDistributionDedupesSameTagAcrossSources(t *testing.T) {
+	statsService := newTestStatsService(t)
+	for _, query := range []string{
+		`INSERT INTO game_tags VALUES ('game-1', '汉化', FALSE)`, // kungal
+		`INSERT INTO game_tags VALUES ('game-1', '汉化', FALSE)`, // hikarinagi
+		`INSERT INTO game_tags VALUES ('game-1', '纯爱', FALSE)`,
+	} {
+		if _, err := statsService.db.Exec(query); err != nil {
+			t.Fatalf("insert tag: %v", err)
+		}
+	}
+
+	stats, err := statsService.GetGlobalPeriodStats(vo.PeriodStatsRequest{
+		Dimension: enums.All,
+	})
+	if err != nil {
+		t.Fatalf("get global period stats: %v", err)
+	}
+
+	if len(stats.TagDistribution) != 2 {
+		t.Fatalf("expected 2 tags, got %+v", stats.TagDistribution)
+	}
+	for _, tag := range stats.TagDistribution {
+		if tag.TotalDuration != stats.TotalPlayDuration {
+			t.Fatalf("tag %q duration %d, want period total %d", tag.Name, tag.TotalDuration, stats.TotalPlayDuration)
+		}
+		if tag.GameCount != 1 {
+			t.Fatalf("tag %q game count %d, want 1", tag.Name, tag.GameCount)
+		}
+	}
+}
+
 func TestGetGlobalPeriodStatsAllDimensionAggregatesByMonth(t *testing.T) {
 	statsService := newTestStatsService(t)
 

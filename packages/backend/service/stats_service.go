@@ -635,14 +635,20 @@ func (s *StatsService) GetGlobalPeriodStats(req vo.PeriodStatsRequest) (vo.Perio
 	}
 
 	// 5. Tag Distribution（本期间内出现游玩的游戏对应 tag，按累计时长聚合；过滤剧透标签）
+	// 同一游戏可能从多个数据源拿到同名标签（如 kungal 与 hikarinagi 都有“汉化”），
+	// 先按 (game_id, name) 去重再关联，否则该游戏的时长会按来源数重复累加。
 	stats.TagDistribution = make([]vo.TagPlayStats, 0)
 	queryTagDistribution := fmt.Sprintf(`
+		WITH tags AS (
+			SELECT DISTINCT game_id, name
+			FROM game_tags
+			WHERE COALESCE(is_spoiler, FALSE) = FALSE
+			  AND name IS NOT NULL AND name <> ''
+		)
 		SELECT gt.name, SUM(ps.duration) AS total, COUNT(DISTINCT ps.game_id) AS game_count
 		FROM play_sessions ps
-		JOIN game_tags gt ON gt.game_id = ps.game_id
+		JOIN tags gt ON gt.game_id = ps.game_id
 		WHERE ps.start_time >= %s AND ps.start_time <= %s + INTERVAL 1 DAY
-		  AND COALESCE(gt.is_spoiler, FALSE) = FALSE
-		  AND gt.name IS NOT NULL AND gt.name <> ''
 		GROUP BY gt.name
 		HAVING SUM(ps.duration) > 0
 		ORDER BY total DESC

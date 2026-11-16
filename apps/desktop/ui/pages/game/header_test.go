@@ -205,17 +205,17 @@ func TestAddSession(t *testing.T) {
 	}
 }
 
-// VNDB 标签显示界面语言的译名，点击时按原名筛选；关闭 enable_tag_translation 后显示原名。
+// VNDB 标签显示“译名(原名)”，点击时按原名筛选；关闭 enable_tag_translation 后只显示原名。
 func TestTagTranslation(t *testing.T) {
 	tp := newTestPage(t, 1280)
 	hosttest.AddTag(t, tp.svc, "0", "t3", "Romance", "vndb", false)
 	tp.Open("0", time.Now())
 	tp.frames(3)
-	tp.expectTexts(t, "恋爱")
-	if tp.tt.HasText("Romance") {
-		t.Errorf("raw name shown: %q", tp.tt.Texts())
+	tp.expectTexts(t, "恋爱(Romance)")
+	if slices.Contains(tp.tt.Texts(), "Romance") {
+		t.Errorf("raw name shown alone: %q", tp.tt.Texts())
 	}
-	if err := tp.tt.Click("恋爱"); err != nil {
+	if err := tp.tt.Click("恋爱(Romance)"); err != nil {
 		t.Fatal(err)
 	}
 	tp.frames(2)

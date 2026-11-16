@@ -12,7 +12,6 @@ import (
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/locales"
 	"lunabox/desktop/ui/theme"
-	"lunabox/desktop/ui/timefmt"
 )
 
 // TagState 是 TagDistributionChart 跨帧的状态：悬停的扇区。
@@ -48,7 +47,7 @@ const (
 
 // TagDistributionChart 对应 TagDistributionChart.tsx：居中的 200px 饼图（每块 2px 描边，颜色与卡片底色相近），
 // 下面是两列的标签排行：序号、名称、占比与 h-1.5 的进度条。悬停扇区时颜色加深，提示框标题是标签名，
-// 正文“名称: 时长 (占比%)”。
+// 正文“名称: 占比%”（不显示时长）。
 // 没有标签时显示“本期间内暂无标签数据”。
 func TagDistributionChart(c *ui.Context, t *theme.Theme, p TagDistributionProps) ui.Element {
 	muted := t.Pick(theme.Brand500, theme.Brand400)
@@ -131,7 +130,8 @@ func pie(c *ui.Context, t *theme.Theme, st *TagState, tags []vo.TagPlayStats, va
 			if total > 0 {
 				p = values[i] / float64(total) * 100
 			}
-			text := fmt.Sprintf("%s: %s (%.1f%%)", tags[i].Name, timefmt.Duration(tags[i].TotalDuration), p)
+			// 不显示时长：一个游戏会计入它的每个标签，各标签时长相加远超总时长，容易被误解
+			text := fmt.Sprintf("%s: %.1f%%", tags[i].Name, p)
 			tooltip(c, jsMeasure(c), pieW, pieH, ui.Rect{W: pieW, H: pieH}, tipSpec{title: tags[i].Name, x: x, y: y,
 				items: []tipItem{{text: text, border: border, borderW: pieBorder, fill: tagColors[i%len(tagColors)]}}})
 		}

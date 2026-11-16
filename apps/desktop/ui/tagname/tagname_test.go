@@ -29,10 +29,10 @@ func withLocale(t *testing.T, locale string, fn func()) {
 func TestDisplay(t *testing.T) {
 	cases := []struct{ locale, name, want string }{
 		{"zh-CN", "ADV", "冒险游戏（ADV）"},
-		{"zh-CN", "Romance", "恋爱"},
+		{"zh-CN", "Romance", "恋爱(Romance)"},
 		{"zh-CN", "汉化", "汉化"}, // 没有译名
-		{"zh-TW", "Romance", "戀愛"},
-		{"ja-JP", "Romance", "ロマンス"},
+		{"zh-TW", "Romance", "戀愛(Romance)"},
+		{"ja-JP", "Romance", "ロマンス(Romance)"},
 		{"en-US", "Romance", "Romance"},
 	}
 	for _, c := range cases {

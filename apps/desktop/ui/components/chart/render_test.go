@@ -208,10 +208,10 @@ func TestTagDistributionChart(t *testing.T) {
 	if st.hover != 0 {
 		t.Fatalf("hover = %d, want 0", st.hover)
 	}
-	expectText(t, tt, "纯爱: 50小时33分钟 (27.1%)", true)
+	expectText(t, tt, "纯爱: 27.1%", true)
 	tt.Move(cx+120, cy) // canvas 外
 	frames(tt, 3)
-	expectText(t, tt, "纯爱: 50小时33分钟 (27.1%)", false)
+	expectText(t, tt, "纯爱: 27.1%", false)
 
 	empty := render(t, false, 400, 100, func(c *ui.Context, th *theme.Theme) {
 		TagDistributionChart(c, th, TagDistributionProps{})

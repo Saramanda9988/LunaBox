@@ -117,14 +117,19 @@ func Enabled(cfg *appconf.AppConfig) bool { return cfg == nil || cfg.EnableTagTr
 // normalize 对应 normalizeTagSearchText。
 func normalize(s string) string { return strings.ToLower(strings.TrimSpace(s)) }
 
-// Display 对应 getTagDisplayName：enabled（配置的 enable_tag_translation）时返回界面语言的译名，没有译名时原样返回。
+// Display 对应 getTagDisplayName：enabled（配置的 enable_tag_translation）时返回“译名(原名)”，
+// 让翻译后同名的标签（如 kungal 的“恋爱”与 VNDB 的 Romance）能区分开；
+// 没有译名、译名与原名相同或译名里已含原名（如“冒险游戏（ADV）”）时只返回一个。
 func Display(name string, enabled bool) string {
 	if !enabled {
 		return name
 	}
 	if tb := current(); tb != nil {
-		if v, ok := tb.names[name]; ok {
-			return v
+		if v, ok := tb.names[name]; ok && v != "" {
+			if strings.Contains(strings.ToLower(v), strings.ToLower(name)) {
+				return v
+			}
+			return v + "(" + name + ")"
 		}
 	}
 	return name
