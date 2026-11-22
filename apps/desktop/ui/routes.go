@@ -22,6 +22,7 @@ func (a *App) routes(c *ui.Context) ui.Element {
 		if a.plugins != nil {
 			a.plugins.UnmountBySlot(plugin.SlotSidebarPage)
 			a.plugins.UnmountBySlot(plugin.SlotDownloadsHeader)
+			a.plugins.UnmountBySlot(plugin.SlotSettingsSection)
 		}
 	}
 	a.location = loc
@@ -52,8 +53,15 @@ func (a *App) routes(c *ui.Context) ui.Element {
 			if entered {
 				a.pluginsPage.Open()
 			}
-			r.Title(locales.NativeSettingsSectionsPlugins())
+			r.Title(locales.NativeSideBarPlugins())
 			a.pluginsPage.View(c)
+		case r.Match(env.PathPluginDetail):
+			pid := r.Param("id")
+			if entered {
+				a.pluginsPage.OpenDetail(pid)
+			}
+			r.Title(a.pluginsPage.DetailTitle(pid))
+			a.pluginsPage.ViewDetail(c, pid)
 		case r.Match(env.PathStats):
 			if entered {
 				a.stats.Open(c.Now())

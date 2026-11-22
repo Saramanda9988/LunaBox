@@ -1738,6 +1738,19 @@
   "native_plugins_reloadSuccess": "Plugin reloaded",
   "native_plugins_actionFailed": "Action failed: {error}",
   "native_sideBar_plugins": "Plugins",
-  "native_plugins_subtitle": "Manage installed plugins, dev directories, and execution order",
-  "native_plugins_count": "{active} active / {total} total"
+  "native_plugins_detail_settings": "Plugin Settings",
+  "native_plugins_detail_sourceInfo": "Source Information",
+  "native_plugins_detail_sourceType": "Source",
+  "native_plugins_detail_sourceDev": "Local Dev",
+  "native_plugins_detail_sourceInstalled": "Installed",
+  "native_plugins_detail_version": "Version",
+  "native_plugins_detail_pluginId": "Plugin ID",
+  "native_plugins_detail_author": "Author",
+  "native_plugins_detail_engines": "Compatibility",
+  "native_plugins_detail_license": "License",
+  "native_plugins_detail_homepage": "Homepage",
+  "native_plugins_detail_directory": "Directory",
+  "native_plugins_detail_order": "Execution Order",
+  "native_plugins_detail_extensions": "Registered Extensions",
+  "native_plugins_detail_notFound": "Plugin not found"
 }

@@ -33,7 +33,11 @@ type Manifest struct {
 	Description map[string]string `json:"description,omitempty"`
 	Author      string            `json:"author,omitempty"`
 	Homepage    string            `json:"homepage,omitempty"`
+	Repository  string            `json:"repository,omitempty"`
+	License     string            `json:"license,omitempty"`
 	Icon        string            `json:"icon,omitempty"`
+	IconBg      string            `json:"iconBg,omitempty"`
+	Keywords    []string          `json:"keywords,omitempty"`
 }
 
 // LoadManifest 读取并解析插件目录下的 plugin.json。
@@ -69,6 +73,11 @@ func (m Manifest) Validate(hostVersion string) error {
 	}
 	if m.Main == "" || strings.Contains(m.Main, "..") || filepath.IsAbs(m.Main) {
 		return fmt.Errorf("无效的入口文件路径 %q", m.Main)
+	}
+	if icon := strings.TrimSpace(m.Icon); icon != "" {
+		if strings.Contains(icon, "..") || filepath.IsAbs(icon) {
+			return fmt.Errorf("无效的插件图标路径 %q", m.Icon)
+		}
 	}
 	if len(m.Name) == 0 {
 		return fmt.Errorf("插件清单缺少 name 字段")

@@ -24,6 +24,7 @@ import (
 	"lunabox/backend/plugin"
 	"lunabox/backend/utils/httputils"
 	"lunabox/backend/version"
+	"lunabox/desktop/ui/assets"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/env"
 )
@@ -82,6 +83,7 @@ type Manager struct {
 
 	imgMu      sync.RWMutex
 	imgCache   map[string]*ui.Bitmap
+	svgCache   map[string]*ui.SVG
 	imgLoading map[string]bool
 
 	// 开发模式判断（决定未知组件与错误边界是否展示详细错误信息）
@@ -96,6 +98,7 @@ func New(e *env.Env, cb HostCallbacks) *Manager {
 		instances:  make(map[string]*Instance),
 		windows:    make(map[string]*pluginWindow),
 		imgCache:   make(map[string]*ui.Bitmap),
+		svgCache:   make(map[string]*ui.SVG),
 		imgLoading: make(map[string]bool),
 		DevMode:    mygo.IsDev(),
 	}
@@ -319,6 +322,55 @@ func (m *Manager) pluginName(pluginID string) string {
 	return pluginID
 }
 
+// LoadImageSource 异步加载本地图标/图片（支持 SVG、PNG、JPEG、GIF、WebP）并缓存为 ui.ImageSource，绝不阻塞界面线程。
+func (m *Manager) LoadImageSource(src string) ui.ImageSource {
+	src = strings.TrimSpace(src)
+	if src == "" {
+		return nil
+	}
+	if strings.HasSuffix(strings.ToLower(src), ".svg") {
+		m.imgMu.RLock()
+		if svg, ok := m.svgCache[src]; ok {
+			m.imgMu.RUnlock()
+			return svg
+		}
+		if m.imgLoading[src] {
+			m.imgMu.RUnlock()
+			return nil
+		}
+		m.imgMu.RUnlock()
+
+		m.imgMu.Lock()
+		if m.imgLoading[src] {
+			m.imgMu.Unlock()
+			return nil
+		}
+		m.imgLoading[src] = true
+		m.imgMu.Unlock()
+
+		go func() {
+			data, err := os.ReadFile(src)
+			var svg *ui.SVG
+			if err == nil && len(data) > 0 {
+				if parsed, perr := ui.ParseSVG(data); perr == nil {
+					svg = parsed
+				}
+			}
+			m.imgMu.Lock()
+			delete(m.imgLoading, src)
+			if svg != nil {
+				m.svgCache[src] = svg
+			}
+			m.imgMu.Unlock()
+			if svg != nil && m.env != nil && m.env.Win != nil {
+				m.env.Win.Invalidate()
+			}
+		}()
+		return nil
+	}
+	return m.loadBitmap(src)
+}
+
 // loadBitmap 异步加载本地路径或 http(s) URL 图片并缓存为 *ui.Bitmap，绝不阻塞界面线程。
 func (m *Manager) loadBitmap(src string) *ui.Bitmap {
 	src = strings.TrimSpace(src)
@@ -380,7 +432,7 @@ func (m *Manager) loadBitmap(src string) *ui.Bitmap {
 
 		var bmp *ui.Bitmap
 		if err == nil && img != nil {
-			bmp = ui.NewBitmap(img)
+			bmp = ui.NewBitmap(assets.Downscale(img, 1024))
 		}
 		m.imgMu.Lock()
 		delete(m.imgLoading, src)

@@ -1,11 +1,13 @@
 package plugins
 
 import (
-	"strconv"
+	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/plugin"
+	"lunabox/desktop/ui/assets"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/better"
 	"lunabox/desktop/ui/env"
@@ -18,7 +20,7 @@ const (
 	listMaxW    = 1024 // max-w-5xl
 )
 
-// View 构建插件管理页：页头标题与操作栏、已安装/开发插件列表、开发目录与安装/卸载确认弹窗。
+// View 构建插件列表页：页头标题与操作栏、插件条目（图标 + 名称/简介 + 开关，点击进入详情页）、开发目录与确认弹窗。
 func (p *Page) View(c *ui.Context) {
 	t := p.env.Theme
 	gutter := t.Gutter()
@@ -38,16 +40,16 @@ func (p *Page) View(c *ui.Context) {
 		sc.Padding(pagePadding, pagePadding+gutter, pagePadding, pagePadding)
 		sc.Children(func() {
 			ui.Column(c.Key("page")).Width(contentW).Gap(24).Children(func() {
-				p.header(c, t, list)
+				p.header(c, t)
 
 				bodyW := min(listMaxW, contentW)
 				ui.Column(c.Key("body")).Width(bodyW).Margin(0, ui.Auto).Gap(24).Children(func() {
 					if len(list) == 0 {
 						p.emptyState(c, t, bodyW)
 					} else {
-						ui.Column(c.Key("list")).FillWidth().Gap(12).Children(func() {
-							for idx, info := range list {
-								p.pluginRow(c, t, list, idx, info)
+						ui.Column(c.Key("list")).FillWidth().Gap(10).Children(func() {
+							for _, info := range list {
+								p.pluginRow(c, t, info)
 							}
 						})
 					}
@@ -64,23 +66,9 @@ func (p *Page) View(c *ui.Context) {
 	p.uninstallConfirmModal(c, t)
 }
 
-func (p *Page) header(c *ui.Context, t *theme.Theme, list []plugin.PluginInfo) {
-	active := 0
-	for _, info := range list {
-		if info.Status == plugin.StatusActive {
-			active++
-		}
-	}
-	sub := locales.NativePluginsSubtitle()
-	if len(list) > 0 {
-		sub = locales.NativePluginsCount(strconv.Itoa(active), strconv.Itoa(len(list)))
-	}
-
-	ui.Row(c.Key("header")).FillWidth().AlignItems(ui.End).Justify(ui.SpaceBetween).Wrap().GapX(16).GapY(12).Children(func() {
-		ui.Column(c).Children(func() {
-			components.Text(c, locales.NativeSettingsSectionsPlugins(), theme.Text4XL, theme.WeightBold, t.TextStrong)
-			components.TextMargin(c, sub, theme.TextSM, theme.WeightNormal, t.TextMuted, 4, 0, 0, 0)
-		})
+func (p *Page) header(c *ui.Context, t *theme.Theme) {
+	ui.Row(c.Key("header")).FillWidth().AlignItems(ui.Center).Justify(ui.SpaceBetween).Wrap().GapX(16).GapY(12).Children(func() {
+		components.Text(c, locales.NativeSideBarPlugins(), theme.Text4XL, theme.WeightBold, t.TextStrong)
 
 		if p.env == nil || p.env.Svc == nil || p.env.Svc.Plugin == nil {
 			return
@@ -171,117 +159,95 @@ func (p *Page) emptyState(c *ui.Context, t *theme.Theme, width float32) {
 	})
 }
 
-func (p *Page) pluginRow(c *ui.Context, t *theme.Theme, all []plugin.PluginInfo, idx int, info plugin.PluginInfo) {
+func (p *Page) pluginRow(c *ui.Context, t *theme.Theme, info plugin.PluginInfo) {
 	svc := p.env.Svc.Plugin
 	bg, border := t.GlassCard(t.CardBg, t.CardBorder)
-	ui.Column(c.Key("plugin-"+info.ID)).FillWidth().Padding(14, 16).Gap(8).Radius(12).
-		Background(bg).Border(t.HL, border).Children(func() {
-		ui.Row(c).FillWidth().Gap(12).AlignItems(ui.Center).Justify(ui.SpaceBetween).Children(func() {
-			// 左侧信息：名称 + 版本 + 状态徽章 + 描述
-			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4).Children(func() {
-				ui.Row(c).Wrap().GapX(8).GapY(4).AlignItems(ui.Center).Children(func() {
-					components.Text(c, info.Name, theme.TextBase, theme.WeightSemibold, t.TextStrong)
-					if info.Version != "" {
-						components.Text(c, "v"+info.Version, theme.TextXS, theme.WeightNormal, t.TextMuted)
-					}
-					statusBadge(c, t, info.Status)
-					if info.IsDev {
-						ui.Box(c).Padding(2, 6).Radius(999).Background(t.Pick(theme.Primary100, theme.Primary900)).Children(func() {
-							components.Text(c, locales.NativePluginsDevBadge(), theme.TextXS, theme.WeightMedium, t.Pick(theme.Primary700, theme.Primary300))
-						})
-					}
-				})
-				if info.Description != "" {
-					components.Text(c, info.Description, theme.TextXS, theme.WeightNormal, t.TextMuted)
+
+	card := ui.Row(c.Key("plugin-"+info.ID)).FillWidth().Padding(12, 16).Gap(14).
+		AlignItems(ui.Center).Justify(ui.SpaceBetween).Radius(12).
+		Border(t.HL, border).Transition(theme.ColorsTransition(150 * time.Millisecond))
+
+	if card.Hovered() {
+		hoverBg, hoverBorder := t.GlassCard(
+			t.Pick(theme.Brand50, theme.Brand800.Alpha(0.75)),
+			t.CardBorderHover,
+		)
+		card.Background(hoverBg).Border(t.HL, hoverBorder)
+	} else {
+		card.Background(bg)
+	}
+
+	card.Children(func() {
+		// 左侧可点击区域：图标块 + 标题 + 简介（点击进入插件详情页）
+		openBtn := ui.ButtonBase(c.Key("open-"+info.ID)).Grow(1).Basis(0).MinWidth(0).
+			AlignItems(ui.Center).Justify(ui.Start).Gap(14).FocusRing(false).Label(info.Name)
+		openBtn.OnClick(func() {
+			if p.env != nil && p.env.Router != nil {
+				p.env.Router.Push(env.PluginDetailPath(info.ID))
+			}
+		}).Children(func() {
+			p.pluginIcon(c, t, info, 44, 12)
+
+			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(3).Children(func() {
+				components.Text(c, info.Name, theme.TextBase, theme.WeightSemibold, t.TextStrong).SingleLine()
+				desc := info.Description
+				if desc == "" {
+					desc = info.ID
 				}
-			})
-
-			// 右侧动作：排序、重载、打开目录、卸载、启用开关
-			ui.Row(c).Gap(4).AlignItems(ui.Center).Shrink(0).Children(func() {
-				if idx > 0 {
-					up := better.IconButton(c, t, "up-"+info.ID, "chevron-up", 6, false, true)
-					up.Label(locales.NativePluginsMoveUp()).OnClick(func() {
-						ids := extractIDs(all)
-						ids[idx-1], ids[idx] = ids[idx], ids[idx-1]
-						p.env.Async(func() func() {
-							_ = svc.Reorder(ids)
-							return func() {}
-						})
-					})
-					better.Tooltip(c, t, up, locales.NativePluginsMoveUp())
+				components.Text(c, desc, theme.TextXS, theme.WeightNormal, t.TextMuted).SingleLine()
+				if info.LastError != "" {
+					errFg := t.Pick(theme.Error600, theme.Error400)
+					components.Text(c, info.LastError, theme.TextXS, theme.WeightNormal, errFg).SingleLine()
 				}
-				if idx < len(all)-1 {
-					dn := better.IconButton(c, t, "dn-"+info.ID, "chevron-down", 6, false, true)
-					dn.Label(locales.NativePluginsMoveDown()).OnClick(func() {
-						ids := extractIDs(all)
-						ids[idx+1], ids[idx] = ids[idx], ids[idx+1]
-						p.env.Async(func() func() {
-							_ = svc.Reorder(ids)
-							return func() {}
-						})
-					})
-					better.Tooltip(c, t, dn, locales.NativePluginsMoveDown())
-				}
-				rl := better.IconButton(c, t, "reload-"+info.ID, "refresh", 6, false, true)
-				rl.Label(locales.NativePluginsReload()).OnClick(func() {
-					pid := info.ID
-					p.env.Async(func() func() {
-						err := svc.Reload(pid)
-						return func() {
-							if err != nil {
-								p.env.Toast(c, env.Error(locales.NativePluginsActionFailed(err.Error())))
-							} else {
-								p.env.Toast(c, env.Success(locales.NativePluginsReloadSuccess()))
-							}
-						}
-					})
-				})
-				better.Tooltip(c, t, rl, locales.NativePluginsReload())
-
-				od := better.IconButton(c, t, "dir-"+info.ID, "folder-open-outline", 6, false, true)
-				od.Label(locales.NativePluginsOpenDir()).OnClick(func() {
-					pid := info.ID
-					p.env.Async(func() func() {
-						_ = svc.OpenPluginDir(pid)
-						return func() {}
-					})
-				})
-				better.Tooltip(c, t, od, locales.NativePluginsOpenDir())
-
-				un := better.IconButton(c, t, "uninstall-"+info.ID, "delete-outline", 6, false, true)
-				un.Label(locales.NativePluginsUninstall()).OnClick(func() {
-					cp := info
-					p.uninstallTarget = &cp
-					p.deleteData = false
-				})
-				better.Tooltip(c, t, un, locales.NativePluginsUninstall())
-
-				pid := info.ID
-				better.Switch(c, t, "enable-"+info.ID, info.Enabled, info.Status == plugin.StatusLoading, func(next bool) {
-					p.env.Async(func() func() {
-						var err error
-						if next {
-							err = svc.Enable(pid)
-						} else {
-							err = svc.Disable(pid)
-						}
-						return func() {
-							if err != nil {
-								p.env.Toast(c, env.Error(locales.NativePluginsActionFailed(err.Error())))
-							}
-						}
-					})
-				})
 			})
 		})
 
-		if info.LastError != "" {
-			errBg := t.Pick(theme.Error50, theme.Error900.Alpha(0.25))
-			errFg := t.Pick(theme.Error600, theme.Error400)
-			ui.Box(c).FillWidth().Padding(8, 10).Radius(6).Background(errBg).Children(func() {
-				components.Text(c, info.LastError, theme.TextXS, theme.WeightNormal, errFg)
+		// 右侧启用开关（与左侧点击区并列，避免冒泡误入详情页）
+		pid := info.ID
+		better.Switch(c, t, "enable-"+info.ID, info.Enabled, info.Status == plugin.StatusLoading, func(next bool) {
+			p.env.Async(func() func() {
+				var err error
+				if next {
+					err = svc.Enable(pid)
+				} else {
+					err = svc.Disable(pid)
+				}
+				return func() {
+					if err != nil {
+						p.env.Toast(c, env.Error(locales.NativePluginsActionFailed(err.Error())))
+					}
+				}
 			})
+		})
+	})
+}
+
+// pluginIcon 渲染插件左侧圆角图标块：支持清单中的本地图片/SVG 文件、内置 MDI 图标名与默认回退图标。
+func (p *Page) pluginIcon(c *ui.Context, t *theme.Theme, info plugin.PluginInfo, size, radius float32) {
+	tileBg := t.Pick(theme.Brand100.Alpha(0.75), theme.Brand800.Alpha(0.85))
+	if t.Glass {
+		tileBg = t.Pick(theme.White.Alpha(0.55), theme.Black.Alpha(0.32))
+	}
+	if raw := strings.TrimSpace(info.IconBg); len(raw) == 7 && raw[0] == '#' {
+		tileBg = ui.Hex(raw)
+	}
+	tileBorder := t.Pick(theme.Brand200.Alpha(0.9), theme.Brand700.Alpha(0.8))
+	if t.Glass {
+		tileBorder = t.Pick(theme.White.Alpha(0.35), theme.White.Alpha(0.14))
+	}
+
+	ui.Box(c.Key("icon-"+info.ID)).Size(size, size).Radius(radius).Center().Shrink(0).Clip().
+		Background(tileBg).Border(t.HL, tileBorder).Children(func() {
+		if info.IconPath != "" && p.plugins != nil {
+			if src := p.plugins.LoadImageSource(info.IconPath); src != nil {
+				imgSize := size * 0.62
+				ui.Image(c, src).Size(imgSize, imgSize).Fit(ui.Contain)
+				return
+			}
 		}
+		iconName := assets.SafeIcon(info.Icon, "application-brackets-outline")
+		iconSize := size * 0.52
+		components.Icon(c, iconName, iconSize, t.TextStrong)
 	})
 }
 
@@ -289,7 +255,7 @@ func (p *Page) devDirsSection(c *ui.Context, t *theme.Theme, devPaths []string) 
 	svc := p.env.Svc.Plugin
 	heading := t.IfGlass(t.Pick(theme.Brand600, theme.Brand300), theme.Brand700, theme.Brand200)
 	ui.Column(c.Key("dev-dirs")).FillWidth().Gap(8).Children(func() {
-		components.TextMargin(c, locales.NativePluginsDevDirs(), theme.TextBase, theme.WeightMedium, heading, 0, 4, 4, 4)
+		components.TextMargin(c, locales.NativePluginsDevDirs(), theme.TextSM, theme.WeightMedium, heading, 0, 4, 4, 4)
 		for _, dir := range devPaths {
 			d := dir
 			bg, border := t.GlassCard(t.CardBg, t.CardBorder)
@@ -309,34 +275,6 @@ func (p *Page) devDirsSection(c *ui.Context, t *theme.Theme, devPaths []string) 
 				})
 			})
 		}
-	})
-}
-
-func statusBadge(c *ui.Context, t *theme.Theme, st plugin.PluginStatus) {
-	var lbl string
-	var bg, fg ui.Color
-	switch st {
-	case plugin.StatusActive:
-		lbl = locales.NativePluginsStatusActive()
-		bg, fg = t.Pick(theme.Success100, theme.Success900), t.Pick(theme.Success700, theme.Success300)
-	case plugin.StatusLoading:
-		lbl = locales.NativePluginsStatusLoading()
-		bg, fg = t.Pick(theme.Info100, theme.Info900), t.Pick(theme.Info700, theme.Info300)
-	case plugin.StatusError:
-		lbl = locales.NativePluginsStatusError()
-		bg, fg = t.Pick(theme.Error100, theme.Error900), t.Pick(theme.Error700, theme.Error300)
-	case plugin.StatusDisposing:
-		lbl = locales.NativePluginsStatusDisposing()
-		bg, fg = t.Pick(theme.Warning100, theme.Warning900), t.Pick(theme.Warning700, theme.Warning300)
-	case plugin.StatusDiscovered:
-		lbl = locales.NativePluginsStatusDiscovered()
-		bg, fg = t.ChipBg, t.ChipText
-	default:
-		lbl = locales.NativePluginsStatusDisabled()
-		bg, fg = t.ChipBg, t.ChipText
-	}
-	ui.Box(c).Padding(2, 8).Radius(999).Background(bg).Children(func() {
-		components.Text(c, lbl, theme.TextXS, theme.WeightMedium, fg).NoWrap()
 	})
 }
 
@@ -423,7 +361,10 @@ func (p *Page) uninstallConfirmModal(c *ui.Context, t *theme.Theme) {
 		Open:      true,
 		MaxWidth:  440,
 		TopOffset: env.TopbarHeight,
-		OnClose:   func() { p.uninstallTarget = nil },
+		OnClose: func() {
+			p.uninstallTarget = nil
+			p.uninstallBackToList = false
+		},
 	}, func(panel ui.Element) {
 		components.ModalPanel(t, panel).Children(func() {
 			ui.Column(c).FillWidth().Gap(14).Children(func() {
@@ -443,7 +384,10 @@ func (p *Page) uninstallConfirmModal(c *ui.Context, t *theme.Theme) {
 					better.Button(c, t, "cancel-uninstall", better.ButtonProps{
 						Label:   locales.CommonCancel(),
 						Variant: better.ButtonSecondary,
-						OnClick: func() { p.uninstallTarget = nil },
+						OnClick: func() {
+							p.uninstallTarget = nil
+							p.uninstallBackToList = false
+						},
 					})
 					better.Button(c, t, "confirm-uninstall", better.ButtonProps{
 						Label:   locales.NativePluginsUninstall(),
@@ -451,7 +395,9 @@ func (p *Page) uninstallConfirmModal(c *ui.Context, t *theme.Theme) {
 						OnClick: func() {
 							pid := target.ID
 							delData := p.deleteData
+							goBack := p.uninstallBackToList
 							p.uninstallTarget = nil
+							p.uninstallBackToList = false
 							p.env.Async(func() func() {
 								err := p.env.Svc.Plugin.Uninstall(pid, delData)
 								return func() {
@@ -459,6 +405,9 @@ func (p *Page) uninstallConfirmModal(c *ui.Context, t *theme.Theme) {
 										p.env.Toast(c, env.Error(locales.NativePluginsActionFailed(err.Error())))
 									} else {
 										p.env.Toast(c, env.Success(locales.NativePluginsUninstallSuccess()))
+										if goBack && p.env != nil && p.env.Router != nil {
+											p.env.Router.Push(env.PathPlugins)
+										}
 									}
 								}
 							})

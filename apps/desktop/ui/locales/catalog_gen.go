@@ -25939,32 +25939,214 @@ func (msgs Messages) NativeSideBarPlugins() string {
 	return Catalog.Format(msgs.locale, "native_sideBar_plugins", nil)
 }
 
-// NativePluginsSubtitle says "管理已安装的插件、开发目录与执行顺序"
+// NativePluginsDetailSettings says "插件设置"
 // in the language the app shows.
 //
-// extra:native.plugins.subtitle
-func NativePluginsSubtitle() string { return In(i18n.Locale()).NativePluginsSubtitle() }
+// extra:native.plugins.detail.settings
+func NativePluginsDetailSettings() string { return In(i18n.Locale()).NativePluginsDetailSettings() }
 
-// NativePluginsSubtitle says "管理已安装的插件、开发目录与执行顺序"
+// NativePluginsDetailSettings says "插件设置"
 // in the language of msgs.
 //
-// extra:native.plugins.subtitle
-func (msgs Messages) NativePluginsSubtitle() string {
-	return Catalog.Format(msgs.locale, "native_plugins_subtitle", nil)
+// extra:native.plugins.detail.settings
+func (msgs Messages) NativePluginsDetailSettings() string {
+	return Catalog.Format(msgs.locale, "native_plugins_detail_settings", nil)
 }
 
-// NativePluginsCount says "{active} 个运行中 / 共 {total} 个插件"
+// NativePluginsDetailSourceInfo says "来源信息"
 // in the language the app shows.
 //
-// extra:native.plugins.count
-func NativePluginsCount(active string, total string) string {
-	return In(i18n.Locale()).NativePluginsCount(active, total)
-}
+// extra:native.plugins.detail.sourceInfo
+func NativePluginsDetailSourceInfo() string { return In(i18n.Locale()).NativePluginsDetailSourceInfo() }
 
-// NativePluginsCount says "{active} 个运行中 / 共 {total} 个插件"
+// NativePluginsDetailSourceInfo says "来源信息"
 // in the language of msgs.
 //
-// extra:native.plugins.count
-func (msgs Messages) NativePluginsCount(active string, total string) string {
-	return Catalog.Format(msgs.locale, "native_plugins_count", map[string]any{"active": active, "total": total})
+// extra:native.plugins.detail.sourceInfo
+func (msgs Messages) NativePluginsDetailSourceInfo() string {
+	return Catalog.Format(msgs.locale, "native_plugins_detail_sourceInfo", nil)
+}
+
+// NativePluginsDetailSourceType says "代码来源"
+// in the language the app shows.
+//
+// extra:native.plugins.detail.sourceType
+func NativePluginsDetailSourceType() string { return In(i18n.Locale()).NativePluginsDetailSourceType() }
+
+// NativePluginsDetailSourceType says "代码来源"
+// in the language of msgs.
+//
+// extra:native.plugins.detail.sourceType
+func (msgs Messages) NativePluginsDetailSourceType() string {
+	return Catalog.Format(msgs.locale, "native_plugins_detail_sourceType", nil)
+}
+
+// NativePluginsDetailSourceDev says "本地开发"
+// in the language the app shows.
+//
+// extra:native.plugins.detail.sourceDev
+func NativePluginsDetailSourceDev() string { return In(i18n.Locale()).NativePluginsDetailSourceDev() }
+
+// NativePluginsDetailSourceDev says "本地开发"
+// in the language of msgs.
+//
+// extra:native.plugins.detail.sourceDev
+func (msgs Messages) NativePluginsDetailSourceDev() string {
+	return Catalog.Format(msgs.locale, "native_plugins_detail_sourceDev", nil)
+}
+
+// NativePluginsDetailSourceInstalled says "已安装"
+// in the language the app shows.
+//
+// extra:native.plugins.detail.sourceInstalled
+func NativePluginsDetailSourceInstalled() string {
+	return In(i18n.Locale()).NativePluginsDetailSourceInstalled()
+}
+
+// NativePluginsDetailSourceInstalled says "已安装"
+// in the language of msgs.
+//
+// extra:native.plugins.detail.sourceInstalled
+func (msgs Messages) NativePluginsDetailSourceInstalled() string {
+	return Catalog.Format(msgs.locale, "native_plugins_detail_sourceInstalled", nil)
+}
+
+// NativePluginsDetailVersion says "当前版本"
+// in the language the app shows.
+//
+// extra:native.plugins.detail.version
+func NativePluginsDetailVersion() string { return In(i18n.Locale()).NativePluginsDetailVersion() }
+
+// NativePluginsDetailVersion says "当前版本"
+// in the language of msgs.
+//
+// extra:native.plugins.detail.version
+func (msgs Messages) NativePluginsDetailVersion() string {
+	return Catalog.Format(msgs.locale, "native_plugins_detail_version", nil)
+}
+
+// NativePluginsDetailPluginId says "插件 ID"
+// in the language the app shows.
+//
+// extra:native.plugins.detail.pluginId
+func NativePluginsDetailPluginId() string { return In(i18n.Locale()).NativePluginsDetailPluginId() }
+
+// NativePluginsDetailPluginId says "插件 ID"
+// in the language of msgs.
+//
+// extra:native.plugins.detail.pluginId
+func (msgs Messages) NativePluginsDetailPluginId() string {
+	return Catalog.Format(msgs.locale, "native_plugins_detail_pluginId", nil)
+}
+
+// NativePluginsDetailAuthor says "作者"
+// in the language the app shows.
+//
+// extra:native.plugins.detail.author
+func NativePluginsDetailAuthor() string { return In(i18n.Locale()).NativePluginsDetailAuthor() }
+
+// NativePluginsDetailAuthor says "作者"
+// in the language of msgs.
+//
+// extra:native.plugins.detail.author
+func (msgs Messages) NativePluginsDetailAuthor() string {
+	return Catalog.Format(msgs.locale, "native_plugins_detail_author", nil)
+}
+
+// NativePluginsDetailEngines says "兼容版本"
+// in the language the app shows.
+//
+// extra:native.plugins.detail.engines
+func NativePluginsDetailEngines() string { return In(i18n.Locale()).NativePluginsDetailEngines() }
+
+// NativePluginsDetailEngines says "兼容版本"
+// in the language of msgs.
+//
+// extra:native.plugins.detail.engines
+func (msgs Messages) NativePluginsDetailEngines() string {
+	return Catalog.Format(msgs.locale, "native_plugins_detail_engines", nil)
+}
+
+// NativePluginsDetailLicense says "许可证"
+// in the language the app shows.
+//
+// extra:native.plugins.detail.license
+func NativePluginsDetailLicense() string { return In(i18n.Locale()).NativePluginsDetailLicense() }
+
+// NativePluginsDetailLicense says "许可证"
+// in the language of msgs.
+//
+// extra:native.plugins.detail.license
+func (msgs Messages) NativePluginsDetailLicense() string {
+	return Catalog.Format(msgs.locale, "native_plugins_detail_license", nil)
+}
+
+// NativePluginsDetailHomepage says "主页"
+// in the language the app shows.
+//
+// extra:native.plugins.detail.homepage
+func NativePluginsDetailHomepage() string { return In(i18n.Locale()).NativePluginsDetailHomepage() }
+
+// NativePluginsDetailHomepage says "主页"
+// in the language of msgs.
+//
+// extra:native.plugins.detail.homepage
+func (msgs Messages) NativePluginsDetailHomepage() string {
+	return Catalog.Format(msgs.locale, "native_plugins_detail_homepage", nil)
+}
+
+// NativePluginsDetailDirectory says "插件目录"
+// in the language the app shows.
+//
+// extra:native.plugins.detail.directory
+func NativePluginsDetailDirectory() string { return In(i18n.Locale()).NativePluginsDetailDirectory() }
+
+// NativePluginsDetailDirectory says "插件目录"
+// in the language of msgs.
+//
+// extra:native.plugins.detail.directory
+func (msgs Messages) NativePluginsDetailDirectory() string {
+	return Catalog.Format(msgs.locale, "native_plugins_detail_directory", nil)
+}
+
+// NativePluginsDetailOrder says "执行顺序"
+// in the language the app shows.
+//
+// extra:native.plugins.detail.order
+func NativePluginsDetailOrder() string { return In(i18n.Locale()).NativePluginsDetailOrder() }
+
+// NativePluginsDetailOrder says "执行顺序"
+// in the language of msgs.
+//
+// extra:native.plugins.detail.order
+func (msgs Messages) NativePluginsDetailOrder() string {
+	return Catalog.Format(msgs.locale, "native_plugins_detail_order", nil)
+}
+
+// NativePluginsDetailExtensions says "已注册扩展"
+// in the language the app shows.
+//
+// extra:native.plugins.detail.extensions
+func NativePluginsDetailExtensions() string { return In(i18n.Locale()).NativePluginsDetailExtensions() }
+
+// NativePluginsDetailExtensions says "已注册扩展"
+// in the language of msgs.
+//
+// extra:native.plugins.detail.extensions
+func (msgs Messages) NativePluginsDetailExtensions() string {
+	return Catalog.Format(msgs.locale, "native_plugins_detail_extensions", nil)
+}
+
+// NativePluginsDetailNotFound says "未找到该插件"
+// in the language the app shows.
+//
+// extra:native.plugins.detail.notFound
+func NativePluginsDetailNotFound() string { return In(i18n.Locale()).NativePluginsDetailNotFound() }
+
+// NativePluginsDetailNotFound says "未找到该插件"
+// in the language of msgs.
+//
+// extra:native.plugins.detail.notFound
+func (msgs Messages) NativePluginsDetailNotFound() string {
+	return Catalog.Format(msgs.locale, "native_plugins_detail_notFound", nil)
 }

@@ -2,6 +2,45 @@ export type Disposer = () => void;
 
 export type LocalizedString = string | Record<string, string>;
 
+/**
+ * 插件清单（plugin.json）类型定义。
+ */
+export interface PluginManifest {
+  /** 唯一插件 ID（小写字母开头，仅含小写字母、数字与连字符） */
+  id: string;
+  /** SemVer 版本号，例如 "1.0.0" */
+  version: string;
+  /** 插件 API 主版本（当前为 1） */
+  apiVersion: number;
+  /** 兼容的 LunaBox 宿主版本范围 */
+  engines?: {
+    lunabox?: string;
+  };
+  /** 插件入口文件（相对插件根目录，默认 "main.js"） */
+  main?: string;
+  /** 多语言插件名称（如 { "zh-CN": "...", "en-US": "..." }） */
+  name: Record<string, string>;
+  /** 多语言插件简介 */
+  description?: Record<string, string>;
+  /** 作者名称 */
+  author?: string;
+  /** 插件主页链接 */
+  homepage?: string;
+  /** 源码仓库链接 */
+  repository?: string;
+  /** 开源许可证标识（如 "MIT"） */
+  license?: string;
+  /**
+   * 插件图标：支持相对插件目录的图片路径（如 "assets/icon.svg" / "icon.png"）
+   * 或内置 MDI 图标名（如 "timer-outline"、"robot-happy"）。
+   */
+  icon?: string;
+  /** 可选图标背景色（如 "#fef2f2"），为空时使用主题默认底色 */
+  iconBg?: string;
+  /** 插件关键词标签 */
+  keywords?: string[];
+}
+
 export type SpacingToken = 'none' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 export type TextSizeToken = 'xs' | 'sm' | 'base' | 'lg' | 'xl';
 export type FontWeightToken = 'normal' | 'medium' | 'semibold' | 'bold';

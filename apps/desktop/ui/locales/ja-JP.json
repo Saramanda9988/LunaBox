@@ -1921,6 +1921,19 @@
   "native_plugins_reloadSuccess": "プラグインを再読み込みしました",
   "native_plugins_actionFailed": "操作に失敗しました：{error}",
   "native_sideBar_plugins": "プラグイン",
-  "native_plugins_subtitle": "インストール済みプラグイン、開発ディレクトリ、実行順序を管理します",
-  "native_plugins_count": "{active} 個実行中 / 全 {total} 個"
+  "native_plugins_detail_settings": "プラグイン設定",
+  "native_plugins_detail_sourceInfo": "ソース情報",
+  "native_plugins_detail_sourceType": "コードソース",
+  "native_plugins_detail_sourceDev": "ローカル開発",
+  "native_plugins_detail_sourceInstalled": "インストール済み",
+  "native_plugins_detail_version": "現在のバージョン",
+  "native_plugins_detail_pluginId": "プラグイン ID",
+  "native_plugins_detail_author": "作者",
+  "native_plugins_detail_engines": "互換バージョン",
+  "native_plugins_detail_license": "ライセンス",
+  "native_plugins_detail_homepage": "ホームページ",
+  "native_plugins_detail_directory": "ディレクトリ",
+  "native_plugins_detail_order": "実行順序",
+  "native_plugins_detail_extensions": "登録済みの拡張機能",
+  "native_plugins_detail_notFound": "プラグインが見つかりません"
 }

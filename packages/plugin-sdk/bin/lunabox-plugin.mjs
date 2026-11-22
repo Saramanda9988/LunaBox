@@ -44,7 +44,11 @@ function packPlugin() {
   const outZip = path.join(cwd, zipName);
   if (fs.existsSync(outZip)) fs.unlinkSync(outZip);
 
-  const include = ['plugin.json', manifest.main || 'main.js', 'locales', 'assets'].filter((p) =>
+  const candidates = ['plugin.json', manifest.main || 'main.js', 'locales', 'assets'];
+  if (typeof manifest.icon === 'string' && manifest.icon.trim() && !manifest.icon.startsWith('assets/')) {
+    candidates.push(manifest.icon.trim());
+  }
+  const include = [...new Set(candidates)].filter((p) =>
     fs.existsSync(path.join(cwd, p))
   );
 

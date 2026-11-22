@@ -33,14 +33,18 @@ const (
 	PathHome       = "/"
 	PathLibrary    = "/library"
 	PathStats      = "/stats"
-	PathCategories = "/categories"
-	PathCategory   = "/categories/{id}" // 收藏详情，Route.Param("id") 是收藏夹 ID
-	PathPlugins    = "/plugins"
-	PathDownloads  = "/downloads"
-	PathSettings   = "/settings"
-	PathGame       = "/game/{id}" // 游戏详情，Route.Param("id") 是游戏 ID
-	PathPluginPage = "/plugin/{pluginId}/{id}"
+	PathCategories   = "/categories"
+	PathCategory     = "/categories/{id}" // 收藏详情，Route.Param("id") 是收藏夹 ID
+	PathPlugins      = "/plugins"
+	PathPluginDetail = "/plugins/{id}" // 插件详情，Route.Param("id") 是插件 ID
+	PathDownloads    = "/downloads"
+	PathSettings     = "/settings"
+	PathGame         = "/game/{id}" // 游戏详情，Route.Param("id") 是游戏 ID
+	PathPluginPage   = "/plugin/{pluginId}/{id}"
 )
+
+// PluginDetailPath 返回插件详情页的路由路径。
+func PluginDetailPath(id string) string { return "/plugins/" + url.PathEscape(id) }
 
 // PluginPagePath 返回插件侧边栏页面的路由路径。
 func PluginPagePath(pluginID, id string) string {

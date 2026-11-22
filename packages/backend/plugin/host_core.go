@@ -471,13 +471,17 @@ func (p *Plugin) buildConfigAPI() map[string]any {
 				schema.Title = p.Manifest.DisplayName(p.manager.currentLanguage())
 			}
 			if schema.Icon == "" {
-				schema.Icon = "application-brackets-outline"
+				if ic := strings.TrimSpace(p.Manifest.Icon); ic != "" && !strings.ContainsAny(ic, "/\\.") {
+					schema.Icon = ic
+				} else {
+					schema.Icon = "application-brackets-outline"
+				}
 			}
 			p.configMgr.mu.Lock()
 			p.configMgr.schema = &schema
 			p.configMgr.mu.Unlock()
 
-			// 自动在设置页注册一个 settings.section
+			// 自动在插件详情页注册一个 settings.section
 			dispose := p.scope.Effect(p.manager.ui.RegisterSlot(SlotRegistration{
 				SlotName:     SlotSettingsSection,
 				PluginID:     p.ID,

@@ -6,5 +6,6 @@
   "main": "main.js",
   "name": { "zh-CN": "示例资源站浏览与下载", "en-US": "Example Resource Hub" },
   "description": { "zh-CN": "演示 sidebar.page + library.add_menu + ctx.downloads.requestInstall 下载入库链路。", "en-US": "Demonstrates browsing a resource hub and installing via host download pipeline." },
-  "author": "LunaBox Team"
+  "author": "LunaBox Team",
+  "icon": "download"
 }

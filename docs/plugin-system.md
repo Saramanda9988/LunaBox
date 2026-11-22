@@ -559,7 +559,7 @@ MyGo 的界面每帧重建，没法从帧上判断“组件卸载了”，所以
 | `game.actions` | 游戏卡片右键菜单、详情页“更多”菜单 | `id`、`title`、`icon`、`when?(game)`、`run(game)` | — | 注册期间 | `ui/components/card/gamecard.go`、`ui/pages/game/view.go` |
 | `downloads.header` | 下载管理页顶部工具栏扩展区（如站点配额、登录状态、网盘入口） | `id`、`render` | — | 下载页 `Open`/离开 | `ui/pages/downloads/view.go` |
 | `app.decoration` | 主窗口全局背景层 / 前景层装饰位点（等价于 `ctx.theme.registerDecoration`） | `id`、`layer`、`anchor`、`offset`、`size`、`opacity`、`pointerEvents`、`routes?`、`image` 或 `render` | `{ route, dark }` | 插件启用期间 | `ui/app.go` 的 `View`（`root.Draw` 后与 `layout` 后） |
-| `settings.section` | 设置页，排在内置分区之后，每次注册一个 `CollapsibleSection` | `id`、`title`、`icon`、`render` | — | 设置页 `Open`/离开 | `ui/pages/settings/view.go` 的 `sections()` |
+| `settings.section` | 插件详情页（`/plugins/{id}`）中的设置分区 | `id`、`title`、`icon`、`render` | — | 插件详情页 `OpenDetail`/离开 | `ui/pages/plugins/detail.go` |
 
 `ctx.config.define(schema)` 会自动生成一个 `settings.section`，插件不需要为简单设置写界面。schema 支持 `string`、`boolean`、`number`、`enum`、`secret`（密码输入框）。
 
@@ -609,9 +609,9 @@ type PluginEntry struct {
 
 按 [backend.md](backend.md) 的配置同步约束：同步修改 `config_service.go` 的 `UpdateAppConfig(...)`，规范化函数写在 `appconf/normalize.go`。
 
-### 插件管理页
+### 插件管理页与详情页
 
-侧边栏「收藏」下方新增独立的一级导航项「插件」（路由 `/plugins`，原生 Go 页面 `ui/pages/plugins/`，不是插件界面），列出：名称、版本、状态（加载中 / 运行中 / 已停用 / 出错及原因）、启用开关、重新加载、打开插件目录、卸载（可选是否删除数据）、排序调整与开发目录管理。插件自身的设置分区仍通过 `settings.section` / `ctx.config.define` 挂载在设置页中。
+侧边栏「收藏」下方新增独立的一级导航项「插件」（路由 `/plugins`，原生 Go 页面 `ui/pages/plugins/`，不是插件界面），列表项展示插件图标、名称、简介与启用开关；点击条目进入插件详情页（路由 `/plugins/{id}`），集中展示插件设置（`settings.section` / `ctx.config.define`）、已注册扩展、来源信息、重新加载、打开插件目录、执行顺序调整与卸载（可选是否删除数据），设置页不再混入插件自身设置。
 
 ### 安装、升级与卸载
 

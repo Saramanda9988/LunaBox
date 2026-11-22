@@ -46,12 +46,18 @@ type PluginInfo struct {
 	ID          string            `json:"id"`
 	Version     string            `json:"version"`
 	APIVersion  int               `json:"api_version"`
+	Engines     string            `json:"engines,omitempty"`
 	Name        string            `json:"name"`
 	Names       map[string]string `json:"names,omitempty"`
 	Description string            `json:"description"`
 	Author      string            `json:"author,omitempty"`
 	Homepage    string            `json:"homepage,omitempty"`
+	Repository  string            `json:"repository,omitempty"`
+	License     string            `json:"license,omitempty"`
+	Icon        string            `json:"icon,omitempty"`
+	IconBg      string            `json:"icon_bg,omitempty"`
 	IconPath    string            `json:"icon_path,omitempty"`
+	Keywords    []string          `json:"keywords,omitempty"`
 	Dir         string            `json:"dir"`
 	DataDir     string            `json:"data_dir"`
 	IsDev       bool              `json:"is_dev"`

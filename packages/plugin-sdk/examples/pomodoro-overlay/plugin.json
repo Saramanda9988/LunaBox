@@ -18,5 +18,7 @@
     "ja-JP": "ゲーム起動時に最前面のオーバーレイを表示し、現在のプレイ時間とポモドーロタイマーをリアルタイムで表示します。"
   },
   "author": "LunaBox",
+  "icon": "assets/icon.svg",
+  "license": "MIT",
   "main": "main.js"
 }

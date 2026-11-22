@@ -1738,6 +1738,19 @@
   "native_plugins_reloadSuccess": "外掛已重新載入",
   "native_plugins_actionFailed": "操作失敗：{error}",
   "native_sideBar_plugins": "外掛",
-  "native_plugins_subtitle": "管理已安裝的外掛、開發目錄與執行順序",
-  "native_plugins_count": "{active} 個執行中 / 共 {total} 個外掛"
+  "native_plugins_detail_settings": "外掛設定",
+  "native_plugins_detail_sourceInfo": "來源資訊",
+  "native_plugins_detail_sourceType": "程式碼來源",
+  "native_plugins_detail_sourceDev": "本地開發",
+  "native_plugins_detail_sourceInstalled": "已安裝",
+  "native_plugins_detail_version": "目前版本",
+  "native_plugins_detail_pluginId": "外掛 ID",
+  "native_plugins_detail_author": "作者",
+  "native_plugins_detail_engines": "相容版本",
+  "native_plugins_detail_license": "授權條款",
+  "native_plugins_detail_homepage": "主頁",
+  "native_plugins_detail_directory": "外掛目錄",
+  "native_plugins_detail_order": "執行順序",
+  "native_plugins_detail_extensions": "已註冊擴充",
+  "native_plugins_detail_notFound": "找不到該外掛"
 }

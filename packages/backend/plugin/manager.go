@@ -528,20 +528,30 @@ func (m *Manager) List() []PluginInfo {
 		if mp.runtime != nil && lastErr == "" {
 			lastErr = mp.runtime.LastError()
 		}
+		iconRaw := strings.TrimSpace(mp.manifest.Icon)
 		iconPath := ""
-		if mp.manifest.Icon != "" {
-			iconPath = filepath.Join(mp.dir, filepath.FromSlash(mp.manifest.Icon))
+		if iconRaw != "" && !strings.Contains(iconRaw, "..") && !filepath.IsAbs(iconRaw) {
+			cand := filepath.Join(mp.dir, filepath.FromSlash(iconRaw))
+			if st, err := os.Stat(cand); err == nil && !st.IsDir() {
+				iconPath = cand
+			}
 		}
 		out = append(out, PluginInfo{
 			ID:          mp.id,
 			Version:     mp.manifest.Version,
 			APIVersion:  mp.manifest.APIVersion,
+			Engines:     strings.TrimSpace(mp.manifest.Engines.LunaBox),
 			Name:        mp.manifest.DisplayName(lang),
 			Names:       mp.manifest.Name,
 			Description: mp.manifest.DisplayDescription(lang),
-			Author:      mp.manifest.Author,
-			Homepage:    mp.manifest.Homepage,
+			Author:      strings.TrimSpace(mp.manifest.Author),
+			Homepage:    strings.TrimSpace(mp.manifest.Homepage),
+			Repository:  strings.TrimSpace(mp.manifest.Repository),
+			License:     strings.TrimSpace(mp.manifest.License),
+			Icon:        iconRaw,
+			IconBg:      strings.TrimSpace(mp.manifest.IconBg),
 			IconPath:    iconPath,
+			Keywords:    slices.Clone(mp.manifest.Keywords),
 			Dir:         mp.dir,
 			DataDir:     mp.dataDir,
 			IsDev:       mp.isDev,

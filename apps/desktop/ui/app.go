@@ -191,7 +191,7 @@ func New(list Backend, svc *api.Services, opts Options) *App {
 			}
 		},
 	})
-	a.settings.SetPluginUI(a.plugins)
+	a.pluginsPage.SetPluginUI(a.plugins)
 	a.detail.SetPluginUI(a.plugins)
 	a.downloads.SetPluginUI(a.plugins)
 	return a
