@@ -17,6 +17,7 @@ type Backend struct {
 	Config  *appconf.AppConfig
 	DataDir string
 	Events  *Events
+	Plugins *PluginBridge
 }
 
 // API 返回界面使用的接口，背后是同一组真实服务。
@@ -25,6 +26,9 @@ func (b *Backend) API() *api.Services {
 	tz := ""
 	if b.Config != nil && b.Config.TimeZone == "" {
 		tz = SystemTimeZone() // 只有时区选择弹窗用到
+	}
+	if b.Plugins == nil && s.Plugin != nil {
+		b.Plugins = NewPluginBridge(s.Plugin)
 	}
 	return &api.Services{
 		Config:  b.Config,
@@ -57,6 +61,7 @@ func (b *Backend) API() *api.Services {
 		CloudSync:   s.CloudSync,
 		Presets:     s.GameFilterPreset,
 		Import:      s.Import,
+		Plugin:      b.Plugins,
 	}
 }
 

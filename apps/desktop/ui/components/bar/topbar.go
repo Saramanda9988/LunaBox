@@ -15,6 +15,7 @@ import (
 type TopBarProps struct {
 	Maximised                       bool
 	OnMinimise, OnMaximise, OnClose func()
+	PluginItems                     func()
 }
 
 // TopBar 对应 TopBar.tsx：h-[28px] 可拖动窗口，标题图片绝对居中，右侧三个窗口按钮。
@@ -29,6 +30,9 @@ func TopBar(c *ui.Context, t *theme.Theme, p TopBarProps) {
 			Attach(ui.AnchorCenter, ui.AnchorCenter).PassThrough()
 
 		ui.Spacer(c)
+		if p.PluginItems != nil {
+			ui.Row(c.Key("plugin-topbar-items")).AlignItems(ui.Center).Children(p.PluginItems)
+		}
 		windowButton(c, t, "minimise", assets.Minimise, false, p.OnMinimise)
 		maxIcon := assets.Maximise
 		if p.Maximised {

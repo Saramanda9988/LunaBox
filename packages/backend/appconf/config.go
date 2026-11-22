@@ -227,6 +227,15 @@ type AppConfig struct {
 	GameCardLayout       string `json:"game_card_layout,omitempty"` // 游戏库卡片布局：portrait / landscape
 	ShowSortFieldOnCover bool   `json:"show_sort_field_on_cover"`   // 是否在游戏卡片封面底部展示当前排序字段对应的值
 	BlurNSFWGameCovers   bool   `json:"blur_nsfw_game_covers"`      // 是否模糊 NSFW 游戏封面
+	// 插件配置
+	Plugins        []PluginEntry `json:"plugins,omitempty"`          // 顺序 = 钩子执行顺序
+	PluginDevPaths []string      `json:"plugin_dev_paths,omitempty"` // 开发中的插件目录，直接从源目录加载
+}
+
+// PluginEntry 记录已发现插件的启用状态与执行顺序。
+type PluginEntry struct {
+	ID      string `json:"id"`
+	Enabled bool   `json:"enabled"`
 }
 
 // getConfigPath 获取配置文件路径
@@ -434,6 +443,7 @@ func LoadConfig() (*AppConfig, error) {
 	config.GameCardLayout = NormalizeGameCardLayout(config.GameCardLayout)
 	NormalizeBatchImportPreferences(config)
 	NormalizeMetadataStrategy(config)
+	NormalizePlugins(config)
 
 	shouldSaveSanitizedConfig := recoveredFromBackup
 	if SanitizeErogameScapeConfig(config) {
@@ -545,6 +555,7 @@ func SaveConfig(config *AppConfig) error {
 	config.GameCardLayout = NormalizeGameCardLayout(config.GameCardLayout)
 	NormalizeBatchImportPreferences(config)
 	NormalizeMetadataStrategy(config)
+	NormalizePlugins(config)
 	config.LocalDBBackupRetention = NormalizeLocalDBBackupRetention(config.LocalDBBackupRetention)
 	NormalizeScheduledDBBackup(config)
 	configCopy := *config

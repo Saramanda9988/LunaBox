@@ -1,0 +1,10 @@
+{
+  "id": "example-ai-assistant",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "engines": { "lunabox": ">=2.1.0 <3" },
+  "main": "main.js",
+  "name": { "zh-CN": "示例 AI 游戏库助手", "en-US": "Example AI Library Assistant" },
+  "description": { "zh-CN": "演示 sidebar.page + workspace.drawer + library.toolbar + ctx.ai.stream 构建类 Claude Code 多轮 Agent 工作台。", "en-US": "Demonstrates streaming AI chat with tool calls to organize the game library." },
+  "author": "LunaBox Team"
+}

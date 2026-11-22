@@ -6,6 +6,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/common/enums"
+	"lunabox/backend/plugin"
 	"lunabox/desktop/ui/assets"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/bar"
@@ -49,7 +50,37 @@ func (l *Page) filterProps(c *ui.Context, t *theme.Theme) bar.FilterBarProps {
 		},
 		OnClearSelection: func() { clear(l.selected) },
 		BatchActions:     func() { l.batchActions(c, t) },
-		ActionButton:     func() { l.addGameButton(c, t) },
+		ActionButton: func() {
+			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+				l.pluginToolbarButtons(c, t)
+				l.addGameButton(c, t)
+			})
+		},
+	}
+}
+
+func (l *Page) pluginToolbarButtons(c *ui.Context, t *theme.Theme) {
+	if l.env == nil || l.env.Svc == nil || l.env.Svc.Plugin == nil {
+		return
+	}
+	svc := l.env.Svc.Plugin
+	for _, slot := range svc.Slots(plugin.SlotLibraryToolbar) {
+		if slot.Mode == "batch" {
+			continue
+		}
+		s := slot
+		icon := assets.SafeIcon(s.Icon, "application-brackets-outline")
+		better.Button(c, t, "plugin-tb-"+s.PluginID+"-"+s.ID, better.ButtonProps{
+			Label:   s.Title,
+			Icon:    icon,
+			Variant: better.ButtonSecondary,
+			Size:    better.ButtonSM,
+			OnClick: func() {
+				svc.InvokeAction(s.PluginID, plugin.SlotLibraryToolbar, s.ID, map[string]any{
+					"selectedGameIds": l.selectedIDs(),
+				})
+			},
+		})
 	}
 }
 
@@ -105,6 +136,26 @@ func (l *Page) addGameButton(c *ui.Context, t *theme.Theme) {
 			it.Image = assets.Importer(imp.key)
 		}
 		items = append(items, it)
+	}
+	if l.env != nil && l.env.Svc != nil && l.env.Svc.Plugin != nil {
+		svc := l.env.Svc.Plugin
+		for i, slot := range svc.Slots(plugin.SlotLibraryAddMenu) {
+			s := slot
+			icon := s.Icon
+			if icon == "" {
+				icon = "puzzle-outline"
+			}
+			items = append(items, better.MenuItem{
+				Key:           "plugin:" + s.PluginID + "/" + s.ID,
+				Label:         s.Title,
+				Icon:          icon,
+				IconColor:     theme.Primary500,
+				DividerBefore: i == 0,
+				OnClick: func() {
+					svc.InvokeAction(s.PluginID, plugin.SlotLibraryAddMenu, s.ID, nil)
+				},
+			})
+		}
 	}
 	better.DropdownMenu(c, t, btn, better.MenuProps{Open: &l.addMenuOpen, MinWidth: 220, Items: items})
 }

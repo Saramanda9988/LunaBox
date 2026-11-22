@@ -10,6 +10,7 @@ import (
 	"lunabox/backend/common/enums"
 	"lunabox/backend/models"
 	"lunabox/desktop/ui/components"
+	"lunabox/desktop/ui/components/better"
 	"lunabox/desktop/ui/locales"
 	"lunabox/desktop/ui/theme"
 	"lunabox/desktop/ui/timefmt"
@@ -44,6 +45,9 @@ type GameCardProps struct {
 	// Overlay 对应 VirtualGameGrid 的 renderOverlay：叠在卡片最上层（相对卡片的边框盒定位），
 	// hover 是悬停（group-hover）的 transition-opacity 进度。
 	Overlay func(hover float32)
+
+	// ContextMenuItems 为卡片右键菜单提供额外条目（用于插件 game.actions 插槽）。
+	ContextMenuItems []better.MenuItem
 }
 
 // GameCard 对应 GameCard.tsx：rounded-xl border 卡片，封面 + 标题/开发商，悬停显示开始游戏与详情按钮；
@@ -133,6 +137,17 @@ func GameCard(c *ui.Context, t *theme.Theme, p GameCardProps) {
 			p.Overlay(card.AnimateWith("overlay", theme.Bool(hovered), 150*time.Millisecond, theme.EaseTailwind))
 		}
 	})
+	if len(p.ContextMenuItems) > 0 {
+		menuOpen := ui.Local(card, "ctx-menu-open", func() bool { return false })
+		if card.RightClicked() {
+			*menuOpen = true
+		}
+		better.DropdownMenu(c, t, card, better.MenuProps{
+			Open:     menuOpen,
+			Items:    p.ContextMenuItems,
+			MinWidth: 180,
+		})
+	}
 }
 
 // sortStrip 是封面底部的排序字段覆盖条：bg-gradient-to-t from-black/75 via-black/45 to-transparent px-2 pt-5 pb-1.5。

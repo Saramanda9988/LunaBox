@@ -14,6 +14,8 @@ require (
 )
 
 require (
+	github.com/MoeForge/moego v0.1.0-alpha.3 // indirect
+	github.com/MoeForge/moejs v0.1.1 // indirect
 	github.com/ProtonMail/go-crypto v1.4.1 // indirect
 	github.com/PuerkitoBio/goquery v1.10.3 // indirect
 	github.com/Umbrae-Labs/umbra-sdk/umbra-go v0.3.0 // indirect

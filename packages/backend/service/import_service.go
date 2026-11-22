@@ -7,6 +7,7 @@ import (
 	"lunabox/backend/appconf"
 	"lunabox/backend/applog"
 	"lunabox/backend/common/enums"
+	"lunabox/backend/common/hooks"
 	"lunabox/backend/common/importpath"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
@@ -66,6 +67,7 @@ type ImportService struct {
 	hikarinagiService *HikarinagiService
 	kungalService     *KungalService
 	sessionService    *SessionService
+	hookBus           hooks.Bus
 	runtime           appruntime.Runtime
 }
 
@@ -99,6 +101,11 @@ func (s *ImportService) SetGameService(gameService *GameService) {
 //wails:ignore
 func (s *ImportService) SetSessionService(sessionService *SessionService) {
 	s.sessionService = sessionService
+}
+
+//wails:ignore
+func (s *ImportService) SetHookBus(bus hooks.Bus) {
+	s.hookBus = hooks.SafeBus(bus)
 }
 
 //wails:ignore
@@ -1162,6 +1169,33 @@ func (s *ImportService) getConfiguredMetadataSearchSources(ctx context.Context) 
 					return s.kungalService.fetchMetadataCandidatesByName(ctx, name)
 				},
 			})
+		default:
+			if ext, ok := metadata.LookupExternal(source); ok {
+				extSource := ext
+				srcType := source
+				sources = append(sources, metadataSearchSource{
+					source: srcType,
+					fetchByName: func(name string) (metadata.MetadataResult, error) {
+						if err := metadata.AcquireExternalRateLimit(ctx, srcType); err != nil {
+							return metadata.MetadataResult{}, err
+						}
+						results, err := extSource.SearchContext(ctx, name, language, 5)
+						if err != nil {
+							return metadata.MetadataResult{}, err
+						}
+						if len(results) == 0 {
+							return metadata.MetadataResult{}, nil
+						}
+						return results[0], nil
+					},
+					fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+						if err := metadata.AcquireExternalRateLimit(ctx, srcType); err != nil {
+							return nil, err
+						}
+						return extSource.SearchContext(ctx, name, language, 5)
+					},
+				})
+			}
 		}
 	}
 	return sources
@@ -1326,6 +1360,12 @@ func (s *ImportService) BatchImportGames(candidates []vo.BatchImportCandidate) (
 	result.Success += success
 	result.SessionsImported += sessionsImported
 	applog.LogInfof(s.ctx, "BatchImportGames: complete success=%d skipped=%d failed=%d sessions=%d commit_elapsed=%s total=%s", result.Success, result.Skipped, result.Failed, result.SessionsImported, time.Since(stepStartedAt), time.Since(startedAt))
+
+	if bus := hooks.SafeBus(s.hookBus); bus.HasListeners(hooks.EventGameAdded) {
+		for _, item := range items {
+			bus.Emit(hooks.EventGameAdded, item.Game)
+		}
+	}
 
 	return result, nil
 }

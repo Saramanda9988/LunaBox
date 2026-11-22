@@ -5,6 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"lunabox/backend/plugin"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/card"
 	"lunabox/desktop/ui/locales"
@@ -54,13 +55,25 @@ func (p *Page) View(c *ui.Context) {
 // header：h1 text-4xl font-bold text-brand-900 dark:text-white，下面 mt-1 text-sm text-brand-500 dark:text-brand-400
 // 的进行中任务数。
 func (p *Page) header(c *ui.Context, t *theme.Theme) {
-	ui.Column(c.Key("header")).Children(func() {
-		components.Text(c, locales.DownloadsTitle(), theme.Text4XL, theme.WeightBold, t.TextStrong)
-		sub := locales.DownloadsNoActive()
-		if n := p.activeCount(); n > 0 {
-			sub = locales.DownloadsActiveCount(strconv.Itoa(n))
+	ui.Row(c.Key("header")).FillWidth().AlignItems(ui.End).Justify(ui.SpaceBetween).Wrap().GapX(16).GapY(12).Children(func() {
+		ui.Column(c).Children(func() {
+			components.Text(c, locales.DownloadsTitle(), theme.Text4XL, theme.WeightBold, t.TextStrong)
+			sub := locales.DownloadsNoActive()
+			if n := p.activeCount(); n > 0 {
+				sub = locales.DownloadsActiveCount(strconv.Itoa(n))
+			}
+			components.TextMargin(c, sub, theme.TextSM, theme.WeightNormal, t.TextMuted, 4, 0, 0, 0)
+		})
+		if p.plugins != nil && p.env != nil && p.env.Svc != nil && p.env.Svc.Plugin != nil {
+			slots := p.env.Svc.Plugin.Slots(plugin.SlotDownloadsHeader)
+			if len(slots) > 0 {
+				ui.Row(c.Key("plugin-downloads-header")).Gap(8).AlignItems(ui.Center).Children(func() {
+					for _, slot := range slots {
+						p.plugins.RenderSlot(c, t, plugin.SlotDownloadsHeader, slot.PluginID, slot.ID, "downloads", nil)
+					}
+				})
+			}
 		}
-		components.TextMargin(c, sub, theme.TextSM, theme.WeightNormal, t.TextMuted, 4, 0, 0, 0)
 	})
 }
 

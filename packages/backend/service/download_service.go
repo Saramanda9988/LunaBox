@@ -98,9 +98,13 @@ type DownloadService struct {
 	gameService    *GameService
 	runtime        appruntime.Runtime
 	emitEvent      func(string, ...interface{})
-	mu             sync.RWMutex
-	tasks          map[string]*DownloadTask
-	pendingInstall *vo.InstallRequest // 从 lunabox:// URI 传入的待安装请求，在 GUI 就绪前暂存
+	mu                sync.RWMutex
+	tasks             map[string]*DownloadTask
+	pendingInstall    *vo.InstallRequest // 从 lunabox:// URI 传入的待安装请求，在 GUI 就绪前暂存
+	listenerMu        sync.RWMutex
+	nextListenerID    uint64
+	progressListeners map[uint64]func(DownloadProgressEvent)
+	importedListeners map[uint64]func(taskID string)
 }
 
 func NewDownloadService() *DownloadService {
@@ -156,6 +160,60 @@ func (s *DownloadService) GetPendingInstall() *vo.InstallRequest {
 	req := s.pendingInstall
 	s.pendingInstall = nil
 	return req
+}
+
+// RequestInstall 触发宿主的安装确认弹窗（或等待前端领取），供插件 ctx.downloads.requestInstall 使用。
+//
+//wails:ignore
+func (s *DownloadService) RequestInstall(req vo.InstallRequest) {
+	s.SetPendingInstall(&req)
+	if s.emitEvent != nil {
+		s.emitEvent("install:pending", req)
+	}
+}
+
+// SubscribeProgress 订阅下载进度变化，返回取消订阅函数。
+//
+//wails:ignore
+func (s *DownloadService) SubscribeProgress(fn func(DownloadProgressEvent)) func() {
+	if fn == nil {
+		return func() {}
+	}
+	s.listenerMu.Lock()
+	if s.progressListeners == nil {
+		s.progressListeners = make(map[uint64]func(DownloadProgressEvent))
+	}
+	s.nextListenerID++
+	id := s.nextListenerID
+	s.progressListeners[id] = fn
+	s.listenerMu.Unlock()
+	return func() {
+		s.listenerMu.Lock()
+		delete(s.progressListeners, id)
+		s.listenerMu.Unlock()
+	}
+}
+
+// SubscribeImported 订阅下载任务自动入库完成事件，返回取消订阅函数。
+//
+//wails:ignore
+func (s *DownloadService) SubscribeImported(fn func(taskID string)) func() {
+	if fn == nil {
+		return func() {}
+	}
+	s.listenerMu.Lock()
+	if s.importedListeners == nil {
+		s.importedListeners = make(map[uint64]func(taskID string))
+	}
+	s.nextListenerID++
+	id := s.nextListenerID
+	s.importedListeners[id] = fn
+	s.listenerMu.Unlock()
+	return func() {
+		s.listenerMu.Lock()
+		delete(s.importedListeners, id)
+		s.listenerMu.Unlock()
+	}
 }
 
 // StartDownload 开始一个下载任务，返回任务 ID
@@ -565,10 +623,7 @@ func (s *DownloadService) emitProgress(task *DownloadTask) {
 		applog.LogErrorf(s.ctx, "failed to persist download task progress %s: %v", task.ID, err)
 	}
 
-	if s.ctx == nil {
-		return
-	}
-	s.runtime.Emit("download:progress", DownloadProgressEvent{
+	ev := DownloadProgressEvent{
 		ID:         task.ID,
 		Request:    task.Request,
 		Status:     task.Status,
@@ -578,16 +633,36 @@ func (s *DownloadService) emitProgress(task *DownloadTask) {
 		Total:      task.Total,
 		Error:      task.Error,
 		FilePath:   task.FilePath,
-	})
+	}
+	if s.ctx != nil {
+		s.runtime.Emit("download:progress", ev)
+	}
+	s.listenerMu.RLock()
+	progressCbs := make([]func(DownloadProgressEvent), 0, len(s.progressListeners))
+	for _, fn := range s.progressListeners {
+		progressCbs = append(progressCbs, fn)
+	}
+	s.listenerMu.RUnlock()
+	for _, fn := range progressCbs {
+		fn(ev)
+	}
 }
 
 func (s *DownloadService) emitGameImported(taskID string) {
-	if s.ctx == nil || s.emitEvent == nil {
-		return
+	if s.ctx != nil && s.emitEvent != nil {
+		s.emitEvent(downloadGameImportedEvent, map[string]string{
+			"task_id": taskID,
+		})
 	}
-	s.emitEvent(downloadGameImportedEvent, map[string]string{
-		"task_id": taskID,
-	})
+	s.listenerMu.RLock()
+	importedCbs := make([]func(string), 0, len(s.importedListeners))
+	for _, fn := range s.importedListeners {
+		importedCbs = append(importedCbs, fn)
+	}
+	s.listenerMu.RUnlock()
+	for _, fn := range importedCbs {
+		fn(taskID)
+	}
 }
 
 func (s *DownloadService) emitGameImportFailed(task *DownloadTask, err error) {

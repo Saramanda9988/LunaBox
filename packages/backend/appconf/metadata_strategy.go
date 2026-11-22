@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	enums2 "lunabox/backend/common/enums"
+	"lunabox/backend/utils/metadata"
 )
 
 // MetadataStrategyAllSources 是别名字段特有的取值：合并所有匹配到的来源的名称与别名。
@@ -128,7 +129,7 @@ func NormalizeMetadataStrategy(config *AppConfig) bool {
 
 func normalizeStrategySource(source enums2.SourceType) enums2.SourceType {
 	v := strings.ToLower(strings.TrimSpace(string(source)))
-	if _, ok := allowedMetadataSourceSet[v]; ok {
+	if _, ok := allowedMetadataSourceSet[v]; ok || metadata.IsValidPluginSource(v) {
 		return enums2.SourceType(v)
 	}
 	return ""

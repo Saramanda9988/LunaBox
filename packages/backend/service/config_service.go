@@ -245,6 +245,7 @@ func (s *ConfigService) updateAppConfigLocked(newConfig appconf.AppConfig) error
 	newConfig.MCPPort = appconf.NormalizeMCPPort(newConfig.MCPPort)
 	newConfig.ProcessDetectionTimeoutSec = appconf.NormalizeProcessDetectionTimeoutSec(newConfig.ProcessDetectionTimeoutSec)
 	newConfig.LocalDBBackupRetention = appconf.NormalizeLocalDBBackupRetention(newConfig.LocalDBBackupRetention)
+	appconf.NormalizePlugins(&newConfig)
 
 	var previousConfig appconf.AppConfig
 	if s.config != nil {

@@ -7,6 +7,7 @@ import (
 	"lunabox/backend/appconf"
 	"lunabox/backend/applog"
 	"lunabox/backend/appruntime"
+	"lunabox/backend/plugin"
 	"lunabox/backend/service"
 )
 
@@ -40,6 +41,7 @@ type Services struct {
 	MCPRead          *service.MCPReadService
 	MCPServer        *service.MCPServerService
 	PortableSetup    *service.PortableSetupService
+	Plugin           *plugin.Manager
 
 	disableMCP bool
 }
@@ -87,6 +89,7 @@ func NewServices(o ServiceOptions) *Services {
 		MCPRead:          service.NewMCPReadService(),
 		MCPServer:        service.NewMCPServerService(),
 		PortableSetup:    service.NewPortableSetupService(),
+		Plugin:           plugin.NewManager(),
 		disableMCP:       o.DisableMCP,
 	}
 }
@@ -148,7 +151,26 @@ func (s *Services) Init(ctx context.Context, db *sql.DB, config *appconf.AppConf
 	s.MCPRead.SetTagService(s.Tag)
 	s.MCPRead.SetStatsProvider(s.AIStats)
 	s.MCPServer.SetReadService(s.MCPRead)
+
+	// 初始化插件管理器，并把 hooks.Bus 注入业务 service。
+	s.Plugin.Init(ctx, plugin.Dependencies{
+		Config:        config,
+		ConfigService: s.Config,
+		Game:          s.Game,
+		Tag:           s.Tag,
+		Category:      s.Category,
+		Start:         s.Start,
+		Download:      s.Download,
+		Import:        s.Import,
+		AI:            s.AI,
+	})
+	hookBus := s.Plugin.HookBus()
+	s.Game.SetHookBus(hookBus)
+	s.Import.SetHookBus(hookBus)
+	s.Start.SetHookBus(hookBus)
+
 	s.Config.SetConfigUpdateHook(func(updatedConfig appconf.AppConfig) error {
+		s.Plugin.NotifyLanguageChanged(updatedConfig.Language)
 		if !s.disableMCP {
 			if err := s.MCPServer.ApplyConfig(updatedConfig); err != nil {
 				return err
@@ -176,4 +198,5 @@ func (s *Services) SetRuntime(rt appruntime.Runtime) {
 	s.Stats.SetRuntime(rt)
 	s.Template.SetRuntime(rt)
 	s.Update.SetRuntime(rt)
+	s.Plugin.SetRuntime(rt)
 }

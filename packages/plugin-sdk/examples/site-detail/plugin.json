@@ -1,0 +1,10 @@
+{
+  "id": "example-site-detail",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "engines": { "lunabox": ">=2.1.0 <3" },
+  "main": "main.js",
+  "name": { "zh-CN": "示例扩展站点详情页", "en-US": "Example Site Detail Tab" },
+  "description": { "zh-CN": "演示在游戏详情页新增标签页与页头徽章，并使用 Markdown / Tabs / Collapsible 渲染图文。", "en-US": "Demonstrates adding a detail tab with rich Markdown rendering." },
+  "author": "LunaBox Team"
+}

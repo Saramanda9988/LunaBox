@@ -11,6 +11,7 @@ import (
 
 	"lunabox/backend/common/enums"
 	"lunabox/backend/models"
+	"lunabox/backend/plugin"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/better"
 	"lunabox/desktop/ui/components/modal"
@@ -23,6 +24,7 @@ import (
 	"lunabox/desktop/ui/env"
 	"lunabox/desktop/ui/locales"
 	"lunabox/desktop/ui/metasource"
+	"lunabox/desktop/ui/pluginui"
 )
 
 // Links 是详情页与游戏库之间的联系：点击开发商按名称搜索，点击标签按标签筛选；游戏被修改或删除后
@@ -54,6 +56,7 @@ const (
 // Page 是详情页的状态。每次进入页面（Open）都重新加载，与原版路由重新挂载组件一致。
 type Page struct {
 	env      *env.Env
+	plugins  *pluginui.Manager
 	links    Links
 	launcher *launch.Launcher // 运行状态是整个应用的，跨游戏保留
 
@@ -97,6 +100,11 @@ func New(e *env.Env, links Links) *Page {
 		e.Svc.Events.On("cover-image:download", p.coverDownloaded)
 	}
 	return p
+}
+
+// SetPluginUI 注入插件界面渲染器。
+func (p *Page) SetPluginUI(mgr *pluginui.Manager) {
+	p.plugins = mgr
 }
 
 // coverDownloaded 对应原版对 cover-image:download 事件的处理：远程封面下载到本地后，换上新封面。
@@ -206,6 +214,11 @@ func (p *Page) autoSave(now time.Time) (wait time.Duration) {
 func (p *Page) Leave() {
 	p.Flush()
 	edit.Flush(&p.editPanel, p.panel())
+	if p.plugins != nil {
+		p.plugins.UnmountBySlot(plugin.SlotGameDetailTab)
+		p.plugins.UnmountBySlot(plugin.SlotGameDetailHeader)
+		p.plugins.UnmountBySlot(plugin.SlotGameDetailAside)
+	}
 }
 
 // Flush 立即保存未保存的修改（离开页面前，原版卸载时的补存）。

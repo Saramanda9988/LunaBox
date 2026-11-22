@@ -5,6 +5,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"lunabox/backend/plugin"
+	"lunabox/desktop/ui/assets"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/panel"
 	"lunabox/desktop/ui/components/panel/ai"
@@ -17,11 +19,13 @@ import (
 	"lunabox/desktop/ui/components/panel/fullbackup"
 	"lunabox/desktop/ui/components/panel/gamesettings"
 	"lunabox/desktop/ui/components/panel/metadata"
+	"lunabox/desktop/ui/components/panel/plugins"
 	"lunabox/desktop/ui/components/panel/portable"
 	"lunabox/desktop/ui/components/panel/proxy"
 	"lunabox/desktop/ui/components/panel/update"
 	"lunabox/desktop/ui/env"
 	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/pluginui"
 	"lunabox/desktop/ui/theme"
 )
 
@@ -90,6 +94,9 @@ func (p *Page) sectionList(all bool) []section {
 			portable.View(c, t, &s.portable, pp)
 		}})
 	}
+	list = append(list, section{sectionPlugins, "plugins", locales.NativeSettingsSectionsPlugins, "application-brackets-outline", func(c *ui.Context, t *theme.Theme, pp panel.Settings) {
+		plugins.View(c, t, &s.plugins, pp)
+	}})
 	return list
 }
 
@@ -131,6 +138,32 @@ func (p *Page) View(c *ui.Context) {
 						components.CollapsibleSection(c, t, sec.key, components.CollapsibleSectionProps{
 							Title: sec.title(), Icon: sec.icon, Open: &p.open[sec.id],
 						}, func() { sec.view(c, t, props) }).Bind(&p.handles[sec.id])
+					}
+					if p.env != nil && p.env.Svc != nil && p.env.Svc.Plugin != nil {
+						for _, slot := range p.env.Svc.Plugin.Slots(plugin.SlotSettingsSection) {
+							s := slot
+							sKey := "plugin-sec-" + s.PluginID + "-" + s.ID
+							openPtr, ok := p.pluginSectionOpen[sKey]
+							if !ok {
+								v := false
+								openPtr = &v
+								p.pluginSectionOpen[sKey] = openPtr
+							}
+							icon := assets.SafeIcon(s.Icon, "application-brackets-outline")
+							title := s.Title
+							if title == "" {
+								title = s.PluginName
+							}
+							components.CollapsibleSection(c, t, sKey, components.CollapsibleSectionProps{
+								Title: title, Icon: icon, Open: openPtr,
+							}, func() {
+								if s.ConfigSchema != nil {
+									pluginui.RenderConfigSchemaForm(c, t, p.env, s.PluginID, s.ConfigSchema)
+								} else if p.plugins != nil {
+									p.plugins.RenderSlot(c, t, plugin.SlotSettingsSection, s.PluginID, s.ID, "settings", nil)
+								}
+							})
+						}
 					}
 				})
 				p.footer(c, t)

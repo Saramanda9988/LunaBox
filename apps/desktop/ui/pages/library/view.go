@@ -7,6 +7,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/common/enums"
+	"lunabox/backend/plugin"
 	"lunabox/desktop/ui/assets"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/bar"
@@ -127,6 +128,27 @@ func (l *Page) gameGrid(c *ui.Context, t *theme.Theme, winH float32) {
 				Ending:         ending,
 				OnPlay:         func() { launcher.StartFromCard(c, *g) },
 				OnDetail:       func() { l.env.Router.Push(env.GamePath(g.ID)) },
+			}
+			if l.env != nil && l.env.Svc != nil && l.env.Svc.Plugin != nil {
+				svc := l.env.Svc.Plugin
+				slots := svc.Slots(plugin.SlotGameActions)
+				if len(slots) > 0 {
+					gameCopy := *g
+					menuItems := make([]better.MenuItem, 0, len(slots))
+					for _, slot := range slots {
+						s := slot
+						icon := assets.SafeIcon(s.Icon, "application-brackets-outline")
+						menuItems = append(menuItems, better.MenuItem{
+							Key:   s.PluginID + "/" + s.ID,
+							Label: s.Title,
+							Icon:  icon,
+							OnClick: func() {
+								svc.InvokeAction(s.PluginID, plugin.SlotGameActions, s.ID, gameCopy)
+							},
+						})
+					}
+					props.ContextMenuItems = menuItems
+				}
 			}
 			l.drag.Target(c.Key(g.ID), g.ID, func(c *ui.Context) { card.GameCard(c, t, props) })
 		},

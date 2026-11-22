@@ -1,0 +1,10 @@
+{
+  "id": "example-theme-mascot",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "engines": { "lunabox": ">=2.1.0 <3" },
+  "main": "main.js",
+  "name": { "zh-CN": "示例主题与右下角角色水印", "en-US": "Example Theme & Mascot Watermark" },
+  "description": { "zh-CN": "演示通过 ctx.theme.extend 覆盖浅色/深色色板，并在右下角挂载点击穿透的角色装饰层。", "en-US": "Demonstrates custom palette overrides and click-through corner decorations." },
+  "author": "LunaBox Team"
+}

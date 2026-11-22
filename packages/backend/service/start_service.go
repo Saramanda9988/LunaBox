@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"lunabox/backend/appconf"
 	"lunabox/backend/applog"
+	"lunabox/backend/common/hooks"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
 	"lunabox/backend/service/cloudprovider"
@@ -67,6 +69,7 @@ type StartService struct {
 	gameService        *GameService
 	integrationService *IntegrationService
 	sessionService     *SessionService
+	hookBus            hooks.Bus
 	activeTimeTracker  *timerutils.ActiveTimeTracker
 	runtime            appruntime.Runtime
 
@@ -192,6 +195,11 @@ func (s *StartService) SetSessionService(sessionService *SessionService) {
 	s.sessionService = sessionService
 }
 
+//wails:ignore
+func (s *StartService) SetHookBus(bus hooks.Bus) {
+	s.hookBus = hooks.SafeBus(bus)
+}
+
 // StartGameWithTracking 启动游戏并自动追踪游玩时长
 // 当游戏进程退出时，自动保存游玩记录到数据库
 func (s *StartService) StartGameWithTracking(gameID string) (bool, error) {
@@ -304,6 +312,22 @@ func (s *StartService) startGame(gameID string, options launcherpkg.LaunchOption
 		}
 	}
 
+	if bus := hooks.SafeBus(s.hookBus); bus.HasListeners(hooks.EventGameBeforeLaunch) {
+		bctx, cancel := context.WithTimeout(s.ctx, 3*time.Second)
+		raw, matched, err := bus.Bail(bctx, hooks.EventGameBeforeLaunch, game)
+		cancel()
+		if err == nil && matched && len(raw) > 0 {
+			var res hooks.GameBeforeLaunchResult
+			if json.Unmarshal(raw, &res) == nil && res.Cancel {
+				reason := strings.TrimSpace(res.Reason)
+				if reason == "" {
+					reason = "启动被插件取消"
+				}
+				return false, errors.New(reason)
+			}
+		}
+	}
+
 	strategy, err := launcherpkg.SelectLauncherStrategy(&game, options, s.config)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "failed to select launcher strategy: %v", err)
@@ -377,6 +401,13 @@ func (s *StartService) startGame(gameID string, options launcherpkg.LaunchOption
 
 	// 启动进程检测和监控 goroutine
 	go s.detectAndMonitorProcess(session, launcher, launcherExeName, plan.DetectionDir, processName, plan)
+
+	if bus := hooks.SafeBus(s.hookBus); bus.HasListeners(hooks.EventGameLaunched) {
+		bus.Emit(hooks.EventGameLaunched, hooks.GameLaunchedPayload{
+			Game:      game,
+			SessionID: sessionID,
+		})
+	}
 
 	// pending session 已创建，Home 数据已发生变化，立即通知前端刷新
 	s.requestHomeRefresh()
@@ -819,6 +850,14 @@ func (s *StartService) finalizePlaySessionOnce(session *activePlaySession, reaso
 
 	s.emitGameRuntimeIdle(session, "session-finalized")
 	s.requestHomeRefresh()
+
+	if bus := hooks.SafeBus(s.hookBus); bus.HasListeners(hooks.EventSessionEnded) {
+		bus.Emit(hooks.EventSessionEnded, hooks.SessionEndedPayload{
+			GameID:    gameID,
+			SessionID: sessionID,
+			Duration:  duration,
+		})
+	}
 
 	if s.gameService != nil {
 		go s.gameService.pushExternalPlaytimeForGame(gameID)

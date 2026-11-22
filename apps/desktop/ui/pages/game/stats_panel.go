@@ -9,6 +9,7 @@ import (
 	"lunabox/backend/common/enums"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
+	"lunabox/backend/plugin"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/better"
 	"lunabox/desktop/ui/components/chart"
@@ -134,6 +135,21 @@ func (p *Page) statsView(c *ui.Context, t *theme.Theme) {
 			ui.Box(c).Height(t.HL).Background(t.Divider)
 			p.statsFooter(c, t)
 		})
+
+		if p.plugins != nil && p.env != nil && p.env.Svc != nil && p.env.Svc.Plugin != nil && p.game != nil {
+			for _, slot := range p.env.Svc.Plugin.Slots(plugin.SlotGameDetailAside) {
+				s := slot
+				glassCard(t, ui.Column(c.Key("aside-"+s.PluginID+"-"+s.ID)).FillWidth().Padding(20).Gap(12).Radius(8)).Children(func() {
+					if s.Title != "" {
+						components.Text(c, s.Title, theme.TextBase, theme.WeightSemibold, t.TextStrong)
+					}
+					p.plugins.RenderSlot(c, t, plugin.SlotGameDetailAside, s.PluginID, s.ID, p.game.ID, map[string]any{
+						"gameId": p.game.ID,
+						"game":   p.game,
+					})
+				})
+			}
+		}
 	})
 }
 

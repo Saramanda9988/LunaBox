@@ -234,6 +234,8 @@ func (a *App) Start() {
 		s.CloudSync.StartScheduledSync()
 	}
 	s.Backup.StartScheduledDBBackups()
+	// 服务就绪后在后台加载已启用的插件，不阻塞首帧。
+	s.Plugin.StartAsync()
 }
 
 // Ready 在启动完成后调用：显示主窗口（由开机自启动启动时留在托盘），再处理启动参数与启动期间收到的协议请求。
@@ -338,6 +340,9 @@ func (a *App) Shutdown() {
 		if err := ipcserver.ShutdownServer(a.ipc); err != nil {
 			a.logger.Error("failed to shutdown IPC server: " + err.Error())
 		}
+	})
+	logShutdownStep("shutdown plugins", func() {
+		s.Plugin.Shutdown()
 	})
 	logShutdownStep("shutdown MCP server", func() {
 		if err := s.MCPServer.Shutdown(); err != nil {

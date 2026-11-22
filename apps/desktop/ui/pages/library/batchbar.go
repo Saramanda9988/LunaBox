@@ -3,6 +3,8 @@ package library
 import (
 	"github.com/egoist/mygo/ui"
 
+	"lunabox/backend/plugin"
+	"lunabox/desktop/ui/assets"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/bar"
 	"lunabox/desktop/ui/components/better"
@@ -33,6 +35,26 @@ func (l *Page) batchActions(c *ui.Context, t *theme.Theme) {
 	l.statusMenu(c, t, setStatus, none)
 	bar.BatchIslandButton(c, t, "add-category", bar.BatchButton{Icon: "folder-plus-outline", Label: locales.LibraryBatchAddToFilter(),
 		Disabled: none, OnClick: func() { l.openBatchCategories(c) }})
+	if l.env != nil && l.env.Svc != nil && l.env.Svc.Plugin != nil {
+		svc := l.env.Svc.Plugin
+		for _, slot := range svc.Slots(plugin.SlotLibraryToolbar) {
+			if slot.Mode != "batch" && slot.Mode != "both" {
+				continue
+			}
+			s := slot
+			icon := assets.SafeIcon(s.Icon, "application-brackets-outline")
+			bar.BatchIslandButton(c, t, "plugin-batch-"+s.PluginID+"-"+s.ID, bar.BatchButton{
+				Icon:     icon,
+				Label:    s.Title,
+				Disabled: none,
+				OnClick: func() {
+					svc.InvokeAction(s.PluginID, plugin.SlotLibraryToolbar, s.ID, map[string]any{
+						"selectedGameIds": l.selectedIDs(),
+					})
+				},
+			})
+		}
+	}
 	bar.BatchIslandDivider(c, t)
 	bar.BatchIslandButton(c, t, "delete", bar.BatchButton{Icon: "delete", Label: locales.LibraryToastBatchDeleteTitle(),
 		Danger: true, Disabled: none, OnClick: func() { l.batch.confirmDelete = true }})

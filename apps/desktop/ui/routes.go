@@ -3,6 +3,7 @@ package ui
 import (
 	"github.com/egoist/mygo/ui"
 
+	"lunabox/backend/plugin"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/env"
 	"lunabox/desktop/ui/locales"
@@ -18,6 +19,10 @@ func (a *App) routes(c *ui.Context) ui.Element {
 	if entered {
 		a.detail.Leave()   // 离开详情页前补存未保存的修改
 		a.settings.Flush() // 离开设置页前补存还没保存的草稿
+		if a.plugins != nil {
+			a.plugins.UnmountBySlot(plugin.SlotSidebarPage)
+			a.plugins.UnmountBySlot(plugin.SlotDownloadsHeader)
+		}
 	}
 	a.location = loc
 	return a.router.View(c, func(r *ui.Route) {
@@ -67,6 +72,19 @@ func (a *App) routes(c *ui.Context) ui.Element {
 			}
 			r.Title(a.detail.Title())
 			a.detail.View(c)
+		case r.Match(env.PathPluginPage):
+			pid, regID := r.Param("pluginId"), r.Param("id")
+			title := pid
+			if a.env.Svc != nil && a.env.Svc.Plugin != nil {
+				for _, s := range a.env.Svc.Plugin.Slots(plugin.SlotSidebarPage) {
+					if s.PluginID == pid && s.ID == regID && s.Title != "" {
+						title = s.Title
+						break
+					}
+				}
+			}
+			r.Title(title)
+			a.pluginPage(c, pid, regID, r.Path())
 		default:
 			r.Title(locales.NativeNotFound())
 			a.notFoundPage(c, locales.NativeNotFoundPage(r.Path()))
@@ -78,5 +96,19 @@ func (a *App) notFoundPage(c *ui.Context, title string) {
 	t := a.env.Theme
 	ui.Column(c).Fill().Center().Children(func() {
 		components.Text(c, title, theme.TextXL, theme.WeightBold, t.TextStrong)
+	})
+}
+
+func (a *App) pluginPage(c *ui.Context, pluginID, regID, rawPath string) {
+	t := a.env.Theme
+	if a.plugins == nil {
+		a.notFoundPage(c, locales.NativeNotFoundPage(rawPath))
+		return
+	}
+	ui.Column(c.Key("plugin-page-"+pluginID+"-"+regID)).Fill().Padding(24).Children(func() {
+		a.plugins.RenderSlot(c, t, plugin.SlotSidebarPage, pluginID, regID, rawPath, map[string]any{
+			"params": map[string]string{"pluginId": pluginID, "id": regID},
+			"path":   rawPath,
+		})
 	})
 }

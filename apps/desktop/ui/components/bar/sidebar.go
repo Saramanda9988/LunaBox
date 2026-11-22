@@ -7,6 +7,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/appconf"
+	"lunabox/backend/plugin"
 	"lunabox/desktop/ui/assets"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/better"
@@ -150,6 +151,23 @@ func SideBar(c *ui.Context, t *theme.Theme, p SideBarProps) {
 			for _, item := range navItems {
 				navLink(c, t, p.Router, item, reveal)
 			}
+			if p.Env != nil && p.Env.Svc != nil && p.Env.Svc.Plugin != nil {
+				for _, slot := range p.Env.Svc.Plugin.Slots(plugin.SlotSidebarPage) {
+					if slot.Group == "bottom" {
+						continue
+					}
+					title := slot.Title
+					if title == "" {
+						title = slot.ID
+					}
+					icon := assets.SafeIcon(slot.Icon, "application-brackets-outline")
+					navLink(c, t, p.Router, navItem{
+						path:  env.PluginPagePath(slot.PluginID, slot.ID),
+						label: func() string { return title },
+						icon:  icon,
+					}, reveal)
+				}
+			}
 		})
 		sidebarFooter(c, t, p, fadeOpacity)
 		if s.Open {
@@ -262,6 +280,18 @@ func sidebarFooter(c *ui.Context, t *theme.Theme, p SideBarProps, opacity float3
 		}
 		op := row.AnimateWith("fade", opacity, 150*time.Millisecond, theme.EaseTailwind)
 		row.Opacity(op).Children(func() {
+			if p.Env != nil && p.Env.Svc != nil && p.Env.Svc.Plugin != nil {
+				for _, slot := range p.Env.Svc.Plugin.Slots(plugin.SlotSidebarPage) {
+					if slot.Group != "bottom" {
+						continue
+					}
+					s := slot
+					path := env.PluginPagePath(s.PluginID, s.ID)
+					icon := assets.SafeIcon(s.Icon, "application-brackets-outline")
+					pb := better.IconButton(c, t, "plugin-nav-"+s.PluginID+"-"+s.ID, icon, 10, active(p.Router, path), true)
+					pb.Label(s.Title).OnClick(func() { p.Router.Push(path) })
+				}
+			}
 			cloudSyncButton(c, t, p)
 
 			dl := better.IconButton(c, t, "downloads", "download", 10, active(p.Router, env.PathDownloads), true)

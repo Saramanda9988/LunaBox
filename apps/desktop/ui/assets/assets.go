@@ -7,6 +7,8 @@ import (
 	"embed"
 	"image"
 	_ "image/png"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -24,6 +26,29 @@ var (
 	iconsMu sync.Mutex
 	icons   = map[string]*ui.SVG{}
 )
+
+// HasIcon 报告 name 是否在内嵌的 MDI 图标集中。
+func HasIcon(name string) bool {
+	if name == "" {
+		return false
+	}
+	iconsMu.Lock()
+	_, ok := icons[name]
+	iconsMu.Unlock()
+	if ok {
+		return true
+	}
+	_, err := files.ReadFile("icons/" + name + ".svg")
+	return err == nil
+}
+
+// SafeIcon 返回内嵌存在的图标名，不存在时回退到 fallback（供插件动态图标名使用）。
+func SafeIcon(name, fallback string) string {
+	if HasIcon(name) {
+		return name
+	}
+	return fallback
+}
 
 // Icon 按 i-mdi-* 的名字（不含前缀）返回图标，例如 Icon("gamepad-variant")。
 func Icon(name string) *ui.SVG {
@@ -126,7 +151,21 @@ func Provider(source string, compact bool) ui.ImageSource {
 		return img
 	}
 	var img ui.ImageSource
-	if strings.HasSuffix(name, ".svg") {
+	if filepath.IsAbs(name) {
+		data, err := os.ReadFile(name)
+		if err != nil {
+			return nil
+		}
+		if strings.HasSuffix(strings.ToLower(name), ".svg") {
+			img = ui.MustParseSVG(data)
+		} else {
+			decoded, _, derr := image.Decode(bytes.NewReader(data))
+			if derr != nil {
+				return nil
+			}
+			img = ui.NewBitmap(Downscale(decoded, 96))
+		}
+	} else if strings.HasSuffix(name, ".svg") {
 		data, err := files.ReadFile("providers/" + name)
 		if err != nil {
 			panic(err)

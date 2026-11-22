@@ -10,6 +10,7 @@ import (
 
 	"lunabox/backend/common/enums"
 	"lunabox/backend/models"
+	"lunabox/backend/plugin"
 	"lunabox/backend/utils/apputils"
 	"lunabox/desktop/ui/assets"
 	"lunabox/desktop/ui/components"
@@ -137,6 +138,16 @@ func (p *Page) tabContent(c *ui.Context, t *theme.Theme) {
 		progress.View(c, t, &p.progress, p.panel())
 	case "review":
 		review.View(c, t, &p.review, p.panel())
+	default:
+		if strings.HasPrefix(p.tab, "plugin:") && p.plugins != nil && p.game != nil {
+			rest := strings.TrimPrefix(p.tab, "plugin:")
+			if pid, regID, ok := strings.Cut(rest, "/"); ok {
+				p.plugins.RenderSlot(c, t, plugin.SlotGameDetailTab, pid, regID, p.game.ID, map[string]any{
+					"gameId": p.game.ID,
+					"game":   p.game,
+				})
+			}
+		}
 	}
 }
 
@@ -180,6 +191,14 @@ func (p *Page) header(c *ui.Context, t *theme.Theme, contentW float32) {
 					better.Tooltip(c, t, anchor, tagSourcesText(g))
 				},
 			})
+			if p.plugins != nil && p.env.Svc != nil && p.env.Svc.Plugin != nil {
+				for _, slot := range p.env.Svc.Plugin.Slots(plugin.SlotGameDetailHeader) {
+					p.plugins.RenderSlot(c, t, plugin.SlotGameDetailHeader, slot.PluginID, slot.ID, g.ID, map[string]any{
+						"gameId": g.ID,
+						"game":   g,
+					})
+				}
+			}
 		})
 	})
 }
@@ -336,6 +355,7 @@ func (p *Page) toolbar(c *ui.Context, t *theme.Theme, width float32) {
 				}
 				actionButton(c, t, "guide", guideIcon, locales.GameEditOpenGuide(), dir == "" || p.guide.loading, func() { p.openGuides(c) })
 				actionButton(c, t, "category", "folder-plus-outline", locales.AddToCategoryTitle(), false, func() { p.openCategories(c) })
+				p.pluginMoreActions(c, t, g)
 			})
 		})
 	})
@@ -624,7 +644,59 @@ func (p *Page) tabBar(c *ui.Context, t *theme.Theme) {
 				ui.Box(c).Height(2).FillWidth().Background(border)
 			})
 		}
+		if p.env != nil && p.env.Svc != nil && p.env.Svc.Plugin != nil {
+			for _, slot := range p.env.Svc.Plugin.Slots(plugin.SlotGameDetailTab) {
+				s := slot
+				tabKey := "plugin:" + s.PluginID + "/" + s.ID
+				label := s.Title
+				if label == "" {
+					label = s.ID
+				}
+				btn := ui.ButtonBase(c.Key(tabKey)).Column().Padding(16, 0, 0, 0).FocusRing(false).Label(label)
+				active := tabKey == p.tab
+				color, border := t.Pick(theme.Brand700, theme.Brand400), ui.Transparent
+				switch {
+				case active:
+					color, border = t.Pick(theme.Brand700, theme.Neutral400), theme.Neutral500
+				case btn.Hovered():
+					color, border = t.Pick(theme.Brand750, theme.Brand300), theme.Brand300
+				}
+				btn.OnClick(func() { p.tab = tabKey }).Children(func() {
+					components.TextMargin(c, label, theme.TextSM, theme.WeightMedium, color, 0, 4, 16, 4).NoWrap()
+					ui.Box(c).Height(2).FillWidth().Background(border)
+				})
+			}
+		}
 	})
+}
+
+func (p *Page) pluginMoreActions(c *ui.Context, t *theme.Theme, g *models.Game) {
+	if p.env == nil || p.env.Svc == nil || p.env.Svc.Plugin == nil || g == nil {
+		return
+	}
+	svc := p.env.Svc.Plugin
+	slots := svc.Slots(plugin.SlotGameActions)
+	if len(slots) == 0 {
+		return
+	}
+	items := make([]better.MenuItem, 0, len(slots))
+	for _, slot := range slots {
+		s := slot
+		icon := assets.SafeIcon(s.Icon, "application-brackets-outline")
+		gameCopy := *g
+		items = append(items, better.MenuItem{
+			Key:   s.PluginID + "/" + s.ID,
+			Label: s.Title,
+			Icon:  icon,
+			OnClick: func() {
+				svc.InvokeAction(s.PluginID, plugin.SlotGameActions, s.ID, gameCopy)
+			},
+		})
+	}
+	btn := actionBase(c, t, "plugin-more", false).Width(32).Label(locales.NativeSettingsSectionsPlugins())
+	fg := actionColor(t, btn.Hovered())
+	btn.Children(func() { components.Icon(c, "dots-horizontal", 16, fg) })
+	better.DropdownMenu(c, t, btn, better.MenuProps{Items: items, MinWidth: 180})
 }
 
 // skeleton 对应 GameDetailSkeleton（animate-pulse），玻璃模式下各块是 data-glass:bg-white/2 dark:bg-black/2。

@@ -49,6 +49,7 @@ type Services struct {
 	CloudSync   CloudSyncService
 	Presets     GameFilterPresetService
 	Import      ImportService
+	Plugin      PluginService
 }
 
 // Events 是服务事件的订阅（原版的 Events.On）：fn 总在窗口的主线程上调用，data 是事件的第一个参数。

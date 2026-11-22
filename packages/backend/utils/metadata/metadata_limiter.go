@@ -97,6 +97,27 @@ type metadataSourceLimiter struct {
 
 var sharedMetadataRateLimiter = newMetadataRateLimiter(DefaultMetadataRateLimitPolicies())
 
+// RegisterRateLimitPolicy 动态注册或更新来源的限速策略（供插件元数据源使用）。
+func RegisterRateLimitPolicy(policy MetadataRateLimitPolicy) {
+	if sharedMetadataRateLimiter == nil || policy.Source == "" {
+		return
+	}
+	sharedMetadataRateLimiter.mu.Lock()
+	sharedMetadataRateLimiter.policies[policy.Source] = policy
+	sharedMetadataRateLimiter.mu.Unlock()
+}
+
+// UnregisterRateLimitPolicy 移除动态注册的来源限速策略。
+func UnregisterRateLimitPolicy(source MetadataSource) {
+	if sharedMetadataRateLimiter == nil || source == "" {
+		return
+	}
+	sharedMetadataRateLimiter.mu.Lock()
+	delete(sharedMetadataRateLimiter.policies, source)
+	delete(sharedMetadataRateLimiter.sources, source)
+	sharedMetadataRateLimiter.mu.Unlock()
+}
+
 func newMetadataRateLimiter(policies map[MetadataSource]MetadataRateLimitPolicy) *metadataRateLimiter {
 	copied := make(map[MetadataSource]MetadataRateLimitPolicy, len(policies))
 	for source, policy := range policies {

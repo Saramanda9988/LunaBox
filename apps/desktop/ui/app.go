@@ -19,6 +19,7 @@
 package ui
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -31,15 +32,19 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/appconf"
+	"lunabox/backend/plugin"
 	"lunabox/backend/service"
 	"lunabox/desktop/api"
+	"lunabox/desktop/ui/assets"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/bar"
+	"lunabox/desktop/ui/components/better"
 	"lunabox/desktop/ui/components/importer"
 	"lunabox/desktop/ui/components/modal"
 	"lunabox/desktop/ui/components/panel/launch"
 	"lunabox/desktop/ui/covers"
 	"lunabox/desktop/ui/env"
+	"lunabox/desktop/ui/locales"
 	"lunabox/desktop/ui/pages/categories"
 	"lunabox/desktop/ui/pages/category"
 	"lunabox/desktop/ui/pages/downloads"
@@ -49,6 +54,7 @@ import (
 	"lunabox/desktop/ui/pages/settings"
 	"lunabox/desktop/ui/pages/stats"
 	"lunabox/desktop/ui/perf"
+	"lunabox/desktop/ui/pluginui"
 	"lunabox/desktop/ui/theme"
 )
 
@@ -105,6 +111,14 @@ type App struct {
 	updateDialog components.UpdateDialogState
 
 	downloadStatus map[string]service.DownloadStatus // useDownloadNotifications 的 downloadStatusRef
+
+	// 插件界面运行时与右侧常驻抽屉（workspace.drawer）
+	plugins        *pluginui.Manager
+	drawerOpen     bool
+	drawerPluginID string
+	drawerRegID    string
+	drawerProps    json.RawMessage
+	drawerWidth    float32
 }
 
 // New 创建应用；list 是游戏库的列表查询，svc 是其余页面用的后端服务。
@@ -155,6 +169,28 @@ func New(list Backend, svc *api.Services, opts Options) *App {
 			opts.ConfigSaved(prev, next)
 		}
 	}
+	a.plugins = pluginui.New(e, pluginui.HostCallbacks{
+		OnOpenDrawer: func(pluginID, drawerID string, props json.RawMessage) {
+			a.openWorkspaceDrawer(pluginID, drawerID, props)
+		},
+		OnCloseDrawer: func() {
+			a.closeWorkspaceDrawer()
+		},
+		OnOpenImportModal: func(props json.RawMessage) {
+			var p struct {
+				Path string `json:"path"`
+			}
+			_ = json.Unmarshal(props, &p)
+			if strings.TrimSpace(p.Path) != "" {
+				a.dragDrop.Drop(nil, []string{p.Path})
+			} else {
+				a.router.Push(env.PathLibrary)
+			}
+		},
+	})
+	a.settings.SetPluginUI(a.plugins)
+	a.detail.SetPluginUI(a.plugins)
+	a.downloads.SetPluginUI(a.plugins)
 	return a
 }
 
@@ -182,6 +218,9 @@ func (a *App) Attach(win *mygo.Window) {
 	a.env.Win = win
 	a.subscribe()
 	a.startup()
+	if a.plugins != nil {
+		a.plugins.Attach(win)
+	}
 	a.env.Covers.Start(win, a.env.Backend.DataDir())
 	a.syncScale()
 	a.trackMaximisation(win, func() { a.syncScale(); win.Invalidate() })
@@ -227,6 +266,12 @@ func (a *App) View(c *ui.Context) {
 	// 缩放后一个 DIP 占 a.scale × zoom 个物理像素：发丝线、吸附到设备像素的尺寸与背景图都按它计算。
 	scale := a.scale * a.zoom(c)
 	t := theme.New(c.Theme().Dark, scale)
+	var pluginGlassBg string
+	var pluginGlassBlur int
+	var pluginGlassOn *bool
+	if a.env.Svc != nil && a.env.Svc.Plugin != nil {
+		pluginGlassBg, pluginGlassBlur, pluginGlassOn = t.ApplyPluginOverrides(a.env.Svc.Plugin.ThemeOverrides())
+	}
 	a.env.Theme = t
 	applyTheme(c, t)
 
@@ -250,8 +295,18 @@ func (a *App) View(c *ui.Context) {
 		t.SetGlass(cfg.BackgroundOpacity)
 		bgReq.Src, bgReq.Blur = cfg.BackgroundImage, float32(cfg.BackgroundBlur)
 	}
+	if pluginGlassBg != "" && (pluginGlassOn == nil || *pluginGlassOn) {
+		bgReq.Src = pluginGlassBg
+		if pluginGlassBlur > 0 {
+			bgReq.Blur = float32(pluginGlassBlur)
+		}
+	}
 	if bmp := a.env.Covers.Background(bgReq); bmp != nil {
 		root.Draw(func(p *ui.Painter, r ui.Rect) { p.Image(bmp, r, ui.Cover) })
+	}
+	// 插件背景装饰层（背景图之上、主布局之下）
+	if a.plugins != nil {
+		a.plugins.RenderDecorations(c, t, "background", a.router.Path())
 	}
 	layout := ui.Column(c.Key("layout")).Fill()
 	dragOver := a.fileDrop(c, layout)
@@ -259,11 +314,19 @@ func (a *App) View(c *ui.Context) {
 		ui.Box(c.Key("topbar-space")).Height(env.TopbarHeight).Shrink(0) // 顶栏在灵动岛之后构建，这里占住它的位置
 		ui.Row(c).Grow(1).AlignItems(ui.Stretch).Children(func() {
 			bar.SideBar(c, t, bar.SideBarProps{State: &a.sidebar, Router: a.router, Config: a.env.Config(), Env: a.env})
-			a.env.MainWidth = winW - a.sidebar.Width()
+			drawerW := a.activeDrawerWidth()
+			a.env.MainWidth = winW - a.sidebar.Width() - drawerW
 			// <main>：flex-1 overflow-hidden，玻璃模式下 rgba(var(--main-bg-rgb), background_opacity)
 			a.routes(c).Basis(0).Clip().Background(t.MainBg())
+			if a.drawerOpen {
+				a.workspaceDrawer(c, t, drawerW)
+			}
 		})
 	})
+	// 插件前景装饰层（主内容之上、顶栏与弹窗之下）
+	if a.plugins != nil {
+		a.plugins.RenderDecorations(c, t, "foreground", a.router.Path())
+	}
 	if dragOver {
 		importer.DropOverlay(c, t, env.TopbarHeight)
 	}
@@ -286,10 +349,11 @@ func (a *App) View(c *ui.Context) {
 	win := a.env.Win
 	ui.Column(c.Key("topbar")).Absolute().Top(0).Left(0).Right(0).Children(func() {
 		bar.TopBar(c, t, bar.TopBarProps{
-			Maximised:  a.maximised,
-			OnMinimise: func() { win.Minimize() },
-			OnMaximise: func() { win.ToggleMaximize() },
-			OnClose:    func() { win.Close() },
+			Maximised:   a.maximised,
+			OnMinimise:  func() { win.Minimize() },
+			OnMaximise:  func() { win.ToggleMaximize() },
+			OnClose:     func() { win.Close() },
+			PluginItems: func() { a.topbarPluginItems(c, t) },
 		})
 	})
 	a.appModals(c, t)
@@ -363,10 +427,110 @@ func applyTheme(c *ui.Context, t *theme.Theme) {
 	mt.ScrollbarWidth = mt.ScrollbarStyle.ThumbWidth
 	mt.Inverse, mt.InverseText = t.TooltipBg, t.TooltipText
 	mt.FontSize = theme.TextBase.Size
-	if theme.UIFont != "" {
-		mt.Font = theme.UIFont
+	if f := theme.ActiveUIFont(); f != "" {
+		mt.Font = f
 	}
 	c.SetTheme(&mt)
+}
+
+func (a *App) openWorkspaceDrawer(pluginID, drawerID string, props json.RawMessage) {
+	a.drawerOpen = true
+	a.drawerPluginID = pluginID
+	a.drawerRegID = drawerID
+	a.drawerProps = props
+	a.drawerWidth = 380
+	if a.env.Svc != nil && a.env.Svc.Plugin != nil {
+		for _, s := range a.env.Svc.Plugin.Slots(plugin.SlotWorkspaceDrawer) {
+			if (pluginID == "" || s.PluginID == pluginID) && s.ID == drawerID {
+				a.drawerPluginID = s.PluginID
+				if s.DefaultWidth > 0 {
+					a.drawerWidth = float32(s.DefaultWidth)
+				}
+				break
+			}
+		}
+	}
+}
+
+func (a *App) closeWorkspaceDrawer() {
+	if a.drawerOpen && a.plugins != nil {
+		a.plugins.UnmountBySlot(plugin.SlotWorkspaceDrawer)
+	}
+	a.drawerOpen = false
+	a.drawerPluginID = ""
+	a.drawerRegID = ""
+	a.drawerProps = nil
+}
+
+func (a *App) activeDrawerWidth() float32 {
+	if !a.drawerOpen {
+		return 0
+	}
+	if a.drawerWidth <= 0 {
+		return 380
+	}
+	return a.drawerWidth
+}
+
+func (a *App) workspaceDrawer(c *ui.Context, t *theme.Theme, width float32) {
+	if a.plugins == nil || a.env.Svc == nil || a.env.Svc.Plugin == nil {
+		return
+	}
+	title := locales.NativePluginsDrawerTitle()
+	for _, s := range a.env.Svc.Plugin.Slots(plugin.SlotWorkspaceDrawer) {
+		if s.PluginID == a.drawerPluginID && s.ID == a.drawerRegID {
+			if s.Title != "" {
+				title = s.Title
+			}
+			break
+		}
+	}
+	bg, border := t.GlassPanel(t.PanelBg, t.PanelBorder)
+	ui.Column(c.Key("workspace-drawer")).Width(width).Shrink(0).Background(bg).
+		BorderWidth(0, 0, 0, t.HL).BorderColor(border).Children(func() {
+		ui.Row(c).FillWidth().Padding(10, 12).AlignItems(ui.Center).Justify(ui.SpaceBetween).
+			BorderWidth(0, 0, t.HL, 0).BorderColor(t.Divider).Children(func() {
+			components.Text(c, title, theme.TextSM, theme.WeightSemibold, t.TextStrong).SingleLine()
+			btn := better.IconButton(c, t, "drawer-close", "close", 4, false, true)
+			btn.Label(locales.NativePluginsClose()).OnClick(a.closeWorkspaceDrawer)
+		})
+		ui.Box(c).FillWidth().Grow(1).Basis(0).Padding(12).Clip().Children(func() {
+			props := map[string]any{"route": a.router.Path()}
+			if len(a.drawerProps) > 0 {
+				var extra map[string]any
+				if json.Unmarshal(a.drawerProps, &extra) == nil {
+					for k, v := range extra {
+						props[k] = v
+					}
+				}
+			}
+			a.plugins.RenderSlot(c, t, plugin.SlotWorkspaceDrawer, a.drawerPluginID, a.drawerRegID, "workspace", props)
+		})
+	})
+}
+
+func (a *App) topbarPluginItems(c *ui.Context, t *theme.Theme) {
+	if a.env.Svc == nil || a.env.Svc.Plugin == nil {
+		return
+	}
+	svc := a.env.Svc.Plugin
+	for _, slot := range svc.Slots(plugin.SlotTopbarItem) {
+		s := slot
+		icon := assets.SafeIcon(s.Icon, "application-brackets-outline")
+		btn := ui.ButtonBase(c.Key("tb-plugin-"+s.PluginID+"-"+s.ID)).Size(32, env.TopbarHeight).Center().FocusRing(false).Label(s.Title)
+		col := t.ControlIcon
+		if btn.Hovered() {
+			btn.Background(t.ControlHover)
+		}
+		btn.OnClick(func() {
+			svc.InvokeAction(s.PluginID, plugin.SlotTopbarItem, s.ID, nil)
+		}).Children(func() {
+			components.Icon(c, icon, 15, col)
+		})
+		if s.Title != "" {
+			better.Tooltip(c, t, btn, s.Title)
+		}
+	}
 }
 
 func (a *App) hud(c *ui.Context) {

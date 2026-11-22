@@ -9,8 +9,11 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/egoist/mygo/i18n"
+
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/enums"
+	"lunabox/backend/utils/metadata"
 	"lunabox/desktop/ui/locales"
 )
 
@@ -89,19 +92,29 @@ var sources = map[enums.SourceType]Source{
 	},
 }
 
-// All 是 ALL_METADATA_SOURCES：全部元数据来源，按默认顺序。
-func All() []enums.SourceType { return slices.Clone(enums.MetadataSourceTypes) }
+// All 是 ALL_METADATA_SOURCES：全部元数据来源（内置来源 + 已加载插件注册的外部来源）。
+func All() []enums.SourceType {
+	out := slices.Clone(enums.MetadataSourceTypes)
+	for _, ext := range metadata.ExternalSources() {
+		src := ext.Meta().Source
+		if !slices.Contains(out, src) {
+			out = append(out, src)
+		}
+	}
+	return out
+}
 
 // Ordered 返回全部来源：先按 first 的顺序，其余按 All 的顺序接在后面。面板有自己的显示顺序时用它，
 // 以后新增的来源即使没写进 first 也不会漏掉。
 func Ordered(first ...enums.SourceType) []enums.SourceType {
-	out := make([]enums.SourceType, 0, len(enums.MetadataSourceTypes))
+	all := All()
+	out := make([]enums.SourceType, 0, len(all))
 	for _, s := range first {
 		if Known(s) && !slices.Contains(out, s) {
 			out = append(out, s)
 		}
 	}
-	for _, s := range enums.MetadataSourceTypes {
+	for _, s := range all {
 		if !slices.Contains(out, s) {
 			out = append(out, s)
 		}
@@ -109,16 +122,33 @@ func Ordered(first ...enums.SourceType) []enums.SourceType {
 	return out
 }
 
-// Known 判断是不是元数据来源（local 等不是）。
-func Known(s enums.SourceType) bool { return slices.Contains(enums.MetadataSourceTypes, s) }
+// Known 判断是不是元数据来源（内置来源或插件注册的外部来源）。
+func Known(s enums.SourceType) bool {
+	if slices.Contains(enums.MetadataSourceTypes, s) {
+		return true
+	}
+	_, ok := metadata.LookupExternal(s)
+	return ok
+}
 
 // Get 返回来源的信息；不是元数据来源时 ok 为假。
 func Get(s enums.SourceType) (src Source, ok bool) {
-	if !Known(s) {
-		return Source{}, false
+	if slices.Contains(enums.MetadataSourceTypes, s) {
+		src, ok = sources[s]
+		return src, ok
 	}
-	src, ok = sources[s]
-	return src, ok
+	if ext, exists := metadata.LookupExternal(s); exists {
+		meta := ext.Meta()
+		return Source{
+			Label: func() string { return meta.DisplayName(i18n.Locale()) },
+			Hint:  func() string { return string(meta.Source) },
+			Logo:  meta.IconPath,
+			URL: func(id, _ string) string {
+				return ext.Link(id)
+			},
+		}, true
+	}
+	return Source{}, false
 }
 
 // Label 是来源的显示名称；未知来源原样显示。

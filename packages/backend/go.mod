@@ -32,6 +32,8 @@ require (
 replace lunabox/updater => ../updater
 
 require (
+	github.com/MoeForge/moego v0.1.0-alpha.3 // indirect
+	github.com/MoeForge/moejs v0.1.1 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/apache/arrow-go/v18 v18.5.1 // indirect

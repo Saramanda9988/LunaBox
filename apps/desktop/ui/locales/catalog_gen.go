@@ -25408,3 +25408,519 @@ func NativeMetadataUpdateFieldsTagsLabelReplace() string {
 func (msgs Messages) NativeMetadataUpdateFieldsTagsLabelReplace() string {
 	return Catalog.Format(msgs.locale, "native_metadataUpdateFields_tagsLabelReplace", nil)
 }
+
+// NativeSettingsSectionsPlugins says "插件管理"
+// in the language the app shows.
+//
+// extra:native.settings.sections.plugins
+func NativeSettingsSectionsPlugins() string { return In(i18n.Locale()).NativeSettingsSectionsPlugins() }
+
+// NativeSettingsSectionsPlugins says "插件管理"
+// in the language of msgs.
+//
+// extra:native.settings.sections.plugins
+func (msgs Messages) NativeSettingsSectionsPlugins() string {
+	return Catalog.Format(msgs.locale, "native_settings_sections_plugins", nil)
+}
+
+// NativePluginsEmpty says "尚未安装任何插件"
+// in the language the app shows.
+//
+// extra:native.plugins.empty
+func NativePluginsEmpty() string { return In(i18n.Locale()).NativePluginsEmpty() }
+
+// NativePluginsEmpty says "尚未安装任何插件"
+// in the language of msgs.
+//
+// extra:native.plugins.empty
+func (msgs Messages) NativePluginsEmpty() string {
+	return Catalog.Format(msgs.locale, "native_plugins_empty", nil)
+}
+
+// NativePluginsEmptyHint says "可通过安装 .zip 插件包或添加本地开发目录加载插件。"
+// in the language the app shows.
+//
+// extra:native.plugins.emptyHint
+func NativePluginsEmptyHint() string { return In(i18n.Locale()).NativePluginsEmptyHint() }
+
+// NativePluginsEmptyHint says "可通过安装 .zip 插件包或添加本地开发目录加载插件。"
+// in the language of msgs.
+//
+// extra:native.plugins.emptyHint
+func (msgs Messages) NativePluginsEmptyHint() string {
+	return Catalog.Format(msgs.locale, "native_plugins_emptyHint", nil)
+}
+
+// NativePluginsInstallZip says "安装插件 (.zip)"
+// in the language the app shows.
+//
+// extra:native.plugins.installZip
+func NativePluginsInstallZip() string { return In(i18n.Locale()).NativePluginsInstallZip() }
+
+// NativePluginsInstallZip says "安装插件 (.zip)"
+// in the language of msgs.
+//
+// extra:native.plugins.installZip
+func (msgs Messages) NativePluginsInstallZip() string {
+	return Catalog.Format(msgs.locale, "native_plugins_installZip", nil)
+}
+
+// NativePluginsAddDevDir says "添加开发目录"
+// in the language the app shows.
+//
+// extra:native.plugins.addDevDir
+func NativePluginsAddDevDir() string { return In(i18n.Locale()).NativePluginsAddDevDir() }
+
+// NativePluginsAddDevDir says "添加开发目录"
+// in the language of msgs.
+//
+// extra:native.plugins.addDevDir
+func (msgs Messages) NativePluginsAddDevDir() string {
+	return Catalog.Format(msgs.locale, "native_plugins_addDevDir", nil)
+}
+
+// NativePluginsOpenDir says "打开插件目录"
+// in the language the app shows.
+//
+// extra:native.plugins.openDir
+func NativePluginsOpenDir() string { return In(i18n.Locale()).NativePluginsOpenDir() }
+
+// NativePluginsOpenDir says "打开插件目录"
+// in the language of msgs.
+//
+// extra:native.plugins.openDir
+func (msgs Messages) NativePluginsOpenDir() string {
+	return Catalog.Format(msgs.locale, "native_plugins_openDir", nil)
+}
+
+// NativePluginsDevDirs says "开发目录（保存文件自动热重载）"
+// in the language the app shows.
+//
+// extra:native.plugins.devDirs
+func NativePluginsDevDirs() string { return In(i18n.Locale()).NativePluginsDevDirs() }
+
+// NativePluginsDevDirs says "开发目录（保存文件自动热重载）"
+// in the language of msgs.
+//
+// extra:native.plugins.devDirs
+func (msgs Messages) NativePluginsDevDirs() string {
+	return Catalog.Format(msgs.locale, "native_plugins_devDirs", nil)
+}
+
+// NativePluginsStatusActive says "运行中"
+// in the language the app shows.
+//
+// extra:native.plugins.statusActive
+func NativePluginsStatusActive() string { return In(i18n.Locale()).NativePluginsStatusActive() }
+
+// NativePluginsStatusActive says "运行中"
+// in the language of msgs.
+//
+// extra:native.plugins.statusActive
+func (msgs Messages) NativePluginsStatusActive() string {
+	return Catalog.Format(msgs.locale, "native_plugins_statusActive", nil)
+}
+
+// NativePluginsStatusLoading says "加载中"
+// in the language the app shows.
+//
+// extra:native.plugins.statusLoading
+func NativePluginsStatusLoading() string { return In(i18n.Locale()).NativePluginsStatusLoading() }
+
+// NativePluginsStatusLoading says "加载中"
+// in the language of msgs.
+//
+// extra:native.plugins.statusLoading
+func (msgs Messages) NativePluginsStatusLoading() string {
+	return Catalog.Format(msgs.locale, "native_plugins_statusLoading", nil)
+}
+
+// NativePluginsStatusDisabled says "已停用"
+// in the language the app shows.
+//
+// extra:native.plugins.statusDisabled
+func NativePluginsStatusDisabled() string { return In(i18n.Locale()).NativePluginsStatusDisabled() }
+
+// NativePluginsStatusDisabled says "已停用"
+// in the language of msgs.
+//
+// extra:native.plugins.statusDisabled
+func (msgs Messages) NativePluginsStatusDisabled() string {
+	return Catalog.Format(msgs.locale, "native_plugins_statusDisabled", nil)
+}
+
+// NativePluginsStatusError says "出错"
+// in the language the app shows.
+//
+// extra:native.plugins.statusError
+func NativePluginsStatusError() string { return In(i18n.Locale()).NativePluginsStatusError() }
+
+// NativePluginsStatusError says "出错"
+// in the language of msgs.
+//
+// extra:native.plugins.statusError
+func (msgs Messages) NativePluginsStatusError() string {
+	return Catalog.Format(msgs.locale, "native_plugins_statusError", nil)
+}
+
+// NativePluginsStatusDiscovered says "已发现"
+// in the language the app shows.
+//
+// extra:native.plugins.statusDiscovered
+func NativePluginsStatusDiscovered() string { return In(i18n.Locale()).NativePluginsStatusDiscovered() }
+
+// NativePluginsStatusDiscovered says "已发现"
+// in the language of msgs.
+//
+// extra:native.plugins.statusDiscovered
+func (msgs Messages) NativePluginsStatusDiscovered() string {
+	return Catalog.Format(msgs.locale, "native_plugins_statusDiscovered", nil)
+}
+
+// NativePluginsStatusDisposing says "卸载中"
+// in the language the app shows.
+//
+// extra:native.plugins.statusDisposing
+func NativePluginsStatusDisposing() string { return In(i18n.Locale()).NativePluginsStatusDisposing() }
+
+// NativePluginsStatusDisposing says "卸载中"
+// in the language of msgs.
+//
+// extra:native.plugins.statusDisposing
+func (msgs Messages) NativePluginsStatusDisposing() string {
+	return Catalog.Format(msgs.locale, "native_plugins_statusDisposing", nil)
+}
+
+// NativePluginsReload says "重新加载"
+// in the language the app shows.
+//
+// extra:native.plugins.reload
+func NativePluginsReload() string { return In(i18n.Locale()).NativePluginsReload() }
+
+// NativePluginsReload says "重新加载"
+// in the language of msgs.
+//
+// extra:native.plugins.reload
+func (msgs Messages) NativePluginsReload() string {
+	return Catalog.Format(msgs.locale, "native_plugins_reload", nil)
+}
+
+// NativePluginsUninstall says "卸载"
+// in the language the app shows.
+//
+// extra:native.plugins.uninstall
+func NativePluginsUninstall() string { return In(i18n.Locale()).NativePluginsUninstall() }
+
+// NativePluginsUninstall says "卸载"
+// in the language of msgs.
+//
+// extra:native.plugins.uninstall
+func (msgs Messages) NativePluginsUninstall() string {
+	return Catalog.Format(msgs.locale, "native_plugins_uninstall", nil)
+}
+
+// NativePluginsMoveUp says "上移"
+// in the language the app shows.
+//
+// extra:native.plugins.moveUp
+func NativePluginsMoveUp() string { return In(i18n.Locale()).NativePluginsMoveUp() }
+
+// NativePluginsMoveUp says "上移"
+// in the language of msgs.
+//
+// extra:native.plugins.moveUp
+func (msgs Messages) NativePluginsMoveUp() string {
+	return Catalog.Format(msgs.locale, "native_plugins_moveUp", nil)
+}
+
+// NativePluginsMoveDown says "下移"
+// in the language the app shows.
+//
+// extra:native.plugins.moveDown
+func NativePluginsMoveDown() string { return In(i18n.Locale()).NativePluginsMoveDown() }
+
+// NativePluginsMoveDown says "下移"
+// in the language of msgs.
+//
+// extra:native.plugins.moveDown
+func (msgs Messages) NativePluginsMoveDown() string {
+	return Catalog.Format(msgs.locale, "native_plugins_moveDown", nil)
+}
+
+// NativePluginsDevBadge says "开发"
+// in the language the app shows.
+//
+// extra:native.plugins.devBadge
+func NativePluginsDevBadge() string { return In(i18n.Locale()).NativePluginsDevBadge() }
+
+// NativePluginsDevBadge says "开发"
+// in the language of msgs.
+//
+// extra:native.plugins.devBadge
+func (msgs Messages) NativePluginsDevBadge() string {
+	return Catalog.Format(msgs.locale, "native_plugins_devBadge", nil)
+}
+
+// NativePluginsInstallTitle says "确认安装插件"
+// in the language the app shows.
+//
+// extra:native.plugins.installTitle
+func NativePluginsInstallTitle() string { return In(i18n.Locale()).NativePluginsInstallTitle() }
+
+// NativePluginsInstallTitle says "确认安装插件"
+// in the language of msgs.
+//
+// extra:native.plugins.installTitle
+func (msgs Messages) NativePluginsInstallTitle() string {
+	return Catalog.Format(msgs.locale, "native_plugins_installTitle", nil)
+}
+
+// NativePluginsUpgradeTitle says "确认升级插件"
+// in the language the app shows.
+//
+// extra:native.plugins.upgradeTitle
+func NativePluginsUpgradeTitle() string { return In(i18n.Locale()).NativePluginsUpgradeTitle() }
+
+// NativePluginsUpgradeTitle says "确认升级插件"
+// in the language of msgs.
+//
+// extra:native.plugins.upgradeTitle
+func (msgs Messages) NativePluginsUpgradeTitle() string {
+	return Catalog.Format(msgs.locale, "native_plugins_upgradeTitle", nil)
+}
+
+// NativePluginsTrustWarning says "安全提示：插件以完全信任模式运行，拥有与 LunaBox …"
+// in the language the app shows.
+//
+// extra:native.plugins.trustWarning
+func NativePluginsTrustWarning() string { return In(i18n.Locale()).NativePluginsTrustWarning() }
+
+// NativePluginsTrustWarning says "安全提示：插件以完全信任模式运行，拥有与 LunaBox …"
+// in the language of msgs.
+//
+// extra:native.plugins.trustWarning
+func (msgs Messages) NativePluginsTrustWarning() string {
+	return Catalog.Format(msgs.locale, "native_plugins_trustWarning", nil)
+}
+
+// NativePluginsUpgradeFrom says "将从版本 {oldVersion} 升级至 {newVersion}"
+// in the language the app shows.
+//
+// extra:native.plugins.upgradeFrom
+func NativePluginsUpgradeFrom(oldVersion string, newVersion string) string {
+	return In(i18n.Locale()).NativePluginsUpgradeFrom(oldVersion, newVersion)
+}
+
+// NativePluginsUpgradeFrom says "将从版本 {oldVersion} 升级至 {newVersion}"
+// in the language of msgs.
+//
+// extra:native.plugins.upgradeFrom
+func (msgs Messages) NativePluginsUpgradeFrom(oldVersion string, newVersion string) string {
+	return Catalog.Format(msgs.locale, "native_plugins_upgradeFrom", map[string]any{"oldVersion": oldVersion, "newVersion": newVersion})
+}
+
+// NativePluginsConfirmInstall says "信任并安装"
+// in the language the app shows.
+//
+// extra:native.plugins.confirmInstall
+func NativePluginsConfirmInstall() string { return In(i18n.Locale()).NativePluginsConfirmInstall() }
+
+// NativePluginsConfirmInstall says "信任并安装"
+// in the language of msgs.
+//
+// extra:native.plugins.confirmInstall
+func (msgs Messages) NativePluginsConfirmInstall() string {
+	return Catalog.Format(msgs.locale, "native_plugins_confirmInstall", nil)
+}
+
+// NativePluginsUninstallTitle says "卸载插件"
+// in the language the app shows.
+//
+// extra:native.plugins.uninstallTitle
+func NativePluginsUninstallTitle() string { return In(i18n.Locale()).NativePluginsUninstallTitle() }
+
+// NativePluginsUninstallTitle says "卸载插件"
+// in the language of msgs.
+//
+// extra:native.plugins.uninstallTitle
+func (msgs Messages) NativePluginsUninstallTitle() string {
+	return Catalog.Format(msgs.locale, "native_plugins_uninstallTitle", nil)
+}
+
+// NativePluginsUninstallMessage says "确定要卸载插件「{name}」吗？"
+// in the language the app shows.
+//
+// extra:native.plugins.uninstallMessage
+func NativePluginsUninstallMessage(name string) string {
+	return In(i18n.Locale()).NativePluginsUninstallMessage(name)
+}
+
+// NativePluginsUninstallMessage says "确定要卸载插件「{name}」吗？"
+// in the language of msgs.
+//
+// extra:native.plugins.uninstallMessage
+func (msgs Messages) NativePluginsUninstallMessage(name string) string {
+	return Catalog.Format(msgs.locale, "native_plugins_uninstallMessage", map[string]any{"name": name})
+}
+
+// NativePluginsUninstallDeleteData says "同时删除该插件保存的数据与设置"
+// in the language the app shows.
+//
+// extra:native.plugins.uninstallDeleteData
+func NativePluginsUninstallDeleteData() string {
+	return In(i18n.Locale()).NativePluginsUninstallDeleteData()
+}
+
+// NativePluginsUninstallDeleteData says "同时删除该插件保存的数据与设置"
+// in the language of msgs.
+//
+// extra:native.plugins.uninstallDeleteData
+func (msgs Messages) NativePluginsUninstallDeleteData() string {
+	return Catalog.Format(msgs.locale, "native_plugins_uninstallDeleteData", nil)
+}
+
+// NativePluginsUiError says "{name}：界面出错"
+// in the language the app shows.
+//
+// extra:native.plugins.uiError
+func NativePluginsUiError(name string) string { return In(i18n.Locale()).NativePluginsUiError(name) }
+
+// NativePluginsUiError says "{name}：界面出错"
+// in the language of msgs.
+//
+// extra:native.plugins.uiError
+func (msgs Messages) NativePluginsUiError(name string) string {
+	return Catalog.Format(msgs.locale, "native_plugins_uiError", map[string]any{"name": name})
+}
+
+// NativePluginsUnknownComponent says "未知组件类型：{type}"
+// in the language the app shows.
+//
+// extra:native.plugins.unknownComponent
+func NativePluginsUnknownComponent(type_ string) string {
+	return In(i18n.Locale()).NativePluginsUnknownComponent(type_)
+}
+
+// NativePluginsUnknownComponent says "未知组件类型：{type}"
+// in the language of msgs.
+//
+// extra:native.plugins.unknownComponent
+func (msgs Messages) NativePluginsUnknownComponent(type_ string) string {
+	return Catalog.Format(msgs.locale, "native_plugins_unknownComponent", map[string]any{"type": type_})
+}
+
+// NativePluginsCopyCode says "复制"
+// in the language the app shows.
+//
+// extra:native.plugins.copyCode
+func NativePluginsCopyCode() string { return In(i18n.Locale()).NativePluginsCopyCode() }
+
+// NativePluginsCopyCode says "复制"
+// in the language of msgs.
+//
+// extra:native.plugins.copyCode
+func (msgs Messages) NativePluginsCopyCode() string {
+	return Catalog.Format(msgs.locale, "native_plugins_copyCode", nil)
+}
+
+// NativePluginsCopied says "已复制"
+// in the language the app shows.
+//
+// extra:native.plugins.copied
+func NativePluginsCopied() string { return In(i18n.Locale()).NativePluginsCopied() }
+
+// NativePluginsCopied says "已复制"
+// in the language of msgs.
+//
+// extra:native.plugins.copied
+func (msgs Messages) NativePluginsCopied() string {
+	return Catalog.Format(msgs.locale, "native_plugins_copied", nil)
+}
+
+// NativePluginsDrawerTitle says "插件面板"
+// in the language the app shows.
+//
+// extra:native.plugins.drawerTitle
+func NativePluginsDrawerTitle() string { return In(i18n.Locale()).NativePluginsDrawerTitle() }
+
+// NativePluginsDrawerTitle says "插件面板"
+// in the language of msgs.
+//
+// extra:native.plugins.drawerTitle
+func (msgs Messages) NativePluginsDrawerTitle() string {
+	return Catalog.Format(msgs.locale, "native_plugins_drawerTitle", nil)
+}
+
+// NativePluginsClose says "关闭"
+// in the language the app shows.
+//
+// extra:native.plugins.close
+func NativePluginsClose() string { return In(i18n.Locale()).NativePluginsClose() }
+
+// NativePluginsClose says "关闭"
+// in the language of msgs.
+//
+// extra:native.plugins.close
+func (msgs Messages) NativePluginsClose() string {
+	return Catalog.Format(msgs.locale, "native_plugins_close", nil)
+}
+
+// NativePluginsInstallSuccess says "插件「{name}」安装成功"
+// in the language the app shows.
+//
+// extra:native.plugins.installSuccess
+func NativePluginsInstallSuccess(name string) string {
+	return In(i18n.Locale()).NativePluginsInstallSuccess(name)
+}
+
+// NativePluginsInstallSuccess says "插件「{name}」安装成功"
+// in the language of msgs.
+//
+// extra:native.plugins.installSuccess
+func (msgs Messages) NativePluginsInstallSuccess(name string) string {
+	return Catalog.Format(msgs.locale, "native_plugins_installSuccess", map[string]any{"name": name})
+}
+
+// NativePluginsUninstallSuccess says "插件已卸载"
+// in the language the app shows.
+//
+// extra:native.plugins.uninstallSuccess
+func NativePluginsUninstallSuccess() string { return In(i18n.Locale()).NativePluginsUninstallSuccess() }
+
+// NativePluginsUninstallSuccess says "插件已卸载"
+// in the language of msgs.
+//
+// extra:native.plugins.uninstallSuccess
+func (msgs Messages) NativePluginsUninstallSuccess() string {
+	return Catalog.Format(msgs.locale, "native_plugins_uninstallSuccess", nil)
+}
+
+// NativePluginsReloadSuccess says "插件已重新加载"
+// in the language the app shows.
+//
+// extra:native.plugins.reloadSuccess
+func NativePluginsReloadSuccess() string { return In(i18n.Locale()).NativePluginsReloadSuccess() }
+
+// NativePluginsReloadSuccess says "插件已重新加载"
+// in the language of msgs.
+//
+// extra:native.plugins.reloadSuccess
+func (msgs Messages) NativePluginsReloadSuccess() string {
+	return Catalog.Format(msgs.locale, "native_plugins_reloadSuccess", nil)
+}
+
+// NativePluginsActionFailed says "操作失败：{error}"
+// in the language the app shows.
+//
+// extra:native.plugins.actionFailed
+func NativePluginsActionFailed(error string) string {
+	return In(i18n.Locale()).NativePluginsActionFailed(error)
+}
+
+// NativePluginsActionFailed says "操作失败：{error}"
+// in the language of msgs.
+//
+// extra:native.plugins.actionFailed
+func (msgs Messages) NativePluginsActionFailed(error string) string {
+	return Catalog.Format(msgs.locale, "native_plugins_actionFailed", map[string]any{"error": error})
+}

@@ -15,6 +15,7 @@ import (
 	"lunabox/desktop/ui/components/card"
 	"lunabox/desktop/ui/env"
 	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/pluginui"
 	"lunabox/desktop/ui/timefmt"
 )
 
@@ -38,6 +39,7 @@ var statusOrder = map[service.DownloadStatus]int{
 // Page 是下载管理页面的状态，每次进入页面时重置（原版重新挂载组件）。
 type Page struct {
 	env            *env.Env
+	plugins        *pluginui.Manager
 	libraryChanged func() // 导入为游戏后刷新游戏库
 
 	tasks     []service.DownloadTask
@@ -57,6 +59,11 @@ func New(e *env.Env, libraryChanged func()) *Page {
 		e.Svc.Events.On(gameImportedEvent, p.markImported)
 	}
 	return p
+}
+
+// SetPluginUI 注入插件界面渲染器。
+func (p *Page) SetPluginUI(mgr *pluginui.Manager) {
+	p.plugins = mgr
 }
 
 // Open 进入页面：清空状态并加载任务（loadTasks）。

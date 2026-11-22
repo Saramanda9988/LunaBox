@@ -5,6 +5,7 @@ import (
 	"time"
 
 	enums2 "lunabox/backend/common/enums"
+	"lunabox/backend/utils/metadata"
 	"lunabox/backend/utils/proxyutils"
 )
 
@@ -129,7 +130,7 @@ func normalizeMetadataSources(sources []string) []string {
 		if normalized == "" {
 			continue
 		}
-		if _, ok := allowedMetadataSourceSet[normalized]; !ok {
+		if _, ok := allowedMetadataSourceSet[normalized]; !ok && !metadata.IsValidPluginSource(normalized) {
 			continue
 		}
 		if _, exists := seen[normalized]; exists {
@@ -224,6 +225,66 @@ func NormalizeProxySettings(config *AppConfig) bool {
 	}
 
 	setMode(&config.NetworkProxyMode)
+
+	return changed
+}
+
+// NormalizePlugins 规范化插件条目与开发目录：去空白、去重并保持顺序。
+func NormalizePlugins(config *AppConfig) bool {
+	if config == nil {
+		return false
+	}
+	changed := false
+
+	if len(config.Plugins) > 0 {
+		out := make([]PluginEntry, 0, len(config.Plugins))
+		seen := make(map[string]struct{}, len(config.Plugins))
+		for _, entry := range config.Plugins {
+			id := strings.ToLower(strings.TrimSpace(entry.ID))
+			if id == "" {
+				changed = true
+				continue
+			}
+			if id != entry.ID {
+				changed = true
+			}
+			if _, ok := seen[id]; ok {
+				changed = true
+				continue
+			}
+			seen[id] = struct{}{}
+			out = append(out, PluginEntry{ID: id, Enabled: entry.Enabled})
+		}
+		if len(out) != len(config.Plugins) {
+			changed = true
+		}
+		config.Plugins = out
+	}
+
+	if len(config.PluginDevPaths) > 0 {
+		out := make([]string, 0, len(config.PluginDevPaths))
+		seen := make(map[string]struct{}, len(config.PluginDevPaths))
+		for _, raw := range config.PluginDevPaths {
+			p := strings.TrimSpace(raw)
+			if p == "" {
+				changed = true
+				continue
+			}
+			if p != raw {
+				changed = true
+			}
+			if _, ok := seen[p]; ok {
+				changed = true
+				continue
+			}
+			seen[p] = struct{}{}
+			out = append(out, p)
+		}
+		if len(out) != len(config.PluginDevPaths) {
+			changed = true
+		}
+		config.PluginDevPaths = out
+	}
 
 	return changed
 }

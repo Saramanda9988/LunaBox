@@ -11,6 +11,7 @@ import (
 
 	"lunabox/backend/appconf"
 	"lunabox/backend/common/vo"
+	"lunabox/backend/plugin"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/panel"
 	"lunabox/desktop/ui/components/panel/ai"
@@ -23,11 +24,13 @@ import (
 	"lunabox/desktop/ui/components/panel/fullbackup"
 	"lunabox/desktop/ui/components/panel/gamesettings"
 	"lunabox/desktop/ui/components/panel/metadata"
+	"lunabox/desktop/ui/components/panel/plugins"
 	"lunabox/desktop/ui/components/panel/portable"
 	"lunabox/desktop/ui/components/panel/proxy"
 	"lunabox/desktop/ui/components/panel/update"
 	"lunabox/desktop/ui/env"
 	"lunabox/desktop/ui/locales"
+	"lunabox/desktop/ui/pluginui"
 )
 
 // saveDelay 是草稿停止修改后自动保存的延迟（routes/settings.tsx 的 setTimeout 250ms）。
@@ -50,6 +53,7 @@ const (
 	sectionUpdate
 	sectionAppData
 	sectionPortableSetup
+	sectionPlugins
 	sectionCount
 )
 
@@ -69,11 +73,14 @@ type panels struct {
 	update      update.State
 	appData     appdata.State
 	portable    portable.State
+	plugins     plugins.State
 }
 
 // Page 是设置页的状态。
 type Page struct {
-	env *env.Env
+	env     *env.Env
+	plugins *pluginui.Manager
+	pluginSectionOpen map[string]*bool
 
 	draft     appconf.AppConfig // draftConfig
 	loaded    bool              // 读到了配置（原版 config 与 draftConfig 都不为空）
@@ -98,7 +105,14 @@ type Page struct {
 }
 
 // New 创建页面；配置在 Open 时读取。
-func New(e *env.Env) *Page { return &Page{env: e} }
+func New(e *env.Env) *Page {
+	return &Page{env: e, pluginSectionOpen: make(map[string]*bool)}
+}
+
+// SetPluginUI 注入插件界面渲染器。
+func (p *Page) SetPluginUI(mgr *pluginui.Manager) {
+	p.plugins = mgr
+}
 
 // Open 进入页面：与原版重新挂载 SettingsPage 一致，重新读取配置（fetchConfig）与版本信息，分区回到默认的展开状态
 // （只有基础设置展开），账号卡片回到等宽，滚动回到顶部。从 env.SettingsPath 进入时（原版没有）只展开路径里的分区，
@@ -139,6 +153,9 @@ func (p *Page) Flush() {
 		p.save()
 	}
 	cloudbackup.Leave(&p.panels.cloudBackup, p.props())
+	if p.plugins != nil {
+		p.plugins.UnmountBySlot(plugin.SlotSettingsSection)
+	}
 }
 
 // Background 由 App 每一帧调用（不论当前在哪个页面）：数据库备份与全量备份面板在后台完成的提示、安排恢复后的退出。

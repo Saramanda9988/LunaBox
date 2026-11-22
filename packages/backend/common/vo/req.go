@@ -238,9 +238,12 @@ type InstallRequest struct {
 	MetaSource     string `json:"meta_source"`     // 元数据来源：bangumi / vndb / ymgal / steam（可选）
 	MetaID         string `json:"meta_id"`         // 元数据 ID，对应刮削源的 ID（可选）
 	Size           int64  `json:"size"`            // 文件大小（bytes，必填；会做强校验并限制下载上限）
-	ChecksumAlgo   string `json:"checksum_algo"`   // 校验算法：sha256/blake3（可选，须与校验值同时提供）
-	Checksum       string `json:"checksum"`        // 校验值（64 位 hex，小写，可选，须与校验算法同时提供）
-	ExpiresAt      int64  `json:"expires_at"`      // 请求过期时间（Unix 秒，必填）
+	ChecksumAlgo    string            `json:"checksum_algo"`               // 校验算法：sha256/blake3（可选，须与校验值同时提供）
+	Checksum        string            `json:"checksum"`                    // 校验值（64 位 hex，小写，可选，须与校验算法同时提供）
+	ExpiresAt       int64             `json:"expires_at"`                  // 请求过期时间（Unix 秒，必填）
+	Headers         map[string]string `json:"headers,omitempty"`           // 可选：下载请求附带的 HTTP Header（如防盗链 Referer / Cookie）
+	ArchivePassword string            `json:"archive_password,omitempty"`  // 可选：压缩包解压密码
+	CoverURL        string            `json:"cover_url,omitempty"`         // 可选：封面图片 URL
 }
 
 // ProtocolLaunchRequest 通过 lunabox://launch?game_id=... 触发的启动请求

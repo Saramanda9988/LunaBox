@@ -4,11 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"lunabox/backend/appconf"
 	"lunabox/backend/applog"
 	enums2 "lunabox/backend/common/enums"
+	"lunabox/backend/common/hooks"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
 	"lunabox/backend/protocol"
@@ -41,6 +43,7 @@ type GameService struct {
 	bangumiService     *BangumiService
 	hikarinagiService  *HikarinagiService
 	kungalService      *KungalService
+	hookBus            hooks.Bus
 	runtime            appruntime.Runtime
 	emitEvent          func(string, ...interface{})
 	imageTaskStarter   func([]CoverImageDownloadItem) string
@@ -118,6 +121,15 @@ func (s *GameService) SetHikarinagiService(hikarinagiService *HikarinagiService)
 //wails:ignore
 func (s *GameService) SetKungalService(kungalService *KungalService) {
 	s.kungalService = kungalService
+}
+
+//wails:ignore
+func (s *GameService) SetHookBus(bus hooks.Bus) {
+	s.hookBus = hooks.SafeBus(bus)
+}
+
+func (s *GameService) hooks() hooks.Bus {
+	return hooks.SafeBus(s.hookBus)
 }
 
 //wails:ignore
@@ -378,6 +390,10 @@ func (s *GameService) addGameWithTags(game models.Game, tags []metadata.TagItem,
 	// 后台异步下载封面图片（不阻塞添加流程）
 	if originalCoverURL != "" {
 		go s.asyncDownloadCoverImage(game.ID, game.Name, originalCoverURL, true)
+	}
+
+	if bus := s.hooks(); bus.HasListeners(hooks.EventGameAdded) {
+		bus.Emit(hooks.EventGameAdded, game)
 	}
 
 	return nil
@@ -645,11 +661,17 @@ func (s *GameService) updateDownloadedCoverURL(ctx context.Context, gameID, cove
 }
 
 func (s *GameService) DeleteGame(id string) error {
-	return dbutils.WithDuckDBWriteLock(s.db, func() error {
+	err := dbutils.WithDuckDBWriteLock(s.db, func() error {
 		return dbutils.RetryDuckDBWriteConflict(s.ctx, func() error {
 			return s.deleteGameRecord(id)
 		})
 	})
+	if err == nil {
+		if bus := s.hooks(); bus.HasListeners(hooks.EventGameDeleted) {
+			bus.Emit(hooks.EventGameDeleted, hooks.GameDeletedPayload{ID: id})
+		}
+	}
+	return err
 }
 
 func (s *GameService) deleteGameRecord(id string) error {
@@ -677,11 +699,19 @@ func (s *GameService) DeleteGames(ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return dbutils.WithDuckDBWriteLock(s.db, func() error {
+	err := dbutils.WithDuckDBWriteLock(s.db, func() error {
 		return dbutils.RetryDuckDBWriteConflict(s.ctx, func() error {
 			return s.deleteGamesRecord(ids)
 		})
 	})
+	if err == nil {
+		if bus := s.hooks(); bus.HasListeners(hooks.EventGameDeleted) {
+			for _, id := range ids {
+				bus.Emit(hooks.EventGameDeleted, hooks.GameDeletedPayload{ID: id})
+			}
+		}
+	}
+	return err
 }
 
 func (s *GameService) deleteGamesRecord(ids []string) error {
@@ -990,6 +1020,9 @@ func (s *GameService) UpdateGame(game models.Game) error {
 	}
 
 	s.pushExternalStatusAfterLocalSave(previousGame, game)
+	if bus := s.hooks(); bus.HasListeners(hooks.EventGameUpdated) {
+		bus.Emit(hooks.EventGameUpdated, game)
+	}
 	return nil
 }
 
@@ -1574,8 +1607,10 @@ func (s *GameService) FetchMetadataByNameContext(ctx context.Context, name strin
 		src := searchSource
 		go func() {
 			defer wg.Done()
-			results, _ := src.fetchCandidates(name)
+			queryName := s.runMetadataBeforeSearchHook(ctx, name, src.source)
+			results, _ := src.fetchCandidates(queryName)
 			for _, result := range results {
+				result = s.runMetadataAfterFetchHook(ctx, src.source, result)
 				if gamehelper.IsEmptyGame(result.Game) {
 					continue
 				}
@@ -1675,11 +1710,26 @@ func (s *GameService) fetchMetadataResultByRequest(ctx context.Context, req vo.M
 		}
 		return s.fetchMetadataResultBySource(ctx, req.Source, normalizedID)
 	default:
+		if ext, ok := metadata.LookupExternal(req.Source); ok {
+			normalizedID, valid := ext.NormalizeID(sourceID)
+			if !valid || strings.TrimSpace(normalizedID) == "" {
+				return metadata.MetadataResult{}, fmt.Errorf("invalid %s ID format: %s", req.Source, req.ID)
+			}
+			return s.fetchMetadataResultBySource(ctx, req.Source, normalizedID)
+		}
 		return metadata.MetadataResult{}, fmt.Errorf("unsupported source type: %s", req.Source)
 	}
 }
 
 func (s *GameService) fetchMetadataResultBySource(ctx context.Context, source enums2.SourceType, sourceID string) (metadata.MetadataResult, error) {
+	result, err := s.fetchMetadataResultBySourceRaw(ctx, source, sourceID)
+	if err != nil {
+		return metadata.MetadataResult{}, err
+	}
+	return s.runMetadataAfterFetchHook(ctx, source, result), nil
+}
+
+func (s *GameService) fetchMetadataResultBySourceRaw(ctx context.Context, source enums2.SourceType, sourceID string) (metadata.MetadataResult, error) {
 	getterOptions := gamehelper.MetadataGetterOptionsContext(ctx, s.config)
 	switch source {
 	case enums2.Bangumi:
@@ -1716,8 +1766,62 @@ func (s *GameService) fetchMetadataResultBySource(ctx context.Context, source en
 		}
 		return s.kungalService.fetchMetadataByID(ctx, sourceID)
 	default:
+		if ext, ok := metadata.LookupExternal(source); ok {
+			if err := metadata.AcquireExternalRateLimit(ctx, source); err != nil {
+				return metadata.MetadataResult{}, err
+			}
+			lang := ""
+			if s.config != nil {
+				lang = s.config.Language
+			}
+			return ext.FetchContext(ctx, sourceID, lang)
+		}
 		return metadata.MetadataResult{}, fmt.Errorf("unsupported source type: %s", source)
 	}
+}
+
+func (s *GameService) runMetadataBeforeSearchHook(ctx context.Context, name string, source enums2.SourceType) string {
+	bus := s.hooks()
+	if !bus.HasListeners(hooks.EventMetadataBeforeSearch) {
+		return name
+	}
+	hctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	raw, err := bus.Waterfall(hctx, hooks.EventMetadataBeforeSearch, hooks.MetadataBeforeSearchPayload{
+		Name:   name,
+		Source: source,
+	})
+	if err != nil || len(raw) == 0 {
+		return name
+	}
+	var out struct {
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(raw, &out); err == nil && strings.TrimSpace(out.Name) != "" {
+		return out.Name
+	}
+	return name
+}
+
+func (s *GameService) runMetadataAfterFetchHook(ctx context.Context, source enums2.SourceType, result metadata.MetadataResult) metadata.MetadataResult {
+	bus := s.hooks()
+	if !bus.HasListeners(hooks.EventMetadataAfterFetch) {
+		return result
+	}
+	hctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	raw, err := bus.Waterfall(hctx, hooks.EventMetadataAfterFetch, hooks.MetadataAfterFetchPayload{
+		Source: source,
+		Result: result,
+	})
+	if err != nil || len(raw) == 0 {
+		return result
+	}
+	var out metadata.MetadataResult
+	if err := json.Unmarshal(raw, &out); err == nil && !gamehelper.IsEmptyGame(out.Game) {
+		return out
+	}
+	return result
 }
 
 // UpdateGameFromRemote 从远程数据源更新游戏信息
@@ -2641,6 +2745,33 @@ func (s *GameService) getConfiguredMetadataSearchSources(ctx context.Context) []
 					return s.kungalService.fetchMetadataCandidatesByName(ctx, name)
 				},
 			})
+		default:
+			if ext, ok := metadata.LookupExternal(source); ok {
+				extSource := ext
+				srcType := source
+				sources = append(sources, metadataSearchSource{
+					source: srcType,
+					fetchByName: func(name string) (metadata.MetadataResult, error) {
+						if err := metadata.AcquireExternalRateLimit(ctx, srcType); err != nil {
+							return metadata.MetadataResult{}, err
+						}
+						results, err := extSource.SearchContext(ctx, name, language, 5)
+						if err != nil {
+							return metadata.MetadataResult{}, err
+						}
+						if len(results) == 0 {
+							return metadata.MetadataResult{}, nil
+						}
+						return results[0], nil
+					},
+					fetchCandidatesByName: func(name string) ([]metadata.MetadataResult, error) {
+						if err := metadata.AcquireExternalRateLimit(ctx, srcType); err != nil {
+							return nil, err
+						}
+						return extSource.SearchContext(ctx, name, language, 5)
+					},
+				})
+			}
 		}
 	}
 	return sources
