@@ -1934,6 +1934,5 @@
   "native_plugins_detail_homepage": "ホームページ",
   "native_plugins_detail_directory": "ディレクトリ",
   "native_plugins_detail_order": "実行順序",
-  "native_plugins_detail_extensions": "登録済みの拡張機能",
   "native_plugins_detail_notFound": "プラグインが見つかりません"
 }

@@ -3502,8 +3502,6 @@
   "@native_plugins_detail_directory": {"description": "extra:native.plugins.detail.directory"},
   "native_plugins_detail_order": "执行顺序",
   "@native_plugins_detail_order": {"description": "extra:native.plugins.detail.order"},
-  "native_plugins_detail_extensions": "已注册扩展",
-  "@native_plugins_detail_extensions": {"description": "extra:native.plugins.detail.extensions"},
   "native_plugins_detail_notFound": "未找到该插件",
   "@native_plugins_detail_notFound": {"description": "extra:native.plugins.detail.notFound"}
 }

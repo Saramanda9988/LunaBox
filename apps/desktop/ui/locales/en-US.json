@@ -1751,6 +1751,5 @@
   "native_plugins_detail_homepage": "Homepage",
   "native_plugins_detail_directory": "Directory",
   "native_plugins_detail_order": "Execution Order",
-  "native_plugins_detail_extensions": "Registered Extensions",
   "native_plugins_detail_notFound": "Plugin not found"
 }

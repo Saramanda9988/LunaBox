@@ -137,6 +137,12 @@ func TestPluginDetailShowsSettingsAndSourceInfo(t *testing.T) {
 		page.ViewDetail(c, "pomodoro-overlay")
 	}, 960, 720)
 	tt.Frame()
+	if _, ok := tt.Find(locales.CommonBack()); !ok {
+		t.Fatalf("expected back button %q matching game detail", locales.CommonBack())
+	}
+	if _, ok := tt.Find("v1.0.0"); ok {
+		t.Fatalf("did not expect redundant version pill in detail header")
+	}
 	if _, ok := tt.Find(locales.NativePluginsDetailSettings()); !ok {
 		t.Fatalf("expected plugin settings heading %q", locales.NativePluginsDetailSettings())
 	}

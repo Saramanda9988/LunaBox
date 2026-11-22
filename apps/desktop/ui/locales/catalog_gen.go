@@ -26123,20 +26123,6 @@ func (msgs Messages) NativePluginsDetailOrder() string {
 	return Catalog.Format(msgs.locale, "native_plugins_detail_order", nil)
 }
 
-// NativePluginsDetailExtensions says "已注册扩展"
-// in the language the app shows.
-//
-// extra:native.plugins.detail.extensions
-func NativePluginsDetailExtensions() string { return In(i18n.Locale()).NativePluginsDetailExtensions() }
-
-// NativePluginsDetailExtensions says "已注册扩展"
-// in the language of msgs.
-//
-// extra:native.plugins.detail.extensions
-func (msgs Messages) NativePluginsDetailExtensions() string {
-	return Catalog.Format(msgs.locale, "native_plugins_detail_extensions", nil)
-}
-
 // NativePluginsDetailNotFound says "未找到该插件"
 // in the language the app shows.
 //

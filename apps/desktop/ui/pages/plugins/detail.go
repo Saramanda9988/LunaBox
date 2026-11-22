@@ -19,7 +19,7 @@ import (
 const detailMaxW = 900
 
 // ViewDetail 构建插件详情页（路由 /plugins/{id}）：
-// 返回按钮、插件头图与信息、启用开关与操作、插件设置、已注册扩展以及来源信息。
+// 返回按钮、插件图标与基础信息、启用开关与操作、插件设置以及来源信息。
 func (p *Page) ViewDetail(c *ui.Context, id string) {
 	t := p.env.Theme
 	gutter := t.Gutter()
@@ -34,19 +34,20 @@ func (p *Page) ViewDetail(c *ui.Context, id string) {
 	components.ScrollArea(c, t, "plugin-detail-scroll", &p.detailScroll, func(w ui.Element) { w.Fill() }, func(sc ui.Element) {
 		sc.Padding(pagePadding, pagePadding+gutter, pagePadding, pagePadding)
 		sc.Children(func() {
-			ui.Column(c.Key("detail-page-"+id)).Width(bodyW).Margin(0, ui.Auto).Gap(24).Children(func() {
+			ui.Column(c.Key("detail-page-"+id)).Width(contentW).Gap(24).Children(func() {
 				p.detailBackButton(c, t)
 
-				if !found {
-					p.detailNotFound(c, t)
-					return
-				}
+				ui.Column(c.Key("detail-body-"+id)).Width(bodyW).Margin(0, ui.Auto).Gap(24).Children(func() {
+					if !found {
+						p.detailNotFound(c, t)
+						return
+					}
 
-				p.detailHeader(c, t, info)
-				ui.Box(c).FillWidth().Height(t.HL).Background(t.Divider)
-				p.detailSettingsSection(c, t, info)
-				p.detailExtensionsSection(c, t, info)
-				p.detailSourceInfoSection(c, t, all, idx, info)
+					p.detailHeader(c, t, info)
+					ui.Box(c).FillWidth().Height(t.HL).Background(t.Divider)
+					p.detailSettingsSection(c, t, info)
+					p.detailSourceInfoSection(c, t, all, idx, info)
+				})
 			})
 		})
 	})
@@ -54,10 +55,10 @@ func (p *Page) ViewDetail(c *ui.Context, id string) {
 	p.uninstallConfirmModal(c, t)
 }
 
+// detailBackButton 与游戏详情页（ui/pages/game/view.go）的返回按钮样式完全一致。
 func (p *Page) detailBackButton(c *ui.Context, t *theme.Theme) {
-	btn := ui.ButtonBase(c.Key("detail-back")).AlignSelf(ui.Start).AlignItems(ui.Center).
-		Radius(6).FocusRing(false).Label(locales.NativeSideBarPlugins())
-	color := t.Pick(theme.Brand600, theme.Brand400)
+	btn := ui.ButtonBase(c.Key("back")).AlignSelf(ui.Start).AlignItems(ui.Center).Radius(6).FocusRing(false)
+	color := t.Pick(theme.Brand750, theme.Brand400)
 	if btn.Hovered() {
 		color = t.Pick(theme.Brand900, theme.Brand200)
 	}
@@ -67,8 +68,8 @@ func (p *Page) detailBackButton(c *ui.Context, t *theme.Theme) {
 			p.env.Router.Push(env.PathPlugins)
 		}
 	}).Children(func() {
-		components.Icon(c, "chevron-left", 20, color).Margin(0, 2, 0, 0)
-		components.Text(c, locales.NativeSideBarPlugins(), theme.TextSM, theme.WeightMedium, color).NoWrap()
+		components.Icon(c, "arrow-left", 24, color).Margin(0, 4, 0, 0)
+		components.Text(c, locales.CommonBack(), theme.TextBase, theme.WeightNormal, color).NoWrap()
 	})
 }
 
@@ -143,19 +144,11 @@ func (p *Page) detailHeader(c *ui.Context, t *theme.Theme, info plugin.PluginInf
 			})
 		})
 
-		// 名称 + 版本号 + ID + 完整简介
-		ui.Column(c).FillWidth().Gap(6).Children(func() {
-			ui.Row(c).Wrap().GapX(10).GapY(6).AlignItems(ui.Center).Children(func() {
-				components.Text(c, info.Name, theme.Text3XL, theme.WeightBold, t.TextStrong)
-				if info.Version != "" {
-					ui.Box(c).Padding(2, 10).Radius(999).Background(t.ChipBg).Children(func() {
-						components.Text(c, "v"+info.Version, theme.TextXS, theme.WeightMedium, t.ChipText).NoWrap()
-					})
-				}
-			})
-			components.Text(c, info.ID, theme.TextXS, theme.WeightNormal, t.TextFaint)
+		// 名称与简介
+		ui.Column(c).FillWidth().Gap(8).Children(func() {
+			components.Text(c, info.Name, theme.Text3XL, theme.WeightBold, t.TextStrong)
 			if info.Description != "" {
-				components.TextMargin(c, info.Description, theme.TextSM, theme.WeightNormal, t.TextMuted, 4, 0, 0, 0)
+				components.Text(c, info.Description, theme.TextSM, theme.WeightNormal, t.TextMuted)
 			}
 		})
 
@@ -204,69 +197,6 @@ func (p *Page) detailSettingsSection(c *ui.Context, t *theme.Theme, info plugin.
 				}
 			})
 		}
-	})
-}
-
-func (p *Page) detailExtensionsSection(c *ui.Context, t *theme.Theme, info plugin.PluginInfo) {
-	if p.env == nil || p.env.Svc == nil || p.env.Svc.Plugin == nil {
-		return
-	}
-	type extItem struct {
-		key   string
-		icon  string
-		title string
-		sub   string
-	}
-	var items []extItem
-	for _, s := range p.env.Svc.Plugin.Slots("") {
-		if s.PluginID != info.ID || s.SlotName == plugin.SlotSettingsSection {
-			continue
-		}
-		title := s.Title
-		if title == "" {
-			title = s.ID
-		}
-		items = append(items, extItem{
-			key:   "slot-" + s.SlotName + "-" + s.ID,
-			icon:  assets.SafeIcon(s.Icon, "application-brackets-outline"),
-			title: title,
-			sub:   s.SlotName + " · " + s.ID,
-		})
-	}
-	for _, d := range p.env.Svc.Plugin.Decorations() {
-		if d.PluginID != info.ID {
-			continue
-		}
-		items = append(items, extItem{
-			key:   "deco-" + d.ID,
-			icon:  "palette",
-			title: d.ID,
-			sub:   plugin.SlotAppDecoration + " · " + d.Layer,
-		})
-	}
-	if len(items) == 0 {
-		return
-	}
-
-	ui.Column(c.Key("detail-exts-"+info.ID)).FillWidth().Gap(10).Children(func() {
-		components.Text(c, locales.NativePluginsDetailExtensions(), theme.TextBase, theme.WeightSemibold, t.TextStrong)
-		ui.Column(c).FillWidth().Children(func() {
-			for i, it := range items {
-				if i > 0 {
-					ui.Box(c).FillWidth().Height(t.HL).Background(t.Divider)
-				}
-				ui.Row(c.Key(it.key)).FillWidth().Padding(12, 4).Gap(12).AlignItems(ui.Center).Children(func() {
-					tileBg := t.Pick(theme.Brand100.Alpha(0.75), theme.Brand800.Alpha(0.85))
-					ui.Box(c).Size(36, 36).Radius(10).Center().Shrink(0).Background(tileBg).Border(t.HL, t.CardBorder).Children(func() {
-						components.Icon(c, it.icon, 18, t.TextStrong)
-					})
-					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
-						components.Text(c, it.title, theme.TextSM, theme.WeightMedium, t.TextStrong).SingleLine()
-						components.Text(c, it.sub, theme.TextXS, theme.WeightNormal, t.TextFaint).SingleLine()
-					})
-				})
-			}
-		})
 	})
 }
 

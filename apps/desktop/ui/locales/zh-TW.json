@@ -1751,6 +1751,5 @@
   "native_plugins_detail_homepage": "主頁",
   "native_plugins_detail_directory": "外掛目錄",
   "native_plugins_detail_order": "執行順序",
-  "native_plugins_detail_extensions": "已註冊擴充",
   "native_plugins_detail_notFound": "找不到該外掛"
 }
