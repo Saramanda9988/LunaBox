@@ -753,6 +753,7 @@ func (p *Plugin) buildContextObject(rt *moejs.Runtime) (moejs.Value, error) {
 		"ui":         p.buildUIAPI(),
 		"html":       p.buildHTMLAPI(),
 		"shell":      p.buildShellAPI(),
+		"audio":      p.buildAudioAPI(),
 		"fs":         p.buildFSAPI(),
 		"paths": map[string]any{
 			"plugin": p.Dir,

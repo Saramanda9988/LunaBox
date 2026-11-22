@@ -481,3 +481,59 @@ func TestPomodoroOverlayLaunchAndSessionEnd(t *testing.T) {
 		}
 	}
 }
+
+func TestWhalePetPlugin(t *testing.T) {
+	whaleDir, err := filepath.Abs(filepath.Join("..", "..", "plugin-sdk", "examples", "whale-pet"))
+	if err != nil {
+		t.Fatalf("abs path: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(whaleDir, "plugin.json")); err != nil {
+		t.Skip("whale-pet example plugin not found")
+	}
+
+	dataDir := t.TempDir()
+	cfg := &appconf.AppConfig{
+		Language:       "zh-CN",
+		PluginDevPaths: []string{whaleDir},
+	}
+	mgr := NewManager()
+	mgr.Init(context.Background(), Dependencies{
+		Config:      cfg,
+		DataDir:     dataDir,
+		HostVersion: "2.1.0",
+	})
+	defer mgr.Shutdown()
+
+	treeCh := make(chan UITreeUpdate, 8)
+	unsub := mgr.UI().SubscribeTreeUpdates(func(u UITreeUpdate) {
+		treeCh <- u
+	})
+	defer unsub()
+
+	mgr.Discover()
+	mgr.loadEnabledPlugins()
+
+	decs := mgr.UI().Decorations()
+	if len(decs) != 1 || decs[0].PluginID != "whale-pet" || decs[0].Anchor != "bottom-left" || decs[0].PointerEvents != "auto" || !decs[0].HasRender {
+		t.Fatalf("unexpected whale decoration: %+v", decs)
+	}
+	if len(mgr.UI().Slots(SlotSettingsSection)) != 1 {
+		t.Fatalf("expected whale-pet config settings section")
+	}
+
+	// 挂载装饰渲染树，验证包含 springPress、pressIn 与 pressOut 事件
+	mgr.MountSlot("dec-whale", "whale-pet", SlotAppDecoration, decs[0].ID, map[string]any{"anchor": "bottom-left"})
+	select {
+	case upd := <-treeCh:
+		if upd.Error != "" || upd.Tree == nil {
+			t.Fatalf("unexpected whale tree error: %+v", upd)
+		}
+		raw, _ := json.Marshal(upd.Tree)
+		s := string(raw)
+		if !strings.Contains(s, `"springPress":true`) || !strings.Contains(s, `"pressIn"`) || !strings.Contains(s, `"pressOut"`) {
+			t.Fatalf("expected springPress + pressIn/pressOut in whale tree, got %s", s)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatalf("timed out waiting for whale decoration tree")
+	}
+}

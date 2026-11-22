@@ -15,9 +15,10 @@ import (
 	"lunabox/desktop/api"
 )
 
-// PluginBridge 实现 api.PluginService，并维护开发插件目录的 mygo.WatchFiles 热重载。
+// PluginBridge 实现 api.PluginService，并维护开发插件目录的 mygo.WatchFiles 热重载与 mygo/audio 音频播放。
 type PluginBridge struct {
-	mgr *plugin.Manager
+	mgr   *plugin.Manager
+	audio *mygoAudioPlayer
 
 	mu       sync.Mutex
 	watchers map[string]context.CancelFunc
@@ -25,19 +26,25 @@ type PluginBridge struct {
 }
 
 func NewPluginBridge(mgr *plugin.Manager) *PluginBridge {
+	ap := newMygoAudioPlayer()
 	b := &PluginBridge{
 		mgr:      mgr,
+		audio:    ap,
 		watchers: make(map[string]context.CancelFunc),
 	}
 	if mgr != nil {
+		mgr.SetAudioPlayer(ap)
 		b.unsubDev = mgr.SubscribeDevDirs(b.syncDevWatchers)
 		b.syncDevWatchers(mgr.DevPaths())
 	}
 	return b
 }
 
-// Close 停止所有开发目录文件监听。
+// Close 停止所有开发目录文件监听与插件音频播放。
 func (b *PluginBridge) Close() {
+	if b.audio != nil {
+		b.audio.Stop("")
+	}
 	if b.unsubDev != nil {
 		b.unsubDev()
 		b.unsubDev = nil

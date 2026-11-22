@@ -56,3 +56,49 @@ func TestRenderUITreeAndErrorBoundary(t *testing.T) {
 		t.Fatalf("expected non-empty error boundary message")
 	}
 }
+
+func TestRenderSpringPressBox(t *testing.T) {
+	e := &env.Env{MainWidth: 800}
+	mgr := New(e, HostCallbacks{})
+
+	inst := newInstance("inst-whale", "whale-pet", plugin.SlotAppDecoration, "whale-pet-mascot", "")
+	inst.Version = 1
+	inst.Tree = &plugin.UINode{
+		Type: "Box",
+		Key:  "whale-spring-box",
+		Props: map[string]any{
+			"width":       "full",
+			"height":      "full",
+			"springPress": true,
+			"squishX":     1.05,
+			"squishY":     0.88,
+			"flipX":       true,
+		},
+		Events: map[string]string{
+			"pressIn":  "h1",
+			"pressOut": "h2",
+		},
+		Children: []*plugin.UINode{
+			{
+				Type: "Image",
+				Key:  "whale-img",
+				Props: map[string]any{
+					"src":         "",
+					"width":       "full",
+					"height":      "full",
+					"fit":         "contain",
+					"transparent": true,
+				},
+			},
+		},
+	}
+
+	tt := ui.NewTester(func(c *ui.Context) {
+		th := theme.New(false, 1)
+		ui.Box(c).Size(136, 136).Children(func() {
+			mgr.RenderInstance(c, th, inst)
+		})
+	}, 200, 200)
+	tt.Frame()
+	tt.Advance(100 * time.Millisecond)
+}

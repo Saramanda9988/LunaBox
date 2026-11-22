@@ -50,8 +50,9 @@ func (m *Manager) RenderDecorations(c *ui.Context, t *theme.Theme, layer string,
 		box.Children(func() {
 			if d.HasRender {
 				inst := m.EnsureMounted(plugin.SlotAppDecoration, d.PluginID, d.ID, "global", map[string]any{
-					"route": currentRoute,
-					"dark":  t.Dark,
+					"route":  currentRoute,
+					"dark":   t.Dark,
+					"anchor": d.Anchor,
 				})
 				m.RenderInstance(c, t, inst)
 				return

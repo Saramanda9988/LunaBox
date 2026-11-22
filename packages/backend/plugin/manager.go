@@ -66,6 +66,7 @@ type Manager struct {
 	order   []string
 
 	mainWindowVisible func() bool
+	audioPlayer       AudioPlayer
 
 	subMu      sync.RWMutex
 	nextSubID  uint64
@@ -117,6 +118,13 @@ func (m *Manager) SetRuntime(rt appruntime.Runtime) {
 // SetMainWindowVisibleProvider 注入主窗口可见性查询（供 ctx.window.main.isVisible 使用）。
 func (m *Manager) SetMainWindowVisibleProvider(fn func() bool) {
 	m.mainWindowVisible = fn
+}
+
+// SetAudioPlayer 注入桌面宿主音频播放器实现（由 apps/desktop/host 基于 mygo/audio 提供）。
+func (m *Manager) SetAudioPlayer(player AudioPlayer) {
+	m.mu.Lock()
+	m.audioPlayer = player
+	m.mu.Unlock()
 }
 
 // HookBus 返回供业务 service 注入的 hooks.Bus 实例。

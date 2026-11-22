@@ -481,7 +481,7 @@ export function apply(ctx) {
     }
   }, 1000);
 
-  ctx.effect(() => {
+  ctx.effect(() => () => {
     clearInterval(timerId);
   });
 

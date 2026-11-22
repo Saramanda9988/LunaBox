@@ -160,6 +160,9 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 		return el
 
 	case "Box":
+		if propBool(p, "springPress") {
+			return m.renderSpringPressBox(c, t, inst, key, p, n.Events, n.Children)
+		}
 		el := ui.Box(c.Key(key))
 		m.applyLayoutProps(el, t, p, n.Events, inst)
 		el.Children(func() {
@@ -610,11 +613,17 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 		rad := propFloat(p, "radius")
 		pressID := eventID(n, "press")
 		previewable := propBool(p, "previewable")
+		transparent := propBool(p, "transparent")
 		fit := ui.Cover
 		if propStr(p, "fit") == "contain" {
 			fit = ui.Contain
 		}
-		box := ui.Box(c.Key(key)).Clip().Background(t.CoverBg)
+		box := ui.Box(c.Key(key))
+		if !transparent {
+			box.Clip().Background(t.CoverBg)
+		} else if rad > 0 {
+			box.Clip()
+		}
 		if w > 0 {
 			box.Width(w)
 		} else {
@@ -622,6 +631,8 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 		}
 		if h > 0 {
 			box.Height(h)
+		} else if propStr(p, "height") == "full" {
+			box.FillHeight()
 		} else if ar := propFloat(p, "aspectRatio"); ar > 0 && w > 0 {
 			box.Height(w / ar)
 		} else {
@@ -642,8 +653,8 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 			})
 		}
 		box.Children(func() {
-			if bmp := m.loadBitmap(src); bmp != nil {
-				ui.Image(c, bmp).Fill().Fit(fit)
+			if imgSrc := m.LoadImageSource(src); imgSrc != nil {
+				ui.Image(c, imgSrc).Fill().Fit(fit)
 			}
 		})
 		return box
@@ -819,6 +830,81 @@ func (m *Manager) applyLayoutProps(el ui.Element, t *theme.Theme, p map[string]a
 	if ctxID := events["contextMenu"]; ctxID != "" && el.RightClicked() {
 		m.dispatch(inst, ctxID, nil)
 	}
+}
+
+var springSquishEase = theme.CubicBezier(0.34, 1.56, 0.64, 1)
+
+// renderSpringPressBox 为支持按压 Q 弹（springPress: true）的容器提供原生帧率弹簧压扁动画与 pressIn/pressOut 事件。
+// 外层使用稳定尺寸的 ButtonBase 承接命中测试，内层围绕底边中心 (0.5, 1.0) 做弹性形变，避免按压边缘抖动。
+func (m *Manager) renderSpringPressBox(
+	c *ui.Context,
+	t *theme.Theme,
+	inst *Instance,
+	key string,
+	p map[string]any,
+	events map[string]string,
+	children []*plugin.UINode,
+) ui.Element {
+	btn := ui.ButtonBase(c.Key(key)).FocusRing(false).Cursor(ui.CursorPointer)
+	m.applyLayoutProps(btn, t, p, events, inst)
+	if events["press"] == "" {
+		btn.OnClick(func() {})
+	}
+
+	pressed := btn.Pressed()
+	wasPressed := ui.Local(btn, "spring-was-pressed", func() bool { return false })
+	bounceUntil := ui.Local(btn, "spring-until", func() time.Time { return time.Time{} })
+
+	if pressed && !*wasPressed {
+		*wasPressed = true
+		*bounceUntil = c.Now().Add(95 * time.Millisecond)
+		c.After(95 * time.Millisecond)
+		if id := events["pressIn"]; id != "" {
+			m.dispatch(inst, id, nil)
+		}
+	} else if !pressed && *wasPressed {
+		*wasPressed = false
+		if id := events["pressOut"]; id != "" {
+			m.dispatch(inst, id, nil)
+		}
+	}
+
+	squished := pressed
+	if !squished && !bounceUntil.IsZero() {
+		if rem := bounceUntil.Sub(c.Now()); rem > 0 {
+			squished = true
+			c.After(rem)
+		} else {
+			*bounceUntil = time.Time{}
+		}
+	}
+
+	squishX := propFloat(p, "squishX")
+	if squishX <= 0 {
+		squishX = 1.05
+	}
+	squishY := propFloat(p, "squishY")
+	if squishY <= 0 {
+		squishY = 0.88
+	}
+	targetSX, targetSY := float32(1.0), float32(1.0)
+	if squished {
+		targetSX, targetSY = squishX, squishY
+	}
+	sx := btn.AnimateWith("spring-sx", targetSX, 220*time.Millisecond, springSquishEase)
+	sy := btn.AnimateWith("spring-sy", targetSY, 220*time.Millisecond, springSquishEase)
+	if propBool(p, "flipX") {
+		sx = -sx
+	}
+
+	btn.Children(func() {
+		ui.Box(c.Key(key+"-spring-body")).Fill().TransformOrigin(0.5, 1.0).Scale(sx, sy).Children(func() {
+			for i, child := range children {
+				m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i))
+			}
+		})
+	})
+	return btn
 }
 
 func (m *Manager) renderTable(c *ui.Context, t *theme.Theme, inst *Instance, key string, p map[string]any, rowPressID string) ui.Element {

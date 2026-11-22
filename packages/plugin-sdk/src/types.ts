@@ -399,6 +399,10 @@ export interface Context {
     openURL(url: string): Promise<void>;
     openPath(path: string): Promise<void>;
   };
+  audio: {
+    play(src: string, opts?: { volume?: number } | number): void;
+    stop(src?: string): void;
+  };
   fs: {
     readFile(path: string): Promise<string>;
     writeFile(path: string, content: string): Promise<void>;

@@ -1,0 +1,24 @@
+{
+  "id": "whale-pet",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "engines": {
+    "lunabox": ">=2.1.0 <3"
+  },
+  "name": {
+    "zh-CN": "哦鲸鲸挂件",
+    "zh-TW": "哦鯨鯨掛件",
+    "en-US": "Whale Pet",
+    "ja-JP": "くじらマスコット"
+  },
+  "description": {
+    "zh-CN": "窗口左下角常驻 Q 弹小鲸鱼挂件，点击或按住即可体验弹簧压扁动画与小黄鸭/音效2 双段音效。",
+    "zh-TW": "視窗左下角常駐 Q 彈小鯨魚掛件，點擊或按住即可體驗彈簧壓扁動畫與小黃鴨/音效2 雙段音效。",
+    "en-US": "A squishy whale mascot anchored in the bottom-left corner with native spring-bounce press animation and squeaky sound effects.",
+    "ja-JP": "ウィンドウ左下に常駐するぷにぷにクジラマスコット。クリックでバネ潰れアニメーションと効果音を楽しめます。"
+  },
+  "author": "LunaBox",
+  "icon": "assets/whale.png",
+  "license": "MIT",
+  "main": "main.js"
+}
