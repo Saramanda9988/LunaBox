@@ -1736,5 +1736,8 @@
   "native_plugins_installSuccess": "外掛「{name}」安裝成功",
   "native_plugins_uninstallSuccess": "外掛已解除安裝",
   "native_plugins_reloadSuccess": "外掛已重新載入",
-  "native_plugins_actionFailed": "操作失敗：{error}"
+  "native_plugins_actionFailed": "操作失敗：{error}",
+  "native_sideBar_plugins": "外掛",
+  "native_plugins_subtitle": "管理已安裝的外掛、開發目錄與執行順序",
+  "native_plugins_count": "{active} 個執行中 / 共 {total} 個外掛"
 }

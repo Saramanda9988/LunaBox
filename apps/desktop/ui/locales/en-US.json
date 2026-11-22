@@ -1736,5 +1736,8 @@
   "native_plugins_installSuccess": "Installed plugin \"{name}\"",
   "native_plugins_uninstallSuccess": "Plugin uninstalled",
   "native_plugins_reloadSuccess": "Plugin reloaded",
-  "native_plugins_actionFailed": "Action failed: {error}"
+  "native_plugins_actionFailed": "Action failed: {error}",
+  "native_sideBar_plugins": "Plugins",
+  "native_plugins_subtitle": "Manage installed plugins, dev directories, and execution order",
+  "native_plugins_count": "{active} active / {total} total"
 }

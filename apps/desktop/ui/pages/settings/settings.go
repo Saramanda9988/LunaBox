@@ -24,7 +24,6 @@ import (
 	"lunabox/desktop/ui/components/panel/fullbackup"
 	"lunabox/desktop/ui/components/panel/gamesettings"
 	"lunabox/desktop/ui/components/panel/metadata"
-	"lunabox/desktop/ui/components/panel/plugins"
 	"lunabox/desktop/ui/components/panel/portable"
 	"lunabox/desktop/ui/components/panel/proxy"
 	"lunabox/desktop/ui/components/panel/update"
@@ -53,7 +52,6 @@ const (
 	sectionUpdate
 	sectionAppData
 	sectionPortableSetup
-	sectionPlugins
 	sectionCount
 )
 
@@ -73,7 +71,6 @@ type panels struct {
 	update      update.State
 	appData     appdata.State
 	portable    portable.State
-	plugins     plugins.State
 }
 
 // Page 是设置页的状态。

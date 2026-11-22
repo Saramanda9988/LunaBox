@@ -51,6 +51,7 @@ import (
 	"lunabox/desktop/ui/pages/game"
 	"lunabox/desktop/ui/pages/home"
 	"lunabox/desktop/ui/pages/library"
+	"lunabox/desktop/ui/pages/plugins"
 	"lunabox/desktop/ui/pages/settings"
 	"lunabox/desktop/ui/pages/stats"
 	"lunabox/desktop/ui/perf"
@@ -87,9 +88,10 @@ type App struct {
 	home       *home.Page
 	library    *library.Page
 	detail     *game.Page
-	categories *categories.Page
-	category   *category.Page
-	settings   *settings.Page
+	categories  *categories.Page
+	category    *category.Page
+	pluginsPage *plugins.Page
+	settings    *settings.Page
 	downloads  *downloads.Page
 	stats      *stats.Page
 	dragDrop   *importer.DragDrop // 根布局的拖放导入（DragDropImportModal）
@@ -149,9 +151,10 @@ func New(list Backend, svc *api.Services, opts Options) *App {
 			FilterByTag:    func(tag string) { lib.FilterByTag(tag); router.Push(env.PathLibrary) },
 			LibraryChanged: lib.Reload,
 		}),
-		categories: categories.New(e),
-		category:   category.New(e),
-		settings:   settings.New(e),
+		categories:  categories.New(e),
+		category:    category.New(e),
+		pluginsPage: plugins.New(e),
+		settings:    settings.New(e),
 		downloads:  downloads.New(e, lib.Reload),
 		stats:      stats.New(e),
 		dragDrop:   importer.NewDragDrop(e),

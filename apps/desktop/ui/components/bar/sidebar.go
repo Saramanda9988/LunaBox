@@ -101,6 +101,7 @@ var navItems = []navItem{
 	{env.PathLibrary, locales.SideBarLibrary, "gamepad-variant"},
 	{env.PathStats, locales.SideBarStats, "chart-bar"},
 	{env.PathCategories, locales.SideBarCategories, "format-list-bulleted"},
+	{env.PathPlugins, locales.NativeSideBarPlugins, "application-brackets-outline"},
 }
 
 // SideBarProps 是侧边栏的输入。导航用 Router：当前路径决定高亮，点击 Push 对应路径。

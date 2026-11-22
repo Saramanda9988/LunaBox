@@ -97,3 +97,33 @@ func TestSidebarSavedWidth(t *testing.T) {
 		t.Fatalf("saved width changed to %d", s.OpenWidth())
 	}
 }
+
+func TestSidebarPluginsNavBelowCategories(t *testing.T) {
+	catIdx, plugIdx := -1, -1
+	for i, it := range navItems {
+		if it.path == env.PathCategories {
+			catIdx = i
+		}
+		if it.path == env.PathPlugins {
+			plugIdx = i
+		}
+	}
+	if catIdx < 0 || plugIdx != catIdx+1 {
+		t.Fatalf("expected PathPlugins directly after PathCategories, got cat=%d plug=%d", catIdx, plugIdx)
+	}
+	s := NewSidebar(true, 0)
+	router := ui.NewRouter(env.PathHome)
+	tt := ui.NewTester(func(c *ui.Context) {
+		ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
+			SideBar(c, theme.New(false, 1), SideBarProps{State: &s, Router: router})
+		})
+	}, 1280, 800)
+	tt.Frame()
+	if err := tt.Click(locales.NativeSideBarPlugins()); err != nil {
+		t.Fatalf("click plugins nav item: %v", err)
+	}
+	tt.Frame()
+	if router.Path() != env.PathPlugins {
+		t.Fatalf("expected route %s, got %s", env.PathPlugins, router.Path())
+	}
+}

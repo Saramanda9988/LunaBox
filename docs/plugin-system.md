@@ -611,7 +611,7 @@ type PluginEntry struct {
 
 ### 插件管理页
 
-设置页新增内置的“插件”分区（原生 Go 界面，不是插件界面），列出：名称、版本、状态（加载中 / 运行中 / 已停用 / 出错及原因）、启用开关、重新加载、打开插件目录、卸载（可选是否删除数据）、拖动排序。
+侧边栏「收藏」下方新增独立的一级导航项「插件」（路由 `/plugins`，原生 Go 页面 `ui/pages/plugins/`，不是插件界面），列出：名称、版本、状态（加载中 / 运行中 / 已停用 / 出错及原因）、启用开关、重新加载、打开插件目录、卸载（可选是否删除数据）、排序调整与开发目录管理。插件自身的设置分区仍通过 `settings.section` / `ctx.config.define` 挂载在设置页中。
 
 ### 安装、升级与卸载
 
@@ -663,7 +663,7 @@ GitHub 上维护一个索引仓库（`index.json`：id、版本、下载地址�
 | `host/` | 开发目录监听；把插件线程产出的树、主题变更与 `ctx.window.open` 请求桥接到界面线程 |
 | `ui/pluginui/` | `Instance`、缓存、渲染器（树 → 组件，含 `Markdown`/`Grid`/`ScrollArea`）、输入框状态、错误占位、`window.go`（插件独立悬浮窗管理）、`decoration.go`（前景/背景水印装饰层） |
 | `ui/theme/` | 支持叠加插件注册的 `Palette` 覆盖与自定义字体 |
-| `ui/app.go`、`ui/pages/*`、`ui/components/bar`、`ui/routes.go` | 插槽宿主点（侧边栏页、右侧抽屉、顶栏按钮、游戏库菜单与批量栏、详情页标签与页头、下载页头、全局装饰层）、插件管理分区 |
+| `ui/app.go`、`ui/pages/plugins/`、`ui/pages/*`、`ui/components/bar`、`ui/routes.go` | 插槽宿主点（侧边栏页、右侧抽屉、顶栏按钮、游戏库菜单与批量栏、详情页标签与页头、下载页头、全局装饰层）、独立插件管理页（`/plugins`） |
 | `ui/metasource` | 加上插件来源 |
 | `ui/locales/*.json` | 插件管理页与错误占位的文字（改完运行 `pnpm i18n`） |
 | `packages/plugin-sdk/` | SDK、CLI、六大场景示例插件 |

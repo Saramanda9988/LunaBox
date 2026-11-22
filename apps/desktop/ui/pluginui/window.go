@@ -92,22 +92,35 @@ func (m *Manager) openPluginWindow(key string, spec plugin.PluginWindowSpec) {
 	}
 
 	pw := &pluginWindow{mgr: m, spec: spec}
+	var win *mygo.Window
 	opts := mygo.WindowOptions{
-		Title:       spec.Title,
-		Width:       spec.Width,
-		Height:      spec.Height,
-		Frameless:   spec.Frameless,
-		Transparent: spec.Transparent,
+		Title:         spec.Title,
+		Width:         spec.Width,
+		Height:        spec.Height,
+		Frameless:     spec.Frameless,
+		Transparent:   spec.Transparent,
 		AlwaysOnTop:   spec.AlwaysOnTop,
-		Panel:         spec.SkipTaskbar,
+		SkipTaskbar:   spec.SkipTaskbar,
+		Panel:         spec.SkipTaskbar && !spec.Transparent,
+		DisableShadow: spec.Transparent,
 		DisableResize: !spec.Resizable,
 		Content: ui.View(func(c *ui.Context) {
-			t := theme.New(c.Theme().Dark, 1)
+			scale := 1.0
+			if win != nil {
+				if d := mygo.Screen.DisplayMatching(win.Bounds()); d.ScaleFactor > 0 {
+					scale = d.ScaleFactor
+				}
+			}
+			t := theme.New(c.Theme().Dark, scale)
 			if m.env != nil && m.env.Svc != nil && m.env.Svc.Plugin != nil {
 				t.ApplyPluginOverrides(m.env.Svc.Plugin.ThemeOverrides())
 			}
+			applyWindowTheme(c, t, spec.Transparent)
 			root := c.Root().TextColor(t.Text)
-			if !spec.Transparent {
+			if spec.Transparent {
+				// MyGo 透明窗口必须显式把根元素设为 ui.Transparent，否则会用 Theme.Background 填满矩形底色。
+				root.Background(ui.Transparent)
+			} else {
 				root.Background(t.AppBg)
 			}
 			if curInst := m.instances[spec.InstanceID]; curInst != nil {
@@ -121,7 +134,7 @@ func (m *Manager) openPluginWindow(key string, spec plugin.PluginWindowSpec) {
 	if spec.Y != nil {
 		opts.Y = *spec.Y
 	}
-	win := mygo.NewWindow(opts)
+	win = mygo.NewWindow(opts)
 	pw.win = win
 	m.windows[key] = pw
 
@@ -144,4 +157,26 @@ func (m *Manager) openPluginWindow(key string, spec plugin.PluginWindowSpec) {
 			svc.NotifyWindowEvent(spec.PluginID, spec.WindowID, "close", nil)
 		}
 	})
+}
+
+func applyWindowTheme(c *ui.Context, t *theme.Theme, transparent bool) {
+	mt := *c.Theme()
+	mt.Accent = t.TextStrong
+	mt.InactiveAccent = mt.Accent
+	mt.Text = t.Text
+	mt.TextMuted = t.Placeholder
+	if transparent {
+		mt.Background = ui.Transparent
+	} else {
+		mt.Background = t.AppBg
+	}
+	mt.ScrollbarStyle = t.ScrollbarStyle()
+	mt.Scrollbar = mt.ScrollbarStyle.Thumb
+	mt.ScrollbarWidth = mt.ScrollbarStyle.ThumbWidth
+	mt.Inverse, mt.InverseText = t.TooltipBg, t.TooltipText
+	mt.FontSize = theme.TextBase.Size
+	if f := theme.ActiveUIFont(); f != "" {
+		mt.Font = f
+	}
+	c.SetTheme(&mt)
 }

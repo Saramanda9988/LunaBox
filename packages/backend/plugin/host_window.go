@@ -189,6 +189,9 @@ func (p *Plugin) buildWindowAPI() map[string]any {
 
 // NotifyWindowEvent 由桌面端独立子窗口把 move/focus/close 事件传回插件线程。
 func (p *Plugin) NotifyWindowEvent(windowID, event string, payload map[string]any) {
+	if event == "close" {
+		p.unmountInternal(windowInstanceID(p.ID, windowID))
+	}
 	p.mu.RLock()
 	cbs := p.winHandlers[windowID]
 	if cbs == nil {
@@ -205,6 +208,13 @@ func (p *Plugin) NotifyWindowEvent(windowID, event string, payload map[string]an
 		fns = append([]moejs.Value(nil), cbs.onClose...)
 	}
 	p.mu.RUnlock()
+	if event == "close" {
+		key := slotCallbackKey("window", windowID)
+		p.mu.Lock()
+		delete(p.renderFns, key)
+		delete(p.winHandlers, windowID)
+		p.mu.Unlock()
+	}
 	if len(fns) == 0 {
 		return
 	}

@@ -1919,5 +1919,8 @@
   "native_plugins_installSuccess": "プラグイン「{name}」をインストールしました",
   "native_plugins_uninstallSuccess": "プラグインをアンインストールしました",
   "native_plugins_reloadSuccess": "プラグインを再読み込みしました",
-  "native_plugins_actionFailed": "操作に失敗しました：{error}"
+  "native_plugins_actionFailed": "操作に失敗しました：{error}",
+  "native_sideBar_plugins": "プラグイン",
+  "native_plugins_subtitle": "インストール済みプラグイン、開発ディレクトリ、実行順序を管理します",
+  "native_plugins_count": "{active} 個実行中 / 全 {total} 個"
 }

@@ -3473,5 +3473,11 @@
   "native_plugins_reloadSuccess": "插件已重新加载",
   "@native_plugins_reloadSuccess": {"description": "extra:native.plugins.reloadSuccess"},
   "native_plugins_actionFailed": "操作失败：{error}",
-  "@native_plugins_actionFailed": {"description": "extra:native.plugins.actionFailed", "placeholders": {"error": {"type": "String"}}}
+  "@native_plugins_actionFailed": {"description": "extra:native.plugins.actionFailed", "placeholders": {"error": {"type": "String"}}},
+  "native_sideBar_plugins": "插件",
+  "@native_sideBar_plugins": {"description": "extra:native.sideBar.plugins"},
+  "native_plugins_subtitle": "管理已安装的插件、开发目录与执行顺序",
+  "@native_plugins_subtitle": {"description": "extra:native.plugins.subtitle"},
+  "native_plugins_count": "{active} 个运行中 / 共 {total} 个插件",
+  "@native_plugins_count": {"description": "extra:native.plugins.count", "placeholders": {"active": {"type": "String"}, "total": {"type": "String"}}}
 }

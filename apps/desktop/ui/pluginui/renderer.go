@@ -141,7 +141,7 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 	switch n.Type {
 	case "Column":
 		el := ui.Column(c.Key(key))
-		m.applyLayoutProps(el, p, n.Events, inst)
+		m.applyLayoutProps(el, t, p, n.Events, inst)
 		el.Children(func() {
 			for i, child := range n.Children {
 				m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i))
@@ -151,7 +151,7 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 
 	case "Row":
 		el := ui.Row(c.Key(key))
-		m.applyLayoutProps(el, p, n.Events, inst)
+		m.applyLayoutProps(el, t, p, n.Events, inst)
 		el.Children(func() {
 			for i, child := range n.Children {
 				m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i))
@@ -161,7 +161,7 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 
 	case "Box":
 		el := ui.Box(c.Key(key))
-		m.applyLayoutProps(el, p, n.Events, inst)
+		m.applyLayoutProps(el, t, p, n.Events, inst)
 		el.Children(func() {
 			for i, child := range n.Children {
 				m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i))
@@ -506,7 +506,20 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 			pad = 12
 		}
 		bg, border := t.GlassCard(t.CardBg, t.CardBorder)
-		card := ui.Column(c.Key(key)).FillWidth().Radius(12).Clip().Background(bg).Border(t.HL, border)
+		card := ui.Column(c.Key(key)).Radius(12).Clip().Background(bg).Border(t.HL, border)
+		if w := propFloat(p, "width"); w > 0 {
+			card.Width(w)
+		} else {
+			card.FillWidth()
+		}
+		if h := propFloat(p, "height"); h > 0 {
+			card.Height(h)
+		} else if propStr(p, "height") == "full" {
+			card.FillHeight()
+		}
+		if propBool(p, "dragWindow") {
+			card.DragWindow()
+		}
 		if propBool(p, "hoverable") && card.Hovered() {
 			card.Border(t.HL, t.CardBorderHover)
 		}
@@ -567,11 +580,27 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 				}
 			})
 		}
+		val := float64(propFloat(p, "value"))
+		if val > 1 {
+			val = val / 100
+		}
+		if val < 0 {
+			val = 0
+		}
+		barColor := theme.Primary500
+		switch propStr(p, "tone") {
+		case "success":
+			barColor = theme.Success500
+		case "warning":
+			barColor = theme.Warning500
+		case "danger":
+			barColor = theme.Error500
+		}
 		return ui.Column(c.Key(key)).FillWidth().Gap(4).Children(func() {
 			if lbl != "" {
 				components.Text(c, lbl, theme.TextXS, theme.WeightMedium, t.TextMuted)
 			}
-			components.ProgressBar(c, t, float64(propFloat(p, "value")), theme.Primary500)
+			components.ProgressBar(c, t, val, barColor)
 		})
 
 	case "Image":
@@ -694,12 +723,59 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 	}
 }
 
-func (m *Manager) applyLayoutProps(el ui.Element, p map[string]any, events map[string]string, inst *Instance) {
+func (m *Manager) applyLayoutProps(el ui.Element, t *theme.Theme, p map[string]any, events map[string]string, inst *Instance) {
 	if gap := mapSpacing(propStr(p, "gap")); gap > 0 {
 		el.Gap(gap)
 	}
 	if pad := mapSpacing(propStr(p, "padding")); pad > 0 {
 		el.Padding(pad)
+	}
+	switch propStr(p, "surface") {
+	case "glass":
+		bg := t.Pick(theme.White.Alpha(0.68), theme.Brand900.Alpha(0.72))
+		border := t.Pick(theme.Brand300.Alpha(0.65), theme.White.Alpha(0.18))
+		el.Background(bg)
+		if propBool(p, "border") {
+			el.Border(t.HL, border)
+		}
+	case "glass-card":
+		bg := t.Pick(theme.White.Alpha(0.42), theme.Brand800.Alpha(0.48))
+		border := t.Pick(theme.Brand200.Alpha(0.55), theme.White.Alpha(0.14))
+		el.Background(bg)
+		if propBool(p, "border") {
+			el.Border(t.HL, border)
+		}
+	case "panel":
+		bg, border := t.GlassPanel(t.PanelBg, t.PanelBorder)
+		el.Background(bg)
+		if propBool(p, "border") {
+			el.Border(t.HL, border)
+		}
+	case "card":
+		bg, border := t.GlassCard(t.CardBg, t.CardBorder)
+		el.Background(bg)
+		if propBool(p, "border") {
+			el.Border(t.HL, border)
+		}
+	case "chip":
+		el.Background(t.ChipBg)
+		if propBool(p, "border") {
+			el.Border(t.HL, t.Divider)
+		}
+	default:
+		if propBool(p, "border") {
+			el.Border(t.HL, t.PanelBorder)
+		}
+	}
+	switch propStr(p, "radius") {
+	case "sm":
+		el.Radius(6).Clip()
+	case "md":
+		el.Radius(10).Clip()
+	case "lg":
+		el.Radius(14).Clip()
+	case "full":
+		el.Radius(999).Clip()
 	}
 	switch propStr(p, "align") {
 	case "start":

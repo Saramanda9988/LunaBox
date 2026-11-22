@@ -48,6 +48,12 @@ func (a *App) routes(c *ui.Context) ui.Element {
 			}
 			r.Title(a.category.Title())
 			a.category.View(c)
+		case r.Match(env.PathPlugins):
+			if entered {
+				a.pluginsPage.Open()
+			}
+			r.Title(locales.NativeSettingsSectionsPlugins())
+			a.pluginsPage.View(c)
 		case r.Match(env.PathStats):
 			if entered {
 				a.stats.Open(c.Now())

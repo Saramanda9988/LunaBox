@@ -35,6 +35,7 @@ const (
 	PathStats      = "/stats"
 	PathCategories = "/categories"
 	PathCategory   = "/categories/{id}" // 收藏详情，Route.Param("id") 是收藏夹 ID
+	PathPlugins    = "/plugins"
 	PathDownloads  = "/downloads"
 	PathSettings   = "/settings"
 	PathGame       = "/game/{id}" // 游戏详情，Route.Param("id") 是游戏 ID

@@ -25924,3 +25924,47 @@ func NativePluginsActionFailed(error string) string {
 func (msgs Messages) NativePluginsActionFailed(error string) string {
 	return Catalog.Format(msgs.locale, "native_plugins_actionFailed", map[string]any{"error": error})
 }
+
+// NativeSideBarPlugins says "插件"
+// in the language the app shows.
+//
+// extra:native.sideBar.plugins
+func NativeSideBarPlugins() string { return In(i18n.Locale()).NativeSideBarPlugins() }
+
+// NativeSideBarPlugins says "插件"
+// in the language of msgs.
+//
+// extra:native.sideBar.plugins
+func (msgs Messages) NativeSideBarPlugins() string {
+	return Catalog.Format(msgs.locale, "native_sideBar_plugins", nil)
+}
+
+// NativePluginsSubtitle says "管理已安装的插件、开发目录与执行顺序"
+// in the language the app shows.
+//
+// extra:native.plugins.subtitle
+func NativePluginsSubtitle() string { return In(i18n.Locale()).NativePluginsSubtitle() }
+
+// NativePluginsSubtitle says "管理已安装的插件、开发目录与执行顺序"
+// in the language of msgs.
+//
+// extra:native.plugins.subtitle
+func (msgs Messages) NativePluginsSubtitle() string {
+	return Catalog.Format(msgs.locale, "native_plugins_subtitle", nil)
+}
+
+// NativePluginsCount says "{active} 个运行中 / 共 {total} 个插件"
+// in the language the app shows.
+//
+// extra:native.plugins.count
+func NativePluginsCount(active string, total string) string {
+	return In(i18n.Locale()).NativePluginsCount(active, total)
+}
+
+// NativePluginsCount says "{active} 个运行中 / 共 {total} 个插件"
+// in the language of msgs.
+//
+// extra:native.plugins.count
+func (msgs Messages) NativePluginsCount(active string, total string) string {
+	return Catalog.Format(msgs.locale, "native_plugins_count", map[string]any{"active": active, "total": total})
+}

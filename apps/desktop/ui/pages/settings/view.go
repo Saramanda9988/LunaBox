@@ -19,7 +19,6 @@ import (
 	"lunabox/desktop/ui/components/panel/fullbackup"
 	"lunabox/desktop/ui/components/panel/gamesettings"
 	"lunabox/desktop/ui/components/panel/metadata"
-	"lunabox/desktop/ui/components/panel/plugins"
 	"lunabox/desktop/ui/components/panel/portable"
 	"lunabox/desktop/ui/components/panel/proxy"
 	"lunabox/desktop/ui/components/panel/update"
@@ -94,9 +93,6 @@ func (p *Page) sectionList(all bool) []section {
 			portable.View(c, t, &s.portable, pp)
 		}})
 	}
-	list = append(list, section{sectionPlugins, "plugins", locales.NativeSettingsSectionsPlugins, "application-brackets-outline", func(c *ui.Context, t *theme.Theme, pp panel.Settings) {
-		plugins.View(c, t, &s.plugins, pp)
-	}})
 	return list
 }
 

@@ -830,6 +830,13 @@ func (s *StartService) finalizePlaySessionOnce(session *activePlaySession, reaso
 			s.emitGameRuntimeIdle(session, "short-session-deleted")
 			s.requestHomeRefresh()
 		}
+		if bus := hooks.SafeBus(s.hookBus); bus.HasListeners(hooks.EventSessionEnded) {
+			bus.Emit(hooks.EventSessionEnded, hooks.SessionEndedPayload{
+				GameID:    gameID,
+				SessionID: sessionID,
+				Duration:  duration,
+			})
+		}
 		return
 	}
 
@@ -970,6 +977,13 @@ func (s *StartService) deleteShortOrCancelledSession(session *activePlaySession,
 		s.activeTimeTracker.StopTracking(session.gameID)
 		s.emitGameRuntimeIdle(session, reason)
 		s.requestHomeRefresh()
+		if bus := hooks.SafeBus(s.hookBus); bus.HasListeners(hooks.EventSessionEnded) {
+			bus.Emit(hooks.EventSessionEnded, hooks.SessionEndedPayload{
+				GameID:    session.gameID,
+				SessionID: session.sessionID,
+				Duration:  0,
+			})
+		}
 	})
 }
 

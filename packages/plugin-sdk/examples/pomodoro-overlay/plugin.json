@@ -1,0 +1,22 @@
+{
+  "id": "pomodoro-overlay",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "engines": {
+    "lunabox": ">=2.1.0 <3"
+  },
+  "name": {
+    "zh-CN": "番茄钟悬浮窗",
+    "zh-TW": "番茄鐘懸浮窗",
+    "en-US": "Pomodoro Overlay",
+    "ja-JP": "ポモドーロオーバーレイ"
+  },
+  "description": {
+    "zh-CN": "游戏启动时自动弹出置顶悬浮窗，实时显示本次已游玩时长与番茄钟专注/休息倒计时；也可点击顶栏时钟图标随时打开预览。",
+    "zh-TW": "遊戲啟動時自動彈出置頂懸浮窗，即時顯示本次已遊玩時長與番茄鐘專注/休息倒計時；也可點擊頂欄時鐘圖示隨時開啟預覽。",
+    "en-US": "Automatically shows an always-on-top floating timer overlay when a game launches with live playtime and Pomodoro focus/break cycles.",
+    "ja-JP": "ゲーム起動時に最前面のオーバーレイを表示し、現在のプレイ時間とポモドーロタイマーをリアルタイムで表示します。"
+  },
+  "author": "LunaBox",
+  "main": "main.js"
+}
