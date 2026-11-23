@@ -10,7 +10,6 @@ import (
 	"lunabox/backend/models"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -31,19 +30,12 @@ type wineCrossoverStrategy struct {
 	cfg *appconf.AppConfig
 }
 
-func supportsPlatformSteamLaunch(game *models.Game) bool {
-	if game == nil || !strings.EqualFold(strings.TrimSpace(game.SteamLaunchKind), "native") {
-		return false
-	}
-	appID, err := strconv.ParseUint(strings.TrimSpace(game.SteamLaunchID), 10, 32)
-	return err == nil && appID > 0
+func supportsPlatformSteamLaunch(_ *models.Game) bool {
+	return true
 }
 
 func selectPlatformLauncherStrategy(game *models.Game, opts LaunchOptions, cfg *appconf.AppConfig) (LauncherStrategy, error) {
 	if ShouldUseSteamLaunch(game, opts) {
-		if !supportsPlatformSteamLaunch(game) {
-			return nil, newStrategyError("unsupported", "steam_launch_kind", "macOS 当前仅支持启动 Steam 原生游戏", fmt.Sprintf("kind=%s app_id=%s", game.SteamLaunchKind, game.SteamLaunchID))
-		}
 		return steamDarwinStrategy{}, nil
 	}
 
@@ -84,6 +76,11 @@ func selectPlatformLauncherStrategy(game *models.Game, opts LaunchOptions, cfg *
 }
 
 func (s steamDarwinStrategy) Plan(ctx context.Context, game *models.Game, opts LaunchOptions) (LaunchPlan, error) {
+	launchID := strings.TrimSpace(game.SteamLaunchID)
+	if launchID == "" {
+		return LaunchPlan{}, fmt.Errorf("此游戏尚未关联 Steam")
+	}
+
 	steamExecutable := strings.TrimSpace(s.steamExecutable)
 	if steamExecutable == "" {
 		var err error
@@ -93,22 +90,25 @@ func (s steamDarwinStrategy) Plan(ctx context.Context, game *models.Game, opts L
 		}
 	}
 
-	launchDirectory := strings.TrimSpace(game.GameDirectory)
-	if launchDirectory == "" {
-		launchDirectory = strings.TrimSpace(game.Path)
-	}
-	if info, err := os.Stat(launchDirectory); err != nil || !info.IsDir() {
-		launchDirectory = filepath.Dir(launchDirectory)
+	launchDirectory := strings.TrimSpace(game.Path)
+	if launchDirectory != "" {
+		if info, err := os.Stat(launchDirectory); err != nil || !info.IsDir() {
+			launchDirectory = filepath.Dir(launchDirectory)
+		}
 	}
 	if launchDirectory == "" || launchDirectory == "." {
+		launchDirectory = strings.TrimSpace(game.GameDirectory)
+	}
+	detectionDir := EffectiveProcessDetectionDir(game.GameDirectory, launchDirectory)
+	if detectionDir == "" || detectionDir == "." {
 		return LaunchPlan{}, fmt.Errorf("Steam 启动需要游戏安装目录用于进程检测")
 	}
 
 	return LaunchPlan{
 		File:          steamExecutable,
-		Args:          []string{"-silent", "steam://rungameid/" + strings.TrimSpace(game.SteamLaunchID)},
+		Args:          []string{"-silent", "steam://rungameid/" + launchID},
 		Dir:           filepath.Dir(steamExecutable),
-		DetectionDir:  launchDirectory,
+		DetectionDir:  detectionDir,
 		DetectionMode: DetectionSteamDirectory,
 		DisplayName:   "steam_osx",
 		ActiveTrack: ActiveTrack{

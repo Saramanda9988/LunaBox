@@ -551,7 +551,7 @@ func TestLaunchOptionsByPlatform(t *testing.T) {
 		{"linux", nil, enums.LaunchModeAdmin, enums.LaunchModeNormal},
 		{"linux", nil, enums.LaunchModeSteam, enums.LaunchModeSteam},
 		{"darwin", nil, enums.LaunchModeCompatibility, enums.LaunchModeCompatibility},
-		{"darwin", &models.Game{}, enums.LaunchModeSteam, enums.LaunchModeNormal},
+		{"darwin", &models.Game{}, enums.LaunchModeSteam, enums.LaunchModeSteam},
 		{"darwin", native, enums.LaunchModeSteam, enums.LaunchModeSteam},
 		{"darwin", nil, "", enums.LaunchModeNormal},
 	} {
@@ -668,12 +668,13 @@ func TestLinuxSteamImport(t *testing.T) {
 	f.expectToast(t, locales.SteamImportImportSuccess())
 }
 
-// macOS：兼容层启动，选它时兼容层是系统 Wine；CrossOver 没有“打开目录”。
+// macOS：兼容层启动，选它时兼容层是系统 Wine；CrossOver 没有“打开目录”。同时支持 Steam 启动（不含导出快捷方式与增强工具）。
 func TestDarwinCompatibilityLaunch(t *testing.T) {
 	f := newFixture(t, 1024, 1600)
 	f.useGOOS("darwin")
-	f.expectNot(t, locales.GameLaunchWineRunnerHint(), locales.GameLaunchLaunchModeSteam(), locales.GameLaunchEnhancementTools())
+	f.expectNot(t, locales.GameLaunchWineRunnerHint(), locales.GameLaunchExportShortcut(), locales.GameLaunchEnhancementTools())
 	f.click(t, locales.GameLaunchLaunchModeNormal())
+	f.expect(t, locales.GameLaunchLaunchModeSteam())
 	f.click(t, locales.GameLaunchLaunchModeCompatibility())
 	if f.game.LaunchMode != enums.LaunchModeCompatibility || f.game.WineRunner != "system" {
 		t.Fatalf("mode %q runner %q", f.game.LaunchMode, f.game.WineRunner)
@@ -687,6 +688,23 @@ func TestDarwinCompatibilityLaunch(t *testing.T) {
 	if _, ok := f.tt.Find(locales.GameEditOpenInExplorer()); ok {
 		t.Error("CrossOver bottle has an open-folder action")
 	}
+}
+
+// macOS 的 Steam 启动：支持导入与保存 Steam 启动参数，并允许手动选择监控进程；没有导出快捷方式和 Linux 的 Proton 选项。
+func TestDarwinSteamSettings(t *testing.T) {
+	f := newFixture(t, 1024, 1600)
+	fake := f.useGOOS("darwin")
+	f.game.LaunchMode = enums.LaunchModeSteam
+	f.frames(2)
+	f.expect(t, locales.GameLaunchSteamTools(), locales.GameLaunchSteamLaunchOptions(), locales.GameLaunchSelectRunningProcess())
+	f.expectNot(t, locales.GameLaunchExportShortcut(), locales.GameLaunchSteamProton(), locales.GameLaunchEnhancementTools())
+
+	f.click(t, locales.Key("gameLaunch.steamLaunchOptionsPresets.chineseLocale"))
+	f.click(t, locales.GameLaunchSteamLaunchOptionsSave())
+	if len(fake.applied) != 1 || fake.applied[0].options != "LANG=zh_CN.UTF-8 %command%" || fake.applied[0].tool != nil {
+		t.Fatalf("applied %+v", fake.applied)
+	}
+	f.expectToast(t, locales.GameLaunchToastSteamSettingsSaved())
 }
 
 func TestStartFromCard(t *testing.T) {

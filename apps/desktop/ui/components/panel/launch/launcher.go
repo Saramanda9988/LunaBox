@@ -114,13 +114,11 @@ func (l *Launcher) SupportsCompatibility() bool { return l.goos == "darwin" }
 // SupportsWine 对应 supportsWineLaunch：macOS 与 Linux 用 Wine / Proton 运行 Windows 游戏。
 func (l *Launcher) SupportsWine() bool { return l.goos == "darwin" || l.goos == "linux" }
 
-// SupportsSteam 对应 supportsSteamLaunch：Windows、Linux 都能通过 Steam 启动，macOS 只有关联到 Steam 原生游戏的可以。
-func (l *Launcher) SupportsSteam(g *models.Game) bool {
+// SupportsSteam 对应 supportsSteamLaunch：Windows、macOS、Linux 都能通过 Steam 启动。
+func (l *Launcher) SupportsSteam(_ *models.Game) bool {
 	switch l.goos {
-	case "windows", "linux":
+	case "windows", "linux", "darwin":
 		return true
-	case "darwin":
-		return g != nil && g.SteamLaunchKind == "native" && g.SteamLaunchID != ""
 	}
 	return false
 }
