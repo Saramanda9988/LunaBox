@@ -14,12 +14,13 @@ import (
 
 type stubPluginService struct {
 	api.PluginService
-	list  []plugin.PluginInfo
-	slots []plugin.SlotRegistration
+	list     []plugin.PluginInfo
+	devPaths []string
+	slots    []plugin.SlotRegistration
 }
 
-func (s *stubPluginService) List() []plugin.PluginInfo          { return s.list }
-func (s *stubPluginService) DevPaths() []string                 { return nil }
+func (s *stubPluginService) List() []plugin.PluginInfo                  { return s.list }
+func (s *stubPluginService) DevPaths() []string                         { return s.devPaths }
 func (s *stubPluginService) Decorations() []plugin.DecorationRegistration { return nil }
 func (s *stubPluginService) GetConfigValues(string) map[string]any        { return map[string]any{"focusMinutes": 25} }
 func (s *stubPluginService) SetConfigValues(string, map[string]any) error { return nil }
@@ -56,7 +57,7 @@ func TestEmptyPluginsPage(t *testing.T) {
 	}
 }
 
-func TestPluginsListNoStatusOrDevBadges(t *testing.T) {
+func TestPluginsListShowsLocalBadgeAndOmitsDevDirsSection(t *testing.T) {
 	stub := &stubPluginService{
 		list: []plugin.PluginInfo{
 			{
@@ -70,6 +71,7 @@ func TestPluginsListNoStatusOrDevBadges(t *testing.T) {
 				Status:      plugin.StatusActive,
 			},
 		},
+		devPaths: []string{`D:\dev\pomodoro-overlay`},
 	}
 	e := &env.Env{
 		Theme:     theme.New(false, 1),
@@ -90,8 +92,42 @@ func TestPluginsListNoStatusOrDevBadges(t *testing.T) {
 	if _, ok := tt.Find(locales.NativePluginsStatusActive()); ok {
 		t.Fatalf("did not expect status pill %q in list row", locales.NativePluginsStatusActive())
 	}
-	if _, ok := tt.Find(locales.NativePluginsDevBadge()); ok {
-		t.Fatalf("did not expect dev pill %q in list row", locales.NativePluginsDevBadge())
+	if _, ok := tt.Find(locales.NativePluginsLocalBadge()); !ok {
+		t.Fatalf("expected local pill %q in list row for dev plugin", locales.NativePluginsLocalBadge())
+	}
+	if _, ok := tt.Find(`D:\dev\pomodoro-overlay`); ok {
+		t.Fatalf("did not expect dev directory list on plugins page")
+	}
+}
+
+func TestPluginsListInstalledOmitsLocalBadge(t *testing.T) {
+	stub := &stubPluginService{
+		list: []plugin.PluginInfo{
+			{
+				ID:      "installed-plugin",
+				Name:    "已安装插件",
+				Version: "1.0.0",
+				IsDev:   false,
+				Enabled: true,
+				Status:  plugin.StatusActive,
+			},
+		},
+	}
+	e := &env.Env{
+		Theme:     theme.New(false, 1),
+		MainWidth: 960,
+		Router:    ui.NewRouter(env.PathPlugins),
+		Svc:       &api.Services{Plugin: stub},
+	}
+	page := New(e)
+	page.Open()
+
+	tt := ui.NewTester(func(c *ui.Context) {
+		page.View(c)
+	}, 960, 720)
+	tt.Frame()
+	if _, ok := tt.Find(locales.NativePluginsLocalBadge()); ok {
+		t.Fatalf("did not expect local pill %q for installed plugin", locales.NativePluginsLocalBadge())
 	}
 }
 
@@ -142,6 +178,9 @@ func TestPluginDetailShowsSettingsAndSourceInfo(t *testing.T) {
 	}
 	if _, ok := tt.Find("v1.0.0"); ok {
 		t.Fatalf("did not expect redundant version pill in detail header")
+	}
+	if _, ok := tt.Find(locales.NativePluginsLocalBadge()); !ok {
+		t.Fatalf("expected local pill %q in detail header for dev plugin", locales.NativePluginsLocalBadge())
 	}
 	if _, ok := tt.Find(locales.NativePluginsDetailSettings()); !ok {
 		t.Fatalf("expected plugin settings heading %q", locales.NativePluginsDetailSettings())

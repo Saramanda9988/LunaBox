@@ -20,7 +20,7 @@ const (
 	listMaxW    = 1024 // max-w-5xl
 )
 
-// View 构建插件列表页：页头标题与操作栏、插件条目（图标 + 名称/简介 + 开关，点击进入详情页）、开发目录与确认弹窗。
+// View 构建插件列表页：页头标题与操作栏、插件条目（图标 + 名称/简介 + 开关，点击进入详情页）与确认弹窗。
 func (p *Page) View(c *ui.Context) {
 	t := p.env.Theme
 	gutter := t.Gutter()
@@ -30,10 +30,8 @@ func (p *Page) View(c *ui.Context) {
 	}
 
 	var list []plugin.PluginInfo
-	var devPaths []string
 	if p.env != nil && p.env.Svc != nil && p.env.Svc.Plugin != nil {
 		list = p.env.Svc.Plugin.List()
-		devPaths = p.env.Svc.Plugin.DevPaths()
 	}
 
 	components.ScrollArea(c, t, "plugins-scroll", &p.scroll, func(w ui.Element) { w.Fill() }, func(sc ui.Element) {
@@ -52,10 +50,6 @@ func (p *Page) View(c *ui.Context) {
 								p.pluginRow(c, t, info)
 							}
 						})
-					}
-
-					if len(devPaths) > 0 {
-						p.devDirsSection(c, t, devPaths)
 					}
 				})
 			})
@@ -189,7 +183,12 @@ func (p *Page) pluginRow(c *ui.Context, t *theme.Theme, info plugin.PluginInfo) 
 			p.pluginIcon(c, t, info, 44, 12)
 
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(3).Children(func() {
-				components.Text(c, info.Name, theme.TextBase, theme.WeightSemibold, t.TextStrong).SingleLine()
+				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(8).Children(func() {
+					components.Text(c, info.Name, theme.TextBase, theme.WeightSemibold, t.TextStrong).SingleLine().Shrink(1).MinWidth(0)
+					if info.IsDev {
+						localBadge(c, t)
+					}
+				})
 				desc := info.Description
 				if desc == "" {
 					desc = info.ID
@@ -251,30 +250,21 @@ func (p *Page) pluginIcon(c *ui.Context, t *theme.Theme, info plugin.PluginInfo,
 	})
 }
 
-func (p *Page) devDirsSection(c *ui.Context, t *theme.Theme, devPaths []string) {
-	svc := p.env.Svc.Plugin
-	heading := t.IfGlass(t.Pick(theme.Brand600, theme.Brand300), theme.Brand700, theme.Brand200)
-	ui.Column(c.Key("dev-dirs")).FillWidth().Gap(8).Children(func() {
-		components.TextMargin(c, locales.NativePluginsDevDirs(), theme.TextSM, theme.WeightMedium, heading, 0, 4, 4, 4)
-		for _, dir := range devPaths {
-			d := dir
-			bg, border := t.GlassCard(t.CardBg, t.CardBorder)
-			ui.Row(c.Key("dev-"+d)).FillWidth().Padding(10, 14).Gap(8).AlignItems(ui.Center).
-				Justify(ui.SpaceBetween).Radius(10).Background(bg).Border(t.HL, border).Children(func() {
-				components.Text(c, d, theme.TextXS, theme.WeightNormal, t.TextMuted).SingleLine().Grow(1)
-				btn := better.IconButton(c, t, "rm-dev-"+d, "close", 4, false, true)
-				btn.Label(locales.CommonDelete()).OnClick(func() {
-					p.env.Async(func() func() {
-						err := svc.RemoveDevPath(d)
-						return func() {
-							if err != nil {
-								p.env.Toast(c, env.Error(locales.NativePluginsActionFailed(err.Error())))
-							}
-						}
-					})
-				})
-			})
-		}
+// localBadge 渲染本地加载插件的「本地」胶囊标签。
+func localBadge(c *ui.Context, t *theme.Theme) {
+	bg := t.IfGlass(
+		t.Pick(theme.Primary100, theme.Primary900.Alpha(0.6)),
+		theme.Primary100.Alpha(0.75),
+		theme.Primary900.Alpha(0.5),
+	)
+	border := t.IfGlass(
+		t.Pick(theme.Primary200, theme.Primary700.Alpha(0.6)),
+		theme.Primary200.Alpha(0.8),
+		theme.Primary700.Alpha(0.5),
+	)
+	fg := t.Pick(theme.Primary700, theme.Primary300)
+	ui.Box(c).Padding(2, 8).Radius(999).Shrink(0).Background(bg).Border(t.HL, border).Children(func() {
+		components.Text(c, locales.NativePluginsLocalBadge(), theme.TextXS, theme.WeightMedium, fg).NoWrap()
 	})
 }
 

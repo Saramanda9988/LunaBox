@@ -146,7 +146,12 @@ func (p *Page) detailHeader(c *ui.Context, t *theme.Theme, info plugin.PluginInf
 
 		// 名称与简介
 		ui.Column(c).FillWidth().Gap(8).Children(func() {
-			components.Text(c, info.Name, theme.Text3XL, theme.WeightBold, t.TextStrong)
+			ui.Row(c).FillWidth().Wrap().AlignItems(ui.Center).GapX(10).GapY(6).Children(func() {
+				components.Text(c, info.Name, theme.Text3XL, theme.WeightBold, t.TextStrong)
+				if info.IsDev {
+					localBadge(c, t)
+				}
+			})
 			if info.Description != "" {
 				components.Text(c, info.Description, theme.TextSM, theme.WeightNormal, t.TextMuted)
 			}

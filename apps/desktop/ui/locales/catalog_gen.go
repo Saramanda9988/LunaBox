@@ -25493,20 +25493,6 @@ func (msgs Messages) NativePluginsOpenDir() string {
 	return Catalog.Format(msgs.locale, "native_plugins_openDir", nil)
 }
 
-// NativePluginsDevDirs says "开发目录（保存文件自动热重载）"
-// in the language the app shows.
-//
-// extra:native.plugins.devDirs
-func NativePluginsDevDirs() string { return In(i18n.Locale()).NativePluginsDevDirs() }
-
-// NativePluginsDevDirs says "开发目录（保存文件自动热重载）"
-// in the language of msgs.
-//
-// extra:native.plugins.devDirs
-func (msgs Messages) NativePluginsDevDirs() string {
-	return Catalog.Format(msgs.locale, "native_plugins_devDirs", nil)
-}
-
 // NativePluginsStatusActive says "运行中"
 // in the language the app shows.
 //
@@ -25647,18 +25633,18 @@ func (msgs Messages) NativePluginsMoveDown() string {
 	return Catalog.Format(msgs.locale, "native_plugins_moveDown", nil)
 }
 
-// NativePluginsDevBadge says "开发"
+// NativePluginsLocalBadge says "本地"
 // in the language the app shows.
 //
-// extra:native.plugins.devBadge
-func NativePluginsDevBadge() string { return In(i18n.Locale()).NativePluginsDevBadge() }
+// extra:native.plugins.localBadge
+func NativePluginsLocalBadge() string { return In(i18n.Locale()).NativePluginsLocalBadge() }
 
-// NativePluginsDevBadge says "开发"
+// NativePluginsLocalBadge says "本地"
 // in the language of msgs.
 //
-// extra:native.plugins.devBadge
-func (msgs Messages) NativePluginsDevBadge() string {
-	return Catalog.Format(msgs.locale, "native_plugins_devBadge", nil)
+// extra:native.plugins.localBadge
+func (msgs Messages) NativePluginsLocalBadge() string {
+	return Catalog.Format(msgs.locale, "native_plugins_localBadge", nil)
 }
 
 // NativePluginsInstallTitle says "确认安装插件"
