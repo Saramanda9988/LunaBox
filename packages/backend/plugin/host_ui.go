@@ -43,6 +43,16 @@ func (p *Plugin) buildUIAPI() map[string]any {
 			if v, err := p.rt.Get(def, "defaultWidth"); err == nil && v.IsNumber() {
 				defaultWidth = int(v.AsNumber())
 			}
+			order := 0
+			if v, err := p.rt.Get(def, "order"); err == nil && v.IsNumber() {
+				order = int(v.AsNumber())
+			}
+			var hideTabs []string
+			if v, err := p.rt.Get(def, "hideTabs"); err == nil && v.IsObject() {
+				if raw, merr := p.rt.AppendJSON(nil, v); merr == nil {
+					_ = json.Unmarshal(raw, &hideTabs)
+				}
+			}
 
 			renderFn, _ := p.rt.Get(def, "render")
 			onPressFn, _ := p.rt.Get(def, "onPress")
@@ -75,6 +85,8 @@ func (p *Plugin) buildUIAPI() map[string]any {
 				Badge:        getStr("badge"),
 				Mode:         getStr("mode"),
 				DefaultWidth: defaultWidth,
+				Order:        order,
+				HideTabs:     hideTabs,
 				HasRender:    renderFn.IsObject(),
 				HasOnPress:   onPressFn.IsObject(),
 				HasRun:       runFn.IsObject(),

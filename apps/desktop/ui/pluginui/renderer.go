@@ -18,17 +18,31 @@ import (
 	"lunabox/desktop/ui/theme"
 )
 
+// NativeSlots 允许宿主页面把原生交互区域（如启动栏、封面、返回按钮）嵌入插件描述树的 NativeSlot / HeroBanner 节点中。
+type NativeSlots map[string]func(c *ui.Context, t *theme.Theme)
+
 // RenderSlot 挂载并渲染一个插件插槽实例。
 func (m *Manager) RenderSlot(c *ui.Context, t *theme.Theme, slotName, pluginID, regID, scopeKey string, props any) {
+	m.RenderSlotWithNatives(c, t, slotName, pluginID, regID, scopeKey, props, nil)
+}
+
+// RenderSlotWithNatives 挂载并渲染一个插件插槽实例，并向其提供可嵌入的宿主原生槽位；返回实例是否已有可渲染内容（树或错误）。
+func (m *Manager) RenderSlotWithNatives(c *ui.Context, t *theme.Theme, slotName, pluginID, regID, scopeKey string, props any, natives NativeSlots) bool {
 	if m == nil {
-		return
+		return false
 	}
 	inst := m.EnsureMounted(slotName, pluginID, regID, scopeKey, props)
-	m.RenderInstance(c, t, inst)
+	m.RenderInstanceWithNatives(c, t, inst, natives)
+	return inst != nil && (inst.Tree != nil || inst.Error != "")
 }
 
 // RenderInstance 渲染一个插槽实例当前缓存的描述树，并在出错时展示统一的错误边界占位。
 func (m *Manager) RenderInstance(c *ui.Context, t *theme.Theme, inst *Instance) {
+	m.RenderInstanceWithNatives(c, t, inst, nil)
+}
+
+// RenderInstanceWithNatives 渲染插件实例描述树并解析其中的 NativeSlot / HeroBanner 宿主回调。
+func (m *Manager) RenderInstanceWithNatives(c *ui.Context, t *theme.Theme, inst *Instance, natives NativeSlots) {
 	if m == nil || inst == nil {
 		return
 	}
@@ -42,7 +56,7 @@ func (m *Manager) RenderInstance(c *ui.Context, t *theme.Theme, inst *Instance) 
 	if inst.Tree == nil {
 		return
 	}
-	m.renderNode(c, t, inst, inst.Tree, "root")
+	m.renderNode(c, t, inst, inst.Tree, "root", natives)
 
 	if inst.PreviewOpen && inst.PreviewSrc != "" {
 		if bmp := m.loadBitmap(inst.PreviewSrc); bmp != nil {
@@ -128,7 +142,7 @@ func (m *Manager) getCollapsibleState(inst *Instance, key string, defaultOpen bo
 	return open
 }
 
-func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *plugin.UINode, fallbackKey string) ui.Element {
+func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *plugin.UINode, fallbackKey string, natives NativeSlots) ui.Element {
 	if n == nil {
 		return ui.Element{}
 	}
@@ -144,7 +158,7 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 		m.applyLayoutProps(el, t, p, n.Events, inst)
 		el.Children(func() {
 			for i, child := range n.Children {
-				m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i))
+				m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i), natives)
 			}
 		})
 		return el
@@ -154,20 +168,20 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 		m.applyLayoutProps(el, t, p, n.Events, inst)
 		el.Children(func() {
 			for i, child := range n.Children {
-				m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i))
+				m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i), natives)
 			}
 		})
 		return el
 
 	case "Box":
 		if propBool(p, "springPress") {
-			return m.renderSpringPressBox(c, t, inst, key, p, n.Events, n.Children)
+			return m.renderSpringPressBox(c, t, inst, key, p, n.Events, n.Children, natives)
 		}
 		el := ui.Box(c.Key(key))
 		m.applyLayoutProps(el, t, p, n.Events, inst)
 		el.Children(func() {
 			for i, child := range n.Children {
-				m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i))
+				m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i), natives)
 			}
 		})
 		return el
@@ -195,7 +209,7 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 			sc.Children(func() {
 				ui.Column(c).FillWidth().Gap(mapSpacing(propStr(p, "gap"))).Children(func() {
 					for i, child := range n.Children {
-						m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i))
+						m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i), natives)
 					}
 				})
 			})
@@ -239,7 +253,7 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 				ui.Row(c.Key(fmt.Sprintf("%s-r%d", key, start))).FillWidth().Gap(gap).AlignItems(ui.Stretch).Children(func() {
 					for j, child := range rowChildren {
 						ui.Column(c.Key(fmt.Sprintf("%s-c%d", key, start+j))).Grow(1).Basis(0).MinWidth(0).Children(func() {
-							m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, start+j))
+							m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, start+j), natives)
 						})
 					}
 					for pad := len(rowChildren); pad < cols; pad++ {
@@ -542,7 +556,7 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 					components.Text(c, title, theme.TextBase, theme.WeightSemibold, t.TextStrong)
 				}
 				for i, child := range n.Children {
-					m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i))
+					m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i), natives)
 				}
 			})
 		})
@@ -569,7 +583,7 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 			Open:  open,
 		}, func() {
 			for i, child := range n.Children {
-				m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i))
+				m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i), natives)
 			}
 		})
 
@@ -614,6 +628,7 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 		pressID := eventID(n, "press")
 		previewable := propBool(p, "previewable")
 		transparent := propBool(p, "transparent")
+		blur := propBool(p, "blur")
 		fit := ui.Cover
 		if propStr(p, "fit") == "contain" {
 			fit = ui.Contain
@@ -654,7 +669,10 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 		}
 		box.Children(func() {
 			if imgSrc := m.LoadImageSource(src); imgSrc != nil {
-				ui.Image(c, imgSrc).Fill().Fit(fit)
+				img := ui.Image(c, imgSrc).Fill().Fit(fit)
+				if blur {
+					img.Blur(18)
+				}
 			}
 		})
 		return box
@@ -706,7 +724,7 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 	case "Tooltip":
 		var childEl ui.Element
 		if len(n.Children) > 0 {
-			childEl = m.renderNode(c, t, inst, n.Children[0], key+"-child")
+			childEl = m.renderNode(c, t, inst, n.Children[0], key+"-child", natives)
 		}
 		if tip := propStr(p, "content"); tip != "" && childEl.Valid() {
 			better.Tooltip(c, t, childEl, tip)
@@ -721,6 +739,18 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 
 	case "Spacer":
 		return ui.Spacer(c)
+
+	case "NativeSlot":
+		name := propStr(p, "name")
+		if natives != nil {
+			if fn, ok := natives[name]; ok && fn != nil {
+				fn(c, t)
+			}
+		}
+		return ui.Element{}
+
+	case "HeroBanner":
+		return m.renderHeroBanner(c, t, inst, key, p, n.Children, natives)
 
 	default:
 		// 未知组件：开发模式下画红色占位并写明类型，正式版跳过（见 §9.6）
@@ -821,6 +851,21 @@ func (m *Manager) applyLayoutProps(el ui.Element, t *theme.Theme, p map[string]a
 	if g := propFloat(p, "grow"); g > 0 {
 		el.Grow(g)
 	}
+	if _, hasShrink := p["shrink"]; hasShrink {
+		el.Shrink(propFloat(p, "shrink"))
+	}
+	if _, hasBasis := p["basis"]; hasBasis {
+		el.Basis(propFloat(p, "basis"))
+	}
+	if mw := propFloat(p, "minWidth"); mw > 0 || p["minWidth"] != nil {
+		el.MinWidth(mw)
+	}
+	if mxw := propFloat(p, "maxWidth"); mxw > 0 {
+		el.MaxWidth(mxw)
+	}
+	if propBool(p, "wrap") {
+		el.Wrap()
+	}
 	if propBool(p, "dragWindow") {
 		el.DragWindow()
 	}
@@ -844,6 +889,7 @@ func (m *Manager) renderSpringPressBox(
 	p map[string]any,
 	events map[string]string,
 	children []*plugin.UINode,
+	natives NativeSlots,
 ) ui.Element {
 	btn := ui.ButtonBase(c.Key(key)).FocusRing(false).Cursor(ui.CursorPointer)
 	m.applyLayoutProps(btn, t, p, events, inst)
@@ -900,11 +946,172 @@ func (m *Manager) renderSpringPressBox(
 	btn.Children(func() {
 		ui.Box(c.Key(key+"-spring-body")).Fill().TransformOrigin(0.5, 1.0).Scale(sx, sy).Children(func() {
 			for i, child := range children {
-				m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i))
+				m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i), natives)
 			}
 		})
 	})
 	return btn
+}
+
+// renderHeroBanner 渲染全宽头图横幅（支持透明徽标、标题、副标题、元信息行、右侧封面与底部原生操作栏）。
+func (m *Manager) renderHeroBanner(
+	c *ui.Context,
+	t *theme.Theme,
+	inst *Instance,
+	key string,
+	p map[string]any,
+	children []*plugin.UINode,
+	natives NativeSlots,
+) ui.Element {
+	bannerH := propFloat(p, "height")
+	if bannerH < 180 {
+		bannerH = 290
+	} else if bannerH > 460 {
+		bannerH = 460
+	}
+	bannerSrc := propStr(p, "banner")
+	if bannerSrc == "" {
+		bannerSrc = propStr(p, "fallbackBanner")
+	}
+	logoSrc := propStr(p, "logo")
+	title := propStr(p, "title")
+	subtitle := propStr(p, "subtitle")
+	blur := propBool(p, "blur")
+	backSlot := propStr(p, "backSlot")
+	coverSlot := propStr(p, "coverSlot")
+	toolbarSlot := propStr(p, "toolbarSlot")
+
+	var metaItems []string
+	if rawMeta, ok := p["meta"].([]any); ok {
+		for _, item := range rawMeta {
+			if s := strings.TrimSpace(strVal(item)); s != "" {
+				metaItems = append(metaItems, s)
+			}
+		}
+	} else if s := strings.TrimSpace(propStr(p, "meta")); s != "" {
+		metaItems = append(metaItems, s)
+	}
+
+	cardBg, cardBorder := t.GlassCard(t.CardBg, t.CardBorder)
+	outer := ui.Column(c.Key(key)).FillWidth().Radius(16).Clip().Background(cardBg).Border(t.HL, cardBorder)
+	outer.Children(func() {
+		// 上半区：头图 + 渐暗渐变遮罩 + 顶部返回按钮 + 左下徽标/标题 + 右下封面
+		hero := ui.Box(c.Key(key + "-hero")).FillWidth().MinHeight(bannerH).Clip()
+		hero.LinearGradient(ui.LinearGradient{
+			Angle: 135,
+			Stops: []ui.GradientStop{
+				{Color: t.Pick(theme.Brand700, theme.Brand900), At: 0},
+				{Color: t.Pick(theme.Brand900, theme.Neutral900), At: 1},
+			},
+		})
+		hero.Children(func() {
+			if bannerSrc != "" {
+				if bmp := m.loadBitmap(bannerSrc); bmp != nil {
+					img := ui.Image(c, bmp).Absolute().Top(0).Right(0).Bottom(0).Left(0).Fit(ui.Cover).PassThrough()
+					if blur {
+						img.Blur(18)
+					}
+				}
+			}
+			// 多段纵向渐变遮罩，保证亮/暗头图上的徽标与白色文字始终清晰可读
+			ui.Box(c).Absolute().Top(0).Right(0).Bottom(0).Left(0).PassThrough().LinearGradient(ui.LinearGradient{
+				Angle: 180,
+				Stops: []ui.GradientStop{
+					{Color: theme.Black.Alpha(0.22), At: 0},
+					{Color: theme.Black.Alpha(0.28), At: 0.42},
+					{Color: theme.Black.Alpha(0.76), At: 1},
+				},
+			})
+
+			// 顶左浮动返回按钮
+			if backSlot != "" && natives != nil {
+				if fn, ok := natives[backSlot]; ok && fn != nil {
+					pillBg := t.Pick(theme.White.Alpha(0.84), theme.Brand900.Alpha(0.72))
+					pillBorder := t.Pick(theme.White.Alpha(0.55), theme.White.Alpha(0.16))
+					ui.Box(c.Key(key+"-back-pill")).Absolute().Top(14).Left(16).Padding(4, 12, 4, 8).Radius(999).
+						Background(pillBg).Border(t.HL, pillBorder).Children(func() {
+						fn(c, t)
+					})
+				}
+			}
+
+			// 底部内容行：左侧（徽标 + 标题 + 副标题 + 元信息 + 插件子节点），右侧（原生封面）
+			ui.Column(c).FillWidth().MinHeight(bannerH).Justify(ui.End).Padding(56, 24, 20, 24).Children(func() {
+				ui.Row(c).FillWidth().Gap(24).AlignItems(ui.End).Children(func() {
+					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(8).Children(func() {
+						// 透明游戏徽标（按自然宽高比等比缩放，贴左对齐）
+						if logoSrc != "" {
+							if imgSrc := m.LoadImageSource(logoSrc); imgSrc != nil {
+								const maxLogoW float32 = 360
+								const maxLogoH float32 = 96
+								w, h := float32(280), float32(84)
+								if bmp, ok := imgSrc.(*ui.Bitmap); ok {
+									bw, bh := bmp.Size()
+									if bw > 0 && bh > 0 {
+										scale := min(maxLogoW/float32(bw), maxLogoH/float32(bh))
+										if scale > 1 {
+											scale = 1
+										}
+										w = float32(bw) * scale
+										h = float32(bh) * scale
+									}
+								}
+								ui.Box(c.Key(key+"-logo")).Width(w).Height(h).Children(func() {
+									ui.Image(c, imgSrc).Fill().Fit(ui.Contain)
+								})
+							}
+						}
+
+						if title != "" {
+							components.Text(c, title, theme.FontStep{Size: 28, Line: 36}, theme.WeightBold, theme.White).Selectable()
+						}
+						if subtitle != "" && subtitle != title {
+							components.Text(c, subtitle, theme.TextSM, theme.WeightNormal, theme.White.Alpha(0.84)).Selectable()
+						}
+						if len(metaItems) > 0 {
+							ui.Row(c).Wrap().Gap(8).AlignItems(ui.Center).Children(func() {
+								for i, item := range metaItems {
+									ui.Box(c.Key(fmt.Sprintf("%s-meta-%d", key, i))).Padding(3, 9).Radius(999).
+										Background(theme.Black.Alpha(0.36)).Border(t.HL, theme.White.Alpha(0.18)).Children(func() {
+										components.Text(c, item, theme.TextXS, theme.WeightMedium, theme.White.Alpha(0.94)).NoWrap()
+									})
+								}
+							})
+						}
+						if len(children) > 0 {
+							ui.Row(c).Wrap().Gap(8).AlignItems(ui.Center).Children(func() {
+								for i, child := range children {
+									m.renderNode(c, t, inst, child, fmt.Sprintf("%s-hc-%d", key, i), natives)
+								}
+							})
+						}
+					})
+
+					// 右侧封面（复用原生封面查看器与 NSFW 模糊）
+					if coverSlot != "" && natives != nil {
+						if fn, ok := natives[coverSlot]; ok && fn != nil {
+							ui.Box(c.Key(key+"-cover-frame")).Shrink(0).Radius(10).
+								Shadow(0, 8, 20, 0, theme.Black.Alpha(0.38)).
+								Border(t.HL, theme.White.Alpha(0.24)).Clip().Children(func() {
+								fn(c, t)
+							})
+						}
+					}
+				})
+			})
+		})
+
+		// 下半区：无缝衔接的操作区（保留原生启动栏）
+		if toolbarSlot != "" && natives != nil {
+			if fn, ok := natives[toolbarSlot]; ok && fn != nil {
+				ui.Box(c.Key(key+"-toolbar-bar")).FillWidth().Padding(14, 24).
+					BorderWidth(t.HL, 0, 0, 0).BorderColor(t.Divider).Children(func() {
+					fn(c, t)
+				})
+			}
+		}
+	})
+	return outer
 }
 
 func (m *Manager) renderTable(c *ui.Context, t *theme.Theme, inst *Instance, key string, p map[string]any, rowPressID string) ui.Element {
@@ -1142,6 +1349,10 @@ func mapFontStep(v string) theme.FontStep {
 		return theme.TextLG
 	case "xl":
 		return theme.TextXL
+	case "2xl":
+		return theme.FontStep{Size: 24, Line: 32}
+	case "3xl":
+		return theme.FontStep{Size: 30, Line: 38}
 	default:
 		return theme.TextBase
 	}
@@ -1174,6 +1385,10 @@ func mapToneColor(t *theme.Theme, tone string) ui.Color {
 		return theme.Warning500
 	case "danger":
 		return theme.Error500
+	case "light":
+		return theme.White
+	case "light-muted":
+		return theme.White.Alpha(0.82)
 	default:
 		return t.Text
 	}

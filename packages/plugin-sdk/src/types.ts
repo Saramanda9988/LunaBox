@@ -258,6 +258,7 @@ export type SlotName =
   | 'library.add_menu'
   | 'library.toolbar'
   | 'game.detail.tab'
+  | 'game.detail.hero'
   | 'game.detail.header'
   | 'game.detail.aside'
   | 'game.actions'
@@ -273,6 +274,8 @@ export interface SlotDef {
   badge?: string;
   mode?: 'normal' | 'batch' | 'both';
   defaultWidth?: number;
+  order?: number;
+  hideTabs?: string[];
   render?: (props: any) => VNode;
   onPress?: (payload?: any) => void | Promise<void>;
   run?: (game: Game) => void | Promise<void>;
@@ -319,6 +322,12 @@ export interface Context {
     delete(key: string): void;
     keys(): string[];
   };
+  db: {
+    exec(sql: string, params?: unknown[]): Promise<{ rowsAffected: number; lastInsertId: number }>;
+    query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>;
+    queryOne<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T | null>;
+    transaction(statements: Array<{ sql: string; params?: unknown[] }>): Promise<Array<{ rowsAffected: number; lastInsertId: number }>>;
+  };
   config: {
     define(schema: ConfigSchema | Record<string, Omit<ConfigFieldSchema, 'key'>>): Disposer;
     get<T = Record<string, unknown>>(): T;
@@ -346,6 +355,7 @@ export interface Context {
     registerSource(def: MetadataSourceDef): Disposer;
     search(name: string, opts?: Record<string, unknown>): Promise<unknown[]>;
     fetch(source: string, sourceId: string, opts?: Record<string, unknown>): Promise<unknown>;
+    getAuthToken(source: string): Promise<string>;
   };
   downloads: {
     requestInstall(req: InstallRequestInput): Promise<{ pending?: boolean; taskId?: string; queued?: boolean }>;

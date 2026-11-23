@@ -340,6 +340,17 @@ func (s *HikarinagiService) refreshAccessToken(ctx context.Context) (string, err
 	return s.refreshAccessTokenLocked(ctx)
 }
 
+// GetCatalogAccessToken 返回可用的 Hikarinagi 目录读取令牌：优先使用已登录用户的 OAuth 令牌，
+// 未登录时回退到编译注入的应用级 client_credentials 令牌。
+func (s *HikarinagiService) GetCatalogAccessToken(ctx context.Context) (string, error) {
+	ctx = s.resolveContext(ctx)
+	if token, err := s.getValidAccessToken(ctx); err == nil && strings.TrimSpace(token) != "" {
+		return token, nil
+	}
+	getter := metadata.NewHikarinagiInfoGetter(gamehelper.MetadataGetterOptionsContext(ctx, s.config)...)
+	return getter.GetAccessToken()
+}
+
 func (s *HikarinagiService) fetchMetadataByID(ctx context.Context, sourceID string) (metadata.MetadataResult, error) {
 	getter := metadata.NewHikarinagiInfoGetter(gamehelper.MetadataGetterOptionsContext(ctx, s.config)...)
 	token, err := s.getValidAccessToken(ctx)

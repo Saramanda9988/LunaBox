@@ -244,6 +244,11 @@ func (h HikarinagiInfoGetter) FetchMetadataCandidatesByName(name string, accessT
 	return nil, errors.New("no results found")
 }
 
+// GetAccessToken 获取应用级 Hikarinagi client_credentials 访问令牌（带内存缓存）。
+func (h HikarinagiInfoGetter) GetAccessToken() (string, error) {
+	return h.getAccessToken()
+}
+
 func (h HikarinagiInfoGetter) getAccessToken() (string, error) {
 	clientID := strings.TrimSpace(version.HikarinagiOAuthClientID)
 	clientSecret := strings.TrimSpace(version.HikarinagiOAuthClientSecret)

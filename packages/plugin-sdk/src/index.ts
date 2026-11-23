@@ -43,6 +43,8 @@ export declare const Tooltip: ComponentFactory;
 export declare const Table: ComponentFactory;
 export declare const Divider: ComponentFactory;
 export declare const Spacer: ComponentFactory;
+export declare const HeroBanner: ComponentFactory;
+export declare const NativeSlot: ComponentFactory;
 
 export declare function defineThemePreset(preset: ThemeTokens): ThemeTokens;
 export declare function createPagination<T>(

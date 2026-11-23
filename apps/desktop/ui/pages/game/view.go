@@ -23,6 +23,7 @@ import (
 	"lunabox/desktop/ui/env"
 	"lunabox/desktop/ui/locales"
 	"lunabox/desktop/ui/metasource"
+	"lunabox/desktop/ui/pluginui"
 	"lunabox/desktop/ui/tagname"
 	"lunabox/desktop/ui/theme"
 	"lunabox/desktop/ui/timefmt"
@@ -63,15 +64,42 @@ func (p *Page) View(c *ui.Context) {
 		gutter = t.Gutter()
 	}
 	contentW := p.env.MainWidth - 2*pagePadding - gutter
+	hidden := p.hiddenTabs()
+	if hidden[p.tab] {
+		p.tab = "stats"
+	}
+	asideSlots := p.pluginSlots(plugin.SlotGameDetailAside)
+	hasAside := p.plugins != nil && len(asideSlots) > 0
+
 	components.ScrollArea(c, t, "game-scroll", &p.scroll, func(w ui.Element) { w.Fill() }, func(sc ui.Element) {
 		sc.Padding(pagePadding, pagePadding+gutter, pagePadding, pagePadding)
 		sc.Children(func() {
 			// space-y-8 max-w-8xl mx-auto（max-w-8xl 在 UnoCSS 里没有定义，不限宽）
-			ui.Column(c).Width(contentW).Margin(0, ui.Auto).Gap(32).Children(func() {
-				p.backButton(c, t)
-				p.header(c, t, contentW)
-				p.tabBar(c, t)
-				p.tabContent(c, t)
+			ui.Column(c).Width(contentW).Margin(0, ui.Auto).Gap(28).Children(func() {
+				hasHero := p.renderHero(c, t, contentW)
+				if !hasHero {
+					p.backButton(c, t)
+					p.header(c, t, contentW)
+				}
+				if hasAside && contentW >= 920 {
+					ui.Row(c.Key("detail-body-split")).FillWidth().Gap(24).AlignItems(ui.Start).Children(func() {
+						ui.Column(c.Key("detail-main-col")).Grow(1).Basis(0).MinWidth(0).Gap(24).Children(func() {
+							p.tabBar(c, t, hidden)
+							p.tabContent(c, t, hasHero)
+						})
+						ui.Column(c.Key("detail-aside-col")).Width(316).Shrink(0).Gap(16).Children(func() {
+							p.asideColumn(c, t, asideSlots)
+						})
+					})
+				} else {
+					p.tabBar(c, t, hidden)
+					p.tabContent(c, t, hasHero)
+					if hasAside {
+						ui.Column(c.Key("detail-aside-stack")).FillWidth().Gap(16).Children(func() {
+							p.asideColumn(c, t, asideSlots)
+						})
+					}
+				}
 			})
 		})
 	})
@@ -124,10 +152,10 @@ func (p *Page) coverViewer(c *ui.Context, t *theme.Theme) {
 }
 
 // tabContent 是当前标签页：游戏统计在本包，其余在 ui/components/panel 的子包。
-func (p *Page) tabContent(c *ui.Context, t *theme.Theme) {
+func (p *Page) tabContent(c *ui.Context, t *theme.Theme, hasHero bool) {
 	switch p.tab {
 	case "stats":
-		p.statsView(c, t)
+		p.statsView(c, t, hasHero)
 	case "edit":
 		edit.View(c, t, &p.editPanel, p.panel())
 	case "launch":
@@ -143,10 +171,84 @@ func (p *Page) tabContent(c *ui.Context, t *theme.Theme) {
 			rest := strings.TrimPrefix(p.tab, "plugin:")
 			if pid, regID, ok := strings.Cut(rest, "/"); ok {
 				p.plugins.RenderSlot(c, t, plugin.SlotGameDetailTab, pid, regID, p.game.ID, map[string]any{
-					"gameId": p.game.ID,
-					"game":   p.game,
+					"gameId":   p.game.ID,
+					"game":     p.game,
+					"blurNsfw": blurNSFW(p.env),
 				})
 			}
+		}
+	}
+}
+
+func (p *Page) pluginSlots(slotName string) []plugin.SlotRegistration {
+	if p.env == nil || p.env.Svc == nil || p.env.Svc.Plugin == nil {
+		return nil
+	}
+	return p.env.Svc.Plugin.Slots(slotName)
+}
+
+func (p *Page) hiddenTabs() map[string]bool {
+	out := make(map[string]bool)
+	for _, slotName := range []string{
+		plugin.SlotGameDetailHero,
+		plugin.SlotGameDetailHeader,
+		plugin.SlotGameDetailTab,
+		plugin.SlotGameDetailAside,
+	} {
+		for _, s := range p.pluginSlots(slotName) {
+			for _, key := range s.HideTabs {
+				if k := strings.TrimSpace(key); k != "" {
+					out[k] = true
+				}
+			}
+		}
+	}
+	return out
+}
+
+func (p *Page) renderHero(c *ui.Context, t *theme.Theme, contentW float32) bool {
+	if p.plugins == nil || p.game == nil {
+		return false
+	}
+	heroSlots := p.pluginSlots(plugin.SlotGameDetailHero)
+	if len(heroSlots) == 0 {
+		return false
+	}
+	slot := heroSlots[0]
+	g := p.game
+	natives := pluginui.NativeSlots{
+		"back":    func(c *ui.Context, t *theme.Theme) { p.backButton(c, t) },
+		"cover":   func(c *ui.Context, t *theme.Theme) { p.coverSized(c, t, g, 152) },
+		"toolbar": func(c *ui.Context, t *theme.Theme) { p.toolbar(c, t, max(320, contentW-48)) },
+		"tags":    func(c *ui.Context, t *theme.Theme) { p.gameTags(c, t) },
+		"summary": func(c *ui.Context, t *theme.Theme) { p.summary(c, t) },
+	}
+	ready := p.plugins.RenderSlotWithNatives(c, t, plugin.SlotGameDetailHero, slot.PluginID, slot.ID, g.ID, map[string]any{
+		"gameId":   g.ID,
+		"game":     g,
+		"blurNsfw": blurNSFW(p.env),
+	}, natives)
+	return ready
+}
+
+func (p *Page) asideColumn(c *ui.Context, t *theme.Theme, slots []plugin.SlotRegistration) {
+	if p.plugins == nil || p.game == nil {
+		return
+	}
+	for _, slot := range slots {
+		s := slot
+		props := map[string]any{
+			"gameId":   p.game.ID,
+			"game":     p.game,
+			"blurNsfw": blurNSFW(p.env),
+		}
+		if s.Title != "" {
+			glassCard(t, ui.Column(c.Key("aside-"+s.PluginID+"-"+s.ID)).FillWidth().Padding(20).Gap(12).Radius(12)).Children(func() {
+				components.Text(c, s.Title, theme.TextBase, theme.WeightSemibold, t.TextStrong)
+				p.plugins.RenderSlot(c, t, plugin.SlotGameDetailAside, s.PluginID, s.ID, p.game.ID, props)
+			})
+		} else {
+			p.plugins.RenderSlot(c, t, plugin.SlotGameDetailAside, s.PluginID, s.ID, p.game.ID, props)
 		}
 	}
 }
@@ -273,14 +375,32 @@ func (p *Page) deleteTags(c *ui.Context, groups []components.TagGroup) {
 	})
 }
 
+func (p *Page) gameTags(c *ui.Context, t *theme.Theme) {
+	components.GameTags(c, t, components.GameTagsProps{
+		Groups:    p.tags,
+		Translate: tagname.ModeOf(p.env.Config()),
+		Editor:    &p.tagEditor,
+		OnClick:   func(g components.TagGroup) { p.links.FilterByTag(g.Name) },
+		OnDelete:  func(g components.TagGroup) { p.deleteTags(c, []components.TagGroup{g}) },
+		OnAdd:     func(name string) { p.addTag(c, name) },
+		Tooltip: func(anchor ui.Element, g components.TagGroup) {
+			better.Tooltip(c, t, anchor, tagSourcesText(g))
+		},
+	})
+}
+
 // cover 是 GameCoverImage（w-full h-auto rounded-lg），点击打开大图；没有封面时显示“没有封面”。
 func (p *Page) cover(c *ui.Context, t *theme.Theme, g *models.Game) {
+	p.coverSized(c, t, g, coverW)
+}
+
+func (p *Page) coverSized(c *ui.Context, t *theme.Theme, g *models.Game, wTarget float32) {
 	bmp := p.env.Covers.Get(g)
 	switch {
 	case bmp != nil:
 		w, h := bmp.Size()
 		// cursor-zoom-in：MyGo 没有放大镜光标，用手形。
-		btn := ui.ButtonBase(c.Key("cover")).Width(coverW).Height(coverW * float32(h) / float32(max(1, w))).
+		btn := ui.ButtonBase(c.Key("cover")).Width(wTarget).Height(wTarget * float32(h) / float32(max(1, w))).
 			Radius(8).Clip().FocusRing(false).Cursor(ui.CursorPointer).Label(locales.GameImageViewerOpen(g.Name))
 		btn.OnClick(func() { p.openViewer() }).Children(func() {
 			img := ui.Image(c, bmp).Fill().Fit(ui.Cover)
@@ -289,7 +409,7 @@ func (p *Page) cover(c *ui.Context, t *theme.Theme, g *models.Game) {
 			}
 		})
 	case p.env.Covers.Missing(g):
-		ui.Box(c).FillWidth().Grow(1).MinHeight(256).Center().Children(func() {
+		ui.Box(c).Width(wTarget).MinHeight(min(256, wTarget*1.35)).Center().Children(func() {
 			components.Text(c, locales.GameNoCover(), theme.TextBase, theme.WeightNormal, theme.Brand400)
 		})
 	}
@@ -620,52 +740,77 @@ func (p *Page) summary(c *ui.Context, t *theme.Theme) {
 }
 
 // tabBar：border-b 下的 nav（-mb-px space-x-8），按钮 py-4 px-1 border-b-2 text-sm font-medium。
-func (p *Page) tabBar(c *ui.Context, t *theme.Theme) {
-	bar := ui.Row(c.Key("tabs")).Gap(32)
+func (p *Page) tabBar(c *ui.Context, t *theme.Theme, hidden map[string]bool) {
+	bar := ui.Row(c.Key("tabs")).Wrap().GapX(28).GapY(0)
 	hl, line := t.HL, t.Divider
 	// 底边框画在标签下面，选中标签的 2px 下划线盖住它（-mb-px）。
 	bar.Draw(func(pt *ui.Painter, r ui.Rect) {
 		pt.Fill(ui.Rect{X: r.X, Y: r.Y + r.H - hl, W: r.W, H: hl}, line, 0)
 	})
-	bar.Children(func() {
-		for _, tab := range tabs {
-			label := tab.label()
-			btn := ui.ButtonBase(c.Key(tab.key)).Column().Padding(16, 0, 0, 0).FocusRing(false).Label(label)
-			active := tab.key == p.tab
-			color, border := t.Pick(theme.Brand700, theme.Brand400), ui.Transparent
-			switch {
-			case active:
-				color, border = t.Pick(theme.Brand700, theme.Neutral400), theme.Neutral500
-			case btn.Hovered():
-				color, border = t.Pick(theme.Brand750, theme.Brand300), theme.Brand300
-			}
-			btn.OnClick(func() { p.tab = tab.key }).Children(func() {
-				components.TextMargin(c, label, theme.TextSM, theme.WeightMedium, color, 0, 4, 16, 4).NoWrap()
-				ui.Box(c).Height(2).FillWidth().Background(border)
-			})
+	renderTabBtn := func(tabKey, label string) {
+		btn := ui.ButtonBase(c.Key(tabKey)).Column().Padding(14, 0, 0, 0).FocusRing(false).Label(label)
+		active := tabKey == p.tab
+		color, border := t.Pick(theme.Brand700, theme.Brand400), ui.Transparent
+		switch {
+		case active:
+			color, border = t.Pick(theme.Brand700, theme.Neutral400), theme.Neutral500
+		case btn.Hovered():
+			color, border = t.Pick(theme.Brand750, theme.Brand300), theme.Brand300
 		}
-		if p.env != nil && p.env.Svc != nil && p.env.Svc.Plugin != nil {
-			for _, slot := range p.env.Svc.Plugin.Slots(plugin.SlotGameDetailTab) {
-				s := slot
+		btn.OnClick(func() { p.tab = tabKey }).Children(func() {
+			components.TextMargin(c, label, theme.TextSM, theme.WeightMedium, color, 0, 4, 14, 4).NoWrap()
+			ui.Box(c).Height(2).FillWidth().Background(border)
+		})
+	}
+
+	var earlyPluginTabs, latePluginTabs []plugin.SlotRegistration
+	for _, s := range p.pluginSlots(plugin.SlotGameDetailTab) {
+		if s.Order > 0 {
+			earlyPluginTabs = append(earlyPluginTabs, s)
+		} else {
+			latePluginTabs = append(latePluginTabs, s)
+		}
+	}
+	slices.SortStableFunc(earlyPluginTabs, func(a, b plugin.SlotRegistration) int {
+		return a.Order - b.Order
+	})
+
+	bar.Children(func() {
+		insertedEarly := false
+		for _, tab := range tabs {
+			if hidden[tab.key] {
+				continue
+			}
+			renderTabBtn(tab.key, tab.label())
+			if !insertedEarly {
+				insertedEarly = true
+				for _, s := range earlyPluginTabs {
+					tabKey := "plugin:" + s.PluginID + "/" + s.ID
+					label := s.Title
+					if label == "" {
+						label = s.ID
+					}
+					renderTabBtn(tabKey, label)
+				}
+			}
+		}
+		if !insertedEarly {
+			for _, s := range earlyPluginTabs {
 				tabKey := "plugin:" + s.PluginID + "/" + s.ID
 				label := s.Title
 				if label == "" {
 					label = s.ID
 				}
-				btn := ui.ButtonBase(c.Key(tabKey)).Column().Padding(16, 0, 0, 0).FocusRing(false).Label(label)
-				active := tabKey == p.tab
-				color, border := t.Pick(theme.Brand700, theme.Brand400), ui.Transparent
-				switch {
-				case active:
-					color, border = t.Pick(theme.Brand700, theme.Neutral400), theme.Neutral500
-				case btn.Hovered():
-					color, border = t.Pick(theme.Brand750, theme.Brand300), theme.Brand300
-				}
-				btn.OnClick(func() { p.tab = tabKey }).Children(func() {
-					components.TextMargin(c, label, theme.TextSM, theme.WeightMedium, color, 0, 4, 16, 4).NoWrap()
-					ui.Box(c).Height(2).FillWidth().Background(border)
-				})
+				renderTabBtn(tabKey, label)
 			}
+		}
+		for _, s := range latePluginTabs {
+			tabKey := "plugin:" + s.PluginID + "/" + s.ID
+			label := s.Title
+			if label == "" {
+				label = s.ID
+			}
+			renderTabBtn(tabKey, label)
 		}
 	})
 }

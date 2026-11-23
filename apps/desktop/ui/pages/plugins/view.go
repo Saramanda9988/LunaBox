@@ -41,7 +41,8 @@ func (p *Page) View(c *ui.Context) {
 				p.header(c, t)
 
 				bodyW := min(listMaxW, contentW)
-				ui.Column(c.Key("body")).Width(bodyW).Margin(0, ui.Auto).Gap(24).Children(func() {
+				ui.Column(c.Key("body")).Width(bodyW).Margin(0, ui.Auto).Gap(16).Children(func() {
+					p.toolbar(c, t)
 					if len(list) == 0 {
 						p.emptyState(c, t, bodyW)
 					} else {
@@ -61,14 +62,18 @@ func (p *Page) View(c *ui.Context) {
 }
 
 func (p *Page) header(c *ui.Context, t *theme.Theme) {
-	ui.Row(c.Key("header")).FillWidth().AlignItems(ui.Center).Justify(ui.SpaceBetween).Wrap().GapX(16).GapY(12).Children(func() {
+	ui.Row(c.Key("header")).FillWidth().AlignItems(ui.Center).Children(func() {
 		components.Text(c, locales.NativeSideBarPlugins(), theme.Text4XL, theme.WeightBold, t.TextStrong)
+	})
+}
 
-		if p.env == nil || p.env.Svc == nil || p.env.Svc.Plugin == nil {
-			return
-		}
-		svc := p.env.Svc.Plugin
-		ui.Row(c.Key("toolbar")).Wrap().GapX(8).GapY(8).AlignItems(ui.Center).Children(func() {
+func (p *Page) toolbar(c *ui.Context, t *theme.Theme) {
+	if p.env == nil || p.env.Svc == nil || p.env.Svc.Plugin == nil {
+		return
+	}
+	svc := p.env.Svc.Plugin
+	ui.Row(c.Key("toolbar")).FillWidth().AlignItems(ui.Center).Justify(ui.SpaceBetween).Wrap().GapX(12).GapY(8).Children(func() {
+		ui.Row(c.Key("toolbar-actions")).Wrap().GapX(8).GapY(8).AlignItems(ui.Center).Children(func() {
 			better.Button(c, t, "install-zip", better.ButtonProps{
 				Label:    locales.NativePluginsInstallZip(),
 				Icon:     "package-variant",
@@ -122,22 +127,22 @@ func (p *Page) header(c *ui.Context, t *theme.Theme) {
 					})
 				},
 			})
-			better.Button(c, t, "open-dir", better.ButtonProps{
-				Label:   locales.NativePluginsOpenDir(),
-				Icon:    "folder-open-outline",
-				Variant: better.ButtonGhost,
-				Size:    better.ButtonSM,
-				OnClick: func() {
-					p.env.Async(func() func() {
-						err := svc.OpenPluginDir("")
-						return func() {
-							if err != nil {
-								p.env.Toast(c, env.Error(locales.NativePluginsActionFailed(err.Error())))
-							}
+		})
+		better.Button(c, t, "open-dir", better.ButtonProps{
+			Label:   locales.NativePluginsOpenDir(),
+			Icon:    "folder-open-outline",
+			Variant: better.ButtonGhost,
+			Size:    better.ButtonSM,
+			OnClick: func() {
+				p.env.Async(func() func() {
+					err := svc.OpenPluginDir("")
+					return func() {
+						if err != nil {
+							p.env.Toast(c, env.Error(locales.NativePluginsActionFailed(err.Error())))
 						}
-					})
-				},
-			})
+					}
+				})
+			},
 		})
 	})
 }

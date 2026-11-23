@@ -83,6 +83,7 @@ type Plugin struct {
 	nodeAPI *node.API
 
 	storage   *pluginStorage
+	db        *pluginDB
 	i18n      *pluginI18n
 	configMgr *pluginConfig
 
@@ -162,6 +163,7 @@ func startPluginRuntime(m *Manager, manifest Manifest, dir, dataDir string, isDe
 		return nil, fmt.Errorf("创建插件数据目录失败: %w", err)
 	}
 	p.storage = newPluginStorage(p)
+	p.db = newPluginDB(p)
 	p.i18n = newPluginI18n(p)
 	p.configMgr = newPluginConfig(p)
 
@@ -739,6 +741,7 @@ func (p *Plugin) buildContextObject(rt *moejs.Runtime) (moejs.Value, error) {
 		"logger":     p.buildLoggerAPI(),
 		"i18n":       p.buildI18nAPI(),
 		"storage":    p.buildStorageAPI(),
+		"db":         p.buildDBAPI(),
 		"config":     p.buildConfigAPI(),
 		"games":      p.buildGamesAPI(),
 		"categories": p.buildCategoriesAPI(),

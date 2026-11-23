@@ -9,7 +9,6 @@ import (
 	"lunabox/backend/common/enums"
 	"lunabox/backend/common/vo"
 	"lunabox/backend/models"
-	"lunabox/backend/plugin"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/components/better"
 	"lunabox/desktop/ui/components/chart"
@@ -91,7 +90,8 @@ func (s *statsPanel) load(e *env.Env, id string) {
 }
 
 // statsView 对应 GameStatsPanel：三张统计卡片，下面是图表/游玩记录与时间维度、视图切换。
-func (p *Page) statsView(c *ui.Context, t *theme.Theme) {
+// 当页头被插件 Hero 接管（showOverview == true）时，在顶部保留原生简介与可编辑标签卡片。
+func (p *Page) statsView(c *ui.Context, t *theme.Theme, showOverview bool) {
 	s := &p.stats
 	if s.failed != nil {
 		p.env.Toast(c, env.Error(s.failed()))
@@ -101,8 +101,14 @@ func (p *Page) statsView(c *ui.Context, t *theme.Theme) {
 	bodyH := min(544, max(320, winH*0.42)) // h-[clamp(20rem,42vh,34rem)]
 	period := periodLabel(s.period)
 
-	ui.Column(c.Key("stats-panel")).Gap(32).Children(func() {
-		ui.Grid(c).Columns(3).GapX(24).GapY(24).Children(func() {
+	ui.Column(c.Key("stats-panel")).Gap(24).Children(func() {
+		if showOverview && p.game != nil {
+			glassCard(t, ui.Column(c.Key("hero-overview-card")).FillWidth().Padding(20).Gap(16).Radius(12)).Children(func() {
+				p.summary(c, t)
+				p.gameTags(c, t)
+			})
+		}
+		ui.Grid(c).Columns(3).GapX(20).GapY(20).Children(func() {
 			count, today, total := "-", "-", "-"
 			switch {
 			case s.stats != nil:
@@ -135,21 +141,6 @@ func (p *Page) statsView(c *ui.Context, t *theme.Theme) {
 			ui.Box(c).Height(t.HL).Background(t.Divider)
 			p.statsFooter(c, t)
 		})
-
-		if p.plugins != nil && p.env != nil && p.env.Svc != nil && p.env.Svc.Plugin != nil && p.game != nil {
-			for _, slot := range p.env.Svc.Plugin.Slots(plugin.SlotGameDetailAside) {
-				s := slot
-				glassCard(t, ui.Column(c.Key("aside-"+s.PluginID+"-"+s.ID)).FillWidth().Padding(20).Gap(12).Radius(8)).Children(func() {
-					if s.Title != "" {
-						components.Text(c, s.Title, theme.TextBase, theme.WeightSemibold, t.TextStrong)
-					}
-					p.plugins.RenderSlot(c, t, plugin.SlotGameDetailAside, s.PluginID, s.ID, p.game.ID, map[string]any{
-						"gameId": p.game.ID,
-						"game":   p.game,
-					})
-				})
-			}
-		}
 	})
 }
 

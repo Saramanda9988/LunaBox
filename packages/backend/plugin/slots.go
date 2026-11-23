@@ -14,6 +14,7 @@ const (
 	SlotLibraryAddMenu   = "library.add_menu"
 	SlotLibraryToolbar   = "library.toolbar"
 	SlotGameDetailTab    = "game.detail.tab"
+	SlotGameDetailHero   = "game.detail.hero"
 	SlotGameDetailHeader = "game.detail.header"
 	SlotGameDetailAside  = "game.detail.aside"
 	SlotGameActions      = "game.actions"
@@ -32,9 +33,11 @@ type SlotRegistration struct {
 	Icon         string `json:"icon,omitempty"`
 	Group        string `json:"group,omitempty"`         // sidebar.page: "main" | "bottom"
 	Badge        string `json:"badge,omitempty"`
-	Mode         string `json:"mode,omitempty"`          // library.toolbar: "normal" | "batch" | "both"
-	DefaultWidth int    `json:"default_width,omitempty"` // workspace.drawer
-	HasRender    bool   `json:"has_render"`
+	Mode         string   `json:"mode,omitempty"`          // library.toolbar: "normal" | "batch" | "both"
+	DefaultWidth int      `json:"default_width,omitempty"` // workspace.drawer
+	Order        int      `json:"order,omitempty"`         // game.detail.tab 排序权重（>0 时靠前）
+	HideTabs     []string `json:"hide_tabs,omitempty"`     // game.detail.* 隐藏的内置标签页 key（如 "progress"）
+	HasRender    bool     `json:"has_render"`
 	HasOnPress   bool   `json:"has_on_press"`
 	HasRun       bool   `json:"has_run"`
 	HasWhen      bool   `json:"has_when"`

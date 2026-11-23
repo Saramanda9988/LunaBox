@@ -72,6 +72,8 @@ var AllowedComponentTypes = map[string]struct{}{
 	"Table":       {},
 	"Divider":     {},
 	"Spacer":      {},
+	"HeroBanner":  {},
+	"NativeSlot":  {},
 }
 
 // DecodeAndValidateUITree 在插件线程解码并校验描述树（不阻塞界面线程）。

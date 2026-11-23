@@ -195,3 +195,78 @@ func TestPluginDetailShowsSettingsAndSourceInfo(t *testing.T) {
 		t.Fatalf("expected author in plugin detail page")
 	}
 }
+
+func TestPluginsToolbarPlacedBelowTitleAlignedWithBody(t *testing.T) {
+	stub := &stubPluginService{
+		list: []plugin.PluginInfo{
+			{
+				ID:          "pomodoro-overlay",
+				Name:        "番茄钟悬浮窗",
+				Description: "实时显示游戏游玩时长",
+				Version:     "1.0.0",
+				Enabled:     true,
+				Status:      plugin.StatusActive,
+			},
+		},
+	}
+	const mainW = 1400
+	e := &env.Env{
+		Theme:     theme.New(false, 1),
+		MainWidth: mainW,
+		Router:    ui.NewRouter(env.PathPlugins),
+		Svc:       &api.Services{Plugin: stub},
+	}
+	page := New(e)
+	page.Open()
+
+	tt := ui.NewTester(func(c *ui.Context) {
+		page.View(c)
+	}, mainW, 720)
+	tt.Frame()
+
+	titleRect, ok := tt.Find(locales.NativeSideBarPlugins())
+	if !ok {
+		t.Fatalf("expected title %q", locales.NativeSideBarPlugins())
+	}
+	installRect, ok := tt.Find(locales.NativePluginsInstallZip())
+	if !ok {
+		t.Fatalf("expected install button %q", locales.NativePluginsInstallZip())
+	}
+	addDevRect, ok := tt.Find(locales.NativePluginsAddDevDir())
+	if !ok {
+		t.Fatalf("expected add-dev button %q", locales.NativePluginsAddDevDir())
+	}
+	openDirRect, ok := tt.Find(locales.NativePluginsOpenDir())
+	if !ok {
+		t.Fatalf("expected open-dir button %q", locales.NativePluginsOpenDir())
+	}
+	cardRect, ok := tt.Find("番茄钟悬浮窗")
+	if !ok {
+		t.Fatalf("expected plugin row in list")
+	}
+
+	// Toolbar buttons sit below the page title and above the plugin list.
+	for name, r := range map[string]ui.Rect{
+		"install": installRect,
+		"add-dev": addDevRect,
+		"open":    openDirRect,
+	} {
+		if r.Y < titleRect.Y+titleRect.H {
+			t.Fatalf("%s button (y=%.1f) should be below title (bottom=%.1f)", name, r.Y, titleRect.Y+titleRect.H)
+		}
+		if r.Y+r.H > cardRect.Y {
+			t.Fatalf("%s button (bottom=%.1f) should be above plugin list (y=%.1f)", name, r.Y+r.H, cardRect.Y)
+		}
+	}
+
+	// On wide viewports where body is centered (listMaxW < contentW), toolbar aligns with body rather than full page edges.
+	contentW := mainW - 2*pagePadding - e.Theme.Gutter()
+	bodyLeft := pagePadding + (contentW-listMaxW)/2
+	bodyRight := bodyLeft + listMaxW
+	if installRect.X < bodyLeft-1 {
+		t.Fatalf("install button (x=%.1f) should align inside centered body left (%.1f)", installRect.X, bodyLeft)
+	}
+	if openDirRect.X+openDirRect.W > bodyRight+1 {
+		t.Fatalf("open-dir button (right=%.1f) should align inside centered body right (%.1f)", openDirRect.X+openDirRect.W, bodyRight)
+	}
+}

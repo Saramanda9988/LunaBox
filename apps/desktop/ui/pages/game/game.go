@@ -216,6 +216,7 @@ func (p *Page) Leave() {
 	edit.Flush(&p.editPanel, p.panel())
 	if p.plugins != nil {
 		p.plugins.UnmountBySlot(plugin.SlotGameDetailTab)
+		p.plugins.UnmountBySlot(plugin.SlotGameDetailHero)
 		p.plugins.UnmountBySlot(plugin.SlotGameDetailHeader)
 		p.plugins.UnmountBySlot(plugin.SlotGameDetailAside)
 	}

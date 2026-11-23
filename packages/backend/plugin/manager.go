@@ -31,6 +31,7 @@ type Dependencies struct {
 	Download      *service.DownloadService
 	Import        *service.ImportService
 	AI            *service.AiService
+	Hikarinagi    *service.HikarinagiService
 	Runtime       appruntime.Runtime
 	// DataDir 为空时默认使用 apputils.GetDataDir()。
 	DataDir string

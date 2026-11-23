@@ -311,5 +311,24 @@ func (p *Plugin) buildMetadataAPI() map[string]any {
 				ID:     sourceID,
 			})
 		}),
+		"getAuthToken": p.asyncNative("metadata.getAuthToken", func(ctx context.Context, args []json.RawMessage) (any, error) {
+			var source string
+			if len(args) > 0 {
+				_ = json.Unmarshal(args[0], &source)
+			}
+			switch strings.ToLower(strings.TrimSpace(source)) {
+			case "hikarinagi":
+				if p.manager.deps.Hikarinagi == nil {
+					return "", nil
+				}
+				token, err := p.manager.deps.Hikarinagi.GetCatalogAccessToken(ctx)
+				if err != nil {
+					return "", nil
+				}
+				return token, nil
+			default:
+				return "", nil
+			}
+		}),
 	}
 }

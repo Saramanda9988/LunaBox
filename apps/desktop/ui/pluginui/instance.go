@@ -85,6 +85,7 @@ type Manager struct {
 	imgCache   map[string]*ui.Bitmap
 	svgCache   map[string]*ui.SVG
 	imgLoading map[string]bool
+	imgFailed  map[string]time.Time
 
 	// 开发模式判断（决定未知组件与错误边界是否展示详细错误信息）
 	DevMode bool
@@ -100,6 +101,7 @@ func New(e *env.Env, cb HostCallbacks) *Manager {
 		imgCache:   make(map[string]*ui.Bitmap),
 		svgCache:   make(map[string]*ui.SVG),
 		imgLoading: make(map[string]bool),
+		imgFailed:  make(map[string]time.Time),
 		DevMode:    mygo.IsDev(),
 	}
 }
@@ -322,19 +324,24 @@ func (m *Manager) pluginName(pluginID string) string {
 	return pluginID
 }
 
-// LoadImageSource 异步加载本地图标/图片（支持 SVG、PNG、JPEG、GIF、WebP）并缓存为 ui.ImageSource，绝不阻塞界面线程。
+// LoadImageSource 异步加载本地或远程图标/图片（支持 SVG、PNG、JPEG、GIF、WebP）并缓存为 ui.ImageSource，绝不阻塞界面线程。
 func (m *Manager) LoadImageSource(src string) ui.ImageSource {
 	src = strings.TrimSpace(src)
 	if src == "" {
 		return nil
 	}
-	if strings.HasSuffix(strings.ToLower(src), ".svg") {
+	lowerNoQuery := strings.ToLower(strings.SplitN(src, "?", 2)[0])
+	if strings.HasSuffix(lowerNoQuery, ".svg") {
 		m.imgMu.RLock()
 		if svg, ok := m.svgCache[src]; ok {
 			m.imgMu.RUnlock()
 			return svg
 		}
 		if m.imgLoading[src] {
+			m.imgMu.RUnlock()
+			return nil
+		}
+		if failedAt, ok := m.imgFailed[src]; ok && time.Since(failedAt) < 30*time.Second {
 			m.imgMu.RUnlock()
 			return nil
 		}
@@ -349,7 +356,13 @@ func (m *Manager) LoadImageSource(src string) ui.ImageSource {
 		m.imgMu.Unlock()
 
 		go func() {
-			data, err := os.ReadFile(src)
+			var data []byte
+			var err error
+			if strings.HasPrefix(src, "http://") || strings.HasPrefix(src, "https://") {
+				data, err = m.fetchRemoteBytes(src)
+			} else {
+				data, err = os.ReadFile(src)
+			}
 			var svg *ui.SVG
 			if err == nil && len(data) > 0 {
 				if parsed, perr := ui.ParseSVG(data); perr == nil {
@@ -360,6 +373,9 @@ func (m *Manager) LoadImageSource(src string) ui.ImageSource {
 			delete(m.imgLoading, src)
 			if svg != nil {
 				m.svgCache[src] = svg
+				delete(m.imgFailed, src)
+			} else {
+				m.imgFailed[src] = time.Now()
 			}
 			m.imgMu.Unlock()
 			if svg != nil && m.env != nil && m.env.Win != nil {
@@ -369,6 +385,44 @@ func (m *Manager) LoadImageSource(src string) ui.ImageSource {
 		return nil
 	}
 	return m.loadBitmap(src)
+}
+
+func (m *Manager) fetchRemoteBytes(src string) ([]byte, error) {
+	client, _, cerr := httputils.NewClient(httputils.ClientOptions{
+		Timeout:     15 * time.Second,
+		ProxyConfig: m.env.Config(),
+	})
+	if cerr != nil || client == nil {
+		client = &http.Client{Timeout: 15 * time.Second}
+	}
+	req, err := http.NewRequest(http.MethodGet, src, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", version.UserAgent())
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, os.ErrNotExist
+	}
+	var buf []byte
+	tmp := make([]byte, 32*1024)
+	for {
+		n, rerr := resp.Body.Read(tmp)
+		if n > 0 {
+			buf = append(buf, tmp[:n]...)
+			if len(buf) > 16<<20 {
+				return nil, os.ErrInvalid
+			}
+		}
+		if rerr != nil {
+			break
+		}
+	}
+	return buf, nil
 }
 
 // loadBitmap 异步加载本地路径或 http(s) URL 图片并缓存为 *ui.Bitmap，绝不阻塞界面线程。
@@ -383,6 +437,10 @@ func (m *Manager) loadBitmap(src string) *ui.Bitmap {
 		return bmp
 	}
 	if m.imgLoading[src] {
+		m.imgMu.RUnlock()
+		return nil
+	}
+	if failedAt, ok := m.imgFailed[src]; ok && time.Since(failedAt) < 30*time.Second {
 		m.imgMu.RUnlock()
 		return nil
 	}
@@ -412,7 +470,11 @@ func (m *Manager) loadBitmap(src string) *ui.Bitmap {
 				req.Header.Set("User-Agent", version.UserAgent())
 				resp, derr := client.Do(req)
 				if derr == nil {
-					img, _, err = image.Decode(resp.Body)
+					if resp.StatusCode == http.StatusOK {
+						img, _, err = image.Decode(resp.Body)
+					} else {
+						err = os.ErrNotExist
+					}
 					resp.Body.Close()
 				} else {
 					err = derr
@@ -432,12 +494,15 @@ func (m *Manager) loadBitmap(src string) *ui.Bitmap {
 
 		var bmp *ui.Bitmap
 		if err == nil && img != nil {
-			bmp = ui.NewBitmap(assets.Downscale(img, 1024))
+			bmp = ui.NewBitmap(assets.Downscale(img, 1600))
 		}
 		m.imgMu.Lock()
 		delete(m.imgLoading, src)
 		if bmp != nil {
 			m.imgCache[src] = bmp
+			delete(m.imgFailed, src)
+		} else {
+			m.imgFailed[src] = time.Now()
 		}
 		m.imgMu.Unlock()
 
