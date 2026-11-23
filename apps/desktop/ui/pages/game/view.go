@@ -63,45 +63,69 @@ func (p *Page) View(c *ui.Context) {
 	if p.scroll.Overflowing() {
 		gutter = t.Gutter()
 	}
-	contentW := p.env.MainWidth - 2*pagePadding - gutter
+	fullW := p.env.MainWidth - gutter
+	contentW := fullW - 2*pagePadding
 	hidden := p.hiddenTabs()
-	if hidden[p.tab] {
-		p.tab = "stats"
+	if hidden[p.tab] || (strings.HasPrefix(p.tab, "plugin:") && !p.hasPluginTab(p.tab)) {
+		p.tab = p.defaultTab()
 	}
+	heroSlots := p.pluginSlots(plugin.SlotGameDetailHero)
+	hasHeroSlot := p.plugins != nil && len(heroSlots) > 0
 	asideSlots := p.pluginSlots(plugin.SlotGameDetailAside)
 	hasAside := p.plugins != nil && len(asideSlots) > 0
 
-	components.ScrollArea(c, t, "game-scroll", &p.scroll, func(w ui.Element) { w.Fill() }, func(sc ui.Element) {
-		sc.Padding(pagePadding, pagePadding+gutter, pagePadding, pagePadding)
-		sc.Children(func() {
-			// space-y-8 max-w-8xl mx-auto（max-w-8xl 在 UnoCSS 里没有定义，不限宽）
-			ui.Column(c).Width(contentW).Margin(0, ui.Auto).Gap(28).Children(func() {
-				hasHero := p.renderHero(c, t, contentW)
-				if !hasHero {
-					p.backButton(c, t)
-					p.header(c, t, contentW)
-				}
-				if hasAside && contentW >= 920 {
-					ui.Row(c.Key("detail-body-split")).FillWidth().Gap(24).AlignItems(ui.Start).Children(func() {
-						ui.Column(c.Key("detail-main-col")).Grow(1).Basis(0).MinWidth(0).Gap(24).Children(func() {
-							p.tabBar(c, t, hidden)
-							p.tabContent(c, t, hasHero)
-						})
-						ui.Column(c.Key("detail-aside-col")).Width(316).Shrink(0).Gap(16).Children(func() {
-							p.asideColumn(c, t, asideSlots)
-						})
-					})
-				} else {
+	renderBody := func() {
+		if hasAside && contentW >= 920 {
+			ui.Row(c.Key("detail-body-split")).FillWidth().Gap(32).AlignItems(ui.Start).Children(func() {
+				ui.Column(c.Key("detail-main-col")).Grow(1).Basis(0).MinWidth(0).Gap(24).Children(func() {
 					p.tabBar(c, t, hidden)
-					p.tabContent(c, t, hasHero)
-					if hasAside {
-						ui.Column(c.Key("detail-aside-stack")).FillWidth().Gap(16).Children(func() {
-							p.asideColumn(c, t, asideSlots)
+					p.tabContent(c, t, contentW)
+				})
+				ui.Column(c.Key("detail-aside-col")).Width(308).Shrink(0).Gap(16).
+					BorderWidth(0, 0, 0, t.HL).BorderColor(t.Divider.Alpha(0.45)).
+					Padding(4, 0, 0, 24).Children(func() {
+					p.asideColumn(c, t, asideSlots, contentW)
+				})
+			})
+		} else {
+			p.tabBar(c, t, hidden)
+			p.tabContent(c, t, contentW)
+			if hasAside {
+				ui.Column(c.Key("detail-aside-stack")).FillWidth().Gap(16).
+					BorderWidth(t.HL, 0, 0, 0).BorderColor(t.Divider.Alpha(0.45)).
+					Padding(20, 0, 0, 0).Children(func() {
+					p.asideColumn(c, t, asideSlots, contentW)
+				})
+			}
+		}
+	}
+
+	components.ScrollArea(c, t, "game-scroll", &p.scroll, func(w ui.Element) { w.Fill() }, func(sc ui.Element) {
+		if hasHeroSlot {
+			// 全出血 Hero 布局：顶部与左右紧贴边缘，底部渐变融入页面，正文区再加水平内边距对齐
+			sc.Padding(0, gutter, pagePadding, 0)
+			sc.Children(func() {
+				ui.Column(c).Width(fullW).Gap(0).Children(func() {
+					hasHero := p.renderHero(c, t, contentW)
+					if !hasHero {
+						ui.Column(c).FillWidth().Padding(pagePadding, pagePadding, 24, pagePadding).Gap(24).Children(func() {
+							p.backButton(c, t)
+							p.header(c, t, contentW)
 						})
 					}
-				}
+					ui.Column(c.Key("detail-body-wrap")).FillWidth().Padding(8, pagePadding, 0, pagePadding).Gap(24).Children(renderBody)
+				})
 			})
-		})
+		} else {
+			sc.Padding(pagePadding, pagePadding+gutter, pagePadding, pagePadding)
+			sc.Children(func() {
+				ui.Column(c).Width(contentW).Margin(0, ui.Auto).Gap(28).Children(func() {
+					p.backButton(c, t)
+					p.header(c, t, contentW)
+					renderBody()
+				})
+			})
+		}
 	})
 	p.launcher.Modals(c, t, p.panel())
 	p.coverViewer(c, t)
@@ -152,10 +176,10 @@ func (p *Page) coverViewer(c *ui.Context, t *theme.Theme) {
 }
 
 // tabContent 是当前标签页：游戏统计在本包，其余在 ui/components/panel 的子包。
-func (p *Page) tabContent(c *ui.Context, t *theme.Theme, hasHero bool) {
+func (p *Page) tabContent(c *ui.Context, t *theme.Theme, contentW float32) {
 	switch p.tab {
 	case "stats":
-		p.statsView(c, t, hasHero)
+		p.statsView(c, t)
 	case "edit":
 		edit.View(c, t, &p.editPanel, p.panel())
 	case "launch":
@@ -170,11 +194,11 @@ func (p *Page) tabContent(c *ui.Context, t *theme.Theme, hasHero bool) {
 		if strings.HasPrefix(p.tab, "plugin:") && p.plugins != nil && p.game != nil {
 			rest := strings.TrimPrefix(p.tab, "plugin:")
 			if pid, regID, ok := strings.Cut(rest, "/"); ok {
-				p.plugins.RenderSlot(c, t, plugin.SlotGameDetailTab, pid, regID, p.game.ID, map[string]any{
+				p.plugins.RenderSlotWithNatives(c, t, plugin.SlotGameDetailTab, pid, regID, p.game.ID, map[string]any{
 					"gameId":   p.game.ID,
 					"game":     p.game,
 					"blurNsfw": blurNSFW(p.env),
-				})
+				}, p.detailNatives(contentW))
 			}
 		}
 	}
@@ -185,6 +209,36 @@ func (p *Page) pluginSlots(slotName string) []plugin.SlotRegistration {
 		return nil
 	}
 	return p.env.Svc.Plugin.Slots(slotName)
+}
+
+func (p *Page) defaultTab() string {
+	var best *plugin.SlotRegistration
+	for _, s := range p.pluginSlots(plugin.SlotGameDetailTab) {
+		if s.Order < 0 {
+			if best == nil || s.Order < best.Order {
+				cp := s
+				best = &cp
+			}
+		}
+	}
+	if best != nil {
+		return "plugin:" + best.PluginID + "/" + best.ID
+	}
+	return "stats"
+}
+
+func (p *Page) hasPluginTab(tabKey string) bool {
+	rest := strings.TrimPrefix(tabKey, "plugin:")
+	pid, regID, ok := strings.Cut(rest, "/")
+	if !ok {
+		return false
+	}
+	for _, s := range p.pluginSlots(plugin.SlotGameDetailTab) {
+		if s.PluginID == pid && s.ID == regID {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *Page) hiddenTabs() map[string]bool {
@@ -206,6 +260,20 @@ func (p *Page) hiddenTabs() map[string]bool {
 	return out
 }
 
+func (p *Page) detailNatives(contentW float32) pluginui.NativeSlots {
+	g := p.game
+	if g == nil {
+		return nil
+	}
+	return pluginui.NativeSlots{
+		"back":    func(c *ui.Context, t *theme.Theme) { p.backButton(c, t) },
+		"cover":   func(c *ui.Context, t *theme.Theme) { p.coverSized(c, t, g, 196) },
+		"toolbar": func(c *ui.Context, t *theme.Theme) { p.toolbar(c, t, max(360, contentW-236)) },
+		"tags":    func(c *ui.Context, t *theme.Theme) { p.gameTags(c, t) },
+		"summary": func(c *ui.Context, t *theme.Theme) { p.summary(c, t) },
+	}
+}
+
 func (p *Page) renderHero(c *ui.Context, t *theme.Theme, contentW float32) bool {
 	if p.plugins == nil || p.game == nil {
 		return false
@@ -216,25 +284,19 @@ func (p *Page) renderHero(c *ui.Context, t *theme.Theme, contentW float32) bool 
 	}
 	slot := heroSlots[0]
 	g := p.game
-	natives := pluginui.NativeSlots{
-		"back":    func(c *ui.Context, t *theme.Theme) { p.backButton(c, t) },
-		"cover":   func(c *ui.Context, t *theme.Theme) { p.coverSized(c, t, g, 152) },
-		"toolbar": func(c *ui.Context, t *theme.Theme) { p.toolbar(c, t, max(320, contentW-48)) },
-		"tags":    func(c *ui.Context, t *theme.Theme) { p.gameTags(c, t) },
-		"summary": func(c *ui.Context, t *theme.Theme) { p.summary(c, t) },
-	}
 	ready := p.plugins.RenderSlotWithNatives(c, t, plugin.SlotGameDetailHero, slot.PluginID, slot.ID, g.ID, map[string]any{
 		"gameId":   g.ID,
 		"game":     g,
 		"blurNsfw": blurNSFW(p.env),
-	}, natives)
+	}, p.detailNatives(contentW))
 	return ready
 }
 
-func (p *Page) asideColumn(c *ui.Context, t *theme.Theme, slots []plugin.SlotRegistration) {
+func (p *Page) asideColumn(c *ui.Context, t *theme.Theme, slots []plugin.SlotRegistration, contentW float32) {
 	if p.plugins == nil || p.game == nil {
 		return
 	}
+	natives := p.detailNatives(contentW)
 	for _, slot := range slots {
 		s := slot
 		props := map[string]any{
@@ -243,12 +305,12 @@ func (p *Page) asideColumn(c *ui.Context, t *theme.Theme, slots []plugin.SlotReg
 			"blurNsfw": blurNSFW(p.env),
 		}
 		if s.Title != "" {
-			glassCard(t, ui.Column(c.Key("aside-"+s.PluginID+"-"+s.ID)).FillWidth().Padding(20).Gap(12).Radius(12)).Children(func() {
+			ui.Column(c.Key("aside-"+s.PluginID+"-"+s.ID)).FillWidth().Gap(12).Children(func() {
 				components.Text(c, s.Title, theme.TextBase, theme.WeightSemibold, t.TextStrong)
-				p.plugins.RenderSlot(c, t, plugin.SlotGameDetailAside, s.PluginID, s.ID, p.game.ID, props)
+				p.plugins.RenderSlotWithNatives(c, t, plugin.SlotGameDetailAside, s.PluginID, s.ID, p.game.ID, props, natives)
 			})
 		} else {
-			p.plugins.RenderSlot(c, t, plugin.SlotGameDetailAside, s.PluginID, s.ID, p.game.ID, props)
+			p.plugins.RenderSlotWithNatives(c, t, plugin.SlotGameDetailAside, s.PluginID, s.ID, p.game.ID, props, natives)
 		}
 	}
 }
@@ -763,19 +825,37 @@ func (p *Page) tabBar(c *ui.Context, t *theme.Theme, hidden map[string]bool) {
 		})
 	}
 
-	var earlyPluginTabs, latePluginTabs []plugin.SlotRegistration
+	var leadingPluginTabs, earlyPluginTabs, latePluginTabs []plugin.SlotRegistration
 	for _, s := range p.pluginSlots(plugin.SlotGameDetailTab) {
-		if s.Order > 0 {
+		switch {
+		case s.Order < 0:
+			leadingPluginTabs = append(leadingPluginTabs, s)
+		case s.Order > 0:
 			earlyPluginTabs = append(earlyPluginTabs, s)
-		} else {
+		default:
 			latePluginTabs = append(latePluginTabs, s)
 		}
 	}
+	slices.SortStableFunc(leadingPluginTabs, func(a, b plugin.SlotRegistration) int {
+		return a.Order - b.Order
+	})
 	slices.SortStableFunc(earlyPluginTabs, func(a, b plugin.SlotRegistration) int {
 		return a.Order - b.Order
 	})
 
+	renderPluginTabs := func(list []plugin.SlotRegistration) {
+		for _, s := range list {
+			tabKey := "plugin:" + s.PluginID + "/" + s.ID
+			label := s.Title
+			if label == "" {
+				label = s.ID
+			}
+			renderTabBtn(tabKey, label)
+		}
+	}
+
 	bar.Children(func() {
+		renderPluginTabs(leadingPluginTabs)
 		insertedEarly := false
 		for _, tab := range tabs {
 			if hidden[tab.key] {
@@ -784,34 +864,13 @@ func (p *Page) tabBar(c *ui.Context, t *theme.Theme, hidden map[string]bool) {
 			renderTabBtn(tab.key, tab.label())
 			if !insertedEarly {
 				insertedEarly = true
-				for _, s := range earlyPluginTabs {
-					tabKey := "plugin:" + s.PluginID + "/" + s.ID
-					label := s.Title
-					if label == "" {
-						label = s.ID
-					}
-					renderTabBtn(tabKey, label)
-				}
+				renderPluginTabs(earlyPluginTabs)
 			}
 		}
 		if !insertedEarly {
-			for _, s := range earlyPluginTabs {
-				tabKey := "plugin:" + s.PluginID + "/" + s.ID
-				label := s.Title
-				if label == "" {
-					label = s.ID
-				}
-				renderTabBtn(tabKey, label)
-			}
+			renderPluginTabs(earlyPluginTabs)
 		}
-		for _, s := range latePluginTabs {
-			tabKey := "plugin:" + s.PluginID + "/" + s.ID
-			label := s.Title
-			if label == "" {
-				label = s.ID
-			}
-			renderTabBtn(tabKey, label)
-		}
+		renderPluginTabs(latePluginTabs)
 	})
 }
 

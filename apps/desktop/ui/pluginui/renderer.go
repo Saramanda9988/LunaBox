@@ -629,6 +629,7 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 		previewable := propBool(p, "previewable")
 		transparent := propBool(p, "transparent")
 		blur := propBool(p, "blur")
+		hoverBorder := propBool(p, "hoverBorder")
 		fit := ui.Cover
 		if propStr(p, "fit") == "contain" {
 			fit = ui.Contain
@@ -657,6 +658,14 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 			box.Radius(rad)
 		}
 		if previewable || pressID != "" {
+			box.Cursor(ui.CursorPointer)
+			if hoverBorder {
+				if box.Hovered() {
+					box.Border(1.5, theme.White.Alpha(0.85))
+				} else {
+					box.Border(t.HL, theme.White.Alpha(0.22))
+				}
+			}
 			box.OnClick(func() {
 				if previewable && src != "" {
 					inst.PreviewSrc = src
@@ -735,10 +744,30 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 		return m.renderTable(c, t, inst, key, p, eventID(n, "rowPress"))
 
 	case "Divider":
-		return ui.Box(c.Key(key)).FillWidth().Height(t.HL).Background(t.Divider)
+		col := t.Divider
+		if propBool(p, "subtle") {
+			col = t.Divider.Alpha(0.45)
+		}
+		el := ui.Box(c.Key(key)).FillWidth().Height(t.HL).Background(col)
+		if my := propSpacing(p, "marginY"); my > 0 {
+			el.Margin(my, 0)
+		}
+		return el
 
 	case "Spacer":
 		return ui.Spacer(c)
+
+	case "Icon":
+		name := assets.SafeIcon(propStr(p, "name"), "circle-medium")
+		if name == "" {
+			return ui.Element{}
+		}
+		sz := propFloat(p, "size")
+		if sz <= 0 {
+			sz = 16
+		}
+		col := mapToneColor(t, propStr(p, "tone"))
+		return components.Icon(c, name, sz, col)
 
 	case "NativeSlot":
 		name := propStr(p, "name")
@@ -765,11 +794,20 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 }
 
 func (m *Manager) applyLayoutProps(el ui.Element, t *theme.Theme, p map[string]any, events map[string]string, inst *Instance) {
-	if gap := mapSpacing(propStr(p, "gap")); gap > 0 {
+	if gap := propSpacing(p, "gap"); gap > 0 {
 		el.Gap(gap)
 	}
-	if pad := mapSpacing(propStr(p, "padding")); pad > 0 {
+	px := propSpacing(p, "paddingX")
+	py := propSpacing(p, "paddingY")
+	if px > 0 || py > 0 {
+		el.Padding(py, px)
+	} else if pad := propSpacing(p, "padding"); pad > 0 {
 		el.Padding(pad)
+	}
+	mt := propSpacing(p, "marginTop")
+	mb := propSpacing(p, "marginBottom")
+	if mt > 0 || mb > 0 {
+		el.Margin(mt, 0, mb, 0)
 	}
 	switch propStr(p, "surface") {
 	case "glass":
@@ -803,10 +841,24 @@ func (m *Manager) applyLayoutProps(el ui.Element, t *theme.Theme, p map[string]a
 		if propBool(p, "border") {
 			el.Border(t.HL, t.Divider)
 		}
+	case "subtle":
+		el.Background(t.Pick(theme.Brand150.Alpha(0.55), theme.White.Alpha(0.05)))
+		if propBool(p, "border") {
+			el.Border(t.HL, t.Divider.Alpha(0.5))
+		}
 	default:
 		if propBool(p, "border") {
 			el.Border(t.HL, t.PanelBorder)
 		}
+	}
+	if propBool(p, "borderBottom") {
+		el.BorderWidth(0, 0, t.HL, 0).BorderColor(t.Divider.Alpha(0.5))
+	}
+	if propBool(p, "borderLeft") {
+		el.BorderWidth(0, 0, 0, t.HL).BorderColor(t.Divider.Alpha(0.5))
+	}
+	if op := propFloat(p, "opacity"); op > 0 && op < 1 {
+		el.Opacity(op)
 	}
 	switch propStr(p, "radius") {
 	case "sm":
@@ -870,6 +922,7 @@ func (m *Manager) applyLayoutProps(el ui.Element, t *theme.Theme, p map[string]a
 		el.DragWindow()
 	}
 	if pressID := events["press"]; pressID != "" {
+		el.Cursor(ui.CursorPointer)
 		el.OnClick(func() { m.dispatch(inst, pressID, nil) })
 	}
 	if ctxID := events["contextMenu"]; ctxID != "" && el.RightClicked() {
@@ -953,7 +1006,8 @@ func (m *Manager) renderSpringPressBox(
 	return btn
 }
 
-// renderHeroBanner 渲染全宽头图横幅（支持透明徽标、标题、副标题、元信息行、右侧封面与底部原生操作栏）。
+// renderHeroBanner 渲染全出血沉浸式头图横幅（支持透明大徽标、标题/原名、图标元信息行、评分星级、无缝内嵌启动栏、截图缩略条与右侧悬浮封面）。
+// 背景图与多层渐变遮罩均设置负 ZIndex，确保永远位于常规流前景内容之下，不会覆盖标题与封面。
 func (m *Manager) renderHeroBanner(
 	c *ui.Context,
 	t *theme.Theme,
@@ -964,10 +1018,10 @@ func (m *Manager) renderHeroBanner(
 	natives NativeSlots,
 ) ui.Element {
 	bannerH := propFloat(p, "height")
-	if bannerH < 180 {
-		bannerH = 290
-	} else if bannerH > 460 {
-		bannerH = 460
+	if bannerH < 280 {
+		bannerH = 440
+	} else if bannerH > 600 {
+		bannerH = 600
 	}
 	bannerSrc := propStr(p, "banner")
 	if bannerSrc == "" {
@@ -981,137 +1035,231 @@ func (m *Manager) renderHeroBanner(
 	coverSlot := propStr(p, "coverSlot")
 	toolbarSlot := propStr(p, "toolbarSlot")
 
-	var metaItems []string
+	type heroMetaItem struct {
+		Icon string
+		Text string
+	}
+	var metaItems []heroMetaItem
 	if rawMeta, ok := p["meta"].([]any); ok {
 		for _, item := range rawMeta {
-			if s := strings.TrimSpace(strVal(item)); s != "" {
-				metaItems = append(metaItems, s)
+			switch v := item.(type) {
+			case map[string]any:
+				if txt := strings.TrimSpace(strVal(v["text"])); txt != "" {
+					metaItems = append(metaItems, heroMetaItem{
+						Icon: assets.SafeIcon(strVal(v["icon"]), ""),
+						Text: txt,
+					})
+				}
+			default:
+				if txt := strings.TrimSpace(strVal(item)); txt != "" {
+					metaItems = append(metaItems, heroMetaItem{Text: txt})
+				}
 			}
 		}
 	} else if s := strings.TrimSpace(propStr(p, "meta")); s != "" {
-		metaItems = append(metaItems, s)
+		metaItems = append(metaItems, heroMetaItem{Text: s})
 	}
 
-	cardBg, cardBorder := t.GlassCard(t.CardBg, t.CardBorder)
-	outer := ui.Column(c.Key(key)).FillWidth().Radius(16).Clip().Background(cardBg).Border(t.HL, cardBorder)
-	outer.Children(func() {
-		// 上半区：头图 + 渐暗渐变遮罩 + 顶部返回按钮 + 左下徽标/标题 + 右下封面
-		hero := ui.Box(c.Key(key + "-hero")).FillWidth().MinHeight(bannerH).Clip()
-		hero.LinearGradient(ui.LinearGradient{
-			Angle: 135,
+	var ratingScore float64
+	var ratingTotal int
+	var ratingPlayed int
+	if rm, ok := p["rating"].(map[string]any); ok {
+		ratingScore = float64(propFloat(rm, "score"))
+		ratingTotal = int(propFloat(rm, "total"))
+		ratingPlayed = int(propFloat(rm, "played"))
+	}
+
+	// 页面底色：用于底部平滑渐隐，让头图无缝融入页面正文（无边框、无硬截断）
+	fadeBg := t.AppBg
+	if t.Glass {
+		fadeBg = t.AppBg.Alpha(0.88)
+	}
+	scrimDark := t.Pick(theme.Brand900, t.AppBg)
+
+	hero := ui.Box(c.Key(key)).FillWidth().MinHeight(bannerH).Clip()
+	hero.LinearGradient(ui.LinearGradient{
+		Angle: 135,
+		Stops: []ui.GradientStop{
+			{Color: t.Pick(theme.Brand700, theme.Brand800), At: 0},
+			{Color: fadeBg, At: 1},
+		},
+	})
+	hero.Children(func() {
+		// 层 -3：高清原始头图（默认不虚化，仅当显式 blur=true 时模糊）
+		if bannerSrc != "" {
+			if bmp := m.loadBitmap(bannerSrc); bmp != nil {
+				img := ui.Image(c.Key(key+"-bg"), bmp).Absolute().Top(0).Right(0).Bottom(0).Left(0).Fit(ui.Cover).PassThrough().ZIndex(-3)
+				if blur {
+					img.Blur(20)
+				}
+			}
+		}
+		// 层 -2：左侧横向暗色可读性梯度，保证左半区文字与徽标清晰，同时右半区头图主体保持通透
+		ui.Box(c).Absolute().Top(0).Right(0).Bottom(0).Left(0).PassThrough().ZIndex(-2).LinearGradient(ui.LinearGradient{
+			Angle: 90,
 			Stops: []ui.GradientStop{
-				{Color: t.Pick(theme.Brand700, theme.Brand900), At: 0},
-				{Color: t.Pick(theme.Brand900, theme.Neutral900), At: 1},
+				{Color: scrimDark.Alpha(0.84), At: 0},
+				{Color: scrimDark.Alpha(0.56), At: 0.42},
+				{Color: scrimDark.Alpha(0.18), At: 0.76},
+				{Color: scrimDark.Alpha(0.06), At: 1},
 			},
 		})
-		hero.Children(func() {
-			if bannerSrc != "" {
-				if bmp := m.loadBitmap(bannerSrc); bmp != nil {
-					img := ui.Image(c, bmp).Absolute().Top(0).Right(0).Bottom(0).Left(0).Fit(ui.Cover).PassThrough()
-					if blur {
-						img.Blur(18)
-					}
-				}
-			}
-			// 多段纵向渐变遮罩，保证亮/暗头图上的徽标与白色文字始终清晰可读
-			ui.Box(c).Absolute().Top(0).Right(0).Bottom(0).Left(0).PassThrough().LinearGradient(ui.LinearGradient{
-				Angle: 180,
-				Stops: []ui.GradientStop{
-					{Color: theme.Black.Alpha(0.22), At: 0},
-					{Color: theme.Black.Alpha(0.28), At: 0.42},
-					{Color: theme.Black.Alpha(0.76), At: 1},
-				},
-			})
+		// 层 -1：纵向融底梯度，顶部轻微压暗，中段通透展示头图，底部平滑过渡到页面底色
+		ui.Box(c).Absolute().Top(0).Right(0).Bottom(0).Left(0).PassThrough().ZIndex(-1).LinearGradient(ui.LinearGradient{
+			Angle: 180,
+			Stops: []ui.GradientStop{
+				{Color: theme.Black.Alpha(0.26), At: 0},
+				{Color: theme.Black.Alpha(0.06), At: 0.30},
+				{Color: t.Pick(scrimDark.Alpha(0.58), fadeBg.Alpha(0.55)), At: 0.68},
+				{Color: t.Pick(scrimDark.Alpha(0.80), fadeBg.Alpha(0.92)), At: 0.90},
+				{Color: fadeBg, At: 1},
+			},
+		})
 
-			// 顶左浮动返回按钮
-			if backSlot != "" && natives != nil {
-				if fn, ok := natives[backSlot]; ok && fn != nil {
-					pillBg := t.Pick(theme.White.Alpha(0.84), theme.Brand900.Alpha(0.72))
-					pillBorder := t.Pick(theme.White.Alpha(0.55), theme.White.Alpha(0.16))
-					ui.Box(c.Key(key+"-back-pill")).Absolute().Top(14).Left(16).Padding(4, 12, 4, 8).Radius(999).
-						Background(pillBg).Border(t.HL, pillBorder).Children(func() {
-						fn(c, t)
-					})
-				}
+		// 顶左浮动返回按钮（ZIndex 2 确保始终可点且不遮挡主视觉）
+		if backSlot != "" && natives != nil {
+			if fn, ok := natives[backSlot]; ok && fn != nil {
+				pillBg := t.Pick(theme.White.Alpha(0.78), theme.Black.Alpha(0.36))
+				pillBorder := t.Pick(theme.White.Alpha(0.45), theme.White.Alpha(0.14))
+				ui.Box(c.Key(key+"-back-pill")).Absolute().Top(16).Left(32).ZIndex(2).
+					Padding(4, 12, 4, 8).Radius(999).
+					Background(pillBg).Border(t.HL, pillBorder).Children(func() {
+					fn(c, t)
+				})
 			}
+		}
 
-			// 底部内容行：左侧（徽标 + 标题 + 副标题 + 元信息 + 插件子节点），右侧（原生封面）
-			ui.Column(c).FillWidth().MinHeight(bannerH).Justify(ui.End).Padding(56, 24, 20, 24).Children(func() {
-				ui.Row(c).FillWidth().Gap(24).AlignItems(ui.End).Children(func() {
-					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(8).Children(func() {
-						// 透明游戏徽标（按自然宽高比等比缩放，贴左对齐）
-						if logoSrc != "" {
-							if imgSrc := m.LoadImageSource(logoSrc); imgSrc != nil {
-								const maxLogoW float32 = 360
-								const maxLogoH float32 = 96
-								w, h := float32(280), float32(84)
-								if bmp, ok := imgSrc.(*ui.Bitmap); ok {
-									bw, bh := bmp.Size()
-									if bw > 0 && bh > 0 {
-										scale := min(maxLogoW/float32(bw), maxLogoH/float32(bh))
-										if scale > 1 {
-											scale = 1
-										}
-										w = float32(bw) * scale
-										h = float32(bh) * scale
+		// 前景内容（默认 ZIndex 0，稳稳绘制在背景与渐变层之上）
+		ui.Column(c).FillWidth().MinHeight(bannerH).Justify(ui.End).Padding(68, 32, 24, 32).Gap(16).Children(func() {
+			ui.Row(c).FillWidth().Gap(32).AlignItems(ui.End).Children(func() {
+				// 左侧主信息区
+				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(10).Children(func() {
+					// 透明游戏徽标（按自然宽高比放大展示，贴左对齐）
+					hasLogo := false
+					if logoSrc != "" {
+						if imgSrc := m.LoadImageSource(logoSrc); imgSrc != nil {
+							hasLogo = true
+							const maxLogoW float32 = 460
+							const maxLogoH float32 = 132
+							w, h := float32(340), float32(104)
+							if bmp, ok := imgSrc.(*ui.Bitmap); ok {
+								bw, bh := bmp.Size()
+								if bw > 0 && bh > 0 {
+									scale := min(maxLogoW/float32(bw), maxLogoH/float32(bh))
+									if scale > 1 {
+										scale = 1
 									}
+									w = float32(bw) * scale
+									h = float32(bh) * scale
 								}
-								ui.Box(c.Key(key+"-logo")).Width(w).Height(h).Children(func() {
-									ui.Image(c, imgSrc).Fill().Fit(ui.Contain)
-								})
 							}
+							ui.Box(c.Key(key+"-logo")).Width(w).Height(h).Children(func() {
+								ui.Image(c, imgSrc).Fill().Fit(ui.Contain)
+							})
 						}
+					}
 
+					// 有徽标时标题退居精致副行，避免与徽标视觉抢戏；无徽标时用大气主标题
+					if hasLogo {
+						subLine := title
+						if subtitle != "" && subtitle != title {
+							subLine = title + "  ·  " + subtitle
+						}
+						if subLine != "" {
+							components.Text(c, subLine, theme.TextBase, theme.WeightMedium, theme.White.Alpha(0.86)).Selectable()
+						}
+					} else {
 						if title != "" {
-							components.Text(c, title, theme.FontStep{Size: 28, Line: 36}, theme.WeightBold, theme.White).Selectable()
+							components.Text(c, title, theme.FontStep{Size: 34, Line: 42}, theme.WeightBold, theme.White).Selectable()
 						}
 						if subtitle != "" && subtitle != title {
-							components.Text(c, subtitle, theme.TextSM, theme.WeightNormal, theme.White.Alpha(0.84)).Selectable()
+							components.Text(c, subtitle, theme.TextSM, theme.WeightNormal, theme.White.Alpha(0.80)).Selectable()
 						}
-						if len(metaItems) > 0 {
-							ui.Row(c).Wrap().Gap(8).AlignItems(ui.Center).Children(func() {
-								for i, item := range metaItems {
-									ui.Box(c.Key(fmt.Sprintf("%s-meta-%d", key, i))).Padding(3, 9).Radius(999).
-										Background(theme.Black.Alpha(0.36)).Border(t.HL, theme.White.Alpha(0.18)).Children(func() {
-										components.Text(c, item, theme.TextXS, theme.WeightMedium, theme.White.Alpha(0.94)).NoWrap()
-									})
-								}
-							})
-						}
-						if len(children) > 0 {
-							ui.Row(c).Wrap().Gap(8).AlignItems(ui.Center).Children(func() {
-								for i, child := range children {
-									m.renderNode(c, t, inst, child, fmt.Sprintf("%s-hc-%d", key, i), natives)
-								}
-							})
-						}
-					})
+					}
 
-					// 右侧封面（复用原生封面查看器与 NSFW 模糊）
-					if coverSlot != "" && natives != nil {
-						if fn, ok := natives[coverSlot]; ok && fn != nil {
-							ui.Box(c.Key(key+"-cover-frame")).Shrink(0).Radius(10).
-								Shadow(0, 8, 20, 0, theme.Black.Alpha(0.38)).
-								Border(t.HL, theme.White.Alpha(0.24)).Clip().Children(func() {
+					// 带图标的清爽元信息行（零胶囊边框，复刻 Hikarinagi 风格）
+					if len(metaItems) > 0 {
+						ui.Row(c).Wrap().Gap(16).AlignItems(ui.Center).Children(func() {
+							for i, item := range metaItems {
+								ui.Row(c.Key(fmt.Sprintf("%s-meta-%d", key, i))).Gap(5).AlignItems(ui.Center).Children(func() {
+									if item.Icon != "" {
+										components.Icon(c, item.Icon, 14, theme.White.Alpha(0.72))
+									}
+									components.Text(c, item.Text, theme.TextXS, theme.WeightNormal, theme.White.Alpha(0.90)).NoWrap()
+								})
+							}
+						})
+					}
+
+					// 评分与星级行（有评分时才展示）
+					if ratingScore > 0 {
+						ui.Row(c.Key(key+"-rating")).Gap(12).AlignItems(ui.Center).Margin(2, 0, 2, 0).Children(func() {
+							components.Text(c, fmt.Sprintf("%.1f", ratingScore), theme.FontStep{Size: 34, Line: 38}, theme.WeightBold, theme.White).NoWrap()
+							ui.Column(c).Gap(2).Children(func() {
+								ui.Row(c).Gap(2).AlignItems(ui.Center).Children(func() {
+									stars := ratingScore / 2.0
+									for i := 1; i <= 5; i++ {
+										iconName := "star-outline"
+										col := theme.White.Alpha(0.35)
+										if stars >= float64(i)-0.25 {
+											iconName = "star"
+											col = theme.Warning400
+										} else if stars >= float64(i)-0.75 {
+											iconName = "star-half-full"
+											col = theme.Warning400
+										}
+										if iconName = assets.SafeIcon(iconName, "star-outline"); iconName != "" {
+											components.Icon(c, iconName, 16, col)
+										}
+									}
+								})
+								var statParts []string
+								if ratingTotal > 0 {
+									statParts = append(statParts, fmt.Sprintf("%d 人评分", ratingTotal))
+								}
+								if ratingPlayed > 0 {
+									statParts = append(statParts, fmt.Sprintf("%d 人玩过", ratingPlayed))
+								}
+								if len(statParts) > 0 {
+									components.Text(c, strings.Join(statParts, "   "), theme.TextXS, theme.WeightNormal, theme.White.Alpha(0.75)).NoWrap()
+								}
+							})
+						})
+					}
+
+					// 原生启动栏无缝融入 Hero 内部（无硬边框与分隔条）
+					if toolbarSlot != "" && natives != nil {
+						if fn, ok := natives[toolbarSlot]; ok && fn != nil {
+							ui.Box(c.Key(key+"-toolbar-inline")).FillWidth().Margin(6, 0, 0, 0).Children(func() {
 								fn(c, t)
 							})
 						}
 					}
 				})
-			})
-		})
 
-		// 下半区：无缝衔接的操作区（保留原生启动栏）
-		if toolbarSlot != "" && natives != nil {
-			if fn, ok := natives[toolbarSlot]; ok && fn != nil {
-				ui.Box(c.Key(key+"-toolbar-bar")).FillWidth().Padding(14, 24).
-					BorderWidth(t.HL, 0, 0, 0).BorderColor(t.Divider).Children(func() {
-					fn(c, t)
+				// 右侧悬浮竖版封面（复用原生封面查看器与 NSFW 模糊）
+				if coverSlot != "" && natives != nil {
+					if fn, ok := natives[coverSlot]; ok && fn != nil {
+						ui.Box(c.Key(key+"-cover-frame")).Shrink(0).Radius(10).
+							Shadow(0, 14, 32, 0, theme.Black.Alpha(0.45)).
+							Border(t.HL, theme.White.Alpha(0.18)).Clip().Children(func() {
+							fn(c, t)
+						})
+					}
+				}
+			})
+
+			// 底部扩展内容（例如 Hikarinagi 风格的横向游戏截图缩略预览条）
+			if len(children) > 0 {
+				ui.Row(c.Key(key+"-extra")).FillWidth().Wrap().Gap(10).AlignItems(ui.Center).Margin(4, 0, 0, 0).Children(func() {
+					for i, child := range children {
+						m.renderNode(c, t, inst, child, fmt.Sprintf("%s-hc-%d", key, i), natives)
+					}
 				})
 			}
-		}
+		})
 	})
-	return outer
+	return hero
 }
 
 func (m *Manager) renderTable(c *ui.Context, t *theme.Theme, inst *Instance, key string, p map[string]any, rowPressID string) ui.Element {
@@ -1320,6 +1468,28 @@ func (m *Manager) renderMarkdown(c *ui.Context, t *theme.Theme, inst *Instance, 
 
 // ─────────────────────────── 主题令牌映射（见 §9.8） ───────────────────────────
 
+func propSpacing(p map[string]any, key string) float32 {
+	if p == nil {
+		return 0
+	}
+	v, ok := p[key]
+	if !ok || v == nil {
+		return 0
+	}
+	switch x := v.(type) {
+	case string:
+		return mapSpacing(x)
+	case float64:
+		return float32(x)
+	case int:
+		return float32(x)
+	case int64:
+		return float32(x)
+	default:
+		return 0
+	}
+}
+
 func mapSpacing(v string) float32 {
 	switch v {
 	case "none":
@@ -1353,6 +1523,8 @@ func mapFontStep(v string) theme.FontStep {
 		return theme.FontStep{Size: 24, Line: 32}
 	case "3xl":
 		return theme.FontStep{Size: 30, Line: 38}
+	case "4xl":
+		return theme.FontStep{Size: 38, Line: 44}
 	default:
 		return theme.TextBase
 	}
@@ -1375,10 +1547,14 @@ func mapToneColor(t *theme.Theme, tone string) ui.Color {
 	switch tone {
 	case "muted":
 		return t.TextMuted
+	case "faint":
+		return t.TextFaint
 	case "strong":
 		return t.TextStrong
 	case "brand":
 		return theme.Primary500
+	case "accent":
+		return t.Pick(theme.Primary600, theme.Primary400)
 	case "success":
 		return theme.Success500
 	case "warning":

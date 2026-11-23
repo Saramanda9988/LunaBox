@@ -293,6 +293,7 @@ export const Tooltip = __makeFactory('Tooltip');
 export const Table = __makeFactory('Table');
 export const Divider = __makeFactory('Divider');
 export const Spacer = __makeFactory('Spacer');
+export const Icon = __makeFactory('Icon');
 export const HeroBanner = __makeFactory('HeroBanner');
 export const NativeSlot = __makeFactory('NativeSlot');
 

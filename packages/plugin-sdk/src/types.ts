@@ -41,10 +41,21 @@ export interface PluginManifest {
   keywords?: string[];
 }
 
-export type SpacingToken = 'none' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-export type TextSizeToken = 'xs' | 'sm' | 'base' | 'lg' | 'xl';
+export type SpacingToken = 'none' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | number;
+export type TextSizeToken = 'xs' | 'sm' | 'base' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl';
 export type FontWeightToken = 'normal' | 'medium' | 'semibold' | 'bold';
-export type ToneToken = 'default' | 'muted' | 'strong' | 'brand' | 'success' | 'warning' | 'danger';
+export type ToneToken =
+  | 'default'
+  | 'muted'
+  | 'faint'
+  | 'strong'
+  | 'brand'
+  | 'accent'
+  | 'success'
+  | 'warning'
+  | 'danger'
+  | 'light'
+  | 'light-muted';
 export type ButtonVariant = 'secondary' | 'primary' | 'danger' | 'ghost';
 
 export interface Game {

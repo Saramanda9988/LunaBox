@@ -43,6 +43,7 @@ export declare const Tooltip: ComponentFactory;
 export declare const Table: ComponentFactory;
 export declare const Divider: ComponentFactory;
 export declare const Spacer: ComponentFactory;
+export declare const Icon: ComponentFactory;
 export declare const HeroBanner: ComponentFactory;
 export declare const NativeSlot: ComponentFactory;
 

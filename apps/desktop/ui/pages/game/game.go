@@ -135,7 +135,7 @@ func (p *Page) Open(id string, now time.Time) {
 	p.gen++
 	p.game, p.tags = nil, nil
 	p.loading, p.openedAt = true, now
-	p.tab = "stats"
+	p.tab = p.defaultTab()
 	if p.debugTab != "" {
 		p.tab = p.debugTab
 	}

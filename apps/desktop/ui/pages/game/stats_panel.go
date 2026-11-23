@@ -90,8 +90,7 @@ func (s *statsPanel) load(e *env.Env, id string) {
 }
 
 // statsView 对应 GameStatsPanel：三张统计卡片，下面是图表/游玩记录与时间维度、视图切换。
-// 当页头被插件 Hero 接管（showOverview == true）时，在顶部保留原生简介与可编辑标签卡片。
-func (p *Page) statsView(c *ui.Context, t *theme.Theme, showOverview bool) {
+func (p *Page) statsView(c *ui.Context, t *theme.Theme) {
 	s := &p.stats
 	if s.failed != nil {
 		p.env.Toast(c, env.Error(s.failed()))
@@ -102,12 +101,6 @@ func (p *Page) statsView(c *ui.Context, t *theme.Theme, showOverview bool) {
 	period := periodLabel(s.period)
 
 	ui.Column(c.Key("stats-panel")).Gap(24).Children(func() {
-		if showOverview && p.game != nil {
-			glassCard(t, ui.Column(c.Key("hero-overview-card")).FillWidth().Padding(20).Gap(16).Radius(12)).Children(func() {
-				p.summary(c, t)
-				p.gameTags(c, t)
-			})
-		}
 		ui.Grid(c).Columns(3).GapX(20).GapY(20).Children(func() {
 			count, today, total := "-", "-", "-"
 			switch {

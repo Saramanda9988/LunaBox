@@ -42,12 +42,15 @@ func HasIcon(name string) bool {
 	return err == nil
 }
 
-// SafeIcon 返回内嵌存在的图标名，不存在时回退到 fallback（供插件动态图标名使用）。
+// SafeIcon 返回内嵌存在的图标名，不存在时回退到存在的 fallback（供插件动态图标名使用）。
 func SafeIcon(name, fallback string) string {
 	if HasIcon(name) {
 		return name
 	}
-	return fallback
+	if fallback != "" && HasIcon(fallback) {
+		return fallback
+	}
+	return ""
 }
 
 // Icon 按 i-mdi-* 的名字（不含前缀）返回图标，例如 Icon("gamepad-variant")。

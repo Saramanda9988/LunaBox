@@ -102,3 +102,60 @@ func TestRenderSpringPressBox(t *testing.T) {
 	tt.Frame()
 	tt.Advance(100 * time.Millisecond)
 }
+
+func TestRenderHeroBannerHalfStarAndSafeIcon(t *testing.T) {
+	e := &env.Env{MainWidth: 1200}
+	mgr := New(e, HostCallbacks{})
+
+	inst := newInstance("inst-hero", "hikarinagi-detail", plugin.SlotGameDetailHero, "hikarinagi-hero", "g-1")
+	inst.Version = 1
+	inst.Tree = &plugin.UINode{
+		Type: "Column",
+		Key:  "root",
+		Children: []*plugin.UINode{
+			{
+				Type: "HeroBanner",
+				Key:  "hero-g1",
+				Props: map[string]any{
+					"height":   460.0,
+					"title":    "樱之诗",
+					"subtitle": "サクラノ詩",
+					"meta": []any{
+						map[string]any{"icon": "palette", "text": "枕"},
+						map[string]any{"icon": "nonexistent-icon-xyz", "text": "回退测试"},
+					},
+					"rating": map[string]any{
+						"score":  8.9, // 4.45 stars -> triggers star-half-full
+						"total":  420.0,
+						"played": 1200.0,
+					},
+				},
+			},
+			{
+				Type: "Icon",
+				Key:  "icon-missing",
+				Props: map[string]any{
+					"name": "definitely-missing-icon",
+					"size": 16.0,
+					"tone": "warning",
+				},
+			},
+			{
+				Type: "Icon",
+				Key:  "icon-half-star",
+				Props: map[string]any{
+					"name": "star-half-full",
+					"size": 16.0,
+					"tone": "warning",
+				},
+			},
+		},
+	}
+
+	tt := ui.NewTester(func(c *ui.Context) {
+		th := theme.New(true, 1)
+		mgr.RenderInstance(c, th, inst)
+	}, 1200, 600)
+	tt.Frame()
+	tt.Advance(20 * time.Millisecond)
+}

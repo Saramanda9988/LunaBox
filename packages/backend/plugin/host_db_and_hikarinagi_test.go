@@ -234,7 +234,19 @@ func TestHikarinagiDetailPluginSlotsAndCachedRender(t *testing.T) {
 	}
 
 	tabSlots := mgr.UI().Slots(SlotGameDetailTab)
-	if len(tabSlots) != 1 || tabSlots[0].ID != "screenshots" || tabSlots[0].Order != 1 {
+	if len(tabSlots) != 2 {
+		t.Fatalf("expected 2 tab slots (overview + screenshots), got %+v", tabSlots)
+	}
+	foundOverview, foundScreenshots := false, false
+	for _, s := range tabSlots {
+		if s.ID == "overview" && s.Order < 0 {
+			foundOverview = true
+		}
+		if s.ID == "screenshots" && s.Order == 1 {
+			foundScreenshots = true
+		}
+	}
+	if !foundOverview || !foundScreenshots {
 		t.Fatalf("unexpected tab slots: %+v", tabSlots)
 	}
 
@@ -261,15 +273,17 @@ func TestHikarinagiDetailPluginSlotsAndCachedRender(t *testing.T) {
 	}
 
 	mgr.MountSlot("hero::1", "hikarinagi-detail", SlotGameDetailHero, "hikarinagi-hero", props)
+	mgr.MountSlot("overview::1", "hikarinagi-detail", SlotGameDetailTab, "overview", props)
 	mgr.MountSlot("tab::1", "hikarinagi-detail", SlotGameDetailTab, "screenshots", props)
 	mgr.MountSlot("aside::1", "hikarinagi-detail", SlotGameDetailAside, "detail-info", props)
 
 	gotHeroReady := false
+	gotOverviewReady := false
 	gotTabReady := false
 	gotAsideReady := false
 	deadline := time.After(5 * time.Second)
 
-	for !(gotHeroReady && gotTabReady && gotAsideReady) {
+	for !(gotHeroReady && gotOverviewReady && gotTabReady && gotAsideReady) {
 		select {
 		case u := <-updates:
 			if u.Error != "" {
@@ -285,22 +299,28 @@ func TestHikarinagiDetailPluginSlotsAndCachedRender(t *testing.T) {
 				if u.Tree.Type == "HeroBanner" &&
 					u.Tree.Props["logo"] == "https://cdn.example.com/logo-zh.png" &&
 					u.Tree.Props["banner"] == "https://cdn.example.com/ss1.webp" &&
+					u.Tree.Props["blur"] == false &&
 					u.Tree.Props["backSlot"] == "back" &&
 					u.Tree.Props["coverSlot"] == "cover" &&
 					u.Tree.Props["toolbarSlot"] == "toolbar" {
 					gotHeroReady = true
+				}
+			case "overview::1":
+				if stringsContainsAll(s, "简介", "标签", "NativeSlot", "神作") {
+					gotOverviewReady = true
 				}
 			case "tab::1":
 				if stringsContainsAll(s, "游戏截图", "https://cdn.example.com/ss1.webp", "https://cdn.example.com/ss2.webp") {
 					gotTabReady = true
 				}
 			case "aside::1":
-				if stringsContainsAll(s, "Hikarinagi 评分", "9.30", "サクラノ詩", "枕", "神作", "Bangumi", "VNDB") {
+				if stringsContainsAll(s, "社区评分", "9.3", "サクラノ詩", "枕", "Bangumi", "VNDB") &&
+					!containsStr(s, `"t":"Card"`) {
 					gotAsideReady = true
 				}
 			}
 		case <-deadline:
-			t.Fatalf("timed out waiting for hydrated trees: hero=%v tab=%v aside=%v", gotHeroReady, gotTabReady, gotAsideReady)
+			t.Fatalf("timed out waiting for hydrated trees: hero=%v overview=%v tab=%v aside=%v", gotHeroReady, gotOverviewReady, gotTabReady, gotAsideReady)
 		}
 	}
 }
