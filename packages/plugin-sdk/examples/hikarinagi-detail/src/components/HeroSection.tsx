@@ -1,4 +1,4 @@
-import { Box, HeroBanner, Image, Text, useEffect, useState } from 'lunabox';
+import { HeroBanner, useEffect, useRef, useState } from 'lunabox';
 import type { Context } from 'lunabox';
 import {
   formatLangLabel,
@@ -20,20 +20,36 @@ export function createHeroSection(ctx: Context, store: DetailStore) {
     const shouldBlurNsfw = Boolean(blurNsfw);
 
     const gameId = game?.id ? String(game.id) : '';
-    const [selectedIdx, setSelectedIdx] = useState<number>(-1);
+    const [selectedIdx, setSelectedIdx] = useState<number>(0);
+    const prevBannerRef = useRef<string>('');
 
-    // 切换游戏时重置选中的头图索引
+    // 切换游戏时重置选中的头图索引与过渡兜底图
     useEffect(() => {
-      setSelectedIdx(-1);
+      setSelectedIdx(0);
+      prevBannerRef.current = '';
     }, [gameId]);
 
     const sortedImages = sortHeroImages(detail?.images, shouldBlurNsfw);
     const defaultBanner = pickBestBanner(detail, game, shouldBlurNsfw);
 
-    const activeImg =
-      selectedIdx >= 0 && selectedIdx < sortedImages.length ? sortedImages[selectedIdx] : null;
+    const totalImages = sortedImages.length;
+    const safeIdx =
+      totalImages > 0 ? ((selectedIdx % totalImages) + totalImages) % totalImages : 0;
+    const activeImg = totalImages > 0 ? sortedImages[safeIdx] : null;
     const activeBannerUrl = activeImg ? activeImg.url : defaultBanner.url;
     const activeBannerSensitive = activeImg ? isMediaSensitive(activeImg) : defaultBanner.sensitive;
+
+    // 翻页加载新头图期间保留上一张背景图，避免瞬间闪黑
+    const fallbackBanner =
+      prevBannerRef.current && prevBannerRef.current !== activeBannerUrl
+        ? prevBannerRef.current
+        : game?.cover_source_url || game?.cover_url || '';
+
+    useEffect(() => {
+      if (activeBannerUrl) {
+        prevBannerRef.current = activeBannerUrl;
+      }
+    }, [activeBannerUrl]);
 
     const logo = detail
       ? pickBestLogo(detail.logos, cfg.preferredLogoLang || 'auto', ctx.i18n.getLanguage())
@@ -94,16 +110,14 @@ export function createHeroSection(ctx: Context, store: DetailStore) {
     const shouldBlurHero =
       Boolean(cfg.blurHeroBanner) || (shouldBlurNsfw && activeBannerSensitive);
 
-    // 底部截图预览条（最多展示 6 张，点击切换头图背景，再次点击可大图预览）
-    const stripImages = sortedImages.slice(0, 6);
-    const currentEffectiveIdx = selectedIdx >= 0 ? selectedIdx : 0;
+    const canPage = totalImages > 1;
 
     return (
       <HeroBanner
         k={`hero-${gameId}`}
         height={heroHeight}
         banner={activeBannerUrl}
-        fallbackBanner={game?.cover_source_url || game?.cover_url || ''}
+        fallbackBanner={fallbackBanner}
         logo={logo?.url || ''}
         title={title}
         subtitle={subtitle}
@@ -113,51 +127,22 @@ export function createHeroSection(ctx: Context, store: DetailStore) {
         backSlot="back"
         coverSlot="cover"
         toolbarSlot="toolbar"
-      >
-        {stripImages.length > 1
-          ? [
-              ...stripImages.map((img, idx) => {
-                const isActive = idx === currentEffectiveIdx;
-                const thumbBlur = shouldBlurNsfw && isMediaSensitive(img);
-                return (
-                  <Box
-                    key={`hero-thumb-wrap-${idx}`}
-                    radius="sm"
-                    opacity={isActive ? 1 : 0.78}
-                  >
-                    <Image
-                      k={`hero-thumb-${idx}`}
-                      src={img.url}
-                      width={122}
-                      height={68}
-                      radius={7}
-                      fit="cover"
-                      blur={thumbBlur}
-                      hoverBorder={true}
-                      previewable={isActive && !thumbBlur}
-                      onPress={
-                        isActive
-                          ? undefined
-                          : () => {
-                              setSelectedIdx(idx);
-                            }
-                      }
-                    />
-                  </Box>
-                );
-              }),
-              sortedImages.length > stripImages.length ? (
-                <Box key="hero-thumb-more" paddingX="sm" paddingY="xs">
-                  <Text
-                    text={`共 ${sortedImages.length} 张截图`}
-                    size="xs"
-                    tone="light-muted"
-                  />
-                </Box>
-              ) : null,
-            ]
-          : null}
-      </HeroBanner>
+        pager={canPage ? { current: safeIdx + 1, total: totalImages } : undefined}
+        onPrev={
+          canPage
+            ? () => {
+                setSelectedIdx((prev) => (prev - 1 + totalImages) % totalImages);
+              }
+            : undefined
+        }
+        onNext={
+          canPage
+            ? () => {
+                setSelectedIdx((prev) => (prev + 1) % totalImages);
+              }
+            : undefined
+        }
+      />
     );
   };
 }

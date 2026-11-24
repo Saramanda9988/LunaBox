@@ -1,4 +1,4 @@
-// ../../packages/plugin-sdk/examples/hikarinagi-detail/src/format.ts
+// ../plugin-sdk/examples/hikarinagi-detail/src/format.ts
 var SITE_GALGAME_BASE = "https://www.hikarinagi.org/galgames/";
 function normalizeHikarinagiId(input) {
   if (input == null)
@@ -75,18 +75,6 @@ function formatLangLabel(lang) {
     "ko-kr": "韩语"
   };
   return map[code] || String(lang || "");
-}
-function formatRelativeTime(tsMs) {
-  if (!tsMs)
-    return "";
-  const diffSec = Math.max(0, Math.floor((Date.now() - tsMs) / 1000));
-  if (diffSec < 60)
-    return "刚刚";
-  if (diffSec < 3600)
-    return `${Math.floor(diffSec / 60)} 分钟前`;
-  if (diffSec < 86400)
-    return `${Math.floor(diffSec / 3600)} 小时前`;
-  return `${Math.floor(diffSec / 86400)} 天前`;
 }
 function formatPrice(p) {
   if (!p)
@@ -253,7 +241,7 @@ function getPrimaryAndSubTitle(detail, game) {
   return { title, subtitle };
 }
 
-// ../../packages/plugin-sdk/examples/hikarinagi-detail/src/api.ts
+// ../plugin-sdk/examples/hikarinagi-detail/src/api.ts
 var API_BASE = "https://api.hikarinagi.org/v3";
 function createHikarinagiApi(ctx) {
   async function resolveToken() {
@@ -333,23 +321,17 @@ function createHikarinagiApi(ctx) {
   };
 }
 
-// ../../packages/plugin-sdk/examples/hikarinagi-detail/src/components/DetailAside.tsx
+// ../plugin-sdk/examples/hikarinagi-detail/src/components/DetailAside.tsx
 import {
   Badge,
   Box,
   Button,
-  Collapsible,
   Column,
   Divider,
-  Icon,
   IconButton,
-  Input,
-  Progress,
   Row,
   Skeleton,
-  Text,
-  useEffect,
-  useState
+  Text
 } from "lunabox";
 import { jsx, jsxs, Fragment } from "lunabox/jsx-runtime";
 function InfoRow({
@@ -387,105 +369,11 @@ function InfoRow({
     ]
   });
 }
-function RatingStars({ score }) {
-  const stars = score / 2;
-  return /* @__PURE__ */ jsx(Row, {
-    gap: 2,
-    align: "center",
-    children: [1, 2, 3, 4, 5].map((i) => {
-      let name = "star-outline";
-      let tone = "faint";
-      if (stars >= i - 0.25) {
-        name = "star";
-        tone = "warning";
-      } else if (stars >= i - 0.75) {
-        name = "star-half-full";
-        tone = "warning";
-      }
-      return /* @__PURE__ */ jsx(Icon, {
-        name,
-        size: 15,
-        tone
-      }, `st-${i}`);
-    })
-  });
-}
-function RatingDistribution({ rating }) {
-  if (!rating?.count || Number(rating.total || 0) <= 0)
-    return null;
-  const total = Number(rating.total);
-  const c = rating.count;
-  const buckets = [
-    { label: "9-10", n: Number(c["10"] || 0) + Number(c["9"] || 0) },
-    { label: "7-8", n: Number(c["8"] || 0) + Number(c["7"] || 0) },
-    { label: "5-6", n: Number(c["6"] || 0) + Number(c["5"] || 0) },
-    { label: "3-4", n: Number(c["4"] || 0) + Number(c["3"] || 0) },
-    { label: "1-2", n: Number(c["2"] || 0) + Number(c["1"] || 0) }
-  ];
-  return /* @__PURE__ */ jsx(Column, {
-    k: "aside-rating-dist",
-    gap: 6,
-    width: "full",
-    marginTop: "xs",
-    children: buckets.map((b, idx) => {
-      const pct = total > 0 ? Math.round(b.n / total * 100) : 0;
-      return /* @__PURE__ */ jsxs(Row, {
-        gap: "sm",
-        align: "center",
-        width: "full",
-        children: [
-          /* @__PURE__ */ jsx(Box, {
-            width: 34,
-            shrink: 0,
-            children: /* @__PURE__ */ jsx(Text, {
-              text: b.label,
-              size: "xs",
-              tone: "faint"
-            })
-          }),
-          /* @__PURE__ */ jsx(Box, {
-            grow: 1,
-            basis: 0,
-            minWidth: 0,
-            children: /* @__PURE__ */ jsx(Progress, {
-              value: pct,
-              max: 100,
-              height: 5,
-              tone: idx === 0 ? "brand" : "default"
-            })
-          }),
-          /* @__PURE__ */ jsx(Box, {
-            width: 30,
-            shrink: 0,
-            children: /* @__PURE__ */ jsx(Text, {
-              text: `${pct}%`,
-              size: "xs",
-              tone: "faint"
-            })
-          })
-        ]
-      }, `rd-${idx}`);
-    })
-  });
-}
 function createDetailAside(ctx, store) {
   return function DetailAside({ game }) {
     const state = store.useGameDetail(game);
     const detail = state.detail;
     const gameId = game?.id ? String(game.id) : "";
-    const [bindInput, setBindInput] = useState("");
-    useEffect(() => {
-      setBindInput("");
-    }, [gameId]);
-    const handleManualBind = () => {
-      const normalized = normalizeHikarinagiId(bindInput);
-      if (!normalized) {
-        ctx.ui.toast("请输入有效的 Hikarinagi 数字 ID 或条目链接", "error");
-        return;
-      }
-      setBindInput("");
-      store.loadGame(game, { force: true, bindId: normalized });
-    };
     if (state.status === "loading" && !detail) {
       return /* @__PURE__ */ jsxs(Column, {
         k: "aside-loading",
@@ -572,111 +460,11 @@ function createDetailAside(ctx, store) {
       if (lbl)
         langs.push(lbl);
     }
-    const score = Number(detail?.rating?.score || 0);
-    const total = Number(detail?.rating?.total || 0);
-    const played = Number(detail?.rating?.played || 0);
-    const cacheLabel = state.fetchedAt ? `${state.fromCache ? "SQLite 缓存" : "实时同步"} · ${formatRelativeTime(state.fetchedAt)}` : "";
     return /* @__PURE__ */ jsxs(Column, {
       k: `aside-root-${gameId}`,
       gap: 20,
       width: "full",
       children: [
-        detail ? /* @__PURE__ */ jsxs(Fragment, {
-          children: [
-            /* @__PURE__ */ jsxs(Column, {
-              k: "aside-rating-sec",
-              gap: "sm",
-              width: "full",
-              children: [
-                /* @__PURE__ */ jsxs(Row, {
-                  justify: "between",
-                  align: "center",
-                  width: "full",
-                  children: [
-                    /* @__PURE__ */ jsxs(Row, {
-                      gap: "xs",
-                      align: "center",
-                      children: [
-                        /* @__PURE__ */ jsx(Text, {
-                          text: "社区评分",
-                          size: "sm",
-                          weight: "semibold",
-                          tone: "strong"
-                        }),
-                        detail.nsfw ? /* @__PURE__ */ jsx(Badge, {
-                          label: "R-18",
-                          tone: "danger"
-                        }) : null
-                      ]
-                    }),
-                    /* @__PURE__ */ jsxs(Row, {
-                      gap: "xs",
-                      align: "center",
-                      children: [
-                        /* @__PURE__ */ jsx(IconButton, {
-                          k: "aside-refresh-btn",
-                          icon: "refresh",
-                          size: "sm",
-                          label: "刷新 Hikarinagi 详情",
-                          disabled: state.refreshing,
-                          onPress: () => store.loadGame(game, { force: true })
-                        }),
-                        /* @__PURE__ */ jsx(IconButton, {
-                          k: "aside-open-hn",
-                          icon: "open-in-new",
-                          size: "sm",
-                          label: "在浏览器打开 Hikarinagi",
-                          onPress: () => ctx.shell.openURL(`${SITE_GALGAME_BASE}${detail.id}`)
-                        })
-                      ]
-                    })
-                  ]
-                }),
-                score > 0 ? /* @__PURE__ */ jsxs(Row, {
-                  gap: "md",
-                  align: "center",
-                  width: "full",
-                  children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      text: score.toFixed(1),
-                      size: "3xl",
-                      weight: "bold",
-                      tone: "strong"
-                    }),
-                    /* @__PURE__ */ jsxs(Column, {
-                      gap: 2,
-                      children: [
-                        /* @__PURE__ */ jsx(RatingStars, {
-                          score
-                        }),
-                        /* @__PURE__ */ jsx(Text, {
-                          text: [total > 0 ? `${total} 人评分` : "", played > 0 ? `${played} 人玩过` : ""].filter(Boolean).join(" · ") || "Hikarinagi 均分",
-                          size: "xs",
-                          tone: "muted"
-                        })
-                      ]
-                    })
-                  ]
-                }) : /* @__PURE__ */ jsx(Text, {
-                  text: "暂无社区评分",
-                  size: "sm",
-                  tone: "muted"
-                }),
-                /* @__PURE__ */ jsx(RatingDistribution, {
-                  rating: detail.rating
-                }),
-                cacheLabel ? /* @__PURE__ */ jsx(Text, {
-                  text: cacheLabel,
-                  size: "xs",
-                  tone: "faint"
-                }) : null
-              ]
-            }),
-            /* @__PURE__ */ jsx(Divider, {
-              subtle: true
-            })
-          ]
-        }) : null,
         /* @__PURE__ */ jsxs(Column, {
           k: "aside-info-sec",
           gap: "md",
@@ -687,20 +475,65 @@ function createDetailAside(ctx, store) {
               align: "center",
               width: "full",
               children: [
-                /* @__PURE__ */ jsx(Text, {
-                  text: "游戏信息",
-                  size: "sm",
-                  weight: "semibold",
-                  tone: "strong"
+                /* @__PURE__ */ jsxs(Row, {
+                  gap: "xs",
+                  align: "center",
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      text: "游戏信息",
+                      size: "sm",
+                      weight: "semibold",
+                      tone: "strong"
+                    }),
+                    detail?.nsfw ? /* @__PURE__ */ jsx(Badge, {
+                      label: "R-18",
+                      tone: "danger"
+                    }) : null,
+                    detail ? /* @__PURE__ */ jsx(Text, {
+                      text: `#${detail.id}`,
+                      size: "xs",
+                      tone: "faint"
+                    }) : null
+                  ]
                 }),
-                detail ? /* @__PURE__ */ jsx(Text, {
-                  text: `#${detail.id}`,
-                  size: "xs",
-                  tone: "faint"
-                }) : /* @__PURE__ */ jsx(Text, {
-                  text: state.status === "error" ? "同步失败" : "未匹配",
-                  size: "xs",
-                  tone: "warning"
+                detail ? /* @__PURE__ */ jsxs(Row, {
+                  gap: "xs",
+                  align: "center",
+                  children: [
+                    /* @__PURE__ */ jsx(IconButton, {
+                      k: "aside-refresh-btn",
+                      icon: "refresh",
+                      size: "sm",
+                      label: "刷新 Hikarinagi 详情",
+                      disabled: state.refreshing,
+                      onPress: () => store.loadGame(game, { force: true })
+                    }),
+                    /* @__PURE__ */ jsx(IconButton, {
+                      k: "aside-open-hn",
+                      icon: "open-in-new",
+                      size: "sm",
+                      label: "在浏览器打开 Hikarinagi",
+                      onPress: () => ctx.shell.openURL(`${SITE_GALGAME_BASE}${detail.id}`)
+                    })
+                  ]
+                }) : /* @__PURE__ */ jsxs(Row, {
+                  gap: "xs",
+                  align: "center",
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      text: state.status === "error" ? "同步失败" : "未匹配",
+                      size: "xs",
+                      tone: "warning"
+                    }),
+                    /* @__PURE__ */ jsx(IconButton, {
+                      k: "aside-retry-btn",
+                      icon: "refresh",
+                      size: "sm",
+                      label: "重试匹配",
+                      disabled: state.refreshing,
+                      onPress: () => store.loadGame(game, { force: true })
+                    })
+                  ]
                 })
               ]
             }),
@@ -768,7 +601,7 @@ function createDetailAside(ctx, store) {
               width: "full",
               children: [
                 /* @__PURE__ */ jsx(Text, {
-                  text: state.error || "尚未自动匹配到 Hikarinagi 条目，可在下方输入条目 ID 手动关联。",
+                  text: state.error || "尚未自动匹配到 Hikarinagi 条目。",
                   size: "xs",
                   tone: state.status === "error" ? "danger" : "muted"
                 }),
@@ -815,85 +648,14 @@ function createDetailAside(ctx, store) {
               ]
             })
           ]
-        }) : null,
-        /* @__PURE__ */ jsx(Divider, {
-          subtle: true
-        }),
-        /* @__PURE__ */ jsx(Collapsible, {
-          k: "aside-bind-col",
-          title: "条目关联与缓存",
-          icon: "database-refresh-outline",
-          defaultOpen: !detail,
-          children: /* @__PURE__ */ jsxs(Column, {
-            gap: "sm",
-            width: "full",
-            paddingY: "xs",
-            children: [
-              /* @__PURE__ */ jsx(Text, {
-                text: "输入 Hikarinagi 数字 ID 或详情页链接：",
-                size: "xs",
-                tone: "muted"
-              }),
-              /* @__PURE__ */ jsxs(Row, {
-                gap: "xs",
-                align: "center",
-                width: "full",
-                children: [
-                  /* @__PURE__ */ jsx(Box, {
-                    grow: 1,
-                    basis: 0,
-                    minWidth: 0,
-                    children: /* @__PURE__ */ jsx(Input, {
-                      k: "aside-bind-input",
-                      value: bindInput,
-                      placeholder: "例如 25423 或条目 URL",
-                      onChange: setBindInput,
-                      onSubmit: handleManualBind
-                    })
-                  }),
-                  /* @__PURE__ */ jsx(Button, {
-                    k: "aside-bind-submit",
-                    label: "绑定",
-                    variant: "primary",
-                    size: "sm",
-                    loading: state.refreshing,
-                    onPress: handleManualBind
-                  })
-                ]
-              }),
-              /* @__PURE__ */ jsxs(Row, {
-                gap: "xs",
-                wrap: true,
-                children: [
-                  /* @__PURE__ */ jsx(Button, {
-                    k: "aside-force-refresh",
-                    label: "强制刷新",
-                    icon: "refresh",
-                    variant: "ghost",
-                    size: "sm",
-                    loading: state.refreshing,
-                    onPress: () => store.loadGame(game, { force: true })
-                  }),
-                  state.manualBound ? /* @__PURE__ */ jsx(Button, {
-                    k: "aside-unbind",
-                    label: "取消手动绑定",
-                    icon: "restore",
-                    variant: "ghost",
-                    size: "sm",
-                    onPress: () => store.unbindGame(game)
-                  }) : null
-                ]
-              })
-            ]
-          })
-        })
+        }) : null
       ]
     });
   };
 }
 
-// ../../packages/plugin-sdk/examples/hikarinagi-detail/src/components/HeroSection.tsx
-import { Box as Box2, HeroBanner, Image, Text as Text2, useEffect as useEffect2, useState as useState2 } from "lunabox";
+// ../plugin-sdk/examples/hikarinagi-detail/src/components/HeroSection.tsx
+import { HeroBanner, useEffect, useRef, useState } from "lunabox";
 import { jsx as jsx2 } from "lunabox/jsx-runtime";
 function createHeroSection(ctx, store) {
   return function HeroSection({ game, blurNsfw }) {
@@ -902,15 +664,25 @@ function createHeroSection(ctx, store) {
     const detail = state.detail;
     const shouldBlurNsfw = Boolean(blurNsfw);
     const gameId = game?.id ? String(game.id) : "";
-    const [selectedIdx, setSelectedIdx] = useState2(-1);
-    useEffect2(() => {
-      setSelectedIdx(-1);
+    const [selectedIdx, setSelectedIdx] = useState(0);
+    const prevBannerRef = useRef("");
+    useEffect(() => {
+      setSelectedIdx(0);
+      prevBannerRef.current = "";
     }, [gameId]);
     const sortedImages = sortHeroImages(detail?.images, shouldBlurNsfw);
     const defaultBanner = pickBestBanner(detail, game, shouldBlurNsfw);
-    const activeImg = selectedIdx >= 0 && selectedIdx < sortedImages.length ? sortedImages[selectedIdx] : null;
+    const totalImages = sortedImages.length;
+    const safeIdx = totalImages > 0 ? (selectedIdx % totalImages + totalImages) % totalImages : 0;
+    const activeImg = totalImages > 0 ? sortedImages[safeIdx] : null;
     const activeBannerUrl = activeImg ? activeImg.url : defaultBanner.url;
     const activeBannerSensitive = activeImg ? isMediaSensitive(activeImg) : defaultBanner.sensitive;
+    const fallbackBanner = prevBannerRef.current && prevBannerRef.current !== activeBannerUrl ? prevBannerRef.current : game?.cover_source_url || game?.cover_url || "";
+    useEffect(() => {
+      if (activeBannerUrl) {
+        prevBannerRef.current = activeBannerUrl;
+      }
+    }, [activeBannerUrl]);
     const logo = detail ? pickBestLogo(detail.logos, cfg.preferredLogoLang || "auto", ctx.i18n.getLanguage()) : null;
     const { title, subtitle } = getPrimaryAndSubTitle(detail, game);
     const meta = [];
@@ -953,13 +725,12 @@ function createHeroSection(ctx, store) {
     const rawHeight = Number(cfg.heroHeight);
     const heroHeight = Number.isFinite(rawHeight) && rawHeight >= 320 ? Math.min(580, rawHeight) : 460;
     const shouldBlurHero = Boolean(cfg.blurHeroBanner) || shouldBlurNsfw && activeBannerSensitive;
-    const stripImages = sortedImages.slice(0, 6);
-    const currentEffectiveIdx = selectedIdx >= 0 ? selectedIdx : 0;
+    const canPage = totalImages > 1;
     return /* @__PURE__ */ jsx2(HeroBanner, {
       k: `hero-${gameId}`,
       height: heroHeight,
       banner: activeBannerUrl,
-      fallbackBanner: game?.cover_source_url || game?.cover_url || "",
+      fallbackBanner,
       logo: logo?.url || "",
       title,
       subtitle,
@@ -969,53 +740,27 @@ function createHeroSection(ctx, store) {
       backSlot: "back",
       coverSlot: "cover",
       toolbarSlot: "toolbar",
-      children: stripImages.length > 1 ? [
-        ...stripImages.map((img, idx) => {
-          const isActive = idx === currentEffectiveIdx;
-          const thumbBlur = shouldBlurNsfw && isMediaSensitive(img);
-          return /* @__PURE__ */ jsx2(Box2, {
-            radius: "sm",
-            opacity: isActive ? 1 : 0.78,
-            children: /* @__PURE__ */ jsx2(Image, {
-              k: `hero-thumb-${idx}`,
-              src: img.url,
-              width: 122,
-              height: 68,
-              radius: 7,
-              fit: "cover",
-              blur: thumbBlur,
-              hoverBorder: true,
-              previewable: isActive && !thumbBlur,
-              onPress: isActive ? undefined : () => {
-                setSelectedIdx(idx);
-              }
-            })
-          }, `hero-thumb-wrap-${idx}`);
-        }),
-        sortedImages.length > stripImages.length ? /* @__PURE__ */ jsx2(Box2, {
-          paddingX: "sm",
-          paddingY: "xs",
-          children: /* @__PURE__ */ jsx2(Text2, {
-            text: `共 ${sortedImages.length} 张截图`,
-            size: "xs",
-            tone: "light-muted"
-          })
-        }, "hero-thumb-more") : null
-      ] : null
+      pager: canPage ? { current: safeIdx + 1, total: totalImages } : undefined,
+      onPrev: canPage ? () => {
+        setSelectedIdx((prev) => (prev - 1 + totalImages) % totalImages);
+      } : undefined,
+      onNext: canPage ? () => {
+        setSelectedIdx((prev) => (prev + 1) % totalImages);
+      } : undefined
     });
   };
 }
 
-// ../../packages/plugin-sdk/examples/hikarinagi-detail/src/components/OverviewTab.tsx
-import { Badge as Badge2, Button as Button2, Column as Column2, Divider as Divider2, NativeSlot, Row as Row2, Skeleton as Skeleton2, Text as Text3, useEffect as useEffect3, useState as useState3 } from "lunabox";
+// ../plugin-sdk/examples/hikarinagi-detail/src/components/OverviewTab.tsx
+import { Badge as Badge2, Button as Button2, Column as Column2, Divider as Divider2, NativeSlot, Row as Row2, Skeleton as Skeleton2, Text as Text2, useEffect as useEffect2, useState as useState2 } from "lunabox";
 import { jsx as jsx3, jsxs as jsxs2, Fragment as Fragment2 } from "lunabox/jsx-runtime";
 function createOverviewTab(store) {
   return function OverviewTab({ game }) {
     const state = store.useGameDetail(game);
     const detail = state.detail;
     const gameId = game?.id ? String(game.id) : "";
-    const [introLang, setIntroLang] = useState3("zh");
-    useEffect3(() => {
+    const [introLang, setIntroLang] = useState2("zh");
+    useEffect2(() => {
       setIntroLang("zh");
     }, [gameId]);
     const transIntro = String(detail?.trans_intro || "").trim();
@@ -1039,7 +784,7 @@ function createOverviewTab(store) {
               align: "center",
               width: "full",
               children: [
-                /* @__PURE__ */ jsx3(Text3, {
+                /* @__PURE__ */ jsx3(Text2, {
                   text: "简介",
                   size: "lg",
                   weight: "semibold",
@@ -1070,7 +815,7 @@ function createOverviewTab(store) {
             state.status === "loading" && !detail && !game?.summary ? /* @__PURE__ */ jsx3(Skeleton2, {
               lines: 4,
               height: 14
-            }) : activeIntro ? /* @__PURE__ */ jsx3(Text3, {
+            }) : activeIntro ? /* @__PURE__ */ jsx3(Text2, {
               text: activeIntro,
               size: "sm",
               tone: "default",
@@ -1089,7 +834,7 @@ function createOverviewTab(store) {
           gap: "md",
           width: "full",
           children: [
-            /* @__PURE__ */ jsx3(Text3, {
+            /* @__PURE__ */ jsx3(Text2, {
               text: "标签",
               size: "lg",
               weight: "semibold",
@@ -1105,7 +850,7 @@ function createOverviewTab(store) {
               width: "full",
               marginTop: "xs",
               children: [
-                /* @__PURE__ */ jsx3(Text3, {
+                /* @__PURE__ */ jsx3(Text2, {
                   text: `Hikarinagi 社区标签 (${sortedTags.length})`,
                   size: "xs",
                   weight: "medium",
@@ -1134,7 +879,7 @@ function createOverviewTab(store) {
               gap: "sm",
               width: "full",
               children: [
-                /* @__PURE__ */ jsx3(Text3, {
+                /* @__PURE__ */ jsx3(Text2, {
                   text: "别名",
                   size: "base",
                   weight: "semibold",
@@ -1144,7 +889,7 @@ function createOverviewTab(store) {
                   gap: "sm",
                   wrap: true,
                   width: "full",
-                  children: aliases.map((al, idx) => /* @__PURE__ */ jsx3(Text3, {
+                  children: aliases.map((al, idx) => /* @__PURE__ */ jsx3(Text2, {
                     text: idx < aliases.length - 1 ? `${al}  /` : al,
                     size: "sm",
                     tone: "muted",
@@ -1160,31 +905,29 @@ function createOverviewTab(store) {
   };
 }
 
-// ../../packages/plugin-sdk/examples/hikarinagi-detail/src/components/ScreenshotsTab.tsx
+// ../plugin-sdk/examples/hikarinagi-detail/src/components/ScreenshotsTab.tsx
 import {
   Button as Button3,
-  Collapsible as Collapsible2,
   Column as Column3,
-  Divider as Divider3,
   Empty,
   Grid,
-  Image as Image2,
+  Image,
   Row as Row3,
   Skeleton as Skeleton3,
-  Text as Text4,
-  useEffect as useEffect4,
-  useState as useState4
+  Text as Text3,
+  useEffect as useEffect3,
+  useState as useState3
 } from "lunabox";
-import { jsx as jsx4, jsxs as jsxs3, Fragment as Fragment3 } from "lunabox/jsx-runtime";
+import { jsx as jsx4, jsxs as jsxs3 } from "lunabox/jsx-runtime";
 function createScreenshotsTab(store) {
   return function ScreenshotsTab({ game, blurNsfw }) {
     const state = store.useGameDetail(game);
     const detail = state.detail;
     const shouldBlurNsfw = Boolean(blurNsfw);
     const gameId = game?.id ? String(game.id) : "";
-    const [revealNsfw, setRevealNsfw] = useState4(false);
-    const [revealedMap, setRevealedMap] = useState4({});
-    useEffect4(() => {
+    const [revealNsfw, setRevealNsfw] = useState3(false);
+    const [revealedMap, setRevealedMap] = useState3({});
+    useEffect3(() => {
       setRevealNsfw(false);
       setRevealedMap({});
     }, [gameId]);
@@ -1194,7 +937,7 @@ function createScreenshotsTab(store) {
         gap: "md",
         width: "full",
         children: [
-          /* @__PURE__ */ jsx4(Text4, {
+          /* @__PURE__ */ jsx4(Text3, {
             text: "正在加载游戏截图…",
             size: "sm",
             tone: "muted"
@@ -1211,14 +954,12 @@ function createScreenshotsTab(store) {
         k: "ss-unmatched",
         icon: "image-off",
         title: state.status === "error" ? "获取 Hikarinagi 截图失败" : "未匹配到 Hikarinagi 条目",
-        description: state.error || "请在右侧「关联与缓存」中手动输入 Hikarinagi 条目 ID，或点击重试。",
+        description: state.error || "尚未匹配到对应的 Hikarinagi 条目，请点击重试。",
         actionLabel: "重新匹配",
         onAction: () => store.loadGame(game, { force: true })
       });
     }
     const images = Array.isArray(detail.images) ? detail.images.filter((i) => i && i.url) : [];
-    const covers = Array.isArray(detail.covers) ? detail.covers.filter((c) => c && c.url) : [];
-    const logos = Array.isArray(detail.logos) ? detail.logos.filter((l) => l && l.url) : [];
     const sensitiveCount = images.filter(isMediaSensitive).length;
     return /* @__PURE__ */ jsxs3(Column3, {
       k: `ss-root-${gameId}`,
@@ -1234,13 +975,13 @@ function createScreenshotsTab(store) {
               gap: "sm",
               align: "center",
               children: [
-                /* @__PURE__ */ jsx4(Text4, {
+                /* @__PURE__ */ jsx4(Text3, {
                   text: "游戏截图",
                   size: "lg",
                   weight: "semibold",
                   tone: "strong"
                 }),
-                /* @__PURE__ */ jsx4(Text4, {
+                /* @__PURE__ */ jsx4(Text3, {
                   text: `共 ${images.length} 张`,
                   size: "xs",
                   tone: "muted"
@@ -1287,7 +1028,7 @@ function createScreenshotsTab(store) {
             return /* @__PURE__ */ jsxs3(Column3, {
               gap: "xs",
               children: [
-                /* @__PURE__ */ jsx4(Image2, {
+                /* @__PURE__ */ jsx4(Image, {
                   k: `ss-img-${idx}`,
                   src: img.url,
                   height: 216,
@@ -1302,12 +1043,12 @@ function createScreenshotsTab(store) {
                   align: "center",
                   width: "full",
                   children: [
-                    /* @__PURE__ */ jsx4(Text4, {
+                    /* @__PURE__ */ jsx4(Text3, {
                       text: blurred ? "敏感画面（点击解除模糊）" : `截图 ${idx + 1}`,
                       size: "xs",
                       tone: blurred ? "warning" : "faint"
                     }),
-                    /* @__PURE__ */ jsx4(Text4, {
+                    /* @__PURE__ */ jsx4(Text3, {
                       text: dimLabel,
                       size: "xs",
                       tone: "faint"
@@ -1317,113 +1058,13 @@ function createScreenshotsTab(store) {
               ]
             }, `ss-item-${idx}`);
           })
-        }),
-        covers.length > 0 || logos.length > 0 ? /* @__PURE__ */ jsxs3(Fragment3, {
-          children: [
-            /* @__PURE__ */ jsx4(Divider3, {
-              subtle: true
-            }),
-            /* @__PURE__ */ jsx4(Collapsible2, {
-              k: "ss-extra-collapsible",
-              title: `封面与透明徽标（封面 ${covers.length} / 徽标 ${logos.length}）`,
-              icon: "image-search-outline",
-              defaultOpen: false,
-              children: /* @__PURE__ */ jsxs3(Column3, {
-                gap: "lg",
-                width: "full",
-                paddingY: "sm",
-                children: [
-                  logos.length > 0 ? /* @__PURE__ */ jsxs3(Column3, {
-                    k: "ss-logos-sec",
-                    gap: "sm",
-                    width: "full",
-                    children: [
-                      /* @__PURE__ */ jsx4(Text4, {
-                        text: "透明标题徽标",
-                        size: "sm",
-                        weight: "medium",
-                        tone: "strong"
-                      }),
-                      /* @__PURE__ */ jsx4(Grid, {
-                        k: "ss-logos-grid",
-                        cols: 2,
-                        gap: "sm",
-                        children: logos.map((lg, idx) => /* @__PURE__ */ jsxs3(Column3, {
-                          gap: "xs",
-                          padding: "sm",
-                          surface: "subtle",
-                          radius: "md",
-                          children: [
-                            /* @__PURE__ */ jsx4(Image2, {
-                              k: `ss-logo-img-${idx}`,
-                              src: lg.url,
-                              height: 84,
-                              radius: 6,
-                              fit: "contain",
-                              transparent: true,
-                              previewable: true
-                            }),
-                            /* @__PURE__ */ jsx4(Text4, {
-                              text: `${formatLangLabel(lg.language) || "默认语言"}${lg.width && lg.height ? ` · ${lg.width}×${lg.height}` : ""}`,
-                              size: "xs",
-                              tone: "muted"
-                            })
-                          ]
-                        }, `ss-logo-${idx}`))
-                      })
-                    ]
-                  }) : null,
-                  covers.length > 0 ? /* @__PURE__ */ jsxs3(Column3, {
-                    k: "ss-covers-sec",
-                    gap: "sm",
-                    width: "full",
-                    children: [
-                      /* @__PURE__ */ jsx4(Text4, {
-                        text: "收录封面",
-                        size: "sm",
-                        weight: "medium",
-                        tone: "strong"
-                      }),
-                      /* @__PURE__ */ jsx4(Grid, {
-                        k: "ss-covers-grid",
-                        cols: 3,
-                        gap: "sm",
-                        children: covers.map((cv, idx) => {
-                          const blurred = shouldBlurNsfw && isMediaSensitive(cv) && !revealNsfw;
-                          return /* @__PURE__ */ jsxs3(Column3, {
-                            gap: "xs",
-                            children: [
-                              /* @__PURE__ */ jsx4(Image2, {
-                                k: `ss-cover-img-${idx}`,
-                                src: cv.url,
-                                height: 188,
-                                radius: 8,
-                                fit: "cover",
-                                blur: blurred,
-                                previewable: !blurred
-                              }),
-                              /* @__PURE__ */ jsx4(Text4, {
-                                text: `${cv.kind || "封面"}${cv.votes ? ` · ${cv.votes} 票` : ""}`,
-                                size: "xs",
-                                tone: "faint"
-                              })
-                            ]
-                          }, `ss-cover-${idx}`);
-                        })
-                      })
-                    ]
-                  }) : null
-                ]
-              })
-            })
-          ]
-        }) : null
+        })
       ]
     });
   };
 }
 
-// ../../packages/plugin-sdk/examples/hikarinagi-detail/src/db.ts
+// ../plugin-sdk/examples/hikarinagi-detail/src/db.ts
 function createCacheDB(ctx) {
   let dbInitPromise = null;
   function ensureDB() {
@@ -1521,8 +1162,8 @@ function createCacheDB(ctx) {
   };
 }
 
-// ../../packages/plugin-sdk/examples/hikarinagi-detail/src/store.ts
-import { useEffect as useEffect5, useState as useState5 } from "lunabox";
+// ../plugin-sdk/examples/hikarinagi-detail/src/store.ts
+import { useEffect as useEffect4, useState as useState4 } from "lunabox";
 var NEGATIVE_CACHE_MS = 6 * 60 * 60 * 1000;
 function createEmptyEntry() {
   return {
@@ -1749,8 +1390,8 @@ function createDetailStore(ctx, db, api) {
   }
   function useGameDetail(game) {
     const gameId = game?.id ? String(game.id) : "";
-    const [, setTick] = useState5(0);
-    useEffect5(() => {
+    const [, setTick] = useState4(0);
+    useEffect4(() => {
       if (!gameId)
         return;
       const unsub = subscribeGame(gameId, () => setTick((n) => n + 1));
@@ -1767,7 +1408,7 @@ function createDetailStore(ctx, db, api) {
   };
 }
 
-// ../../packages/plugin-sdk/examples/hikarinagi-detail/src/index.tsx
+// ../plugin-sdk/examples/hikarinagi-detail/src/index.tsx
 function apply(ctx) {
   ctx.config.define({
     title: "Hikarinagi 详情页重构",

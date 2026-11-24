@@ -302,7 +302,11 @@ func TestHikarinagiDetailPluginSlotsAndCachedRender(t *testing.T) {
 					u.Tree.Props["blur"] == false &&
 					u.Tree.Props["backSlot"] == "back" &&
 					u.Tree.Props["coverSlot"] == "cover" &&
-					u.Tree.Props["toolbarSlot"] == "toolbar" {
+					u.Tree.Props["toolbarSlot"] == "toolbar" &&
+					stringsContainsAll(s, "9.3") &&
+					len(u.Tree.Children) == 0 &&
+					u.Tree.Events["prev"] != "" &&
+					u.Tree.Events["next"] != "" {
 					gotHeroReady = true
 				}
 			case "overview::1":
@@ -310,11 +314,16 @@ func TestHikarinagiDetailPluginSlotsAndCachedRender(t *testing.T) {
 					gotOverviewReady = true
 				}
 			case "tab::1":
-				if stringsContainsAll(s, "游戏截图", "https://cdn.example.com/ss1.webp", "https://cdn.example.com/ss2.webp") {
+				if stringsContainsAll(s, "游戏截图", "https://cdn.example.com/ss1.webp", "https://cdn.example.com/ss2.webp") &&
+					!containsStr(s, "封面与透明徽标") &&
+					!containsStr(s, "透明标题徽标") &&
+					!containsStr(s, "收录封面") {
 					gotTabReady = true
 				}
 			case "aside::1":
-				if stringsContainsAll(s, "社区评分", "9.3", "サクラノ詩", "枕", "Bangumi", "VNDB") &&
+				if stringsContainsAll(s, "游戏信息", "サクラノ詩", "枕", "Bangumi", "VNDB") &&
+					!containsStr(s, "社区评分") &&
+					!containsStr(s, "条目关联与缓存") &&
 					!containsStr(s, `"t":"Card"`) {
 					gotAsideReady = true
 				}

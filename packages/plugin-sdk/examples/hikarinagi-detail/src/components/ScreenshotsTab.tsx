@@ -1,8 +1,6 @@
 import {
   Button,
-  Collapsible,
   Column,
-  Divider,
   Empty,
   Grid,
   Image,
@@ -12,7 +10,7 @@ import {
   useEffect,
   useState,
 } from 'lunabox';
-import { formatLangLabel, isMediaSensitive } from '../format';
+import { isMediaSensitive } from '../format';
 import type { DetailStore } from '../store';
 import type { SlotRenderProps } from '../types';
 
@@ -47,7 +45,7 @@ export function createScreenshotsTab(store: DetailStore) {
           icon="image-off"
           title={state.status === 'error' ? '获取 Hikarinagi 截图失败' : '未匹配到 Hikarinagi 条目'}
           description={
-            state.error || '请在右侧「关联与缓存」中手动输入 Hikarinagi 条目 ID，或点击重试。'
+            state.error || '尚未匹配到对应的 Hikarinagi 条目，请点击重试。'
           }
           actionLabel="重新匹配"
           onAction={() => store.loadGame(game, { force: true })}
@@ -56,8 +54,6 @@ export function createScreenshotsTab(store: DetailStore) {
     }
 
     const images = Array.isArray(detail.images) ? detail.images.filter((i) => i && i.url) : [];
-    const covers = Array.isArray(detail.covers) ? detail.covers.filter((c) => c && c.url) : [];
-    const logos = Array.isArray(detail.logos) ? detail.logos.filter((l) => l && l.url) : [];
     const sensitiveCount = images.filter(isMediaSensitive).length;
 
     return (
@@ -133,83 +129,6 @@ export function createScreenshotsTab(store: DetailStore) {
             })}
           </Grid>
         )}
-
-        {covers.length > 0 || logos.length > 0 ? (
-          <>
-            <Divider subtle={true} />
-            <Collapsible
-              k="ss-extra-collapsible"
-              title={`封面与透明徽标（封面 ${covers.length} / 徽标 ${logos.length}）`}
-              icon="image-search-outline"
-              defaultOpen={false}
-            >
-              <Column gap="lg" width="full" paddingY="sm">
-                {logos.length > 0 ? (
-                  <Column k="ss-logos-sec" gap="sm" width="full">
-                    <Text text="透明标题徽标" size="sm" weight="medium" tone="strong" />
-                    <Grid k="ss-logos-grid" cols={2} gap="sm">
-                      {logos.map((lg, idx) => (
-                        <Column
-                          key={`ss-logo-${idx}`}
-                          gap="xs"
-                          padding="sm"
-                          surface="subtle"
-                          radius="md"
-                        >
-                          <Image
-                            k={`ss-logo-img-${idx}`}
-                            src={lg.url}
-                            height={84}
-                            radius={6}
-                            fit="contain"
-                            transparent={true}
-                            previewable={true}
-                          />
-                          <Text
-                            text={`${formatLangLabel(lg.language) || '默认语言'}${
-                              lg.width && lg.height ? ` · ${lg.width}×${lg.height}` : ''
-                            }`}
-                            size="xs"
-                            tone="muted"
-                          />
-                        </Column>
-                      ))}
-                    </Grid>
-                  </Column>
-                ) : null}
-
-                {covers.length > 0 ? (
-                  <Column k="ss-covers-sec" gap="sm" width="full">
-                    <Text text="收录封面" size="sm" weight="medium" tone="strong" />
-                    <Grid k="ss-covers-grid" cols={3} gap="sm">
-                      {covers.map((cv, idx) => {
-                        const blurred = shouldBlurNsfw && isMediaSensitive(cv) && !revealNsfw;
-                        return (
-                          <Column key={`ss-cover-${idx}`} gap="xs">
-                            <Image
-                              k={`ss-cover-img-${idx}`}
-                              src={cv.url}
-                              height={188}
-                              radius={8}
-                              fit="cover"
-                              blur={blurred}
-                              previewable={!blurred}
-                            />
-                            <Text
-                              text={`${cv.kind || '封面'}${cv.votes ? ` · ${cv.votes} 票` : ''}`}
-                              size="xs"
-                              tone="faint"
-                            />
-                          </Column>
-                        );
-                      })}
-                    </Grid>
-                  </Column>
-                ) : null}
-              </Column>
-            </Collapsible>
-          </>
-        ) : null}
       </Column>
     );
   };

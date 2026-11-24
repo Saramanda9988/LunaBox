@@ -129,6 +129,14 @@ func TestRenderHeroBannerHalfStarAndSafeIcon(t *testing.T) {
 						"total":  420.0,
 						"played": 1200.0,
 					},
+					"pager": map[string]any{
+						"current": 2.0,
+						"total":   6.0,
+					},
+				},
+				Events: map[string]string{
+					"prev": "h-prev",
+					"next": "h-next",
 				},
 			},
 			{
@@ -159,3 +167,37 @@ func TestRenderHeroBannerHalfStarAndSafeIcon(t *testing.T) {
 	tt.Frame()
 	tt.Advance(20 * time.Millisecond)
 }
+
+func TestLoadImageSourceUntypedNilAndHeroBannerUncachedLogo(t *testing.T) {
+	e := &env.Env{MainWidth: 1200}
+	mgr := New(e, HostCallbacks{})
+
+	if src := mgr.LoadImageSource("/definitely/missing/logo.png"); src != nil {
+		t.Fatalf("expected untyped nil ui.ImageSource for uncached bitmap, got %T (%v)", src, src)
+	}
+	if src := mgr.LoadImageSource("/definitely/missing/logo.svg"); src != nil {
+		t.Fatalf("expected untyped nil ui.ImageSource for uncached svg, got %T (%v)", src, src)
+	}
+
+	inst := newInstance("inst-hero-logo", "hikarinagi-detail", plugin.SlotGameDetailHero, "hikarinagi-hero", "g-logo")
+	inst.Version = 1
+	inst.Tree = &plugin.UINode{
+		Type: "HeroBanner",
+		Key:  "hero-g-logo",
+		Props: map[string]any{
+			"height": 460.0,
+			"banner": "/definitely/missing/banner.webp",
+			"logo":   "/definitely/missing/logo-uncached.png",
+			"title":  "樱之诗",
+		},
+	}
+
+	tt := ui.NewTester(func(c *ui.Context) {
+		th := theme.New(true, 1)
+		mgr.RenderInstance(c, th, inst)
+	}, 1200, 600)
+	tt.Frame()
+	tt.Advance(50 * time.Millisecond)
+	tt.Frame()
+}
+

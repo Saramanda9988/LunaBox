@@ -779,7 +779,7 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 		return ui.Element{}
 
 	case "HeroBanner":
-		return m.renderHeroBanner(c, t, inst, key, p, n.Children, natives)
+		return m.renderHeroBanner(c, t, inst, key, n, natives)
 
 	default:
 		// 未知组件：开发模式下画红色占位并写明类型，正式版跳过（见 §9.6）
@@ -1006,17 +1006,18 @@ func (m *Manager) renderSpringPressBox(
 	return btn
 }
 
-// renderHeroBanner 渲染全出血沉浸式头图横幅（支持透明大徽标、标题/原名、图标元信息行、评分星级、无缝内嵌启动栏、截图缩略条与右侧悬浮封面）。
+// renderHeroBanner 渲染全出血沉浸式头图横幅（支持透明大徽标、标题/原名、图标元信息行、评分星级、无缝内嵌启动栏、右侧悬浮封面与头图翻页器）。
 // 背景图与多层渐变遮罩均设置负 ZIndex，确保永远位于常规流前景内容之下，不会覆盖标题与封面。
 func (m *Manager) renderHeroBanner(
 	c *ui.Context,
 	t *theme.Theme,
 	inst *Instance,
 	key string,
-	p map[string]any,
-	children []*plugin.UINode,
+	n *plugin.UINode,
 	natives NativeSlots,
 ) ui.Element {
+	p := n.Props
+	children := n.Children
 	bannerH := propFloat(p, "height")
 	if bannerH < 280 {
 		bannerH = 440
@@ -1024,8 +1025,10 @@ func (m *Manager) renderHeroBanner(
 		bannerH = 600
 	}
 	bannerSrc := propStr(p, "banner")
+	fallbackBannerSrc := propStr(p, "fallbackBanner")
 	if bannerSrc == "" {
-		bannerSrc = propStr(p, "fallbackBanner")
+		bannerSrc = fallbackBannerSrc
+		fallbackBannerSrc = ""
 	}
 	logoSrc := propStr(p, "logo")
 	title := propStr(p, "title")
@@ -1034,6 +1037,15 @@ func (m *Manager) renderHeroBanner(
 	backSlot := propStr(p, "backSlot")
 	coverSlot := propStr(p, "coverSlot")
 	toolbarSlot := propStr(p, "toolbarSlot")
+	prevID := eventID(n, "prev")
+	nextID := eventID(n, "next")
+
+	var pagerCurrent, pagerTotal int
+	if pm, ok := p["pager"].(map[string]any); ok {
+		pagerCurrent = int(propFloat(pm, "current"))
+		pagerTotal = int(propFloat(pm, "total"))
+	}
+	hasPager := (prevID != "" || nextID != "") && (pagerTotal == 0 || pagerTotal > 1)
 
 	type heroMetaItem struct {
 		Icon string
@@ -1085,9 +1097,13 @@ func (m *Manager) renderHeroBanner(
 		},
 	})
 	hero.Children(func() {
-		// 层 -3：高清原始头图（默认不虚化，仅当显式 blur=true 时模糊）
+		// 层 -3：高清原始头图（默认不虚化，仅当显式 blur=true 时模糊；新图加载中平滑回退到 fallbackBanner）
 		if bannerSrc != "" {
-			if bmp := m.loadBitmap(bannerSrc); bmp != nil {
+			bmp := m.loadBitmap(bannerSrc)
+			if bmp == nil && fallbackBannerSrc != "" && fallbackBannerSrc != bannerSrc {
+				bmp = m.loadBitmap(fallbackBannerSrc)
+			}
+			if bmp != nil {
 				img := ui.Image(c.Key(key+"-bg"), bmp).Absolute().Top(0).Right(0).Bottom(0).Left(0).Fit(ui.Cover).PassThrough().ZIndex(-3)
 				if blur {
 					img.Blur(20)
@@ -1142,7 +1158,7 @@ func (m *Manager) renderHeroBanner(
 							const maxLogoW float32 = 460
 							const maxLogoH float32 = 132
 							w, h := float32(340), float32(104)
-							if bmp, ok := imgSrc.(*ui.Bitmap); ok {
+							if bmp, ok := imgSrc.(*ui.Bitmap); ok && bmp != nil {
 								bw, bh := bmp.Size()
 								if bw > 0 && bh > 0 {
 									scale := min(maxLogoW/float32(bw), maxLogoH/float32(bh))
@@ -1237,15 +1253,69 @@ func (m *Manager) renderHeroBanner(
 					}
 				})
 
-				// 右侧悬浮竖版封面（复用原生封面查看器与 NSFW 模糊）
+				var coverFn func(*ui.Context, *theme.Theme)
 				if coverSlot != "" && natives != nil {
 					if fn, ok := natives[coverSlot]; ok && fn != nil {
-						ui.Box(c.Key(key+"-cover-frame")).Shrink(0).Radius(10).
-							Shadow(0, 14, 32, 0, theme.Black.Alpha(0.45)).
-							Border(t.HL, theme.White.Alpha(0.18)).Clip().Children(func() {
-							fn(c, t)
-						})
+						coverFn = fn
 					}
+				}
+
+				if coverFn != nil || hasPager {
+					ui.Column(c.Key(key+"-right-col")).Shrink(0).AlignItems(ui.End).Gap(12).Children(func() {
+						// 右侧悬浮竖版封面（复用原生封面查看器与 NSFW 模糊）
+						if coverFn != nil {
+							ui.Box(c.Key(key+"-cover-frame")).Shrink(0).Radius(10).
+								Shadow(0, 14, 32, 0, theme.Black.Alpha(0.45)).
+								Border(t.HL, theme.White.Alpha(0.18)).Clip().Children(func() {
+								coverFn(c, t)
+							})
+						}
+
+						// 右侧底部头图左翻 / 右翻按钮（与左侧启动栏底线齐平）
+						if hasPager {
+							pillBg := theme.Black.Alpha(0.42)
+							pillBorder := theme.White.Alpha(0.16)
+							ui.Row(c.Key(key+"-pager")).Shrink(0).AlignItems(ui.Center).Gap(2).
+								Padding(3).Radius(999).
+								Background(pillBg).Border(t.HL, pillBorder).Children(func() {
+								renderPagerBtn := func(btnKey, iconName, label, evID string) {
+									btn := ui.ButtonBase(c.Key(btnKey)).Size(28, 28).Radius(999).Center().FocusRing(false).Label(label)
+									enabled := evID != ""
+									if enabled && btn.Hovered() {
+										btn.Background(theme.White.Alpha(0.18))
+									}
+									btn.Transition(theme.ColorsTransition(120 * time.Millisecond))
+									fg := theme.White.Alpha(0.92)
+									if !enabled {
+										fg = theme.White.Alpha(0.32)
+									}
+									if enabled {
+										btn.OnClick(func() {
+											m.dispatch(inst, evID, nil)
+										})
+									}
+									btn.Children(func() {
+										if ic := assets.SafeIcon(iconName, ""); ic != "" {
+											components.Icon(c, ic, 18, fg)
+										}
+									})
+								}
+
+								renderPagerBtn(key+"-pager-prev", "chevron-left", "上一张头图", prevID)
+								if pagerTotal > 0 {
+									cur := pagerCurrent
+									if cur < 1 {
+										cur = 1
+									}
+									if cur > pagerTotal {
+										cur = pagerTotal
+									}
+									components.TextMargin(c, fmt.Sprintf("%d / %d", cur, pagerTotal), theme.TextXS, theme.WeightMedium, theme.White.Alpha(0.84), 0, 6, 0, 6).NoWrap()
+								}
+								renderPagerBtn(key+"-pager-next", "chevron-right", "下一张头图", nextID)
+							})
+						}
+					})
 				}
 			})
 

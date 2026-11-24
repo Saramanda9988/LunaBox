@@ -335,7 +335,10 @@ func (m *Manager) LoadImageSource(src string) ui.ImageSource {
 		m.imgMu.RLock()
 		if svg, ok := m.svgCache[src]; ok {
 			m.imgMu.RUnlock()
-			return svg
+			if svg != nil {
+				return svg
+			}
+			return nil
 		}
 		if m.imgLoading[src] {
 			m.imgMu.RUnlock()
@@ -384,17 +387,28 @@ func (m *Manager) LoadImageSource(src string) ui.ImageSource {
 		}()
 		return nil
 	}
-	return m.loadBitmap(src)
+	if bmp := m.loadBitmap(src); bmp != nil {
+		return bmp
+	}
+	return nil
+}
+
+func (m *Manager) newHTTPClient() *http.Client {
+	opts := httputils.ClientOptions{
+		Timeout: 15 * time.Second,
+	}
+	if m.env != nil {
+		opts.ProxyConfig = m.env.Config()
+	}
+	client, _, cerr := httputils.NewClient(opts)
+	if cerr != nil || client == nil {
+		return &http.Client{Timeout: 15 * time.Second}
+	}
+	return client
 }
 
 func (m *Manager) fetchRemoteBytes(src string) ([]byte, error) {
-	client, _, cerr := httputils.NewClient(httputils.ClientOptions{
-		Timeout:     15 * time.Second,
-		ProxyConfig: m.env.Config(),
-	})
-	if cerr != nil || client == nil {
-		client = &http.Client{Timeout: 15 * time.Second}
-	}
+	client := m.newHTTPClient()
 	req, err := http.NewRequest(http.MethodGet, src, nil)
 	if err != nil {
 		return nil, err
@@ -458,13 +472,7 @@ func (m *Manager) loadBitmap(src string) *ui.Bitmap {
 		var img image.Image
 		var err error
 		if strings.HasPrefix(src, "http://") || strings.HasPrefix(src, "https://") {
-			client, _, cerr := httputils.NewClient(httputils.ClientOptions{
-				Timeout:     15 * time.Second,
-				ProxyConfig: m.env.Config(),
-			})
-			if cerr != nil || client == nil {
-				client = &http.Client{Timeout: 15 * time.Second}
-			}
+			client := m.newHTTPClient()
 			req, rerr := http.NewRequest(http.MethodGet, src, nil)
 			if rerr == nil {
 				req.Header.Set("User-Agent", version.UserAgent())
