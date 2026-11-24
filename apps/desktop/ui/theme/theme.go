@@ -15,6 +15,10 @@ type Theme struct {
 
 	Glass     bool    // 根布局的 data-glass：开启了自定义背景（见 glass.go）
 	BgOpacity float32 // background_opacity：玻璃模式下 main 与侧边栏底色的不透明度
+
+	// BgLocked 为 true 时有主题插件声明了 glass.enabled: false：本帧不使用用户的自定义背景与玻璃模式，
+	// 避免背景图破坏插件的设计配色（见 ApplyPluginOverrides）。
+	BgLocked bool
 }
 
 // New 按系统主题和显示器缩放创建 Theme。

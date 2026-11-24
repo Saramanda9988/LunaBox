@@ -578,7 +578,11 @@ interface MetadataSourceDef {
 
 ### 7.7 主题、字体与装饰：`ctx.theme`
 
-- `ctx.theme.extend(tokens: ThemeTokens): Disposer`（按 `light` / `dark` 覆盖 `ThemePaletteTokens` 26 项语义色板及 `glass` 毛玻璃参数）
+- `ctx.theme.extend(tokens: ThemeTokens): Disposer`（按 `light` / `dark` 覆盖 `ThemePaletteTokens` 共 58 项宿主语义色板，以及 `glass` 毛玻璃参数）
+  - 色板覆盖只作用于读取语义令牌的宿主组件（窗口骨架、侧边栏、输入框、主/次按钮、开关、卡片、面板、菜单、筛选标签、下拉、提示气泡等）；宿主中直接引用固定色阶的装饰色、圆角与阴影不在覆盖范围内。
+  - `primaryBtn` / `primaryBtnHover` / `primaryBtnText` 同时驱动 `Button variant="primary"` 与开关打开态；`toolBtn*` 驱动次要按钮。
+  - `glass.enabled: false`：**锁定配色**——插件启用期间宿主不使用用户的自定义背景与玻璃模式，设置页「背景」分区显示提示，停用插件后恢复；`glass.enabled: true` 则开启玻璃模式（可配合 `glass.backgroundImage` 使用插件自带背景）。多个插件声明时以后注册者为准。
+  - 插件自身 UI 中的 `brand` / `primary` / `accent` 颜色令牌与 `tone` 不跟随色板覆盖，设计主题请直接使用十六进制或 `{ light, dark }` 颜色值。
 - `ctx.theme.registerFont({ family, file, target?: 'ui' | 'mono' }): Disposer`
 - `ctx.theme.registerDecoration(def: DecorationOptions): Disposer`（`layer`: `'background' | 'foreground'`，`anchor`: `'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'center'`，`offset`、`size`、`opacity`、`pointerEvents`、`routes`、`image`、`render`）
 
@@ -633,6 +637,7 @@ ctx.on<K extends keyof EventMap>(event: K, listener: EventMap[K], opts?: { prepe
 | 示例目录 | 演示核心能力 |
 | --- | --- |
 | `hikarinagi-detail` | TypeScript/TSX 构建、`game.detail.hero` + `HeroBanner`、`NativeSlot`、`game.detail.tab`（`order`/`hideTabs`）、`game.detail.aside`、`ctx.db` SQLite 缓存、`ctx.metadata.getAuthToken` |
+| `hikarinagi-theme` | 按 Hina UI 设计令牌映射全部宿主语义色板、`glass.enabled: false` 锁定配色、`ctx.config.onChange` 动态重新注册主题 |
 | `metadata-source` | `ctx.metadata.registerSource` 自定义元数据源 |
 | `resource-hub` | `sidebar.page`、`Grid`/`Card`、分页加载与 `ctx.downloads.requestInstall` |
 | `site-detail` | `game.detail.tab`、`Markdown`、`ctx.html.parse` |

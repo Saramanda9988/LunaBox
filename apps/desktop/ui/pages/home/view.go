@@ -84,7 +84,7 @@ func (p *Page) View(c *ui.Context) {
 		p.accent = col
 	}
 
-	bgCustom := cfg != nil && cfg.BackgroundEnabled
+	bgCustom := cfg != nil && cfg.BackgroundEnabled && !t.BgLocked
 	showBackground := !bgCustom || !cfg.BackgroundHideGameCover
 	showHeroCover := !bgCustom || !cfg.BackgroundHideGameHeroCover
 	hasPicker := len(items) > 1

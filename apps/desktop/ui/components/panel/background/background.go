@@ -51,6 +51,10 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 	// section.space-y-4：背景图
 	ui.Column(c.Key("background-section")).FillWidth().Gap(16).Children(func() {
 		panel.GroupTitle(c, t, locales.SettingsAppearanceBackgroundSection())
+		if t.BgLocked { // 主题插件声明了 glass.enabled: false，下面的设置保留但暂不生效
+			components.Text(c, locales.SettingsAppearanceBgLockedByPlugin(), theme.TextXS, theme.WeightNormal,
+				t.Pick(theme.Warning700, theme.Warning300))
+		}
 		better.SettingSwitchRow(c, t, "background_enabled", better.SettingSwitchRowProps{
 			Label:    locales.SettingsAppearanceEnableBg(),
 			Hint:     locales.SettingsAppearanceEnableBgHint(),

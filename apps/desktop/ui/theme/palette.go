@@ -181,7 +181,7 @@ type Palette struct {
 	ToolBtnBg, ToolBtnBorder, ToolBtnHover, ToolBtnIcon, ToolBtnText ui.Color // glass-btn-neutral
 	ToolBtnActiveBg, ToolBtnActiveBorder, ToolBtnActiveText          ui.Color
 
-	PrimaryBtn, PrimaryBtnHover ui.Color
+	PrimaryBtn, PrimaryBtnHover, PrimaryBtnText ui.Color // 主按钮与开关打开时的底色、悬停色、文字色
 
 	CardBg, CardBorder, CardBorderHover, CoverBg ui.Color
 
@@ -214,7 +214,7 @@ func NewPalette(dark bool) Palette {
 			InputBg: Brand900, InputBorder: Brand700, InputFocus: Neutral500, InputIcon: Brand400, Placeholder: Brand400,
 			ToolBtnBg: Brand700, ToolBtnBorder: Brand700, ToolBtnHover: Brand600, ToolBtnIcon: Brand300, ToolBtnText: Brand300,
 			ToolBtnActiveBg: Brand600, ToolBtnActiveBorder: Brand500, ToolBtnActiveText: White,
-			PrimaryBtn: Neutral600, PrimaryBtnHover: Neutral700,
+			PrimaryBtn: Neutral600, PrimaryBtnHover: Neutral700, PrimaryBtnText: White,
 			CardBg: Brand800, CardBorder: Brand700, CardBorderHover: Brand600, CoverBg: Brand700,
 			ScrollThumb: Brand600, ScrollThumbHover: Brand500,
 			PanelBg: Brand800, PanelBorder: Brand700, Divider: Brand700, MenuHover: Brand700, MenuText: Brand200,
@@ -237,7 +237,7 @@ func NewPalette(dark bool) Palette {
 		InputBg: White, InputBorder: Brand300, InputFocus: Neutral600, InputIcon: Brand700, Placeholder: Brand700,
 		ToolBtnBg: Brand150, ToolBtnBorder: Brand200, ToolBtnHover: Brand200, ToolBtnIcon: Brand600, ToolBtnText: Brand700,
 		ToolBtnActiveBg: Brand200, ToolBtnActiveBorder: Brand300, ToolBtnActiveText: Brand900,
-		PrimaryBtn: Neutral600, PrimaryBtnHover: Neutral700,
+		PrimaryBtn: Neutral600, PrimaryBtnHover: Neutral700, PrimaryBtnText: White,
 		CardBg: White, CardBorder: Brand100, CardBorderHover: Brand300, CoverBg: Brand200,
 		ScrollThumb: ui.Hex("#cccccc"), ScrollThumbHover: ui.Hex("#aaaaaa"),
 		PanelBg: White, PanelBorder: Brand200, Divider: Brand200, MenuHover: Brand100, MenuText: Brand700,

@@ -15,7 +15,7 @@ func Switch(c *ui.Context, t *theme.Theme, key string, checked, disabled bool, o
 	track := ui.ButtonBase(c.Key(key)).Size(44, 24).Radius(999).FocusRing(false).Justify(ui.Start).AlignItems(ui.Center)
 	bg := t.SwitchOff
 	if checked {
-		bg = theme.Neutral600
+		bg = t.PrimaryBtn
 	}
 	switch {
 	case disabled:

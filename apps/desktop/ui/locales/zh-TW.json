@@ -957,6 +957,7 @@
   "settings_appearance_librarySection": "遊戲庫",
   "settings_appearance_enableBg": "啟用自定義背景",
   "settings_appearance_enableBgHint": "開啟後將使用自定義圖片作為應用背景，並自動調整主題配色",
+  "settings_appearance_bgLockedByPlugin": "目前主題外掛已鎖定介面配色，自訂背景暫不生效；停用該外掛後恢復。",
   "settings_appearance_hideGameCover": "隱藏首頁遊戲封面",
   "settings_appearance_hideGameCoverHint": "啟用自定義背景時，隱藏首頁上一次遊玩遊戲的封面圖片",
   "settings_appearance_hideGameHeroCover": "隱藏首頁遊戲封面大圖",

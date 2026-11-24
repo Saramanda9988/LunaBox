@@ -1,0 +1,26 @@
+{
+  "id": "hikarinagi-theme",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "engines": {
+    "lunabox": ">=2.1.0 <3"
+  },
+  "main": "main.js",
+  "name": {
+    "zh-CN": "Hikarinagi 主题",
+    "zh-TW": "Hikarinagi 主題",
+    "en-US": "Hikarinagi Theme",
+    "ja-JP": "Hikarinagi テーマ"
+  },
+  "description": {
+    "zh-CN": "按 Hikarinagi 的 Hina UI 设计语言重新配色界面：纯净中性灰、发丝线分隔与青色强调色，浅色与深色主题均适配。默认停用自定义背景以保证配色层级。",
+    "zh-TW": "依 Hikarinagi 的 Hina UI 設計語言重新配色介面：純淨中性灰、髮絲線分隔與青色強調色，淺色與深色主題皆適配。預設停用自訂背景以確保配色層級。",
+    "en-US": "Recolors the interface with Hikarinagi's Hina UI design language: pure neutral grays, hairline dividers and the teal accent, in both light and dark themes. Custom backgrounds are disabled by default to keep the color hierarchy intact.",
+    "ja-JP": "Hikarinagi の Hina UI デザイン言語でインターフェースを再配色します。ニュートラルグレー、ヘアライン区切り、ティールのアクセントをライト／ダーク両テーマで適用し、配色を保つため既定でカスタム背景を無効にします。"
+  },
+  "author": "LunaBox",
+  "homepage": "https://hinaui.dev/",
+  "icon": "assets/hikarinagi-icon.webp",
+  "license": "MIT",
+  "keywords": ["hikarinagi", "hina", "theme", "palette"]
+}

@@ -1914,6 +1914,8 @@
   "@settings_appearance_enableBg": {"description": "settings.appearance.enableBg"},
   "settings_appearance_enableBgHint": "开启后将使用自定义图片作为应用背景，并自动调整主题配色",
   "@settings_appearance_enableBgHint": {"description": "settings.appearance.enableBgHint"},
+  "settings_appearance_bgLockedByPlugin": "当前主题插件已锁定界面配色，自定义背景暂不生效；停用该插件后恢复。",
+  "@settings_appearance_bgLockedByPlugin": {"description": "settings.appearance.bgLockedByPlugin"},
   "settings_appearance_hideGameCover": "隐藏首页游戏封面",
   "@settings_appearance_hideGameCover": {"description": "settings.appearance.hideGameCover"},
   "settings_appearance_hideGameCoverHint": "启用自定义背景时，隐藏首页上一次游玩游戏的封面图片",

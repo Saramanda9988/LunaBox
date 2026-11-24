@@ -359,3 +359,54 @@ func indexOf(s, sub string) int {
 	}
 	return -1
 }
+
+func TestHikarinagiThemePluginLocksBackground(t *testing.T) {
+	exampleDir, err := filepath.Abs(filepath.Join("..", "..", "plugin-sdk", "examples", "hikarinagi-theme"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(exampleDir, "main.js")); err != nil {
+		t.Fatalf("hikarinagi-theme example missing: %v", err)
+	}
+	cfg := &appconf.AppConfig{
+		Language:       "zh-CN",
+		PluginDevPaths: []string{exampleDir},
+		Plugins:        []appconf.PluginEntry{{ID: "hikarinagi-theme", Enabled: true}},
+	}
+	mgr := NewManager()
+	mgr.Init(context.Background(), Dependencies{Config: cfg, DataDir: t.TempDir(), HostVersion: "2.1.0"})
+	defer mgr.Shutdown()
+
+	mgr.Discover()
+	if err := mgr.Enable("hikarinagi-theme"); err != nil {
+		t.Fatalf("Enable hikarinagi-theme failed: %v", err)
+	}
+
+	ovs := mgr.UI().ThemeOverrides()
+	if len(ovs) != 1 || ovs[0].ID != "hikarinagi-hina" {
+		t.Fatalf("unexpected theme overrides: %+v", ovs)
+	}
+	ov := ovs[0]
+	if ov.Glass == nil || ov.Glass.Enabled == nil || *ov.Glass.Enabled {
+		t.Fatalf("expected glass.enabled=false by default, got %+v", ov.Glass)
+	}
+	if ov.Light["primaryBtn"] != "#39c5bb" || ov.Light["primaryBtnText"] != "#0a0a0a" || ov.Dark["primaryBtn"] != "#45d4c9" {
+		t.Fatalf("unexpected accent tokens: light=%v dark=%v", ov.Light, ov.Dark)
+	}
+
+	// 关闭锁定后应重新注册且不再声明 glass，交还用户的背景设置
+	if err := mgr.SetConfigValues("hikarinagi-theme", map[string]any{"lockBackground": false}); err != nil {
+		t.Fatalf("SetConfigValues failed: %v", err)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		ovs = mgr.UI().ThemeOverrides()
+		if len(ovs) == 1 && ovs[0].Glass == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("lockBackground=false not applied: %+v", ovs)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}

@@ -294,7 +294,7 @@ func (a *App) View(c *ui.Context) {
 	// 画在根元素的底色之上、所有子元素之下；还没算好时先露出底色。
 	cfg := a.env.Config()
 	bgReq := covers.BackgroundRequest{W: winW, H: winH, Scale: scale}
-	if cfg != nil && cfg.BackgroundEnabled && cfg.BackgroundImage != "" {
+	if cfg != nil && cfg.BackgroundEnabled && cfg.BackgroundImage != "" && !t.BgLocked {
 		t.SetGlass(cfg.BackgroundOpacity)
 		bgReq.Src, bgReq.Blur = cfg.BackgroundImage, float32(cfg.BackgroundBlur)
 	}

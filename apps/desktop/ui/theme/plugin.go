@@ -19,7 +19,8 @@ var (
 )
 
 // ApplyPluginOverrides 按插件注册顺序将色板覆盖叠加到当前帧的 *Theme 上。
-// 语义名与 Palette 字段一一对应（camelCase）。
+// 语义名与 Palette 字段一一对应（camelCase）。glass.enabled 显式为 false 时设置 t.BgLocked，
+// 由调用方跳过用户的自定义背景（后注册的 glass.enabled 覆盖先注册的）。
 func (t *Theme) ApplyPluginOverrides(overrides []plugin.ThemeOverride) (glassBg string, glassBlur int, glassEnabled *bool) {
 	for _, ov := range overrides {
 		tokens := ov.Light
@@ -37,6 +38,10 @@ func (t *Theme) ApplyPluginOverrides(overrides []plugin.ThemeOverride) (glassBg 
 			if ov.Glass.Enabled != nil {
 				v := *ov.Glass.Enabled
 				glassEnabled = &v
+				t.BgLocked = !v
+				if !v {
+					t.Glass = false // 覆盖先注册插件打开的玻璃模式
+				}
 				if v {
 					op := float64(t.BgOpacity)
 					if ov.Glass.Opacity != nil {
@@ -189,6 +194,8 @@ func applyPaletteToken(p *Palette, key string, c ui.Color) {
 		p.PrimaryBtn = c
 	case "primaryBtnHover":
 		p.PrimaryBtnHover = c
+	case "primaryBtnText":
+		p.PrimaryBtnText = c
 	case "cardBg":
 		p.CardBg = c
 	case "cardBorder":

@@ -70,9 +70,9 @@ func ButtonColors(t *theme.Theme, v ButtonVariant, hovered bool) ButtonStyle {
 	}
 	switch v {
 	case ButtonPrimary:
-		s := ButtonStyle{theme.Neutral600, theme.Neutral600, theme.White}
+		s := ButtonStyle{t.PrimaryBtn, t.PrimaryBtn, t.PrimaryBtnText}
 		if hovered {
-			s.Bg = theme.Neutral700
+			s.Bg = t.PrimaryBtnHover
 		}
 		return s
 	case ButtonDanger:
@@ -88,7 +88,7 @@ func ButtonColors(t *theme.Theme, v ButtonVariant, hovered bool) ButtonStyle {
 		}
 		return s
 	}
-	s := ButtonStyle{t.ToolBtnBg, t.ToolBtnBorder, t.Pick(theme.Brand700, theme.Brand300)}
+	s := ButtonStyle{t.ToolBtnBg, t.ToolBtnBorder, t.ToolBtnText}
 	if hovered {
 		s.Bg = t.ToolBtnHover
 	}

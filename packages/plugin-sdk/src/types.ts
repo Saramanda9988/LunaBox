@@ -546,33 +546,81 @@ export interface InstallRequestInput {
   metadata?: MetadataResult;
 }
 
+/**
+ * ctx.theme.extend 可覆盖的宿主语义色板（取值为 "#rgb" / "#rgba" / "#rrggbb" / "#rrggbbaa"）。
+ * 只影响读取这些语义令牌的宿主组件；宿主中直接引用固定色阶的少量装饰色不受影响。
+ */
 export interface ThemePaletteTokens {
+  // 文本
   text?: string;
   textStrong?: string;
   textMuted?: string;
   textFaint?: string;
+  // 窗口骨架：主区域底色、顶栏、窗口按钮
   appBg?: string;
   topbarBg?: string;
   topbarBorder?: string;
   controlIcon?: string;
   controlHover?: string;
+  // 侧边栏导航
   sidebarBg?: string;
   sidebarBorder?: string;
   navText?: string;
   navHover?: string;
   navActiveBg?: string;
   navActive?: string;
+  // 输入框
   inputBg?: string;
   inputBorder?: string;
   inputFocus?: string;
+  inputIcon?: string;
+  placeholder?: string;
+  // 次要按钮（secondary）与工具栏按钮
+  toolBtnBg?: string;
+  toolBtnBorder?: string;
+  toolBtnHover?: string;
+  toolBtnIcon?: string;
+  toolBtnText?: string;
+  toolBtnActiveBg?: string;
+  toolBtnActiveBorder?: string;
+  toolBtnActiveText?: string;
+  // 主按钮（primary）与开关打开态
   primaryBtn?: string;
   primaryBtnHover?: string;
+  primaryBtnText?: string;
+  // 卡片与封面占位
   cardBg?: string;
   cardBorder?: string;
   cardBorderHover?: string;
+  coverBg?: string;
+  // 滚动条
+  scrollThumb?: string;
+  scrollThumbHover?: string;
+  // 面板、菜单、分隔线
   panelBg?: string;
   panelBorder?: string;
   divider?: string;
+  menuHover?: string;
+  menuText?: string;
+  sectionLabel?: string;
+  // 筛选标签（chip）
+  chipBg?: string;
+  chipText?: string;
+  chipHover?: string;
+  chipActiveBg?: string;
+  chipActiveText?: string;
+  chipRing?: string;
+  // 下拉选择、列表
+  selectBg?: string;
+  selectBorder?: string;
+  selectText?: string;
+  listFocus?: string;
+  listSelected?: string;
+  switchOff?: string;
+  // 提示气泡
+  tooltipBg?: string;
+  tooltipText?: string;
+  tooltipBorder?: string;
 }
 
 export interface ThemeTokens {
@@ -580,6 +628,11 @@ export interface ThemeTokens {
   light?: ThemePaletteTokens;
   dark?: ThemePaletteTokens;
   glass?: {
+    /**
+     * true：开启玻璃模式（可配合 backgroundImage 使用插件自带背景）。
+     * false：锁定配色，本插件启用期间不使用用户的自定义背景与玻璃模式（设置页会提示），适合对配色有严格要求的设计主题。
+     * 多个插件同时声明时以后注册者为准。
+     */
     enabled?: boolean;
     opacity?: number;
     blur?: number;

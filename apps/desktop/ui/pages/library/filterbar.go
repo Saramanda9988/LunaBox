@@ -109,7 +109,7 @@ func (l *Page) openRandomGame(c *ui.Context) {
 // 和 min-w-[220px] 的 BetterDropdownMenu。
 func (l *Page) addGameButton(c *ui.Context, t *theme.Theme) {
 	btn := ui.ButtonBase(c.Key("add-game")).Padding(8, 16).Radius(8).AlignItems(ui.Center).FocusRing(false).Label(locales.LibraryAddGame())
-	g := t.GlassButton(theme.GlassNeutral, theme.BtnColors{Bg: t.PrimaryBtn, Hover: t.PrimaryBtnHover, Text: theme.White})
+	g := t.GlassButton(theme.GlassNeutral, theme.BtnColors{Bg: t.PrimaryBtn, Hover: t.PrimaryBtnHover, Text: t.PrimaryBtnText})
 	bg := g.Bg
 	if btn.Hovered() {
 		bg = g.Hover

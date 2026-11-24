@@ -14187,6 +14187,22 @@ func (msgs Messages) SettingsAppearanceEnableBgHint() string {
 	return Catalog.Format(msgs.locale, "settings_appearance_enableBgHint", nil)
 }
 
+// SettingsAppearanceBgLockedByPlugin says "当前主题插件已锁定界面配色，自定义背景暂不生效；停用该插件后恢复。"
+// in the language the app shows.
+//
+// settings.appearance.bgLockedByPlugin
+func SettingsAppearanceBgLockedByPlugin() string {
+	return In(i18n.Locale()).SettingsAppearanceBgLockedByPlugin()
+}
+
+// SettingsAppearanceBgLockedByPlugin says "当前主题插件已锁定界面配色，自定义背景暂不生效；停用该插件后恢复。"
+// in the language of msgs.
+//
+// settings.appearance.bgLockedByPlugin
+func (msgs Messages) SettingsAppearanceBgLockedByPlugin() string {
+	return Catalog.Format(msgs.locale, "settings_appearance_bgLockedByPlugin", nil)
+}
+
 // SettingsAppearanceHideGameCover says "隐藏首页游戏封面"
 // in the language the app shows.
 //

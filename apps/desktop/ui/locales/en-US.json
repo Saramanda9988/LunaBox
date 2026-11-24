@@ -957,6 +957,7 @@
   "settings_appearance_librarySection": "Library",
   "settings_appearance_enableBg": "Enable Custom Background",
   "settings_appearance_enableBgHint": "When enabled, uses a custom image as the app background and auto-adjusts the theme colors",
+  "settings_appearance_bgLockedByPlugin": "A theme plugin has locked the interface colors, so the custom background is paused. Disable that plugin to restore it.",
   "settings_appearance_hideGameCover": "Hide Home Page Game Cover",
   "settings_appearance_hideGameCoverHint": "When a custom background is enabled, hide the last-played game''s cover on the home page",
   "settings_appearance_hideGameHeroCover": "Hide Home Page Large Game Cover",

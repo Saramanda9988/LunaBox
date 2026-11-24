@@ -233,7 +233,7 @@ func (p *Page) batchRemoveButton(c *ui.Context, t *theme.Theme) {
 // addGameButton 是 actionButton：glass-btn-neutral rounded-lg bg-neutral-600 px-4 py-2 text-sm font-medium text-white。
 func (p *Page) addGameButton(c *ui.Context, t *theme.Theme) {
 	btn := ui.ButtonBase(c.Key("add-game")).Padding(8, 16).Radius(8).AlignItems(ui.Center).FocusRing(false).Label(locales.CategoryAddGameBtn())
-	g := t.GlassButton(theme.GlassNeutral, theme.BtnColors{Bg: t.PrimaryBtn, Hover: t.PrimaryBtnHover, Text: theme.White})
+	g := t.GlassButton(theme.GlassNeutral, theme.BtnColors{Bg: t.PrimaryBtn, Hover: t.PrimaryBtnHover, Text: t.PrimaryBtnText})
 	bg := g.Bg
 	if btn.Hovered() {
 		bg = g.Hover
