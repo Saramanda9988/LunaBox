@@ -205,6 +205,7 @@ interface HeroBannerPager {
 interface HeroBannerProps {
   height?: number;            // 默认 560（范围 280..760）
   contentMaxWidth?: number;   // 前景内容最大宽度，默认 1200（水平居中）
+  safeTop?: number;           // 顶部安全区：透传槽位属性 safeTop，宿主隐藏顶栏时返回胶囊下移避开拖动区
   coverWidth?: number;        // 右侧封面宽度，默认 196（透传给 coverSlot）
   toolbarMaxWidth?: number;   // 启动栏最大宽度（默认 contentMaxWidth - coverWidth - 40）
   banner?: string;            // 背景头图 URL 或本地路径
@@ -578,11 +579,12 @@ interface MetadataSourceDef {
 
 ### 7.7 主题、字体与装饰：`ctx.theme`
 
-- `ctx.theme.extend(tokens: ThemeTokens): Disposer`（按 `light` / `dark` 覆盖 `ThemePaletteTokens` 共 74 项宿主语义色板，以及 `glass` 毛玻璃参数与 `shape` 控件圆角）
+- `ctx.theme.extend(tokens: ThemeTokens): Disposer`（按 `light` / `dark` 覆盖 `ThemePaletteTokens` 共 74 项宿主语义色板，以及 `glass` 毛玻璃参数、`shape` 控件圆角与 `brand` 品牌标志）
   - 色板覆盖只作用于读取语义令牌的宿主组件（窗口骨架、侧边栏、输入框、主/次按钮、开关、卡片、面板、菜单、筛选标签、下拉、提示气泡等）；宿主中直接引用固定色阶的装饰色、圆角与阴影不在覆盖范围内。
   - `primaryBtn` / `primaryBtnHover` / `primaryBtnText` 同时驱动 `Button variant="primary"`、开关打开态与宿主各处的实心主按钮（启动按钮、弹窗确认、卡片悬停的开始游戏等）；`toolBtn*` 驱动次要按钮。
   - `accent` / `accentText` / `accentSoft` / `accentSoftText` 是强调色（选中、当前状态、加载指示、链接等）；`tabText` / `tabHover` / `tabActive` / `tabIndicator` 驱动游戏详情页的标签栏；`actionBtn*` 驱动详情页工具栏的图标按钮与当前状态外圈；`menuSelected` / `menuCheck` 是下拉菜单当前项的底色与对勾。
   - `shape: { control?, panel? }`（DIP）：覆盖详情页工具栏按钮、启动按钮、菜单胶囊项（`control`，默认全圆）与下拉菜单面板（`panel`，默认 12）的圆角，用于把圆形图标按钮改成圆角方形等；未声明时保持宿主默认。
+  - `brand: { wordmark?, wordmarkDark?, icon?, iconDark?, hideWordmark?, hideIcon? }`：替换侧边栏与顶栏的 LunaBox 字标 / 应用图标（路径相对插件目录，支持 svg / png / webp，仅本地文件；`*Dark` 为深色模式专用图），或用 `hideWordmark` / `hideIcon` 隐藏；顶栏在字标隐藏时改放图标。多个插件声明时以后注册者为准，图片读取失败时回退到内置标志。
   - `glass.enabled: false`：**锁定配色**——插件启用期间宿主不使用用户的自定义背景与玻璃模式，设置页「背景」分区显示提示，停用插件后恢复；`glass.enabled: true` 则开启玻璃模式（可配合 `glass.backgroundImage` 使用插件自带背景）。多个插件声明时以后注册者为准。
   - 插件自身 UI 中的 `primary` / `brand`（取 `accent`）、`accent` / `accentText`（取 `accentText`）、`accentSoft` / `accentSoftText` 颜色令牌，以及 `tone: 'brand' | 'accent'`、`Badge tone="brand"`、`Tabs` 下划线、`Spinner`、`Progress` 与 Markdown 链接都跟随色板覆盖，因此详情页类插件用这些令牌即可适配主题插件；`brand700`/`brand800`/`brand900` 等固定色阶不跟随。
 - `ctx.theme.registerFont({ family, file, target?: 'ui' | 'mono' }): Disposer`

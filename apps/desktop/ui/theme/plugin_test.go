@@ -93,3 +93,37 @@ func TestPluginShapeAndActionTokens(t *testing.T) {
 		t.Fatalf("action/menu tokens not applied: %v %v %v %v", th.ActionBtnBg, th.ActionBtnRing, th.MenuSelected, th.MenuCheck)
 	}
 }
+
+func TestPluginBrandOverride(t *testing.T) {
+	yes, no := true, false
+	ov := []plugin.ThemeOverride{{
+		PluginID: "p", ID: "t",
+		Brand: &plugin.BrandOverride{
+			Wordmark:     "/plugins/p/assets/mark.svg",
+			WordmarkDark: "/plugins/p/assets/mark-dark.svg",
+			Icon:         "https://example.com/icon.png", // 远程图片不支持，保留内置图标
+			HideIcon:     &yes,
+			HideWordmark: &no,
+		},
+	}}
+
+	def := New(false, 1)
+	if def.BrandWordmark != "" || def.BrandIcon != "" || def.HideBrandWordmark || def.HideBrandIcon {
+		t.Fatalf("default theme has brand overrides: %+v", def)
+	}
+
+	light := New(false, 1)
+	light.ApplyPluginOverrides(ov)
+	if light.BrandWordmark != "/plugins/p/assets/mark.svg" || light.BrandIcon != "" {
+		t.Fatalf("light brand = %q / %q", light.BrandWordmark, light.BrandIcon)
+	}
+	if !light.HideBrandIcon || light.HideBrandWordmark {
+		t.Fatalf("light hide flags = wordmark %v icon %v", light.HideBrandWordmark, light.HideBrandIcon)
+	}
+
+	dark := New(true, 1)
+	dark.ApplyPluginOverrides(ov)
+	if dark.BrandWordmark != "/plugins/p/assets/mark-dark.svg" {
+		t.Fatalf("dark wordmark = %q", dark.BrandWordmark)
+	}
+}

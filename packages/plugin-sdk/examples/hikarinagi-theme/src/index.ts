@@ -119,6 +119,8 @@ function toPalette(r: HinaRoles, isDark: boolean): ThemePaletteTokens {
 
 interface HinaConfig {
   lockBackground?: boolean;
+  showWordmark?: boolean;
+  showIcon?: boolean;
 }
 
 export function apply(ctx: Context) {
@@ -133,6 +135,20 @@ export function apply(ctx: Context) {
         label: '锁定配色（停用自定义背景）',
         description: '开启后本插件启用期间不使用自定义背景图与玻璃模式，避免背景破坏 Hina 的配色层级；关闭后两者叠加，效果不作保证。',
         default: true,
+      },
+      {
+        key: 'showWordmark',
+        type: 'boolean',
+        label: '显示 Hikarinagi 字标',
+        description: '侧边栏与顶栏的 LunaBox 字标替换为 Hikarinagi 字标；关闭后不显示字标。',
+        default: true,
+      },
+      {
+        key: 'showIcon',
+        type: 'boolean',
+        label: '显示应用图标',
+        description: '侧边栏字标前的月亮图标；Hikarinagi 字标自带识别度，默认隐藏。',
+        default: false,
       },
     ],
   });
@@ -149,6 +165,12 @@ export function apply(ctx: Context) {
         // enabled: false 让宿主跳过用户的自定义背景；不锁定时不声明 glass，保持用户设置
         // Hina 的 --hn-radius-md / --hn-radius-lg 都是 8px：图标按钮是圆角方形，菜单面板同为 8px
         shape: { control: 8, panel: 8 },
+        // 品牌标志：字标换成 Hikarinagi 字标（路径相对插件目录），图标与字标可在设置里分别隐藏
+        brand: {
+          wordmark: 'assets/hikarinagi-wordmark.svg',
+          hideWordmark: cfg.showWordmark === false,
+          hideIcon: cfg.showIcon !== true,
+        },
         ...(lock ? { glass: { enabled: false } } : {}),
       }),
     );

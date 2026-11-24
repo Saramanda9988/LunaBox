@@ -38,12 +38,19 @@ func (p *Plugin) buildThemeAPI() map[string]any {
 				Dark  map[string]string `json:"dark"`
 				Glass *GlassOverride    `json:"glass"`
 				Shape *ShapeOverride    `json:"shape"`
+				Brand *BrandOverride    `json:"brand"`
 			}
 			if err := json.Unmarshal(raw, &input); err != nil {
 				return moejs.Undefined(), throwJSError(r, err.Error())
 			}
 			if input.Glass != nil && input.Glass.BackgroundImage != "" {
 				input.Glass.BackgroundImage = p.resolvePluginAssetPath(input.Glass.BackgroundImage)
+			}
+			if b := input.Brand; b != nil {
+				b.Wordmark = p.resolvePluginAssetPath(b.Wordmark)
+				b.WordmarkDark = p.resolvePluginAssetPath(b.WordmarkDark)
+				b.Icon = p.resolvePluginAssetPath(b.Icon)
+				b.IconDark = p.resolvePluginAssetPath(b.IconDark)
 			}
 			seq++
 			id := strings.TrimSpace(input.ID)
@@ -57,6 +64,7 @@ func (p *Plugin) buildThemeAPI() map[string]any {
 				Dark:     input.Dark,
 				Glass:    input.Glass,
 				Shape:    input.Shape,
+				Brand:    input.Brand,
 			}))
 			return p.rt.Function("dispose", 0, func(_ *moejs.Realm, _ moejs.Value, _ []moejs.Value) (moejs.Value, error) {
 				dispose()

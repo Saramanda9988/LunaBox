@@ -1,7 +1,11 @@
 package assets
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/egoist/mygo/ui"
 
 	"lunabox/backend/common/enums"
 )
@@ -18,5 +22,50 @@ func TestProviders(t *testing.T) {
 	}
 	if Provider("local", false) != nil {
 		t.Error("local should have no icon")
+	}
+}
+
+// 主题插件替换的品牌图片：SVG 按自身尺寸解析，缺失或损坏的文件返回 nil。
+func TestLocalImage(t *testing.T) {
+	dir := t.TempDir()
+	svg := filepath.Join(dir, "mark.svg")
+	if err := os.WriteFile(svg, []byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 20"><rect width="80" height="20" fill="#39C5BB"/></svg>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	img := LocalImage(svg, 520)
+	if img == nil {
+		t.Fatal("LocalImage(svg) = nil")
+	}
+	if w, h := ui.ImageSize(img); w != 80 || h != 20 {
+		t.Fatalf("svg size = %vx%v, want 80x20", w, h)
+	}
+	if LocalImage(filepath.Join(dir, "missing.png"), 96) != nil {
+		t.Fatal("missing file should return nil")
+	}
+	bad := filepath.Join(dir, "bad.png")
+	if err := os.WriteFile(bad, []byte("not an image"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if LocalImage(bad, 96) != nil {
+		t.Fatal("undecodable file should return nil")
+	}
+}
+
+// 仓库里 hikarinagi-theme 示例插件的字标能被 MyGo 完整绘制。
+func TestHikarinagiWordmarkParses(t *testing.T) {
+	path := filepath.Join("..", "..", "..", "..", "packages", "plugin-sdk", "examples", "hikarinagi-theme", "assets", "hikarinagi-wordmark.svg")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Skip("wordmark not found:", err)
+	}
+	s, err := ui.ParseSVG(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if missing := s.Unsupported(); len(missing) > 0 {
+		t.Fatalf("wordmark uses unsupported SVG features: %v", missing)
+	}
+	if w, h := s.Size(); w != 792 || h != 191 {
+		t.Fatalf("wordmark size = %vx%v", w, h)
 	}
 }

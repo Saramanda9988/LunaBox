@@ -539,7 +539,7 @@ function createDetailAside(ctx, store) {
 import { HeroBanner, useEffect as useEffect2, useRef, useState as useState2 } from "lunabox";
 import { jsx as jsx2 } from "lunabox/jsx-runtime";
 function createHeroSection(ctx, store) {
-  return function HeroSection({ game, blurNsfw, contentMaxWidth }) {
+  return function HeroSection({ game, blurNsfw, contentMaxWidth, safeTop }) {
     const state = store.useGameDetail(game);
     const cfg = store.getConfig();
     const detail = state.detail;
@@ -611,6 +611,7 @@ function createHeroSection(ctx, store) {
         k: `hero-${gameId}`,
         height: heroHeight,
         contentMaxWidth: contentMaxWidth || 1200,
+        safeTop: safeTop || 0,
         banner: activeBannerUrl,
         fallbackBanner,
         logo: logo?.url || "",

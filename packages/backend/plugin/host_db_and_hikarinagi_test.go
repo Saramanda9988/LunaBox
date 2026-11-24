@@ -403,12 +403,37 @@ func TestHikarinagiThemePluginLocksBackground(t *testing.T) {
 	if ov.Dark["actionBtnRing"] != "#45d4c9" || ov.Light["menuSelected"] != "#00000000" {
 		t.Fatalf("unexpected toolbar/menu tokens: light=%v dark=%v", ov.Light, ov.Dark)
 	}
+	// 品牌标志：字标替换为插件目录下的 Hikarinagi 字标（解析为绝对路径），默认隐藏图标、显示字标
+	wantMark := filepath.Join(exampleDir, "assets", "hikarinagi-wordmark.svg")
+	if b := ov.Brand; b == nil || b.Wordmark != wantMark || b.HideIcon == nil || !*b.HideIcon ||
+		b.HideWordmark == nil || *b.HideWordmark {
+		t.Fatalf("unexpected brand override: %+v (want wordmark %s)", ov.Brand, wantMark)
+	}
+	if _, err := os.Stat(wantMark); err != nil {
+		t.Fatalf("wordmark asset missing: %v", err)
+	}
+
+	// 关闭字标后重新注册，hideWordmark 为 true
+	if err := mgr.SetConfigValues("hikarinagi-theme", map[string]any{"showWordmark": false}); err != nil {
+		t.Fatalf("SetConfigValues failed: %v", err)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		ovs = mgr.UI().ThemeOverrides()
+		if len(ovs) == 1 && ovs[0].Brand != nil && ovs[0].Brand.HideWordmark != nil && *ovs[0].Brand.HideWordmark {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("showWordmark=false not applied: %+v", ovs)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 
 	// 关闭锁定后应重新注册且不再声明 glass，交还用户的背景设置
 	if err := mgr.SetConfigValues("hikarinagi-theme", map[string]any{"lockBackground": false}); err != nil {
 		t.Fatalf("SetConfigValues failed: %v", err)
 	}
-	deadline := time.Now().Add(3 * time.Second)
+	deadline = time.Now().Add(3 * time.Second)
 	for {
 		ovs = mgr.UI().ThemeOverrides()
 		if len(ovs) == 1 && ovs[0].Glass == nil {

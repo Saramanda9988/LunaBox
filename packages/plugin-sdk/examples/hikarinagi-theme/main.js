@@ -197,6 +197,20 @@ function apply(ctx) {
         label: "\u9501\u5B9A\u914D\u8272\uFF08\u505C\u7528\u81EA\u5B9A\u4E49\u80CC\u666F\uFF09",
         description: "\u5F00\u542F\u540E\u672C\u63D2\u4EF6\u542F\u7528\u671F\u95F4\u4E0D\u4F7F\u7528\u81EA\u5B9A\u4E49\u80CC\u666F\u56FE\u4E0E\u73BB\u7483\u6A21\u5F0F\uFF0C\u907F\u514D\u80CC\u666F\u7834\u574F Hina \u7684\u914D\u8272\u5C42\u7EA7\uFF1B\u5173\u95ED\u540E\u4E24\u8005\u53E0\u52A0\uFF0C\u6548\u679C\u4E0D\u4F5C\u4FDD\u8BC1\u3002",
         default: true
+      },
+      {
+        key: "showWordmark",
+        type: "boolean",
+        label: "\u663E\u793A Hikarinagi \u5B57\u6807",
+        description: "\u4FA7\u8FB9\u680F\u4E0E\u9876\u680F\u7684 LunaBox \u5B57\u6807\u66FF\u6362\u4E3A Hikarinagi \u5B57\u6807\uFF1B\u5173\u95ED\u540E\u4E0D\u663E\u793A\u5B57\u6807\u3002",
+        default: true
+      },
+      {
+        key: "showIcon",
+        type: "boolean",
+        label: "\u663E\u793A\u5E94\u7528\u56FE\u6807",
+        description: "\u4FA7\u8FB9\u680F\u5B57\u6807\u524D\u7684\u6708\u4EAE\u56FE\u6807\uFF1BHikarinagi \u5B57\u6807\u81EA\u5E26\u8BC6\u522B\u5EA6\uFF0C\u9ED8\u8BA4\u9690\u85CF\u3002",
+        default: false
       }
     ]
   });
@@ -212,6 +226,12 @@ function apply(ctx) {
         // enabled: false 让宿主跳过用户的自定义背景；不锁定时不声明 glass，保持用户设置
         // Hina 的 --hn-radius-md / --hn-radius-lg 都是 8px：图标按钮是圆角方形，菜单面板同为 8px
         shape: { control: 8, panel: 8 },
+        // 品牌标志：字标换成 Hikarinagi 字标（路径相对插件目录），图标与字标可在设置里分别隐藏
+        brand: {
+          wordmark: "assets/hikarinagi-wordmark.svg",
+          hideWordmark: cfg.showWordmark === false,
+          hideIcon: cfg.showIcon !== true
+        },
         ...lock ? { glass: { enabled: false } } : {}
       })
     );

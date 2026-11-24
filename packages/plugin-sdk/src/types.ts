@@ -476,6 +476,8 @@ export interface HeroBannerPager {
 export interface HeroBannerProps {
   height?: number;
   contentMaxWidth?: number;
+  /** 顶部安全区（DIP），通常直接透传 game.detail.hero 槽位属性里的 safeTop：宿主隐藏顶栏时返回胶囊据此下移 */
+  safeTop?: number;
   coverWidth?: number;
   toolbarMaxWidth?: number;
   banner?: string;
@@ -673,6 +675,19 @@ export interface ThemeTokens {
   shape?: {
     control?: number;
     panel?: number;
+  };
+  /**
+   * 替换侧边栏与顶栏的品牌标志。图片路径相对插件目录（如 'assets/wordmark.svg'），支持 svg / png / webp，仅限本地文件。
+   * wordmarkDark / iconDark 为深色模式专用图，未设置时深浅色共用。
+   * hideWordmark / hideIcon 为 true 时隐藏字标 / 图标（顶栏在字标隐藏时改放图标）。
+   */
+  brand?: {
+    wordmark?: string;
+    wordmarkDark?: string;
+    icon?: string;
+    iconDark?: string;
+    hideWordmark?: boolean;
+    hideIcon?: boolean;
   };
 }
 

@@ -184,3 +184,33 @@ func Provider(source string, compact bool) ui.ImageSource {
 // ProviderFile 返回来源图标的原始文件（providers/ 下的文件名），给需要自己处理图片的地方用
 // （编辑页把 logo 做成 brightness-0 的黑白轮廓）。
 func ProviderFile(name string) ([]byte, error) { return files.ReadFile("providers/" + name) }
+
+var (
+	localMu sync.Mutex
+	local   = map[string]ui.ImageSource{}
+)
+
+// LocalImage 加载并缓存磁盘上的图片（主题插件替换的品牌标志等）：.svg 按原色绘制，其余格式解码后缩到 maxWidth 像素宽。
+// 读取或解码失败时返回 nil（并缓存失败结果，避免每帧重复读盘）。
+func LocalImage(path string, maxWidth int) ui.ImageSource {
+	if path == "" {
+		return nil
+	}
+	localMu.Lock()
+	defer localMu.Unlock()
+	if img, ok := local[path]; ok {
+		return img
+	}
+	var img ui.ImageSource
+	if data, err := os.ReadFile(path); err == nil {
+		if strings.HasSuffix(strings.ToLower(path), ".svg") {
+			if s, perr := ui.ParseSVG(data); perr == nil {
+				img = s
+			}
+		} else if decoded, _, derr := image.Decode(bytes.NewReader(data)); derr == nil {
+			img = ui.NewBitmap(Downscale(decoded, maxWidth))
+		}
+	}
+	local[path] = img
+	return img
+}

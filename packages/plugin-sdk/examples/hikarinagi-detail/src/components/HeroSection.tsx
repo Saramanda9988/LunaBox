@@ -13,7 +13,7 @@ import type { DetailStore } from '../store';
 import type { SlotRenderProps } from '../types';
 
 export function createHeroSection(ctx: Context, store: DetailStore) {
-  return function HeroSection({ game, blurNsfw, contentMaxWidth }: SlotRenderProps) {
+  return function HeroSection({ game, blurNsfw, contentMaxWidth, safeTop }: SlotRenderProps) {
     const state = store.useGameDetail(game);
     const cfg = store.getConfig();
     const detail = state.detail;
@@ -117,6 +117,7 @@ export function createHeroSection(ctx: Context, store: DetailStore) {
         k={`hero-${gameId}`}
         height={heroHeight}
         contentMaxWidth={contentMaxWidth || 1200}
+        safeTop={safeTop || 0}
         banner={activeBannerUrl}
         fallbackBanner={fallbackBanner}
         logo={logo?.url || ''}

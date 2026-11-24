@@ -120,6 +120,8 @@ export interface SlotRenderProps {
   game: Game;
   blurNsfw?: boolean;
   contentMaxWidth?: number;
+  /** 宿主隐藏顶栏时的顶部安全区，透传给 HeroBanner */
+  safeTop?: number;
 }
 
 export interface BannerPick {

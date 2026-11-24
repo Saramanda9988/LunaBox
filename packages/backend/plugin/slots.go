@@ -59,6 +59,17 @@ type ShapeOverride struct {
 	Panel   *float64 `json:"panel,omitempty"`   // 下拉菜单等浮层面板
 }
 
+// BrandOverride 描述主题插件对侧边栏 / 顶栏品牌标志的替换（图片路径已解析为绝对路径）。
+// *Dark 为深色模式专用的图片，未设置时深浅色共用同一张；HideWordmark / HideIcon 显式为 true 时隐藏对应部分。
+type BrandOverride struct {
+	Wordmark     string `json:"wordmark,omitempty"`
+	WordmarkDark string `json:"wordmarkDark,omitempty"`
+	Icon         string `json:"icon,omitempty"`
+	IconDark     string `json:"iconDark,omitempty"`
+	HideWordmark *bool  `json:"hideWordmark,omitempty"`
+	HideIcon     *bool  `json:"hideIcon,omitempty"`
+}
+
 // ThemeOverride 描述插件通过 ctx.theme.extend 注册的色板覆盖。
 type ThemeOverride struct {
 	PluginID string            `json:"plugin_id"`
@@ -67,6 +78,7 @@ type ThemeOverride struct {
 	Dark     map[string]string `json:"dark,omitempty"`
 	Glass    *GlassOverride    `json:"glass,omitempty"`
 	Shape    *ShapeOverride    `json:"shape,omitempty"`
+	Brand    *BrandOverride    `json:"brand,omitempty"`
 }
 
 // FontRegistration 描述插件通过 ctx.theme.registerFont 注册的自定义字体。

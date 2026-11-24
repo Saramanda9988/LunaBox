@@ -32,10 +32,12 @@ func TopBar(c *ui.Context, t *theme.Theme, p TopBarProps) {
 	bar := ui.Row(c).Height(env.TopbarHeight).Shrink(0).Background(t.TopbarBg).
 		BorderWidth(0, 0, t.HL, 0).BorderColor(t.TopbarBorder).DragWindow()
 	bar.Children(func() {
-		title := assets.Title(t.Dark)
-		w, h := title.Size()
-		ui.Image(c, title).Size(20*float32(w)/float32(h), 20).
-			Attach(ui.AnchorCenter, ui.AnchorCenter).PassThrough()
+		// 居中的字标可由主题插件替换；主题隐藏字标时改放图标，两者都隐藏时留空。
+		if mark := brandWordmark(t); mark != nil {
+			brandImage(c, mark, 20).Attach(ui.AnchorCenter, ui.AnchorCenter).PassThrough()
+		} else if icon := brandIcon(t); icon != nil {
+			brandImage(c, icon, 20).Attach(ui.AnchorCenter, ui.AnchorCenter).PassThrough()
+		}
 
 		ui.Spacer(c)
 		if p.PluginItems != nil {
@@ -50,7 +52,13 @@ func TopBar(c *ui.Context, t *theme.Theme, p TopBarProps) {
 // TopBarFade 在隐藏顶栏时覆盖主内容区顶部 32px，提供渐进式毛玻璃与同底色渐隐：
 // 未滚动时与页面底色融为一体；内容滚动到顶部时在拖动区与右上角窗口按钮后柔和虚化，
 // 消除卡片与滚动条直接撞到窗口边缘的无界感并保证按钮可读性。
-func TopBarFade(c *ui.Context, t *theme.Theme, left float32) {
+// visible 为 false（页面内容贴顶的全出血头图尚未滚动）时淡出，滚动后再淡入。
+func TopBarFade(c *ui.Context, t *theme.Theme, left float32, visible bool) {
+	fade := ui.Box(c.Key("topbar-fade"))
+	opacity := fade.Animate("show", theme.Bool(visible), 200*time.Millisecond)
+	if opacity <= 0 {
+		return
+	}
 	blurMask := &ui.LinearGradient{
 		From:  ui.RGB(0, 0, 0),
 		To:    ui.Transparent,
@@ -73,7 +81,7 @@ func TopBarFade(c *ui.Context, t *theme.Theme, left float32) {
 			{Color: bg.Alpha(0), At: 1},
 		},
 	}
-	ui.Box(c.Key("topbar-fade")).Absolute().Top(0).Left(left).Right(0).Height(topFadeHeight).PassThrough().
+	fade.Absolute().Top(0).Left(left).Right(0).Height(topFadeHeight).PassThrough().Opacity(opacity).
 		Material(glass.Blur{Radius: 12, Mask: blurMask}).Children(func() {
 		ui.Box(c.Key("tint")).Fill().PassThrough().LinearGradient(tint)
 	})

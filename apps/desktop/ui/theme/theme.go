@@ -25,6 +25,11 @@ type Theme struct {
 	// ShapeControl / ShapePanel 是主题插件通过 shape.control / shape.panel 覆盖的圆角（DIP），
 	// 为负表示未覆盖、组件沿用自身的圆角（见 ControlRadius / PanelRadius）。
 	ShapeControl, ShapePanel float32
+
+	// BrandWordmark / BrandIcon 是主题插件通过 brand 替换的字标与图标（本地图片绝对路径，已按深浅色选好），
+	// 为空时使用内置的 LunaBox 标志；HideBrandWordmark / HideBrandIcon 隐藏侧边栏与顶栏里对应的部分。
+	BrandWordmark, BrandIcon         string
+	HideBrandWordmark, HideBrandIcon bool
 }
 
 // TopOffset 返回顶栏占用的偏移高度：隐藏顶栏时为 0，否则返回 offset。

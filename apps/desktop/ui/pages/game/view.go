@@ -32,6 +32,7 @@ import (
 const (
 	pagePadding       = 32   // p-8
 	detailContentMaxW = 1200 // Hero 前景与下方正文内容最大宽度，宽屏水平居中对齐
+	heroFadeScroll    = 16   // 隐藏顶栏时，全出血头图滚动超过此距离（返回胶囊快要碰到顶部 32px 渐隐区）才显示顶部渐隐
 	coverW            = 240  // grid-cols-[15rem_minmax(0,1fr)]
 	headerGap         = 24   // gap-6
 	toolbarGap        = 12   // gap-3
@@ -112,6 +113,10 @@ func (p *Page) View(c *ui.Context) {
 			sc.Children(func() {
 				ui.Column(c).Width(fullW).Gap(0).Children(func() {
 					hasHero := p.renderHero(c, t, contentW)
+					// 全出血头图贴着窗口顶部：未滚动时隐藏顶栏的顶部渐隐，避免盖住头图和返回按钮
+					if hasHero && p.scroll.State.Y < heroFadeScroll {
+						p.env.FullBleedTop = true
+					}
 					if !hasHero {
 						ui.Column(c).FillWidth().Padding(pagePadding, pagePadding, 24, pagePadding).Children(func() {
 							ui.Column(c).Width(contentW).Margin(0, ui.Auto).Gap(24).Children(func() {
@@ -325,6 +330,8 @@ func (p *Page) renderHero(c *ui.Context, t *theme.Theme, contentW float32) bool 
 		"game":            g,
 		"blurNsfw":        blurNSFW(p.env),
 		"contentMaxWidth": detailContentMaxW,
+		// 隐藏顶栏时窗口顶部 28px 是拖动区与窗口按钮，头图的返回胶囊按此下移避让
+		"safeTop": env.TopbarHeight - t.TopOffset(env.TopbarHeight),
 	}, p.detailNatives(contentW))
 	return ready
 }

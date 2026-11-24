@@ -277,6 +277,7 @@ func (a *App) View(c *ui.Context) {
 		pluginGlassBg, pluginGlassBlur, pluginGlassOn = t.ApplyPluginOverrides(a.env.Svc.Plugin.ThemeOverrides())
 	}
 	a.env.Theme = t
+	a.env.FullBleedTop = false // 页面构建时按需重新设置
 	applyTheme(c, t)
 
 	if c.Shortcut(0, ui.KeyF2) {
@@ -372,7 +373,7 @@ func (a *App) View(c *ui.Context) {
 		// 首页保留全屏模糊封面的通顶效果；上方叠加 28px 可拖动区域（避开侧边栏与右上角窗口按钮/滚动条），
 		// 放在灵动岛之前以免遮挡灵动岛的点击与拖动。
 		if a.router.Path() != env.PathHome {
-			bar.TopBarFade(c, t, a.sidebar.Width())
+			bar.TopBarFade(c, t, a.sidebar.Width(), !a.env.FullBleedTop)
 		}
 		rightInset := t.Gutter()
 		if !barProps.HideWindowButtons {

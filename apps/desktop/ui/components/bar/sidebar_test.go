@@ -1,6 +1,8 @@
 package bar
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -160,5 +162,34 @@ func TestSidebarTopbarHiddenTrafficLightInset(t *testing.T) {
 	fullscreen, _ := tt.Find(locales.SideBarToggle())
 	if fullscreen.Y != noBar.Y {
 		t.Fatalf("fullscreen toggle Y=%.1f, want %.1f", fullscreen.Y, noBar.Y)
+	}
+}
+
+// 主题插件替换字标并隐藏图标时，侧边栏标题区直接从左侧绘制插件字标。
+func TestSidebarBrandOverride(t *testing.T) {
+	mark := filepath.Join(t.TempDir(), "mark.svg")
+	if err := os.WriteFile(mark, []byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 20"><rect width="80" height="20" fill="#39C5BB"/></svg>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s := NewSidebar(true, 0)
+	tt := ui.NewTester(func(c *ui.Context) {
+		th := theme.New(false, 1)
+		th.TopbarHidden = true
+		th.BrandWordmark = mark
+		th.HideBrandIcon = true
+		ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
+			SideBar(c, th, SideBarProps{State: &s, Router: ui.NewRouter(env.PathHome)})
+		})
+	}, 1280, 800)
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+	// 标题区高 64、左内边距 12+4，字标高 24、宽 96：没有图标时字标从 x=16 开始。
+	px := tt.Image().RGBAAt(30, 32)
+	if px.R != 0x39 || px.G != 0xC5 || px.B != 0xBB {
+		t.Fatalf("header pixel = %+v, want the plugin wordmark color #39C5BB", px)
+	}
+	if _, ok := tt.Find(locales.SideBarToggle()); !ok {
+		t.Fatal("toggle button missing")
 	}
 }

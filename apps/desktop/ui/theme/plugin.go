@@ -70,8 +70,35 @@ func (t *Theme) ApplyPluginOverrides(overrides []plugin.ThemeOverride) (glassBg 
 				t.ShapePanel = float32(*v)
 			}
 		}
+		if b := ov.Brand; b != nil {
+			if p := pickBrandImage(t.Dark, b.Wordmark, b.WordmarkDark); p != "" {
+				t.BrandWordmark = p
+			}
+			if p := pickBrandImage(t.Dark, b.Icon, b.IconDark); p != "" {
+				t.BrandIcon = p
+			}
+			if b.HideWordmark != nil {
+				t.HideBrandWordmark = *b.HideWordmark
+			}
+			if b.HideIcon != nil {
+				t.HideBrandIcon = *b.HideIcon
+			}
+		}
 	}
 	return glassBg, glassBlur, glassEnabled
+}
+
+// pickBrandImage 返回当前深浅色下的品牌图片：深色模式优先用 dark 专用图，没有时与浅色共用 base。
+// 远程 URL 不支持（品牌标志每帧绘制，只接受插件目录里的本地图片）。
+func pickBrandImage(dark bool, base, darkPath string) string {
+	p := strings.TrimSpace(base)
+	if dark && strings.TrimSpace(darkPath) != "" {
+		p = strings.TrimSpace(darkPath)
+	}
+	if strings.HasPrefix(p, "http://") || strings.HasPrefix(p, "https://") {
+		return ""
+	}
+	return p
 }
 
 // SyncPluginFonts 加载并注册插件声明的自定义字体，并更新 PluginUIFont / PluginMonoFont。

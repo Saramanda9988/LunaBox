@@ -228,13 +228,19 @@ func sidebarHeader(c *ui.Context, t *theme.Theme, s *Sidebar, reveal float32) {
 		header.DragWindow()
 	}
 	header.Children(func() {
-		title := assets.Title(t.Dark)
-		tw, th := title.Size()
+		// 品牌标志可由主题插件替换或隐藏（brand），两者都隐藏时只留展开/收起按钮。
+		icon, wordmark := brandIcon(t), brandWordmark(t)
 		// opacity-100 max-w-[200px] pl-1 ↔ opacity-0 max-w-0 pl-0
-		ui.Row(c).Gap(4).Clip().MaxWidth(200*reveal).Padding(0, 0, 0, 4*reveal).Opacity(reveal).Shrink(1).Children(func() {
-			ui.Image(c, assets.AppIcon(t.Dark)).Size(32, 32).Shrink(0)
-			ui.Image(c, title).Size(24*float32(tw)/float32(th), 24).Shrink(0)
-		})
+		if icon != nil || wordmark != nil {
+			ui.Row(c).Gap(4).Clip().MaxWidth(200*reveal).Padding(0, 0, 0, 4*reveal).Opacity(reveal).Shrink(1).Children(func() {
+				if icon != nil {
+					brandImage(c, icon, 32).Shrink(0)
+				}
+				if wordmark != nil {
+					brandImage(c, wordmark, 24).Shrink(0)
+				}
+			})
+		}
 		justify := ui.Center
 		if s.Open {
 			justify = ui.End

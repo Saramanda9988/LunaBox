@@ -358,7 +358,10 @@ export function HeroBanner(props) {
   const ratingTotal = rating ? Number(rating.total) || 0 : 0;
   const ratingPlayed = rating ? Number(rating.played) || 0 : 0;
 
-  const padTop = 20;
+  // safeTop：宿主隐藏顶栏时窗口顶部被拖动区 / 窗口按钮占用的高度，左上角返回胶囊整体下移避让
+  const rawSafeTop = Number(p.safeTop);
+  const safeTop = Number.isFinite(rawSafeTop) && rawSafeTop > 0 ? rawSafeTop : 0;
+  const padTop = 20 + safeTop;
   const padX = 32;
   const padBottom = 28;
   const innerMinH = Math.max(0, bannerH - padTop - padBottom);

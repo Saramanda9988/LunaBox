@@ -2,6 +2,7 @@ package bar
 
 import (
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -18,7 +19,7 @@ func TestTopBarFadeAttenuatesTopAndPassesThrough(t *testing.T) {
 			ui.ButtonBase(c.Key("under")).Absolute().Top(24).Left(sidebarW + 20).Size(80, 24).
 				Label("under").OnClick(func() { clicked = true })
 		})
-		TopBarFade(c, th, sidebarW)
+		TopBarFade(c, th, sidebarW, true)
 	}, 400, 100)
 	tt.Frame()
 
@@ -49,5 +50,29 @@ func TestTopBarFadeAttenuatesTopAndPassesThrough(t *testing.T) {
 	tt.Frame()
 	if !clicked {
 		t.Fatal("TopBarFade blocked click on element underneath")
+	}
+}
+
+// 页面内容贴顶（全出血头图未滚动）时渐隐层不绘制，滚动后淡入。
+func TestTopBarFadeHiddenForFullBleedTop(t *testing.T) {
+	visible := false
+	const sidebarW = 200
+	tt := ui.NewTester(func(c *ui.Context) {
+		th := theme.New(true, 1)
+		th.TopbarHidden = true
+		ui.Box(c).Fill().Background(theme.White)
+		TopBarFade(c, th, sidebarW, visible)
+	}, 400, 100)
+	tt.Frame()
+	if px := tt.Image().RGBAAt(sidebarW+50, 14); px.R != 255 || px.G != 255 || px.B != 255 {
+		t.Fatalf("hidden fade still tints the top: got %+v, want white", px)
+	}
+
+	visible = true
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+	if px := tt.Image().RGBAAt(sidebarW+50, 14); px.R > 90 {
+		t.Fatalf("fade not shown after scrolling: got %+v", px)
 	}
 }
