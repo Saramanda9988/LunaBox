@@ -1,4 +1,4 @@
-import { Badge, Button, Column, Divider, NativeSlot, Row, Skeleton, Text, useEffect, useState } from 'lunabox';
+import { Button, Column, Divider, NativeSlot, Row, Skeleton, Text, useEffect, useState } from 'lunabox';
 import type { DetailStore } from '../store';
 import type { SlotRenderProps } from '../types';
 
@@ -18,14 +18,6 @@ export function createOverviewTab(store: DetailStore) {
     const hasBothIntros = Boolean(transIntro && originIntro && transIntro !== originIntro);
     const activeIntro =
       introLang === 'origin' ? originIntro || transIntro : transIntro || originIntro;
-
-    const sortedTags = Array.isArray(detail?.tags)
-      ? detail!.tags
-          .filter((t) => t && t.name)
-          .slice()
-          .sort((a, b) => Number(b.likes || 0) - Number(a.likes || 0))
-          .slice(0, 24)
-      : [];
 
     const aliases = Array.isArray(detail?.aliases)
       ? detail!.aliases.map((a) => String(a || '').trim()).filter(Boolean)
@@ -68,30 +60,10 @@ export function createOverviewTab(store: DetailStore) {
 
         <Divider subtle={true} />
 
-        {/* 游戏标签区（无缝保留原生可点击筛选与可编辑标签 + Hikarinagi 社区标签） */}
+        {/* 游戏标签区（无缝保留原生可点击筛选与可编辑标签） */}
         <Column k="ov-tags-sec" gap="md" width="full">
           <Text text="标签" size="lg" weight="semibold" tone="strong" />
           <NativeSlot k="ov-native-tags" name="tags" />
-
-          {sortedTags.length > 0 ? (
-            <Column k="ov-hn-tags" gap="sm" width="full" marginTop="xs">
-              <Text
-                text={`Hikarinagi 社区标签 (${sortedTags.length})`}
-                size="xs"
-                weight="medium"
-                tone="muted"
-              />
-              <Row gap="xs" wrap={true} width="full">
-                {sortedTags.map((tg, idx) => (
-                  <Badge
-                    key={`ov-htag-${idx}`}
-                    label={Number(tg.likes) > 0 ? `${tg.name} · ${tg.likes}` : tg.name}
-                    tone={idx < 4 ? 'brand' : 'default'}
-                  />
-                ))}
-              </Row>
-            </Column>
-          ) : null}
         </Column>
 
         {/* 别名区（有数据时展示，无框轻量排布） */}

@@ -310,7 +310,9 @@ func TestHikarinagiDetailPluginSlotsAndCachedRender(t *testing.T) {
 					gotHeroReady = true
 				}
 			case "overview::1":
-				if stringsContainsAll(s, "简介", "标签", "NativeSlot", "神作") {
+				if stringsContainsAll(s, "简介", "标签", "NativeSlot", "樱诗") &&
+					!containsStr(s, "Hikarinagi 社区标签") &&
+					!containsStr(s, "神作") {
 					gotOverviewReady = true
 				}
 			case "tab::1":

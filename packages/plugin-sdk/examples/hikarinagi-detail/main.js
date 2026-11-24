@@ -753,7 +753,7 @@ function createHeroSection(ctx, store) {
 }
 
 // ../plugin-sdk/examples/hikarinagi-detail/src/components/OverviewTab.tsx
-import { Badge as Badge2, Button as Button2, Column as Column2, Divider as Divider2, NativeSlot, Row as Row2, Skeleton as Skeleton2, Text as Text2, useEffect as useEffect2, useState as useState2 } from "lunabox";
+import { Button as Button2, Column as Column2, Divider as Divider2, NativeSlot, Row as Row2, Skeleton as Skeleton2, Text as Text2, useEffect as useEffect2, useState as useState2 } from "lunabox";
 import { jsx as jsx3, jsxs as jsxs2, Fragment as Fragment2 } from "lunabox/jsx-runtime";
 function createOverviewTab(store) {
   return function OverviewTab({ game }) {
@@ -768,7 +768,6 @@ function createOverviewTab(store) {
     const originIntro = String(detail?.origin_intro || "").trim();
     const hasBothIntros = Boolean(transIntro && originIntro && transIntro !== originIntro);
     const activeIntro = introLang === "origin" ? originIntro || transIntro : transIntro || originIntro;
-    const sortedTags = Array.isArray(detail?.tags) ? detail.tags.filter((t) => t && t.name).slice().sort((a, b) => Number(b.likes || 0) - Number(a.likes || 0)).slice(0, 24) : [];
     const aliases = Array.isArray(detail?.aliases) ? detail.aliases.map((a) => String(a || "").trim()).filter(Boolean) : [];
     return /* @__PURE__ */ jsxs2(Column2, {
       k: `overview-${gameId}`,
@@ -844,30 +843,7 @@ function createOverviewTab(store) {
             /* @__PURE__ */ jsx3(NativeSlot, {
               k: "ov-native-tags",
               name: "tags"
-            }),
-            sortedTags.length > 0 ? /* @__PURE__ */ jsxs2(Column2, {
-              k: "ov-hn-tags",
-              gap: "sm",
-              width: "full",
-              marginTop: "xs",
-              children: [
-                /* @__PURE__ */ jsx3(Text2, {
-                  text: `Hikarinagi 社区标签 (${sortedTags.length})`,
-                  size: "xs",
-                  weight: "medium",
-                  tone: "muted"
-                }),
-                /* @__PURE__ */ jsx3(Row2, {
-                  gap: "xs",
-                  wrap: true,
-                  width: "full",
-                  children: sortedTags.map((tg, idx) => /* @__PURE__ */ jsx3(Badge2, {
-                    label: Number(tg.likes) > 0 ? `${tg.name} · ${tg.likes}` : tg.name,
-                    tone: idx < 4 ? "brand" : "default"
-                  }, `ov-htag-${idx}`))
-                })
-              ]
-            }) : null
+            })
           ]
         }),
         aliases.length > 0 ? /* @__PURE__ */ jsxs2(Fragment2, {
