@@ -1020,9 +1020,13 @@ func (m *Manager) renderHeroBanner(
 	children := n.Children
 	bannerH := propFloat(p, "height")
 	if bannerH < 280 {
-		bannerH = 440
-	} else if bannerH > 600 {
-		bannerH = 600
+		bannerH = 560
+	} else if bannerH > 760 {
+		bannerH = 760
+	}
+	contentMaxW := propFloat(p, "contentMaxWidth")
+	if contentMaxW <= 0 {
+		contentMaxW = 1200
 	}
 	bannerSrc := propStr(p, "banner")
 	fallbackBannerSrc := propStr(p, "fallbackBanner")
@@ -1120,34 +1124,55 @@ func (m *Manager) renderHeroBanner(
 				{Color: scrimDark.Alpha(0.06), At: 1},
 			},
 		})
-		// 层 -1：纵向融底梯度，顶部轻微压暗，中段通透展示头图，底部平滑过渡到页面底色
+		// 层 -1：纵向融底梯度，上半段通透展示头图主体，下半段平滑压暗并融入页面底色
 		ui.Box(c).Absolute().Top(0).Right(0).Bottom(0).Left(0).PassThrough().ZIndex(-1).LinearGradient(ui.LinearGradient{
 			Angle: 180,
 			Stops: []ui.GradientStop{
-				{Color: theme.Black.Alpha(0.26), At: 0},
-				{Color: theme.Black.Alpha(0.06), At: 0.30},
-				{Color: t.Pick(scrimDark.Alpha(0.58), fadeBg.Alpha(0.55)), At: 0.68},
-				{Color: t.Pick(scrimDark.Alpha(0.80), fadeBg.Alpha(0.92)), At: 0.90},
+				{Color: theme.Black.Alpha(0.24), At: 0},
+				{Color: theme.Black.Alpha(0.04), At: 0.24},
+				{Color: theme.Black.Alpha(0.12), At: 0.48},
+				{Color: t.Pick(scrimDark.Alpha(0.56), fadeBg.Alpha(0.56)), At: 0.72},
+				{Color: t.Pick(scrimDark.Alpha(0.84), fadeBg.Alpha(0.92)), At: 0.91},
 				{Color: fadeBg, At: 1},
 			},
 		})
 
-		// 顶左浮动返回按钮（ZIndex 2 确保始终可点且不遮挡主视觉）
+		const (
+			heroPadTop    float32 = 20
+			heroPadX      float32 = 32
+			heroPadBottom float32 = 28
+		)
+		innerMinH := max(0, bannerH-heroPadTop-heroPadBottom)
+
+		var backFn func(*ui.Context, *theme.Theme)
 		if backSlot != "" && natives != nil {
 			if fn, ok := natives[backSlot]; ok && fn != nil {
-				pillBg := t.Pick(theme.White.Alpha(0.78), theme.Black.Alpha(0.36))
-				pillBorder := t.Pick(theme.White.Alpha(0.45), theme.White.Alpha(0.14))
-				ui.Box(c.Key(key+"-back-pill")).Absolute().Top(16).Left(32).ZIndex(2).
-					Padding(4, 12, 4, 8).Radius(999).
-					Background(pillBg).Border(t.HL, pillBorder).Children(func() {
-					fn(c, t)
-				})
+				backFn = fn
 			}
 		}
 
-		// 前景内容（默认 ZIndex 0，稳稳绘制在背景与渐变层之上）
-		ui.Column(c).FillWidth().MinHeight(bannerH).Justify(ui.End).Padding(68, 32, 24, 32).Gap(16).Children(func() {
-			ui.Row(c).FillWidth().Gap(32).AlignItems(ui.End).Children(func() {
+		// 前景内容：外层铺满 Hero 宽度并保留左右安全边距，内层限制最大宽度并水平居中，与下方正文区左右严格齐平
+		ui.Column(c).FillWidth().MinHeight(bannerH).Padding(heroPadTop, heroPadX, heroPadBottom, heroPadX).Children(func() {
+			inner := ui.Column(c.Key(key + "-inner")).FillWidth().MaxWidth(contentMaxW).Margin(0, ui.Auto).MinHeight(innerMinH).Gap(28)
+			if backFn != nil {
+				inner.Justify(ui.SpaceBetween)
+			} else {
+				inner.Justify(ui.End)
+			}
+			inner.Children(func() {
+				// 顶左浮动返回按钮（与下方标题、Tab 左边缘严格齐平）
+				if backFn != nil {
+					pillBg := t.Pick(theme.White.Alpha(0.78), theme.Black.Alpha(0.36))
+					pillBorder := t.Pick(theme.White.Alpha(0.45), theme.White.Alpha(0.14))
+					ui.Box(c.Key(key+"-back-pill")).AlignSelf(ui.Start).
+						Padding(4, 12, 4, 8).Radius(999).
+						Background(pillBg).Border(t.HL, pillBorder).Children(func() {
+						backFn(c, t)
+					})
+				}
+
+				ui.Column(c).FillWidth().Gap(16).Children(func() {
+					ui.Row(c).FillWidth().Gap(32).AlignItems(ui.End).Children(func() {
 				// 左侧主信息区
 				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(10).Children(func() {
 					// 透明游戏徽标（按自然宽高比放大展示，贴左对齐）
@@ -1319,14 +1344,16 @@ func (m *Manager) renderHeroBanner(
 				}
 			})
 
-			// 底部扩展内容（例如 Hikarinagi 风格的横向游戏截图缩略预览条）
-			if len(children) > 0 {
-				ui.Row(c.Key(key+"-extra")).FillWidth().Wrap().Gap(10).AlignItems(ui.Center).Margin(4, 0, 0, 0).Children(func() {
-					for i, child := range children {
-						m.renderNode(c, t, inst, child, fmt.Sprintf("%s-hc-%d", key, i), natives)
+					// 底部扩展内容（例如 Hikarinagi 风格的横向游戏截图缩略预览条）
+					if len(children) > 0 {
+						ui.Row(c.Key(key+"-extra")).FillWidth().Wrap().Gap(10).AlignItems(ui.Center).Margin(4, 0, 0, 0).Children(func() {
+							for i, child := range children {
+								m.renderNode(c, t, inst, child, fmt.Sprintf("%s-hc-%d", key, i), natives)
+							}
+						})
 					}
 				})
-			}
+			})
 		})
 	})
 	return hero

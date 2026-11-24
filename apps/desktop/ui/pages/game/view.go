@@ -30,10 +30,11 @@ import (
 )
 
 const (
-	pagePadding = 32  // p-8
-	coverW      = 240 // grid-cols-[15rem_minmax(0,1fr)]
-	headerGap   = 24  // gap-6
-	toolbarGap  = 12  // gap-3
+	pagePadding       = 32   // p-8
+	detailContentMaxW = 1200 // Hero 前景与下方正文内容最大宽度，宽屏水平居中对齐
+	coverW            = 240  // grid-cols-[15rem_minmax(0,1fr)]
+	headerGap         = 24   // gap-6
+	toolbarGap        = 12   // gap-3
 )
 
 // View 构建页面。滚动容器是原版的 <main>（overflow-auto）：内容超出时才出现 9px 的滚动条槽。
@@ -64,7 +65,8 @@ func (p *Page) View(c *ui.Context) {
 		gutter = t.Gutter()
 	}
 	fullW := p.env.MainWidth - gutter
-	contentW := fullW - 2*pagePadding
+	availW := fullW - 2*pagePadding
+	contentW := min(availW, detailContentMaxW)
 	hidden := p.hiddenTabs()
 	if hidden[p.tab] || (strings.HasPrefix(p.tab, "plugin:") && !p.hasPluginTab(p.tab)) {
 		p.tab = p.defaultTab()
@@ -108,12 +110,16 @@ func (p *Page) View(c *ui.Context) {
 				ui.Column(c).Width(fullW).Gap(0).Children(func() {
 					hasHero := p.renderHero(c, t, contentW)
 					if !hasHero {
-						ui.Column(c).FillWidth().Padding(pagePadding, pagePadding, 24, pagePadding).Gap(24).Children(func() {
-							p.backButton(c, t)
-							p.header(c, t, contentW)
+						ui.Column(c).FillWidth().Padding(pagePadding, pagePadding, 24, pagePadding).Children(func() {
+							ui.Column(c).Width(contentW).Margin(0, ui.Auto).Gap(24).Children(func() {
+								p.backButton(c, t)
+								p.header(c, t, contentW)
+							})
 						})
 					}
-					ui.Column(c.Key("detail-body-wrap")).FillWidth().Padding(8, pagePadding, 0, pagePadding).Gap(24).Children(renderBody)
+					ui.Column(c.Key("detail-body-wrap")).FillWidth().Padding(8, pagePadding, 0, pagePadding).Children(func() {
+						ui.Column(c.Key("detail-body-inner")).Width(contentW).Margin(0, ui.Auto).Gap(24).Children(renderBody)
+					})
 				})
 			})
 		} else {
@@ -285,9 +291,10 @@ func (p *Page) renderHero(c *ui.Context, t *theme.Theme, contentW float32) bool 
 	slot := heroSlots[0]
 	g := p.game
 	ready := p.plugins.RenderSlotWithNatives(c, t, plugin.SlotGameDetailHero, slot.PluginID, slot.ID, g.ID, map[string]any{
-		"gameId":   g.ID,
-		"game":     g,
-		"blurNsfw": blurNSFW(p.env),
+		"gameId":          g.ID,
+		"game":            g,
+		"blurNsfw":        blurNSFW(p.env),
+		"contentMaxWidth": detailContentMaxW,
 	}, p.detailNatives(contentW))
 	return ready
 }
@@ -906,7 +913,7 @@ func (p *Page) pluginMoreActions(c *ui.Context, t *theme.Theme, g *models.Game) 
 // skeleton 对应 GameDetailSkeleton（animate-pulse），玻璃模式下各块是 data-glass:bg-white/2 dark:bg-black/2。
 func (p *Page) skeleton(c *ui.Context, t *theme.Theme) {
 	bg := t.IfGlass(t.Pick(theme.Brand200, theme.Brand800), theme.White.Alpha(0.02), theme.Black.Alpha(0.02))
-	contentW := p.env.MainWidth - 2*pagePadding
+	contentW := min(p.env.MainWidth-2*pagePadding, detailContentMaxW)
 	wrap := ui.Column(c.Key("skeleton")).Fill().Clip().Padding(pagePadding).PassThrough()
 	wrap.Opacity(components.Pulse(wrap)).Children(func() {
 		ui.Column(c).Width(contentW).Margin(0, ui.Auto).Gap(32).Children(func() {

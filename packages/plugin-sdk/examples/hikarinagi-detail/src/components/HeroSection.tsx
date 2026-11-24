@@ -13,7 +13,7 @@ import type { DetailStore } from '../store';
 import type { SlotRenderProps } from '../types';
 
 export function createHeroSection(ctx: Context, store: DetailStore) {
-  return function HeroSection({ game, blurNsfw }: SlotRenderProps) {
+  return function HeroSection({ game, blurNsfw, contentMaxWidth }: SlotRenderProps) {
     const state = store.useGameDetail(game);
     const cfg = store.getConfig();
     const detail = state.detail;
@@ -104,7 +104,7 @@ export function createHeroSection(ctx: Context, store: DetailStore) {
 
     const rawHeight = Number(cfg.heroHeight);
     const heroHeight =
-      Number.isFinite(rawHeight) && rawHeight >= 320 ? Math.min(580, rawHeight) : 460;
+      Number.isFinite(rawHeight) && rawHeight >= 360 ? Math.min(760, rawHeight) : 560;
 
     // 默认绝不虚化头图，仅在用户主动开启「始终模糊头图背景」或开启 NSFW 保护且当前头图含敏感内容时虚化
     const shouldBlurHero =
@@ -116,6 +116,7 @@ export function createHeroSection(ctx: Context, store: DetailStore) {
       <HeroBanner
         k={`hero-${gameId}`}
         height={heroHeight}
+        contentMaxWidth={contentMaxWidth || 1200}
         banner={activeBannerUrl}
         fallbackBanner={fallbackBanner}
         logo={logo?.url || ''}

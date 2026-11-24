@@ -119,6 +119,7 @@ export interface SlotRenderProps {
   gameId: string;
   game: Game;
   blurNsfw?: boolean;
+  contentMaxWidth?: number;
 }
 
 export interface BannerPick {

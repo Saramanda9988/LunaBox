@@ -201,3 +201,93 @@ func TestLoadImageSourceUntypedNilAndHeroBannerUncachedLogo(t *testing.T) {
 	tt.Frame()
 }
 
+func TestRenderHeroBannerFullBleedWithCenteredMaxWidth(t *testing.T) {
+	const winW = 1800
+	const maxContentW = 1200
+
+	e := &env.Env{MainWidth: winW}
+	mgr := New(e, HostCallbacks{})
+
+	inst := newInstance("inst-hero-wide", "hikarinagi-detail", plugin.SlotGameDetailHero, "hikarinagi-hero", "g-wide")
+	inst.Version = 1
+	inst.Tree = &plugin.UINode{
+		Type: "HeroBanner",
+		Key:  "hero-wide",
+		Props: map[string]any{
+			"height":          560.0,
+			"contentMaxWidth": float64(maxContentW),
+			"title":           "美好的每一天",
+			"backSlot":        "back",
+			"coverSlot":       "cover",
+		},
+	}
+
+	natives := NativeSlots{
+		"back": func(c *ui.Context, _ *theme.Theme) {
+			ui.Box(c.Key("native-back")).Size(60, 24).Label("返回按钮")
+		},
+		"cover": func(c *ui.Context, _ *theme.Theme) {
+			ui.Box(c.Key("native-cover")).Size(196, 260).Label("游戏封面")
+		},
+	}
+
+	tt := ui.NewTester(func(c *ui.Context) {
+		th := theme.New(true, 1)
+		ui.Column(c).Width(winW).Children(func() {
+			mgr.renderHeroBanner(c, th, inst, "hero-wide", inst.Tree, natives).Label("hero-bg-root")
+			ui.Column(c.Key("body-wrap")).FillWidth().Padding(8, 32, 0, 32).Children(func() {
+				ui.Column(c.Key("body-inner")).Width(maxContentW).Margin(0, ui.Auto).Label("body-inner-root").Children(func() {
+					ui.Box(c.Key("body-marker")).Size(80, 24).Label("正文标记")
+				})
+			})
+		})
+	}, winW, 900)
+	tt.Frame()
+
+	heroRect, ok := tt.Find("hero-bg-root")
+	if !ok {
+		t.Fatalf("hero-bg-root not found")
+	}
+	bodyRect, ok := tt.Find("body-inner-root")
+	if !ok {
+		t.Fatalf("body-inner-root not found")
+	}
+	if heroRect.W != winW {
+		t.Fatalf("expected hero background to span full width %d, got %v", winW, heroRect.W)
+	}
+	if heroRect.H < 560 {
+		t.Fatalf("expected hero height >= 560, got %v", heroRect.H)
+	}
+	wantLeft := float32((winW - maxContentW) / 2)
+	if bodyRect.X != wantLeft || bodyRect.W != maxContentW {
+		t.Fatalf("expected body inner rect X=%v W=%d, got %+v", wantLeft, maxContentW, bodyRect)
+	}
+
+	titleRect, ok := tt.Find("美好的每一天")
+	if !ok {
+		t.Fatalf("title not found in rendered tree")
+	}
+	if titleRect.X != bodyRect.X {
+		t.Fatalf("expected hero title left edge (%v) to align with body left edge (%v)", titleRect.X, bodyRect.X)
+	}
+
+	coverRect, ok := tt.Find("游戏封面")
+	if !ok {
+		t.Fatalf("cover not found in rendered tree")
+	}
+	coverRight := coverRect.X + coverRect.W
+	bodyRight := bodyRect.X + bodyRect.W
+	if diff := bodyRight - coverRight; diff < -2 || diff > 2 {
+		t.Fatalf("expected hero cover right edge (%v) to align with body right edge (%v)", coverRight, bodyRight)
+	}
+
+	backRect, ok := tt.Find("返回按钮")
+	if !ok {
+		t.Fatalf("back button not found in rendered tree")
+	}
+	// back button sits inside pill with 8px left padding
+	if diff := backRect.X - (bodyRect.X + 8); diff < -2 || diff > 2 {
+		t.Fatalf("expected back button to align with body left edge (+8px pill pad): backX=%v bodyX=%v", backRect.X, bodyRect.X)
+	}
+}
+

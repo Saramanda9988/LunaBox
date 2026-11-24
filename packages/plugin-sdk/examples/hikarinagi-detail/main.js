@@ -658,7 +658,7 @@ function createDetailAside(ctx, store) {
 import { HeroBanner, useEffect, useRef, useState } from "lunabox";
 import { jsx as jsx2 } from "lunabox/jsx-runtime";
 function createHeroSection(ctx, store) {
-  return function HeroSection({ game, blurNsfw }) {
+  return function HeroSection({ game, blurNsfw, contentMaxWidth }) {
     const state = store.useGameDetail(game);
     const cfg = store.getConfig();
     const detail = state.detail;
@@ -723,12 +723,13 @@ function createHeroSection(ctx, store) {
       played: Number(detail?.rating?.played || 0)
     } : localScore > 0 ? { score: localScore, total: 0, played: 0 } : undefined;
     const rawHeight = Number(cfg.heroHeight);
-    const heroHeight = Number.isFinite(rawHeight) && rawHeight >= 320 ? Math.min(580, rawHeight) : 460;
+    const heroHeight = Number.isFinite(rawHeight) && rawHeight >= 360 ? Math.min(760, rawHeight) : 560;
     const shouldBlurHero = Boolean(cfg.blurHeroBanner) || shouldBlurNsfw && activeBannerSensitive;
     const canPage = totalImages > 1;
     return /* @__PURE__ */ jsx2(HeroBanner, {
       k: `hero-${gameId}`,
       height: heroHeight,
+      contentMaxWidth: contentMaxWidth || 1200,
       banner: activeBannerUrl,
       fallbackBanner,
       logo: logo?.url || "",
@@ -1448,10 +1449,10 @@ function apply(ctx) {
         key: "heroHeight",
         type: "number",
         label: "头图区域高度（px）",
-        description: "控制顶部全出血头图横幅的最小高度，推荐 440–500px。",
-        default: 460,
-        min: 320,
-        max: 580,
+        description: "控制顶部全出血头图横幅的最小高度，推荐 520–620px。",
+        default: 560,
+        min: 360,
+        max: 760,
         step: 10
       },
       {
