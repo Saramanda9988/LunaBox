@@ -97,3 +97,38 @@ func TestSidebarSavedWidth(t *testing.T) {
 		t.Fatalf("saved width changed to %d", s.OpenWidth())
 	}
 }
+
+func TestSidebarTopbarHiddenTrafficLightInset(t *testing.T) {
+	s := NewSidebar(true, 0)
+	tt := ui.NewTester(func(c *ui.Context) {
+		th := theme.New(false, 1)
+		th.TopbarHidden = true
+		ui.Row(c).Fill().AlignItems(ui.Stretch).Children(func() {
+			SideBar(c, th, SideBarProps{State: &s, Router: ui.NewRouter(env.PathHome)})
+		})
+	}, 1280, 800)
+	tt.Frame()
+	noBar, ok := tt.Find(locales.SideBarToggle())
+	if !ok {
+		t.Fatal("toggle button not found")
+	}
+
+	// macOS 非全屏时 c.TitleBar() 返回红绿灯区域，侧边栏顶部应下移避让。
+	tt.SetTitleBar(ui.TitleBar{Height: 28, Left: 60, Bottom: 20})
+	tt.Frame()
+	withLights, ok := tt.Find(locales.SideBarToggle())
+	if !ok {
+		t.Fatal("toggle button not found with traffic lights")
+	}
+	if diff := withLights.Y - noBar.Y; diff != 28 {
+		t.Fatalf("sidebar toggle Y shifted by %.1f, want 28 (noBar=%.1f withLights=%.1f)", diff, noBar.Y, withLights.Y)
+	}
+
+	// 全屏时 c.TitleBar() 归零，侧边栏回到顶部。
+	tt.SetTitleBar(ui.TitleBar{})
+	tt.Frame()
+	fullscreen, _ := tt.Find(locales.SideBarToggle())
+	if fullscreen.Y != noBar.Y {
+		t.Fatalf("fullscreen toggle Y=%.1f, want %.1f", fullscreen.Y, noBar.Y)
+	}
+}

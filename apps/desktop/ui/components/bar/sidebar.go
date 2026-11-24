@@ -145,6 +145,12 @@ func SideBar(c *ui.Context, t *theme.Theme, p SideBarProps) {
 	}
 
 	aside.Children(func() {
+		// 隐藏顶栏时，macOS 原生红绿灯留在窗口左上角（全屏时 c.TitleBar() 自动归零），侧边栏顶部按其高度下移避让。
+		if t.TopbarHidden {
+			if tb := c.TitleBar(); tb.Bottom > 0 {
+				ui.Box(c.Key("traffic-light-space")).Height(max(tb.Height, tb.Bottom)).Shrink(0).DragWindow()
+			}
+		}
 		sidebarHeader(c, t, s, reveal)
 		ui.Column(c).Grow(1).Padding(16, 8).Gap(8).Children(func() {
 			for _, item := range navItems {
@@ -198,7 +204,11 @@ func sidebarResizer(c *ui.Context, p SideBarProps) {
 }
 
 func sidebarHeader(c *ui.Context, t *theme.Theme, s *Sidebar, reveal float32) {
-	ui.Row(c).Height(64).PaddingX(12).Shrink(0).Children(func() {
+	header := ui.Row(c).Height(64).PaddingX(12).Shrink(0)
+	if t.TopbarHidden {
+		header.DragWindow()
+	}
+	header.Children(func() {
 		title := assets.Title(t.Dark)
 		tw, th := title.Size()
 		// opacity-100 max-w-[200px] pl-1 ↔ opacity-0 max-w-0 pl-0

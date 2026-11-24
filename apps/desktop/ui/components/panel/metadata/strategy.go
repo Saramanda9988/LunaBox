@@ -336,7 +336,7 @@ func (m *StrategyModal) View(c *ui.Context, t *theme.Theme, p StrategyModalProps
 	}, func(pnl ui.Element) {
 		_, winH := c.Size()
 		// 窗口减去弹窗的上下边距、内边距、标题与底部按钮，至少留 240；内容超出时在中间滚动。
-		bodyH := max(240, winH-p.TopOffset-260)
+		bodyH := max(240, winH-t.TopOffset(p.TopOffset)-260)
 		components.ModalPanel(t, pnl).Children(func() {
 			ui.Column(c.Key("strategy")).Gap(20).Children(func() {
 				m.header(c, t)

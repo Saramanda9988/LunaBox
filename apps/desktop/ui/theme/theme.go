@@ -13,8 +13,18 @@ type Theme struct {
 	Scale float64 // 显示器缩放比例
 	HL    float32 // 一个物理像素的 DIP 宽度，即 1px 边框的实际宽度
 
-	Glass     bool    // 根布局的 data-glass：开启了自定义背景（见 glass.go）
-	BgOpacity float32 // background_opacity：玻璃模式下 main 与侧边栏底色的不透明度
+	Glass                  bool    // 根布局的 data-glass：开启了自定义背景（见 glass.go）
+	BgOpacity              float32 // background_opacity：玻璃模式下 main 与侧边栏底色的不透明度
+	TopbarHidden           bool    // hide_top_bar：隐藏顶部标题栏，浮层、虚拟网格与灵动岛不再让出顶栏高度
+	FloatingControlsHeight float32 // 隐藏顶栏且绘制右上角浮动窗口按钮时的占用高度（macOS 使用原生红绿灯，为 0）
+}
+
+// TopOffset 返回顶栏占用的偏移高度：隐藏顶栏时为 0，否则返回 offset。
+func (t *Theme) TopOffset(offset float32) float32 {
+	if t != nil && t.TopbarHidden {
+		return 0
+	}
+	return offset
 }
 
 // New 按系统主题和显示器缩放创建 Theme。

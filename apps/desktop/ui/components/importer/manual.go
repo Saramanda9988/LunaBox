@@ -95,7 +95,7 @@ func (f *Flow) manualModal(c *ui.Context, t *theme.Theme, enabled []enums.Source
 	closeModal := f.closeManual // 搜索中关闭即取消搜索
 	_, winH := c.Size()
 	components.Overlay(c, t, func() {
-		host := ui.Box(c.Key("manual-select")).Absolute().Top(env.TopbarHeight).Left(0).Right(0).Bottom(0).Modal().
+		host := ui.Box(c.Key("manual-select")).Absolute().Top(t.TopOffset(env.TopbarHeight)).Left(0).Right(0).Bottom(0).Modal().
 			Background(ui.RGBA(0, 0, 0, 0.5))
 		host.OnShortcut(0, ui.KeyEscape, closeModal)
 		host.Children(func() {

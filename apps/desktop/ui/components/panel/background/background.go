@@ -152,6 +152,19 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 		})
 	})
 
+	// section.space-y-4 border-t pt-4：窗口
+	panel.Divided(c, t, "window-appearance-section", 16, func() {
+		ui.Column(c).FillWidth().Gap(16).Children(func() {
+			panel.GroupTitle(c, t, locales.SettingsAppearanceWindowSection())
+			better.SettingSwitchRow(c, t, "hide_top_bar", better.SettingSwitchRowProps{
+				Label:    locales.SettingsAppearanceHideTopBar(),
+				Hint:     locales.SettingsAppearanceHideTopBarHint(),
+				Checked:  cfg.HideTopBar,
+				OnChange: func(v bool) { p.Change(func(cfg *appconf.AppConfig) { cfg.HideTopBar = v }) },
+			})
+		})
+	})
+
 	// 裁剪弹窗（原版放在 Fragment 的最前面，由 ModalPortal 盖在页面之上；MyGo 的浮层要最后构建）。
 	ww, wh := cfg.WindowWidth, cfg.WindowHeight
 	if ww == 0 {

@@ -14157,6 +14157,52 @@ func (msgs Messages) SettingsAppearanceLibrarySection() string {
 	return Catalog.Format(msgs.locale, "settings_appearance_librarySection", nil)
 }
 
+// SettingsAppearanceWindowSection says "窗口"
+// in the language the app shows.
+//
+// settings.appearance.windowSection
+func SettingsAppearanceWindowSection() string {
+	return In(i18n.Locale()).SettingsAppearanceWindowSection()
+}
+
+// SettingsAppearanceWindowSection says "窗口"
+// in the language of msgs.
+//
+// settings.appearance.windowSection
+func (msgs Messages) SettingsAppearanceWindowSection() string {
+	return Catalog.Format(msgs.locale, "settings_appearance_windowSection", nil)
+}
+
+// SettingsAppearanceHideTopBar says "隐藏顶部标题栏"
+// in the language the app shows.
+//
+// settings.appearance.hideTopBar
+func SettingsAppearanceHideTopBar() string { return In(i18n.Locale()).SettingsAppearanceHideTopBar() }
+
+// SettingsAppearanceHideTopBar says "隐藏顶部标题栏"
+// in the language of msgs.
+//
+// settings.appearance.hideTopBar
+func (msgs Messages) SettingsAppearanceHideTopBar() string {
+	return Catalog.Format(msgs.locale, "settings_appearance_hideTopBar", nil)
+}
+
+// SettingsAppearanceHideTopBarHint says "隐藏顶部标题栏以释放顶部空间，窗口顶部区域仍可拖动"
+// in the language the app shows.
+//
+// settings.appearance.hideTopBarHint
+func SettingsAppearanceHideTopBarHint() string {
+	return In(i18n.Locale()).SettingsAppearanceHideTopBarHint()
+}
+
+// SettingsAppearanceHideTopBarHint says "隐藏顶部标题栏以释放顶部空间，窗口顶部区域仍可拖动"
+// in the language of msgs.
+//
+// settings.appearance.hideTopBarHint
+func (msgs Messages) SettingsAppearanceHideTopBarHint() string {
+	return Catalog.Format(msgs.locale, "settings_appearance_hideTopBarHint", nil)
+}
+
 // SettingsAppearanceEnableBg says "启用自定义背景"
 // in the language the app shows.
 //

@@ -42,8 +42,9 @@ func ImageViewer(c *ui.Context, t *theme.Theme, key string, p ImageViewerProps) 
 	}
 	closeViewer := func() { *p.Open = false }
 	winW, winH := c.Size()
+	topOffset := t.TopOffset(p.TopOffset)
 	components.Overlay(c, t, func() {
-		host := ui.Box(c.Key(key)).Absolute().Top(p.TopOffset).Left(0).Right(0).Bottom(0).Modal().Label(p.Title)
+		host := ui.Box(c.Key(key)).Absolute().Top(topOffset).Left(0).Right(0).Bottom(0).Modal().Label(p.Title)
 		host.OnShortcut(0, ui.KeyEscape, closeViewer) // Modal 把键盘留在浮层里，Esc 要挂在浮层上
 		st := ui.Local(host, "viewer", func() *viewerState { return &viewerState{scale: 1} })
 		s := *st
@@ -68,7 +69,7 @@ func ImageViewer(c *ui.Context, t *theme.Theme, key string, p ImageViewerProps) 
 			})
 			stage.Children(func() { viewerImage(c, p, s, winW-64, winH-136) })
 
-			viewerHeader(c, t, p.Title, closeViewer)
+			viewerHeader(c, t, p.Title, topOffset == 0, closeViewer)
 			viewerToolbar(c, t, s, p.OnSave, zoom)
 		})
 	})
@@ -107,8 +108,18 @@ func viewerImage(c *ui.Context, p ImageViewerProps, s *viewerState, maxW, maxH f
 
 // viewerHeader：absolute inset-x-0 top-0 flex justify-between px-6 py-3，标题 text-sm font-medium truncate，
 // 关闭按钮 h-9 w-9 rounded-full border bg-white/85 backdrop-blur-xl shadow-sm。
-func viewerHeader(c *ui.Context, t *theme.Theme, title string, onClose func()) {
-	ui.Row(c.Key("header")).Absolute().Top(0).Left(0).Right(0).Padding(12, 24).Gap(16).AlignItems(ui.Center).
+func viewerHeader(c *ui.Context, t *theme.Theme, title string, avoidTrafficLights bool, onClose func()) {
+	padTop := float32(12)
+	if t.FloatingControlsHeight > 0 {
+		padTop = max(padTop, t.FloatingControlsHeight+8)
+	}
+	padLeft := float32(24)
+	if avoidTrafficLights {
+		if tb := c.TitleBar(); tb.Left > 0 {
+			padLeft = max(padLeft, tb.Left+12)
+		}
+	}
+	ui.Row(c.Key("header")).Absolute().Top(0).Left(0).Right(0).Padding(padTop, 24, 12, padLeft).Gap(16).AlignItems(ui.Center).
 		Justify(ui.SpaceBetween).Children(func() {
 		components.Text(c, title, theme.TextSM, theme.WeightMedium, t.TextStrong).SingleLine().Grow(1).Basis(0).MinWidth(0)
 		btn := viewerGlassButton(c, t, "close", locales.GameImageViewerClose(), false)

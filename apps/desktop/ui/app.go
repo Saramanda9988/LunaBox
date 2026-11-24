@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -245,6 +246,14 @@ func (a *App) View(c *ui.Context) {
 	// 背景层：absolute inset-0 bg-cover bg-center，filter: blur(background_blur px)，scale(1.1)。图在后台裁好、模糊好，
 	// 画在根元素的底色之上、所有子元素之下；还没算好时先露出底色。
 	cfg := a.env.Config()
+	hideTopBar := cfg != nil && cfg.HideTopBar
+	hideWindowButtons := runtime.GOOS == "darwin"
+	t.TopbarHidden = hideTopBar
+	if hideTopBar && !hideWindowButtons {
+		t.FloatingControlsHeight = env.TopbarHeight
+	}
+	topOffset := t.TopOffset(env.TopbarHeight)
+
 	bgReq := covers.BackgroundRequest{W: winW, H: winH, Scale: scale}
 	if cfg != nil && cfg.BackgroundEnabled && cfg.BackgroundImage != "" {
 		t.SetGlass(cfg.BackgroundOpacity)
@@ -256,16 +265,18 @@ func (a *App) View(c *ui.Context) {
 	layout := ui.Column(c.Key("layout")).Fill()
 	dragOver := a.fileDrop(c, layout)
 	layout.Children(func() {
-		ui.Box(c.Key("topbar-space")).Height(env.TopbarHeight).Shrink(0) // 顶栏在灵动岛之后构建，这里占住它的位置
+		if !hideTopBar {
+			ui.Box(c.Key("topbar-space")).Height(env.TopbarHeight).Shrink(0) // 顶栏在灵动岛之后构建，这里占住它的位置
+		}
 		ui.Row(c).Grow(1).AlignItems(ui.Stretch).Children(func() {
-			bar.SideBar(c, t, bar.SideBarProps{State: &a.sidebar, Router: a.router, Config: a.env.Config(), Env: a.env})
+			bar.SideBar(c, t, bar.SideBarProps{State: &a.sidebar, Router: a.router, Config: cfg, Env: a.env})
 			a.env.MainWidth = winW - a.sidebar.Width()
 			// <main>：flex-1 overflow-hidden，玻璃模式下 rgba(var(--main-bg-rgb), background_opacity)
 			a.routes(c).Basis(0).Clip().Background(t.MainBg())
 		})
 	})
 	if dragOver {
-		importer.DropOverlay(c, t, env.TopbarHeight)
+		importer.DropOverlay(c, t, topOffset)
 	}
 	a.dragDrop.View(c, t, func() { // handleImportComplete
 		a.library.Reload()
@@ -281,20 +292,46 @@ func (a *App) View(c *ui.Context) {
 	a.notices = nil
 	a.settings.Background(c) // 设置页的备份面板收起或离开设置页后，后台结果的提示与安排恢复后的退出照常进行
 	a.env.FlushToasts(c)
-	a.playingIsland(c, t)
-	// TopBar 是 relative z-50，盖在灵动岛（z-45）之上：收起的岛藏在顶栏后面，只在顶栏下方露出 14px。
 	win := a.env.Win
-	ui.Column(c.Key("topbar")).Absolute().Top(0).Left(0).Right(0).Children(func() {
-		bar.TopBar(c, t, bar.TopBarProps{
-			Maximised:  a.maximised,
-			OnMinimise: func() { win.Minimize() },
-			OnMaximise: func() { win.ToggleMaximize() },
-			OnClose:    func() { win.Close() },
+	barProps := bar.TopBarProps{
+		Maximised:         a.maximised,
+		HideWindowButtons: hideWindowButtons,
+		OnMinimise:        func() { win.Minimize() },
+		OnMaximise:        func() { win.ToggleMaximize() },
+		OnClose:           func() { win.Close() },
+	}
+	if hideTopBar {
+		// 隐藏顶栏时：非首页在主内容区顶部叠加渐进式毛玻璃与同底色渐隐，
+		// 首页保留全屏模糊封面的通顶效果；上方叠加 28px 可拖动区域（避开侧边栏与右上角窗口按钮/滚动条），
+		// 放在灵动岛之前以免遮挡灵动岛的点击与拖动。
+		if a.router.Path() != env.PathHome {
+			bar.TopBarFade(c, t, a.sidebar.Width())
+		}
+		rightInset := t.Gutter()
+		if !barProps.HideWindowButtons {
+			rightInset = bar.WindowControlsWidth
+		}
+		ui.Box(c.Key("topbar-drag")).Absolute().Top(0).Left(a.sidebar.Width()).Right(rightInset).Height(env.TopbarHeight).DragWindow()
+		a.playingIsland(c, t)
+	} else {
+		a.playingIsland(c, t)
+		// TopBar 是 relative z-50，盖在灵动岛（z-45）之上：收起的岛藏在顶栏后面，只在顶栏下方露出 14px。
+		ui.Column(c.Key("topbar")).Absolute().Top(0).Left(0).Right(0).Children(func() {
+			bar.TopBar(c, t, barProps)
 		})
-	})
+	}
 	a.appModals(c, t)
+	// 隐藏顶栏时右上角的窗口按钮放在浮层顶层，打开弹窗/抽屉/大图预览时仍可最小化、最大化与关闭窗口。
+	if hideTopBar && !barProps.HideWindowButtons {
+		ui.Overlay(c, func() {
+			ui.Row(c.Key("topbar-controls")).Absolute().Top(0).Right(0).Children(func() {
+				bar.WindowControls(c, t, barProps)
+			})
+		})
+	}
 	// <AppToaster topOffset={(TOPBAR_HEIGHT + 12) * zoomFactor} />
-	components.Toaster(c, t, env.TopbarHeight+12)
+	// 隐藏顶栏时，非 macOS 右上角仍有浮动的窗口控制按钮，提示仍留在按钮下方避免重叠。
+	components.Toaster(c, t, max(topOffset, t.FloatingControlsHeight)+12)
 	if a.showHUD {
 		a.hud(c)
 	}

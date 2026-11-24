@@ -33,7 +33,7 @@ func Drawer(c *ui.Context, t *theme.Theme, key string, p DrawerProps) {
 		*p.Open = false
 	}
 	components.Overlay(c, t, func() {
-		host := ui.Box(c.Key(key)).Absolute().Top(p.TopOffset).Left(0).Right(0).Bottom(0)
+		host := ui.Box(c.Key(key)).Absolute().Top(t.TopOffset(p.TopOffset)).Left(0).Right(0).Bottom(0)
 		dur, ease := 300*time.Millisecond, theme.EaseDrawer
 		if !*p.Open {
 			dur, ease = 200*time.Millisecond, theme.EaseIn
@@ -77,7 +77,11 @@ func Drawer(c *ui.Context, t *theme.Theme, key string, p DrawerProps) {
 
 // drawerHeader：flex justify-between gap-4 border-b px-5 py-4，标题行 min-h-8 gap-1，关闭按钮 -mr-1 h-8 w-8 rounded-lg。
 func drawerHeader(c *ui.Context, t *theme.Theme, p DrawerProps) {
-	ui.Row(c).Padding(16, 20).Gap(16).Justify(ui.SpaceBetween).AlignItems(ui.Center).
+	padTop := float32(16)
+	if t.FloatingControlsHeight > 0 {
+		padTop = max(padTop, t.FloatingControlsHeight+8)
+	}
+	ui.Row(c).Padding(padTop, 20, 16, 20).Gap(16).Justify(ui.SpaceBetween).AlignItems(ui.Center).
 		BorderWidth(0, 0, t.HL, 0).BorderColor(t.Divider).Shrink(0).Children(func() {
 		ui.Row(c).MinHeight(32).Gap(4).AlignItems(ui.Center).Children(func() {
 			components.Text(c, p.Title, theme.TextBase, theme.WeightSemibold, t.TextStrong)

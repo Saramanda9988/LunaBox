@@ -42,7 +42,7 @@ func Modal(c *ui.Context, t *theme.Theme, key string, p ModalProps, build func(p
 		dim = 0.5
 	}
 	Overlay(c, t, func() {
-		host := ui.Box(c.Key(key)).Absolute().Top(p.TopOffset).Left(0).Right(0).Bottom(0).Modal()
+		host := ui.Box(c.Key(key)).Absolute().Top(t.TopOffset(p.TopOffset)).Left(0).Right(0).Bottom(0).Modal()
 		if p.OnClose != nil {
 			host.OnShortcut(0, ui.KeyEscape, p.OnClose) // Modal 把键盘留在浮层里，Esc 要挂在浮层上
 		}
