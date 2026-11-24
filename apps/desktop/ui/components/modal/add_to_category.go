@@ -118,7 +118,7 @@ func (m *AddToCategory) View(c *ui.Context, t *theme.Theme, p AddToCategoryProps
 				m.list(c, t, winH*0.78-(48+28+20+2*t.HL)-(16+44)-(32+44+t.HL))
 				// border-t p-4 flex gap-3
 				ui.Row(c).Padding(16).Gap(12).BorderWidth(t.HL, 0, 0, 0).BorderColor(t.Divider).Children(func() {
-					cancel := ui.ButtonBase(c.Key("cancel")).Grow(1).Basis(0).Padding(10, 0).Radius(12).Center().FocusRing(false).
+					cancel := ui.ButtonBase(c.Key("cancel")).Grow(1).Basis(0).Padding(10, 0).Radius(t.ControlRadius(12)).Center().FocusRing(false).
 						Border(t.HL, t.Pick(theme.Brand300, theme.Brand600))
 					if cancel.Hovered() {
 						cancel.Background(t.Pick(theme.Brand50, theme.Brand700))
@@ -126,7 +126,7 @@ func (m *AddToCategory) View(c *ui.Context, t *theme.Theme, p AddToCategoryProps
 					cancel.Transition(theme.ColorsTransition(150 * time.Millisecond)).OnClick(closeModal).Children(func() {
 						components.Text(c, locales.CommonCancel(), theme.TextBase, theme.WeightMedium, t.Pick(theme.Brand600, theme.Brand400))
 					})
-					ok := ui.ButtonBase(c.Key("confirm")).Grow(1).Basis(0).Padding(10, 0).Radius(12).Center().FocusRing(false)
+					ok := ui.ButtonBase(c.Key("confirm")).Grow(1).Basis(0).Padding(10, 0).Radius(t.ControlRadius(12)).Center().FocusRing(false)
 					bg := t.PrimaryBtn
 					if ok.Hovered() {
 						bg = t.PrimaryBtnHover
@@ -154,7 +154,7 @@ func categoryHeader(c *ui.Context, t *theme.Theme, title string, count int, onCl
 			components.TextMargin(c, locales.AddToCategorySelectedCount(strconv.Itoa(count)), theme.TextXS, theme.WeightNormal, t.TextMuted, 4, 0, 0, 0)
 		})
 		// rounded-lg p-2 text-brand-500 hover:bg-brand-100 hover:text-brand-700
-		btn := ui.ButtonBase(c.Key("close")).Padding(8).Radius(8).Shrink(0).FocusRing(false).Label(locales.CommonCancel())
+		btn := ui.ButtonBase(c.Key("close")).Padding(8).Radius(t.ControlRadius(8)).Shrink(0).FocusRing(false).Label(locales.CommonCancel())
 		color := t.Pick(theme.Brand500, theme.Brand400)
 		if btn.Hovered() {
 			btn.Background(t.Pick(theme.Brand100, theme.Brand700))
@@ -234,7 +234,7 @@ func (m *AddToCategory) form(c *ui.Context, t *theme.Theme, e *env.Env) {
 func categoryInput(c *ui.Context, t *theme.Theme, key string, value *string, placeholder string, padL, padR float32, extra func()) ui.Element {
 	var in ui.Element
 	ui.Box(c.Key(key + "-wrap")).Grow(1).Basis(0).MinWidth(0).Children(func() {
-		in = ui.TextInputBase(c.Key(key), value).FillWidth().Height(44).Padding(0, padR, 0, padL).Radius(8).AutoFocus().
+		in = ui.TextInputBase(c.Key(key), value).FillWidth().Height(44).Padding(0, padR, 0, padL).Radius(t.ControlRadius(8)).AutoFocus().
 			FontSize(theme.TextSM.Size).FixedLineHeight(theme.TextSM.Line).TextColor(t.TextStrong).
 			Background(t.Pick(theme.White, theme.Brand900)).Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).
 			Placeholder(placeholder).Label(placeholder)
@@ -249,7 +249,7 @@ func categoryInput(c *ui.Context, t *theme.Theme, key string, value *string, pla
 // inputClearButton：absolute right-2 rounded-md p-1.5 text-brand-400 hover:bg-brand-100 hover:text-brand-700，i-mdi-close text-base。
 func inputClearButton(c *ui.Context, t *theme.Theme, label string, onClick func()) {
 	ui.Box(c).Absolute().Right(8).Top(0).Bottom(0).Center().Children(func() {
-		btn := ui.ButtonBase(c.Key("clear")).Padding(6).Radius(6).FocusRing(false).Label(label)
+		btn := ui.ButtonBase(c.Key("clear")).Padding(6).Radius(t.ControlRadius(6)).FocusRing(false).Label(label)
 		color := theme.Brand400
 		if btn.Hovered() {
 			btn.Background(t.Pick(theme.Brand100, theme.Brand700))
@@ -311,7 +311,7 @@ func categoryName(cat vo.CategoryVO) string {
 
 // categoryRow：w-full rounded-lg bg-brand-50 p-3 flex gap-3，悬停 bg-brand-100；右侧 check-circle / circle-outline。
 func categoryRow(c *ui.Context, t *theme.Theme, cat vo.CategoryVO, selected bool, onToggle func()) {
-	row := ui.ButtonBase(c).FillWidth().Padding(12).Radius(8).Gap(12).AlignItems(ui.Center).Justify(ui.Start).FocusRing(false).
+	row := ui.ButtonBase(c).FillWidth().Padding(12).Radius(t.ControlRadius(8)).Gap(12).AlignItems(ui.Center).Justify(ui.Start).FocusRing(false).
 		Label(categoryName(cat))
 	bg := t.Pick(theme.Brand50, theme.Brand900)
 	if row.Hovered() {

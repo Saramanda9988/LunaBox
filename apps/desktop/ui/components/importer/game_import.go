@@ -300,7 +300,7 @@ func (g *GameImport) selectStep(c *ui.Context, t *theme.Theme, cfg importConfig)
 		if g.loading {
 			label = locales.CommonLoading()
 		}
-		btn := ui.ButtonBase(c.Key("select-file")).FillWidth().Padding(16, 0).Radius(8).Center().Gap(8).FocusRing(false).Label(label)
+		btn := ui.ButtonBase(c.Key("select-file")).FillWidth().Padding(16, 0).Radius(t.ControlRadius(8)).Center().Gap(8).FocusRing(false).Label(label)
 		bg := cfg.primary
 		if btn.Hovered() && !g.loading {
 			bg = cfg.primaryHover
@@ -370,7 +370,7 @@ func (g *GameImport) previewStep(c *ui.Context, t *theme.Theme, cfg importConfig
 		g.previewTable(c, t, merge)
 		ui.Row(c.Key("actions")).Justify(ui.SpaceBetween).Children(func() {
 			outlineButton(c, t, "reselect", "← "+locales.GameImportModalReselect(), false, 20, 10).OnClick(func() { g.step = "select" })
-			btn := solidButton(c, "import", locales.GameImportModalImportCount(strconv.Itoa(importable)), cfg.result, cfg.resultHover, theme.White, importable == 0, false, 20, 10)
+			btn := solidButton(c, t, "import", locales.GameImportModalImportCount(strconv.Itoa(importable)), cfg.result, cfg.resultHover, theme.White, importable == 0, false, 20, 10)
 			if importable > 0 {
 				btn.OnClick(func() { g.doImport(c, onComplete) })
 			}
@@ -395,7 +395,7 @@ func (g *GameImport) samePathChoice(c *ui.Context, t *theme.Theme, count int) {
 				{"merge", "database-sync-outline", locales.GameImportModalSamePathMerge, locales.GameImportModalSamePathMergeHint},
 			} {
 				on := g.samePath == o.value
-				btn := ui.ButtonBase(c.Key(o.value)).Column().Grow(1).Basis(0).MinWidth(0).Padding(8, 12).Radius(8).
+				btn := ui.ButtonBase(c.Key(o.value)).Column().Grow(1).Basis(0).MinWidth(0).Padding(8, 12).Radius(t.ControlRadius(8)).
 					AlignItems(ui.Start).Justify(ui.Start).FocusRing(false).Label(o.label())
 				bg, border, fg := t.Pick(theme.White.Alpha(0.6), theme.Sky950.Alpha(0.2)), t.Pick(theme.Sky200, theme.Sky800), t.Pick(theme.Sky700, theme.Sky300)
 				switch {

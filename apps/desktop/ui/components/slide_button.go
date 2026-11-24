@@ -46,7 +46,7 @@ func SlideButton(c *ui.Context, t *theme.Theme, key string, p SlideButtonProps) 
 	if bg == (ui.Color{}) {
 		bg = t.Pick(theme.Brand150, theme.Brand800)
 	}
-	box := ui.Row(c.Key(key)).Padding(4).Radius(8).Background(bg).Shrink(0)
+	box := ui.Row(c.Key(key)).Padding(4).Radius(t.ControlRadius(8)).Background(bg).Shrink(0)
 	if t.Glass {
 		// glass-panel：底色与边框；滑块 data-glass:bg-white/40 data-glass:dark:bg-black/40
 		gb, gborder := t.GlassPanel(bg, ui.Transparent)
@@ -67,7 +67,7 @@ func SlideButton(c *ui.Context, t *theme.Theme, key string, p SlideButtonProps) 
 	})
 	box.Children(func() {
 		for _, o := range p.Options {
-			btn := ui.ButtonBase(c.Key(o.Value)).Padding(6, 16).Radius(6).Gap(6).AlignItems(ui.Center).FocusRing(false).Label(o.Label)
+			btn := ui.ButtonBase(c.Key(o.Value)).Padding(6, 16).Radius(t.ControlRadius(6)).Gap(6).AlignItems(ui.Center).FocusRing(false).Label(o.Label)
 			color := t.Pick(theme.Brand600, theme.Brand400)
 			switch {
 			case o.Value == p.Value:

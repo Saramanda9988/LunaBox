@@ -281,7 +281,7 @@ func (p *Page) exportHeader(c *ui.Context, t *theme.Theme) {
 			components.Text(c, locales.StatsTemplateExportTitle(), theme.TextXL, theme.WeightBold, t.Pick(theme.Brand900, theme.White)).SingleLine()
 		})
 		// hover:bg-brand-100 dark:hover:bg-brand-700 transition-colors；图标 text-brand-600 dark:text-brand-400
-		x := ui.ButtonBase(c.Key("close")).Padding(8).Radius(8).FocusRing(false).Label(locales.CommonClose())
+		x := ui.ButtonBase(c.Key("close")).Padding(8).Radius(t.ControlRadius(8)).FocusRing(false).Label(locales.CommonClose())
 		if x.Hovered() {
 			x.Background(t.Pick(theme.Brand100, theme.Brand700))
 		}
@@ -321,7 +321,7 @@ func (p *Page) templateList(c *ui.Context, t *theme.Theme, line ui.Color) {
 		ui.Column(c).Padding(12).Children(func() {
 			// w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-brand-600 dark:text-brand-400
 			// hover:bg-brand-50 dark:hover:bg-brand-700/50 rounded-lg
-			btn := ui.ButtonBase(c.Key("open-dir")).FillWidth().Padding(8, 12).Gap(8).AlignItems(ui.Center).Justify(ui.Center).Radius(8).FocusRing(false)
+			btn := ui.ButtonBase(c.Key("open-dir")).FillWidth().Padding(8, 12).Gap(8).AlignItems(ui.Center).Justify(ui.Center).Radius(t.ControlRadius(8)).FocusRing(false)
 			if btn.Hovered() {
 				btn.Background(t.Pick(theme.Brand50, theme.Brand700.Alpha(0.5)))
 			}
@@ -340,7 +340,7 @@ func (p *Page) templateList(c *ui.Context, t *theme.Theme, line ui.Color) {
 // 名称 font-medium text-sm，说明 text-xs mt-1 ml-6 line-clamp-2。导出中不响应点击（原版 disabled，样式不变）。
 func (p *Page) templateItem(c *ui.Context, t *theme.Theme, tmpl vo.TemplateInfo) {
 	x := &p.export
-	btn := ui.ButtonBase(c).FillWidth().Padding(10, 12).Radius(8).FocusRing(false).Label(tmpl.Name)
+	btn := ui.ButtonBase(c).FillWidth().Padding(10, 12).Radius(t.ControlRadius(8)).FocusRing(false).Label(tmpl.Name)
 	fg := t.Pick(theme.Brand700, theme.Brand300)
 	switch {
 	case tmpl.ID == x.selected:
@@ -432,22 +432,22 @@ func (p *Page) exportFooter(c *ui.Context, t *theme.Theme) {
 		})
 		ui.Row(c).Gap(12).Shrink(0).Children(func() {
 			components.ModalTextButton(c, t, "cancel", locales.StatsTemplateExportCancelBtn()).OnClick(p.closeExport)
-			p.exportButton(c, x)
+			p.exportButton(c, t, x)
 		})
 	})
 }
 
 // exportButton：flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-neutral-600 hover:bg-neutral-700
 // rounded-lg shadow-sm disabled:opacity-50；导出中显示 i-mdi-loading animate-spin，否则 i-mdi-download。
-func (p *Page) exportButton(c *ui.Context, x *exporter) {
+func (p *Page) exportButton(c *ui.Context, t *theme.Theme, x *exporter) {
 	enabled := x.web != nil && x.html != "" && !x.loading && !x.exporting
 	if x.selected == mosaicID {
 		enabled = x.mosaic.ready() && !x.exporting
 	}
-	btn := ui.ButtonBase(c.Key("export")).Padding(8, 16).Gap(8).AlignItems(ui.Center).Radius(8).FocusRing(false)
-	bg := theme.Neutral600
+	btn := ui.ButtonBase(c.Key("export")).Padding(8, 16).Gap(8).AlignItems(ui.Center).Radius(t.ControlRadius(8)).FocusRing(false)
+	bg := t.PrimaryBtn
 	if enabled && btn.Hovered() {
-		bg = theme.Neutral700
+		bg = t.PrimaryBtnHover
 	}
 	shadowSM(btn.Background(bg).Transition(theme.ColorsTransition(150 * time.Millisecond)))
 	if !enabled {
@@ -459,10 +459,10 @@ func (p *Page) exportButton(c *ui.Context, x *exporter) {
 	}
 	btn.Label(label).OnClick(p.exportImage).Children(func() {
 		if x.exporting {
-			components.Spinner(c, 14, theme.White)
+			components.Spinner(c, 14, t.PrimaryBtnText)
 		} else {
-			components.Icon(c, "download", 14, theme.White)
+			components.Icon(c, "download", 14, t.PrimaryBtnText)
 		}
-		components.Text(c, label, theme.TextSM, theme.WeightMedium, theme.White).NoWrap()
+		components.Text(c, label, theme.TextSM, theme.WeightMedium, t.PrimaryBtnText).NoWrap()
 	})
 }

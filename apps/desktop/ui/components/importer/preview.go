@@ -161,7 +161,7 @@ func skippedBanner(c *ui.Context, t *theme.Theme, count int, onView func()) {
 			})
 		})
 		// inline-flex shrink-0 gap-1.5 rounded-lg border border-yellow-300 bg-white/70 px-3 py-1.5 text-xs font-medium
-		btn := ui.ButtonBase(c.Key("view")).Shrink(0).Gap(6).Padding(6, 12).Radius(8).AlignItems(ui.Center).FocusRing(false).
+		btn := ui.ButtonBase(c.Key("view")).Shrink(0).Gap(6).Padding(6, 12).Radius(t.ControlRadius(8)).AlignItems(ui.Center).FocusRing(false).
 			Border(t.HL, t.Pick(theme.Yellow300, theme.Yellow700))
 		bg := t.Pick(theme.White.Alpha(0.7), theme.Yellow950.Alpha(0.3))
 		if btn.Hovered() {
@@ -184,7 +184,7 @@ func filterBanner(c *ui.Context, t *theme.Theme, visible, total int, onClear fun
 			components.Icon(c, "filter", 12, theme.Success500)
 			components.Text(c, locales.BatchImportModalFilterCount(strconv.Itoa(visible), strconv.Itoa(total)), theme.TextXS, theme.WeightNormal, fg).SingleLine()
 		})
-		btn := ui.ButtonBase(c.Key("clear")).Shrink(0).Gap(4).Padding(4, 8).Radius(6).AlignItems(ui.Center).FocusRing(false).
+		btn := ui.ButtonBase(c.Key("clear")).Shrink(0).Gap(4).Padding(4, 8).Radius(t.ControlRadius(6)).AlignItems(ui.Center).FocusRing(false).
 			Border(t.HL, t.Pick(theme.Brand200, theme.Brand600))
 		bg := t.Pick(theme.White.Alpha(0.7), theme.Brand900.Alpha(0.4))
 		if btn.Hovered() {
@@ -268,9 +268,9 @@ func (f *Flow) previewTable(c *ui.Context, t *theme.Theme, s *previewState, p pr
 						if dir == "" {
 							dir = r.c.FolderPath
 						}
-						rowIconButton(c, "folder", "folder-open-outline", locales.BatchImportModalOpenFolder(), func() { p.onOpenFolder(dir) })
+						rowIconButton(c, t, "folder", "folder-open-outline", locales.BatchImportModalOpenFolder(), func() { p.onOpenFolder(dir) })
 					}
-					rowIconButton(c, "manual", "pencil", locales.BatchImportModalManualSelect(), func() { p.onManual(r.index) })
+					rowIconButton(c, t, "manual", "pencil", locales.BatchImportModalManualSelect(), func() { p.onManual(r.index) })
 				})
 			},
 		},
@@ -306,7 +306,7 @@ func (f *Flow) nameCell(c *ui.Context, t *theme.Theme, r indexed) {
 		border := ui.Transparent
 		switch {
 		case in.Focused():
-			border = theme.Neutral500
+			border = t.FieldFocus()
 		case in.Hovered():
 			border = theme.Brand300
 		}
@@ -364,8 +364,8 @@ func (f *Flow) exeCell(c *ui.Context, t *theme.Theme, r indexed) {
 }
 
 // rowIconButton：inline-flex h-8 w-8 rounded-md text-neutral-500 hover:text-neutral-700 的图标按钮（text-lg）。
-func rowIconButton(c *ui.Context, key, icon, label string, onClick func()) {
-	btn := ui.ButtonBase(c.Key(key)).Size(32, 32).Radius(6).Center().Shrink(0).FocusRing(false).Label(label)
+func rowIconButton(c *ui.Context, t *theme.Theme, key, icon, label string, onClick func()) {
+	btn := ui.ButtonBase(c.Key(key)).Size(32, 32).Radius(t.ControlRadius(6)).Center().Shrink(0).FocusRing(false).Label(label)
 	fg := theme.Neutral500
 	if btn.Hovered() {
 		fg = theme.Neutral700
@@ -393,11 +393,11 @@ func (f *Flow) previewFooter(c *ui.Context, t *theme.Theme, p previewProps, sele
 					if hasErrors {
 						label = locales.BatchImportModalContinueMatching()
 					}
-					solidButton(c, "match", label, t.PrimaryBtn, t.PrimaryBtnHover, t.PrimaryBtnText, false, false, 16, 0).Height(44).OnClick(p.onStartMatch)
+					solidButton(c, t, "match", label, t.PrimaryBtn, t.PrimaryBtnHover, t.PrimaryBtnText, false, false, 16, 0).Height(44).OnClick(p.onStartMatch)
 				}
 				if matchedSelected > 0 && matchedSelected < selected {
 					// border border-success-300 bg-success-50 px-3 text-success-700 hover:bg-success-100
-					btn := ui.ButtonBase(c.Key("import-matched")).Height(44).Padding(0, 12).Gap(6).Radius(8).Center().FocusRing(false).
+					btn := ui.ButtonBase(c.Key("import-matched")).Height(44).Padding(0, 12).Gap(6).Radius(t.ControlRadius(8)).Center().FocusRing(false).
 						Border(t.HL, t.Pick(theme.Success300, theme.Success700))
 					bg := t.Pick(theme.Success50, theme.Success900.Alpha(0.25))
 					if btn.Hovered() {
@@ -409,7 +409,7 @@ func (f *Flow) previewFooter(c *ui.Context, t *theme.Theme, p previewProps, sele
 						components.Text(c, locales.BatchImportModalImportMatchedCount(strconv.Itoa(matchedSelected)), theme.TextSM, theme.WeightMedium, fg).NoWrap()
 					})
 				}
-				imp := solidButton(c, "import", locales.BatchImportModalImportCount(strconv.Itoa(selected)), theme.Success600, theme.Success700, theme.White, selected == 0, false, 16, 0).Height(44)
+				imp := solidButton(c, t, "import", locales.BatchImportModalImportCount(strconv.Itoa(selected)), theme.Success600, theme.Success700, theme.White, selected == 0, false, 16, 0).Height(44)
 				if selected > 0 {
 					imp.OnClick(func() { p.onImport(false) })
 				}

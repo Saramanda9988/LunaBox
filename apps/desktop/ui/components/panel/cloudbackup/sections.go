@@ -61,7 +61,7 @@ func (s *State) backupPassword(c *ui.Context, t *theme.Theme, p panel.Settings) 
 // setPasswordButton：glass-btn-neutral flex w-full items-center justify-center gap-2 rounded-md bg-brand-600 px-4 py-2
 // text-white transition-colors hover:bg-brand-700，i-mdi-lock-plus text-lg。
 func setPasswordButton(c *ui.Context, t *theme.Theme) ui.Element {
-	btn := ui.ButtonBase(c.Key("set-password")).FillWidth().Padding(8, 16).Radius(6).Gap(8).Center().FocusRing(false)
+	btn := ui.ButtonBase(c.Key("set-password")).FillWidth().Padding(8, 16).Radius(t.ControlRadius(6)).Gap(8).Center().FocusRing(false)
 	g := glassButton(t, btn, theme.BtnColors{Bg: theme.Brand600, Hover: theme.Brand700, Text: theme.White}, false)
 	btn.Transition(theme.ColorsTransition(150 * time.Millisecond)).Children(func() {
 		components.Icon(c, "lock-plus", 18, g.Text)
@@ -285,7 +285,7 @@ func clientIDHint(c *ui.Context, t *theme.Theme) {
 
 // revokeOneDriveButton：rounded px-2 py-1 text-xs text-error-600 hover:bg-error-100 dark:hover:bg-error-900。
 func revokeOneDriveButton(c *ui.Context, t *theme.Theme) ui.Element {
-	btn := ui.ButtonBase(c.Key("revoke-onedrive")).Padding(4, 8).Radius(4).FocusRing(false)
+	btn := ui.ButtonBase(c.Key("revoke-onedrive")).Padding(4, 8).Radius(t.ControlRadius(4)).FocusRing(false)
 	if btn.Hovered() {
 		btn.Background(t.Pick(theme.Error100, theme.Error900))
 	}
@@ -460,7 +460,7 @@ func (s *State) profileErrorBox(c *ui.Context, t *theme.Theme, p panel.Settings)
 				components.Text(c, locales.SettingsCloudBackupUmbraProfileLoadFailed(s.profileError), theme.TextXS, theme.WeightNormal, fg)
 			})
 		})
-		btn := ui.ButtonBase(c.Key("retry")).Shrink(0).Padding(4, 8).Radius(4).FocusRing(false)
+		btn := ui.ButtonBase(c.Key("retry")).Shrink(0).Padding(4, 8).Radius(t.ControlRadius(4)).FocusRing(false)
 		if btn.Hovered() && !s.loadingProfile {
 			btn.Background(t.Pick(theme.Error100, theme.Error800))
 		}
@@ -489,7 +489,7 @@ func (s *State) advancedOptions(c *ui.Context, t *theme.Theme, p panel.Settings)
 			sum.Background(t.Pick(theme.Brand200.Alpha(0.6), theme.Brand700.Alpha(0.6)))
 		}
 		if sum.FocusVisible() {
-			sum.Shadow(0, 0, 0, 2, theme.Neutral500)
+			sum.Shadow(0, 0, 0, 2, t.FieldFocus())
 		}
 		rot := sum.AnimateWith("chevron", 180*theme.Bool(*open), 200*time.Millisecond, theme.EaseTailwind)
 		sum.Transition(theme.ColorsTransition(150 * time.Millisecond)).OnClick(func() { *open = !*open }).Children(func() {
@@ -528,7 +528,7 @@ func (s *State) advancedOptions(c *ui.Context, t *theme.Theme, p panel.Settings)
 // disabled:opacity-50 dark:bg-brand-700 dark:text-brand-300 dark:hover:bg-brand-600（测试连接；刷新另有 flex items-center
 // gap-1.5 与图标，加载中是 i-mdi-loading animate-spin）。
 func secondaryButton(c *ui.Context, t *theme.Theme, key, label, icon string, spin, disabled bool) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Shrink(0).Padding(6, 12).Radius(6).Gap(6).AlignItems(ui.Center).FocusRing(false)
+	btn := ui.ButtonBase(c.Key(key)).Shrink(0).Padding(6, 12).Radius(t.ControlRadius(6)).Gap(6).AlignItems(ui.Center).FocusRing(false)
 	g := glassButton(t, btn, theme.BtnColors{Bg: t.Pick(theme.Brand100, theme.Brand700), Hover: t.Pick(theme.Brand200, theme.Brand600),
 		Text: t.Pick(theme.Brand700, theme.Brand300)}, disabled)
 	if disabled {
@@ -550,7 +550,7 @@ func secondaryButton(c *ui.Context, t *theme.Theme, key, label, icon string, spi
 // darkButton：glass-btn-neutral flex items-center gap-2 rounded-md bg-neutral-600 px-3 py-1.5 text-sm text-white
 // hover:bg-neutral-700 disabled:opacity-50（授权按钮），等待中图标换成 i-mdi-loading animate-spin。
 func darkButton(c *ui.Context, t *theme.Theme, key, label, icon string, spin, disabled bool) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Shrink(0).AlignSelf(ui.Start).Padding(6, 12).Radius(6).Gap(8).AlignItems(ui.Center).FocusRing(false)
+	btn := ui.ButtonBase(c.Key(key)).Shrink(0).AlignSelf(ui.Start).Padding(6, 12).Radius(t.ControlRadius(6)).Gap(8).AlignItems(ui.Center).FocusRing(false)
 	g := glassButton(t, btn, theme.BtnColors{Bg: t.PrimaryBtn, Hover: t.PrimaryBtnHover, Text: t.PrimaryBtnText}, disabled)
 	if disabled {
 		components.Disable(btn, 0.5)
@@ -584,7 +584,7 @@ func glassButton(t *theme.Theme, btn ui.Element, normal theme.BtnColors, disable
 // dangerTextButton：rounded-md px-3 py-1.5 text-sm text-error-600 hover:bg-error-100 disabled:opacity-50
 // dark:text-error-400 dark:hover:bg-error-900（取消授权、取消等待）。
 func dangerTextButton(c *ui.Context, t *theme.Theme, key, label string, disabled bool) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Shrink(0).Padding(6, 12).Radius(6).FocusRing(false)
+	btn := ui.ButtonBase(c.Key(key)).Shrink(0).Padding(6, 12).Radius(t.ControlRadius(6)).FocusRing(false)
 	if btn.Hovered() && !disabled {
 		btn.Background(t.Pick(theme.Error100, theme.Error900))
 	}

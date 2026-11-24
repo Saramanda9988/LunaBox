@@ -88,7 +88,7 @@ func (s *SearchResults) selectionHelp(c *ui.Context, t *theme.Theme) {
 		locales.AddGameModalSelectionHelpDefault(),
 	}
 	ui.PopoverBase(c, btn, &s.helpOpen, func(pnl ui.Element) {
-		pnl.AttachTo(btn, ui.AnchorBottomLeft, ui.AnchorTopLeft).Top(8).Width(min(320, winW-32)).Padding(16).Radius(12).
+		pnl.AttachTo(btn, ui.AnchorBottomLeft, ui.AnchorTopLeft).Top(8).Width(min(320, winW-32)).Padding(16).Radius(t.PanelRadius(12)).
 			Background(t.PanelBg).Border(t.HL, t.PanelBorder).
 			Shadow(0, 20, 25, -5, ui.RGBA(0, 0, 0, 0.1)).Shadow(0, 8, 10, -6, ui.RGBA(0, 0, 0, 0.1))
 		pnl.Children(func() {

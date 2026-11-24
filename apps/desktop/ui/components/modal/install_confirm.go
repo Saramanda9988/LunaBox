@@ -202,7 +202,7 @@ func installWarning(c *ui.Context, t *theme.Theme, req *vo.InstallRequest) {
 // installCancelButton：px-4 py-2 text-sm rounded-lg border border-brand-300 dark:border-brand-600 text-brand-700
 // dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-700 disabled:opacity-50。
 func installCancelButton(c *ui.Context, t *theme.Theme, loading bool) ui.Element {
-	btn := ui.ButtonBase(c.Key("cancel")).Padding(8, 16).Radius(8).FocusRing(false).
+	btn := ui.ButtonBase(c.Key("cancel")).Padding(8, 16).Radius(t.ControlRadius(8)).FocusRing(false).
 		Border(t.HL, t.Pick(theme.Brand300, theme.Brand600))
 	if btn.Hovered() && !loading {
 		btn.Background(t.Pick(theme.Brand100, theme.Brand700))
@@ -219,7 +219,7 @@ func installCancelButton(c *ui.Context, t *theme.Theme, loading bool) ui.Element
 // installConfirmButton：px-4 py-2 text-sm rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium flex
 // items-center gap-2，下载开始前显示 i-mdi-loading animate-spin，disabled:opacity-50。
 func installConfirmButton(c *ui.Context, t *theme.Theme, loading bool) ui.Element {
-	btn := ui.ButtonBase(c.Key("confirm")).Row().AlignItems(ui.Center).Gap(8).Padding(8, 16).Radius(8).FocusRing(false)
+	btn := ui.ButtonBase(c.Key("confirm")).Row().AlignItems(ui.Center).Gap(8).Padding(8, 16).Radius(t.ControlRadius(8)).FocusRing(false)
 	bg := theme.Primary600
 	if btn.Hovered() && !loading {
 		bg = theme.Primary700

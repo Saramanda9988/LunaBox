@@ -127,3 +127,44 @@ func TestPluginBrandOverride(t *testing.T) {
 		t.Fatalf("dark wordmark = %q", dark.BrandWordmark)
 	}
 }
+
+func TestThemedFollowsOnlyOverriddenTokens(t *testing.T) {
+	th := New(false, 1)
+	// 未覆盖时各组件保持原来的固定配色
+	if bg, border := th.FieldColors(); bg != White || border != Brand300 {
+		t.Fatalf("unexpected default field colors: %v %v", bg, border)
+	}
+	if th.FieldFocus() != Neutral500 || th.FieldPlaceholder() != Brand400 {
+		t.Fatalf("unexpected default focus/placeholder: %v %v", th.FieldFocus(), th.FieldPlaceholder())
+	}
+	if th.Customized("inputBg") || th.Themed("menuCheck", th.MenuCheck, Black) != Black {
+		t.Fatal("tokens should not count as customized before a plugin overrides them")
+	}
+	if th.DangerBtn != Error500 || th.DangerBtnHover != Error600 || th.DangerBtnText != White || th.SwitchThumb != White {
+		t.Fatalf("unexpected light defaults for danger/switch tokens: %v %v %v %v", th.DangerBtn, th.DangerBtnHover, th.DangerBtnText, th.SwitchThumb)
+	}
+
+	th.ApplyPluginOverrides([]plugin.ThemeOverride{{Light: map[string]string{
+		"inputBg": "#fafafa", "inputFocus": "#39c5bb", "menuCheck": "#1f827b",
+		"dangerBtn": "#dc2626", "switchThumb": "#f5f5f5", "notAToken": "#000000",
+	}}})
+	if bg, border := th.FieldColors(); bg != ui.Hex("#fafafa") || border != Brand300 {
+		t.Fatalf("only inputBg should follow the plugin: %v %v", bg, border)
+	}
+	if th.FieldFocus() != ui.Hex("#39c5bb") || th.FieldPlaceholder() != Brand400 {
+		t.Fatalf("focus should follow, placeholder should not: %v %v", th.FieldFocus(), th.FieldPlaceholder())
+	}
+	if th.Themed("menuCheck", th.MenuCheck, Black) != ui.Hex("#1f827b") || th.Themed("menuSelected", th.MenuSelected, Black) != Black {
+		t.Fatal("Themed should follow only overridden tokens")
+	}
+	if th.DangerBtn != ui.Hex("#dc2626") || th.SwitchThumb != ui.Hex("#f5f5f5") {
+		t.Fatalf("danger/switch overrides not applied: %v %v", th.DangerBtn, th.SwitchThumb)
+	}
+	if th.Customized("notAToken") {
+		t.Fatal("unknown keys must not be recorded as customized")
+	}
+	// 每帧重建的主题不继承上一帧的覆盖记录
+	if New(false, 1).Customized("inputBg") {
+		t.Fatal("a fresh theme should not carry overrides")
+	}
+}

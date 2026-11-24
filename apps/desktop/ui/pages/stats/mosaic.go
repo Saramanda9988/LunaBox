@@ -435,13 +435,13 @@ func (p *Page) mosaicFields(c *ui.Context, t *theme.Theme) {
 					better.Select(c, t, "limit", better.SelectProps{
 						Value: strconv.Itoa(m.limit), Options: opts, Font: theme.TextSM, Disabled: x.exporting,
 						OnChange: func(v string) { m.limit, _ = strconv.Atoi(v) },
-						Style:    func(btn ui.Element) { btn.Radius(8) },
+						Style:    func(btn ui.Element) { btn.Radius(t.ControlRadius(8)) },
 					})
 				})
 			})
 			// px-3 py-2 rounded-lg text-xs whitespace-nowrap text-brand-700 dark:text-brand-200 bg-brand-100
 			// hover:bg-brand-200 dark:bg-brand-700 dark:hover:bg-brand-600；不足 2 个游戏时 disabled（样式不变）
-			btn := ui.ButtonBase(c.Key("shuffle")).Padding(8, 12).Radius(8).FocusRing(false)
+			btn := ui.ButtonBase(c.Key("shuffle")).Padding(8, 12).Radius(t.ControlRadius(8)).FocusRing(false)
 			bg := t.Pick(theme.Brand100, theme.Brand700)
 			if btn.Hovered() {
 				bg = t.Pick(theme.Brand200, theme.Brand600)
@@ -462,14 +462,14 @@ func (p *Page) mosaicFields(c *ui.Context, t *theme.Theme) {
 func (p *Page) mosaicInput(c *ui.Context, t *theme.Theme, key, label string, value *string, maxLen int) {
 	ui.Column(c.Key(key)).Gap(4).Children(func() {
 		components.Text(c, label, theme.TextXS, theme.WeightNormal, t.Pick(theme.Brand600, theme.Brand300))
-		in := ui.TextInputBase(c.Key("input"), value).FillWidth().Padding(8, 12).Radius(8).Label(label).
+		in := ui.TextInputBase(c.Key("input"), value).FillWidth().Padding(8, 12).Radius(t.ControlRadius(8)).Label(label).
 			FontSize(theme.TextSM.Size).FixedLineHeight(theme.TextSM.Line).TextColor(t.Pick(theme.Brand900, theme.White)).
 			Background(t.Pick(theme.White, theme.Brand900)).Border(t.HL, t.Pick(theme.Brand300, theme.Brand600))
 		if theme.UIFont != "" {
 			in.Font(theme.UIFont)
 		}
 		if in.Focused() {
-			in.Shadow(0, 0, 0, 2, theme.Neutral500)
+			in.Shadow(0, 0, 0, 2, t.FieldFocus())
 		}
 		if utf8.RuneCountInString(*value) > maxLen {
 			*value = string([]rune(*value)[:maxLen])
@@ -692,7 +692,7 @@ func (p *Page) posterEditor(c *ui.Context, t *theme.Theme, sc *posterScene) {
 // editorButton 是编辑器的按钮：py-2 rounded-lg bg-brand-200 dark:bg-brand-700，文字颜色随所在的行
 // （“返回全景” px-3 text-sm，其余 px-2 text-xs）。
 func editorButton(c *ui.Context, t *theme.Theme, key, label string, font theme.FontStep, padX float32, fg ui.Color) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Padding(8, padX).Radius(8).FocusRing(false).Shrink(0).Background(t.Pick(theme.Brand200, theme.Brand700))
+	btn := ui.ButtonBase(c.Key(key)).Padding(8, padX).Radius(t.ControlRadius(8)).FocusRing(false).Shrink(0).Background(t.Pick(theme.Brand200, theme.Brand700))
 	btn.Children(func() {
 		components.Text(c, label, font, theme.WeightNormal, fg).NoWrap()
 	})

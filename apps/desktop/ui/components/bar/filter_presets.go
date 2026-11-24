@@ -222,7 +222,7 @@ func presetForm(c *ui.Context, t *theme.Theme, p FilterBarProps, translate tagna
 		Background(t.Pick(theme.Brand50.Alpha(0.7), theme.Brand900.Alpha(0.4))).Children(func() {
 		components.Text(c, locales.FilterPresetsName(), theme.FontStep{Size: 11, Line: 16.5}, theme.WeightMedium, t.TextMuted)
 		// glass-input w-full rounded-lg border px-2.5 py-2 text-xs placeholder:text-brand-400，focus:border-neutral-500
-		in := ui.TextInputBase(c.Key("name"), &m.name).FillWidth().Padding(8, 10).Radius(8).AutoFocus().
+		in := ui.TextInputBase(c.Key("name"), &m.name).FillWidth().Padding(8, 10).Radius(t.ControlRadius(8)).AutoFocus().
 			FontSize(theme.TextXS.Size).FixedLineHeight(theme.TextXS.Line).TextColor(t.TextStrong).
 			Placeholder(locales.FilterPresetsNamePlaceholder()).PlaceholderColor(theme.Brand400).Label(locales.FilterPresetsName())
 		if theme.UIFont != "" {
@@ -230,7 +230,7 @@ func presetForm(c *ui.Context, t *theme.Theme, p FilterBarProps, translate tagna
 		}
 		bg, border := t.GlassInput(t.Pick(theme.White, theme.Brand900.Alpha(0.7)), t.PanelBorder)
 		if in.Focused() {
-			border = theme.Neutral500
+			border = t.FieldFocus()
 		}
 		in.Background(bg).Border(t.HL, border).Transition(theme.ColorsTransition(150*time.Millisecond)).
 			OnShortcut(0, ui.KeyEscape, closeForm)
@@ -251,7 +251,7 @@ func presetForm(c *ui.Context, t *theme.Theme, p FilterBarProps, translate tagna
 
 // presetEmpty 是没有预设时的说明按钮（PopoverButton）与弹出层（PopoverPanel anchor="bottom" w-80 rounded-xl p-4 shadow-xl）。
 func presetEmpty(c *ui.Context, t *theme.Theme, m *presetMenu) {
-	btn := ui.ButtonBase(c.Key("empty")).FillWidth().Padding(16, 12).Gap(6).Center().Radius(8).
+	btn := ui.ButtonBase(c.Key("empty")).FillWidth().Padding(16, 12).Gap(6).Center().Radius(t.ControlRadius(8)).
 		BorderStyle(ui.BorderDashed).FocusRing(false).Label(locales.FilterPresetsEmptyHelp())
 	border, color, icon := t.PanelBorder, t.TextFaint, t.TextFaint
 	if btn.Hovered() {
@@ -267,7 +267,7 @@ func presetEmpty(c *ui.Context, t *theme.Theme, m *presetMenu) {
 		if t.Glass {
 			bg = t.Pick(theme.White.Alpha(0.9), theme.Brand900.Alpha(0.9))
 		}
-		panel.AttachTo(btn, ui.AnchorBottom, ui.AnchorTop).Top(8).Width(320).Padding(16).Radius(12).
+		panel.AttachTo(btn, ui.AnchorBottom, ui.AnchorTop).Top(8).Width(320).Padding(16).Radius(t.PanelRadius(12)).
 			Background(bg).Border(t.HL, t.PanelBorder).
 			Shadow(0, 20, 25, -5, ui.RGBA(0, 0, 0, 0.1)).Shadow(0, 8, 10, -6, ui.RGBA(0, 0, 0, 0.1))
 		panel.Children(func() {
@@ -283,14 +283,14 @@ func presetEmpty(c *ui.Context, t *theme.Theme, m *presetMenu) {
 func presetRow(c *ui.Context, t *theme.Theme, p FilterBarProps, preset models.GameFilterPreset, translate tagname.Mode) {
 	f := p.Filters
 	m := &f.presetUI
-	row := ui.Row(c).Gap(4).AlignItems(ui.Center).Padding(4).Radius(8).
+	row := ui.Row(c).Gap(4).AlignItems(ui.Center).Padding(4).Radius(t.ControlRadius(8)).
 		Background(t.Pick(theme.White.Alpha(0.7), theme.Brand900.Alpha(0.4)))
 	border := t.PanelBorder
 	if row.Hovered() {
 		border = t.Pick(theme.Brand300, theme.Brand600)
 	}
 	row.Border(t.HL, border).Transition(theme.ColorsTransition(150 * time.Millisecond)).Children(func() {
-		apply := ui.ButtonBase(c.Key("apply")).Grow(1).Basis(0).MinWidth(0).Padding(6, 8).Radius(6).
+		apply := ui.ButtonBase(c.Key("apply")).Grow(1).Basis(0).MinWidth(0).Padding(6, 8).Radius(t.ControlRadius(6)).
 			Justify(ui.Start).AlignItems(ui.Start).FocusRing(false).Label(preset.Name)
 		apply.OnClick(func() {
 			f.ApplyPreset(preset)
@@ -305,7 +305,7 @@ func presetRow(c *ui.Context, t *theme.Theme, p FilterBarProps, preset models.Ga
 		// BetterButton ghost sm 只有图标（h-8 w-8），hover:!bg-error-50 hover:!text-error-600
 		// dark:hover:!bg-error-900/30 dark:hover:!text-error-400
 		busy := m.deleting != ""
-		del := ui.ButtonBase(c.Key("delete")).Size(32, 32).Radius(8).Center().Shrink(0).FocusRing(false).
+		del := ui.ButtonBase(c.Key("delete")).Size(32, 32).Radius(t.ControlRadius(8)).Center().Shrink(0).FocusRing(false).
 			Label(locales.FilterPresetsDelete(preset.Name))
 		color := t.Pick(theme.Brand600, theme.Brand400)
 		if del.Hovered() && !busy {

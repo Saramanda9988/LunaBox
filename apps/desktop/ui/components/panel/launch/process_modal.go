@@ -110,7 +110,7 @@ func (m *processModal) view(c *ui.Context, t *theme.Theme, l *Launcher, p panel.
 // focus:ring-2 focus:ring-primary-500。
 func (m *processModal) searchInput(c *ui.Context, t *theme.Theme) {
 	ui.Box(c.Key("process-search")).Margin(0, 0, 16, 0).Children(func() {
-		in := ui.TextInputBase(c.Key("input"), &m.search).FillWidth().Padding(8, 16, 8, 40).Radius(8).
+		in := ui.TextInputBase(c.Key("input"), &m.search).FillWidth().Padding(8, 16, 8, 40).Radius(t.ControlRadius(8)).
 			FontSize(theme.TextBase.Size).FixedLineHeight(theme.TextBase.Line).TextColor(t.TextStrong).
 			Background(t.Pick(theme.White, theme.Brand700)).Border(t.HL, t.Pick(theme.Brand200, theme.Brand600)).
 			Placeholder(locales.ProcessSelectModalSearchPlaceholder()).Label(locales.ProcessSelectModalSearchPlaceholder())

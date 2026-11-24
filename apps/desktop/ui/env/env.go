@@ -88,7 +88,7 @@ type Env struct {
 	// 以下由 App.View 在每帧开始时更新。
 	Theme     *theme.Theme
 	MainWidth float32 // 主内容区（窗口减去侧边栏）的宽度，随侧边栏动画逐帧变化
-	// FullBleedTop 由页面在本帧构建时设置：内容（如详情页的全出血头图）此刻贴着窗口顶部，
+	// FullBleedTop 由页面在本帧构建时设置：内容（如首页的全屏封面、详情页的全出血头图）此刻贴着窗口顶部，
 	// 隐藏顶栏时 App 不叠加顶部渐隐，免得在头图上压出一条底色带、遮住左上角的返回按钮。
 	FullBleedTop bool
 

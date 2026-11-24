@@ -22,7 +22,7 @@ type SettingSwitchRowProps struct {
 func SettingSwitchRow(c *ui.Context, t *theme.Theme, key string, p SettingSwitchRowProps) {
 	labelColor := t.SectionLabel
 	if p.Disabled {
-		labelColor = t.Pick(theme.Brand400, theme.Brand500)
+		labelColor = t.TextFaint
 	}
 	change := func(v bool) {
 		if !p.Disabled && p.OnChange != nil {
@@ -37,7 +37,7 @@ func SettingSwitchRow(c *ui.Context, t *theme.Theme, key string, p SettingSwitch
 			}
 			label.Children(func() { components.Text(c, p.Label, theme.TextSM, theme.WeightMedium, labelColor) })
 			if p.Hint != "" {
-				components.Text(c, p.Hint, theme.TextXS, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400))
+				components.Text(c, p.Hint, theme.TextXS, theme.WeightNormal, t.TextMuted)
 			}
 		})
 		Switch(c, t, "switch", p.Checked, p.Disabled, change)

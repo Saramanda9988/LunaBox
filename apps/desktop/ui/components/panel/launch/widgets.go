@@ -95,14 +95,14 @@ type inputAction struct {
 // text-brand-500 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-100 disabled:opacity-50，带提示。
 // 共享的 better.ActionInput 不能换等宽字体，也没有加载中的图标。wrap 设置外框在父元素里的尺寸。返回输入框。
 func actionInput(c *ui.Context, t *theme.Theme, key string, value *string, label, placeholder string, wrap func(ui.Element), actions ...inputAction) ui.Element {
-	row := ui.Row(c.Key(key)).MinWidth(0).Gap(4).Padding(0, 4, 0, 0).AlignItems(ui.Center).Radius(6).
+	row := ui.Row(c.Key(key)).MinWidth(0).Gap(4).Padding(0, 4, 0, 0).AlignItems(ui.Center).Radius(t.ControlRadius(6)).
 		Background(t.Pick(theme.White, theme.Brand700)).Border(t.HL, t.Pick(theme.Brand300, theme.Brand600))
 	wrap(row)
 	var in ui.Element
 	row.Children(func() {
 		in = ui.TextInputBase(c.Key("input"), value).Grow(1).Basis(0).MinWidth(0).Padding(8, 12).
 			Font(monoFont).FontSize(theme.TextBase.Size).FixedLineHeight(theme.TextBase.Line).TextColor(t.TextStrong).
-			Placeholder(placeholder).PlaceholderColor(t.Pick(theme.Brand400, theme.Brand500)).Label(label)
+			Placeholder(placeholder).PlaceholderColor(t.FieldPlaceholder()).Label(label)
 		for _, a := range actions {
 			btn := ui.ButtonBase(c.Key(a.icon)).Size(40, 40).Center().Shrink(0).FocusRing(false).Label(a.label)
 			disabled := a.disabled || a.loading
@@ -127,7 +127,7 @@ func actionInput(c *ui.Context, t *theme.Theme, key string, value *string, label
 		}
 	})
 	if in.Focused() {
-		row.Shadow(0, 0, 0, 2, theme.Neutral500)
+		row.Shadow(0, 0, 0, 2, t.FieldFocus())
 	}
 	return in
 }
@@ -136,7 +136,7 @@ func actionInput(c *ui.Context, t *theme.Theme, key string, value *string, label
 // hover:bg-primary-700 rounded-lg shadow-sm shadow-primary-200 dark:shadow-none disabled:opacity-50。
 // 与 components.ModalPrimaryButton（bg-neutral-600）不同，这里是月光紫。
 func primaryModalButton(c *ui.Context, t *theme.Theme, key, label string, disabled bool) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Padding(8, 16).Radius(8).FocusRing(false).Label(label)
+	btn := ui.ButtonBase(c.Key(key)).Padding(8, 16).Radius(t.ControlRadius(8)).FocusRing(false).Label(label)
 	bg := primary600
 	if btn.Hovered() && !disabled {
 		bg = primary700

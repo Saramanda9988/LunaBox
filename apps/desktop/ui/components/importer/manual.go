@@ -48,7 +48,7 @@ func skippedModal(c *ui.Context, t *theme.Theme, cands []Candidate, open *bool) 
 				ui.Row(c.Key("footer")).Padding(16).Justify(ui.End).BorderWidth(t.HL, 0, 0, 0).BorderColor(t.Pick(theme.Brand200, theme.Brand700)).Children(func() {
 					// rounded-lg bg-brand-700 px-5 py-2 text-sm font-medium text-white hover:bg-brand-800
 					// dark:bg-brand-600 dark:hover:bg-brand-500
-					solidButton(c, "close", locales.CommonConfirm(), t.Pick(theme.Brand700, theme.Brand600), t.Pick(theme.Brand800, theme.Brand500), theme.White, false, false, 20, 8).
+					solidButton(c, t, "close", locales.CommonConfirm(), t.Pick(theme.Brand700, theme.Brand600), t.Pick(theme.Brand800, theme.Brand500), theme.White, false, false, 20, 8).
 						OnClick(closeModal)
 				})
 			})
@@ -185,7 +185,7 @@ func (f *Flow) manualByID(c *ui.Context, t *theme.Theme, enabled []enums.SourceT
 				better.Select(c, t, "source", better.SelectProps{Value: string(m.source), Options: opts, OnChange: func(v string) { m.source = enums.SourceType(v) }})
 			})
 			// flex-1 rounded border border-brand-300 bg-brand-50 px-3 py-1.5 text-sm dark:border-brand-600 dark:bg-brand-700
-			in := ui.TextInputBase(c.Key("id"), &m.id).Grow(1).Basis(0).MinWidth(0).Padding(6, 12).Radius(4).
+			in := ui.TextInputBase(c.Key("id"), &m.id).Grow(1).Basis(0).MinWidth(0).Padding(6, 12).Radius(t.ControlRadius(4)).
 				FontSize(theme.TextSM.Size).FixedLineHeight(theme.TextSM.Line).TextColor(t.TextStrong).
 				Background(t.Pick(theme.Brand50, theme.Brand700)).Border(t.HL, t.Pick(theme.Brand300, theme.Brand600)).
 				Placeholder(locales.BatchImportModalInputId()).Label(locales.BatchImportModalInputId())
@@ -193,7 +193,7 @@ func (f *Flow) manualByID(c *ui.Context, t *theme.Theme, enabled []enums.SourceT
 				in.Font(theme.UIFont)
 			}
 			disabled := m.id == "" || m.searching
-			btn := ui.ButtonBase(c.Key("search")).Padding(6, 16).Radius(4).Center().FocusRing(false)
+			btn := ui.ButtonBase(c.Key("search")).Padding(6, 16).Radius(t.ControlRadius(4)).Center().FocusRing(false)
 			bg := theme.Neutral500
 			if btn.Hovered() && !disabled {
 				bg = theme.Neutral600

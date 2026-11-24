@@ -142,7 +142,7 @@ func hoverOpen(c *ui.Context, overTrigger, overPanel bool, open *bool, h *menuHo
 }
 
 func menuItem(c *ui.Context, t *theme.Theme, it MenuItem, wrap bool, choose func()) {
-	row := ui.ButtonBase(c.Key(it.Key)).FillWidth().Padding(10, 12).Radius(8).AlignItems(ui.Center).
+	row := ui.ButtonBase(c.Key(it.Key)).FillWidth().Padding(10, 12).Radius(t.ControlRadius(8)).AlignItems(ui.Center).
 		Justify(ui.Start).FocusRing(false)
 	if it.Disabled {
 		components.Disable(row, 0.5)
@@ -185,14 +185,14 @@ func menuItem(c *ui.Context, t *theme.Theme, it MenuItem, wrap bool, choose func
 func pillItem(c *ui.Context, t *theme.Theme, it MenuItem, selected bool, choose func()) {
 	bg, fg := it.PillBg, it.PillText
 	if bg == (ui.Color{}) {
-		bg, fg = t.MenuHover, t.Pick(theme.Brand700, theme.Brand300)
+		bg, fg = t.MenuHover, t.Themed("menuText", t.MenuText, t.Pick(theme.Brand700, theme.Brand300))
 	}
 	item := ui.ButtonBase(c.Key(it.Key)).FillWidth().Padding(6, 10).Radius(t.ControlRadius(999)).Gap(6).
 		AlignItems(ui.Center).Justify(ui.Start).Background(bg).FocusRing(false)
 	if it.Disabled {
 		components.Disable(item, 0.5)
 	} else if item.Hovered() {
-		item.Shadow(0, 0, 0, 2, t.ActionBtnRing) // focus 时 ring-2 ring-brand-400
+		item.Shadow(0, 0, 0, 2, t.Themed("accent", t.Accent, theme.Brand400)) // focus 时 ring-2 ring-brand-400
 	}
 	item.OnClick(choose).Children(func() {
 		if it.Icon != "" {

@@ -209,7 +209,7 @@ func (p *Page) footer(c *ui.Context, t *theme.Theme) {
 // dark:border-brand-700/80 transition-colors，hover:bg-brand-100 hover:text-brand-800 dark:hover:bg-brand-800
 // dark:hover:text-brand-100；左侧 i-mdi-github text-xl。
 func (p *Page) githubButton(c *ui.Context, t *theme.Theme, color ui.Color) {
-	btn := ui.ButtonBase(c.Key("github")).Margin(24, 0, 0, 0).Padding(8, 16).Radius(12).Gap(8).AlignItems(ui.Center).
+	btn := ui.ButtonBase(c.Key("github")).Margin(24, 0, 0, 0).Padding(8, 16).Radius(t.ControlRadius(12)).Gap(8).AlignItems(ui.Center).
 		FocusRing(false).Border(t.HL, t.Pick(theme.Brand200, theme.Brand700.Alpha(0.8))).Label(locales.SettingsGithub())
 	if btn.Hovered() {
 		btn.Background(t.Pick(theme.Brand100, theme.Brand800))

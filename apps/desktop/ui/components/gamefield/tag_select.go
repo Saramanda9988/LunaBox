@@ -29,7 +29,7 @@ type TagSelectProps struct {
 // 末尾是添加中的输入框或虚线的“+”。点胶囊切换选中；选中只换边框与底色，尺寸不变，不会引起换行。
 // 用户标签是虚线边框，自动获取的是实线。
 func TagSelect(c *ui.Context, t *theme.Theme, key string, p TagSelectProps) {
-	bg, border := t.GlassInput(t.Pick(theme.White, theme.Brand700), t.Pick(theme.Brand300, theme.Brand600))
+	bg, border := t.FieldColors()
 	box := ui.Row(c.Key(key)).FillWidth().MinHeight(40).Wrap().GapX(6).GapY(6).AlignItems(ui.Center).
 		Padding(5, 10).Radius(6).Background(bg).Border(t.HL, border)
 	box.Children(func() {
@@ -44,7 +44,7 @@ func TagSelect(c *ui.Context, t *theme.Theme, key string, p TagSelectProps) {
 	})
 	// 只在输入新标签时显示聚焦描边：点胶囊选中也会让焦点落进框里，那时不需要。
 	if *p.Adding && box.FocusWithin() {
-		box.Shadow(0, 0, 0, 2, theme.Neutral500)
+		box.Shadow(0, 0, 0, 2, t.FieldFocus())
 	}
 }
 
@@ -52,7 +52,7 @@ func TagSelect(c *ui.Context, t *theme.Theme, key string, p TagSelectProps) {
 func tagSelectInput(c *ui.Context, t *theme.Theme, p TagSelectProps) {
 	in := ui.TextInputBase(c.Key("tag-input"), p.Draft).Padding(6, 12).Radius(999).AutoFocus().
 		FontSize(theme.TextXS.Size).FixedLineHeight(theme.TextXS.Line).TextColor(t.TextStrong).
-		Placeholder(locales.TagsInputPlaceholder()).PlaceholderColor(t.Pick(theme.Brand400, theme.Brand500)).
+		Placeholder(locales.TagsInputPlaceholder()).PlaceholderColor(t.FieldPlaceholder()).
 		Label(locales.TagsInputPlaceholder())
 	if theme.UIFont != "" {
 		in.Font(theme.UIFont)

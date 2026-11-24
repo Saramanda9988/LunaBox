@@ -46,11 +46,11 @@ func filterButton(c *ui.Context, t *theme.Theme, f *ColumnFilter) {
 	if title == "" {
 		title = "Filter"
 	}
-	btn := ui.ButtonBase(c.Key("filter")).Size(24, 24).Radius(6).Center().Shrink(0).FocusRing(false).Label(title)
+	btn := ui.ButtonBase(c.Key("filter")).Size(24, 24).Radius(t.ControlRadius(6)).Center().Shrink(0).FocusRing(false).Label(title)
 	if btn.Hovered() {
-		btn.Background(t.Pick(theme.Brand100.Alpha(0.7), theme.Brand700.Alpha(0.5)))
+		btn.Background(t.Themed("menuHover", t.MenuHover, t.Pick(theme.Brand100.Alpha(0.7), theme.Brand700.Alpha(0.5))))
 	}
-	color, icon := t.Pick(theme.Brand500, theme.Brand400), "filter-outline"
+	color, icon := t.TextMuted, "filter-outline"
 	if active {
 		color, icon = t.Pick(theme.Success600, theme.Success400), "filter"
 	}
@@ -68,7 +68,7 @@ func filterButton(c *ui.Context, t *theme.Theme, f *ColumnFilter) {
 			icon = "filter-variant"
 		}
 		if color == (ui.Color{}) {
-			color = theme.Brand400
+			color = t.Themed("textFaint", t.TextFaint, theme.Brand400)
 		}
 		return icon, color
 	}

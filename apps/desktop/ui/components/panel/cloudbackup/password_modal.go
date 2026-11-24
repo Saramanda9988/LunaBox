@@ -121,7 +121,7 @@ func modalError(c *ui.Context, t *theme.Theme, s string) {
 // focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white（第一个输入框另有 pr-10 与 autoFocus）。
 // 输入框继承 16px/24px 的字号与行高。
 func passwordInput(c *ui.Context, t *theme.Theme, key string, value *string, label, placeholder string, hidden, first bool) {
-	in := ui.TextInputBase(c.Key(key), value).FillWidth().Radius(6).
+	in := ui.TextInputBase(c.Key(key), value).FillWidth().Radius(t.ControlRadius(6)).
 		FontSize(theme.TextBase.Size).FixedLineHeight(theme.TextBase.Line).TextColor(t.TextStrong).
 		Background(t.Pick(theme.White, theme.Brand700)).Border(t.HL, t.Pick(theme.Brand300, theme.Brand600)).
 		Placeholder(placeholder).Label(label).Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.05))
@@ -137,7 +137,7 @@ func passwordInput(c *ui.Context, t *theme.Theme, key string, value *string, lab
 		in.Password()
 	}
 	if in.Focused() {
-		in.Shadow(0, 0, 0, 2, theme.Neutral500)
+		in.Shadow(0, 0, 0, 2, t.FieldFocus())
 	}
 }
 
@@ -161,7 +161,7 @@ func eyeButton(c *ui.Context, t *theme.Theme, m *passwordModalState) {
 // confirmButton：px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors bg-brand-600 hover:bg-brand-700
 // shadow-sm shadow-brand-200 dark:shadow-none disabled:opacity-50 disabled:cursor-not-allowed。
 func confirmButton(c *ui.Context, t *theme.Theme, enabled bool) ui.Element {
-	btn := ui.ButtonBase(c.Key("confirm")).Padding(8, 16).Radius(8).FocusRing(false)
+	btn := ui.ButtonBase(c.Key("confirm")).Padding(8, 16).Radius(t.ControlRadius(8)).FocusRing(false)
 	bg := theme.Brand600
 	if btn.Hovered() {
 		bg = theme.Brand700

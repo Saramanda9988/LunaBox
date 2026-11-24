@@ -226,7 +226,7 @@ func sessionRow(c *ui.Context, t *theme.Theme, sess models.PlaySession, loc *tim
 			components.Text(c, locales.GameStatsDuration()+" "+timefmt.Duration(sess.Duration), theme.TextXS, theme.WeightNormal, t.TextMuted)
 		})
 		// p-1.5 text-brand-400 hover:text-error-500 hover:bg-error-50 dark:hover:bg-error-900/20 rounded
-		del := ui.ButtonBase(c.Key("delete")).Padding(6).Radius(4).FocusRing(false).Label(locales.GameStatsModalDeleteSessionTitle())
+		del := ui.ButtonBase(c.Key("delete")).Padding(6).Radius(t.ControlRadius(4)).FocusRing(false).Label(locales.GameStatsModalDeleteSessionTitle())
 		color := theme.Brand400
 		if del.Hovered() {
 			color = theme.Error500

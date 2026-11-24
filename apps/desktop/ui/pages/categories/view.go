@@ -172,7 +172,7 @@ func (p *Page) deleteButton(c *ui.Context, t *theme.Theme) {
 // text-sm font-medium text-white shadow-sm，悬停 -translate-y-0.5 bg-neutral-700 shadow-md（transition-all）。
 func (p *Page) newButton(c *ui.Context, t *theme.Theme) {
 	g := t.GlassButton(theme.GlassPrimary, theme.BtnColors{Bg: t.PrimaryBtn, Hover: t.PrimaryBtnHover, Border: t.PrimaryOr(theme.Neutral500, t.PrimaryBtn), Text: t.PrimaryBtnText})
-	btn := ui.ButtonBase(c.Key("new-category")).Padding(8, 16).Radius(12).AlignItems(ui.Center).FocusRing(false).
+	btn := ui.ButtonBase(c.Key("new-category")).Padding(8, 16).Radius(t.ControlRadius(12)).AlignItems(ui.Center).FocusRing(false).
 		Border(t.HL, g.Border).Label(locales.CategoriesNewCategory())
 	hovered := btn.Hovered()
 	bg := g.Bg

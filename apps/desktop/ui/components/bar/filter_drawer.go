@@ -24,7 +24,7 @@ func FilterDrawer(c *ui.Context, t *theme.Theme, p FilterBarProps) {
 		CloseLabel: locales.CommonCancel(),
 		TopOffset:  env.TopbarHeight,
 		HeaderAction: func() {
-			btn := ui.ButtonBase(c.Key("clear-all")).Size(32, 32).Radius(8).Center().FocusRing(false).Label(locales.FilterBarClearFiltersAndSort())
+			btn := ui.ButtonBase(c.Key("clear-all")).Size(32, 32).Radius(t.ControlRadius(8)).Center().FocusRing(false).Label(locales.FilterBarClearFiltersAndSort())
 			if !f.canClear(p) {
 				components.Disable(btn, 0.35)
 			}
@@ -164,7 +164,7 @@ func chip(c *ui.Context, t *theme.Theme, key, label string, active bool) ui.Elem
 // smallActionButton 对应 h-7 px-1.5 rounded-md text-sm font-medium 的“反选”“保存筛选与排序”。
 // aria 是原版的 aria-label，为空时用按钮上的文字。
 func smallActionButton(c *ui.Context, t *theme.Theme, key, icon, label, aria string, enabled, on bool) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Height(28).Padding(0, 6).Radius(6).Gap(4).AlignItems(ui.Center).FocusRing(false)
+	btn := ui.ButtonBase(c.Key(key)).Height(28).Padding(0, 6).Radius(t.ControlRadius(6)).Gap(4).AlignItems(ui.Center).FocusRing(false)
 	if aria != "" {
 		btn.Label(aria)
 	}
@@ -262,13 +262,13 @@ func tagSuggestionList(c *ui.Context, t *theme.Theme, p FilterBarProps, field ui
 	translate := tagname.ModeOf(p.Env.Config())
 	components.Overlay(c, t, func() {
 		list := ui.Column(c.Key("tag-suggestions")).AttachTo(field, ui.AnchorBottomLeft, ui.AnchorTopLeft).Top(4).
-			Width(field.Bounds().W).MaxHeight(144).Padding(4).Radius(8).
+			Width(field.Bounds().W).MaxHeight(144).Padding(4).Radius(t.PanelRadius(8)).
 			Background(theme.Brand900.Alpha(0.95)).Border(t.HL, t.PanelBorder).
 			Shadow(0, 20, 25, -5, ui.RGBA(0, 0, 0, 0.1)).Shadow(0, 8, 10, -6, ui.RGBA(0, 0, 0, 0.1))
 		list.Children(func() {
 			ui.Scroll(c).Grow(1).Children(func() {
 				for _, s := range f.TagSuggestions {
-					item := ui.ButtonBase(c.Key(s)).FillWidth().Padding(6, 10).Radius(6).Justify(ui.Start).FocusRing(false)
+					item := ui.ButtonBase(c.Key(s)).FillWidth().Padding(6, 10).Radius(t.ControlRadius(6)).Justify(ui.Start).FocusRing(false)
 					if item.Hovered() {
 						item.Background(theme.Brand700)
 					}
@@ -295,7 +295,7 @@ func orderButtons(c *ui.Context, t *theme.Theme, key string, current enums.SortO
 			{enums.SortOrderAsc, locales.FilterBarSortAsc, "sort-ascending"},
 			{enums.SortOrderDesc, locales.FilterBarSortDesc, "sort-descending"},
 		} {
-			btn := ui.ButtonBase(c.Key(o.value)).Grow(1).Basis(0).Padding(8, 10).Radius(8).Gap(6).Center().FocusRing(false)
+			btn := ui.ButtonBase(c.Key(o.value)).Grow(1).Basis(0).Padding(8, 10).Radius(t.ControlRadius(8)).Gap(6).Center().FocusRing(false)
 			bg, fg := t.ChipBg, t.ChipText
 			switch {
 			case current == o.value:

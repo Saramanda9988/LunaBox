@@ -123,8 +123,8 @@ func NumberInput(c *ui.Context, t *theme.Theme, key string, value int, p NumberI
 	}
 
 	row.Children(func() {
-		bg, border := t.GlassInput(t.Pick(theme.White, theme.Brand700), t.Pick(theme.Brand300, theme.Brand600)) // glass-input
-		box := ui.Row(c.Key("box")).Size(w, h).Radius(radius).Clip().AlignItems(ui.Stretch).Background(bg)
+		bg, border := t.FieldColors() // glass-input
+		box := ui.Row(c.Key("box")).Size(w, h).Radius(t.ControlRadius(radius)).Clip().AlignItems(ui.Stretch).Background(bg)
 		if p.Disabled {
 			components.Disable(box, 0.6)
 		}
@@ -133,7 +133,7 @@ func NumberInput(c *ui.Context, t *theme.Theme, key string, value int, p NumberI
 			draft := s.draft
 			in = ui.TextInputBase(c.Key("input"), &draft).Grow(1).Basis(0).MinWidth(0).Padding(0, padX).
 				FontSize(theme.TextSM.Size).FixedLineHeight(theme.TextSM.Line).FontWeight(theme.WeightMedium).
-				TextColor(t.Pick(theme.Brand900, theme.White))
+				TextColor(t.TextStrong)
 			if theme.UIFont != "" {
 				in.Font(theme.UIFont)
 			}
@@ -171,20 +171,20 @@ func NumberInput(c *ui.Context, t *theme.Theme, key string, value int, p NumberI
 			s.focused = focused
 
 			ui.Column(c.Key("steppers")).Width(stepW).Shrink(0).
-				BorderWidth(0, 0, 0, t.HL).BorderColor(t.Pick(theme.Brand200, theme.Brand600)).
-				Background(t.Pick(theme.Brand50.Alpha(0.8), theme.Brand700)).Children(func() {
+				BorderWidth(0, 0, 0, t.HL).BorderColor(t.Themed("inputBorder", t.InputBorder, t.Pick(theme.Brand200, theme.Brand600))).
+				Background(t.Themed("chipBg", t.ChipBg, t.Pick(theme.Brand50.Alpha(0.8), theme.Brand700))).Children(func() {
 				stepButton(c, t, "up", "chevron-up", iconSize, p.Disabled, func() { nudge(1) })
-				ui.Box(c).Height(t.HL).Background(t.Pick(theme.Brand200, theme.Brand700)).Shrink(0)
+				ui.Box(c).Height(t.HL).Background(t.Themed("inputBorder", t.InputBorder, t.Pick(theme.Brand200, theme.Brand700))).Shrink(0)
 				stepButton(c, t, "down", "chevron-down", iconSize, p.Disabled, func() { nudge(-1) })
 			})
 		})
 		if in.Focused() {
-			border = theme.Neutral500
-			box.Shadow(0, 0, 0, 2, theme.Neutral500.Alpha(0.3))
+			border = t.FieldFocus()
+			box.Shadow(0, 0, 0, 2, t.FieldFocus().Alpha(0.3))
 		}
 		box.Border(t.HL, border).Transition(theme.ColorsTransition(200 * time.Millisecond))
 		if p.Unit != "" {
-			components.Text(c, p.Unit, theme.TextSM, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400)).NoWrap()
+			components.Text(c, p.Unit, theme.TextSM, theme.WeightNormal, t.TextMuted).NoWrap()
 		}
 	})
 	return row
@@ -195,10 +195,10 @@ func NumberInput(c *ui.Context, t *theme.Theme, key string, value int, p NumberI
 // 所以用可点击的 Box 而不是按钮。
 func stepButton(c *ui.Context, t *theme.Theme, key, icon string, size float32, disabled bool, onClick func()) {
 	btn := ui.Box(c.Key(key)).Grow(1).Basis(0).Center()
-	color := t.Pick(theme.Brand500, theme.Brand400)
+	color := t.TextMuted
 	if btn.Hovered() && !disabled {
-		btn.Background(t.Pick(theme.Brand200, theme.Brand700))
-		color = t.Pick(theme.Brand800, theme.White)
+		btn.Background(t.Themed("menuHover", t.MenuHover, t.Pick(theme.Brand200, theme.Brand700)))
+		color = t.Themed("textStrong", t.TextStrong, t.Pick(theme.Brand800, theme.White))
 	}
 	btn.Transition(theme.ColorsTransition(150 * time.Millisecond))
 	if !disabled {

@@ -145,7 +145,7 @@ func (p *Page) addGamesView(c *ui.Context, t *theme.Theme) {
 func (p *Page) candidateSearch(c *ui.Context, t *theme.Theme) {
 	m := &p.addGames
 	ui.Box(c.Key("candidate-search")).Padding(16, 24, 0, 24).Children(func() {
-		in := ui.TextInputBase(c.Key("input"), &m.query).FillWidth().Padding(8, 12, 8, 40).Radius(8).
+		in := ui.TextInputBase(c.Key("input"), &m.query).FillWidth().Padding(8, 12, 8, 40).Radius(t.ControlRadius(8)).
 			FontSize(theme.TextSM.Size).FixedLineHeight(theme.TextSM.Line).TextColor(t.TextStrong).
 			Background(t.Pick(theme.White, theme.Brand900)).Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).
 			Placeholder(locales.LibrarySearchPlaceholder()).Label(locales.LibrarySearchPlaceholder())
@@ -204,7 +204,7 @@ func (p *Page) candidateGrid(c *ui.Context, t *theme.Theme, winW float32) {
 			if m.loading {
 				label = locales.CommonLoading()
 			}
-			btn := ui.ButtonBase(c.Key("load-more")).Padding(8, 16).Radius(8).FocusRing(false).Label(label)
+			btn := ui.ButtonBase(c.Key("load-more")).Padding(8, 16).Radius(t.ControlRadius(8)).FocusRing(false).Label(label)
 			if m.loading {
 				components.Disable(btn, 0.5)
 			} else {

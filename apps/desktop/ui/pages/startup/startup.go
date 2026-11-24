@@ -188,7 +188,7 @@ func (p *Page) copyButton(c *ui.Context, t *theme.Theme, msg string) {
 	if copied {
 		label = locales.StartupCopied()
 	}
-	btn := ui.ButtonBase(c.Key("copy")).Size(32, 32).Radius(8).Center().Shrink(0).Label(label)
+	btn := ui.ButtonBase(c.Key("copy")).Size(32, 32).Radius(t.ControlRadius(8)).Center().Shrink(0).Label(label)
 	fg := t.Pick(theme.Brand500, theme.Brand400)
 	if btn.Hovered() {
 		btn.Background(t.Pick(theme.Brand200, theme.Brand700))
@@ -210,7 +210,7 @@ func (p *Page) copyButton(c *ui.Context, t *theme.Theme, msg string) {
 // exitButton：shrink-0 rounded-lg bg-brand-900 px-4 py-2 text-xs font-medium text-white hover:bg-brand-700
 // dark:bg-white dark:text-brand-900 dark:hover:bg-brand-200。
 func (p *Page) exitButton(c *ui.Context, t *theme.Theme) {
-	btn := ui.ButtonBase(c.Key("exit")).Padding(8, 16).Radius(8).Shrink(0)
+	btn := ui.ButtonBase(c.Key("exit")).Padding(8, 16).Radius(t.ControlRadius(8)).Shrink(0)
 	bg := t.Pick(theme.Brand900, theme.White)
 	if btn.Hovered() {
 		bg = t.Pick(theme.Brand700, theme.Brand200)

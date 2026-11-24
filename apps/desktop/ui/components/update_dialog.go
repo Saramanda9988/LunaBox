@@ -266,7 +266,7 @@ func updateDialogHeader(c *ui.Context, t *theme.Theme, onClose func()) {
 			Text(c, locales.UpdateDialogAvailable(), theme.TextSM, theme.WeightNormal, t.Pick(theme.Brand600, theme.Brand400))
 		})
 		// 更新中原版是 disabled（没有 disabled 样式）；MyGo 会把禁用的元素画淡，所以只在 handleClose 里忽略点击。
-		btn := ui.ButtonBase(c.Key("close")).Size(32, 32).Radius(8).Center().Shrink(0).FocusRing(false).
+		btn := ui.ButtonBase(c.Key("close")).Size(32, 32).Radius(t.ControlRadius(8)).Center().Shrink(0).FocusRing(false).
 			Label(locales.UpdateDialogClose())
 		if btn.Hovered() {
 			btn.Background(t.Pick(theme.Brand100, theme.Brand700))
@@ -470,7 +470,7 @@ func updateDialogProgress(c *ui.Context, t *theme.Theme, s *UpdateDialogState) {
 // flex items-center justify-center gap-2，i-mdi-update（更新中 i-mdi-loading animate-spin）text-lg；
 // disabled:opacity-70 disabled:cursor-wait（MyGo 的禁用元素最高 0.5）。
 func updateNowButton(c *ui.Context, t *theme.Theme, updating bool) ui.Element {
-	btn := ui.ButtonBase(c.Key("update-now")).FillWidth().Padding(10, 16).Radius(8).Gap(8).Center().FocusRing(false)
+	btn := ui.ButtonBase(c.Key("update-now")).FillWidth().Padding(10, 16).Radius(t.ControlRadius(8)).Gap(8).Center().FocusRing(false)
 	bg := accent600
 	if btn.Hovered() && !updating {
 		bg = accent700
@@ -510,7 +510,7 @@ func updateDialogError(c *ui.Context, t *theme.Theme, msg string, manual bool) {
 // justify-center gap-2，图标 text-lg。GitHub 是 bg-brand-700 hover:bg-brand-800 dark:bg-brand-200 dark:hover:bg-white
 // dark:text-brand-900，Gitee 是 bg-neutral-600 hover:bg-neutral-700 text-white。
 func downloadButton(c *ui.Context, t *theme.Theme, key, icon, label string, bg, hover, fg ui.Color) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Grow(1).Basis(0).Padding(10, 16).Radius(8).Gap(8).Center().FocusRing(false)
+	btn := ui.ButtonBase(c.Key(key)).Grow(1).Basis(0).Padding(10, 16).Radius(t.ControlRadius(8)).Gap(8).Center().FocusRing(false)
 	if btn.Hovered() {
 		bg = hover
 	}
@@ -524,7 +524,7 @@ func downloadButton(c *ui.Context, t *theme.Theme, key, icon, label string, bg, 
 // skipButton：w-full px-4 py-2.5 text-sm font-medium text-brand-600 dark:text-brand-400 hover:bg-brand-100
 // dark:hover:bg-brand-700 border border-brand-300 dark:border-brand-600 rounded-lg。
 func skipButton(c *ui.Context, t *theme.Theme) ui.Element {
-	btn := ui.ButtonBase(c.Key("skip")).FillWidth().Padding(10, 16).Radius(8).Center().FocusRing(false).
+	btn := ui.ButtonBase(c.Key("skip")).FillWidth().Padding(10, 16).Radius(t.ControlRadius(8)).Center().FocusRing(false).
 		Border(t.HL, t.Pick(theme.Brand300, theme.Brand600))
 	if btn.Hovered() {
 		btn.Background(t.Pick(theme.Brand100, theme.Brand700))

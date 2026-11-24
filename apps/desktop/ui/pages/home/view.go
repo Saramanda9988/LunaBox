@@ -39,6 +39,7 @@ func coverURL(g *models.Game) string {
 // View 构建首页。加载中不显示内容；没有首页数据时是重试；没有游玩记录时引导去游戏库。
 func (p *Page) View(c *ui.Context) {
 	t := p.env.Theme
+	p.env.FullBleedTop = true // 首页的模糊封面铺满整个主内容区，隐藏顶栏时不叠加顶部渐隐
 	for _, n := range p.toasts {
 		p.env.Toast(c, n())
 	}
@@ -114,7 +115,7 @@ func (p *Page) View(c *ui.Context) {
 						Variant: better.ButtonPrimary, Size: better.ButtonLG, Icon: "play", Label: locales.HomeContinueGame(),
 					})
 					// !h-auto gap-2 rounded-xl px-6 py-3 shadow-lg
-					shadowLG(btn.Radius(12).Padding(0, 24).Gap(8)).OnClick(func() { p.continueGame(g) })
+					shadowLG(btn.Radius(t.ControlRadius(12)).Padding(0, 24).Gap(8)).OnClick(func() { p.continueGame(g) })
 				}
 			})
 			if hasPicker {
@@ -331,7 +332,7 @@ func gamingBadge(c *ui.Context) {
 func (p *Page) noData(c *ui.Context, t *theme.Theme) {
 	ui.Column(c.Key("home-empty")).Fill().Center().Gap(16).Children(func() {
 		components.Text(c, locales.HomeNoData(), theme.TextBase, theme.WeightNormal, theme.Brand500)
-		btn := ui.ButtonBase(c.Key("retry")).Padding(8, 16).Radius(4).FocusRing(false).Label(locales.HomeRetry())
+		btn := ui.ButtonBase(c.Key("retry")).Padding(8, 16).Radius(t.ControlRadius(4)).FocusRing(false).Label(locales.HomeRetry())
 		bg := theme.Neutral500
 		if btn.Hovered() {
 			bg = theme.Neutral600
@@ -354,7 +355,7 @@ func (p *Page) noRecord(c *ui.Context, t *theme.Theme) {
 			components.Icon(c, "gamepad-variant-outline", 96, t.Pick(theme.Brand300, theme.Brand700)).Margin(0, 0, 16, 0)
 			components.TextMargin(c, locales.HomeNoPlayRecord(), theme.Text2XL, theme.WeightBold, t.Pick(theme.Brand700, theme.Brand300), 0, 0, 8, 0)
 			components.TextMargin(c, locales.HomeNoPlayRecordHint(), theme.TextBase, theme.WeightNormal, t.Pick(theme.Brand600, theme.White.Alpha(0.7)), 0, 0, 24, 0)
-			btn := ui.ButtonBase(c.Key("browse")).Row().Gap(8).AlignItems(ui.Center).Padding(12, 24).Radius(12).FocusRing(false).
+			btn := ui.ButtonBase(c.Key("browse")).Row().Gap(8).AlignItems(ui.Center).Padding(12, 24).Radius(t.ControlRadius(12)).FocusRing(false).
 				Label(locales.HomeBrowseLibrary())
 			hovered := btn.Hovered()
 			// glass-btn-neutral

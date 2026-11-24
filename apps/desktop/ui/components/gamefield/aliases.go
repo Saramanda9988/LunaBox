@@ -24,7 +24,7 @@ type AliasesProps struct {
 // border-brand-300 bg-white px-2.5 py-[5px] focus-within:ring-2 focus-within:ring-neutral-500 dark:border-brand-600
 // dark:bg-brand-700；别名胶囊、添加中的输入框或虚线的“+”按钮。标题与说明由调用方构建。
 func Aliases(c *ui.Context, t *theme.Theme, key string, p AliasesProps) {
-	bg, border := t.GlassInput(t.Pick(theme.White, theme.Brand700), t.Pick(theme.Brand300, theme.Brand600))
+	bg, border := t.FieldColors()
 	box := ui.Row(c.Key(key)).FillWidth().MinHeight(40).Wrap().GapX(6).GapY(6).AlignItems(ui.Center).
 		Padding(5, 10).Radius(6).Background(bg).Border(t.HL, border)
 	box.Children(func() {
@@ -38,7 +38,7 @@ func Aliases(c *ui.Context, t *theme.Theme, key string, p AliasesProps) {
 		}
 	})
 	if box.FocusWithin() {
-		box.Shadow(0, 0, 0, 2, theme.Neutral500)
+		box.Shadow(0, 0, 0, 2, t.FieldFocus())
 	}
 }
 
@@ -103,7 +103,7 @@ func aliasInput(c *ui.Context, t *theme.Theme, p AliasesProps) {
 func aliasInputBox(c *ui.Context, t *theme.Theme, p AliasesProps) ui.Element {
 	in := ui.TextInputBase(c.Key("alias-input"), p.Draft).Padding(6, 12).Radius(999).AutoFocus().
 		FontSize(theme.TextXS.Size).FixedLineHeight(theme.TextXS.Line).TextColor(t.TextStrong).
-		Placeholder(locales.GameEditAliasPlaceholder()).PlaceholderColor(t.Pick(theme.Brand400, theme.Brand500)).Label(locales.GameEditAliases())
+		Placeholder(locales.GameEditAliasPlaceholder()).PlaceholderColor(t.FieldPlaceholder()).Label(locales.GameEditAliases())
 	if theme.UIFont != "" {
 		in.Font(theme.UIFont)
 	}

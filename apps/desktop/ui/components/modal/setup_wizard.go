@@ -273,7 +273,7 @@ func setupStepHeader(c *ui.Context, t *theme.Theme, icon, title, desc string) {
 // （BetterButton primary）：bg-neutral-600 hover:bg-neutral-700 shadow-sm shadow-neutral-200 dark:shadow-none。
 // busy 时禁用并显示旋转图标。
 func setupPrimaryButton(c *ui.Context, t *theme.Theme, key, label string, busy bool) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Padding(10, 24).Radius(8).Gap(8).AlignItems(ui.Center).FocusRing(false)
+	btn := ui.ButtonBase(c.Key(key)).Padding(10, 24).Radius(t.ControlRadius(8)).Gap(8).AlignItems(ui.Center).FocusRing(false)
 	bg := t.PrimaryBtn
 	if btn.Hovered() && !busy {
 		bg = t.PrimaryBtnHover

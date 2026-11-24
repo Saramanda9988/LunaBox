@@ -30,7 +30,7 @@ func Textarea(c *ui.Context, t *theme.Theme, key string, value *string, p Textar
 	if rows <= 0 {
 		rows = 3
 	}
-	ta := ui.TextAreaBase(c.Key(key), value).FillWidth().Padding(8, 12).Radius(6).
+	ta := ui.TextAreaBase(c.Key(key), value).FillWidth().Padding(8, 12).Radius(t.ControlRadius(6)).
 		Height(float32(rows)*f.Line + 16 + 2*t.HL).FontSize(f.Size).FixedLineHeight(f.Line).TextColor(t.TextStrong).
 		Placeholder(p.Placeholder)
 	if theme.UIFont != "" {
@@ -43,10 +43,10 @@ func Textarea(c *ui.Context, t *theme.Theme, key string, value *string, p Textar
 	if label != "" {
 		ta.Label(label)
 	}
-	bg, border := t.GlassInput(t.Pick(theme.White, theme.Brand700), t.Pick(theme.Brand300, theme.Brand600)) // glass-input
+	bg, border := t.FieldColors() // glass-input
 	ta.Background(bg).Border(t.HL, border).Transition(theme.ColorsTransition(150 * time.Millisecond))
 	if ta.Focused() {
-		ta.Shadow(0, 0, 0, 2, theme.Neutral500)
+		ta.Shadow(0, 0, 0, 2, t.FieldFocus())
 	}
 	if p.Disabled {
 		components.Disable(ta, 0.6)

@@ -311,11 +311,25 @@ func applyPaletteToken(p *Palette, key string, c ui.Color) {
 		p.ListSelected = c
 	case "switchOff":
 		p.SwitchOff = c
+	case "switchThumb":
+		p.SwitchThumb = c
 	case "tooltipBg":
 		p.TooltipBg = c
 	case "tooltipText":
 		p.TooltipText = c
 	case "tooltipBorder":
 		p.TooltipBorder = c
+	case "dangerBtn":
+		p.DangerBtn = c
+	case "dangerBtnHover":
+		p.DangerBtnHover = c
+	case "dangerBtnText":
+		p.DangerBtnText = c
+	default:
+		return
 	}
+	if p.custom == nil {
+		p.custom = map[string]bool{}
+	}
+	p.custom[key] = true
 }

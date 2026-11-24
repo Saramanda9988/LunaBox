@@ -361,7 +361,7 @@ func (p *Page) asideColumn(c *ui.Context, t *theme.Theme, slots []plugin.SlotReg
 
 // backButton：flex items-center rounded-md text-brand-750 hover:text-brand-900，i-mdi-arrow-left text-2xl mr-1。
 func (p *Page) backButton(c *ui.Context, t *theme.Theme) {
-	btn := ui.ButtonBase(c.Key("back")).AlignSelf(ui.Start).AlignItems(ui.Center).Radius(6).FocusRing(false)
+	btn := ui.ButtonBase(c.Key("back")).AlignSelf(ui.Start).AlignItems(ui.Center).Radius(t.ControlRadius(6)).FocusRing(false)
 	color := t.Pick(theme.Brand750, theme.Brand400)
 	if btn.Hovered() {
 		color = t.Pick(theme.Brand900, theme.Brand200)

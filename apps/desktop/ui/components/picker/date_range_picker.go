@@ -134,7 +134,7 @@ func DateRangePicker(c *ui.Context, t *theme.Theme, key string, p DateRangeProps
 			at, self = ui.AnchorBottom, ui.AnchorTop
 		}
 		components.AttachPopover(panel, btn, at, self, 16).MaxWidth(winW-32).
-			Radius(12).Background(t.PanelBg).Border(t.HL, t.PanelBorder).OnShortcut(0, ui.KeyEscape, closePanel)
+			Radius(t.PanelRadius(12)).Background(t.PanelBg).Border(t.HL, t.PanelBorder).OnShortcut(0, ui.KeyEscape, closePanel)
 		content := func(box ui.Element) {
 			box.Column().Gap(12).Children(func() {
 				if singleCalendar {
@@ -313,7 +313,7 @@ func calendarMonth(c *ui.Context, t *theme.Theme, p monthProps) {
 // dark:hover:border-brand-700 dark:hover:bg-brand-700 dark:hover:text-white，transition-colors，图标 text-lg。
 // CSS 的 :hover 对禁用的按钮同样生效，所以先取悬停状态再禁用。
 func navButton(c *ui.Context, t *theme.Theme, icon, label string, enabled bool, onClick func()) {
-	btn := ui.ButtonBase(c.Key(label)).Size(32, 32).Radius(8).Center().Shrink(0).FocusRing(false).Label(label)
+	btn := ui.ButtonBase(c.Key(label)).Size(32, 32).Radius(t.ControlRadius(8)).Center().Shrink(0).FocusRing(false).Label(label)
 	hovered := btn.Hovered()
 	bg, border, color := ui.Transparent, ui.Transparent, t.Pick(theme.Brand500, theme.Brand400)
 	if hovered {
@@ -431,10 +431,10 @@ func dayButton(c *ui.Context, t *theme.Theme, d dayState, onSelect func(string))
 	} else {
 		btn = ui.ButtonBase(c.Key(d.value)).FocusRing(false).OnClick(func() { onSelect(d.value) })
 	}
-	btn.Grow(1).Basis(0).Height(36).Radius(8).Center().Label(d.value)
+	btn.Grow(1).Basis(0).Height(36).Radius(t.ControlRadius(8)).Center().Label(d.value)
 	bg, fg := dayColors(t, d, btn.Hovered())
 	if !d.future && btn.Focused() {
-		btn.Shadow(0, 0, 0, 2, theme.Neutral500.Alpha(0.3))
+		btn.Shadow(0, 0, 0, 2, t.FieldFocus().Alpha(0.3))
 	}
 	btn.Background(bg).Transition(theme.ColorsTransition(150 * time.Millisecond))
 	fg = btn.AnimateColor("text", fg, theme.Tween(150*time.Millisecond))

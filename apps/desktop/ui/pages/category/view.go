@@ -140,7 +140,7 @@ func (p *Page) filterProps(c *ui.Context, t *theme.Theme) bar.FilterBarProps {
 // backButton：flex rounded-md items-center text-brand-600 hover:text-brand-900 mb-6（dark：brand-400 / brand-200），
 // i-mdi-arrow-left text-2xl mr-1。回到收藏夹列表。
 func (p *Page) backButton(c *ui.Context, t *theme.Theme) {
-	btn := ui.ButtonBase(c.Key("back")).AlignSelf(ui.Start).AlignItems(ui.Center).Radius(6).Margin(0, 0, 24, 0).FocusRing(false)
+	btn := ui.ButtonBase(c.Key("back")).AlignSelf(ui.Start).AlignItems(ui.Center).Radius(t.ControlRadius(6)).Margin(0, 0, 24, 0).FocusRing(false)
 	color := t.Pick(theme.Brand600, theme.Brand400)
 	if btn.Hovered() {
 		color = t.Pick(theme.Brand900, theme.Brand200)
@@ -232,7 +232,7 @@ func (p *Page) batchRemoveButton(c *ui.Context, t *theme.Theme) {
 
 // addGameButton 是 actionButton：glass-btn-neutral rounded-lg bg-neutral-600 px-4 py-2 text-sm font-medium text-white。
 func (p *Page) addGameButton(c *ui.Context, t *theme.Theme) {
-	btn := ui.ButtonBase(c.Key("add-game")).Padding(8, 16).Radius(8).AlignItems(ui.Center).FocusRing(false).Label(locales.CategoryAddGameBtn())
+	btn := ui.ButtonBase(c.Key("add-game")).Padding(8, 16).Radius(t.ControlRadius(8)).AlignItems(ui.Center).FocusRing(false).Label(locales.CategoryAddGameBtn())
 	g := t.GlassButton(theme.GlassNeutral, theme.BtnColors{Bg: t.PrimaryBtn, Hover: t.PrimaryBtnHover, Text: t.PrimaryBtnText})
 	bg := g.Bg
 	if btn.Hovered() {

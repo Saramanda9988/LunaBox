@@ -52,7 +52,7 @@ func (s *State) actionsCard(c *ui.Context, t *theme.Theme, p panel.Settings, cfg
 // backupButton：glass-btn-neutral px-4 py-2 bg-neutral-600 text-white rounded-md hover:bg-neutral-700
 // disabled:opacity-50 flex items-center gap-2，备份中前面是 i-mdi-loading animate-spin（1em）。
 func backupButton(c *ui.Context, t *theme.Theme, busy, disabled bool) ui.Element {
-	btn := ui.ButtonBase(c.Key("backup-now")).Padding(8, 16).Radius(6).Gap(8).AlignItems(ui.Center).Shrink(0).FocusRing(false)
+	btn := ui.ButtonBase(c.Key("backup-now")).Padding(8, 16).Radius(t.ControlRadius(6)).Gap(8).AlignItems(ui.Center).Shrink(0).FocusRing(false)
 	g := t.GlassButton(theme.GlassNeutral, theme.BtnColors{Bg: t.PrimaryBtn, Hover: t.PrimaryBtnHover, Text: t.PrimaryBtnText})
 	bg := g.Bg
 	if btn.Hovered() && !disabled {
@@ -164,7 +164,7 @@ func (s *State) backupRow(c *ui.Context, t *theme.Theme, p panel.Settings, b vo.
 // iconButton：p-2 rounded transition-colors 的图标按钮，i-mdi-* text-xl（进行中是 i-mdi-loading animate-spin），
 // 悬停换背景，disabled:opacity-50。原版的按钮没有文字，无障碍名称用对应弹窗的标题。
 func iconButton(c *ui.Context, t *theme.Theme, key, label, icon string, busy bool, color, hover ui.Color, disabled bool) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Padding(8).Radius(4).FocusRing(false).Label(label)
+	btn := ui.ButtonBase(c.Key(key)).Padding(8).Radius(t.ControlRadius(4)).FocusRing(false).Label(label)
 	if btn.Hovered() && !disabled {
 		btn.Background(hover)
 	}
@@ -193,7 +193,7 @@ func (s *State) cloudCard(c *ui.Context, t *theme.Theme, p panel.Settings, cfg *
 			})
 			// p-2 text-brand-600 hover:bg-brand-100 dark:hover:bg-brand-700 rounded disabled:opacity-50
 			disabled := s.loadingCloud || s.disabled()
-			btn := ui.ButtonBase(c.Key("refresh")).Padding(8).Radius(4).FocusRing(false).Label(locales.NativeBackupRefreshCloud())
+			btn := ui.ButtonBase(c.Key("refresh")).Padding(8).Radius(t.ControlRadius(4)).FocusRing(false).Label(locales.NativeBackupRefreshCloud())
 			if btn.Hovered() && !disabled {
 				btn.Background(t.Pick(theme.Brand100, theme.Brand700))
 			}

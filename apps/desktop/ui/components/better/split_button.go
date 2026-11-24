@@ -108,7 +108,7 @@ func splitPart(c *ui.Context, t *theme.Theme, key string, disabled bool) ui.Elem
 // splitOption：flex w-full items-center rounded-lg px-3 py-2.5 text-sm，聚焦或选中时 bg-brand-100 dark:bg-brand-700
 // （悬停取 MenuHover，选中取 MenuSelected，文字 MenuText，对勾 MenuCheck）。
 func splitOption(c *ui.Context, t *theme.Theme, o SplitOption, selected bool, choose func()) {
-	row := ui.ButtonBase(c.Key(o.Key)).FillWidth().Padding(10, 12).Radius(8).AlignItems(ui.Center).
+	row := ui.ButtonBase(c.Key(o.Key)).FillWidth().Padding(10, 12).Radius(t.ControlRadius(8)).AlignItems(ui.Center).
 		Justify(ui.Start).FocusRing(false)
 	switch {
 	case row.Hovered():

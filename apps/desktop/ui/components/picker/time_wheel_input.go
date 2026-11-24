@@ -52,7 +52,7 @@ func FormatClockMinutes(v int) string {
 func TimeWheelInput(c *ui.Context, t *theme.Theme, key string, p TimeWheelInputProps) ui.Element {
 	minutes := ParseClockMinutes(p.Value)
 	btn := ui.ButtonBase(c.Key(key)).FillWidth().MinWidth(0).Gap(4).Padding(0, 4, 0, 0).AlignItems(ui.Center).
-		Justify(ui.Start).Radius(6).FocusRing(false).Background(t.Pick(theme.White, theme.Brand700)).
+		Justify(ui.Start).Radius(t.ControlRadius(6)).FocusRing(false).Background(t.Pick(theme.White, theme.Brand700)).
 		Border(t.HL, t.Pick(theme.Brand300, theme.Brand600))
 	if p.ActionLabel != "" {
 		btn.Label(p.ActionLabel)
@@ -65,7 +65,7 @@ func TimeWheelInput(c *ui.Context, t *theme.Theme, key string, p TimeWheelInputP
 		btn.OnClick(func() { *open = !*open })
 	}
 	if btn.Focused() {
-		btn.Shadow(0, 0, 0, 2, theme.Neutral500)
+		btn.Shadow(0, 0, 0, 2, t.FieldFocus())
 	}
 	var clock ui.Element
 	btn.Children(func() {
@@ -84,7 +84,7 @@ func TimeWheelInput(c *ui.Context, t *theme.Theme, key string, p TimeWheelInputP
 	ui.PopoverBase(c, btn, open, func(panel ui.Element) {
 		winW, _ := c.Size()
 		panel.AttachTo(btn, ui.AnchorBottomRight, ui.AnchorTopRight).Margin(8, 0, 0, 0).
-			Width(min(288, winW-32)).Padding(12).Radius(12).Background(t.Pick(theme.White, theme.Brand800)).
+			Width(min(288, winW-32)).Padding(12).Radius(t.PanelRadius(12)).Background(t.Pick(theme.White, theme.Brand800)).
 			Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).
 			Shadow(0, 20, 25, -5, ui.RGBA(0, 0, 0, 0.1)).Shadow(0, 8, 10, -6, ui.RGBA(0, 0, 0, 0.1)).
 			OnShortcut(0, ui.KeyEscape, func() { *open = false })

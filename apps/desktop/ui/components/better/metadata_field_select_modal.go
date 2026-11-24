@@ -83,7 +83,7 @@ func tagsHelpText(replace bool) string {
 // 没有 OnTagSettings 时显示当前的更新方式。
 func tagsFieldHelp(c *ui.Context, t *theme.Theme, p MetadataFieldSelectProps) {
 	if p.OnTagSettings == nil {
-		components.Text(c, tagsHelpText(p.TagsReplace), theme.FontStep{Size: 12, Line: 19.5}, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400))
+		components.Text(c, tagsHelpText(p.TagsReplace), theme.FontStep{Size: 12, Line: 19.5}, theme.WeightNormal, t.TextMuted)
 		return
 	}
 	label := locales.NativeMetadataUpdateFieldsTagsSettings()
@@ -103,12 +103,12 @@ func tagsFieldHelp(c *ui.Context, t *theme.Theme, p MetadataFieldSelectProps) {
 func tagsHelpButton(c *ui.Context, t *theme.Theme, replace bool) {
 	btn := ui.ButtonBase(c.Key("tags-help-icon")).Size(18, 18).Radius(999).Center().Shrink(0).FocusRing(false).
 		Label(locales.NativeMetadataUpdateFieldsTagsHelpLabel())
-	color := t.Pick(theme.Brand400, theme.Brand500)
+	color := t.TextFaint
 	switch {
 	case replace:
 		color = t.Pick(theme.Warning600, theme.Warning400)
 	case btn.Hovered():
-		color = t.Pick(theme.Brand700, theme.Brand200)
+		color = t.Themed("text", t.Text, t.Pick(theme.Brand700, theme.Brand200))
 	}
 	btn.OnClick(func() { showTooltipNow(c, btn) }).Children(func() { components.Icon(c, "help-circle-outline", 15, color) })
 	Tooltip(c, t, btn, tagsHelpText(replace))
@@ -134,18 +134,18 @@ func MetadataFieldSelectModal(c *ui.Context, t *theme.Theme, key string, p Metad
 				// min-w-0 space-y-2：text-xl font-bold 的标题与 text-sm leading-relaxed 的说明
 				ui.Column(c).MinWidth(0).Gap(8).Children(func() {
 					components.Text(c, p.Title, theme.TextXL, theme.WeightBold, t.TextStrong)
-					components.Text(c, p.Description, theme.FontStep{Size: 14, Line: 22.75}, theme.WeightNormal, t.Pick(theme.Brand600, theme.Brand400))
+					components.Text(c, p.Description, theme.FontStep{Size: 14, Line: 22.75}, theme.WeightNormal, t.Themed("textMuted", t.TextMuted, t.Pick(theme.Brand600, theme.Brand400)))
 				})
 				fieldModalCloseButton(c, t, "close", locales.CommonClose(), closeModal)
 			})
 			// mt-5 rounded-lg border border-brand-200 bg-brand-50 p-3 dark:border-brand-700 dark:bg-brand-700/40
-			ui.Row(c.Key("all")).Margin(20, 0, 0, 0).Gap(16).Padding(12).Radius(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).
-				Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).Background(t.Pick(theme.Brand50, theme.Brand700.Alpha(0.4))).
+			ui.Row(c.Key("all")).Margin(20, 0, 0, 0).Gap(16).Padding(12).Radius(t.PanelRadius(8)).AlignItems(ui.Center).Justify(ui.SpaceBetween).
+				Border(t.HL, t.PanelBorder).Background(t.Themed("chipBg", t.ChipBg, t.Pick(theme.Brand50, theme.Brand700.Alpha(0.4)))).
 				Children(func() {
 					ui.Column(c).Gap(4).Children(func() {
-						components.Text(c, locales.MetadataUpdateFieldsSelectAll(), theme.TextSM, theme.WeightSemibold, t.Pick(theme.Brand800, theme.Brand200))
+						components.Text(c, locales.MetadataUpdateFieldsSelectAll(), theme.TextSM, theme.WeightSemibold, t.Themed("text", t.Text, t.Pick(theme.Brand800, theme.Brand200)))
 						components.Text(c, locales.MetadataUpdateFieldsSelectedCount(strconv.Itoa(len(fields)), strconv.Itoa(len(all))), theme.TextXS,
-							theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400))
+							theme.WeightNormal, t.TextMuted)
 					})
 					Switch(c, t, "switch", len(fields) == len(all), false, func(on bool) {
 						*p.Fields = nil
@@ -208,13 +208,13 @@ func MetadataFieldSelectModal(c *ui.Context, t *theme.Theme, key string, p Metad
 // note.Text 不为空时是名称后面的小标签（天蓝色，Warn 时琥珀色）。tags 不为 nil 时（自动标签）名称后面有问号，
 // 说明是当前的更新方式（tagsFieldHelp）。
 func metadataFieldToggle(c *ui.Context, t *theme.Theme, text [2]string, note FieldNote, tags *MetadataFieldSelectProps, checked bool, onChange func(bool)) {
-	ui.Row(c).MinWidth(0).Gap(12).Padding(12).Radius(8).AlignItems(ui.Center).Justify(ui.SpaceBetween).
-		Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).Children(func() {
+	ui.Row(c).MinWidth(0).Gap(12).Padding(12).Radius(t.PanelRadius(8)).AlignItems(ui.Center).Justify(ui.SpaceBetween).
+		Border(t.HL, t.PanelBorder).Children(func() {
 		lb := ui.ButtonBase(c.Key("label")).Column().Grow(1).Basis(0).MinWidth(0).Gap(4).AlignItems(ui.Start).
 			FocusRing(false).Label(text[0])
 		lb.OnClick(func() { onChange(!checked) }).Children(func() {
 			ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
-				components.Text(c, text[0], theme.TextSM, theme.WeightMedium, t.Pick(theme.Brand800, theme.Brand200))
+				components.Text(c, text[0], theme.TextSM, theme.WeightMedium, t.Themed("text", t.Text, t.Pick(theme.Brand800, theme.Brand200)))
 				if tags != nil {
 					tagsHelpButton(c, t, tags.TagsReplace)
 				}
@@ -225,7 +225,7 @@ func metadataFieldToggle(c *ui.Context, t *theme.Theme, text [2]string, note Fie
 			if tags != nil {
 				tagsFieldHelp(c, t, *tags)
 			} else {
-				components.Text(c, text[1], theme.FontStep{Size: 12, Line: 19.5}, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400))
+				components.Text(c, text[1], theme.FontStep{Size: 12, Line: 19.5}, theme.WeightNormal, t.TextMuted)
 			}
 		})
 		Switch(c, t, "switch", checked, false, onChange)
@@ -257,11 +257,11 @@ func fieldNoteBadge(c *ui.Context, t *theme.Theme, note FieldNote) {
 // fieldModalCloseButton 是右上角的关闭按钮：rounded-lg p-2 text-brand-500 hover:bg-brand-100 hover:text-brand-800
 // dark:text-brand-400 dark:hover:bg-brand-700 dark:hover:text-brand-100，i-mdi-close text-xl。
 func fieldModalCloseButton(c *ui.Context, t *theme.Theme, key, label string, onClick func()) {
-	btn := ui.ButtonBase(c.Key(key)).Padding(8).Radius(8).Center().Shrink(0).FocusRing(false).Label(label)
-	color := t.Pick(theme.Brand500, theme.Brand400)
+	btn := ui.ButtonBase(c.Key(key)).Padding(8).Radius(t.ControlRadius(8)).Center().Shrink(0).FocusRing(false).Label(label)
+	color := t.TextMuted
 	if btn.Hovered() {
-		btn.Background(t.Pick(theme.Brand100, theme.Brand700))
-		color = t.Pick(theme.Brand800, theme.Brand100)
+		btn.Background(t.MenuHover)
+		color = t.Themed("textStrong", t.TextStrong, t.Pick(theme.Brand800, theme.Brand100))
 	}
 	btn.Transition(theme.ColorsTransition(150 * time.Millisecond))
 	btn.OnClick(onClick).Children(func() { components.Icon(c, "close", 20, color) })

@@ -178,7 +178,7 @@ func systemPrompt(c *ui.Context, t *theme.Theme, p panel.Settings) {
 // promptButton：px-2 py-1 text-xs bg-brand-100 dark:bg-brand-700 text-brand-600 dark:text-brand-300 rounded
 // hover:bg-brand-200 dark:hover:bg-brand-600 transition-colors。
 func promptButton(c *ui.Context, t *theme.Theme, key, label string, onClick func()) {
-	btn := ui.ButtonBase(c.Key(key)).Padding(4, 8).Radius(4).FocusRing(false)
+	btn := ui.ButtonBase(c.Key(key)).Padding(4, 8).Radius(t.ControlRadius(4)).FocusRing(false)
 	bg := t.Pick(theme.Brand100, theme.Brand700)
 	if btn.Hovered() {
 		bg = t.Pick(theme.Brand200, theme.Brand600)

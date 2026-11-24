@@ -182,6 +182,7 @@ type Palette struct {
 	ToolBtnActiveBg, ToolBtnActiveBorder, ToolBtnActiveText          ui.Color
 
 	PrimaryBtn, PrimaryBtnHover, PrimaryBtnText ui.Color // 主按钮与开关打开时的底色、悬停色、文字色
+	DangerBtn, DangerBtnHover, DangerBtnText    ui.Color // 危险操作按钮（删除、确认危险操作）的底色、悬停色、文字色
 
 	// 强调色：选中、当前状态与品牌点缀（插件的 brand / accent 颜色令牌也取它们）。
 	Accent, AccentText, AccentSoft, AccentSoftText ui.Color // 实心强调、浅底上的强调文字、柔和强调底、柔和底上的文字
@@ -206,9 +207,12 @@ type Palette struct {
 
 	SelectBg, SelectBorder, SelectText ui.Color
 	ListFocus, ListSelected            ui.Color
-	SwitchOff                          ui.Color
+	SwitchOff, SwitchThumb             ui.Color // 开关关闭时的轨道色、滑块色
 
 	TooltipBg, TooltipText, TooltipBorder ui.Color
+
+	// custom 记录本帧被主题插件覆盖过的令牌名（camelCase，同 ThemePaletteTokens），见 Customized / Themed。
+	custom map[string]bool
 }
 
 // NewPalette 返回浅色或深色主题的色板。
@@ -226,6 +230,7 @@ func NewPalette(dark bool) Palette {
 			ToolBtnBg: Brand700, ToolBtnBorder: Brand700, ToolBtnHover: Brand600, ToolBtnIcon: Brand300, ToolBtnText: Brand300,
 			ToolBtnActiveBg: Brand600, ToolBtnActiveBorder: Brand500, ToolBtnActiveText: White,
 			PrimaryBtn: Neutral600, PrimaryBtnHover: Neutral700, PrimaryBtnText: White,
+			DangerBtn: Error600, DangerBtnHover: Error700, DangerBtnText: White,
 			Accent: Primary500, AccentText: Primary400, AccentSoft: Primary900, AccentSoftText: Primary300,
 			TabText: Brand400, TabHover: Brand300, TabActive: Neutral400, TabIndicator: Neutral500,
 			ActionBtnBg: Brand700, ActionBtnHover: Brand600, ActionBtnIcon: Brand400, ActionBtnIconHover: Brand100,
@@ -239,7 +244,7 @@ func NewPalette(dark bool) Palette {
 			ChipActiveBg: Brand700, ChipActiveText: Brand200, ChipRing: Brand500,
 			SelectBg: Brand700, SelectBorder: Brand600, SelectText: White,
 			ListFocus: Brand700, ListSelected: Brand750,
-			SwitchOff: Brand750,
+			SwitchOff: Brand750, SwitchThumb: White,
 			TooltipBg: Brand100, TooltipText: Brand900, TooltipBorder: Brand200,
 		}
 	}
@@ -254,6 +259,7 @@ func NewPalette(dark bool) Palette {
 		ToolBtnBg: Brand150, ToolBtnBorder: Brand200, ToolBtnHover: Brand200, ToolBtnIcon: Brand600, ToolBtnText: Brand700,
 		ToolBtnActiveBg: Brand200, ToolBtnActiveBorder: Brand300, ToolBtnActiveText: Brand900,
 		PrimaryBtn: Neutral600, PrimaryBtnHover: Neutral700, PrimaryBtnText: White,
+		DangerBtn: Error500, DangerBtnHover: Error600, DangerBtnText: White,
 		Accent: Primary500, AccentText: Primary600, AccentSoft: Primary100, AccentSoftText: Primary700,
 		TabText: Brand700, TabHover: Brand750, TabActive: Brand700, TabIndicator: Neutral500,
 		ActionBtnBg: Brand150, ActionBtnHover: Brand200, ActionBtnIcon: Brand500, ActionBtnIconHover: Brand900,
@@ -267,7 +273,7 @@ func NewPalette(dark bool) Palette {
 		ChipActiveBg: Brand100, ChipActiveText: Brand700, ChipRing: Brand300,
 		SelectBg: White, SelectBorder: Brand300, SelectText: Brand900,
 		ListFocus: Neutral100, ListSelected: Neutral50,
-		SwitchOff: Brand300,
+		SwitchOff: Brand300, SwitchThumb: White,
 		TooltipBg: Brand900, TooltipText: White, TooltipBorder: White.Alpha(0.1),
 	}
 }
@@ -280,12 +286,25 @@ func (p *Palette) Pick(light, dark ui.Color) ui.Color {
 	return light
 }
 
-// PrimaryOr 在主按钮仍是内置的 neutral-600 时返回 def，否则返回 custom。
+// Customized 报告主题插件是否覆盖了名为 name 的色板令牌（camelCase，同 ThemePaletteTokens 的键）。
+func (p *Palette) Customized(name string) bool { return p.custom[name] }
+
+// Themed 在主题插件覆盖了 name 令牌时返回 token，否则返回 def。
+// 用于默认外观与语义令牌的默认值不完全一致的组件：内置主题保持原有的像素级外观，
+// 主题插件覆盖该令牌后组件跟随主题（如 t.Themed("inputBg", t.InputBg, t.Pick(White, Brand700))）。
+func (p *Palette) Themed(name string, token, def ui.Color) ui.Color {
+	if p.custom[name] {
+		return token
+	}
+	return def
+}
+
+// PrimaryOr 在主题插件没有覆盖主按钮色（primaryBtn）时返回 def，否则返回 custom。
 // 用于主按钮周边那些与 PrimaryBtn* 不完全一致的默认取值（更亮的描边、遮罩上的悬停色等），
 // 保持默认外观不变，同时让插件换了主按钮色后跟随。
 func (p *Palette) PrimaryOr(def, custom ui.Color) ui.Color {
-	if p.PrimaryBtn == Neutral600 {
-		return def
+	if p.custom["primaryBtn"] {
+		return custom
 	}
-	return custom
+	return def
 }

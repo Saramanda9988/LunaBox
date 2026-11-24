@@ -52,8 +52,8 @@ type DataTableProps[T any] struct {
 // 有 MaxHeight 时表头固定在滚动区外（sticky），滚动条（components.ScrollArea）只在表体旁边；原版的滚动条从表头开始。
 func DataTable[T any](c *ui.Context, t *theme.Theme, key string, p DataTableProps[T]) ui.Element {
 	// 玻璃模式：data-glass:bg-white/10 data-glass:dark:bg-black/10
-	box := ui.Column(c.Key(key)).FillWidth().Radius(8).Clip().Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).
-		Background(t.IfGlass(t.Pick(theme.White.Alpha(0.8), theme.Brand900.Alpha(0.5)), theme.White.Alpha(0.1), theme.Black.Alpha(0.1)))
+	box := ui.Column(c.Key(key)).FillWidth().Radius(t.PanelRadius(8)).Clip().Border(t.HL, t.PanelBorder).
+		Background(t.IfGlass(t.Themed("cardBg", t.CardBg, t.Pick(theme.White.Alpha(0.8), theme.Brand900.Alpha(0.5))), theme.White.Alpha(0.1), theme.Black.Alpha(0.1)))
 	sb := ui.Local(box, "scroll", func() components.ScrollBar { return components.ScrollBar{} })
 	// cell 按列宽设置格子：固定宽度，或按 Width 的比例分宽度。
 	cell := func(e ui.Element, col DataTableColumn[T]) ui.Element {
@@ -87,7 +87,7 @@ func DataTable[T any](c *ui.Context, t *theme.Theme, key string, p DataTableProp
 			for i, row := range p.Rows {
 				tr := ui.Row(c.Key(p.RowKey(row, i))).AlignItems(ui.Stretch)
 				if tr.Hovered() {
-					tr.Background(t.Pick(theme.Brand50.Alpha(0.8), theme.Brand800.Alpha(0.7)))
+					tr.Background(t.Themed("listFocus", t.ListFocus, t.Pick(theme.Brand50.Alpha(0.8), theme.Brand800.Alpha(0.7))))
 				}
 				if p.RowOpacity != nil {
 					if o := p.RowOpacity(row, i); o > 0 && o < 1 {
@@ -120,8 +120,8 @@ func DataTable[T any](c *ui.Context, t *theme.Theme, key string, p DataTableProp
 			}
 		}
 		// 表头：bg-brand-50/95 dark:bg-brand-800/95，data-glass:bg-white/20 data-glass:dark:bg-black/30
-		thead := t.IfGlass(t.Pick(theme.Brand50.Alpha(0.95), theme.Brand800.Alpha(0.95)), theme.White.Alpha(0.2), theme.Black.Alpha(0.3))
-		headColor, headBorder := t.Pick(theme.Brand600, theme.Brand300), t.Pick(theme.Brand200, theme.Brand700)
+		thead := t.IfGlass(t.Themed("panelBg", t.PanelBg, t.Pick(theme.Brand50.Alpha(0.95), theme.Brand800.Alpha(0.95))), theme.White.Alpha(0.2), theme.Black.Alpha(0.3))
+		headColor, headBorder := t.Themed("textMuted", t.TextMuted, t.Pick(theme.Brand600, theme.Brand300)), t.PanelBorder
 		// th 都与最高的一格同高（表格行），内容垂直居中
 		ui.Row(c.Key("thead")).Padding(0, gutter, 0, 0).AlignItems(ui.Stretch).Background(thead).Children(func() {
 			if sel != nil {

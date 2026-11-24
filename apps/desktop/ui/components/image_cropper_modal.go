@@ -778,7 +778,7 @@ func cropperAspectBar(c *ui.Context, t *theme.Theme, s *cropperState, p ImageCro
 		for _, o := range options {
 			// 原版比较 aspect === 选项的值：窗口正好是 16:9 时两个按钮都高亮。
 			active := s.aspect == o.aspect
-			btn := ui.ButtonBase(c.Key("aspect-"+o.key)).Padding(4, 12).Radius(6).FocusRing(false).Shrink(0)
+			btn := ui.ButtonBase(c.Key("aspect-"+o.key)).Padding(4, 12).Radius(t.ControlRadius(6)).FocusRing(false).Shrink(0)
 			bg, fg := t.PrimaryBtn, t.PrimaryBtnText
 			if !active {
 				bg, fg = t.Pick(theme.Brand100, theme.Brand700), t.Pick(theme.Brand700, theme.Brand300)
@@ -798,7 +798,7 @@ func cropperAspectBar(c *ui.Context, t *theme.Theme, s *cropperState, p ImageCro
 // cropperFooterButton：px-4 py-2 rounded-md text-sm font-medium transition-colors；取消 bg-brand-100 text-brand-700
 // hover:bg-brand-200（dark:bg-brand-700 text-brand-300 hover:bg-brand-600），确认 bg-neutral-600 text-white hover:bg-neutral-700。
 func cropperFooterButton(c *ui.Context, t *theme.Theme, key, label string, primary bool) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Padding(8, 16).Radius(6).FocusRing(false)
+	btn := ui.ButtonBase(c.Key(key)).Padding(8, 16).Radius(t.ControlRadius(6)).FocusRing(false)
 	bg, fg := t.Pick(theme.Brand100, theme.Brand700), t.Pick(theme.Brand700, theme.Brand300)
 	if btn.Hovered() {
 		bg = t.Pick(theme.Brand200, theme.Brand600)

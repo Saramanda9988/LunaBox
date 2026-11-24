@@ -264,7 +264,7 @@ func active(r *ui.Router, path string) bool {
 func navLink(c *ui.Context, t *theme.Theme, r *ui.Router, item navItem, reveal float32) {
 	on := active(r, item.path)
 	label := item.label()
-	link := ui.ButtonBase(c.Key(item.path)).Padding(8).Radius(12).AlignItems(ui.Center).
+	link := ui.ButtonBase(c.Key(item.path)).Padding(8).Radius(t.ControlRadius(12)).AlignItems(ui.Center).
 		Justify(ui.Start).FocusRing(false).Label(label)
 	color := t.NavText
 	switch {
@@ -327,7 +327,7 @@ func cloudSyncButton(c *ui.Context, t *theme.Theme, p SideBarProps) {
 	serviceOn := cfg != nil && cfg.CloudBackupEnabled
 	syncOn := serviceOn && cfg.CloudSyncEnabled
 
-	btn := ui.ButtonBase(c.Key("cloud")).Padding(10).Radius(12).Center().FocusRing(false).Label(locales.SideBarCloudSync())
+	btn := ui.ButtonBase(c.Key("cloud")).Padding(10).Radius(t.ControlRadius(12)).Center().FocusRing(false).Label(locales.SideBarCloudSync())
 	s.track(p.Env, cfg, syncOn && btn.Hovered())
 	st := s.effective(cfg)
 	busy := s.busy(st)
@@ -373,7 +373,7 @@ func cloudSyncButton(c *ui.Context, t *theme.Theme, p SideBarProps) {
 	ui.Overlay(c, func() {
 		// glass-panel，data-glass:bg-white/78 data-glass:dark:bg-black/42
 		_, border := t.GlassPanel(ui.Transparent, t.Pick(theme.Brand200.Alpha(0.8), theme.Brand700.Alpha(0.8)))
-		panel := ui.Column(c).Width(176).Padding(10).Gap(8).Radius(8).
+		panel := ui.Column(c).Width(176).Padding(10).Gap(8).Radius(t.PanelRadius(8)).
 			Background(t.IfGlass(t.Pick(theme.White.Alpha(0.92), theme.Brand900.Alpha(0.88)), theme.White.Alpha(0.78), theme.Black.Alpha(0.42))).
 			Border(t.HL, border).Opacity(show).PassThrough()
 		if !t.Glass {

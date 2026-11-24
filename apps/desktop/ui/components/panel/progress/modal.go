@@ -191,7 +191,7 @@ func loadingBlock(c *ui.Context, t *theme.Theme, h float32) {
 // textField：glass-input w-full px-3 py-2 border border-brand-300 dark:border-brand-600 rounded-md shadow-sm
 // focus:ring-2 focus:ring-neutral-500 dark:bg-brand-700 dark:text-white text-sm。
 func textField(c *ui.Context, t *theme.Theme, key string, value *string, placeholder string) ui.Element {
-	in := ui.TextInputBase(c.Key(key), value).FillWidth().Padding(8, 12).Radius(6).
+	in := ui.TextInputBase(c.Key(key), value).FillWidth().Padding(8, 12).Radius(t.ControlRadius(6)).
 		FontSize(theme.TextSM.Size).FixedLineHeight(theme.TextSM.Line).TextColor(t.TextStrong).
 		Background(t.Pick(theme.White, theme.Brand700)).Placeholder(placeholder).Label(placeholder).
 		Border(t.HL, t.Pick(theme.Brand300, theme.Brand600))
@@ -199,7 +199,7 @@ func textField(c *ui.Context, t *theme.Theme, key string, value *string, placeho
 		in.Font(theme.UIFont)
 	}
 	if in.Focused() {
-		in.Shadow(0, 0, 0, 2, theme.Neutral500)
+		in.Shadow(0, 0, 0, 2, t.FieldFocus())
 	}
 	in.Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.05))
 	return in
@@ -209,10 +209,10 @@ func textField(c *ui.Context, t *theme.Theme, key string, value *string, placeho
 // hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 disabled:opacity-50，
 // 图标 i-mdi-playlist-plus（保存中 i-mdi-loading animate-spin）。
 func submitButton(c *ui.Context, t *theme.Theme, saving, disabled bool) ui.Element {
-	btn := ui.ButtonBase(c.Key("submit")).Padding(8, 16).Radius(8).Gap(8).AlignItems(ui.Center).FocusRing(false)
+	btn := ui.ButtonBase(c.Key("submit")).Padding(8, 16).Radius(t.ControlRadius(8)).Gap(8).AlignItems(ui.Center).FocusRing(false)
 	bg, fg := t.PrimaryBtn, t.PrimaryBtnText
 	hover := t.PrimaryBtnHover
-	if t.Dark && t.PrimaryBtn == theme.Neutral600 {
+	if t.Dark && !t.Customized("primaryBtn") {
 		bg, fg, hover = theme.White, neutral900, neutral200 // 默认色板下深色主题是反色按钮
 	}
 	if btn.Hovered() && !disabled {

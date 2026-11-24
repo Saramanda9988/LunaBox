@@ -275,7 +275,7 @@ func (a *AddGame) View(c *ui.Context, t *theme.Theme, onAdded func()) {
 			}
 			ui.Row(c.Key("header")).Margin(0, 0, mb, 0).AlignItems(ui.Center).Justify(ui.SpaceBetween).Children(func() {
 				components.Text(c, locales.LibraryAddGame(), theme.Text4XL, theme.WeightBold, t.TextStrong)
-				btn := ui.ButtonBase(c.Key("close")).Size(32, 32).Radius(8).Center().Shrink(0).FocusRing(false).Label(locales.CommonCancel())
+				btn := ui.ButtonBase(c.Key("close")).Size(32, 32).Radius(t.ControlRadius(8)).Center().Shrink(0).FocusRing(false).Label(locales.CommonCancel())
 				color := t.Pick(theme.Brand500, theme.Brand400)
 				if btn.Hovered() {
 					color = t.Pick(theme.Brand100, theme.Brand700) // 按钮本身是 mask 图标，hover:bg 盖过了文字颜色
@@ -357,7 +357,7 @@ func (a *AddGame) typeCard(c *ui.Context, t *theme.Theme, key string, art int, t
 // field 是弹窗里 box-border block w-full rounded-lg border border-brand-300 bg-brand-50 p-3 text-brand-900
 // dark:border-brand-600 dark:bg-brand-700 dark:text-white 的输入框（text-base）。
 func field(c *ui.Context, t *theme.Theme, key string, value *string, label, placeholder string) ui.Element {
-	in := ui.TextInputBase(c.Key(key), value).FillWidth().Padding(12).Radius(8).
+	in := ui.TextInputBase(c.Key(key), value).FillWidth().Padding(12).Radius(t.ControlRadius(8)).
 		FontSize(theme.TextBase.Size).FixedLineHeight(theme.TextBase.Line).TextColor(t.TextStrong).
 		Background(t.Pick(theme.Brand50, theme.Brand700)).Border(t.HL, t.Pick(theme.Brand300, theme.Brand600)).Label(label)
 	if placeholder != "" {
@@ -379,7 +379,7 @@ func labeled(c *ui.Context, t *theme.Theme, key, label string, content func()) {
 
 // primary 是 rounded-lg bg-neutral-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50。
 func primary(c *ui.Context, t *theme.Theme, key, label string, disabled bool, onClick func()) ui.Element {
-	btn := solidButton(c, key, label, t.PrimaryBtn, t.PrimaryBtnHover, t.PrimaryBtnText, disabled, false, 20, 10)
+	btn := solidButton(c, t, key, label, t.PrimaryBtn, t.PrimaryBtnHover, t.PrimaryBtnText, disabled, false, 20, 10)
 	if !disabled {
 		btn.OnClick(onClick)
 	}
@@ -400,7 +400,7 @@ func (a *AddGame) searchButton(c *ui.Context, t *theme.Theme, key, by, idle stri
 		return primary(c, t, key, a.searchLabel(idle), disabled, onClick)
 	}
 	label := locales.NativeClickToCancel()
-	btn := ui.ButtonBase(c.Key(key)).Padding(10, 20).Radius(8).Gap(8).Center().FocusRing(false).Label(label)
+	btn := ui.ButtonBase(c.Key(key)).Padding(10, 20).Radius(t.ControlRadius(8)).Gap(8).Center().FocusRing(false).Label(label)
 	bg := t.PrimaryBtn
 	if btn.Hovered() {
 		bg = t.PrimaryBtnHover
@@ -416,7 +416,7 @@ func (a *AddGame) searchButton(c *ui.Context, t *theme.Theme, key, by, idle stri
 // localStep（space-y-6）：选择可执行文件（w-full py-4 bg-neutral-500 的按钮）、只读的路径、游戏名，底部返回、手动添加与搜索。
 func (a *AddGame) localStep(c *ui.Context, t *theme.Theme) {
 	ui.Column(c.Key("local-step")).Gap(24).Children(func() {
-		btn := ui.ButtonBase(c.Key("select-exe")).FillWidth().Padding(16, 0).Radius(8).Center().Gap(8).FocusRing(false)
+		btn := ui.ButtonBase(c.Key("select-exe")).FillWidth().Padding(16, 0).Radius(t.ControlRadius(8)).Center().Gap(8).FocusRing(false)
 		bg := theme.Neutral500
 		if btn.Hovered() {
 			bg = theme.Neutral600
@@ -447,7 +447,9 @@ func (a *AddGame) localStep(c *ui.Context, t *theme.Theme) {
 func (a *AddGame) sourceSelect(c *ui.Context, t *theme.Theme, opts []better.SelectOption, source enums.SourceType, tall bool) {
 	p := better.SelectProps{Value: string(source), Options: opts, OnChange: func(v string) { a.source = enums.SourceType(v) }}
 	if tall {
-		p.Style = func(btn ui.Element) { btn.Height(48).Padding(0, 40, 0, 12).AlignItems(ui.Center).Radius(8) }
+		p.Style = func(btn ui.Element) {
+			btn.Height(48).Padding(0, 40, 0, 12).AlignItems(ui.Center).Radius(t.ControlRadius(8))
+		}
 	}
 	better.Select(c, t, "source", p)
 }

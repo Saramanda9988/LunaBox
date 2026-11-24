@@ -92,7 +92,7 @@ func DatePicker(c *ui.Context, t *theme.Theme, key string, p DatePickerProps) {
 		}
 	}
 	toggle := func() { *p.Open = !*p.Open }
-	row := ui.Row(c.Key(key)).FillWidth().MinWidth(0).Gap(4).Padding(0, 4, 0, 0).AlignItems(ui.Center).Radius(6).
+	row := ui.Row(c.Key(key)).FillWidth().MinWidth(0).Gap(4).Padding(0, 4, 0, 0).AlignItems(ui.Center).Radius(t.ControlRadius(6)).
 		Background(t.Pick(theme.White, theme.Brand700)).Border(t.HL, t.Pick(theme.Brand300, theme.Brand600))
 	var field ui.Element
 	row.Children(func() {
@@ -115,14 +115,14 @@ func DatePicker(c *ui.Context, t *theme.Theme, key string, p DatePickerProps) {
 		}
 	})
 	if field.Focused() || *p.Open {
-		row.Shadow(0, 0, 0, 2, theme.Neutral500) // focus-within（打开时焦点在输入框上）
+		row.Shadow(0, 0, 0, 2, t.FieldFocus()) // focus-within（打开时焦点在输入框上）
 	}
 
 	winW, _ := c.Size()
 	ui.PopoverBase(c, row, p.Open, func(panel ui.Element) {
 		// rounded-xl border border-brand-200 bg-white p-3 shadow-xl dark:border-brand-700 dark:bg-brand-800，max-w-[calc(100vw-2rem)]；
 		// 弹出层就在页面里（不挂到 body），玻璃模式下 data-glass:bg-white/90 data-glass:backdrop-blur-20 data-glass:dark:bg-brand-900/90。
-		panel.Width(min(352, winW-32)).Margin(8, 0, 0, 0).Radius(12).Border(t.HL, t.PanelBorder).
+		panel.Width(min(352, winW-32)).Margin(8, 0, 0, 0).Radius(t.PanelRadius(12)).Border(t.HL, t.PanelBorder).
 			Shadow(0, 20, 25, -5, ui.RGBA(0, 0, 0, 0.1)).Shadow(0, 8, 10, -6, ui.RGBA(0, 0, 0, 0.1))
 		body := func() {
 			ui.Column(c).Gap(12).Children(func() {
@@ -133,7 +133,7 @@ func DatePicker(c *ui.Context, t *theme.Theme, key string, p DatePickerProps) {
 		if t.Glass {
 			// Material 取代背景，半透明的底色画在里层
 			panel.Material(glass.Blur{Radius: 20}).Children(func() {
-				ui.Column(c).Padding(12).Radius(12).Background(t.Pick(theme.White.Alpha(0.9), theme.Brand900.Alpha(0.9))).Children(body)
+				ui.Column(c).Padding(12).Radius(t.PanelRadius(12)).Background(t.Pick(theme.White.Alpha(0.9), theme.Brand900.Alpha(0.9))).Children(body)
 			})
 			return
 		}
@@ -164,7 +164,7 @@ func calendarHeader(c *ui.Context, t *theme.Theme, month *time.Time) {
 // calendarNavButton：flex h-8 w-8 rounded-lg text-brand-500 hover:bg-brand-100 hover:text-brand-900
 // dark:text-brand-400 dark:hover:bg-brand-700 dark:hover:text-white，图标 text-lg。
 func calendarNavButton(c *ui.Context, t *theme.Theme, icon, label string, onClick func()) {
-	btn := ui.ButtonBase(c.Key(label)).Size(32, 32).Radius(8).Center().Shrink(0).FocusRing(false).Label(label)
+	btn := ui.ButtonBase(c.Key(label)).Size(32, 32).Radius(t.ControlRadius(8)).Center().Shrink(0).FocusRing(false).Label(label)
 	color := t.Pick(theme.Brand500, theme.Brand400)
 	if btn.Hovered() {
 		btn.Background(t.Pick(theme.Brand100, theme.Brand700))
@@ -201,7 +201,7 @@ func calendarTable(c *ui.Context, t *theme.Theme, p DatePickerProps) {
 // text-brand-300 hover:text-brand-600 dark:text-brand-600 dark:hover:text-brand-300；本月 text-brand-700 hover:bg-brand-100
 // dark:text-brand-200 dark:hover:bg-brand-700；选中 bg-neutral-800 text-white dark:bg-white dark:text-neutral-950。
 func dayButton(c *ui.Context, t *theme.Theme, date time.Time, outside, selected bool, onClick func()) {
-	btn := ui.ButtonBase(c.Key("day")).Size(32, 32).Radius(6).Center().Shrink(0).FocusRing(false).
+	btn := ui.ButtonBase(c.Key("day")).Size(32, 32).Radius(t.ControlRadius(6)).Center().Shrink(0).FocusRing(false).
 		Label(date.Format("2006-01-02"))
 	hovered := btn.Hovered()
 	var bg, fg ui.Color

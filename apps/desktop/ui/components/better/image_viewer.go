@@ -67,7 +67,7 @@ func ImageViewer(c *ui.Context, t *theme.Theme, key string, p ImageViewerProps) 
 				}
 				return true
 			})
-			stage.Children(func() { viewerImage(c, p, s, winW-64, winH-136) })
+			stage.Children(func() { viewerImage(c, t, p, s, winW-64, winH-136) })
 
 			viewerHeader(c, t, p.Title, topOffset == 0, closeViewer)
 			viewerToolbar(c, t, s, p.OnSave, zoom)
@@ -76,13 +76,13 @@ func ImageViewer(c *ui.Context, t *theme.Theme, key string, p ImageViewerProps) 
 }
 
 // viewerImage 是可拖动的图片：transition-transform duration-100 ease-out，拖动时 cursor-grabbing。
-func viewerImage(c *ui.Context, p ImageViewerProps, s *viewerState, maxW, maxH float32) {
+func viewerImage(c *ui.Context, t *theme.Theme, p ImageViewerProps, s *viewerState, maxW, maxH float32) {
 	img := p.Image
 	if img == nil {
 		img = p.Preview
 	}
 	if img == nil {
-		components.Spinner(c, 30, theme.Brand500)
+		components.Spinner(c, 30, t.Themed("accent", t.Accent, theme.Brand500))
 		return
 	}
 	// 浏览器按图片的像素尺寸（1px = 1 CSS 像素）显示，受 max-w / max-h 限制并保持比例。
@@ -123,10 +123,10 @@ func viewerHeader(c *ui.Context, t *theme.Theme, title string, avoidTrafficLight
 		Justify(ui.SpaceBetween).Children(func() {
 		components.Text(c, title, theme.TextSM, theme.WeightMedium, t.TextStrong).SingleLine().Grow(1).Basis(0).MinWidth(0)
 		btn := viewerGlassButton(c, t, "close", locales.GameImageViewerClose(), false)
-		btn.Border(t.HL, t.Pick(theme.Brand200.Alpha(0.8), theme.Brand600.Alpha(0.8))).Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.1))
-		bg, fg := t.Pick(theme.White.Alpha(0.85), theme.Brand800.Alpha(0.85)), t.Pick(theme.Brand600, theme.Brand300)
+		btn.Border(t.HL, t.Themed("panelBorder", t.PanelBorder, t.Pick(theme.Brand200.Alpha(0.8), theme.Brand600.Alpha(0.8)))).Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.1))
+		bg, fg := t.Themed("panelBg", t.PanelBg, t.Pick(theme.White.Alpha(0.85), theme.Brand800.Alpha(0.85))), t.ToolBtnIcon
 		if btn.Hovered() {
-			bg, fg = t.Pick(theme.White, theme.Brand800), t.Pick(theme.Brand900, theme.White)
+			bg, fg = t.Themed("menuHover", t.MenuHover, t.Pick(theme.White, theme.Brand800)), t.TextStrong
 		}
 		btn.Background(bg).OnClick(onClose).Children(func() { components.Icon(c, "close", 20, fg) })
 	})
@@ -136,10 +136,10 @@ func viewerHeader(c *ui.Context, t *theme.Theme, title string, avoidTrafficLight
 func viewerToolbar(c *ui.Context, t *theme.Theme, s *viewerState, onSave func(), zoom func(float32)) {
 	ui.Row(c.Key("toolbar")).Absolute().Left(0).Right(0).Bottom(28).Justify(ui.Center).PassThrough().Children(func() {
 		bar := ui.Row(c).Padding(4).Gap(4).Radius(999).Material(glass.Blur{Radius: 24}).
-			Border(t.HL, t.Pick(theme.Brand200.Alpha(0.8), theme.Brand600.Alpha(0.8))).
+			Border(t.HL, t.Themed("panelBorder", t.PanelBorder, t.Pick(theme.Brand200.Alpha(0.8), theme.Brand600.Alpha(0.8)))).
 			Shadow(0, 10, 15, -3, ui.RGBA(0, 0, 0, 0.1)).Shadow(0, 4, 6, -4, ui.RGBA(0, 0, 0, 0.1))
 		// 毛玻璃之上的 bg-white/85：画在 bar 自己的绘制层，按钮在它之上。
-		tint := t.Pick(theme.White.Alpha(0.85), theme.Brand800.Alpha(0.85))
+		tint := t.Themed("panelBg", t.PanelBg, t.Pick(theme.White.Alpha(0.85), theme.Brand800.Alpha(0.85)))
 		bar.Draw(func(pt *ui.Painter, r ui.Rect) { pt.Fill(r, tint, r.H/2) })
 		bar.Children(func() {
 			viewerToolButton(c, t, "zoom-in", "magnify-plus-outline", locales.GameImageViewerZoomIn(), s.scale >= viewerMaxScale, func() { zoom(viewerScaleStep) })
@@ -155,10 +155,10 @@ func viewerToolbar(c *ui.Context, t *theme.Theme, s *viewerState, onSave func(),
 // viewerToolButton：h-9 w-9 rounded-full text-brand-600，悬停 bg-brand-100 text-brand-900，disabled:opacity-45。
 func viewerToolButton(c *ui.Context, t *theme.Theme, key, icon, label string, disabled bool, onClick func()) {
 	btn := viewerGlassButton(c, t, key, label, disabled)
-	fg := t.Pick(theme.Brand600, theme.Brand300)
+	fg := t.ToolBtnIcon
 	if btn.Hovered() && !disabled {
-		btn.Background(t.Pick(theme.Brand100, theme.Brand700))
-		fg = t.Pick(theme.Brand900, theme.White)
+		btn.Background(t.MenuHover)
+		fg = t.TextStrong
 	}
 	if !disabled {
 		btn.OnClick(onClick)

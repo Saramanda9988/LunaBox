@@ -364,7 +364,7 @@ func (m *StrategyModal) header(c *ui.Context, t *theme.Theme) {
 				components.Text(c, locales.NativeMetadataStrategyTitle(), theme.TextXL, theme.WeightBold, t.TextStrong)
 			})
 		})
-		btn := ui.ButtonBase(c.Key("close")).Padding(8).Radius(8).Center().Shrink(0).FocusRing(false).Label(locales.CommonClose())
+		btn := ui.ButtonBase(c.Key("close")).Padding(8).Radius(t.ControlRadius(8)).Center().Shrink(0).FocusRing(false).Label(locales.CommonClose())
 		color := t.Pick(theme.Brand500, theme.Brand400)
 		if btn.Hovered() {
 			btn.Background(t.Pick(theme.Brand100, theme.Brand700))

@@ -76,15 +76,17 @@ func ButtonColors(t *theme.Theme, v ButtonVariant, hovered bool) ButtonStyle {
 		}
 		return s
 	case ButtonDanger:
-		s := ButtonStyle{t.Pick(theme.Error500, theme.Error600), t.Pick(theme.Error500, theme.Error600), theme.White}
+		s := ButtonStyle{t.DangerBtn, t.DangerBtn, t.DangerBtnText}
 		if hovered {
-			s.Bg = t.Pick(theme.Error600, theme.Error700)
+			s.Bg = t.DangerBtnHover
 		}
 		return s
 	case ButtonGhost:
-		s := ButtonStyle{ui.Transparent, ui.Transparent, t.Pick(theme.Brand600, theme.Brand400)}
+		// 幽灵按钮：透明底，悬停加底色；主题插件覆盖 text / menuHover / textStrong 后跟随。
+		s := ButtonStyle{ui.Transparent, ui.Transparent, t.Themed("text", t.Text, t.Pick(theme.Brand600, theme.Brand400))}
 		if hovered {
-			s.Bg, s.Text = t.Pick(theme.Brand100, theme.Brand800), t.Pick(theme.Brand900, theme.Brand200)
+			s.Bg = t.Themed("menuHover", t.MenuHover, t.Pick(theme.Brand100, theme.Brand800))
+			s.Text = t.Themed("textStrong", t.TextStrong, t.Pick(theme.Brand900, theme.Brand200))
 		}
 		return s
 	}
@@ -107,7 +109,7 @@ func Button(c *ui.Context, t *theme.Theme, key string, p ButtonProps) ui.Element
 	}
 	cancelable := p.Loading && p.OnCancel != nil
 	disabled := p.Disabled || (p.Loading && !cancelable)
-	btn := ui.ButtonBase(c.Key(key)).Height(h).Radius(8).Gap(gap).Center().Shrink(0).FocusRing(false)
+	btn := ui.ButtonBase(c.Key(key)).Height(h).Radius(t.ControlRadius(8)).Gap(gap).Center().Shrink(0).FocusRing(false)
 	if p.OnCancel != nil || p.OnClick != nil {
 		btn.OnClick(func() {
 			switch {
@@ -154,7 +156,7 @@ func Button(c *ui.Context, t *theme.Theme, key string, p ButtonProps) ui.Element
 // ToolButton 对应工具栏里的 glass-btn-neutral 按钮：px-3 py-2 text-sm border rounded-lg，active 时加深。
 // 玻璃模式下 data-glass: 的底色盖过 active 的底色。内容由调用方构建，颜色用 ToolButtonColor。
 func ToolButton(c *ui.Context, t *theme.Theme, key string, active bool) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Padding(8, 12).Radius(8).Gap(8).AlignItems(ui.Center).FocusRing(false)
+	btn := ui.ButtonBase(c.Key(key)).Padding(8, 12).Radius(t.ControlRadius(8)).Gap(8).AlignItems(ui.Center).FocusRing(false)
 	bg, border := t.ToolBtnBg, t.ToolBtnBorder
 	if active {
 		bg, border = t.ToolBtnActiveBg, t.ToolBtnActiveBorder
@@ -187,7 +189,7 @@ func ToolButtonColor(t *theme.Theme, active bool) ui.Color {
 // IconButton：rounded-xl p-2 / p-2.5 的纯图标按钮，hover:bg-brand-100 dark:hover:bg-brand-700（侧边栏），
 // 玻璃模式下 data-glass:hover:bg-white/10 dark:bg-black/10，[&.active]:bg-white/20 dark:bg-black/20。
 func IconButton(c *ui.Context, t *theme.Theme, key, icon string, pad float32, active, enabled bool) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Padding(pad).Radius(12).Center().FocusRing(false)
+	btn := ui.ButtonBase(c.Key(key)).Padding(pad).Radius(t.ControlRadius(12)).Center().FocusRing(false)
 	color := t.NavText
 	switch {
 	case active:

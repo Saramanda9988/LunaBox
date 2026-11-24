@@ -202,7 +202,7 @@ func (b *BatchImport) depthStepper(c *ui.Context, t *theme.Theme, sc scanConfig,
 			components.Text(c, locales.BatchImportModalScanModeHierarchyDepthLabel(), theme.TextSM, theme.WeightMedium, t.Pick(theme.Brand700, theme.Brand200))
 			components.TextMargin(c, locales.BatchImportModalScanModeHierarchyDepthHint(level), theme.FontStep{Size: 12, Line: 15}, theme.WeightNormal, t.TextFaint, 2, 0, 0, 0)
 		})
-		ui.Row(c).Shrink(0).Padding(2).Radius(8).AlignItems(ui.Center).Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).
+		ui.Row(c).Shrink(0).Padding(2).Radius(t.ControlRadius(8)).AlignItems(ui.Center).Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).
 			Background(t.Pick(theme.Brand50, theme.Brand900.Alpha(0.3))).Children(func() {
 			stepButton(c, t, "dec", "minus", locales.BatchImportModalScanModeDecreaseDepth(), sc.hierarchyDepth == 0, func() { setDepth(sc.hierarchyDepth - 1) })
 			components.Text(c, locales.BatchImportModalScanModeHierarchyDepthValue(level), theme.TextSM, theme.WeightMedium, t.Pick(theme.Brand800, theme.Brand100)).
@@ -213,7 +213,7 @@ func (b *BatchImport) depthStepper(c *ui.Context, t *theme.Theme, sc scanConfig,
 }
 
 func stepButton(c *ui.Context, t *theme.Theme, key, icon, label string, disabled bool, onClick func()) {
-	btn := ui.ButtonBase(c.Key(key)).Size(32, 32).Radius(6).Center().FocusRing(false).Label(label)
+	btn := ui.ButtonBase(c.Key(key)).Size(32, 32).Radius(t.ControlRadius(6)).Center().FocusRing(false).Label(label)
 	fg := t.Pick(theme.Brand500, theme.Brand400)
 	if btn.Hovered() && !disabled {
 		btn.Background(t.Pick(theme.White, theme.Brand700))

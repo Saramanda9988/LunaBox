@@ -90,7 +90,7 @@ func (l *Page) missingPathsBanner(c *ui.Context, t *theme.Theme) {
 		components.Icon(c, "folder-alert-outline", 18, color)
 		components.Text(c, locales.NativeMissingPathFilter(strconv.Itoa(len(l.missing.ids))), theme.TextSM, theme.WeightMedium, color).Grow(1)
 		label := locales.NativeMissingPathFilterExit()
-		btn := ui.ButtonBase(c.Key("exit")).Padding(4, 10).Radius(6).Gap(4).AlignItems(ui.Center).FocusRing(false).Label(label).
+		btn := ui.ButtonBase(c.Key("exit")).Padding(4, 10).Radius(t.ControlRadius(6)).Gap(4).AlignItems(ui.Center).FocusRing(false).Label(label).
 			Border(t.HL, t.Pick(theme.Warning300, theme.Warning700))
 		if btn.Hovered() {
 			btn.Background(t.Pick(theme.Warning100, theme.Warning800.Alpha(0.5)))

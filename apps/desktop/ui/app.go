@@ -369,12 +369,10 @@ func (a *App) View(c *ui.Context) {
 		PluginItems:       func() { a.topbarPluginItems(c, t) },
 	}
 	if hideTopBar {
-		// 隐藏顶栏时：非首页在主内容区顶部叠加渐进式毛玻璃与同底色渐隐，
-		// 首页保留全屏模糊封面的通顶效果；上方叠加 28px 可拖动区域（避开侧边栏与右上角窗口按钮/滚动条），
+		// 隐藏顶栏时：主内容区顶部叠加渐进式毛玻璃与同底色渐隐，页面声明 FullBleedTop（首页的全屏模糊封面、
+		// 详情页贴顶的头图）时渐隐淡出；上方叠加 28px 可拖动区域（避开侧边栏与右上角窗口按钮/滚动条），
 		// 放在灵动岛之前以免遮挡灵动岛的点击与拖动。
-		if a.router.Path() != env.PathHome {
-			bar.TopBarFade(c, t, a.sidebar.Width(), !a.env.FullBleedTop)
-		}
+		bar.TopBarFade(c, t, a.sidebar.Width(), !a.env.FullBleedTop)
 		rightInset := t.Gutter()
 		if !barProps.HideWindowButtons {
 			rightInset = bar.WindowControlsWidth

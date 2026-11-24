@@ -105,7 +105,7 @@ func batchCount(c *ui.Context, t *theme.Theme, n int) {
 }
 
 func batchTextButton(c *ui.Context, t *theme.Theme, key, label string, onClick func()) {
-	btn := ui.ButtonBase(c.Key(key)).Height(32).Padding(0, 10).Radius(8).AlignItems(ui.Center).FocusRing(false).Label(label)
+	btn := ui.ButtonBase(c.Key(key)).Height(32).Padding(0, 10).Radius(t.ControlRadius(8)).AlignItems(ui.Center).FocusRing(false).Label(label)
 	color := t.NavText
 	if btn.Hovered() {
 		btn.Background(batchHoverBg(t))
@@ -128,7 +128,7 @@ type BatchButton struct {
 
 // BatchIslandButton 是浮动岛里的无边框按钮：36px 高，悬停时浅色底，危险操作用红色。
 func BatchIslandButton(c *ui.Context, t *theme.Theme, key string, b BatchButton) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Height(36).MinWidth(36).Radius(10).Gap(6).AlignItems(ui.Center).Justify(ui.Center).
+	btn := ui.ButtonBase(c.Key(key)).Height(36).MinWidth(36).Radius(t.ControlRadius(10)).Gap(6).AlignItems(ui.Center).Justify(ui.Center).
 		FocusRing(false).Label(b.Label)
 	if b.ShowText {
 		btn.Padding(0, 12)

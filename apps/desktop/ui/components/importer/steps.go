@@ -109,7 +109,7 @@ func resultStep(c *ui.Context, t *theme.Theme, r service.ImportResult, l resultL
 				t.Pick(theme.Error200, theme.Error800), t.Pick(theme.Error700, theme.Error400), t.Pick(theme.Error600, theme.Error300))
 		}
 		ui.Row(c).Justify(ui.Center).Children(func() {
-			solidButton(c, "complete", l.complete, bg, hover, theme.White, false, false, 32, 10).OnClick(onComplete)
+			solidButton(c, t, "complete", l.complete, bg, hover, theme.White, false, false, 32, 10).OnClick(onComplete)
 		})
 	})
 }
@@ -135,8 +135,8 @@ func nameList(c *ui.Context, t *theme.Theme, key, title string, names []string, 
 }
 
 // solidButton 是导入弹窗里 rounded-lg text-sm font-medium text-white 的实色按钮（disabled:opacity-50）。
-func solidButton(c *ui.Context, key, label string, bg, hover, fg ui.Color, disabled, fill bool, padX, padY float32) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Padding(padY, padX).Radius(8).Center().FocusRing(false).Label(label)
+func solidButton(c *ui.Context, t *theme.Theme, key, label string, bg, hover, fg ui.Color, disabled, fill bool, padX, padY float32) ui.Element {
+	btn := ui.ButtonBase(c.Key(key)).Padding(padY, padX).Radius(t.ControlRadius(8)).Center().FocusRing(false).Label(label)
 	if fill {
 		btn.FillWidth()
 	}
@@ -156,7 +156,7 @@ func solidButton(c *ui.Context, key, label string, bg, hover, fg ui.Color, disab
 // outlineButton 是 rounded-lg border border-brand-300 text-sm font-medium text-brand-700 hover:bg-brand-100
 // dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-700 的描边按钮。
 func outlineButton(c *ui.Context, t *theme.Theme, key, label string, disabled bool, padX, padY float32) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Padding(padY, padX).Radius(8).Center().FocusRing(false).Label(label).
+	btn := ui.ButtonBase(c.Key(key)).Padding(padY, padX).Radius(t.ControlRadius(8)).Center().FocusRing(false).Label(label).
 		Border(t.HL, t.Pick(theme.Brand300, theme.Brand600))
 	if btn.Hovered() && !disabled {
 		btn.Background(t.Pick(theme.Brand100, theme.Brand700))

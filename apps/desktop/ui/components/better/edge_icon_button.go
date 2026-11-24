@@ -92,7 +92,7 @@ func EdgeIconButton(c *ui.Context, t *theme.Theme, key string, p EdgeIconButtonP
 	btn.Children(func() {
 		ui.Box(c.Key("surface")).Absolute().Top(0).Left(0).Right(0).Bottom(0).Center().
 			Radius(radius[0], radius[1], radius[2], radius[3]).Background(surface).PassThrough().Children(func() {
-			components.Icon(c, p.Icon, icon, t.Pick(theme.Brand700, theme.Brand200))
+			components.Icon(c, p.Icon, icon, t.Themed("text", t.Text, t.Pick(theme.Brand700, theme.Brand200)))
 		})
 	})
 	return btn

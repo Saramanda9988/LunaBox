@@ -26,6 +26,6 @@ func Switch(c *ui.Context, t *theme.Theme, key string, checked, disabled bool, o
 	track.Background(bg).Transition(theme.ColorsTransition(150 * time.Millisecond))
 	x := track.AnimateWith("knob", 2+20*theme.Bool(checked), 100*time.Millisecond, theme.EaseTailwind)
 	track.OnClick(func() { onChange(!checked) }).Children(func() {
-		ui.Box(c).Size(20, 20).Radius(999).Background(theme.White).Translate(x, 0)
+		ui.Box(c).Size(20, 20).Radius(999).Background(t.SwitchThumb).Translate(x, 0)
 	})
 }

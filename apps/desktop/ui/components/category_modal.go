@@ -42,7 +42,7 @@ func CategoryModal(c *ui.Context, t *theme.Theme, key string, p CategoryModalPro
 			TextMargin(c, title, theme.TextXL, theme.WeightBold, t.TextStrong, 0, 0, 16, 0)
 			// relative mb-4；input w-full rounded-lg border border-brand-300 p-2 pr-16（dark:border-brand-600 dark:bg-brand-700）
 			ui.Box(c.Key("name-wrap")).Margin(0, 0, 16, 0).Children(func() {
-				in := ui.TextInputBase(c.Key("name"), p.Value).FillWidth().Padding(8, 64, 8, 8).Radius(8).AutoFocus().
+				in := ui.TextInputBase(c.Key("name"), p.Value).FillWidth().Padding(8, 64, 8, 8).Radius(t.ControlRadius(8)).AutoFocus().
 					FontSize(theme.TextBase.Size).FixedLineHeight(theme.TextBase.Line).TextColor(t.TextStrong).
 					Background(t.Pick(theme.White, theme.Brand700)).Border(t.HL, t.Pick(theme.Brand300, theme.Brand600)).
 					Placeholder(locales.CategoriesModalNamePlaceholder()).Label(locales.CategoriesModalNamePlaceholder())
@@ -50,7 +50,7 @@ func CategoryModal(c *ui.Context, t *theme.Theme, key string, p CategoryModalPro
 					in.Font(theme.UIFont)
 				}
 				if in.Focused() { // focus:ring-2 focus:ring-neutral-500
-					in.Shadow(0, 0, 0, 2, theme.Neutral500)
+					in.Shadow(0, 0, 0, 2, t.FieldFocus())
 				}
 				// pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs tabular-nums
 				ui.Box(c).Absolute().Top(0).Bottom(0).Right(12).Center().PassThrough().Children(func() {
@@ -60,14 +60,14 @@ func CategoryModal(c *ui.Context, t *theme.Theme, key string, p CategoryModalPro
 			})
 			// flex justify-end gap-2
 			ui.Row(c).Justify(ui.End).Gap(8).Children(func() {
-				cancel := ui.ButtonBase(c.Key("cancel")).Padding(8, 16).Radius(8).FocusRing(false)
+				cancel := ui.ButtonBase(c.Key("cancel")).Padding(8, 16).Radius(t.ControlRadius(8)).FocusRing(false)
 				if cancel.Hovered() {
 					cancel.Background(t.Pick(theme.Brand100, theme.Brand700))
 				}
 				cancel.OnClick(p.OnClose).Children(func() {
 					Text(c, locales.CommonCancel(), theme.TextBase, theme.WeightNormal, t.Pick(theme.Brand700, theme.Brand300)).NoWrap()
 				})
-				ok := ui.ButtonBase(c.Key("submit")).Padding(8, 16).Radius(8).FocusRing(false).Label(submit)
+				ok := ui.ButtonBase(c.Key("submit")).Padding(8, 16).Radius(t.ControlRadius(8)).FocusRing(false).Label(submit)
 				bg := t.PrimaryBtn
 				if ok.Hovered() {
 					bg = t.PrimaryBtnHover

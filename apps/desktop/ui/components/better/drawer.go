@@ -89,11 +89,11 @@ func drawerHeader(c *ui.Context, t *theme.Theme, p DrawerProps) {
 				p.HeaderAction()
 			}
 		})
-		closeBtn := ui.ButtonBase(c.Key("close")).Size(32, 32).Radius(8).Center().Margin(0, -4, 0, 0).FocusRing(false).Label(p.CloseLabel)
+		closeBtn := ui.ButtonBase(c.Key("close")).Size(32, 32).Radius(t.ControlRadius(8)).Center().Margin(0, -4, 0, 0).FocusRing(false).Label(p.CloseLabel)
 		color := t.TextMuted
 		if closeBtn.Hovered() {
 			closeBtn.Background(t.MenuHover)
-			color = t.Pick(theme.Brand800, theme.White)
+			color = t.Themed("textStrong", t.TextStrong, t.Pick(theme.Brand800, theme.White))
 		}
 		closeBtn.Transition(theme.ColorsTransition(150 * time.Millisecond))
 		closeBtn.OnClick(func() { *p.Open = false }).Children(func() {

@@ -124,7 +124,7 @@ func ConfirmModal(c *ui.Context, t *theme.Theme, key string, p ConfirmProps) {
 
 // ModalTextButton 是弹窗的取消按钮：px-4 py-2 text-sm font-medium rounded-lg，悬停 bg-brand-100 dark:bg-brand-700。
 func ModalTextButton(c *ui.Context, t *theme.Theme, key, label string) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Padding(8, 16).Radius(8).FocusRing(false)
+	btn := ui.ButtonBase(c.Key(key)).Padding(8, 16).Radius(t.ControlRadius(8)).FocusRing(false)
 	if btn.Hovered() {
 		btn.Background(t.Pick(theme.Brand100, theme.Brand700))
 	}
@@ -137,10 +137,12 @@ func ModalTextButton(c *ui.Context, t *theme.Theme, key, label string) ui.Elemen
 // ModalPrimaryButton 是弹窗的确认按钮：px-4 py-2 text-sm font-medium text-white rounded-lg shadow-sm，
 // bg-neutral-600（danger 时 bg-error-600），浅色主题带同色系的淡阴影。
 func ModalPrimaryButton(c *ui.Context, t *theme.Theme, key, label string, danger bool) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Padding(8, 16).Radius(8).FocusRing(false)
+	btn := ui.ButtonBase(c.Key(key)).Padding(8, 16).Radius(t.ControlRadius(8)).FocusRing(false)
 	bg, hover, fg, shadow := t.PrimaryBtn, t.PrimaryBtnHover, t.PrimaryBtnText, ui.Hex("#e2e8f0")
 	if danger {
-		bg, hover, fg, shadow = theme.Error600, theme.Error700, theme.White, ui.Hex("#fecaca")
+		bg = t.Themed("dangerBtn", t.DangerBtn, theme.Error600)
+		hover = t.Themed("dangerBtnHover", t.DangerBtnHover, theme.Error700)
+		fg, shadow = t.DangerBtnText, ui.Hex("#fecaca")
 	}
 	if btn.Hovered() {
 		bg = hover

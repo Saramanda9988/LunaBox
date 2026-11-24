@@ -604,7 +604,7 @@ func (p *Page) leaderboardModal(c *ui.Context, t *theme.Theme) {
 				})
 				// i-mdi-close rounded-lg p-1 text-2xl text-brand-500 hover:bg-brand-100 hover:text-brand-700
 				// dark:text-brand-400 dark:hover:bg-brand-700 dark:hover:text-brand-200
-				x := ui.ButtonBase(c.Key("close")).Padding(4).Radius(8).FocusRing(false).Label(locales.CommonCancel())
+				x := ui.ButtonBase(c.Key("close")).Padding(4).Radius(t.ControlRadius(8)).FocusRing(false).Label(locales.CommonCancel())
 				fg := t.Pick(theme.Brand500, theme.Brand400)
 				if x.Hovered() {
 					x.Background(t.Pick(theme.Brand100, theme.Brand700))
@@ -637,7 +637,7 @@ func (p *Page) leaderboardModal(c *ui.Context, t *theme.Theme) {
 			ui.Row(c.Key("footer")).Padding(16).Justify(ui.End).Children(func() {
 				// rounded-lg bg-brand-700 px-5 py-2 text-sm font-medium text-white hover:bg-brand-800
 				// dark:bg-brand-600 dark:hover:bg-brand-500
-				ok := ui.ButtonBase(c.Key("confirm")).Padding(8, 20).Radius(8).FocusRing(false)
+				ok := ui.ButtonBase(c.Key("confirm")).Padding(8, 20).Radius(t.ControlRadius(8)).FocusRing(false)
 				bg := t.Pick(theme.Brand700, theme.Brand600)
 				if ok.Hovered() {
 					bg = t.Pick(theme.Brand800, theme.Brand500)

@@ -111,7 +111,7 @@ func View(c *ui.Context, t *theme.Theme, s *State, p panel.Settings) {
 // actionButton：glass-btn-neutral px-6 py-3 text-white rounded-md transition-colors disabled:opacity-50 flex items-center
 // justify-center gap-2，进行中最前面是 i-mdi-loading animate-spin（1em），然后是 text-xl 的图标与文字（继承 16px/24px）。
 func actionButton(c *ui.Context, t *theme.Theme, key, icon, label, busyLabel string, busy, disabled bool, bg, hover ui.Color) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Padding(12, 24).Radius(6).Gap(8).Center().FocusRing(false)
+	btn := ui.ButtonBase(c.Key(key)).Padding(12, 24).Radius(t.ControlRadius(6)).Gap(8).Center().FocusRing(false)
 	g := t.GlassButton(theme.GlassNeutral, theme.BtnColors{Bg: bg, Hover: hover, Text: theme.White})
 	bg = g.Bg
 	if btn.Hovered() && !disabled {

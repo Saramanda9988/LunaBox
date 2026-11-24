@@ -335,7 +335,7 @@ func (s *State) actionsCard(c *ui.Context, t *theme.Theme, p panel.Game) {
 // dark:hover:bg-brand-700 rounded-md transition-colors（按钮继承 16px/24px 的字号与行高）。
 // glass-btn-none 实际是 neutral 的玻璃按钮（见 theme.GlassButton）。
 func openFolderButton(c *ui.Context, t *theme.Theme) ui.Element {
-	btn := ui.ButtonBase(c.Key("open-folder")).Padding(8, 16).Radius(6).FocusRing(false)
+	btn := ui.ButtonBase(c.Key("open-folder")).Padding(8, 16).Radius(t.ControlRadius(6)).FocusRing(false)
 	g := t.GlassButton(theme.GlassNeutral, theme.BtnColors{Bg: ui.Transparent, Hover: t.Pick(theme.Brand100, theme.Brand700),
 		Text: t.Pick(theme.Brand600, theme.Brand400)})
 	bg := g.Bg
@@ -355,7 +355,7 @@ func openFolderButton(c *ui.Context, t *theme.Theme) ui.Element {
 // backupButton：glass-btn-neutral px-4 py-2 bg-neutral-600 text-white rounded-md hover:bg-neutral-700
 // disabled:opacity-50 flex items-center gap-2，备份中前面是 i-mdi-loading animate-spin。
 func backupButton(c *ui.Context, t *theme.Theme, busy, noPath bool) ui.Element {
-	btn := ui.ButtonBase(c.Key("backup-now")).Padding(8, 16).Radius(6).Gap(8).AlignItems(ui.Center).FocusRing(false)
+	btn := ui.ButtonBase(c.Key("backup-now")).Padding(8, 16).Radius(t.ControlRadius(6)).Gap(8).AlignItems(ui.Center).FocusRing(false)
 	disabled := busy || noPath
 	g := t.GlassButton(theme.GlassNeutral, theme.BtnColors{Bg: t.PrimaryBtn, Hover: t.PrimaryBtnHover, Text: t.PrimaryBtnText})
 	bg := g.Bg
@@ -465,7 +465,7 @@ func (s *State) backupRow(c *ui.Context, t *theme.Theme, p panel.Game, b models.
 
 // iconButton：p-2 rounded transition-colors 的图标按钮，i-mdi-* text-xl，悬停换背景，disabled:opacity-50。
 func iconButton(c *ui.Context, t *theme.Theme, key, label, icon string, color, hover ui.Color, disabled bool) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Padding(8).Radius(4).FocusRing(false).Label(label)
+	btn := ui.ButtonBase(c.Key(key)).Padding(8).Radius(t.ControlRadius(4)).FocusRing(false).Label(label)
 	if btn.Hovered() && !disabled {
 		btn.Background(hover)
 	}
@@ -486,7 +486,7 @@ func (s *State) cloudCard(c *ui.Context, t *theme.Theme, p panel.Game) {
 				heading(c, t, locales.GameBackupCloudBackups())
 			})
 			// p-2 text-brand-600 hover:bg-brand-100 dark:hover:bg-brand-700 rounded disabled:opacity-50
-			btn := ui.ButtonBase(c.Key("refresh")).Padding(8).Radius(4).FocusRing(false).Label(locales.NativeBackupRefreshCloud())
+			btn := ui.ButtonBase(c.Key("refresh")).Padding(8).Radius(t.ControlRadius(4)).FocusRing(false).Label(locales.NativeBackupRefreshCloud())
 			if btn.Hovered() && !s.loadingCloud {
 				btn.Background(t.Pick(theme.Brand100, theme.Brand700))
 			}

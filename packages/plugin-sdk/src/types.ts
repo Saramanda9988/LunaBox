@@ -645,11 +645,17 @@ export interface ThemePaletteTokens {
   selectText?: string;
   listFocus?: string;
   listSelected?: string;
+  // 开关：关闭态底色、滑块颜色（打开态取 primaryBtn）
   switchOff?: string;
+  switchThumb?: string;
   // 提示气泡
   tooltipBg?: string;
   tooltipText?: string;
   tooltipBorder?: string;
+  // 危险按钮（删除、清空等破坏性操作的实心按钮）
+  dangerBtn?: string;
+  dangerBtnHover?: string;
+  dangerBtnText?: string;
 }
 
 export interface ThemeTokens {
@@ -668,9 +674,11 @@ export interface ThemeTokens {
     backgroundImage?: string;
   };
   /**
-   * 宿主控件圆角（DIP）。未声明的项保留组件自身的圆角。
-   * - control：游戏详情页工具栏的图标按钮、状态按钮、启动按钮与菜单里的胶囊项（默认多为全圆 999）
-   * - panel：下拉菜单等浮层面板（默认 12）
+   * 宿主全局圆角（DIP），作用于整个界面而不只是某个页面。未声明的项保留各组件自身的圆角。
+   * - control：所有按钮、图标按钮、输入框、下拉选择、数字输入、分段切换、侧边栏导航项、菜单项与详情页工具栏 / 启动按钮
+   *   （默认 4~8，详情页图标按钮为全圆）
+   * - panel：所有浮层与容器面板——下拉菜单、选择列表、弹出层、提示气泡、日期选择、筛选抽屉、数据表格等（默认 6~12）
+   * 卡片、封面、标签胶囊与头像等装饰性形状不受影响。
    */
   shape?: {
     control?: number;

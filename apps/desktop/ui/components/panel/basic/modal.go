@@ -174,7 +174,7 @@ func (s *State) modalHeader(c *ui.Context, t *theme.Theme, pv *service.GameLibra
 			components.TextMargin(c, locales.SettingsBasicLibraryChangeAffectedGamesDescription(strconv.Itoa(pv.AffectedGameCount)),
 				theme.TextSM, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400), 4, 0, 0, 0)
 		})
-		btn := ui.ButtonBase(c.Key("close")).Size(36, 36).Shrink(0).Center().Radius(8).FocusRing(false).AutoFocus().
+		btn := ui.ButtonBase(c.Key("close")).Size(36, 36).Shrink(0).Center().Radius(t.ControlRadius(8)).FocusRing(false).AutoFocus().
 			Label(locales.SettingsBasicLibraryChangeClose())
 		color := t.Pick(theme.Brand500, theme.Brand400)
 		if s.applying {

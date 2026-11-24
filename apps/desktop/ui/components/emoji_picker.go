@@ -66,7 +66,7 @@ func EmojiPicker(c *ui.Context, t *theme.Theme, key string, p EmojiPickerProps) 
 	if p.Compact {
 		size = 44
 	}
-	btn := ui.ButtonBase(c.Key(key)).Size(size, size).Radius(8).Center().Shrink(0).FocusRing(false).Label(locales.CategoriesEmojiPickerTitle())
+	btn := ui.ButtonBase(c.Key(key)).Size(size, size).Radius(t.ControlRadius(8)).Center().Shrink(0).FocusRing(false).Label(locales.CategoriesEmojiPickerTitle())
 	if !p.Compact {
 		btn.Margin(0, 16, 0, 0)
 	}
@@ -100,7 +100,7 @@ func EmojiPicker(c *ui.Context, t *theme.Theme, key string, p EmojiPickerProps) 
 		}
 	}
 	ui.PopoverBase(c, btn, &s.open, func(panel ui.Element) {
-		panel.AttachTo(btn, ui.AnchorBottomLeft, ui.AnchorTopLeft).Top(8).Padding(12).Radius(12).
+		panel.AttachTo(btn, ui.AnchorBottomLeft, ui.AnchorTopLeft).Top(8).Padding(12).Radius(t.PanelRadius(12)).
 			Background(t.PanelBg).Border(t.HL, t.PanelBorder).
 			Shadow(0, 10, 15, -3, ui.RGBA(0, 0, 0, 0.1)).Shadow(0, 4, 6, -4, ui.RGBA(0, 0, 0, 0.1))
 		panel.Children(func() {
@@ -122,7 +122,7 @@ func emojiPanel(c *ui.Context, t *theme.Theme, s *emojiPickerState, hasValue boo
 		// 标题与“移除”（没有图标时禁用）
 		ui.Row(c).Padding(0, gutter, 0, 4).Justify(ui.SpaceBetween).AlignItems(ui.Center).Children(func() {
 			Text(c, locales.CategoriesEmojiPickerTitle(), theme.TextSM, theme.WeightMedium, t.Pick(theme.Brand700, theme.Brand300))
-			clear := ui.ButtonBase(c.Key("clear")).Height(28).Padding(0, 8).Gap(4).Radius(6).AlignItems(ui.Center).FocusRing(false).
+			clear := ui.ButtonBase(c.Key("clear")).Height(28).Padding(0, 8).Gap(4).Radius(t.ControlRadius(6)).AlignItems(ui.Center).FocusRing(false).
 				Label(locales.CategoriesEmojiPickerClear())
 			color := muted
 			if !hasValue {
@@ -139,7 +139,7 @@ func emojiPanel(c *ui.Context, t *theme.Theme, s *emojiPickerState, hasValue boo
 
 		// 搜索框（左侧放大镜，有内容时右侧清除）与肤色
 		ui.Row(c).Margin(8, 0, 0, 0).Padding(0, gutter, 0, 0).Gap(6).AlignItems(ui.Center).Children(func() {
-			box := ui.Row(c.Key("search-box")).Grow(1).Basis(0).MinWidth(0).Height(34).Radius(8).AlignItems(ui.Center).
+			box := ui.Row(c.Key("search-box")).Grow(1).Basis(0).MinWidth(0).Height(34).Radius(t.ControlRadius(8)).AlignItems(ui.Center).
 				Background(t.Pick(theme.White, theme.Brand900)).Border(t.HL, t.Pick(theme.Brand300, theme.Brand700))
 			box.Children(func() {
 				Icon(c, "magnify", 16, muted).Margin(0, 0, 0, 10)
@@ -152,7 +152,7 @@ func emojiPanel(c *ui.Context, t *theme.Theme, s *emojiPickerState, hasValue boo
 					box.BorderColor(t.InputFocus)
 				}
 				if s.query != "" {
-					x := ui.ButtonBase(c.Key("clear-search")).Size(26, 26).Margin(0, 4, 0, 0).Radius(6).Center().FocusRing(false).
+					x := ui.ButtonBase(c.Key("clear-search")).Size(26, 26).Margin(0, 4, 0, 0).Radius(t.ControlRadius(6)).Center().FocusRing(false).
 						Label(locales.FilterBarClearSearch())
 					if x.Hovered() {
 						x.Background(hover)
@@ -167,7 +167,7 @@ func emojiPanel(c *ui.Context, t *theme.Theme, s *emojiPickerState, hasValue boo
 		ui.Column(c.Key("nav")).Margin(8, 0, 0, 0).Width(gridW).Children(func() {
 			ui.Row(c).Children(func() {
 				for i, g := range emojiGroups {
-					b := ui.ButtonBase(c.Key("nav-"+g.name)).Size(emojiCell, emojiCell).Radius(8).Center().FocusRing(false).Label(g.name)
+					b := ui.ButtonBase(c.Key("nav-"+g.name)).Size(emojiCell, emojiCell).Radius(t.ControlRadius(8)).Center().FocusRing(false).Label(g.name)
 					hovered := b.Hovered()
 					if hovered {
 						b.Background(hover)
@@ -251,18 +251,18 @@ func emojiButton(c *ui.Context, e string, hover ui.Color, onClick func()) ui.Ele
 func skinToneButton(c *ui.Context, t *theme.Theme, s *emojiPickerState, hover ui.Color) {
 	tones := []string{"🖐️", "🖐🏻", "🖐🏼", "🖐🏽", "🖐🏾", "🖐🏿"}
 	names := []string{"Default", "Light", "Medium-Light", "Medium", "Medium-Dark", "Dark"}
-	b := ui.ButtonBase(c.Key("skintone")).Size(34, 34).Radius(8).Center().Shrink(0).FocusRing(false).
+	b := ui.ButtonBase(c.Key("skintone")).Size(34, 34).Radius(t.ControlRadius(8)).Center().Shrink(0).FocusRing(false).
 		Label("Choose a skin tone (currently " + names[s.tone] + ")")
 	if b.Hovered() || s.toneUI {
 		b.Background(hover)
 	}
 	b.OnClick(func() { s.toneUI = !s.toneUI }).Children(func() { EmojiText(c, tones[s.tone], 20) })
 	ui.PopoverBase(c, b, &s.toneUI, func(panel ui.Element) {
-		panel.AttachTo(b, ui.AnchorBottomRight, ui.AnchorTopRight).Top(4).Padding(4).Radius(10).Background(t.PanelBg).
+		panel.AttachTo(b, ui.AnchorBottomRight, ui.AnchorTopRight).Top(4).Padding(4).Radius(t.PanelRadius(10)).Background(t.PanelBg).
 			Border(t.HL, t.PanelBorder).Shadow(0, 4, 6, -1, ui.RGBA(0, 0, 0, 0.1)).Shadow(0, 2, 4, -2, ui.RGBA(0, 0, 0, 0.1))
 		panel.Children(func() {
 			for i, tone := range tones {
-				o := ui.ButtonBase(c.Key("tone-"+names[i])).Size(34, 34).Radius(8).Center().FocusRing(false).Label(names[i])
+				o := ui.ButtonBase(c.Key("tone-"+names[i])).Size(34, 34).Radius(t.ControlRadius(8)).Center().FocusRing(false).Label(names[i])
 				if o.Hovered() || i == s.tone {
 					o.Background(hover)
 				}

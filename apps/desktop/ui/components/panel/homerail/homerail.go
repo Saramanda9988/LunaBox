@@ -352,7 +352,7 @@ func (r *Rail) heatmapTab(c *ui.Context, t *theme.Theme) {
 // text-brand-700 hover:bg-white/35 dark:border-white/15 dark:bg-black/20 dark:text-white/80 dark:hover:bg-black/30，i-mdi-refresh。
 func (r *Rail) retryButton(c *ui.Context, t *theme.Theme) {
 	label := locales.StatsToastLoadStatsFailed()
-	btn := ui.ButtonBase(c.Key("retry")).Row().Gap(8).AlignItems(ui.Center).Padding(8, 16).Radius(8).FocusRing(false).Label(label).
+	btn := ui.ButtonBase(c.Key("retry")).Row().Gap(8).AlignItems(ui.Center).Padding(8, 16).Radius(t.ControlRadius(8)).FocusRing(false).Label(label).
 		Border(t.HL, t.Pick(theme.Brand300.Alpha(0.7), theme.White.Alpha(0.15)))
 	// data-glass:bg-white/10 data-glass:hover:bg-white/18（选择器比 dark: 更具体，暗色也用它）
 	bg := t.IfGlass(t.Pick(theme.White.Alpha(0.2), theme.Black.Alpha(0.2)), theme.White.Alpha(0.1), theme.White.Alpha(0.1))

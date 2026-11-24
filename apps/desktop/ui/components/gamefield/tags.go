@@ -27,7 +27,7 @@ type TagsProps struct {
 // Tags 是标签输入：外观同 Aliases 的输入框，里面是用户标签的虚线胶囊与一个输入框；输入时在下方列出库里已有的
 // 匹配标签（同筛选面板的标签筛选），点击候选添加它，Enter 添加输入的文字（新标签），输入为空时退格删除最后一个。
 func Tags(c *ui.Context, t *theme.Theme, key string, p TagsProps) {
-	bg, border := t.GlassInput(t.Pick(theme.White, theme.Brand700), t.Pick(theme.Brand300, theme.Brand600))
+	bg, border := t.FieldColors()
 	box := ui.Row(c.Key(key)).FillWidth().MinHeight(40).Wrap().GapX(6).GapY(6).AlignItems(ui.Center).
 		Padding(5, 10).Radius(6).Background(bg).Border(t.HL, border)
 	add := func(name string) {
@@ -51,7 +51,7 @@ func Tags(c *ui.Context, t *theme.Theme, key string, p TagsProps) {
 		}
 		in := ui.TextInputBase(c.Key("tag-input"), p.Input).Grow(1).Basis(96).MinWidth(96).Padding(6, 4).
 			FontSize(theme.TextSM.Size).FixedLineHeight(theme.TextSM.Line).TextColor(t.TextStrong).
-			Placeholder(locales.TagsInputPlaceholder()).PlaceholderColor(t.Pick(theme.Brand400, theme.Brand500)).
+			Placeholder(locales.TagsInputPlaceholder()).PlaceholderColor(t.FieldPlaceholder()).
 			Label(locales.TagsInputPlaceholder())
 		if theme.UIFont != "" {
 			in.Font(theme.UIFont)
@@ -76,7 +76,7 @@ func Tags(c *ui.Context, t *theme.Theme, key string, p TagsProps) {
 		})
 	})
 	if box.FocusWithin() {
-		box.Shadow(0, 0, 0, 2, theme.Neutral500)
+		box.Shadow(0, 0, 0, 2, t.FieldFocus())
 	}
 	if strings.TrimSpace(*p.Input) != "" && len(p.Suggestions) > 0 {
 		tagSuggestions(c, t, box, p, add)
@@ -87,14 +87,14 @@ func Tags(c *ui.Context, t *theme.Theme, key string, p TagsProps) {
 func tagSuggestions(c *ui.Context, t *theme.Theme, field ui.Element, p TagsProps, add func(string)) {
 	components.Overlay(c, t, func() {
 		list := ui.Column(c.Key("tag-suggestions")).AttachTo(field, ui.AnchorBottomLeft, ui.AnchorTopLeft).Top(4).
-			Width(field.Bounds().W).MaxHeight(176).Padding(4).Radius(8).
+			Width(field.Bounds().W).MaxHeight(176).Padding(4).Radius(t.PanelRadius(8)).
 			Background(t.PanelBg).Border(t.HL, t.PanelBorder).
 			Shadow(0, 20, 25, -5, ui.RGBA(0, 0, 0, 0.1)).Shadow(0, 8, 10, -6, ui.RGBA(0, 0, 0, 0.1))
 		list.Children(func() {
 			ui.Scroll(c).Grow(1).Children(func() {
 				for _, s := range p.Suggestions {
 					name := tagname.Display(s, p.Translate)
-					item := ui.ButtonBase(c.Key(s)).FillWidth().Padding(6, 10).Radius(6).Justify(ui.Start).FocusRing(false).Label(name)
+					item := ui.ButtonBase(c.Key(s)).FillWidth().Padding(6, 10).Radius(t.ControlRadius(6)).Justify(ui.Start).FocusRing(false).Label(name)
 					if item.Hovered() {
 						item.Background(t.Pick(theme.Brand100, theme.Brand700))
 					}

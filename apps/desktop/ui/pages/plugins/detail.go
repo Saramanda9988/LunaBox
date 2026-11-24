@@ -57,7 +57,7 @@ func (p *Page) ViewDetail(c *ui.Context, id string) {
 
 // detailBackButton 与游戏详情页（ui/pages/game/view.go）的返回按钮样式完全一致。
 func (p *Page) detailBackButton(c *ui.Context, t *theme.Theme) {
-	btn := ui.ButtonBase(c.Key("back")).AlignSelf(ui.Start).AlignItems(ui.Center).Radius(6).FocusRing(false)
+	btn := ui.ButtonBase(c.Key("back")).AlignSelf(ui.Start).AlignItems(ui.Center).Radius(t.ControlRadius(6)).FocusRing(false)
 	color := t.Pick(theme.Brand750, theme.Brand400)
 	if btn.Hovered() {
 		color = t.Pick(theme.Brand900, theme.Brand200)

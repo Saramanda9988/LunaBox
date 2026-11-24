@@ -186,7 +186,7 @@ func errorBox(c *ui.Context, t *theme.Theme, msg string) {
 // i-mdi-update text-xl，flex-1 text-sm 的“发现新版本”（font-medium）与 ml-2 font-mono font-semibold 的版本号，
 // 右侧 i-mdi-chevron-right text-lg。
 func newVersionHint(c *ui.Context, t *theme.Theme, latest string) ui.Element {
-	btn := ui.ButtonBase(c.Key("new-version")).FillWidth().Padding(12).Radius(8).Gap(8).AlignItems(ui.Center).FocusRing(false).
+	btn := ui.ButtonBase(c.Key("new-version")).FillWidth().Padding(12).Radius(t.ControlRadius(8)).Gap(8).AlignItems(ui.Center).FocusRing(false).
 		Border(t.HL, t.Pick(accent200, accent700))
 	bg := t.Pick(accent50, accent900.Alpha(0.2))
 	if btn.Hovered() {

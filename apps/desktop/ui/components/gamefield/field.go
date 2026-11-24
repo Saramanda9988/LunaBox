@@ -57,13 +57,13 @@ type ActionInputProps struct {
 // 输入框 min-w-0 flex-1 bg-transparent px-3 py-2；按钮 h-10 w-10 text-xl，hover:text-brand-900 dark:hover:text-brand-100，
 // disabled:opacity-50。返回输入框，调用方用 Changed 观察编辑。
 func ActionInput(c *ui.Context, t *theme.Theme, key string, value *string, p ActionInputProps, actions ...InputAction) ui.Element {
-	row := ui.Row(c.Key(key)).FillWidth().MinWidth(0).Gap(4).Padding(0, 4, 0, 0).AlignItems(ui.Center).Radius(6).
+	row := ui.Row(c.Key(key)).FillWidth().MinWidth(0).Gap(4).Padding(0, 4, 0, 0).AlignItems(ui.Center).Radius(t.ControlRadius(6)).
 		Background(t.Pick(theme.White, theme.Brand700)).Border(t.HL, t.Pick(theme.Brand300, theme.Brand600))
 	var in ui.Element
 	row.Children(func() {
 		in = ui.TextInputBase(c.Key("input"), value).Grow(1).Basis(0).MinWidth(0).Padding(8, 12).
 			FontSize(theme.TextBase.Size).FixedLineHeight(theme.TextBase.Line).TextColor(t.TextStrong).
-			Placeholder(p.Placeholder).PlaceholderColor(t.Pick(theme.Brand400, theme.Brand500))
+			Placeholder(p.Placeholder).PlaceholderColor(t.FieldPlaceholder())
 		if theme.UIFont != "" {
 			in.Font(theme.UIFont)
 		}
@@ -82,7 +82,7 @@ func ActionInput(c *ui.Context, t *theme.Theme, key string, value *string, p Act
 		}
 	})
 	if in.Focused() {
-		row.Shadow(0, 0, 0, 2, theme.Neutral500)
+		row.Shadow(0, 0, 0, 2, t.FieldFocus())
 	}
 	return in
 }

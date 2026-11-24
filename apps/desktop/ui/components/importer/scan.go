@@ -88,7 +88,7 @@ func (s *scanSteps) sourceToolbar(c *ui.Context, t *theme.Theme, enabled []enums
 	ui.Row(c.Key("preferred-source")).Gap(8).AlignItems(ui.Stretch).Children(func() {
 		ui.Row(c).AlignItems(ui.Stretch).Children(func() {
 			fg := t.Pick(theme.Brand600, theme.Brand300)
-			ui.Row(c).Height(44).Padding(0, 12).Gap(6).AlignItems(ui.Center).Shrink(0).Radius(8, 0, 0, 8).
+			ui.Row(c).Height(44).Padding(0, 12).Gap(6).AlignItems(ui.Center).Shrink(0).Radius(t.ControlRadius(8), 0, 0, t.ControlRadius(8)).
 				Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).BorderWidth(t.HL, 0, t.HL, t.HL).
 				Background(t.Pick(theme.White.Alpha(0.8), theme.Brand800.Alpha(0.6))).Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.05)).Children(func() {
 				components.Icon(c, "database-search-outline", 16, theme.Brand400)
@@ -106,7 +106,9 @@ func (s *scanSteps) sourceToolbar(c *ui.Context, t *theme.Theme, enabled []enums
 							log.Printf("import: save preferred source: %v", err)
 						}
 					},
-					Style: func(btn ui.Element) { btn.Height(44).Radius(0, 8, 8, 0).AlignItems(ui.Center) },
+					Style: func(btn ui.Element) {
+						btn.Height(44).Radius(0, t.ControlRadius(8), t.ControlRadius(8), 0).AlignItems(ui.Center)
+					},
 				})
 			})
 		})

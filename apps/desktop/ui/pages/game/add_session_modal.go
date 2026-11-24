@@ -166,14 +166,14 @@ func (p *Page) addSessionForm(c *ui.Context, t *theme.Theme, now time.Time, clos
 		})
 		// flex justify-end gap-3 pt-4
 		ui.Row(c).Padding(16, 0, 0, 0).Gap(12).Justify(ui.End).Children(func() {
-			cancel := ui.ButtonBase(c.Key("cancel")).Padding(8, 16).Radius(6).FocusRing(false)
+			cancel := ui.ButtonBase(c.Key("cancel")).Padding(8, 16).Radius(t.ControlRadius(6)).FocusRing(false)
 			if cancel.Hovered() {
 				cancel.Background(t.Pick(theme.Brand100, theme.Brand700))
 			}
 			cancel.Transition(theme.ColorsTransition(150 * time.Millisecond)).OnClick(closeModal).Children(func() {
 				components.Text(c, locales.CommonCancel(), theme.TextBase, theme.WeightNormal, t.Pick(theme.Brand600, theme.Brand400)).NoWrap()
 			})
-			submit := ui.ButtonBase(c.Key("submit")).Padding(8, 16).Radius(6).FocusRing(false)
+			submit := ui.ButtonBase(c.Key("submit")).Padding(8, 16).Radius(t.ControlRadius(6)).FocusRing(false)
 			bg := t.PrimaryBtn
 			if submit.Hovered() && !m.submitting {
 				bg = t.PrimaryBtnHover
