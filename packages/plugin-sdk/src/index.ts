@@ -1,5 +1,42 @@
 export * from './types';
-import type { Context, ThemeTokens, VNode } from './types';
+import type {
+  AvatarProps,
+  BadgeProps,
+  BoxProps,
+  ButtonProps,
+  CardProps,
+  CheckboxProps,
+  CodeBlockProps,
+  CollapsibleProps,
+  ColumnProps,
+  Context,
+  DividerProps,
+  EmptyProps,
+  GridProps,
+  HeroBannerProps,
+  IconButtonProps,
+  IconProps,
+  ImageProps,
+  InputProps,
+  MarkdownProps,
+  NativeSlotProps,
+  NumberInputProps,
+  ProgressProps,
+  RowProps,
+  ScrollAreaProps,
+  SelectProps,
+  SkeletonProps,
+  SpacerProps,
+  StackProps,
+  SwitchProps,
+  TableProps,
+  TabsProps,
+  TextareaProps,
+  TextProps,
+  ThemeTokens,
+  TooltipProps,
+  VNode,
+} from './types';
 
 export const Fragment = Symbol.for('lunabox.Fragment');
 
@@ -12,40 +49,42 @@ export declare function h(type: unknown, props?: Record<string, unknown> | null,
 export declare function jsx(type: unknown, props?: Record<string, unknown> | null, key?: string): VNode;
 export declare const jsxs: typeof jsx;
 
-export type ComponentFactory<P = Record<string, unknown>> = (props?: P & { k?: string; children?: unknown }) => VNode;
+export type ComponentFactory<P = Record<string, unknown>> = (props?: P & { k?: string; key?: string; children?: unknown }) => VNode;
 
-export declare const Column: ComponentFactory;
-export declare const Row: ComponentFactory;
-export declare const Box: ComponentFactory;
-export declare const ScrollArea: ComponentFactory;
-export declare const Grid: ComponentFactory;
-export declare const Text: ComponentFactory;
-export declare const Markdown: ComponentFactory;
-export declare const CodeBlock: ComponentFactory;
-export declare const Button: ComponentFactory;
-export declare const IconButton: ComponentFactory;
-export declare const Input: ComponentFactory;
-export declare const Textarea: ComponentFactory;
-export declare const Switch: ComponentFactory;
-export declare const Checkbox: ComponentFactory;
-export declare const Select: ComponentFactory;
-export declare const NumberInput: ComponentFactory;
-export declare const Tabs: ComponentFactory;
-export declare const Badge: ComponentFactory;
-export declare const Card: ComponentFactory;
-export declare const Collapsible: ComponentFactory;
-export declare const Progress: ComponentFactory;
-export declare const Image: ComponentFactory;
-export declare const Avatar: ComponentFactory;
-export declare const Empty: ComponentFactory;
-export declare const Skeleton: ComponentFactory;
-export declare const Tooltip: ComponentFactory;
-export declare const Table: ComponentFactory;
-export declare const Divider: ComponentFactory;
-export declare const Spacer: ComponentFactory;
-export declare const Icon: ComponentFactory;
-export declare const HeroBanner: ComponentFactory;
-export declare const NativeSlot: ComponentFactory;
+export declare const Column: ComponentFactory<ColumnProps>;
+export declare const Row: ComponentFactory<RowProps>;
+export declare const Box: ComponentFactory<BoxProps>;
+export declare const Stack: ComponentFactory<StackProps>;
+export declare const ScrollArea: ComponentFactory<ScrollAreaProps>;
+export declare const Grid: ComponentFactory<GridProps>;
+export declare const Text: ComponentFactory<TextProps>;
+export declare const Markdown: ComponentFactory<MarkdownProps>;
+export declare const CodeBlock: ComponentFactory<CodeBlockProps>;
+export declare const Button: ComponentFactory<ButtonProps>;
+export declare const IconButton: ComponentFactory<IconButtonProps>;
+export declare const Input: ComponentFactory<InputProps>;
+export declare const Textarea: ComponentFactory<TextareaProps>;
+export declare const Switch: ComponentFactory<SwitchProps>;
+export declare const Checkbox: ComponentFactory<CheckboxProps>;
+export declare const Select: ComponentFactory<SelectProps>;
+export declare const NumberInput: ComponentFactory<NumberInputProps>;
+export declare const Tabs: ComponentFactory<TabsProps>;
+export declare const Badge: ComponentFactory<BadgeProps>;
+export declare const Card: ComponentFactory<CardProps>;
+export declare const Collapsible: ComponentFactory<CollapsibleProps>;
+export declare const Progress: ComponentFactory<ProgressProps>;
+export declare const Image: ComponentFactory<ImageProps>;
+export declare const Avatar: ComponentFactory<AvatarProps>;
+export declare const Empty: ComponentFactory<EmptyProps>;
+export declare const Skeleton: ComponentFactory<SkeletonProps>;
+export declare const Tooltip: ComponentFactory<TooltipProps>;
+export declare const Table: ComponentFactory<TableProps>;
+export declare const Divider: ComponentFactory<DividerProps>;
+export declare const Spacer: ComponentFactory<SpacerProps>;
+export declare const Icon: ComponentFactory<IconProps>;
+export declare const NativeSlot: ComponentFactory<NativeSlotProps>;
+/** 基于 Stack / Box / Image / NativeSlot 等底层原语组合的标准 Hero 头图模板组件 */
+export declare const HeroBanner: ComponentFactory<HeroBannerProps>;
 
 export declare function defineThemePreset(preset: ThemeTokens): ThemeTokens;
 export declare function createPagination<T>(

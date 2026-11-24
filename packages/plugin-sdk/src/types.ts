@@ -42,7 +42,11 @@ export interface PluginManifest {
 }
 
 export type SpacingToken = 'none' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | number;
-export type TextSizeToken = 'xs' | 'sm' | 'base' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl';
+export type RadiusToken = 'sm' | 'md' | 'lg' | 'full' | number;
+export type SurfaceToken = 'glass' | 'glass-card' | 'panel' | 'card' | 'chip' | 'subtle';
+export type AlignToken = 'start' | 'center' | 'end' | 'stretch';
+export type JustifyToken = 'start' | 'center' | 'end' | 'between' | 'space-between';
+export type TextSizeToken = 'xs' | 'sm' | 'base' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | number;
 export type FontWeightToken = 'normal' | 'medium' | 'semibold' | 'bold';
 export type ToneToken =
   | 'default'
@@ -57,6 +61,433 @@ export type ToneToken =
   | 'light'
   | 'light-muted';
 export type ButtonVariant = 'secondary' | 'primary' | 'danger' | 'ghost';
+export type ButtonSize = 'sm' | 'md' | 'lg';
+
+/** 宿主主题支持的语义色板令牌（亦可附加 "@0.5" 透明度后缀或传入十六进制色值） */
+export type ColorToken =
+  | 'transparent'
+  | 'white'
+  | 'black'
+  | 'appBg'
+  | 'fadeBg'
+  | 'scrim'
+  | 'panelBg'
+  | 'panelBorder'
+  | 'cardBg'
+  | 'cardBorder'
+  | 'chipBg'
+  | 'divider'
+  | 'text'
+  | 'textStrong'
+  | 'textMuted'
+  | 'textFaint'
+  | 'primary'
+  | 'brand'
+  | 'accent'
+  | 'success'
+  | 'warning'
+  | 'warning400'
+  | 'danger'
+  | 'brand700'
+  | 'brand800'
+  | 'brand900';
+
+/**
+ * 通用颜色值：
+ * - 语义色板令牌（如 "appBg"、"fadeBg"、"scrim"、"white"、"warning400"）
+ * - 带透明度后缀（如 "black@0.42"、"white@0.86"、"#1a1b26@0.8"）
+ * - 十六进制色值（"#rgb" / "#rgba" / "#rrggbb" / "#rrggbbaa"）
+ * - 明暗主题自适应对象 `{ light, dark }`
+ * - 显式透明度对象 `{ color | token, alpha }`
+ */
+export type ColorValue =
+  | ColorToken
+  | (string & {})
+  | { light?: ColorValue; dark?: ColorValue }
+  | { color?: ColorValue; token?: ColorValue; alpha?: number };
+
+export interface GradientStop {
+  color: ColorValue;
+  /** 停靠位置 0..1，省略时按序号等分 */
+  at?: number;
+}
+
+export interface LinearGradientSpec {
+  /** 渐变角度（度，0=自下而上，90=自左而右，180=自上而下；默认 180） */
+  angle?: number;
+  stops: GradientStop[];
+}
+
+export type ShadowSpec =
+  | 'sm'
+  | 'md'
+  | 'lg'
+  | {
+      x?: number;
+      y?: number;
+      blur: number;
+      spread?: number;
+      color?: ColorValue;
+    };
+
+/** 容器类组件（Column / Row / Box / Stack）通用的布局、定位、背景、边框与交互属性 */
+export interface LayoutProps {
+  gap?: SpacingToken;
+  padding?: SpacingToken;
+  paddingX?: SpacingToken;
+  paddingY?: SpacingToken;
+  paddingTop?: SpacingToken;
+  paddingRight?: SpacingToken;
+  paddingBottom?: SpacingToken;
+  paddingLeft?: SpacingToken;
+  margin?: SpacingToken;
+  marginX?: SpacingToken | 'auto';
+  marginY?: SpacingToken;
+  marginTop?: SpacingToken;
+  marginRight?: SpacingToken;
+  marginBottom?: SpacingToken;
+  marginLeft?: SpacingToken;
+  /** 水平居中（等价于 marginX: 'auto'） */
+  centerX?: boolean;
+  surface?: SurfaceToken;
+  background?: ColorValue;
+  hoverBackground?: ColorValue;
+  gradient?: LinearGradientSpec;
+  border?: boolean | number;
+  borderColor?: ColorValue;
+  borderBottom?: boolean;
+  borderLeft?: boolean;
+  shadow?: ShadowSpec;
+  opacity?: number;
+  radius?: RadiusToken;
+  clip?: boolean;
+  position?: 'absolute';
+  inset?: number;
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+  zIndex?: number;
+  pointerEvents?: 'none' | 'auto';
+  align?: AlignToken;
+  alignSelf?: AlignToken;
+  justify?: JustifyToken;
+  width?: number | 'full';
+  height?: number | 'full';
+  grow?: number;
+  shrink?: number;
+  basis?: number;
+  minWidth?: number;
+  maxWidth?: number;
+  minHeight?: number;
+  maxHeight?: number;
+  wrap?: boolean;
+  /** 独立悬浮窗中拖动窗口区域 */
+  dragWindow?: boolean;
+  /** 无障碍标签 */
+  label?: string;
+  disabled?: boolean;
+  onPress?: () => void;
+  onContextMenu?: () => void;
+}
+
+export type ColumnProps = LayoutProps;
+export type RowProps = LayoutProps;
+export type StackProps = LayoutProps;
+
+export interface BoxProps extends LayoutProps {
+  /** 开启原生帧率弹簧按压形变动画 */
+  springPress?: boolean;
+  /** springPress 按下时的横向缩放比例（默认 1.05） */
+  squishX?: number;
+  /** springPress 按下时的纵向缩放比例（默认 0.88） */
+  squishY?: number;
+  /** springPress 内容水平镜像翻转 */
+  flipX?: boolean;
+  onPressIn?: () => void;
+  onPressOut?: () => void;
+}
+
+export interface ScrollAreaProps {
+  padding?: SpacingToken;
+  gap?: SpacingToken;
+  height?: number;
+  grow?: number;
+  autoScrollBottom?: boolean;
+  onReachBottom?: () => void;
+}
+
+export interface GridProps {
+  cols?: number;
+  minColWidth?: number;
+  gap?: SpacingToken;
+}
+
+export interface TextProps {
+  text?: string;
+  size?: TextSizeToken;
+  lineHeight?: number;
+  weight?: FontWeightToken;
+  tone?: ToneToken;
+  color?: ColorValue;
+  wrap?: boolean;
+  maxLines?: number;
+  selectable?: boolean;
+  label?: string;
+  margin?: SpacingToken;
+  marginX?: SpacingToken | 'auto';
+  marginY?: SpacingToken;
+  marginTop?: SpacingToken;
+  marginRight?: SpacingToken;
+  marginBottom?: SpacingToken;
+  marginLeft?: SpacingToken;
+  centerX?: boolean;
+}
+
+export interface MarkdownProps {
+  content: string;
+  onLinkPress?: (href: string) => void;
+}
+
+export interface CodeBlockProps {
+  code: string;
+  language?: string;
+  copyable?: boolean;
+}
+
+export interface ButtonProps {
+  label?: string;
+  icon?: string;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  disabled?: boolean;
+  loading?: boolean;
+  onPress?: () => void;
+  onClick?: () => void;
+}
+
+export interface IconButtonProps {
+  icon: string;
+  label?: string;
+  size?: 'sm' | 'md';
+  active?: boolean;
+  disabled?: boolean;
+  onPress?: () => void;
+  onClick?: () => void;
+}
+
+export interface InputProps {
+  value?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  password?: boolean;
+  onChange?: (value: string) => void;
+  onSubmit?: (value: string) => void;
+}
+
+export interface TextareaProps {
+  value?: string;
+  placeholder?: string;
+  rows?: number;
+  autoResize?: boolean;
+  disabled?: boolean;
+  onChange?: (value: string) => void;
+  onSubmit?: (value: string) => void;
+}
+
+export interface SwitchProps {
+  checked?: boolean;
+  disabled?: boolean;
+  onChange?: (checked: boolean) => void;
+}
+
+export interface CheckboxProps {
+  checked?: boolean;
+  label?: string;
+  disabled?: boolean;
+  onChange?: (checked: boolean) => void;
+}
+
+export interface SelectOption {
+  value: string;
+  label: string;
+}
+
+export interface SelectProps {
+  value?: string;
+  options: SelectOption[];
+  placeholder?: string;
+  disabled?: boolean;
+  onChange?: (value: string) => void;
+}
+
+export interface NumberInputProps {
+  value?: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  disabled?: boolean;
+  onChange?: (value: number) => void;
+}
+
+export interface TabItem {
+  key: string;
+  label: string;
+  badge?: string;
+}
+
+export interface TabsProps {
+  value?: string;
+  items: TabItem[];
+  onChange?: (key: string) => void;
+}
+
+export interface BadgeProps {
+  label: string;
+  tone?: 'default' | 'brand' | 'success' | 'warning' | 'danger';
+  icon?: string;
+  closable?: boolean;
+  onPress?: () => void;
+  onClose?: () => void;
+}
+
+export interface CardProps {
+  title?: string;
+  cover?: string;
+  padding?: SpacingToken;
+  width?: number;
+  height?: number | 'full';
+  hoverable?: boolean;
+  dragWindow?: boolean;
+  onPress?: () => void;
+}
+
+export interface CollapsibleProps {
+  title: string;
+  icon?: string;
+  defaultOpen?: boolean;
+  status?: 'running' | 'done' | 'error';
+}
+
+export interface ProgressProps {
+  /** 0..1 或 0..100（>1 自动按百分比除以 100） */
+  value?: number;
+  label?: string;
+  indeterminate?: boolean;
+  tone?: 'default' | 'success' | 'warning' | 'danger';
+}
+
+export interface ImageProps extends Omit<LayoutProps, 'onPress'> {
+  src?: string;
+  /** 主图加载中或加载失败时的回退图（避免切换闪烁） */
+  fallbackSrc?: string;
+  aspectRatio?: number;
+  fit?: 'cover' | 'contain';
+  blur?: boolean | number;
+  previewable?: boolean;
+  /** 透明背景，不绘制默认封面占位底色 */
+  transparent?: boolean;
+  /** 可交互时绘制浅色悬停描边 */
+  hoverBorder?: boolean;
+  /** 图片尚未加载或加载失败时不占布局空间 */
+  hideWhenEmpty?: boolean;
+  onPress?: (src: string) => void;
+  onLoad?: (info: { src: string; width: number; height: number }) => void;
+  onError?: (info: { src: string }) => void;
+}
+
+export interface AvatarProps {
+  src?: string;
+  fallback?: string;
+  size?: number;
+}
+
+export interface EmptyProps {
+  icon?: string;
+  title?: string;
+  description?: string;
+}
+
+export interface SkeletonProps {
+  lines?: number;
+  height?: number;
+}
+
+export interface TooltipProps {
+  content: string;
+}
+
+export interface TableColumn {
+  key: string;
+  label: string;
+}
+
+export interface TableProps {
+  columns: Array<TableColumn | string>;
+  rows: Array<Record<string, unknown>>;
+  onRowPress?: (ev: { index: number; row: Record<string, unknown> }) => void;
+}
+
+export interface DividerProps {
+  subtle?: boolean;
+  marginY?: SpacingToken;
+}
+
+export interface SpacerProps {}
+
+export interface IconProps {
+  name: string;
+  /** 图标不存在时的回退名称，传空字符串可跳过渲染 */
+  fallback?: string;
+  size?: number;
+  tone?: ToneToken;
+  color?: ColorValue;
+}
+
+export interface NativeSlotProps {
+  /** 宿主页面暴露的原生插槽名（如游戏详情页的 "back" / "cover" / "toolbar" / "tags" / "summary"） */
+  name: string;
+  [prop: string]: unknown;
+}
+
+export interface HeroBannerMetaItem {
+  icon?: string;
+  text: string;
+}
+
+export interface HeroBannerRating {
+  score: number;
+  total?: number;
+  played?: number;
+}
+
+export interface HeroBannerPager {
+  current: number;
+  total: number;
+}
+
+/** SDK 内置基于底层原语组合的标准 Hero 头图模板属性 */
+export interface HeroBannerProps {
+  height?: number;
+  contentMaxWidth?: number;
+  coverWidth?: number;
+  toolbarMaxWidth?: number;
+  banner?: string;
+  fallbackBanner?: string;
+  logo?: string;
+  title?: string;
+  subtitle?: string;
+  meta?: Array<HeroBannerMetaItem | string> | string;
+  rating?: HeroBannerRating;
+  blur?: boolean | number;
+  backSlot?: string;
+  coverSlot?: string;
+  toolbarSlot?: string;
+  pager?: HeroBannerPager;
+  onPrev?: () => void;
+  onNext?: () => void;
+  label?: string;
+}
 
 export interface Game {
   id: string;

@@ -18,8 +18,9 @@ import (
 	"lunabox/desktop/ui/theme"
 )
 
-// NativeSlots 允许宿主页面把原生交互区域（如启动栏、封面、返回按钮）嵌入插件描述树的 NativeSlot / HeroBanner 节点中。
-type NativeSlots map[string]func(c *ui.Context, t *theme.Theme)
+// NativeSlots 允许宿主页面把原生交互区域（如启动栏、封面、返回按钮）嵌入插件描述树的 NativeSlot 节点中。
+// props 为插件在 <NativeSlot name="..." ... /> 上附带的可选提示参数（例如 width、maxWidth）。
+type NativeSlots map[string]func(c *ui.Context, t *theme.Theme, props map[string]any)
 
 // RenderSlot 挂载并渲染一个插件插槽实例。
 func (m *Manager) RenderSlot(c *ui.Context, t *theme.Theme, slotName, pluginID, regID, scopeKey string, props any) {
@@ -41,7 +42,7 @@ func (m *Manager) RenderInstance(c *ui.Context, t *theme.Theme, inst *Instance) 
 	m.RenderInstanceWithNatives(c, t, inst, nil)
 }
 
-// RenderInstanceWithNatives 渲染插件实例描述树并解析其中的 NativeSlot / HeroBanner 宿主回调。
+// RenderInstanceWithNatives 渲染插件实例描述树并解析其中的 NativeSlot 宿主回调。
 func (m *Manager) RenderInstanceWithNatives(c *ui.Context, t *theme.Theme, inst *Instance, natives NativeSlots) {
 	if m == nil || inst == nil {
 		return
@@ -186,6 +187,16 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 		})
 		return el
 
+	case "Stack":
+		el := ui.Box(c.Key(key))
+		m.applyLayoutProps(el, t, p, n.Events, inst)
+		el.Children(func() {
+			for i, child := range n.Children {
+				m.renderNode(c, t, inst, child, fmt.Sprintf("%s-%d", key, i), natives)
+			}
+		})
+		return el
+
 	case "ScrollArea":
 		sb := m.getScrollBar(inst, key)
 		pad := mapSpacing(propStr(p, "padding"))
@@ -266,9 +277,12 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 
 	case "Text":
 		txt := propStr(p, "text")
-		step := mapFontStep(propStr(p, "size"))
+		step := mapFontStepProp(p)
 		weight := mapFontWeight(propStr(p, "weight"))
 		col := mapToneColor(t, propStr(p, "tone"))
+		if customCol, ok := resolveColor(t, p["color"]); ok {
+			col = customCol
+		}
 		el := components.Text(c, txt, step, weight, col)
 		if wrapVal, hasWrap := p["wrap"]; hasWrap {
 			if b, ok := wrapVal.(bool); ok && !b {
@@ -281,6 +295,10 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 		if propBool(p, "selectable") {
 			el.Selectable()
 		}
+		if lbl := propStr(p, "label"); lbl != "" {
+			el.Label(lbl)
+		}
+		applyMarginProps(el, p)
 		return el
 
 	case "Markdown":
@@ -621,70 +639,7 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 		})
 
 	case "Image":
-		src := propStr(p, "src")
-		w := propFloat(p, "width")
-		h := propFloat(p, "height")
-		rad := propFloat(p, "radius")
-		pressID := eventID(n, "press")
-		previewable := propBool(p, "previewable")
-		transparent := propBool(p, "transparent")
-		blur := propBool(p, "blur")
-		hoverBorder := propBool(p, "hoverBorder")
-		fit := ui.Cover
-		if propStr(p, "fit") == "contain" {
-			fit = ui.Contain
-		}
-		box := ui.Box(c.Key(key))
-		if !transparent {
-			box.Clip().Background(t.CoverBg)
-		} else if rad > 0 {
-			box.Clip()
-		}
-		if w > 0 {
-			box.Width(w)
-		} else {
-			box.FillWidth()
-		}
-		if h > 0 {
-			box.Height(h)
-		} else if propStr(p, "height") == "full" {
-			box.FillHeight()
-		} else if ar := propFloat(p, "aspectRatio"); ar > 0 && w > 0 {
-			box.Height(w / ar)
-		} else {
-			box.Height(160)
-		}
-		if rad > 0 {
-			box.Radius(rad)
-		}
-		if previewable || pressID != "" {
-			box.Cursor(ui.CursorPointer)
-			if hoverBorder {
-				if box.Hovered() {
-					box.Border(1.5, theme.White.Alpha(0.85))
-				} else {
-					box.Border(t.HL, theme.White.Alpha(0.22))
-				}
-			}
-			box.OnClick(func() {
-				if previewable && src != "" {
-					inst.PreviewSrc = src
-					inst.PreviewOpen = true
-				}
-				if pressID != "" {
-					m.dispatch(inst, pressID, src)
-				}
-			})
-		}
-		box.Children(func() {
-			if imgSrc := m.LoadImageSource(src); imgSrc != nil {
-				img := ui.Image(c, imgSrc).Fill().Fit(fit)
-				if blur {
-					img.Blur(18)
-				}
-			}
-		})
-		return box
+		return m.renderImage(c, t, inst, key, n)
 
 	case "Avatar":
 		sz := propFloat(p, "size")
@@ -758,7 +713,11 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 		return ui.Spacer(c)
 
 	case "Icon":
-		name := assets.SafeIcon(propStr(p, "name"), "circle-medium")
+		fallback := "circle-medium"
+		if _, hasFb := p["fallback"]; hasFb {
+			fallback = propStr(p, "fallback")
+		}
+		name := assets.SafeIcon(propStr(p, "name"), fallback)
 		if name == "" {
 			return ui.Element{}
 		}
@@ -767,19 +726,19 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 			sz = 16
 		}
 		col := mapToneColor(t, propStr(p, "tone"))
+		if customCol, ok := resolveColor(t, p["color"]); ok {
+			col = customCol
+		}
 		return components.Icon(c, name, sz, col)
 
 	case "NativeSlot":
 		name := propStr(p, "name")
 		if natives != nil {
 			if fn, ok := natives[name]; ok && fn != nil {
-				fn(c, t)
+				fn(c, t, p)
 			}
 		}
 		return ui.Element{}
-
-	case "HeroBanner":
-		return m.renderHeroBanner(c, t, inst, key, n, natives)
 
 	default:
 		// 未知组件：开发模式下画红色占位并写明类型，正式版跳过（见 §9.6）
@@ -797,79 +756,125 @@ func (m *Manager) applyLayoutProps(el ui.Element, t *theme.Theme, p map[string]a
 	if gap := propSpacing(p, "gap"); gap > 0 {
 		el.Gap(gap)
 	}
-	px := propSpacing(p, "paddingX")
-	py := propSpacing(p, "paddingY")
-	if px > 0 || py > 0 {
-		el.Padding(py, px)
-	} else if pad := propSpacing(p, "padding"); pad > 0 {
-		el.Padding(pad)
-	}
-	mt := propSpacing(p, "marginTop")
-	mb := propSpacing(p, "marginBottom")
-	if mt > 0 || mb > 0 {
-		el.Margin(mt, 0, mb, 0)
-	}
+	applyPaddingProps(el, p)
+	applyMarginProps(el, p)
+
+	disabled := propBool(p, "disabled")
+	borderWidth := propBorderWidth(p, t.HL)
+	customBorderCol, hasCustomBorderCol := resolveColor(t, p["borderColor"])
+	var surfaceBorder ui.Color
+	hasSurfaceBorder := false
+
 	switch propStr(p, "surface") {
 	case "glass":
-		bg := t.Pick(theme.White.Alpha(0.68), theme.Brand900.Alpha(0.72))
-		border := t.Pick(theme.Brand300.Alpha(0.65), theme.White.Alpha(0.18))
-		el.Background(bg)
-		if propBool(p, "border") {
-			el.Border(t.HL, border)
-		}
+		el.Background(t.Pick(theme.White.Alpha(0.68), theme.Brand900.Alpha(0.72)))
+		surfaceBorder = t.Pick(theme.Brand300.Alpha(0.65), theme.White.Alpha(0.18))
+		hasSurfaceBorder = true
 	case "glass-card":
-		bg := t.Pick(theme.White.Alpha(0.42), theme.Brand800.Alpha(0.48))
-		border := t.Pick(theme.Brand200.Alpha(0.55), theme.White.Alpha(0.14))
-		el.Background(bg)
-		if propBool(p, "border") {
-			el.Border(t.HL, border)
-		}
+		el.Background(t.Pick(theme.White.Alpha(0.42), theme.Brand800.Alpha(0.48)))
+		surfaceBorder = t.Pick(theme.Brand200.Alpha(0.55), theme.White.Alpha(0.14))
+		hasSurfaceBorder = true
 	case "panel":
 		bg, border := t.GlassPanel(t.PanelBg, t.PanelBorder)
 		el.Background(bg)
-		if propBool(p, "border") {
-			el.Border(t.HL, border)
-		}
+		surfaceBorder = border
+		hasSurfaceBorder = true
 	case "card":
 		bg, border := t.GlassCard(t.CardBg, t.CardBorder)
 		el.Background(bg)
-		if propBool(p, "border") {
-			el.Border(t.HL, border)
-		}
+		surfaceBorder = border
+		hasSurfaceBorder = true
 	case "chip":
 		el.Background(t.ChipBg)
-		if propBool(p, "border") {
-			el.Border(t.HL, t.Divider)
-		}
+		surfaceBorder = t.Divider
+		hasSurfaceBorder = true
 	case "subtle":
 		el.Background(t.Pick(theme.Brand150.Alpha(0.55), theme.White.Alpha(0.05)))
-		if propBool(p, "border") {
-			el.Border(t.HL, t.Divider.Alpha(0.5))
+		surfaceBorder = t.Divider.Alpha(0.5)
+		hasSurfaceBorder = true
+	}
+
+	if bg, ok := resolveColor(t, p["background"]); ok {
+		el.Background(bg)
+	}
+	if hoverBg, ok := resolveColor(t, p["hoverBackground"]); ok {
+		el.Transition(theme.ColorsTransition(120 * time.Millisecond))
+		if !disabled && el.Hovered() {
+			el.Background(hoverBg)
 		}
-	default:
-		if propBool(p, "border") {
-			el.Border(t.HL, t.PanelBorder)
+	}
+	if grad, ok := resolveGradient(t, p["gradient"]); ok {
+		el.LinearGradient(grad)
+	}
+
+	if borderWidth > 0 {
+		bc := t.PanelBorder
+		if hasSurfaceBorder {
+			bc = surfaceBorder
 		}
+		if hasCustomBorderCol {
+			bc = customBorderCol
+		}
+		el.Border(borderWidth, bc)
 	}
 	if propBool(p, "borderBottom") {
-		el.BorderWidth(0, 0, t.HL, 0).BorderColor(t.Divider.Alpha(0.5))
+		bc := t.Divider.Alpha(0.5)
+		if hasCustomBorderCol {
+			bc = customBorderCol
+		}
+		el.BorderWidth(0, 0, t.HL, 0).BorderColor(bc)
 	}
 	if propBool(p, "borderLeft") {
-		el.BorderWidth(0, 0, 0, t.HL).BorderColor(t.Divider.Alpha(0.5))
+		bc := t.Divider.Alpha(0.5)
+		if hasCustomBorderCol {
+			bc = customBorderCol
+		}
+		el.BorderWidth(0, 0, 0, t.HL).BorderColor(bc)
+	}
+
+	if x, y, blur, spread, col, ok := resolveShadow(t, p["shadow"]); ok {
+		el.Shadow(x, y, blur, spread, col)
 	}
 	if op := propFloat(p, "opacity"); op > 0 && op < 1 {
 		el.Opacity(op)
 	}
-	switch propStr(p, "radius") {
-	case "sm":
-		el.Radius(6).Clip()
-	case "md":
-		el.Radius(10).Clip()
-	case "lg":
-		el.Radius(14).Clip()
-	case "full":
-		el.Radius(999).Clip()
+
+	if rad := propRadius(p, "radius"); rad > 0 {
+		el.Radius(rad)
+		if clipVal, hasClip := p["clip"]; !hasClip || clipVal != false {
+			el.Clip()
+		}
 	}
+	if propBool(p, "clip") {
+		el.Clip()
+	}
+
+	if propStr(p, "position") == "absolute" {
+		el.Absolute()
+	}
+	if _, hasInset := p["inset"]; hasInset {
+		v := propFloat(p, "inset")
+		el.Top(v).Right(v).Bottom(v).Left(v)
+	}
+	if _, ok := p["top"]; ok {
+		el.Top(propFloat(p, "top"))
+	}
+	if _, ok := p["right"]; ok {
+		el.Right(propFloat(p, "right"))
+	}
+	if _, ok := p["bottom"]; ok {
+		el.Bottom(propFloat(p, "bottom"))
+	}
+	if _, ok := p["left"]; ok {
+		el.Left(propFloat(p, "left"))
+	}
+	if _, ok := p["zIndex"]; ok {
+		el.ZIndex(int(propFloat(p, "zIndex")))
+	}
+	if propStr(p, "pointerEvents") == "none" {
+		el.PassThrough()
+	}
+
 	switch propStr(p, "align") {
 	case "start":
 		el.AlignItems(ui.Start)
@@ -879,6 +884,16 @@ func (m *Manager) applyLayoutProps(el ui.Element, t *theme.Theme, p map[string]a
 		el.AlignItems(ui.End)
 	case "stretch":
 		el.AlignItems(ui.Stretch)
+	}
+	switch propStr(p, "alignSelf") {
+	case "start":
+		el.AlignSelf(ui.Start)
+	case "center":
+		el.AlignSelf(ui.Center)
+	case "end":
+		el.AlignSelf(ui.End)
+	case "stretch":
+		el.AlignSelf(ui.Stretch)
 	}
 	switch propStr(p, "justify") {
 	case "start":
@@ -915,19 +930,115 @@ func (m *Manager) applyLayoutProps(el ui.Element, t *theme.Theme, p map[string]a
 	if mxw := propFloat(p, "maxWidth"); mxw > 0 {
 		el.MaxWidth(mxw)
 	}
+	if mh := propFloat(p, "minHeight"); mh > 0 || p["minHeight"] != nil {
+		el.MinHeight(mh)
+	}
+	if mxh := propFloat(p, "maxHeight"); mxh > 0 {
+		el.MaxHeight(mxh)
+	}
 	if propBool(p, "wrap") {
 		el.Wrap()
 	}
 	if propBool(p, "dragWindow") {
 		el.DragWindow()
 	}
-	if pressID := events["press"]; pressID != "" {
+	if lbl := propStr(p, "label"); lbl != "" {
+		el.Label(lbl)
+	}
+	if pressID := events["press"]; pressID != "" && !disabled {
 		el.Cursor(ui.CursorPointer)
 		el.OnClick(func() { m.dispatch(inst, pressID, nil) })
 	}
-	if ctxID := events["contextMenu"]; ctxID != "" && el.RightClicked() {
+	if ctxID := events["contextMenu"]; ctxID != "" && !disabled && el.RightClicked() {
 		m.dispatch(inst, ctxID, nil)
 	}
+}
+
+func applyPaddingProps(el ui.Element, p map[string]any) {
+	if p == nil {
+		return
+	}
+	_, hasT := p["paddingTop"]
+	_, hasR := p["paddingRight"]
+	_, hasB := p["paddingBottom"]
+	_, hasL := p["paddingLeft"]
+	if hasT || hasR || hasB || hasL {
+		base := propSpacing(p, "padding")
+		px := propSpacing(p, "paddingX")
+		py := propSpacing(p, "paddingY")
+		if px == 0 {
+			px = base
+		}
+		if py == 0 {
+			py = base
+		}
+		pt, pr, pb, pl := py, px, py, px
+		if hasT {
+			pt = propSpacing(p, "paddingTop")
+		}
+		if hasR {
+			pr = propSpacing(p, "paddingRight")
+		}
+		if hasB {
+			pb = propSpacing(p, "paddingBottom")
+		}
+		if hasL {
+			pl = propSpacing(p, "paddingLeft")
+		}
+		el.Padding(pt, pr, pb, pl)
+		return
+	}
+	px := propSpacing(p, "paddingX")
+	py := propSpacing(p, "paddingY")
+	if px > 0 || py > 0 {
+		el.Padding(py, px)
+	} else if pad := propSpacing(p, "padding"); pad > 0 {
+		el.Padding(pad)
+	}
+}
+
+func applyMarginProps(el ui.Element, p map[string]any) {
+	if p == nil {
+		return
+	}
+	centerX := propBool(p, "centerX") || propStr(p, "marginX") == "auto"
+	_, hasM := p["margin"]
+	_, hasMX := p["marginX"]
+	_, hasMY := p["marginY"]
+	_, hasMT := p["marginTop"]
+	_, hasMR := p["marginRight"]
+	_, hasMB := p["marginBottom"]
+	_, hasML := p["marginLeft"]
+	if !centerX && !hasM && !hasMX && !hasMY && !hasMT && !hasMR && !hasMB && !hasML {
+		return
+	}
+	base := propSpacing(p, "margin")
+	mx := propSpacing(p, "marginX")
+	my := propSpacing(p, "marginY")
+	if !hasMX {
+		mx = base
+	}
+	if !hasMY {
+		my = base
+	}
+	mt, mr, mb, ml := my, mx, my, mx
+	if hasMT {
+		mt = propSpacing(p, "marginTop")
+	}
+	if hasMR {
+		mr = propSpacing(p, "marginRight")
+	}
+	if hasMB {
+		mb = propSpacing(p, "marginBottom")
+	}
+	if hasML {
+		ml = propSpacing(p, "marginLeft")
+	}
+	if centerX {
+		mr = ui.Auto
+		ml = ui.Auto
+	}
+	el.Margin(mt, mr, mb, ml)
 }
 
 var springSquishEase = theme.CubicBezier(0.34, 1.56, 0.64, 1)
@@ -1006,357 +1117,153 @@ func (m *Manager) renderSpringPressBox(
 	return btn
 }
 
-// renderHeroBanner 渲染全出血沉浸式头图横幅（支持透明大徽标、标题/原名、图标元信息行、评分星级、无缝内嵌启动栏、右侧悬浮封面与头图翻页器）。
-// 背景图与多层渐变遮罩均设置负 ZIndex，确保永远位于常规流前景内容之下，不会覆盖标题与封面。
-func (m *Manager) renderHeroBanner(
+// renderImage 渲染通用图片原语：支持回退图（fallbackSrc）、按自然宽高比适配 maxWidth/maxHeight、
+// 绝对定位铺底（position="absolute" + inset）、高斯模糊（blur）、点击预览（previewable）以及 onLoad/onError 去重回调。
+func (m *Manager) renderImage(
 	c *ui.Context,
 	t *theme.Theme,
 	inst *Instance,
 	key string,
 	n *plugin.UINode,
-	natives NativeSlots,
 ) ui.Element {
 	p := n.Props
-	children := n.Children
-	bannerH := propFloat(p, "height")
-	if bannerH < 280 {
-		bannerH = 560
-	} else if bannerH > 760 {
-		bannerH = 760
+	src := propStr(p, "src")
+	fallbackSrc := propStr(p, "fallbackSrc")
+	if src == "" && fallbackSrc != "" {
+		src = fallbackSrc
+		fallbackSrc = ""
 	}
-	contentMaxW := propFloat(p, "contentMaxWidth")
-	if contentMaxW <= 0 {
-		contentMaxW = 1200
+	w := propFloat(p, "width")
+	h := propFloat(p, "height")
+	maxW := propFloat(p, "maxWidth")
+	maxH := propFloat(p, "maxHeight")
+	rad := propRadius(p, "radius")
+	pressID := eventID(n, "press")
+	loadID := eventID(n, "load")
+	errorID := eventID(n, "error")
+	previewable := propBool(p, "previewable")
+	transparent := propBool(p, "transparent")
+	hoverBorder := propBool(p, "hoverBorder")
+	hideWhenEmpty := propBool(p, "hideWhenEmpty")
+	blurRadius := propBlur(p, "blur")
+	fit := ui.Cover
+	if propStr(p, "fit") == "contain" {
+		fit = ui.Contain
 	}
-	bannerSrc := propStr(p, "banner")
-	fallbackBannerSrc := propStr(p, "fallbackBanner")
-	if bannerSrc == "" {
-		bannerSrc = fallbackBannerSrc
-		fallbackBannerSrc = ""
-	}
-	logoSrc := propStr(p, "logo")
-	title := propStr(p, "title")
-	subtitle := propStr(p, "subtitle")
-	blur := propBool(p, "blur")
-	backSlot := propStr(p, "backSlot")
-	coverSlot := propStr(p, "coverSlot")
-	toolbarSlot := propStr(p, "toolbarSlot")
-	prevID := eventID(n, "prev")
-	nextID := eventID(n, "next")
 
-	var pagerCurrent, pagerTotal int
-	if pm, ok := p["pager"].(map[string]any); ok {
-		pagerCurrent = int(propFloat(pm, "current"))
-		pagerTotal = int(propFloat(pm, "total"))
+	primarySrc := m.LoadImageSource(src)
+	imgSrc := primarySrc
+	if imgSrc == nil && fallbackSrc != "" && fallbackSrc != src {
+		imgSrc = m.LoadImageSource(fallbackSrc)
 	}
-	hasPager := (prevID != "" || nextID != "") && (pagerTotal == 0 || pagerTotal > 1)
 
-	type heroMetaItem struct {
-		Icon string
-		Text string
-	}
-	var metaItems []heroMetaItem
-	if rawMeta, ok := p["meta"].([]any); ok {
-		for _, item := range rawMeta {
-			switch v := item.(type) {
-			case map[string]any:
-				if txt := strings.TrimSpace(strVal(v["text"])); txt != "" {
-					metaItems = append(metaItems, heroMetaItem{
-						Icon: assets.SafeIcon(strVal(v["icon"]), ""),
-						Text: txt,
-					})
+	if src != "" {
+		if primarySrc != nil && loadID != "" {
+			token := "ok:" + src
+			if inst.ImageNotified[key] != token {
+				inst.ImageNotified[key] = token
+				var iw, ih int
+				if bmp, ok := primarySrc.(*ui.Bitmap); ok && bmp != nil {
+					iw, ih = bmp.Size()
 				}
-			default:
-				if txt := strings.TrimSpace(strVal(item)); txt != "" {
-					metaItems = append(metaItems, heroMetaItem{Text: txt})
-				}
+				m.dispatch(inst, loadID, map[string]any{"src": src, "width": iw, "height": ih})
+			}
+		} else if primarySrc == nil && errorID != "" && m.isImageFailed(src) {
+			token := "err:" + src
+			if inst.ImageNotified[key] != token {
+				inst.ImageNotified[key] = token
+				m.dispatch(inst, errorID, map[string]any{"src": src})
 			}
 		}
-	} else if s := strings.TrimSpace(propStr(p, "meta")); s != "" {
-		metaItems = append(metaItems, heroMetaItem{Text: s})
 	}
 
-	var ratingScore float64
-	var ratingTotal int
-	var ratingPlayed int
-	if rm, ok := p["rating"].(map[string]any); ok {
-		ratingScore = float64(propFloat(rm, "score"))
-		ratingTotal = int(propFloat(rm, "total"))
-		ratingPlayed = int(propFloat(rm, "played"))
+	if hideWhenEmpty && imgSrc == nil {
+		return ui.Element{}
 	}
 
-	// 页面底色：用于底部平滑渐隐，让头图无缝融入页面正文（无边框、无硬截断）
-	fadeBg := t.AppBg
-	if t.Glass {
-		fadeBg = t.AppBg.Alpha(0.88)
-	}
-	scrimDark := t.Pick(theme.Brand900, t.AppBg)
+	isAbsolute := propStr(p, "position") == "absolute"
+	box := ui.Box(c.Key(key))
 
-	hero := ui.Box(c.Key(key)).FillWidth().MinHeight(bannerH).Clip()
-	hero.LinearGradient(ui.LinearGradient{
-		Angle: 135,
-		Stops: []ui.GradientStop{
-			{Color: t.Pick(theme.Brand700, theme.Brand800), At: 0},
-			{Color: fadeBg, At: 1},
-		},
-	})
-	hero.Children(func() {
-		// 层 -3：高清原始头图（默认不虚化，仅当显式 blur=true 时模糊；新图加载中平滑回退到 fallbackBanner）
-		if bannerSrc != "" {
-			bmp := m.loadBitmap(bannerSrc)
-			if bmp == nil && fallbackBannerSrc != "" && fallbackBannerSrc != bannerSrc {
-				bmp = m.loadBitmap(fallbackBannerSrc)
-			}
-			if bmp != nil {
-				img := ui.Image(c.Key(key+"-bg"), bmp).Absolute().Top(0).Right(0).Bottom(0).Left(0).Fit(ui.Cover).PassThrough().ZIndex(-3)
-				if blur {
-					img.Blur(20)
+	// 未显式指定 width/height 但给了 maxWidth/maxHeight 时，按自然宽高比等比缩放（不放大超过原图）
+	naturalFit := w <= 0 && h <= 0 && (maxW > 0 || maxH > 0) && !isAbsolute &&
+		propStr(p, "width") != "full" && propStr(p, "height") != "full"
+	if naturalFit {
+		if maxW <= 0 {
+			maxW = 460
+		}
+		if maxH <= 0 {
+			maxH = 160
+		}
+		w, h = maxW*0.75, maxH*0.75
+		if bmp, ok := imgSrc.(*ui.Bitmap); ok && bmp != nil {
+			bw, bh := bmp.Size()
+			if bw > 0 && bh > 0 {
+				scale := min(maxW/float32(bw), maxH/float32(bh))
+				if scale > 1 {
+					scale = 1
 				}
+				w = float32(bw) * scale
+				h = float32(bh) * scale
 			}
 		}
-		// 层 -2：左侧横向暗色可读性梯度，保证左半区文字与徽标清晰，同时右半区头图主体保持通透
-		ui.Box(c).Absolute().Top(0).Right(0).Bottom(0).Left(0).PassThrough().ZIndex(-2).LinearGradient(ui.LinearGradient{
-			Angle: 90,
-			Stops: []ui.GradientStop{
-				{Color: scrimDark.Alpha(0.84), At: 0},
-				{Color: scrimDark.Alpha(0.56), At: 0.42},
-				{Color: scrimDark.Alpha(0.18), At: 0.76},
-				{Color: scrimDark.Alpha(0.06), At: 1},
-			},
-		})
-		// 层 -1：纵向融底梯度，上半段通透展示头图主体，下半段平滑压暗并融入页面底色
-		ui.Box(c).Absolute().Top(0).Right(0).Bottom(0).Left(0).PassThrough().ZIndex(-1).LinearGradient(ui.LinearGradient{
-			Angle: 180,
-			Stops: []ui.GradientStop{
-				{Color: theme.Black.Alpha(0.24), At: 0},
-				{Color: theme.Black.Alpha(0.04), At: 0.24},
-				{Color: theme.Black.Alpha(0.12), At: 0.48},
-				{Color: t.Pick(scrimDark.Alpha(0.56), fadeBg.Alpha(0.56)), At: 0.72},
-				{Color: t.Pick(scrimDark.Alpha(0.84), fadeBg.Alpha(0.92)), At: 0.91},
-				{Color: fadeBg, At: 1},
-			},
-		})
+	}
 
-		const (
-			heroPadTop    float32 = 20
-			heroPadX      float32 = 32
-			heroPadBottom float32 = 28
-		)
-		innerMinH := max(0, bannerH-heroPadTop-heroPadBottom)
+	m.applyLayoutProps(box, t, p, nil, inst)
 
-		var backFn func(*ui.Context, *theme.Theme)
-		if backSlot != "" && natives != nil {
-			if fn, ok := natives[backSlot]; ok && fn != nil {
-				backFn = fn
-			}
+	if !transparent {
+		box.Clip().Background(t.CoverBg)
+	} else if rad > 0 {
+		box.Clip()
+	}
+
+	if !isAbsolute {
+		if w > 0 {
+			box.Width(w)
+		} else if propStr(p, "width") == "full" || !naturalFit {
+			box.FillWidth()
 		}
+		if h > 0 {
+			box.Height(h)
+		} else if propStr(p, "height") == "full" {
+			box.FillHeight()
+		} else if ar := propFloat(p, "aspectRatio"); ar > 0 && w > 0 {
+			box.Height(w / ar)
+		} else if !naturalFit {
+			box.Height(160)
+		}
+	}
 
-		// 前景内容：外层铺满 Hero 宽度并保留左右安全边距，内层限制最大宽度并水平居中，与下方正文区左右严格齐平
-		ui.Column(c).FillWidth().MinHeight(bannerH).Padding(heroPadTop, heroPadX, heroPadBottom, heroPadX).Children(func() {
-			inner := ui.Column(c.Key(key + "-inner")).FillWidth().MaxWidth(contentMaxW).Margin(0, ui.Auto).MinHeight(innerMinH).Gap(28)
-			if backFn != nil {
-				inner.Justify(ui.SpaceBetween)
+	if rad > 0 {
+		box.Radius(rad)
+	}
+	if previewable || pressID != "" {
+		box.Cursor(ui.CursorPointer)
+		if hoverBorder {
+			if box.Hovered() {
+				box.Border(1.5, theme.White.Alpha(0.85))
 			} else {
-				inner.Justify(ui.End)
+				box.Border(t.HL, theme.White.Alpha(0.22))
 			}
-			inner.Children(func() {
-				// 顶左浮动返回按钮（与下方标题、Tab 左边缘严格齐平）
-				if backFn != nil {
-					pillBg := t.Pick(theme.White.Alpha(0.78), theme.Black.Alpha(0.36))
-					pillBorder := t.Pick(theme.White.Alpha(0.45), theme.White.Alpha(0.14))
-					ui.Box(c.Key(key+"-back-pill")).AlignSelf(ui.Start).
-						Padding(4, 12, 4, 8).Radius(999).
-						Background(pillBg).Border(t.HL, pillBorder).Children(func() {
-						backFn(c, t)
-					})
-				}
-
-				ui.Column(c).FillWidth().Gap(16).Children(func() {
-					ui.Row(c).FillWidth().Gap(32).AlignItems(ui.End).Children(func() {
-				// 左侧主信息区
-				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(10).Children(func() {
-					// 透明游戏徽标（按自然宽高比放大展示，贴左对齐）
-					hasLogo := false
-					if logoSrc != "" {
-						if imgSrc := m.LoadImageSource(logoSrc); imgSrc != nil {
-							hasLogo = true
-							const maxLogoW float32 = 460
-							const maxLogoH float32 = 132
-							w, h := float32(340), float32(104)
-							if bmp, ok := imgSrc.(*ui.Bitmap); ok && bmp != nil {
-								bw, bh := bmp.Size()
-								if bw > 0 && bh > 0 {
-									scale := min(maxLogoW/float32(bw), maxLogoH/float32(bh))
-									if scale > 1 {
-										scale = 1
-									}
-									w = float32(bw) * scale
-									h = float32(bh) * scale
-								}
-							}
-							ui.Box(c.Key(key+"-logo")).Width(w).Height(h).Children(func() {
-								ui.Image(c, imgSrc).Fill().Fit(ui.Contain)
-							})
-						}
-					}
-
-					// 有徽标时标题退居精致副行，避免与徽标视觉抢戏；无徽标时用大气主标题
-					if hasLogo {
-						subLine := title
-						if subtitle != "" && subtitle != title {
-							subLine = title + "  ·  " + subtitle
-						}
-						if subLine != "" {
-							components.Text(c, subLine, theme.TextBase, theme.WeightMedium, theme.White.Alpha(0.86)).Selectable()
-						}
-					} else {
-						if title != "" {
-							components.Text(c, title, theme.FontStep{Size: 34, Line: 42}, theme.WeightBold, theme.White).Selectable()
-						}
-						if subtitle != "" && subtitle != title {
-							components.Text(c, subtitle, theme.TextSM, theme.WeightNormal, theme.White.Alpha(0.80)).Selectable()
-						}
-					}
-
-					// 带图标的清爽元信息行（零胶囊边框，复刻 Hikarinagi 风格）
-					if len(metaItems) > 0 {
-						ui.Row(c).Wrap().Gap(16).AlignItems(ui.Center).Children(func() {
-							for i, item := range metaItems {
-								ui.Row(c.Key(fmt.Sprintf("%s-meta-%d", key, i))).Gap(5).AlignItems(ui.Center).Children(func() {
-									if item.Icon != "" {
-										components.Icon(c, item.Icon, 14, theme.White.Alpha(0.72))
-									}
-									components.Text(c, item.Text, theme.TextXS, theme.WeightNormal, theme.White.Alpha(0.90)).NoWrap()
-								})
-							}
-						})
-					}
-
-					// 评分与星级行（有评分时才展示）
-					if ratingScore > 0 {
-						ui.Row(c.Key(key+"-rating")).Gap(12).AlignItems(ui.Center).Margin(2, 0, 2, 0).Children(func() {
-							components.Text(c, fmt.Sprintf("%.1f", ratingScore), theme.FontStep{Size: 34, Line: 38}, theme.WeightBold, theme.White).NoWrap()
-							ui.Column(c).Gap(2).Children(func() {
-								ui.Row(c).Gap(2).AlignItems(ui.Center).Children(func() {
-									stars := ratingScore / 2.0
-									for i := 1; i <= 5; i++ {
-										iconName := "star-outline"
-										col := theme.White.Alpha(0.35)
-										if stars >= float64(i)-0.25 {
-											iconName = "star"
-											col = theme.Warning400
-										} else if stars >= float64(i)-0.75 {
-											iconName = "star-half-full"
-											col = theme.Warning400
-										}
-										if iconName = assets.SafeIcon(iconName, "star-outline"); iconName != "" {
-											components.Icon(c, iconName, 16, col)
-										}
-									}
-								})
-								var statParts []string
-								if ratingTotal > 0 {
-									statParts = append(statParts, fmt.Sprintf("%d 人评分", ratingTotal))
-								}
-								if ratingPlayed > 0 {
-									statParts = append(statParts, fmt.Sprintf("%d 人玩过", ratingPlayed))
-								}
-								if len(statParts) > 0 {
-									components.Text(c, strings.Join(statParts, "   "), theme.TextXS, theme.WeightNormal, theme.White.Alpha(0.75)).NoWrap()
-								}
-							})
-						})
-					}
-
-					// 原生启动栏无缝融入 Hero 内部（无硬边框与分隔条）
-					if toolbarSlot != "" && natives != nil {
-						if fn, ok := natives[toolbarSlot]; ok && fn != nil {
-							ui.Box(c.Key(key+"-toolbar-inline")).FillWidth().Margin(6, 0, 0, 0).Children(func() {
-								fn(c, t)
-							})
-						}
-					}
-				})
-
-				var coverFn func(*ui.Context, *theme.Theme)
-				if coverSlot != "" && natives != nil {
-					if fn, ok := natives[coverSlot]; ok && fn != nil {
-						coverFn = fn
-					}
-				}
-
-				if coverFn != nil || hasPager {
-					ui.Column(c.Key(key+"-right-col")).Shrink(0).AlignItems(ui.End).Gap(12).Children(func() {
-						// 右侧悬浮竖版封面（复用原生封面查看器与 NSFW 模糊）
-						if coverFn != nil {
-							ui.Box(c.Key(key+"-cover-frame")).Shrink(0).Radius(10).
-								Shadow(0, 14, 32, 0, theme.Black.Alpha(0.45)).
-								Border(t.HL, theme.White.Alpha(0.18)).Clip().Children(func() {
-								coverFn(c, t)
-							})
-						}
-
-						// 右侧底部头图左翻 / 右翻按钮（与左侧启动栏底线齐平）
-						if hasPager {
-							pillBg := theme.Black.Alpha(0.42)
-							pillBorder := theme.White.Alpha(0.16)
-							ui.Row(c.Key(key+"-pager")).Shrink(0).AlignItems(ui.Center).Gap(2).
-								Padding(3).Radius(999).
-								Background(pillBg).Border(t.HL, pillBorder).Children(func() {
-								renderPagerBtn := func(btnKey, iconName, label, evID string) {
-									btn := ui.ButtonBase(c.Key(btnKey)).Size(28, 28).Radius(999).Center().FocusRing(false).Label(label)
-									enabled := evID != ""
-									if enabled && btn.Hovered() {
-										btn.Background(theme.White.Alpha(0.18))
-									}
-									btn.Transition(theme.ColorsTransition(120 * time.Millisecond))
-									fg := theme.White.Alpha(0.92)
-									if !enabled {
-										fg = theme.White.Alpha(0.32)
-									}
-									if enabled {
-										btn.OnClick(func() {
-											m.dispatch(inst, evID, nil)
-										})
-									}
-									btn.Children(func() {
-										if ic := assets.SafeIcon(iconName, ""); ic != "" {
-											components.Icon(c, ic, 18, fg)
-										}
-									})
-								}
-
-								renderPagerBtn(key+"-pager-prev", "chevron-left", "上一张头图", prevID)
-								if pagerTotal > 0 {
-									cur := pagerCurrent
-									if cur < 1 {
-										cur = 1
-									}
-									if cur > pagerTotal {
-										cur = pagerTotal
-									}
-									components.TextMargin(c, fmt.Sprintf("%d / %d", cur, pagerTotal), theme.TextXS, theme.WeightMedium, theme.White.Alpha(0.84), 0, 6, 0, 6).NoWrap()
-								}
-								renderPagerBtn(key+"-pager-next", "chevron-right", "下一张头图", nextID)
-							})
-						}
-					})
-				}
-			})
-
-					// 底部扩展内容（例如 Hikarinagi 风格的横向游戏截图缩略预览条）
-					if len(children) > 0 {
-						ui.Row(c.Key(key+"-extra")).FillWidth().Wrap().Gap(10).AlignItems(ui.Center).Margin(4, 0, 0, 0).Children(func() {
-							for i, child := range children {
-								m.renderNode(c, t, inst, child, fmt.Sprintf("%s-hc-%d", key, i), natives)
-							}
-						})
-					}
-				})
-			})
+		}
+		box.OnClick(func() {
+			if previewable && src != "" {
+				inst.PreviewSrc = src
+				inst.PreviewOpen = true
+			}
+			if pressID != "" {
+				m.dispatch(inst, pressID, src)
+			}
 		})
+	}
+	box.Children(func() {
+		if imgSrc != nil {
+			img := ui.Image(c, imgSrc).Fill().Fit(fit)
+			if blurRadius > 0 {
+				img.Blur(blurRadius)
+			}
+		}
 	})
-	return hero
+	return box
 }
 
 func (m *Manager) renderTable(c *ui.Context, t *theme.Theme, inst *Instance, key string, p map[string]any, rowPressID string) ui.Element {
@@ -1625,6 +1532,310 @@ func mapFontStep(v string) theme.FontStep {
 	default:
 		return theme.TextBase
 	}
+}
+
+func mapFontStepProp(p map[string]any) theme.FontStep {
+	if p == nil {
+		return theme.TextBase
+	}
+	if sz := propFloat(p, "size"); sz > 0 {
+		line := propFloat(p, "lineHeight")
+		if line <= 0 {
+			line = sz * 1.25
+		}
+		return theme.FontStep{Size: sz, Line: line}
+	}
+	step := mapFontStep(propStr(p, "size"))
+	if line := propFloat(p, "lineHeight"); line > 0 {
+		step.Line = line
+	}
+	return step
+}
+
+func propRadius(p map[string]any, key string) float32 {
+	if p == nil {
+		return 0
+	}
+	switch x := p[key].(type) {
+	case float64:
+		if x > 0 {
+			return float32(x)
+		}
+	case float32:
+		if x > 0 {
+			return x
+		}
+	case int:
+		if x > 0 {
+			return float32(x)
+		}
+	case string:
+		switch x {
+		case "sm":
+			return 6
+		case "md":
+			return 10
+		case "lg":
+			return 14
+		case "full":
+			return 999
+		}
+	}
+	return 0
+}
+
+func propBlur(p map[string]any, key string) float32 {
+	if p == nil {
+		return 0
+	}
+	switch x := p[key].(type) {
+	case bool:
+		if x {
+			return 18
+		}
+	case float64:
+		if x > 0 {
+			return float32(x)
+		}
+	case float32:
+		if x > 0 {
+			return x
+		}
+	case int:
+		if x > 0 {
+			return float32(x)
+		}
+	}
+	return 0
+}
+
+func propBorderWidth(p map[string]any, hairline float32) float32 {
+	if p == nil {
+		return 0
+	}
+	switch x := p["border"].(type) {
+	case bool:
+		if x {
+			return hairline
+		}
+	case float64:
+		if x > 0 {
+			return float32(x)
+		}
+	case float32:
+		if x > 0 {
+			return x
+		}
+	case int:
+		if x > 0 {
+			return float32(x)
+		}
+	}
+	return 0
+}
+
+// resolveColor 解析通用颜色值，支持：
+// - 语义色板令牌（"appBg"、"fadeBg"、"scrim"、"white"、"black"、"primary"、"warning400" 等）
+// - 可选透明度后缀（"black@0.42"、"scrim@0.84"、"#1a1b26@0.8"）
+// - 十六进制色值（"#rgb" / "#rgba" / "#rrggbb" / "#rrggbbaa"）
+// - 明暗主题自适应对象（{ light: ColorValue, dark: ColorValue }）或 { color/token, alpha }
+func resolveColor(t *theme.Theme, raw any) (ui.Color, bool) {
+	if raw == nil {
+		return ui.Color{}, false
+	}
+	switch v := raw.(type) {
+	case map[string]any:
+		if _, hasLight := v["light"]; hasLight || v["dark"] != nil {
+			if t.Dark {
+				if col, ok := resolveColor(t, v["dark"]); ok {
+					return col, true
+				}
+				return resolveColor(t, v["light"])
+			}
+			if col, ok := resolveColor(t, v["light"]); ok {
+				return col, true
+			}
+			return resolveColor(t, v["dark"])
+		}
+		baseVal := v["color"]
+		if baseVal == nil {
+			baseVal = v["token"]
+		}
+		col, ok := resolveColor(t, baseVal)
+		if !ok {
+			return ui.Color{}, false
+		}
+		if _, hasAlpha := v["alpha"]; hasAlpha {
+			a := propFloat(v, "alpha")
+			if a < 0 {
+				a = 0
+			} else if a > 1 {
+				a = 1
+			}
+			col = col.Alpha(a)
+		}
+		return col, true
+	case string:
+		s := strings.TrimSpace(v)
+		if s == "" {
+			return ui.Color{}, false
+		}
+		alpha := float32(-1)
+		if base, aStr, hasAt := strings.Cut(s, "@"); hasAt {
+			s = strings.TrimSpace(base)
+			if parsed, err := strconv.ParseFloat(strings.TrimSpace(aStr), 32); err == nil {
+				if parsed < 0 {
+					parsed = 0
+				} else if parsed > 1 {
+					parsed = 1
+				}
+				alpha = float32(parsed)
+			}
+		}
+		col, ok := resolveColorToken(t, s)
+		if !ok {
+			return ui.Color{}, false
+		}
+		if alpha >= 0 {
+			col = col.Alpha(alpha)
+		}
+		return col, true
+	default:
+		return ui.Color{}, false
+	}
+}
+
+func resolveColorToken(t *theme.Theme, token string) (ui.Color, bool) {
+	if strings.HasPrefix(token, "#") {
+		hex := token[1:]
+		if len(hex) == 3 || len(hex) == 4 || len(hex) == 6 || len(hex) == 8 {
+			return ui.Hex(token), true
+		}
+		return ui.Color{}, false
+	}
+	switch token {
+	case "transparent":
+		return ui.Transparent, true
+	case "white":
+		return theme.White, true
+	case "black":
+		return theme.Black, true
+	case "appBg":
+		return t.AppBg, true
+	case "fadeBg":
+		if t.Glass {
+			return t.AppBg.Alpha(0.88), true
+		}
+		return t.AppBg, true
+	case "scrim":
+		return t.Pick(theme.Brand900, t.AppBg), true
+	case "panelBg":
+		return t.PanelBg, true
+	case "panelBorder":
+		return t.PanelBorder, true
+	case "cardBg":
+		return t.CardBg, true
+	case "cardBorder":
+		return t.CardBorder, true
+	case "chipBg":
+		return t.ChipBg, true
+	case "divider":
+		return t.Divider, true
+	case "text":
+		return t.Text, true
+	case "textStrong":
+		return t.TextStrong, true
+	case "textMuted":
+		return t.TextMuted, true
+	case "textFaint":
+		return t.TextFaint, true
+	case "primary", "brand":
+		return theme.Primary500, true
+	case "accent":
+		return t.Pick(theme.Primary600, theme.Primary400), true
+	case "success":
+		return theme.Success500, true
+	case "warning":
+		return theme.Warning500, true
+	case "warning400":
+		return theme.Warning400, true
+	case "danger":
+		return theme.Error500, true
+	case "brand700":
+		return theme.Brand700, true
+	case "brand800":
+		return theme.Brand800, true
+	case "brand900":
+		return theme.Brand900, true
+	default:
+		return ui.Color{}, false
+	}
+}
+
+func resolveGradient(t *theme.Theme, raw any) (ui.LinearGradient, bool) {
+	mp, ok := raw.(map[string]any)
+	if !ok || mp == nil {
+		return ui.LinearGradient{}, false
+	}
+	rawStops, ok := mp["stops"].([]any)
+	if !ok || len(rawStops) < 2 {
+		return ui.LinearGradient{}, false
+	}
+	stops := make([]ui.GradientStop, 0, len(rawStops))
+	for i, item := range rawStops {
+		sm, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		col, ok := resolveColor(t, sm["color"])
+		if !ok {
+			continue
+		}
+		at := propFloat(sm, "at")
+		if _, hasAt := sm["at"]; !hasAt && len(rawStops) > 1 {
+			at = float32(i) / float32(len(rawStops)-1)
+		}
+		stops = append(stops, ui.GradientStop{Color: col, At: at})
+	}
+	if len(stops) < 2 {
+		return ui.LinearGradient{}, false
+	}
+	angle := propFloat(mp, "angle")
+	if _, hasAngle := mp["angle"]; !hasAngle {
+		angle = 180
+	}
+	return ui.LinearGradient{Angle: angle, Stops: stops}, true
+}
+
+func resolveShadow(t *theme.Theme, raw any) (x, y, blur, spread float32, col ui.Color, ok bool) {
+	if raw == nil {
+		return 0, 0, 0, 0, ui.Color{}, false
+	}
+	switch v := raw.(type) {
+	case string:
+		switch v {
+		case "sm":
+			return 0, 2, 8, 0, theme.Black.Alpha(0.18), true
+		case "md":
+			return 0, 6, 18, 0, theme.Black.Alpha(0.28), true
+		case "lg":
+			return 0, 14, 32, 0, theme.Black.Alpha(0.45), true
+		}
+	case map[string]any:
+		blur = propFloat(v, "blur")
+		if blur <= 0 {
+			return 0, 0, 0, 0, ui.Color{}, false
+		}
+		x = propFloat(v, "x")
+		y = propFloat(v, "y")
+		spread = propFloat(v, "spread")
+		c, hasCol := resolveColor(t, v["color"])
+		if !hasCol {
+			c = theme.Black.Alpha(0.35)
+		}
+		return x, y, blur, spread, c, true
+	}
+	return 0, 0, 0, 0, ui.Color{}, false
 }
 
 func mapFontWeight(v string) int {

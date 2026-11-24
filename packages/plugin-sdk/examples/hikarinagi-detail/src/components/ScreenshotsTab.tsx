@@ -40,16 +40,23 @@ export function createScreenshotsTab(store: DetailStore) {
 
     if (!detail) {
       return (
-        <Empty
-          k="ss-unmatched"
-          icon="image-off"
-          title={state.status === 'error' ? '获取 Hikarinagi 截图失败' : '未匹配到 Hikarinagi 条目'}
-          description={
-            state.error || '尚未匹配到对应的 Hikarinagi 条目，请点击重试。'
-          }
-          actionLabel="重新匹配"
-          onAction={() => store.loadGame(game, { force: true })}
-        />
+        <Column k="ss-unmatched" width="full" align="center" gap="sm">
+          <Empty
+            icon="image-off"
+            title={state.status === 'error' ? '获取 Hikarinagi 截图失败' : '未匹配到 Hikarinagi 条目'}
+            description={
+              state.error || '尚未匹配到对应的 Hikarinagi 条目，请点击重试。'
+            }
+          />
+          <Button
+            k="ss-retry"
+            label="重新匹配"
+            icon="refresh"
+            variant="secondary"
+            size="sm"
+            onPress={() => store.loadGame(game, { force: true })}
+          />
+        </Column>
       );
     }
 

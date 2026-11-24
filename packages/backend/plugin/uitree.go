@@ -46,6 +46,7 @@ var AllowedComponentTypes = map[string]struct{}{
 	"Column":      {},
 	"Row":         {},
 	"Box":         {},
+	"Stack":       {},
 	"ScrollArea":  {},
 	"Grid":        {},
 	"Text":        {},
@@ -73,7 +74,6 @@ var AllowedComponentTypes = map[string]struct{}{
 	"Divider":     {},
 	"Spacer":      {},
 	"Icon":        {},
-	"HeroBanner":  {},
 	"NativeSlot":  {},
 }
 

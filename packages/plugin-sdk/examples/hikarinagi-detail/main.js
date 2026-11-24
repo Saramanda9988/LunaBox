@@ -1,109 +1,93 @@
-// ../plugin-sdk/examples/hikarinagi-detail/src/format.ts
+// examples/hikarinagi-detail/src/format.ts
 var SITE_GALGAME_BASE = "https://www.hikarinagi.org/galgames/";
 function normalizeHikarinagiId(input) {
-  if (input == null)
-    return "";
+  if (input == null) return "";
   const raw = String(input).trim();
-  if (!raw)
-    return "";
+  if (!raw) return "";
   const urlMatch = raw.match(/hikarinagi\.org\/galgames?\/(\d+)/i);
   const candidate = urlMatch ? urlMatch[1] : raw.replace(/^#/, "");
-  if (!/^\d+$/.test(candidate))
-    return "";
+  if (!/^\d+$/.test(candidate)) return "";
   const num = Number(candidate);
-  if (!Number.isFinite(num) || num <= 0)
-    return "";
+  if (!Number.isFinite(num) || num <= 0) return "";
   return String(Math.floor(num));
 }
 function normalizeText(s) {
   return String(s || "").toLowerCase().replace(/[\s　\-_~～·•・:：!！?？.,，。'"`「」『』【】()（）\[\]]+/g, "");
 }
 function formatReleaseDate(detail) {
-  if (!detail)
-    return "";
+  if (!detail) return "";
   if (detail.release_date_tbd) {
-    return detail.release_date_tbd_note ? `待定（${detail.release_date_tbd_note}）` : "发售日待定";
+    return detail.release_date_tbd_note ? `\u5F85\u5B9A\uFF08${detail.release_date_tbd_note}\uFF09` : "\u53D1\u552E\u65E5\u5F85\u5B9A";
   }
   const raw = String(detail.release_date || "").trim();
-  if (!raw)
-    return "";
+  if (!raw) return "";
   const datePart = raw.slice(0, 10);
   const precision = String(detail.release_date_precision || "DAY").toUpperCase();
   if (precision === "YEAR" && datePart.length >= 4) {
-    return `${datePart.slice(0, 4)} 年`;
+    return `${datePart.slice(0, 4)} \u5E74`;
   }
   if (precision === "MONTH" && datePart.length >= 7) {
-    return `${datePart.slice(0, 4)} 年 ${Number(datePart.slice(5, 7))} 月`;
+    return `${datePart.slice(0, 4)} \u5E74 ${Number(datePart.slice(5, 7))} \u6708`;
   }
   if (datePart.length === 10 && datePart[4] === "-" && datePart[7] === "-") {
-    return `${datePart.slice(0, 4)} 年 ${Number(datePart.slice(5, 7))} 月 ${Number(datePart.slice(8, 10))} 日`;
+    return `${datePart.slice(0, 4)} \u5E74 ${Number(datePart.slice(5, 7))} \u6708 ${Number(datePart.slice(8, 10))} \u65E5`;
   }
   return datePart;
 }
 function formatStatusLabel(detail) {
-  if (!detail)
-    return "";
+  if (!detail) return "";
   const st = String(detail.release_status || detail.dev_status || "").toUpperCase();
   switch (st) {
     case "RELEASED":
-      return "已发售";
+      return "\u5DF2\u53D1\u552E";
     case "PLANNED":
     case "IN_DEVELOPMENT":
-      return "开发中 / 预定发售";
+      return "\u5F00\u53D1\u4E2D / \u9884\u5B9A\u53D1\u552E";
     case "CANCELLED":
-      return "已取消";
+      return "\u5DF2\u53D6\u6D88";
     default:
       return st || "";
   }
 }
 function formatLangLabel(lang) {
   const code = String(lang || "").trim().toLowerCase();
-  if (!code)
-    return "";
+  if (!code) return "";
   const map = {
-    ja: "日语",
-    jp: "日语",
-    "ja-jp": "日语",
-    zh: "中文",
-    "zh-cn": "简体中文",
-    "zh-hans": "简体中文",
-    "zh-tw": "繁体中文",
-    "zh-hant": "繁体中文",
-    en: "英语",
-    "en-us": "英语",
-    ko: "韩语",
-    "ko-kr": "韩语"
+    ja: "\u65E5\u8BED",
+    jp: "\u65E5\u8BED",
+    "ja-jp": "\u65E5\u8BED",
+    zh: "\u4E2D\u6587",
+    "zh-cn": "\u7B80\u4F53\u4E2D\u6587",
+    "zh-hans": "\u7B80\u4F53\u4E2D\u6587",
+    "zh-tw": "\u7E41\u4F53\u4E2D\u6587",
+    "zh-hant": "\u7E41\u4F53\u4E2D\u6587",
+    en: "\u82F1\u8BED",
+    "en-us": "\u82F1\u8BED",
+    ko: "\u97E9\u8BED",
+    "ko-kr": "\u97E9\u8BED"
   };
   return map[code] || String(lang || "");
 }
 function formatPrice(p) {
-  if (!p)
-    return "";
+  if (!p) return "";
   const parts = [];
-  if (p.version)
-    parts.push(String(p.version));
+  if (p.version) parts.push(String(p.version));
   const amount = p.amount != null ? Number(p.amount).toLocaleString() : "";
   const currency = p.currency ? String(p.currency) : "";
   const money = [amount, currency].filter(Boolean).join(" ");
-  if (money)
-    parts.push(money);
-  if (p.tax_included === true)
-    parts.push("含税");
-  else if (p.tax_included === false)
-    parts.push("不含税");
-  return parts.join(" · ");
+  if (money) parts.push(money);
+  if (p.tax_included === true) parts.push("\u542B\u7A0E");
+  else if (p.tax_included === false) parts.push("\u4E0D\u542B\u7A0E");
+  return parts.join(" \xB7 ");
 }
 function isMediaSensitive(item) {
-  if (!item)
-    return false;
+  if (!item) return false;
   return Number(item.sexual || 0) > 0 || Number(item.violence || 0) > 0;
 }
 function pickBestLogo(logos, preferredLang, appLang) {
-  if (!Array.isArray(logos) || logos.length === 0)
-    return null;
+  if (!Array.isArray(logos) || logos.length === 0) return null;
   const valid = logos.filter((l) => l && l.url);
-  if (valid.length === 0)
-    return null;
+  if (valid.length === 0) return null;
   let order;
   if (preferredLang === "zh") {
     order = ["zh-hans", "zh-cn", "zh", "zh-hant", "zh-tw", "ja", "en"];
@@ -126,14 +110,12 @@ function pickBestLogo(logos, preferredLang, appLang) {
       const code = String(l.language || "").toLowerCase();
       return code === target || code.startsWith(`${target}-`);
     });
-    if (hit)
-      return hit;
+    if (hit) return hit;
   }
   return valid[0];
 }
 function sortHeroImages(images, blurNsfw) {
-  if (!Array.isArray(images))
-    return [];
+  if (!Array.isArray(images)) return [];
   const valid = images.filter((img) => img && img.url);
   const scoreImage = (img) => {
     const w = Number(img.width || 0);
@@ -142,14 +124,11 @@ function sortHeroImages(images, blurNsfw) {
     const isLandscape = ratio >= 1.25;
     const sensitive = isMediaSensitive(img);
     let score = 0;
-    if (isLandscape)
-      score += 1e4;
-    if (!sensitive)
-      score += blurNsfw ? 50000 : 5000;
-    else if (blurNsfw)
-      score -= 20000;
+    if (isLandscape) score += 1e4;
+    if (!sensitive) score += blurNsfw ? 5e4 : 5e3;
+    else if (blurNsfw) score -= 2e4;
     score -= Math.abs(ratio - 1.78) * 1200;
-    score += Math.min(w * h, 2560 * 1440) / 1000;
+    score += Math.min(w * h, 2560 * 1440) / 1e3;
     return score;
   };
   return valid.slice().sort((a, b) => scoreImage(b) - scoreImage(a));
@@ -166,7 +145,7 @@ function pickBestBanner(detail, game, blurNsfw) {
   }
   const covers = Array.isArray(detail?.covers) ? detail.covers.filter((c) => c && c.url) : [];
   if (covers.length > 0) {
-    const safeCover = blurNsfw ? covers.find((c) => !isMediaSensitive(c)) : undefined;
+    const safeCover = blurNsfw ? covers.find((c) => !isMediaSensitive(c)) : void 0;
     const picked = safeCover || covers[0];
     return {
       url: picked.url,
@@ -182,9 +161,10 @@ function pickBestBanner(detail, game, blurNsfw) {
   };
 }
 function pickBestSearchHit(items, game) {
-  const hits = (Array.isArray(items) ? items : []).filter((item) => item && item.type === "galgame" && Number(item.id) > 0);
-  if (hits.length === 0)
-    return null;
+  const hits = (Array.isArray(items) ? items : []).filter(
+    (item) => item && item.type === "galgame" && Number(item.id) > 0
+  );
+  if (hits.length === 0) return null;
   const targetNames = [game?.name, ...Array.isArray(game?.aliases) ? game.aliases : []].map(normalizeText).filter(Boolean);
   for (const h of hits) {
     const titleNorm = normalizeText(h.title);
@@ -201,26 +181,21 @@ function pickBestSearchHit(items, game) {
       const devNorm = normalizeText(h.developer);
       return Boolean(devNorm) && (devNorm === companyNorm || devNorm.includes(companyNorm) || companyNorm.includes(devNorm));
     });
-    if (byCompany)
-      return byCompany;
+    if (byCompany) return byCompany;
   }
   return hits[0];
 }
 function buildBangumiUrl(raw) {
   const v = String(raw ?? "").trim();
-  if (!v)
-    return "";
-  if (/^https?:\/\//i.test(v))
-    return v;
+  if (!v) return "";
+  if (/^https?:\/\//i.test(v)) return v;
   const digits = v.replace(/[^\d]/g, "");
   return digits ? `https://bgm.tv/subject/${digits}` : "";
 }
 function buildVndbUrl(raw) {
   const v = String(raw ?? "").trim();
-  if (!v)
-    return "";
-  if (/^https?:\/\//i.test(v))
-    return v;
+  if (!v) return "";
+  if (/^https?:\/\//i.test(v)) return v;
   const normalized = /^v\d+$/i.test(v) ? v.toLowerCase() : /^\d+$/.test(v) ? `v${v}` : "";
   return normalized ? `https://vndb.org/${normalized}` : "";
 }
@@ -241,21 +216,20 @@ function getPrimaryAndSubTitle(detail, game) {
   return { title, subtitle };
 }
 
-// ../plugin-sdk/examples/hikarinagi-detail/src/api.ts
+// examples/hikarinagi-detail/src/api.ts
 var API_BASE = "https://api.hikarinagi.org/v3";
 function createHikarinagiApi(ctx) {
   async function resolveToken() {
     const cfg = ctx.config.get() || {};
     const custom = String(cfg.accessToken || "").trim();
-    if (custom)
-      return custom;
+    if (custom) return custom;
     const token = await ctx.metadata.getAuthToken("hikarinagi");
     return String(token || "").trim();
   }
   async function apiGet(path) {
     const token = await resolveToken();
     if (!token) {
-      throw new Error("未获取到 Hikarinagi 访问令牌，请先在设置中登录 Hikarinagi 或填写自定义 Token");
+      throw new Error("\u672A\u83B7\u53D6\u5230 Hikarinagi \u8BBF\u95EE\u4EE4\u724C\uFF0C\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u767B\u5F55 Hikarinagi \u6216\u586B\u5199\u81EA\u5B9A\u4E49 Token");
     }
     const resp = await fetch(`${API_BASE}${path}`, {
       method: "GET",
@@ -273,18 +247,20 @@ function createHikarinagiApi(ctx) {
     }
     if (!resp.ok) {
       const msg = json?.message || json?.error?.message || `HTTP ${resp.status}`;
-      throw new Error(`Hikarinagi API 请求失败：${msg}`);
+      throw new Error(`Hikarinagi API \u8BF7\u6C42\u5931\u8D25\uFF1A${msg}`);
     }
     if (!json || json.success === false) {
-      const msg = json?.message || "接口返回异常";
-      throw new Error(`Hikarinagi API 错误：${msg}`);
+      const msg = json?.message || "\u63A5\u53E3\u8FD4\u56DE\u5F02\u5E38";
+      throw new Error(`Hikarinagi API \u9519\u8BEF\uFF1A${msg}`);
     }
     return json.data;
   }
   async function fetchGalgameDetail(hikarinagiId) {
-    const data = await apiGet(`/galgames/${encodeURIComponent(hikarinagiId)}`);
+    const data = await apiGet(
+      `/galgames/${encodeURIComponent(hikarinagiId)}`
+    );
     if (!data || !data.id) {
-      throw new Error(`未找到 Hikarinagi 条目 #${hikarinagiId}`);
+      throw new Error(`\u672A\u627E\u5230 Hikarinagi \u6761\u76EE #${hikarinagiId}`);
     }
     return data;
   }
@@ -295,8 +271,7 @@ function createHikarinagiApi(ctx) {
     }
     if (Array.isArray(game?.aliases)) {
       for (const raw of game.aliases) {
-        if (queries.length >= 3)
-          break;
+        if (queries.length >= 3) break;
         const alias = String(raw || "").trim();
         if (alias && !queries.includes(alias)) {
           queries.push(alias);
@@ -304,7 +279,9 @@ function createHikarinagiApi(ctx) {
       }
     }
     for (const q of queries) {
-      const data = await apiGet(`/search?q=${encodeURIComponent(q)}&types=galgame&page=1&page_size=5`);
+      const data = await apiGet(
+        `/search?q=${encodeURIComponent(q)}&types=galgame&page=1&page_size=5`
+      );
       const hit = pickBestSearchHit(data?.items, game);
       if (hit && Number(hit.id) > 0) {
         return {
@@ -321,7 +298,7 @@ function createHikarinagiApi(ctx) {
   };
 }
 
-// ../plugin-sdk/examples/hikarinagi-detail/src/components/DetailAside.tsx
+// examples/hikarinagi-detail/src/components/DetailAside.tsx
 import {
   Badge,
   Box,
@@ -333,41 +310,17 @@ import {
   Skeleton,
   Text
 } from "lunabox";
-import { jsx, jsxs, Fragment } from "lunabox/jsx-runtime";
+import { Fragment, jsx, jsxs } from "lunabox/jsx-runtime";
 function InfoRow({
   label,
   value
 }) {
   const v = String(value || "").trim();
-  if (!v)
-    return null;
-  return /* @__PURE__ */ jsxs(Row, {
-    gap: "sm",
-    align: "start",
-    width: "full",
-    children: [
-      /* @__PURE__ */ jsx(Box, {
-        width: 64,
-        shrink: 0,
-        children: /* @__PURE__ */ jsx(Text, {
-          text: label,
-          size: "xs",
-          tone: "muted"
-        })
-      }),
-      /* @__PURE__ */ jsx(Box, {
-        grow: 1,
-        basis: 0,
-        minWidth: 0,
-        children: /* @__PURE__ */ jsx(Text, {
-          text: v,
-          size: "xs",
-          tone: "strong",
-          selectable: true
-        })
-      })
-    ]
-  });
+  if (!v) return null;
+  return /* @__PURE__ */ jsxs(Row, { gap: "sm", align: "start", width: "full", children: [
+    /* @__PURE__ */ jsx(Box, { width: 64, shrink: 0, children: /* @__PURE__ */ jsx(Text, { text: label, size: "xs", tone: "muted" }) }),
+    /* @__PURE__ */ jsx(Box, { grow: 1, basis: 0, minWidth: 0, children: /* @__PURE__ */ jsx(Text, { text: v, size: "xs", tone: "strong", selectable: true }) })
+  ] });
 }
 function createDetailAside(ctx, store) {
   return function DetailAside({ game }) {
@@ -375,35 +328,13 @@ function createDetailAside(ctx, store) {
     const detail = state.detail;
     const gameId = game?.id ? String(game.id) : "";
     if (state.status === "loading" && !detail) {
-      return /* @__PURE__ */ jsxs(Column, {
-        k: "aside-loading",
-        gap: "md",
-        width: "full",
-        children: [
-          /* @__PURE__ */ jsxs(Row, {
-            justify: "between",
-            align: "center",
-            width: "full",
-            children: [
-              /* @__PURE__ */ jsx(Text, {
-                text: "游戏详情",
-                size: "base",
-                weight: "semibold",
-                tone: "strong"
-              }),
-              /* @__PURE__ */ jsx(Text, {
-                text: "同步中…",
-                size: "xs",
-                tone: "muted"
-              })
-            ]
-          }),
-          /* @__PURE__ */ jsx(Skeleton, {
-            lines: 7,
-            height: 14
-          })
-        ]
-      });
+      return /* @__PURE__ */ jsxs(Column, { k: "aside-loading", gap: "md", width: "full", children: [
+        /* @__PURE__ */ jsxs(Row, { justify: "between", align: "center", width: "full", children: [
+          /* @__PURE__ */ jsx(Text, { text: "\u6E38\u620F\u8BE6\u60C5", size: "base", weight: "semibold", tone: "strong" }),
+          /* @__PURE__ */ jsx(Text, { text: "\u540C\u6B65\u4E2D\u2026", size: "xs", tone: "muted" })
+        ] }),
+        /* @__PURE__ */ jsx(Skeleton, { lines: 7, height: 14 })
+      ] });
     }
     const links = [];
     if (detail?.id) {
@@ -414,7 +345,7 @@ function createDetailAside(ctx, store) {
       });
     }
     if (detail?.homepage) {
-      links.push({ label: "官方网站", url: String(detail.homepage), icon: "link-variant" });
+      links.push({ label: "\u5B98\u65B9\u7F51\u7AD9", url: String(detail.homepage), icon: "link-variant" });
     }
     if (Array.isArray(detail?.steam_apps)) {
       detail.steam_apps.forEach((sa, idx) => {
@@ -429,17 +360,15 @@ function createDetailAside(ctx, store) {
     }
     if (detail?.external_source) {
       const bgmUrl = buildBangumiUrl(detail.external_source.bangumi);
-      if (bgmUrl)
-        links.push({ label: "Bangumi", url: bgmUrl, icon: "open-in-new" });
+      if (bgmUrl) links.push({ label: "Bangumi", url: bgmUrl, icon: "open-in-new" });
       const vndbUrl = buildVndbUrl(detail.external_source.vndb);
-      if (vndbUrl)
-        links.push({ label: "VNDB", url: vndbUrl, icon: "open-in-new" });
+      if (vndbUrl) links.push({ label: "VNDB", url: vndbUrl, icon: "open-in-new" });
     }
     if (Array.isArray(detail?.external_links)) {
       detail.external_links.forEach((el) => {
         if (el?.url) {
           links.push({
-            label: String(el.label || el.name || "外部链接"),
+            label: String(el.label || el.name || "\u5916\u90E8\u94FE\u63A5"),
             url: String(el.url),
             icon: "link-variant"
           });
@@ -452,209 +381,113 @@ function createDetailAside(ctx, store) {
     if (Array.isArray(detail?.languages) && detail.languages.length > 0) {
       for (const l of detail.languages) {
         const lbl = formatLangLabel(l);
-        if (lbl && !langs.includes(lbl))
-          langs.push(lbl);
+        if (lbl && !langs.includes(lbl)) langs.push(lbl);
       }
     } else if (detail?.origin_lang) {
       const lbl = formatLangLabel(detail.origin_lang);
-      if (lbl)
-        langs.push(lbl);
+      if (lbl) langs.push(lbl);
     }
-    return /* @__PURE__ */ jsxs(Column, {
-      k: `aside-root-${gameId}`,
-      gap: 20,
-      width: "full",
-      children: [
-        /* @__PURE__ */ jsxs(Column, {
-          k: "aside-info-sec",
-          gap: "md",
-          width: "full",
-          children: [
-            /* @__PURE__ */ jsxs(Row, {
-              justify: "between",
-              align: "center",
-              width: "full",
-              children: [
-                /* @__PURE__ */ jsxs(Row, {
-                  gap: "xs",
-                  align: "center",
-                  children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      text: "游戏信息",
-                      size: "sm",
-                      weight: "semibold",
-                      tone: "strong"
-                    }),
-                    detail?.nsfw ? /* @__PURE__ */ jsx(Badge, {
-                      label: "R-18",
-                      tone: "danger"
-                    }) : null,
-                    detail ? /* @__PURE__ */ jsx(Text, {
-                      text: `#${detail.id}`,
-                      size: "xs",
-                      tone: "faint"
-                    }) : null
-                  ]
-                }),
-                detail ? /* @__PURE__ */ jsxs(Row, {
-                  gap: "xs",
-                  align: "center",
-                  children: [
-                    /* @__PURE__ */ jsx(IconButton, {
-                      k: "aside-refresh-btn",
-                      icon: "refresh",
-                      size: "sm",
-                      label: "刷新 Hikarinagi 详情",
-                      disabled: state.refreshing,
-                      onPress: () => store.loadGame(game, { force: true })
-                    }),
-                    /* @__PURE__ */ jsx(IconButton, {
-                      k: "aside-open-hn",
-                      icon: "open-in-new",
-                      size: "sm",
-                      label: "在浏览器打开 Hikarinagi",
-                      onPress: () => ctx.shell.openURL(`${SITE_GALGAME_BASE}${detail.id}`)
-                    })
-                  ]
-                }) : /* @__PURE__ */ jsxs(Row, {
-                  gap: "xs",
-                  align: "center",
-                  children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      text: state.status === "error" ? "同步失败" : "未匹配",
-                      size: "xs",
-                      tone: "warning"
-                    }),
-                    /* @__PURE__ */ jsx(IconButton, {
-                      k: "aside-retry-btn",
-                      icon: "refresh",
-                      size: "sm",
-                      label: "重试匹配",
-                      disabled: state.refreshing,
-                      onPress: () => store.loadGame(game, { force: true })
-                    })
-                  ]
-                })
-              ]
-            }),
-            detail ? /* @__PURE__ */ jsxs(Column, {
-              k: "aside-kv-list",
-              gap: 10,
-              width: "full",
-              children: [
-                /* @__PURE__ */ jsx(InfoRow, {
-                  label: "原名",
-                  value: detail.origin_title
-                }),
-                /* @__PURE__ */ jsx(InfoRow, {
-                  label: "译名",
-                  value: detail.trans_title
-                }),
-                /* @__PURE__ */ jsx(InfoRow, {
-                  label: "英文名",
-                  value: detail.en_title
-                }),
-                /* @__PURE__ */ jsx(InfoRow, {
-                  label: "开发",
-                  value: detail.developer
-                }),
-                /* @__PURE__ */ jsx(InfoRow, {
-                  label: "发行",
-                  value: detail.publisher
-                }),
-                /* @__PURE__ */ jsx(InfoRow, {
-                  label: "首发",
-                  value: formatReleaseDate(detail)
-                }),
-                /* @__PURE__ */ jsx(InfoRow, {
-                  label: "状态",
-                  value: formatStatusLabel(detail)
-                }),
-                /* @__PURE__ */ jsx(InfoRow, {
-                  label: "类型",
-                  value: detail.adv_type
-                }),
-                /* @__PURE__ */ jsx(InfoRow, {
-                  label: "平台",
-                  value: platforms.join("、")
-                }),
-                /* @__PURE__ */ jsx(InfoRow, {
-                  label: "语言",
-                  value: langs.join("、")
-                }),
-                /* @__PURE__ */ jsx(InfoRow, {
-                  label: "引擎",
-                  value: detail.engine
-                }),
-                /* @__PURE__ */ jsx(InfoRow, {
-                  label: "分级",
-                  value: detail.nsfw ? "R-18 / 成人向" : "全年龄"
-                }),
-                prices.length > 0 ? /* @__PURE__ */ jsx(InfoRow, {
-                  label: "定价",
-                  value: prices.slice(0, 3).join(`
-`)
-                }) : null
-              ]
-            }) : /* @__PURE__ */ jsxs(Column, {
-              gap: "sm",
-              width: "full",
-              children: [
-                /* @__PURE__ */ jsx(Text, {
-                  text: state.error || "尚未自动匹配到 Hikarinagi 条目。",
-                  size: "xs",
-                  tone: state.status === "error" ? "danger" : "muted"
-                }),
-                game?.company ? /* @__PURE__ */ jsx(InfoRow, {
-                  label: "开发",
-                  value: game.company
-                }) : null,
-                game?.release_date ? /* @__PURE__ */ jsx(InfoRow, {
-                  label: "首发",
-                  value: game.release_date
-                }) : null
-              ]
-            })
-          ]
-        }),
-        links.length > 0 ? /* @__PURE__ */ jsxs(Fragment, {
-          children: [
-            /* @__PURE__ */ jsx(Divider, {
-              subtle: true
-            }),
-            /* @__PURE__ */ jsxs(Column, {
-              k: "aside-links-sec",
-              gap: "sm",
-              width: "full",
-              children: [
-                /* @__PURE__ */ jsx(Text, {
-                  text: "相关链接",
-                  size: "sm",
-                  weight: "semibold",
-                  tone: "strong"
-                }),
-                /* @__PURE__ */ jsx(Row, {
-                  gap: "xs",
-                  wrap: true,
-                  width: "full",
-                  children: links.map((lk, idx) => /* @__PURE__ */ jsx(Button, {
-                    label: lk.label,
-                    icon: lk.icon,
-                    variant: "secondary",
-                    size: "sm",
-                    onPress: () => ctx.shell.openURL(lk.url)
-                  }, `ext-link-${idx}`))
-                })
-              ]
-            })
-          ]
-        }) : null
-      ]
-    });
+    return /* @__PURE__ */ jsxs(Column, { k: `aside-root-${gameId}`, gap: 20, width: "full", children: [
+      /* @__PURE__ */ jsxs(Column, { k: "aside-info-sec", gap: "md", width: "full", children: [
+        /* @__PURE__ */ jsxs(Row, { justify: "between", align: "center", width: "full", children: [
+          /* @__PURE__ */ jsxs(Row, { gap: "xs", align: "center", children: [
+            /* @__PURE__ */ jsx(Text, { text: "\u6E38\u620F\u4FE1\u606F", size: "sm", weight: "semibold", tone: "strong" }),
+            detail?.nsfw ? /* @__PURE__ */ jsx(Badge, { label: "R-18", tone: "danger" }) : null,
+            detail ? /* @__PURE__ */ jsx(Text, { text: `#${detail.id}`, size: "xs", tone: "faint" }) : null
+          ] }),
+          detail ? /* @__PURE__ */ jsxs(Row, { gap: "xs", align: "center", children: [
+            /* @__PURE__ */ jsx(
+              IconButton,
+              {
+                k: "aside-refresh-btn",
+                icon: "refresh",
+                size: "sm",
+                label: "\u5237\u65B0 Hikarinagi \u8BE6\u60C5",
+                disabled: state.refreshing,
+                onPress: () => store.loadGame(game, { force: true })
+              }
+            ),
+            /* @__PURE__ */ jsx(
+              IconButton,
+              {
+                k: "aside-open-hn",
+                icon: "open-in-new",
+                size: "sm",
+                label: "\u5728\u6D4F\u89C8\u5668\u6253\u5F00 Hikarinagi",
+                onPress: () => ctx.shell.openURL(`${SITE_GALGAME_BASE}${detail.id}`)
+              }
+            )
+          ] }) : /* @__PURE__ */ jsxs(Row, { gap: "xs", align: "center", children: [
+            /* @__PURE__ */ jsx(
+              Text,
+              {
+                text: state.status === "error" ? "\u540C\u6B65\u5931\u8D25" : "\u672A\u5339\u914D",
+                size: "xs",
+                tone: "warning"
+              }
+            ),
+            /* @__PURE__ */ jsx(
+              IconButton,
+              {
+                k: "aside-retry-btn",
+                icon: "refresh",
+                size: "sm",
+                label: "\u91CD\u8BD5\u5339\u914D",
+                disabled: state.refreshing,
+                onPress: () => store.loadGame(game, { force: true })
+              }
+            )
+          ] })
+        ] }),
+        detail ? /* @__PURE__ */ jsxs(Column, { k: "aside-kv-list", gap: 10, width: "full", children: [
+          /* @__PURE__ */ jsx(InfoRow, { label: "\u539F\u540D", value: detail.origin_title }),
+          /* @__PURE__ */ jsx(InfoRow, { label: "\u8BD1\u540D", value: detail.trans_title }),
+          /* @__PURE__ */ jsx(InfoRow, { label: "\u82F1\u6587\u540D", value: detail.en_title }),
+          /* @__PURE__ */ jsx(InfoRow, { label: "\u5F00\u53D1", value: detail.developer }),
+          /* @__PURE__ */ jsx(InfoRow, { label: "\u53D1\u884C", value: detail.publisher }),
+          /* @__PURE__ */ jsx(InfoRow, { label: "\u9996\u53D1", value: formatReleaseDate(detail) }),
+          /* @__PURE__ */ jsx(InfoRow, { label: "\u72B6\u6001", value: formatStatusLabel(detail) }),
+          /* @__PURE__ */ jsx(InfoRow, { label: "\u7C7B\u578B", value: detail.adv_type }),
+          /* @__PURE__ */ jsx(InfoRow, { label: "\u5E73\u53F0", value: platforms.join("\u3001") }),
+          /* @__PURE__ */ jsx(InfoRow, { label: "\u8BED\u8A00", value: langs.join("\u3001") }),
+          /* @__PURE__ */ jsx(InfoRow, { label: "\u5F15\u64CE", value: detail.engine }),
+          /* @__PURE__ */ jsx(InfoRow, { label: "\u5206\u7EA7", value: detail.nsfw ? "R-18 / \u6210\u4EBA\u5411" : "\u5168\u5E74\u9F84" }),
+          prices.length > 0 ? /* @__PURE__ */ jsx(InfoRow, { label: "\u5B9A\u4EF7", value: prices.slice(0, 3).join("\n") }) : null
+        ] }) : /* @__PURE__ */ jsxs(Column, { gap: "sm", width: "full", children: [
+          /* @__PURE__ */ jsx(
+            Text,
+            {
+              text: state.error || "\u5C1A\u672A\u81EA\u52A8\u5339\u914D\u5230 Hikarinagi \u6761\u76EE\u3002",
+              size: "xs",
+              tone: state.status === "error" ? "danger" : "muted"
+            }
+          ),
+          game?.company ? /* @__PURE__ */ jsx(InfoRow, { label: "\u5F00\u53D1", value: game.company }) : null,
+          game?.release_date ? /* @__PURE__ */ jsx(InfoRow, { label: "\u9996\u53D1", value: game.release_date }) : null
+        ] })
+      ] }),
+      links.length > 0 ? /* @__PURE__ */ jsxs(Fragment, { children: [
+        /* @__PURE__ */ jsx(Divider, { subtle: true }),
+        /* @__PURE__ */ jsxs(Column, { k: "aside-links-sec", gap: "sm", width: "full", children: [
+          /* @__PURE__ */ jsx(Text, { text: "\u76F8\u5173\u94FE\u63A5", size: "sm", weight: "semibold", tone: "strong" }),
+          /* @__PURE__ */ jsx(Row, { gap: "xs", wrap: true, width: "full", children: links.map((lk, idx) => /* @__PURE__ */ jsx(
+            Button,
+            {
+              label: lk.label,
+              icon: lk.icon,
+              variant: "secondary",
+              size: "sm",
+              onPress: () => ctx.shell.openURL(lk.url)
+            },
+            `ext-link-${idx}`
+          )) })
+        ] })
+      ] }) : null
+    ] });
   };
 }
 
-// ../plugin-sdk/examples/hikarinagi-detail/src/components/HeroSection.tsx
+// examples/hikarinagi-detail/src/components/HeroSection.tsx
 import { HeroBanner, useEffect, useRef, useState } from "lunabox";
 import { jsx as jsx2 } from "lunabox/jsx-runtime";
 function createHeroSection(ctx, store) {
@@ -696,22 +529,20 @@ function createHeroSection(ctx, store) {
     }
     const platforms = Array.isArray(detail?.platforms) ? detail.platforms.map((p) => String(p || "").trim()).filter(Boolean) : [];
     if (platforms.length > 0) {
-      meta.push({ icon: "gamepad-variant-outline", text: platforms.slice(0, 3).join("、") });
+      meta.push({ icon: "gamepad-variant-outline", text: platforms.slice(0, 3).join("\u3001") });
     }
     const rawLangs = [];
     if (Array.isArray(detail?.languages) && detail.languages.length > 0) {
       for (const l of detail.languages) {
         const lbl = formatLangLabel(l);
-        if (lbl && !rawLangs.includes(lbl))
-          rawLangs.push(lbl);
+        if (lbl && !rawLangs.includes(lbl)) rawLangs.push(lbl);
       }
     } else if (detail?.origin_lang) {
       const lbl = formatLangLabel(detail.origin_lang);
-      if (lbl)
-        rawLangs.push(lbl);
+      if (lbl) rawLangs.push(lbl);
     }
     if (rawLangs.length > 0) {
-      meta.push({ icon: "earth", text: rawLangs.slice(0, 4).join("、") });
+      meta.push({ icon: "earth", text: rawLangs.slice(0, 4).join("\u3001") });
     } else if (detail?.adv_type) {
       meta.push({ icon: "tag-outline", text: String(detail.adv_type) });
     }
@@ -721,40 +552,43 @@ function createHeroSection(ctx, store) {
       score: hnScore,
       total: Number(detail?.rating?.total || 0),
       played: Number(detail?.rating?.played || 0)
-    } : localScore > 0 ? { score: localScore, total: 0, played: 0 } : undefined;
+    } : localScore > 0 ? { score: localScore, total: 0, played: 0 } : void 0;
     const rawHeight = Number(cfg.heroHeight);
     const heroHeight = Number.isFinite(rawHeight) && rawHeight >= 360 ? Math.min(760, rawHeight) : 560;
     const shouldBlurHero = Boolean(cfg.blurHeroBanner) || shouldBlurNsfw && activeBannerSensitive;
     const canPage = totalImages > 1;
-    return /* @__PURE__ */ jsx2(HeroBanner, {
-      k: `hero-${gameId}`,
-      height: heroHeight,
-      contentMaxWidth: contentMaxWidth || 1200,
-      banner: activeBannerUrl,
-      fallbackBanner,
-      logo: logo?.url || "",
-      title,
-      subtitle,
-      meta,
-      rating,
-      blur: shouldBlurHero,
-      backSlot: "back",
-      coverSlot: "cover",
-      toolbarSlot: "toolbar",
-      pager: canPage ? { current: safeIdx + 1, total: totalImages } : undefined,
-      onPrev: canPage ? () => {
-        setSelectedIdx((prev) => (prev - 1 + totalImages) % totalImages);
-      } : undefined,
-      onNext: canPage ? () => {
-        setSelectedIdx((prev) => (prev + 1) % totalImages);
-      } : undefined
-    });
+    return /* @__PURE__ */ jsx2(
+      HeroBanner,
+      {
+        k: `hero-${gameId}`,
+        height: heroHeight,
+        contentMaxWidth: contentMaxWidth || 1200,
+        banner: activeBannerUrl,
+        fallbackBanner,
+        logo: logo?.url || "",
+        title,
+        subtitle,
+        meta,
+        rating,
+        blur: shouldBlurHero,
+        backSlot: "back",
+        coverSlot: "cover",
+        toolbarSlot: "toolbar",
+        pager: canPage ? { current: safeIdx + 1, total: totalImages } : void 0,
+        onPrev: canPage ? () => {
+          setSelectedIdx((prev) => (prev - 1 + totalImages) % totalImages);
+        } : void 0,
+        onNext: canPage ? () => {
+          setSelectedIdx((prev) => (prev + 1) % totalImages);
+        } : void 0
+      }
+    );
   };
 }
 
-// ../plugin-sdk/examples/hikarinagi-detail/src/components/OverviewTab.tsx
+// examples/hikarinagi-detail/src/components/OverviewTab.tsx
 import { Button as Button2, Column as Column2, Divider as Divider2, NativeSlot, Row as Row2, Skeleton as Skeleton2, Text as Text2, useEffect as useEffect2, useState as useState2 } from "lunabox";
-import { jsx as jsx3, jsxs as jsxs2, Fragment as Fragment2 } from "lunabox/jsx-runtime";
+import { Fragment as Fragment2, jsx as jsx3, jsxs as jsxs2 } from "lunabox/jsx-runtime";
 function createOverviewTab(store) {
   return function OverviewTab({ game }) {
     const state = store.useGameDetail(game);
@@ -769,120 +603,61 @@ function createOverviewTab(store) {
     const hasBothIntros = Boolean(transIntro && originIntro && transIntro !== originIntro);
     const activeIntro = introLang === "origin" ? originIntro || transIntro : transIntro || originIntro;
     const aliases = Array.isArray(detail?.aliases) ? detail.aliases.map((a) => String(a || "").trim()).filter(Boolean) : [];
-    return /* @__PURE__ */ jsxs2(Column2, {
-      k: `overview-${gameId}`,
-      gap: 24,
-      width: "full",
-      children: [
-        /* @__PURE__ */ jsxs2(Column2, {
-          k: "ov-intro-sec",
-          gap: "md",
-          width: "full",
-          children: [
-            /* @__PURE__ */ jsxs2(Row2, {
-              justify: "between",
-              align: "center",
-              width: "full",
-              children: [
-                /* @__PURE__ */ jsx3(Text2, {
-                  text: "简介",
-                  size: "lg",
-                  weight: "semibold",
-                  tone: "strong"
-                }),
-                hasBothIntros ? /* @__PURE__ */ jsxs2(Row2, {
-                  gap: "xs",
-                  align: "center",
-                  children: [
-                    /* @__PURE__ */ jsx3(Button2, {
-                      k: "ov-lang-zh",
-                      label: "中文",
-                      size: "sm",
-                      variant: introLang === "zh" ? "secondary" : "ghost",
-                      onPress: () => setIntroLang("zh")
-                    }),
-                    /* @__PURE__ */ jsx3(Button2, {
-                      k: "ov-lang-origin",
-                      label: "原文",
-                      size: "sm",
-                      variant: introLang === "origin" ? "secondary" : "ghost",
-                      onPress: () => setIntroLang("origin")
-                    })
-                  ]
-                }) : null
-              ]
-            }),
-            state.status === "loading" && !detail && !game?.summary ? /* @__PURE__ */ jsx3(Skeleton2, {
-              lines: 4,
-              height: 14
-            }) : activeIntro ? /* @__PURE__ */ jsx3(Text2, {
-              text: activeIntro,
+    return /* @__PURE__ */ jsxs2(Column2, { k: `overview-${gameId}`, gap: 24, width: "full", children: [
+      /* @__PURE__ */ jsxs2(Column2, { k: "ov-intro-sec", gap: "md", width: "full", children: [
+        /* @__PURE__ */ jsxs2(Row2, { justify: "between", align: "center", width: "full", children: [
+          /* @__PURE__ */ jsx3(Text2, { text: "\u7B80\u4ECB", size: "lg", weight: "semibold", tone: "strong" }),
+          hasBothIntros ? /* @__PURE__ */ jsxs2(Row2, { gap: "xs", align: "center", children: [
+            /* @__PURE__ */ jsx3(
+              Button2,
+              {
+                k: "ov-lang-zh",
+                label: "\u4E2D\u6587",
+                size: "sm",
+                variant: introLang === "zh" ? "secondary" : "ghost",
+                onPress: () => setIntroLang("zh")
+              }
+            ),
+            /* @__PURE__ */ jsx3(
+              Button2,
+              {
+                k: "ov-lang-origin",
+                label: "\u539F\u6587",
+                size: "sm",
+                variant: introLang === "origin" ? "secondary" : "ghost",
+                onPress: () => setIntroLang("origin")
+              }
+            )
+          ] }) : null
+        ] }),
+        state.status === "loading" && !detail && !game?.summary ? /* @__PURE__ */ jsx3(Skeleton2, { lines: 4, height: 14 }) : activeIntro ? /* @__PURE__ */ jsx3(Text2, { text: activeIntro, size: "sm", tone: "default", selectable: true }) : /* @__PURE__ */ jsx3(NativeSlot, { k: "ov-native-summary", name: "summary" })
+      ] }),
+      /* @__PURE__ */ jsx3(Divider2, { subtle: true }),
+      /* @__PURE__ */ jsxs2(Column2, { k: "ov-tags-sec", gap: "md", width: "full", children: [
+        /* @__PURE__ */ jsx3(Text2, { text: "\u6807\u7B7E", size: "lg", weight: "semibold", tone: "strong" }),
+        /* @__PURE__ */ jsx3(NativeSlot, { k: "ov-native-tags", name: "tags" })
+      ] }),
+      aliases.length > 0 ? /* @__PURE__ */ jsxs2(Fragment2, { children: [
+        /* @__PURE__ */ jsx3(Divider2, { subtle: true }),
+        /* @__PURE__ */ jsxs2(Column2, { k: "ov-aliases-sec", gap: "sm", width: "full", children: [
+          /* @__PURE__ */ jsx3(Text2, { text: "\u522B\u540D", size: "base", weight: "semibold", tone: "strong" }),
+          /* @__PURE__ */ jsx3(Row2, { gap: "sm", wrap: true, width: "full", children: aliases.map((al, idx) => /* @__PURE__ */ jsx3(
+            Text2,
+            {
+              text: idx < aliases.length - 1 ? `${al}  /` : al,
               size: "sm",
-              tone: "default",
+              tone: "muted",
               selectable: true
-            }) : /* @__PURE__ */ jsx3(NativeSlot, {
-              k: "ov-native-summary",
-              name: "summary"
-            })
-          ]
-        }),
-        /* @__PURE__ */ jsx3(Divider2, {
-          subtle: true
-        }),
-        /* @__PURE__ */ jsxs2(Column2, {
-          k: "ov-tags-sec",
-          gap: "md",
-          width: "full",
-          children: [
-            /* @__PURE__ */ jsx3(Text2, {
-              text: "标签",
-              size: "lg",
-              weight: "semibold",
-              tone: "strong"
-            }),
-            /* @__PURE__ */ jsx3(NativeSlot, {
-              k: "ov-native-tags",
-              name: "tags"
-            })
-          ]
-        }),
-        aliases.length > 0 ? /* @__PURE__ */ jsxs2(Fragment2, {
-          children: [
-            /* @__PURE__ */ jsx3(Divider2, {
-              subtle: true
-            }),
-            /* @__PURE__ */ jsxs2(Column2, {
-              k: "ov-aliases-sec",
-              gap: "sm",
-              width: "full",
-              children: [
-                /* @__PURE__ */ jsx3(Text2, {
-                  text: "别名",
-                  size: "base",
-                  weight: "semibold",
-                  tone: "strong"
-                }),
-                /* @__PURE__ */ jsx3(Row2, {
-                  gap: "sm",
-                  wrap: true,
-                  width: "full",
-                  children: aliases.map((al, idx) => /* @__PURE__ */ jsx3(Text2, {
-                    text: idx < aliases.length - 1 ? `${al}  /` : al,
-                    size: "sm",
-                    tone: "muted",
-                    selectable: true
-                  }, `ov-alias-${idx}`))
-                })
-              ]
-            })
-          ]
-        }) : null
-      ]
-    });
+            },
+            `ov-alias-${idx}`
+          )) })
+        ] })
+      ] }) : null
+    ] });
   };
 }
 
-// ../plugin-sdk/examples/hikarinagi-detail/src/components/ScreenshotsTab.tsx
+// examples/hikarinagi-detail/src/components/ScreenshotsTab.tsx
 import {
   Button as Button3,
   Column as Column3,
@@ -909,139 +684,111 @@ function createScreenshotsTab(store) {
       setRevealedMap({});
     }, [gameId]);
     if (state.status === "loading" && !detail) {
-      return /* @__PURE__ */ jsxs3(Column3, {
-        k: "ss-loading",
-        gap: "md",
-        width: "full",
-        children: [
-          /* @__PURE__ */ jsx4(Text3, {
-            text: "正在加载游戏截图…",
-            size: "sm",
-            tone: "muted"
-          }),
-          /* @__PURE__ */ jsx4(Skeleton3, {
-            lines: 5,
-            height: 18
-          })
-        ]
-      });
+      return /* @__PURE__ */ jsxs3(Column3, { k: "ss-loading", gap: "md", width: "full", children: [
+        /* @__PURE__ */ jsx4(Text3, { text: "\u6B63\u5728\u52A0\u8F7D\u6E38\u620F\u622A\u56FE\u2026", size: "sm", tone: "muted" }),
+        /* @__PURE__ */ jsx4(Skeleton3, { lines: 5, height: 18 })
+      ] });
     }
     if (!detail) {
-      return /* @__PURE__ */ jsx4(Empty, {
-        k: "ss-unmatched",
-        icon: "image-off",
-        title: state.status === "error" ? "获取 Hikarinagi 截图失败" : "未匹配到 Hikarinagi 条目",
-        description: state.error || "尚未匹配到对应的 Hikarinagi 条目，请点击重试。",
-        actionLabel: "重新匹配",
-        onAction: () => store.loadGame(game, { force: true })
-      });
+      return /* @__PURE__ */ jsxs3(Column3, { k: "ss-unmatched", width: "full", align: "center", gap: "sm", children: [
+        /* @__PURE__ */ jsx4(
+          Empty,
+          {
+            icon: "image-off",
+            title: state.status === "error" ? "\u83B7\u53D6 Hikarinagi \u622A\u56FE\u5931\u8D25" : "\u672A\u5339\u914D\u5230 Hikarinagi \u6761\u76EE",
+            description: state.error || "\u5C1A\u672A\u5339\u914D\u5230\u5BF9\u5E94\u7684 Hikarinagi \u6761\u76EE\uFF0C\u8BF7\u70B9\u51FB\u91CD\u8BD5\u3002"
+          }
+        ),
+        /* @__PURE__ */ jsx4(
+          Button3,
+          {
+            k: "ss-retry",
+            label: "\u91CD\u65B0\u5339\u914D",
+            icon: "refresh",
+            variant: "secondary",
+            size: "sm",
+            onPress: () => store.loadGame(game, { force: true })
+          }
+        )
+      ] });
     }
     const images = Array.isArray(detail.images) ? detail.images.filter((i) => i && i.url) : [];
     const sensitiveCount = images.filter(isMediaSensitive).length;
-    return /* @__PURE__ */ jsxs3(Column3, {
-      k: `ss-root-${gameId}`,
-      gap: 24,
-      width: "full",
-      children: [
-        /* @__PURE__ */ jsxs3(Row3, {
-          justify: "between",
-          align: "center",
-          width: "full",
-          children: [
-            /* @__PURE__ */ jsxs3(Row3, {
-              gap: "sm",
-              align: "center",
-              children: [
-                /* @__PURE__ */ jsx4(Text3, {
-                  text: "游戏截图",
-                  size: "lg",
-                  weight: "semibold",
-                  tone: "strong"
-                }),
-                /* @__PURE__ */ jsx4(Text3, {
-                  text: `共 ${images.length} 张`,
-                  size: "xs",
-                  tone: "muted"
-                })
-              ]
-            }),
-            /* @__PURE__ */ jsxs3(Row3, {
-              gap: "xs",
-              align: "center",
-              children: [
-                shouldBlurNsfw && sensitiveCount > 0 ? /* @__PURE__ */ jsx4(Button3, {
-                  k: "ss-toggle-nsfw",
-                  label: revealNsfw ? "隐藏敏感截图" : "显示敏感截图",
-                  icon: "eye-outline",
-                  variant: "ghost",
-                  size: "sm",
-                  onPress: () => setRevealNsfw((v) => !v)
-                }) : null,
-                /* @__PURE__ */ jsx4(Button3, {
-                  k: "ss-refresh",
-                  label: state.refreshing ? "刷新中…" : "刷新",
-                  icon: "refresh",
-                  variant: "ghost",
-                  size: "sm",
-                  loading: state.refreshing,
-                  onPress: () => store.loadGame(game, { force: true })
-                })
-              ]
-            })
-          ]
-        }),
-        images.length === 0 ? /* @__PURE__ */ jsx4(Empty, {
+    return /* @__PURE__ */ jsxs3(Column3, { k: `ss-root-${gameId}`, gap: 24, width: "full", children: [
+      /* @__PURE__ */ jsxs3(Row3, { justify: "between", align: "center", width: "full", children: [
+        /* @__PURE__ */ jsxs3(Row3, { gap: "sm", align: "center", children: [
+          /* @__PURE__ */ jsx4(Text3, { text: "\u6E38\u620F\u622A\u56FE", size: "lg", weight: "semibold", tone: "strong" }),
+          /* @__PURE__ */ jsx4(Text3, { text: `\u5171 ${images.length} \u5F20`, size: "xs", tone: "muted" })
+        ] }),
+        /* @__PURE__ */ jsxs3(Row3, { gap: "xs", align: "center", children: [
+          shouldBlurNsfw && sensitiveCount > 0 ? /* @__PURE__ */ jsx4(
+            Button3,
+            {
+              k: "ss-toggle-nsfw",
+              label: revealNsfw ? "\u9690\u85CF\u654F\u611F\u622A\u56FE" : "\u663E\u793A\u654F\u611F\u622A\u56FE",
+              icon: "eye-outline",
+              variant: "ghost",
+              size: "sm",
+              onPress: () => setRevealNsfw((v) => !v)
+            }
+          ) : null,
+          /* @__PURE__ */ jsx4(
+            Button3,
+            {
+              k: "ss-refresh",
+              label: state.refreshing ? "\u5237\u65B0\u4E2D\u2026" : "\u5237\u65B0",
+              icon: "refresh",
+              variant: "ghost",
+              size: "sm",
+              loading: state.refreshing,
+              onPress: () => store.loadGame(game, { force: true })
+            }
+          )
+        ] })
+      ] }),
+      images.length === 0 ? /* @__PURE__ */ jsx4(
+        Empty,
+        {
           icon: "image-off",
-          title: "暂无游戏截图",
-          description: "该条目在 Hikarinagi 上暂未收录截图。"
-        }) : /* @__PURE__ */ jsx4(Grid, {
-          k: "ss-grid",
-          cols: 2,
-          gap: "md",
-          children: images.map((img, idx) => {
-            const sensitive = isMediaSensitive(img);
-            const blurred = shouldBlurNsfw && sensitive && !revealNsfw && !revealedMap[idx];
-            const dimLabel = img.width && img.height ? `${img.width} × ${img.height}` : `#${idx + 1}`;
-            return /* @__PURE__ */ jsxs3(Column3, {
-              gap: "xs",
-              children: [
-                /* @__PURE__ */ jsx4(Image, {
-                  k: `ss-img-${idx}`,
-                  src: img.url,
-                  height: 216,
-                  radius: 10,
-                  fit: "cover",
-                  blur: blurred,
-                  previewable: !blurred,
-                  onPress: blurred ? () => setRevealedMap((prev) => ({ ...prev, [idx]: true })) : undefined
-                }),
-                /* @__PURE__ */ jsxs3(Row3, {
-                  justify: "between",
-                  align: "center",
-                  width: "full",
-                  children: [
-                    /* @__PURE__ */ jsx4(Text3, {
-                      text: blurred ? "敏感画面（点击解除模糊）" : `截图 ${idx + 1}`,
-                      size: "xs",
-                      tone: blurred ? "warning" : "faint"
-                    }),
-                    /* @__PURE__ */ jsx4(Text3, {
-                      text: dimLabel,
-                      size: "xs",
-                      tone: "faint"
-                    })
-                  ]
-                })
-              ]
-            }, `ss-item-${idx}`);
-          })
-        })
-      ]
-    });
+          title: "\u6682\u65E0\u6E38\u620F\u622A\u56FE",
+          description: "\u8BE5\u6761\u76EE\u5728 Hikarinagi \u4E0A\u6682\u672A\u6536\u5F55\u622A\u56FE\u3002"
+        }
+      ) : /* @__PURE__ */ jsx4(Grid, { k: "ss-grid", cols: 2, gap: "md", children: images.map((img, idx) => {
+        const sensitive = isMediaSensitive(img);
+        const blurred = shouldBlurNsfw && sensitive && !revealNsfw && !revealedMap[idx];
+        const dimLabel = img.width && img.height ? `${img.width} \xD7 ${img.height}` : `#${idx + 1}`;
+        return /* @__PURE__ */ jsxs3(Column3, { gap: "xs", children: [
+          /* @__PURE__ */ jsx4(
+            Image,
+            {
+              k: `ss-img-${idx}`,
+              src: img.url,
+              height: 216,
+              radius: 10,
+              fit: "cover",
+              blur: blurred,
+              previewable: !blurred,
+              onPress: blurred ? () => setRevealedMap((prev) => ({ ...prev, [idx]: true })) : void 0
+            }
+          ),
+          /* @__PURE__ */ jsxs3(Row3, { justify: "between", align: "center", width: "full", children: [
+            /* @__PURE__ */ jsx4(
+              Text3,
+              {
+                text: blurred ? "\u654F\u611F\u753B\u9762\uFF08\u70B9\u51FB\u89E3\u9664\u6A21\u7CCA\uFF09" : `\u622A\u56FE ${idx + 1}`,
+                size: "xs",
+                tone: blurred ? "warning" : "faint"
+              }
+            ),
+            /* @__PURE__ */ jsx4(Text3, { text: dimLabel, size: "xs", tone: "faint" })
+          ] })
+        ] }, `ss-item-${idx}`);
+      }) })
+    ] });
   };
 }
 
-// ../plugin-sdk/examples/hikarinagi-detail/src/db.ts
+// examples/hikarinagi-detail/src/db.ts
 function createCacheDB(ctx) {
   let dbInitPromise = null;
   function ensureDB() {
@@ -1069,7 +816,7 @@ function createCacheDB(ctx) {
         }
       ]).catch((err) => {
         dbInitPromise = null;
-        ctx.logger.error("初始化 Hikarinagi 缓存数据库失败:", err);
+        ctx.logger.error("\u521D\u59CB\u5316 Hikarinagi \u7F13\u5B58\u6570\u636E\u5E93\u5931\u8D25:", err);
         throw err;
       });
     }
@@ -1080,8 +827,7 @@ function createCacheDB(ctx) {
     const row = await ctx.db.queryOne("SELECT hikarinagi_id, payload, fetched_at FROM galgame_cache WHERE hikarinagi_id = ?", [
       hikarinagiId
     ]);
-    if (!row || !row.payload)
-      return null;
+    if (!row || !row.payload) return null;
     try {
       const detail = JSON.parse(String(row.payload));
       return {
@@ -1095,19 +841,24 @@ function createCacheDB(ctx) {
   async function writeCachedDetail(hikarinagiId, detail) {
     await ensureDB();
     const now = Date.now();
-    await ctx.db.exec(`INSERT INTO galgame_cache (hikarinagi_id, payload, fetched_at, updated_at)
+    await ctx.db.exec(
+      `INSERT INTO galgame_cache (hikarinagi_id, payload, fetched_at, updated_at)
        VALUES (?, ?, ?, ?)
        ON CONFLICT(hikarinagi_id) DO UPDATE SET
          payload = excluded.payload,
          fetched_at = excluded.fetched_at,
-         updated_at = excluded.updated_at`, [hikarinagiId, JSON.stringify(detail), now, now]);
+         updated_at = excluded.updated_at`,
+      [hikarinagiId, JSON.stringify(detail), now, now]
+    );
     return now;
   }
   async function readBinding(localGameId) {
     await ensureDB();
-    const row = await ctx.db.queryOne("SELECT local_game_id, hikarinagi_id, manual, matched_title, updated_at FROM game_bindings WHERE local_game_id = ?", [localGameId]);
-    if (!row)
-      return null;
+    const row = await ctx.db.queryOne(
+      "SELECT local_game_id, hikarinagi_id, manual, matched_title, updated_at FROM game_bindings WHERE local_game_id = ?",
+      [localGameId]
+    );
+    if (!row) return null;
     return {
       hikarinagiId: String(row.hikarinagi_id || ""),
       manual: Number(row.manual || 0) === 1,
@@ -1118,13 +869,16 @@ function createCacheDB(ctx) {
   async function writeBinding(localGameId, hikarinagiId, manual, matchedTitle) {
     await ensureDB();
     const now = Date.now();
-    await ctx.db.exec(`INSERT INTO game_bindings (local_game_id, hikarinagi_id, manual, matched_title, updated_at)
+    await ctx.db.exec(
+      `INSERT INTO game_bindings (local_game_id, hikarinagi_id, manual, matched_title, updated_at)
        VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(local_game_id) DO UPDATE SET
          hikarinagi_id = excluded.hikarinagi_id,
          manual = excluded.manual,
          matched_title = excluded.matched_title,
-         updated_at = excluded.updated_at`, [localGameId, hikarinagiId || "", manual ? 1 : 0, matchedTitle || "", now]);
+         updated_at = excluded.updated_at`,
+      [localGameId, hikarinagiId || "", manual ? 1 : 0, matchedTitle || "", now]
+    );
   }
   async function deleteBinding(localGameId) {
     await ensureDB();
@@ -1139,9 +893,9 @@ function createCacheDB(ctx) {
   };
 }
 
-// ../plugin-sdk/examples/hikarinagi-detail/src/store.ts
+// examples/hikarinagi-detail/src/store.ts
 import { useEffect as useEffect4, useState as useState4 } from "lunabox";
-var NEGATIVE_CACHE_MS = 6 * 60 * 60 * 1000;
+var NEGATIVE_CACHE_MS = 6 * 60 * 60 * 1e3;
 function createEmptyEntry() {
   return {
     status: "idle",
@@ -1155,10 +909,10 @@ function createEmptyEntry() {
   };
 }
 function createDetailStore(ctx, db, api) {
-  const entries = new Map;
-  const inflight = new Map;
-  const listeners = new Map;
-  const globalListeners = new Set;
+  const entries = /* @__PURE__ */ new Map();
+  const inflight = /* @__PURE__ */ new Map();
+  const listeners = /* @__PURE__ */ new Map();
+  const globalListeners = /* @__PURE__ */ new Set();
   let configVersion = 0;
   function getConfig() {
     return ctx.config.get() || {};
@@ -1166,11 +920,10 @@ function createDetailStore(ctx, db, api) {
   function getCacheTtlMs() {
     const hours = Number(getConfig().cacheTtlHours);
     const clamped = Number.isFinite(hours) && hours >= 1 ? hours : 24;
-    return clamped * 60 * 60 * 1000;
+    return clamped * 60 * 60 * 1e3;
   }
   function getEntry(gameId) {
-    if (!gameId)
-      return createEmptyEntry();
+    if (!gameId) return createEmptyEntry();
     return entries.get(gameId) || createEmptyEntry();
   }
   function setEntry(gameId, patch) {
@@ -1191,15 +944,14 @@ function createDetailStore(ctx, db, api) {
   function subscribeGame(gameId, fn) {
     let set = listeners.get(gameId);
     if (!set) {
-      set = new Set;
+      set = /* @__PURE__ */ new Set();
       listeners.set(gameId, set);
     }
     set.add(fn);
     globalListeners.add(fn);
     return () => {
       set.delete(fn);
-      if (set.size === 0)
-        listeners.delete(gameId);
+      if (set.size === 0) listeners.delete(gameId);
       globalListeners.delete(fn);
     };
   }
@@ -1245,8 +997,7 @@ function createDetailStore(ctx, db, api) {
     return { hikarinagiId: "", manualBound: false };
   }
   function loadGame(game, opts) {
-    if (!game || !game.id)
-      return Promise.resolve();
+    if (!game || !game.id) return Promise.resolve();
     const gameId = String(game.id);
     const force = Boolean(opts?.force);
     const explicitId = opts?.bindId ? normalizeHikarinagiId(opts.bindId) : "";
@@ -1333,11 +1084,11 @@ function createDetailStore(ctx, db, api) {
           error: ""
         });
         if (force || explicitId) {
-          ctx.ui.toast("已从 Hikarinagi 同步最新游戏详情", "success");
+          ctx.ui.toast("\u5DF2\u4ECE Hikarinagi \u540C\u6B65\u6700\u65B0\u6E38\u620F\u8BE6\u60C5", "success");
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        ctx.logger.warn("拉取 Hikarinagi 详情失败:", msg);
+        ctx.logger.warn("\u62C9\u53D6 Hikarinagi \u8BE6\u60C5\u5931\u8D25:", msg);
         const latest = getEntry(gameId);
         if (latest.detail) {
           setEntry(gameId, { refreshing: false, error: msg });
@@ -1357,20 +1108,18 @@ function createDetailStore(ctx, db, api) {
     return task;
   }
   async function unbindGame(game) {
-    if (!game || !game.id)
-      return;
+    if (!game || !game.id) return;
     const gameId = String(game.id);
     await db.deleteBinding(gameId);
     entries.delete(gameId);
-    ctx.ui.toast("已重置 Hikarinagi 关联，正在重新匹配…", "info");
+    ctx.ui.toast("\u5DF2\u91CD\u7F6E Hikarinagi \u5173\u8054\uFF0C\u6B63\u5728\u91CD\u65B0\u5339\u914D\u2026", "info");
     await loadGame(game, { force: true });
   }
   function useGameDetail(game) {
     const gameId = game?.id ? String(game.id) : "";
     const [, setTick] = useState4(0);
     useEffect4(() => {
-      if (!gameId)
-        return;
+      if (!gameId) return void 0;
       const unsub = subscribeGame(gameId, () => setTick((n) => n + 1));
       loadGame(game, { force: false });
       return unsub;
@@ -1385,18 +1134,18 @@ function createDetailStore(ctx, db, api) {
   };
 }
 
-// ../plugin-sdk/examples/hikarinagi-detail/src/index.tsx
+// examples/hikarinagi-detail/src/index.tsx
 function apply(ctx) {
   ctx.config.define({
-    title: "Hikarinagi 详情页重构",
-    description: "使用 Hikarinagi Galgame 详情接口重构游戏详情页，并借助独立 SQLite 缓存接口数据。",
+    title: "Hikarinagi \u8BE6\u60C5\u9875\u91CD\u6784",
+    description: "\u4F7F\u7528 Hikarinagi Galgame \u8BE6\u60C5\u63A5\u53E3\u91CD\u6784\u6E38\u620F\u8BE6\u60C5\u9875\uFF0C\u5E76\u501F\u52A9\u72EC\u7ACB SQLite \u7F13\u5B58\u63A5\u53E3\u6570\u636E\u3002",
     icon: "image-search-outline",
     fields: [
       {
         key: "cacheTtlHours",
         type: "number",
-        label: "缓存有效期（小时）",
-        description: "超过该时长后打开详情页会自动在后台静默更新缓存。",
+        label: "\u7F13\u5B58\u6709\u6548\u671F\uFF08\u5C0F\u65F6\uFF09",
+        description: "\u8D85\u8FC7\u8BE5\u65F6\u957F\u540E\u6253\u5F00\u8BE6\u60C5\u9875\u4F1A\u81EA\u52A8\u5728\u540E\u53F0\u9759\u9ED8\u66F4\u65B0\u7F13\u5B58\u3002",
         default: 24,
         min: 1,
         max: 720,
@@ -1405,27 +1154,27 @@ function apply(ctx) {
       {
         key: "autoSearch",
         type: "boolean",
-        label: "非 Hikarinagi 来源自动按名称匹配",
-        description: "当游戏来自 VNDB / Bangumi / Steam 等其他元数据来源时，自动搜索并关联 Hikarinagi 条目。",
+        label: "\u975E Hikarinagi \u6765\u6E90\u81EA\u52A8\u6309\u540D\u79F0\u5339\u914D",
+        description: "\u5F53\u6E38\u620F\u6765\u81EA VNDB / Bangumi / Steam \u7B49\u5176\u4ED6\u5143\u6570\u636E\u6765\u6E90\u65F6\uFF0C\u81EA\u52A8\u641C\u7D22\u5E76\u5173\u8054 Hikarinagi \u6761\u76EE\u3002",
         default: true
       },
       {
         key: "preferredLogoLang",
         type: "enum",
-        label: "优先徽标语言",
+        label: "\u4F18\u5148\u5FBD\u6807\u8BED\u8A00",
         default: "auto",
         options: [
-          { value: "auto", label: "跟随应用语言" },
-          { value: "zh", label: "优先中文徽标" },
-          { value: "ja", label: "优先日文徽标" },
-          { value: "en", label: "优先英文徽标" }
+          { value: "auto", label: "\u8DDF\u968F\u5E94\u7528\u8BED\u8A00" },
+          { value: "zh", label: "\u4F18\u5148\u4E2D\u6587\u5FBD\u6807" },
+          { value: "ja", label: "\u4F18\u5148\u65E5\u6587\u5FBD\u6807" },
+          { value: "en", label: "\u4F18\u5148\u82F1\u6587\u5FBD\u6807" }
         ]
       },
       {
         key: "heroHeight",
         type: "number",
-        label: "头图区域高度（px）",
-        description: "控制顶部全出血头图横幅的最小高度，推荐 520–620px。",
+        label: "\u5934\u56FE\u533A\u57DF\u9AD8\u5EA6\uFF08px\uFF09",
+        description: "\u63A7\u5236\u9876\u90E8\u5168\u51FA\u8840\u5934\u56FE\u6A2A\u5E45\u7684\u6700\u5C0F\u9AD8\u5EA6\uFF0C\u63A8\u8350 520\u2013620px\u3002",
         default: 560,
         min: 360,
         max: 760,
@@ -1434,15 +1183,15 @@ function apply(ctx) {
       {
         key: "blurHeroBanner",
         type: "boolean",
-        label: "模糊头图背景",
-        description: "默认清晰展示原始高清头图；开启后对所有头图施加高斯模糊。",
+        label: "\u6A21\u7CCA\u5934\u56FE\u80CC\u666F",
+        description: "\u9ED8\u8BA4\u6E05\u6670\u5C55\u793A\u539F\u59CB\u9AD8\u6E05\u5934\u56FE\uFF1B\u5F00\u542F\u540E\u5BF9\u6240\u6709\u5934\u56FE\u65BD\u52A0\u9AD8\u65AF\u6A21\u7CCA\u3002",
         default: false
       },
       {
         key: "accessToken",
         type: "secret",
-        label: "自定义 Hikarinagi Token（可选）",
-        description: "留空时自动使用 LunaBox 已登录账号或应用内置的 Hikarinagi 访问令牌。",
+        label: "\u81EA\u5B9A\u4E49 Hikarinagi Token\uFF08\u53EF\u9009\uFF09",
+        description: "\u7559\u7A7A\u65F6\u81EA\u52A8\u4F7F\u7528 LunaBox \u5DF2\u767B\u5F55\u8D26\u53F7\u6216\u5E94\u7528\u5185\u7F6E\u7684 Hikarinagi \u8BBF\u95EE\u4EE4\u724C\u3002",
         default: ""
       }
     ]
@@ -1457,14 +1206,14 @@ function apply(ctx) {
   });
   ctx.ui.slot("game.detail.tab", {
     id: "overview",
-    title: "概览",
+    title: "\u6982\u89C8",
     icon: "file-document-outline",
     order: -10,
     render: createOverviewTab(store)
   });
   ctx.ui.slot("game.detail.tab", {
     id: "screenshots",
-    title: "游戏截图",
+    title: "\u6E38\u620F\u622A\u56FE",
     icon: "image-multiple-outline",
     order: 1,
     render: createScreenshotsTab(store)

@@ -267,6 +267,7 @@ function __makeFactory(name) {
 export const Column = __makeFactory('Column');
 export const Row = __makeFactory('Row');
 export const Box = __makeFactory('Box');
+export const Stack = __makeFactory('Stack');
 export const ScrollArea = __makeFactory('ScrollArea');
 export const Grid = __makeFactory('Grid');
 export const Text = __makeFactory('Text');
@@ -294,8 +295,397 @@ export const Table = __makeFactory('Table');
 export const Divider = __makeFactory('Divider');
 export const Spacer = __makeFactory('Spacer');
 export const Icon = __makeFactory('Icon');
-export const HeroBanner = __makeFactory('HeroBanner');
 export const NativeSlot = __makeFactory('NativeSlot');
+
+// HeroBanner 是基于底层原语（Stack / Box / Column / Row / Image / Text / Icon / NativeSlot）组合而成的 SDK 模板组件，
+// 宿主 Go 渲染器不感知 HeroBanner，任何插件也可以直接使用底层原语自由定制自己的头图布局。
+export function HeroBanner(props) {
+  const p = props || {};
+  const key = p.k != null ? String(p.k) : 'hero';
+  const rawH = Number(p.height);
+  const bannerH = Number.isFinite(rawH) && rawH >= 280 ? Math.min(760, rawH) : 560;
+  const rawMaxW = Number(p.contentMaxWidth);
+  const contentMaxW = Number.isFinite(rawMaxW) && rawMaxW > 0 ? rawMaxW : 1200;
+  const rawCoverW = Number(p.coverWidth);
+  const coverW = Number.isFinite(rawCoverW) && rawCoverW > 0 ? rawCoverW : 196;
+  const rawToolbarW = Number(p.toolbarMaxWidth);
+  const toolbarMaxW = Number.isFinite(rawToolbarW) && rawToolbarW > 0
+    ? rawToolbarW
+    : Math.max(360, contentMaxW - coverW - 40);
+
+  let bannerSrc = p.banner ? String(p.banner).trim() : '';
+  let fallbackBannerSrc = p.fallbackBanner ? String(p.fallbackBanner).trim() : '';
+  if (!bannerSrc && fallbackBannerSrc) {
+    bannerSrc = fallbackBannerSrc;
+    fallbackBannerSrc = '';
+  }
+  const logoSrc = p.logo ? String(p.logo).trim() : '';
+  const title = p.title ? String(p.title) : '';
+  const subtitle = p.subtitle ? String(p.subtitle) : '';
+  const blurVal = typeof p.blur === 'number' ? p.blur : (p.blur ? 20 : 0);
+  const backSlot = p.backSlot ? String(p.backSlot) : '';
+  const coverSlot = p.coverSlot ? String(p.coverSlot) : '';
+  const toolbarSlot = p.toolbarSlot ? String(p.toolbarSlot) : '';
+  const onPrev = typeof p.onPrev === 'function' ? p.onPrev : undefined;
+  const onNext = typeof p.onNext === 'function' ? p.onNext : undefined;
+
+  const [loadedLogo, setLoadedLogo] = useState('');
+  const hasLogo = Boolean(logoSrc && loadedLogo === logoSrc);
+
+  const pager = p.pager && typeof p.pager === 'object' ? p.pager : null;
+  const pagerTotal = pager ? Math.max(0, Number(pager.total) || 0) : 0;
+  const pagerCurrent = pager ? Math.max(1, Math.min(pagerTotal || 1, Number(pager.current) || 1)) : 1;
+  const hasPager = Boolean((onPrev || onNext) && (pagerTotal === 0 || pagerTotal > 1));
+
+  const metaItems = [];
+  if (Array.isArray(p.meta)) {
+    for (let i = 0; i < p.meta.length; i++) {
+      const item = p.meta[i];
+      if (item && typeof item === 'object') {
+        const text = item.text != null ? String(item.text).trim() : '';
+        if (text) metaItems.push({ icon: item.icon ? String(item.icon) : '', text });
+      } else if (item != null) {
+        const text = String(item).trim();
+        if (text) metaItems.push({ icon: '', text });
+      }
+    }
+  } else if (typeof p.meta === 'string' && p.meta.trim()) {
+    metaItems.push({ icon: '', text: p.meta.trim() });
+  }
+
+  const rating = p.rating && typeof p.rating === 'object' ? p.rating : null;
+  const ratingScore = rating ? Number(rating.score) || 0 : 0;
+  const ratingTotal = rating ? Number(rating.total) || 0 : 0;
+  const ratingPlayed = rating ? Number(rating.played) || 0 : 0;
+
+  const padTop = 20;
+  const padX = 32;
+  const padBottom = 28;
+  const innerMinH = Math.max(0, bannerH - padTop - padBottom);
+
+  const leftChildren = [];
+  if (logoSrc) {
+    leftChildren.push(
+      jsx(Image, {
+        k: key + '-logo',
+        src: logoSrc,
+        maxWidth: 460,
+        maxHeight: 132,
+        fit: 'contain',
+        transparent: true,
+        hideWhenEmpty: true,
+        onLoad: () => setLoadedLogo(logoSrc),
+        onError: () => { if (loadedLogo === logoSrc) setLoadedLogo(''); },
+      })
+    );
+  }
+
+  if (hasLogo) {
+    const subLine = subtitle && subtitle !== title ? (title ? title + '  ·  ' + subtitle : subtitle) : title;
+    if (subLine) {
+      leftChildren.push(
+        jsx(Text, { text: subLine, size: 'base', weight: 'medium', color: 'white@0.86', selectable: true })
+      );
+    }
+  } else {
+    if (title) {
+      leftChildren.push(
+        jsx(Text, { text: title, size: 34, lineHeight: 42, weight: 'bold', tone: 'light', selectable: true })
+      );
+    }
+    if (subtitle && subtitle !== title) {
+      leftChildren.push(
+        jsx(Text, { text: subtitle, size: 'sm', weight: 'normal', color: 'white@0.80', selectable: true })
+      );
+    }
+  }
+
+  if (metaItems.length > 0) {
+    leftChildren.push(
+      jsx(Row, {
+        wrap: true,
+        gap: 16,
+        align: 'center',
+        children: metaItems.map((item, idx) =>
+          jsx(Row, {
+            k: key + '-meta-' + idx,
+            gap: 5,
+            align: 'center',
+            children: [
+              item.icon ? jsx(Icon, { name: item.icon, fallback: '', size: 14, color: 'white@0.72' }) : null,
+              jsx(Text, { text: item.text, size: 'xs', weight: 'normal', color: 'white@0.90', wrap: false }),
+            ],
+          })
+        ),
+      })
+    );
+  }
+
+  if (ratingScore > 0) {
+    const stars = ratingScore / 2;
+    const starNodes = [];
+    for (let i = 1; i <= 5; i++) {
+      let iconName = 'star-outline';
+      let col = 'white@0.35';
+      if (stars >= i - 0.25) {
+        iconName = 'star';
+        col = 'warning400';
+      } else if (stars >= i - 0.75) {
+        iconName = 'star-half-full';
+        col = 'warning400';
+      }
+      starNodes.push(jsx(Icon, { k: key + '-star-' + i, name: iconName, fallback: 'star-outline', size: 16, color: col }));
+    }
+    const statParts = [];
+    if (ratingTotal > 0) statParts.push(ratingTotal + ' 人评分');
+    if (ratingPlayed > 0) statParts.push(ratingPlayed + ' 人玩过');
+
+    leftChildren.push(
+      jsx(Row, {
+        k: key + '-rating',
+        gap: 12,
+        align: 'center',
+        marginY: 2,
+        children: [
+          jsx(Text, { text: ratingScore.toFixed(1), size: 34, lineHeight: 38, weight: 'bold', tone: 'light', wrap: false }),
+          jsx(Column, {
+            gap: 2,
+            children: [
+              jsx(Row, { gap: 2, align: 'center', children: starNodes }),
+              statParts.length > 0
+                ? jsx(Text, { text: statParts.join('   '), size: 'xs', weight: 'normal', color: 'white@0.75', wrap: false })
+                : null,
+            ],
+          }),
+        ],
+      })
+    );
+  }
+
+  if (toolbarSlot) {
+    leftChildren.push(
+      jsx(Box, {
+        k: key + '-toolbar-inline',
+        width: 'full',
+        marginTop: 6,
+        children: jsx(NativeSlot, { name: toolbarSlot, maxWidth: toolbarMaxW }),
+      })
+    );
+  }
+
+  let rightCol = null;
+  if (coverSlot || hasPager) {
+    const rightChildren = [];
+    if (coverSlot) {
+      rightChildren.push(
+        jsx(Box, {
+          k: key + '-cover-frame',
+          shrink: 0,
+          radius: 10,
+          clip: true,
+          shadow: { x: 0, y: 14, blur: 32, spread: 0, color: 'black@0.45' },
+          border: true,
+          borderColor: 'white@0.18',
+          children: jsx(NativeSlot, { name: coverSlot, width: coverW }),
+        })
+      );
+    }
+    if (hasPager) {
+      rightChildren.push(
+        jsx(Row, {
+          k: key + '-pager',
+          shrink: 0,
+          align: 'center',
+          gap: 2,
+          padding: 3,
+          radius: 'full',
+          background: 'black@0.42',
+          border: true,
+          borderColor: 'white@0.16',
+          children: [
+            jsx(Box, {
+              k: key + '-pager-prev',
+              width: 28,
+              height: 28,
+              radius: 'full',
+              align: 'center',
+              justify: 'center',
+              hoverBackground: 'white@0.18',
+              label: '上一张头图',
+              disabled: !onPrev,
+              onPress: onPrev,
+              children: jsx(Icon, { name: 'chevron-left', fallback: '', size: 18, color: onPrev ? 'white@0.92' : 'white@0.32' }),
+            }),
+            pagerTotal > 0
+              ? jsx(Text, {
+                  text: pagerCurrent + ' / ' + pagerTotal,
+                  size: 'xs',
+                  weight: 'medium',
+                  color: 'white@0.84',
+                  wrap: false,
+                  marginX: 6,
+                })
+              : null,
+            jsx(Box, {
+              k: key + '-pager-next',
+              width: 28,
+              height: 28,
+              radius: 'full',
+              align: 'center',
+              justify: 'center',
+              hoverBackground: 'white@0.18',
+              label: '下一张头图',
+              disabled: !onNext,
+              onPress: onNext,
+              children: jsx(Icon, { name: 'chevron-right', fallback: '', size: 18, color: onNext ? 'white@0.92' : 'white@0.32' }),
+            }),
+          ],
+        })
+      );
+    }
+    rightCol = jsx(Column, {
+      k: key + '-right-col',
+      shrink: 0,
+      align: 'end',
+      gap: 12,
+      children: rightChildren,
+    });
+  }
+
+  const extraRow = p.children != null
+    ? jsx(Row, {
+        k: key + '-extra',
+        width: 'full',
+        wrap: true,
+        gap: 10,
+        align: 'center',
+        marginTop: 4,
+        children: p.children,
+      })
+    : null;
+
+  return jsx(Stack, {
+    k: key,
+    width: 'full',
+    minHeight: bannerH,
+    clip: true,
+    label: p.label,
+    gradient: {
+      angle: 135,
+      stops: [
+        { color: { light: 'brand700', dark: 'brand800' }, at: 0 },
+        { color: 'fadeBg', at: 1 },
+      ],
+    },
+    children: [
+      bannerSrc
+        ? jsx(Image, {
+            k: key + '-bg',
+            src: bannerSrc,
+            fallbackSrc: fallbackBannerSrc,
+            position: 'absolute',
+            inset: 0,
+            zIndex: -3,
+            pointerEvents: 'none',
+            fit: 'cover',
+            transparent: true,
+            blur: blurVal,
+          })
+        : null,
+      jsx(Box, {
+        k: key + '-scrim-h',
+        position: 'absolute',
+        inset: 0,
+        zIndex: -2,
+        pointerEvents: 'none',
+        gradient: {
+          angle: 90,
+          stops: [
+            { color: 'scrim@0.84', at: 0 },
+            { color: 'scrim@0.56', at: 0.42 },
+            { color: 'scrim@0.18', at: 0.76 },
+            { color: 'scrim@0.06', at: 1 },
+          ],
+        },
+      }),
+      jsx(Box, {
+        k: key + '-scrim-v',
+        position: 'absolute',
+        inset: 0,
+        zIndex: -1,
+        pointerEvents: 'none',
+        gradient: {
+          angle: 180,
+          stops: [
+            { color: 'black@0.24', at: 0 },
+            { color: 'black@0.04', at: 0.24 },
+            { color: 'black@0.12', at: 0.48 },
+            { color: { light: 'scrim@0.56', dark: 'fadeBg@0.56' }, at: 0.72 },
+            { color: { light: 'scrim@0.84', dark: 'fadeBg@0.92' }, at: 0.91 },
+            { color: 'fadeBg', at: 1 },
+          ],
+        },
+      }),
+      jsx(Column, {
+        k: key + '-fg',
+        width: 'full',
+        minHeight: bannerH,
+        paddingTop: padTop,
+        paddingRight: padX,
+        paddingBottom: padBottom,
+        paddingLeft: padX,
+        children: jsx(Column, {
+          k: key + '-inner',
+          width: 'full',
+          maxWidth: contentMaxW,
+          centerX: true,
+          minHeight: innerMinH,
+          gap: 28,
+          justify: backSlot ? 'space-between' : 'end',
+          children: [
+            backSlot
+              ? jsx(Box, {
+                  k: key + '-back-pill',
+                  alignSelf: 'start',
+                  paddingTop: 4,
+                  paddingRight: 12,
+                  paddingBottom: 4,
+                  paddingLeft: 8,
+                  radius: 'full',
+                  background: { light: 'white@0.78', dark: 'black@0.36' },
+                  border: true,
+                  borderColor: { light: 'white@0.45', dark: 'white@0.14' },
+                  children: jsx(NativeSlot, { name: backSlot }),
+                })
+              : null,
+            jsx(Column, {
+              width: 'full',
+              gap: 16,
+              children: [
+                jsx(Row, {
+                  width: 'full',
+                  gap: 32,
+                  align: 'end',
+                  children: [
+                    jsx(Column, {
+                      grow: 1,
+                      basis: 0,
+                      minWidth: 0,
+                      gap: 10,
+                      children: leftChildren,
+                    }),
+                    rightCol,
+                  ],
+                }),
+                extraRow,
+              ],
+            }),
+          ],
+        }),
+      }),
+    ],
+  });
+}
 
 export function defineThemePreset(preset) {
   return preset;

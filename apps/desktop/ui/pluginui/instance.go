@@ -52,11 +52,12 @@ type Instance struct {
 	Version uint64
 	Error   string
 
-	Inputs       map[string]*InputState
-	Scrolls      map[string]*components.ScrollBar
-	Collapsibles map[string]*bool
-	PreviewSrc   string
-	PreviewOpen  bool
+	Inputs        map[string]*InputState
+	Scrolls       map[string]*components.ScrollBar
+	Collapsibles  map[string]*bool
+	ImageNotified map[string]string
+	PreviewSrc    string
+	PreviewOpen   bool
 }
 
 // HostCallbacks 由 ui.App 注入，处理插件发起的全局 UI 动作（抽屉、导入弹窗、导航等）。
@@ -232,14 +233,15 @@ func (m *Manager) handleAction(a plugin.UIAction) {
 
 func newInstance(id, pluginID, slotName, regID, propsKey string) *Instance {
 	return &Instance{
-		ID:           id,
-		PluginID:     pluginID,
-		SlotName:     slotName,
-		RegID:        regID,
-		PropsKey:     propsKey,
-		Inputs:       make(map[string]*InputState),
-		Scrolls:      make(map[string]*components.ScrollBar),
-		Collapsibles: make(map[string]*bool),
+		ID:            id,
+		PluginID:      pluginID,
+		SlotName:      slotName,
+		RegID:         regID,
+		PropsKey:      propsKey,
+		Inputs:        make(map[string]*InputState),
+		Scrolls:       make(map[string]*components.ScrollBar),
+		Collapsibles:  make(map[string]*bool),
+		ImageNotified: make(map[string]string),
 	}
 }
 
@@ -322,6 +324,18 @@ func (m *Manager) pluginName(pluginID string) string {
 		}
 	}
 	return pluginID
+}
+
+// isImageFailed 返回指定图片来源最近一次加载是否失败（用于 Image 的 onError 去重回调）。
+func (m *Manager) isImageFailed(src string) bool {
+	src = strings.TrimSpace(src)
+	if src == "" {
+		return false
+	}
+	m.imgMu.RLock()
+	_, failed := m.imgFailed[src]
+	m.imgMu.RUnlock()
+	return failed
 }
 
 // LoadImageSource 异步加载本地或远程图标/图片（支持 SVG、PNG、JPEG、GIF、WebP）并缓存为 ui.ImageSource，绝不阻塞界面线程。

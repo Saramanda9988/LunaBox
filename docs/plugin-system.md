@@ -1,6 +1,7 @@
 # 插件系统设计
 
 > 状态：**已实现（P1–P4 核心与 SDK/示例均已落地；插件市场索引仓库为后期）**。本文是实现时的约定来源；实现过程中改了约定，先改这里。
+> SDK 提供的完整能力、UI 原语、组合组件、插槽协议与 TypeScript 类型详见 [plugin-sdk.md](plugin-sdk.md)。
 > 路径约定同 [AGENTS.md](../AGENTS.md)：`packages/...` 相对仓库根，`ui/...`、`host/...`、`api/...` 相对 `apps/desktop/`。
 
 ## 1. 目标与非目标
@@ -489,9 +490,11 @@ MyGo 的界面每帧重建，没法从帧上判断“组件卸载了”，所以
 
 ### 9.6 组件白名单（apiVersion 1）
 
+> 完整属性与类型定义（含层叠定位、渐变/颜色/阴影原语及 SDK 组合组件 `HeroBanner`）见 [plugin-sdk.md](plugin-sdk.md)。
+
 | `t` | 映射 | 主要属性 | 事件 |
 | --- | --- | --- | --- |
-| `Column` / `Row` / `Box` | `ui.Column` / `ui.Row` / `ui.Box` | `gap`、`padding`、`align`、`justify`、`width`、`height`、`grow`、`dragWindow`（悬浮窗拖动） | `press`、`contextMenu` |
+| `Column` / `Row` / `Box` / `Stack` | `ui.Column` / `ui.Row` / `ui.Box` | `gap`、`padding`、`align`、`justify`、`width`、`height`、`grow`、`position`、`inset`、`background`、`gradient`、`shadow`、`surface`、`dragWindow`（悬浮窗拖动） | `press`、`contextMenu` |
 | `ScrollArea` | `components.ScrollArea` | `direction: "vertical" \| "horizontal"`、`padding`、`autoScrollBottom`（AI 对话流自动贴底） | `ReachBottom`（分页加载） |
 | `Grid` | 响应式网格容器 | `minColWidth`、`cols`、`gap`（用于资源站游戏卡片网格） | — |
 | `Text` | `components.Text` | `text`、`size`、`weight`、`tone`、`wrap`、`maxLines`、`selectable` | — |
@@ -515,7 +518,9 @@ MyGo 的界面每帧重建，没法从帧上判断“组件卸载了”，所以
 | `Empty` / `Skeleton` | 空状态 / 骨架占位 | `title`、`description`、`icon` / `lines`、`height` | — |
 | `Tooltip` | `better.Tooltip` | `content`，单个子节点 | — |
 | `Table` | `better.DataTable` | `columns`、`rows` | `rowPress` |
-| `Divider` / `Spacer` | `components.Divider` / 弹性空白 | — | — |
+| `Divider` / `Spacer` | `components.Divider` / 弹性空白 | `subtle`、`marginY` / `grow`、`size` | — |
+| `Icon` | `components.Icon` | `name`、`size`、`color`、`tone`、`fallback` | — |
+| `NativeSlot` | 宿主注入的原生交互区 | `name` 及透传参数（如 `width`、`maxWidth`） | — |
 
 未知的 `t`：开发模式下画红色占位并写明类型，正式版跳过该节点。
 

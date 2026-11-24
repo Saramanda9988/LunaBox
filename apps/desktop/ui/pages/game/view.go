@@ -66,7 +66,6 @@ func (p *Page) View(c *ui.Context) {
 	}
 	fullW := p.env.MainWidth - gutter
 	availW := fullW - 2*pagePadding
-	contentW := min(availW, detailContentMaxW)
 	hidden := p.hiddenTabs()
 	if hidden[p.tab] || (strings.HasPrefix(p.tab, "plugin:") && !p.hasPluginTab(p.tab)) {
 		p.tab = p.defaultTab()
@@ -75,6 +74,10 @@ func (p *Page) View(c *ui.Context) {
 	hasHeroSlot := p.plugins != nil && len(heroSlots) > 0
 	asideSlots := p.pluginSlots(plugin.SlotGameDetailAside)
 	hasAside := p.plugins != nil && len(asideSlots) > 0
+	contentW := availW
+	if hasHeroSlot || hasAside {
+		contentW = min(availW, detailContentMaxW)
+	}
 
 	renderBody := func() {
 		if hasAside && contentW >= 920 {
@@ -266,17 +269,44 @@ func (p *Page) hiddenTabs() map[string]bool {
 	return out
 }
 
+func nativePropFloat(props map[string]any, key string, fallback float32) float32 {
+	if props == nil {
+		return fallback
+	}
+	switch v := props[key].(type) {
+	case float64:
+		if v > 0 {
+			return float32(v)
+		}
+	case float32:
+		if v > 0 {
+			return v
+		}
+	case int:
+		if v > 0 {
+			return float32(v)
+		}
+	}
+	return fallback
+}
+
 func (p *Page) detailNatives(contentW float32) pluginui.NativeSlots {
 	g := p.game
 	if g == nil {
 		return nil
 	}
 	return pluginui.NativeSlots{
-		"back":    func(c *ui.Context, t *theme.Theme) { p.backButton(c, t) },
-		"cover":   func(c *ui.Context, t *theme.Theme) { p.coverSized(c, t, g, 196) },
-		"toolbar": func(c *ui.Context, t *theme.Theme) { p.toolbar(c, t, max(360, contentW-236)) },
-		"tags":    func(c *ui.Context, t *theme.Theme) { p.gameTags(c, t) },
-		"summary": func(c *ui.Context, t *theme.Theme) { p.summary(c, t) },
+		"back": func(c *ui.Context, t *theme.Theme, _ map[string]any) { p.backButton(c, t) },
+		"cover": func(c *ui.Context, t *theme.Theme, props map[string]any) {
+			w := nativePropFloat(props, "width", coverW)
+			p.coverSized(c, t, g, w)
+		},
+		"toolbar": func(c *ui.Context, t *theme.Theme, props map[string]any) {
+			w := nativePropFloat(props, "maxWidth", contentW)
+			p.toolbar(c, t, w)
+		},
+		"tags":    func(c *ui.Context, t *theme.Theme, _ map[string]any) { p.gameTags(c, t) },
+		"summary": func(c *ui.Context, t *theme.Theme, _ map[string]any) { p.summary(c, t) },
 	}
 }
 

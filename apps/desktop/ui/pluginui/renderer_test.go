@@ -103,58 +103,84 @@ func TestRenderSpringPressBox(t *testing.T) {
 	tt.Advance(100 * time.Millisecond)
 }
 
-func TestRenderHeroBannerHalfStarAndSafeIcon(t *testing.T) {
+func TestRenderPrimitivesStackGradientAndSafeIcon(t *testing.T) {
 	e := &env.Env{MainWidth: 1200}
 	mgr := New(e, HostCallbacks{})
 
-	inst := newInstance("inst-hero", "hikarinagi-detail", plugin.SlotGameDetailHero, "hikarinagi-hero", "g-1")
+	inst := newInstance("inst-primitives", "hikarinagi-detail", plugin.SlotGameDetailHero, "hikarinagi-hero", "g-1")
 	inst.Version = 1
 	inst.Tree = &plugin.UINode{
-		Type: "Column",
-		Key:  "root",
+		Type: "Stack",
+		Key:  "hero-g1",
+		Props: map[string]any{
+			"width":     "full",
+			"minHeight": 460.0,
+			"clip":      true,
+			"gradient": map[string]any{
+				"angle": 135.0,
+				"stops": []any{
+					map[string]any{"color": map[string]any{"light": "brand700", "dark": "brand800"}, "at": 0.0},
+					map[string]any{"color": "fadeBg", "at": 1.0},
+				},
+			},
+		},
 		Children: []*plugin.UINode{
 			{
-				Type: "HeroBanner",
-				Key:  "hero-g1",
+				Type: "Box",
+				Key:  "scrim-overlay",
 				Props: map[string]any{
-					"height":   460.0,
-					"title":    "樱之诗",
-					"subtitle": "サクラノ詩",
-					"meta": []any{
-						map[string]any{"icon": "palette", "text": "枕"},
-						map[string]any{"icon": "nonexistent-icon-xyz", "text": "回退测试"},
+					"position":      "absolute",
+					"inset":         0.0,
+					"zIndex":        -1.0,
+					"pointerEvents": "none",
+					"gradient": map[string]any{
+						"angle": 180.0,
+						"stops": []any{
+							map[string]any{"color": "black@0.24", "at": 0.0},
+							map[string]any{"color": "fadeBg", "at": 1.0},
+						},
 					},
-					"rating": map[string]any{
-						"score":  8.9, // 4.45 stars -> triggers star-half-full
-						"total":  420.0,
-						"played": 1200.0,
-					},
-					"pager": map[string]any{
-						"current": 2.0,
-						"total":   6.0,
-					},
-				},
-				Events: map[string]string{
-					"prev": "h-prev",
-					"next": "h-next",
 				},
 			},
 			{
-				Type: "Icon",
-				Key:  "icon-missing",
+				Type: "Row",
+				Key:  "icons-row",
 				Props: map[string]any{
-					"name": "definitely-missing-icon",
-					"size": 16.0,
-					"tone": "warning",
+					"gap":   8.0,
+					"align": "center",
 				},
-			},
-			{
-				Type: "Icon",
-				Key:  "icon-half-star",
-				Props: map[string]any{
-					"name": "star-half-full",
-					"size": 16.0,
-					"tone": "warning",
+				Children: []*plugin.UINode{
+					{
+						Type: "Icon",
+						Key:  "icon-missing",
+						Props: map[string]any{
+							"name":     "definitely-missing-icon",
+							"fallback": "",
+							"size":     16.0,
+							"color":    "warning400",
+						},
+					},
+					{
+						Type: "Icon",
+						Key:  "icon-half-star",
+						Props: map[string]any{
+							"name":     "star-half-full",
+							"fallback": "star-outline",
+							"size":     16.0,
+							"color":    "warning400",
+						},
+					},
+					{
+						Type: "Text",
+						Key:  "rating-val",
+						Props: map[string]any{
+							"text":       "8.9",
+							"size":       34.0,
+							"lineHeight": 38.0,
+							"weight":     "bold",
+							"tone":       "light",
+						},
+					},
 				},
 			},
 		},
@@ -168,7 +194,7 @@ func TestRenderHeroBannerHalfStarAndSafeIcon(t *testing.T) {
 	tt.Advance(20 * time.Millisecond)
 }
 
-func TestLoadImageSourceUntypedNilAndHeroBannerUncachedLogo(t *testing.T) {
+func TestLoadImageSourceUntypedNilAndUncachedImagePrimitives(t *testing.T) {
 	e := &env.Env{MainWidth: 1200}
 	mgr := New(e, HostCallbacks{})
 
@@ -182,13 +208,39 @@ func TestLoadImageSourceUntypedNilAndHeroBannerUncachedLogo(t *testing.T) {
 	inst := newInstance("inst-hero-logo", "hikarinagi-detail", plugin.SlotGameDetailHero, "hikarinagi-hero", "g-logo")
 	inst.Version = 1
 	inst.Tree = &plugin.UINode{
-		Type: "HeroBanner",
+		Type: "Stack",
 		Key:  "hero-g-logo",
 		Props: map[string]any{
-			"height": 460.0,
-			"banner": "/definitely/missing/banner.webp",
-			"logo":   "/definitely/missing/logo-uncached.png",
-			"title":  "樱之诗",
+			"width":     "full",
+			"minHeight": 460.0,
+		},
+		Children: []*plugin.UINode{
+			{
+				Type: "Image",
+				Key:  "bg-banner",
+				Props: map[string]any{
+					"src":           "/definitely/missing/banner.webp",
+					"fallbackSrc":   "/definitely/missing/fallback.webp",
+					"position":      "absolute",
+					"inset":         0.0,
+					"zIndex":        -3.0,
+					"pointerEvents": "none",
+					"transparent":   true,
+					"blur":          20.0,
+				},
+			},
+			{
+				Type: "Image",
+				Key:  "logo-img",
+				Props: map[string]any{
+					"src":           "/definitely/missing/logo-uncached.png",
+					"maxWidth":      460.0,
+					"maxHeight":     132.0,
+					"fit":           "contain",
+					"transparent":   true,
+					"hideWhenEmpty": true,
+				},
+			},
 		},
 	}
 
@@ -201,7 +253,7 @@ func TestLoadImageSourceUntypedNilAndHeroBannerUncachedLogo(t *testing.T) {
 	tt.Frame()
 }
 
-func TestRenderHeroBannerFullBleedWithCenteredMaxWidth(t *testing.T) {
+func TestRenderStackFullBleedWithCenteredMaxWidthAndNativeProps(t *testing.T) {
 	const winW = 1800
 	const maxContentW = 1200
 
@@ -211,22 +263,116 @@ func TestRenderHeroBannerFullBleedWithCenteredMaxWidth(t *testing.T) {
 	inst := newInstance("inst-hero-wide", "hikarinagi-detail", plugin.SlotGameDetailHero, "hikarinagi-hero", "g-wide")
 	inst.Version = 1
 	inst.Tree = &plugin.UINode{
-		Type: "HeroBanner",
+		Type: "Stack",
 		Key:  "hero-wide",
 		Props: map[string]any{
-			"height":          560.0,
-			"contentMaxWidth": float64(maxContentW),
-			"title":           "美好的每一天",
-			"backSlot":        "back",
-			"coverSlot":       "cover",
+			"width":     "full",
+			"minHeight": 560.0,
+			"clip":      true,
+			"label":     "hero-bg-root",
+		},
+		Children: []*plugin.UINode{
+			{
+				Type: "Column",
+				Key:  "hero-fg",
+				Props: map[string]any{
+					"width":         "full",
+					"minHeight":     560.0,
+					"paddingTop":    20.0,
+					"paddingRight":  32.0,
+					"paddingBottom": 28.0,
+					"paddingLeft":   32.0,
+				},
+				Children: []*plugin.UINode{
+					{
+						Type: "Column",
+						Key:  "hero-inner",
+						Props: map[string]any{
+							"width":     "full",
+							"maxWidth":  float64(maxContentW),
+							"centerX":   true,
+							"minHeight": 512.0,
+							"justify":   "space-between",
+						},
+						Children: []*plugin.UINode{
+							{
+								Type: "Box",
+								Key:  "back-pill",
+								Props: map[string]any{
+									"alignSelf":     "start",
+									"paddingTop":    4.0,
+									"paddingRight":  12.0,
+									"paddingBottom": 4.0,
+									"paddingLeft":   8.0,
+									"radius":        "full",
+								},
+								Children: []*plugin.UINode{
+									{Type: "NativeSlot", Props: map[string]any{"name": "back"}},
+								},
+							},
+							{
+								Type: "Row",
+								Key:  "bottom-row",
+								Props: map[string]any{
+									"width": "full",
+									"gap":   32.0,
+									"align": "end",
+								},
+								Children: []*plugin.UINode{
+									{
+										Type: "Column",
+										Key:  "left-col",
+										Props: map[string]any{
+											"grow":     1.0,
+											"basis":    0.0,
+											"minWidth": 0.0,
+										},
+										Children: []*plugin.UINode{
+											{
+												Type: "Text",
+												Key:  "title",
+												Props: map[string]any{
+													"text":   "美好的每一天",
+													"size":   34.0,
+													"weight": "bold",
+													"tone":   "light",
+												},
+											},
+										},
+									},
+									{
+										Type: "Box",
+										Key:  "cover-frame",
+										Props: map[string]any{
+											"shrink":      0.0,
+											"radius":      10.0,
+											"clip":        true,
+											"shadow":      "lg",
+											"border":      true,
+											"borderColor": "white@0.18",
+										},
+										Children: []*plugin.UINode{
+											{Type: "NativeSlot", Props: map[string]any{"name": "cover", "width": 196.0}},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 
+	var receivedCoverW float64
 	natives := NativeSlots{
-		"back": func(c *ui.Context, _ *theme.Theme) {
+		"back": func(c *ui.Context, _ *theme.Theme, _ map[string]any) {
 			ui.Box(c.Key("native-back")).Size(60, 24).Label("返回按钮")
 		},
-		"cover": func(c *ui.Context, _ *theme.Theme) {
+		"cover": func(c *ui.Context, _ *theme.Theme, props map[string]any) {
+			if w, ok := props["width"].(float64); ok {
+				receivedCoverW = w
+			}
 			ui.Box(c.Key("native-cover")).Size(196, 260).Label("游戏封面")
 		},
 	}
@@ -234,7 +380,7 @@ func TestRenderHeroBannerFullBleedWithCenteredMaxWidth(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) {
 		th := theme.New(true, 1)
 		ui.Column(c).Width(winW).Children(func() {
-			mgr.renderHeroBanner(c, th, inst, "hero-wide", inst.Tree, natives).Label("hero-bg-root")
+			mgr.RenderInstanceWithNatives(c, th, inst, natives)
 			ui.Column(c.Key("body-wrap")).FillWidth().Padding(8, 32, 0, 32).Children(func() {
 				ui.Column(c.Key("body-inner")).Width(maxContentW).Margin(0, ui.Auto).Label("body-inner-root").Children(func() {
 					ui.Box(c.Key("body-marker")).Size(80, 24).Label("正文标记")
@@ -243,6 +389,10 @@ func TestRenderHeroBannerFullBleedWithCenteredMaxWidth(t *testing.T) {
 		})
 	}, winW, 900)
 	tt.Frame()
+
+	if receivedCoverW != 196 {
+		t.Fatalf("expected NativeSlot cover to receive width=196, got %v", receivedCoverW)
+	}
 
 	heroRect, ok := tt.Find("hero-bg-root")
 	if !ok {

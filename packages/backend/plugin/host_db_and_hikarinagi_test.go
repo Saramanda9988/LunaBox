@@ -296,17 +296,19 @@ func TestHikarinagiDetailPluginSlotsAndCachedRender(t *testing.T) {
 			s := string(raw)
 			switch u.InstanceID {
 			case "hero::1":
-				if u.Tree.Type == "HeroBanner" &&
-					u.Tree.Props["logo"] == "https://cdn.example.com/logo-zh.png" &&
-					u.Tree.Props["banner"] == "https://cdn.example.com/ss1.webp" &&
-					u.Tree.Props["blur"] == false &&
-					u.Tree.Props["backSlot"] == "back" &&
-					u.Tree.Props["coverSlot"] == "cover" &&
-					u.Tree.Props["toolbarSlot"] == "toolbar" &&
-					stringsContainsAll(s, "9.3") &&
-					len(u.Tree.Children) == 0 &&
-					u.Tree.Events["prev"] != "" &&
-					u.Tree.Events["next"] != "" {
+				if u.Tree.Type == "Stack" &&
+					!containsStr(s, `"t":"HeroBanner"`) &&
+					stringsContainsAll(
+						s,
+						"https://cdn.example.com/logo-zh.png",
+						"https://cdn.example.com/ss1.webp",
+						`"name":"back"`,
+						`"name":"cover"`,
+						`"name":"toolbar"`,
+						"9.3",
+						"上一张头图",
+						"下一张头图",
+					) {
 					gotHeroReady = true
 				}
 			case "overview::1":
