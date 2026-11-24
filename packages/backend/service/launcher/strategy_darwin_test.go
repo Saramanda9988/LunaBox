@@ -75,21 +75,46 @@ func TestDarwinLauncherStrategySteamNativePlan(t *testing.T) {
 	}
 }
 
-func TestDarwinLauncherStrategyRejectsSteamShortcut(t *testing.T) {
+func TestDarwinLauncherStrategySupportsSteamShortcut(t *testing.T) {
+	steamExecutable := tempWineBinary(t)
+	gameDirectory := t.TempDir()
+	appBundle := filepath.Join(gameDirectory, "MyGame.app")
+	if err := os.MkdirAll(filepath.Join(appBundle, "Contents", "MacOS"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	game := &models.Game{
-		Path:            t.TempDir(),
+		Path:            appBundle,
+		GameDirectory:   gameDirectory,
 		LaunchMode:      "steam",
 		SteamLaunchKind: "shortcut",
-		SteamLaunchID:   "123456",
+		SteamLaunchID:   "9223372036888329984",
 	}
 
-	if SupportsSteamLaunch(game, LaunchOptions{}) {
-		t.Fatal("expected non-Steam shortcut to remain unsupported on macOS")
+	if !SupportsSteamLaunch(game, LaunchOptions{}) {
+		t.Fatal("expected non-Steam shortcut to be supported on macOS")
 	}
-	_, err := SelectLauncherStrategy(game, LaunchOptions{}, &appconf.AppConfig{})
-	var strategyErr *StrategyError
-	if !errors.As(err, &strategyErr) || strategyErr.Kind != "unsupported" {
-		t.Fatalf("expected unsupported StrategyError, got %v", err)
+	strategy, err := SelectLauncherStrategy(game, LaunchOptions{}, &appconf.AppConfig{})
+	if err != nil {
+		t.Fatalf("select Steam shortcut strategy: %v", err)
+	}
+	if _, ok := strategy.(steamDarwinStrategy); !ok {
+		t.Fatalf("expected steamDarwinStrategy, got %T", strategy)
+	}
+
+	plan, err := (steamDarwinStrategy{steamExecutable: steamExecutable}).Plan(context.Background(), game, LaunchOptions{})
+	if err != nil {
+		t.Fatalf("plan Steam shortcut launch: %v", err)
+	}
+	if len(plan.Args) != 2 || plan.Args[1] != "steam://rungameid/9223372036888329984" {
+		t.Fatalf("unexpected Steam shortcut arguments: %#v", plan.Args)
+	}
+	if plan.DetectionMode != DetectionSteamDirectory || plan.DetectionDir != gameDirectory {
+		t.Fatalf("expected detection dir %q, got %+v", gameDirectory, plan)
+	}
+
+	missingIDGame := &models.Game{Path: appBundle, LaunchMode: "steam"}
+	if _, err := (steamDarwinStrategy{steamExecutable: steamExecutable}).Plan(context.Background(), missingIDGame, LaunchOptions{}); err == nil {
+		t.Fatal("expected error when SteamLaunchID is missing")
 	}
 }
 

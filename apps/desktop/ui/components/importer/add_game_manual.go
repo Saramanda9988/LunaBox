@@ -195,7 +195,7 @@ func (a *AddGame) manualSave(c *ui.Context, onAdded func()) {
 func (a *AddGame) manualStep(c *ui.Context, t *theme.Theme, onAdded func()) {
 	_, winH := c.Size()
 	// 窗口减去顶栏、弹窗外边距与内边距、标题、说明与底部按钮，至少留 240。
-	bodyH := max(240, winH-env.TopbarHeight-300)
+	bodyH := max(240, winH-t.TopOffset(env.TopbarHeight)-300)
 	ui.Column(c.Key("manual-step")).Gap(16).Children(func() {
 		info := locales.AddGameModalManualFillInfo()
 		if a.remote {

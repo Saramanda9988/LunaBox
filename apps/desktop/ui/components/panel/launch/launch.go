@@ -331,10 +331,11 @@ func (h *handlers) loadTools() {
 }
 
 // processCard：进程监控卡片（space-y-6）：默认启动方式、可执行程序、实际游戏进程、导出快捷启动方式（只有 Windows）。
-// macOS / Linux 上进程由兼容层托管，进程名只读，没有选择按钮。
+// macOS / Linux 上非 Steam 模式进程由兼容层或应用自身托管，进程名只读；Steam 启动使用目录与窗口检测，允许手动配置进程名。
 func (h *handlers) processCard(c *ui.Context, t *theme.Theme) {
 	g, l := h.p.Game, h.l
-	wine := l.SupportsWine()
+	mode := l.EffectiveMode(g.LaunchMode, g)
+	wineManaged := l.SupportsWine() && mode != enums.LaunchModeSteam
 	winW, _ := c.Size()
 	card(c, t, "process-card", 24).Children(func() {
 		// 标题下的空 <p className="mt-1"> 没有高度，外边距与 space-y-6 合并，不占位置。
@@ -343,7 +344,7 @@ func (h *handlers) processCard(c *ui.Context, t *theme.Theme) {
 		ui.Column(c).Children(func() {
 			fieldLabel(c, t, locales.GameLaunchLaunchMode(), 4)
 			better.Select(c, t, "launch-mode", better.SelectProps{
-				Value:    string(l.EffectiveMode(g.LaunchMode, g)),
+				Value:    string(mode),
 				Options:  l.launchModeOptions(g),
 				OnChange: func(v string) { h.launchModeChange(c, enums.LaunchMode(v)) },
 			})
@@ -380,7 +381,7 @@ func (h *handlers) processCard(c *ui.Context, t *theme.Theme) {
 				value := g.ProcessName
 				placeholder := ""
 				var actions []inputAction
-				if wine {
+				if wineManaged {
 					placeholder = locales.GameLaunchProcessPlaceholderDarwin()
 				} else {
 					actions = append(actions, inputAction{icon: "file-search-outline", label: locales.GameLaunchSelectProcessFile(), onClick: func() { h.selectProcessExecutable(c) }})
@@ -391,19 +392,19 @@ func (h *handlers) processCard(c *ui.Context, t *theme.Theme) {
 					} else {
 						r.FillWidth()
 					}
-					if wine { // readOnly disabled（BetterActionInput disabled:opacity-60）
+					if wineManaged { // readOnly disabled（BetterActionInput disabled:opacity-60）
 						components.Disable(r, 0.6)
 					}
 				}, actions...)
 				if in.Changed() {
 					h.edit(func(pg *models.Game) { pg.ProcessName = value })
 				}
-				if !wine {
+				if !wineManaged {
 					emptyIconButton(c, t, "select-running-process", locales.GameLaunchSelectRunningProcess()).OnClick(func() { h.s.process.show(c, h.p) })
 				}
 			})
 			hint := locales.GameLaunchProcessHint()
-			if wine {
+			if wineManaged {
 				hint = locales.GameLaunchProcessHintDarwin()
 			}
 			components.TextMargin(c, hint, theme.TextXS, theme.WeightNormal, theme.Brand500, 4, 0, 0, 0)

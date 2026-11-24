@@ -112,7 +112,7 @@ func (p *Page) addGamesView(c *ui.Context, t *theme.Theme) {
 	closeModal := func() { m.open = false }
 	components.Modal(c, t, "add-games", components.ModalProps{Open: m.open, TopOffset: env.TopbarHeight, MaxWidth: 672},
 		func(panel ui.Element) {
-			panel.Height((winH-env.TopbarHeight)*0.8).Radius(12).Clip().Background(t.PanelBg).
+			panel.Height((winH-t.TopOffset(env.TopbarHeight))*0.8).Radius(12).Clip().Background(t.PanelBg).
 				Shadow(0, 20, 25, -5, ui.RGBA(0, 0, 0, 0.1)).Shadow(0, 8, 10, -6, ui.RGBA(0, 0, 0, 0.1))
 			panel.Children(func() {
 				// p-6 border-b flex justify-between items-center

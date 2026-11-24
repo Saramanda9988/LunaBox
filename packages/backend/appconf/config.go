@@ -104,6 +104,7 @@ type AppConfig struct {
 	Language                      string                       `json:"language"`                                // zh, en, etc.
 	SidebarOpen                   bool                         `json:"sidebar_open"`                            // 侧边栏是否展开
 	SidebarWidth                  int                          `json:"sidebar_width,omitempty"`                 // 侧边栏展开时的宽度（DIP），0 为默认宽度
+	HideTopBar                    bool                         `json:"hide_top_bar"`                            // 隐藏顶部标题栏，窗口控制按钮浮于右上角
 	CloseToTray                   bool                         `json:"close_to_tray"`                           // 关闭时最小化到托盘
 	// AI 配置
 	AIProvider     string `json:"ai_provider,omitempty"`      // openai, deepseek, etc.
@@ -276,6 +277,7 @@ func LoadConfig() (*AppConfig, error) {
 		Theme:                         "light",
 		Language:                      "zh-CN",
 		SidebarOpen:                   true,
+		HideTopBar:                    false,
 		CloseToTray:                   false,
 		AIProvider:                    "",
 		AIBaseURL:                     "",

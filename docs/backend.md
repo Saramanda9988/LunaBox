@@ -73,14 +73,14 @@
 | `steamWindows`     | Windows | 游戏启用 Steam 启动                           | `DetectionSteamDirectory` |
 | `nativeApp`        | macOS   | 启动路径为 `.app`                             | `DetectionLauncherOnly` |
 | `nativeExecutable` | macOS   | 原生 Unix 可执行文件                          | `DetectionLauncherOnly` |
-| `steamNative`      | macOS   | Steam 原生游戏 AppID                          | `DetectionSteamDirectory` |
+| `steamDarwin`      | macOS   | 游戏启用 Steam 启动                           | `DetectionSteamDirectory` |
 | `wineSystem`       | macOS   | 兼容层启动且 `wine_runner=system/custom`      | `DetectionLauncherOnly` |
 | `wineCrossover`    | macOS   | 兼容层启动且 `wine_runner=crossover`          | `DetectionLauncherOnly` |
 | `steamLinux`       | Linux   | 游戏启用 Steam 启动                           | `DetectionSteamDirectory` |
 | `nativeLinux`      | Linux   | 原生 Linux 可执行文件                         | `DetectionLauncherOnly` |
 | `wineLinux`        | Linux   | `.exe`/`.bat` 且已配置或默认使用 Wine runner  | `DetectionStaged`       |
 
-`DetectionStaged` 保留 Windows/Linux Wine 的分阶段进程检测与可见窗口检测；Windows Staged/Steam 目录、Linux Wine/Proton/Steam、macOS Steam 检测共用置信度评分（`service/launcher/detector_score.go` 评分、`detector_scored.go` 检测循环与验证，各平台只实现 sampler）：每 500ms 采样一次，按可见窗口/前台窗口/启动关系计算时间加权 EMA 分数，只在平台可观测的信号上归一化（Linux 无窗口枚举、前台仅 KDE kdotool；macOS 用前台应用 PID；Linux 的启动关系沿用 `/proc` 名称与路径匹配分），提前确认阈值锚定绝对时间（前 15s 严格，之后向用户配置的超时线性放宽），提前确认后由 `ProcessVerifier` 在超时前继续校验并可换绑到明确接管的更新进程；检测失败时结束本次监控，用户可在游戏启动配置中选择正在运行的进程，并在下次启动时使用保存的进程名。`DetectionLauncherOnly` 默认直接监控 launcher PID，不持久化 wine 宿主进程名；Linux 原生可执行文件允许在 launcher 退出后按安装目录进行受限进程接力。Linux Steam 的临时 launcher PID 只作为候选来源，安装目录是独立兜底，目录和 `/proc` 进程路径在比较前会解析符号链接。macOS Steam 仅支持已安装原生游戏的 AppID 启动，通过安装目录接管实际游戏进程，不写入非 Steam 快捷方式。macOS/Linux 活跃时长按 strategy 提供的 `ActiveTrack` 判定：`.app` 用 bundle path，Wine 用 wine 父 PID 的后代进程与目标进程身份，原生可执行文件用 launcher PID。
+`DetectionStaged` 保留 Windows/Linux Wine 的分阶段进程检测与可见窗口检测；Windows Staged/Steam 目录、Linux Wine/Proton/Steam、macOS Steam 检测共用置信度评分（`service/launcher/detector_score.go` 评分、`detector_scored.go` 检测循环与验证，各平台只实现 sampler）：每 500ms 采样一次，按可见窗口/前台窗口/启动关系计算时间加权 EMA 分数，只在平台可观测的信号上归一化（Linux 无窗口枚举、前台仅 KDE kdotool；macOS 用 CoreGraphics 顶层可见窗口枚举与 NSWorkspace 前台应用 PID；Linux 的启动关系沿用 `/proc` 名称与路径匹配分），提前确认阈值锚定绝对时间（前 15s 严格，之后向用户配置的超时线性放宽），提前确认后由 `ProcessVerifier` 在超时前继续校验并可换绑到明确接管的更新进程；检测失败时结束本次监控，用户可在游戏启动配置中选择正在运行的进程，并在下次启动时使用保存的进程名。`DetectionLauncherOnly` 默认直接监控 launcher PID，不持久化 wine 宿主进程名；Linux 原生可执行文件允许在 launcher 退出后按安装目录进行受限进程接力。Linux Steam 的临时 launcher PID 只作为候选来源，安装目录是独立兜底，目录和 `/proc` 进程路径在比较前会解析符号链接。macOS Steam 支持按目录识别已安装原生游戏以及导入非 Steam 游戏快捷方式（写入 `shortcuts.vdf`、启动参数与封面），启动后通过安装目录/已保存进程名、CoreGraphics 顶层可见窗口、NSWorkspace 前台应用 PID 与退出后继任进程检测接管实际游戏进程。macOS/Linux 活跃时长按 strategy 提供的 `ActiveTrack` 判定：`.app` 用 bundle path，Wine 用 wine 父 PID 的后代进程与目标进程身份，原生可执行文件用 launcher PID。
 
 **配置同步约束（MUST）：**
 

@@ -13,7 +13,7 @@ import (
 	"lunabox/desktop/ui/theme"
 )
 
-// batchActions 是 library.tsx 传给 FilterBar 的 batchActions：导入到 Steam（只在 Windows 上）、设为状态、加入收藏夹、删除；
+// batchActions 是 library.tsx 传给 FilterBar 的 batchActions：导入到 Steam（支持 Steam 启动的平台）、设为状态、加入收藏夹、删除；
 // 前面加了原版没有的“检查失效路径”。它们放在批量操作浮动岛（bar.BatchIsland）里，删除与其他操作用竖线隔开。
 func (l *Page) batchActions(c *ui.Context, t *theme.Theme) {
 	none := len(l.selected) == 0
@@ -23,7 +23,7 @@ func (l *Page) batchActions(c *ui.Context, t *theme.Theme) {
 	}
 	bar.BatchIslandButton(c, t, "missing-paths", bar.BatchButton{Icon: scanIcon, Label: locales.NativeMissingPathScan(),
 		Disabled: l.missing.scanning || l.env.Svc == nil, OnClick: func() { l.scanMissingPaths(c) }})
-	if launch.For(l.env).GOOS() == "windows" {
+	if launch.For(l.env).SupportsSteam(nil) {
 		icon := "steam"
 		if l.batch.steamImporting {
 			icon = "loading"

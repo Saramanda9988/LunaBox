@@ -293,7 +293,12 @@ func (a *app) newMainWindow() *mygo.Window {
 		BackgroundColor:   bg,
 		Content:           mygoui.View(a.ui.View),
 	}
-	if runtime.GOOS == "linux" {
+	switch runtime.GOOS {
+	case "darwin":
+		// macOS 统一保留原生红绿灯，定位在左上角并垂直居中于 28px 顶栏（隐藏顶栏时留在侧边栏顶部，收起 64px 宽时也能完整容纳）。
+		opts.HideWindowButtons = false
+		opts.TrafficLightPosition = &mygo.Point{X: 8, Y: 8}
+	case "linux":
 		// Linux 的 TitleBarHidden 仍由合成器装饰窗口（KWin 会画一条自己的标题栏），与顶栏叠成两条。
 		// 无边框窗口由 MyGo 在映射前 announceCSD，告诉合成器窗口自己画装饰；Wails 版在 Linux 上也是无边框。
 		opts.Frameless = true

@@ -303,7 +303,7 @@ func (p *Page) gameGrid(c *ui.Context, t *theme.Theme, winH float32) {
 	grid.VirtualGrid(c, grid.Props{
 		Geometry:   p.geometry,
 		Total:      p.pages.Total,
-		ViewTop:    env.TopbarHeight,
+		ViewTop:    t.TopOffset(env.TopbarHeight),
 		ViewBottom: winH,
 		OnRange:    p.pages.Ensure,
 		Item: func(c *ui.Context, i int) {

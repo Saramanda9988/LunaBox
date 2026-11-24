@@ -113,7 +113,8 @@ func (s *State) libraryModal(c *ui.Context, t *theme.Theme, p panel.Settings) {
 	}
 	title := locales.SettingsBasicLibraryChangeTitle()
 	components.Overlay(c, t, func() {
-		host := ui.Box(c.Key("library-change-modal")).Absolute().Top(panel.TopOffset).Left(0).Right(0).Bottom(0).Modal()
+		topOffset := t.TopOffset(panel.TopOffset)
+		host := ui.Box(c.Key("library-change-modal")).Absolute().Top(topOffset).Left(0).Right(0).Bottom(0).Modal()
 		host.OnShortcut(0, ui.KeyEscape, closeModal) // onKeyDownCapture：Escape 关闭
 		host.Children(func() {
 			backdrop := ui.ButtonBase(c.Key("backdrop")).Absolute().Top(0).Left(0).Right(0).Bottom(0).
@@ -135,7 +136,7 @@ func (s *State) libraryModal(c *ui.Context, t *theme.Theme, p panel.Settings) {
 				w.Absolute().Top(0).Left(0).Right(0).Bottom(0).PassThrough()
 			}, func(sc ui.Element) {
 				sc.PassThrough().Children(func() {
-					ui.Column(c).FillWidth().MinHeight(max(0, winH-panel.TopOffset)).Center().Padding(pad, pad+gutter, pad, pad).PassThrough().Children(func() {
+					ui.Column(c).FillWidth().MinHeight(max(0, winH-topOffset)).Center().Padding(pad, pad+gutter, pad, pad).PassThrough().Children(func() {
 						dialog := ui.Column(c.Key("dialog")).FillWidth().MaxWidth(768).Radius(16).
 							Background(t.Pick(theme.White.Alpha(0.98), theme.Brand800.Alpha(0.98))).
 							Border(t.HL, t.Pick(theme.Brand200, theme.Brand700)).Material(glass.Blur{Radius: 20}).

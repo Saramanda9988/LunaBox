@@ -80,7 +80,7 @@ func SetupWizardView(c *ui.Context, t *theme.Theme, m *SetupWizard, p SetupWizar
 	}
 	// 盖住顶栏下方的整个区域（侧边栏与内容区），排版同启动窗：左边是图标区，右边是当前这一步。
 	components.Overlay(c, t, func() {
-		host := ui.Row(c.Key("setup-wizard")).Absolute().Top(p.TopOffset).Left(0).Right(0).Bottom(0).AlignItems(ui.Stretch).
+		host := ui.Row(c.Key("setup-wizard")).Absolute().Top(t.TopOffset(p.TopOffset)).Left(0).Right(0).Bottom(0).AlignItems(ui.Stretch).
 			Modal().Background(t.Pick(theme.White, theme.Brand800))
 		host.Children(func() {
 			winW, _ := c.Size()

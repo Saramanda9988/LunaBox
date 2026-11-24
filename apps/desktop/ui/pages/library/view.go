@@ -43,7 +43,7 @@ func (l *Page) View(c *ui.Context) {
 		inset := bar.BatchIslandInset(l.filters.Batch)
 		sc.Padding(pagePadding, pagePadding+gutter, pagePadding+inset, pagePadding)
 		sc.Children(func() {
-			ui.Column(c).Width(contentW).Margin(0, ui.Auto).Gap(24).MinHeight(winH - env.TopbarHeight - 2*pagePadding - inset).Children(func() {
+			ui.Column(c).Width(contentW).Margin(0, ui.Auto).Gap(24).MinHeight(winH - t.TopOffset(env.TopbarHeight) - 2*pagePadding - inset).Children(func() {
 				ui.Column(c).Children(func() {
 					components.Text(c, locales.LibraryTitle(), theme.Text4XL, theme.WeightBold, t.TextStrong)
 					components.TextMargin(c, l.filters.CountText(l.pages.Total), theme.TextBase, theme.WeightNormal, t.TextMuted, 8, 0, 0, 0)
@@ -102,7 +102,7 @@ func (l *Page) gameGrid(c *ui.Context, t *theme.Theme, winH float32) {
 	grid.VirtualGrid(c, grid.Props{
 		Geometry:   l.grid,
 		Total:      l.pages.Total,
-		ViewTop:    env.TopbarHeight,
+		ViewTop:    t.TopOffset(env.TopbarHeight),
 		ViewBottom: winH,
 		OnRange:    l.pages.Ensure,
 		Item: func(c *ui.Context, i int) {

@@ -237,6 +237,21 @@ func TestGameCardLayoutSelect(t *testing.T) {
 	h.expect(t, locales.SettingsAppearanceGameCardLayoutPortrait())
 }
 
+func TestHideTopBarSwitch(t *testing.T) {
+	h := newHarness(t)
+	if h.cfg.HideTopBar {
+		t.Fatal("HideTopBar should default to false")
+	}
+	h.click(t, locales.SettingsAppearanceHideTopBar())
+	if !h.cfg.HideTopBar {
+		t.Fatal("hide top bar switch did not enable HideTopBar")
+	}
+	h.click(t, locales.SettingsAppearanceHideTopBar())
+	if h.cfg.HideTopBar {
+		t.Fatal("hide top bar switch did not disable HideTopBar")
+	}
+}
+
 // sliderAt 返回滑块上 frac 处的坐标：滑块在两端说明的上方 14px（行内滑块的行盒，见 rangeInput），高 8，
 // 拇指中心在两端各缩进 8。
 func (h *harness) sliderAt(t *testing.T, minLabel, maxLabel string, frac float32) (float32, float32) {

@@ -164,7 +164,7 @@ func (p *Page) debugScrollTo(c *ui.Context) {
 			h = g
 		}
 		if b := h.Bounds(c); b.H > 0 && p.scroll.State.MaxY > 0 {
-			p.scroll.State.Y = max(0, min(p.scroll.State.Y+b.Y-(env.TopbarHeight+24), p.scroll.State.MaxY))
+			p.scroll.State.Y = max(0, min(p.scroll.State.Y+b.Y-(p.env.Theme.TopOffset(env.TopbarHeight)+24), p.scroll.State.MaxY))
 		}
 	}
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"lunabox/backend/appconf"
 	"lunabox/desktop/host/hosttest"
 	"lunabox/desktop/ui/components/bar"
 	"lunabox/desktop/ui/env"
@@ -257,5 +258,37 @@ func TestCategoriesNavigation(t *testing.T) {
 	tt.Frame()
 	if a.router.Path() != env.PathCategories {
 		t.Fatalf("back went to %q", a.router.Path())
+	}
+}
+
+func TestHideTopBarLayoutShift(t *testing.T) {
+	a, tt := newTestApp(t, 2)
+	titleBefore, ok := tt.Find(locales.LibraryTitle())
+	if !ok {
+		t.Fatal("library title not found")
+	}
+
+	if err := a.env.PatchConfig(func(cfg *appconf.AppConfig) { cfg.HideTopBar = true }); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	titleAfter, ok := tt.Find(locales.LibraryTitle())
+	if !ok {
+		t.Fatal("library title not found after hiding topbar")
+	}
+	if diff := titleBefore.Y - titleAfter.Y; diff != float32(env.TopbarHeight) {
+		t.Fatalf("library title shifted up by %.1f, want %d (before=%.1f after=%.1f)", diff, env.TopbarHeight, titleBefore.Y, titleAfter.Y)
+	}
+
+	// 恢复顶栏后位置回到原处。
+	if err := a.env.PatchConfig(func(cfg *appconf.AppConfig) { cfg.HideTopBar = false }); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	titleRestored, _ := tt.Find(locales.LibraryTitle())
+	if titleRestored.Y != titleBefore.Y {
+		t.Fatalf("restored title Y=%.1f, want %.1f", titleRestored.Y, titleBefore.Y)
 	}
 }

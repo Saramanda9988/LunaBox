@@ -18,8 +18,8 @@ import (
 
 // 对应 PlayingIsland.tsx 的常量。
 const (
-	islandH                = 56 // ISLAND_HEIGHT（h-14）
-	islandTop              = env.TopbarHeight + 12
+	islandH                = 56                // ISLAND_HEIGHT（h-14）
+	islandTopGap           = 12                // EXPANDED_TOP_GAP
 	islandCollapseY        = 14 - islandH - 12 // COLLAPSE_TRANSLATE_Y = COLLAPSED_PEEK_HEIGHT - ISLAND_HEIGHT - EXPANDED_TOP_GAP
 	islandHideDistance     = -islandCollapseY  // HIDE_DISTANCE
 	islandDragThreshold    = 24                // COLLAPSE_DRAG_THRESHOLD
@@ -180,6 +180,7 @@ func (s *PlayingIsland) body(c *ui.Context, t *theme.Theme, p PlayingIslandProps
 	}
 
 	winW, _ := c.Size()
+	islandTop := t.TopOffset(env.TopbarHeight) + islandTopGap
 	frame := ui.Box(c.Key("playing-island")).Absolute().Top(islandTop).PassThrough()
 	dragOffset := float32(0)
 	if s.pressing {

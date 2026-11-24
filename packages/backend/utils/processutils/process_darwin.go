@@ -3,7 +3,87 @@
 package processutils
 
 /*
+#cgo darwin LDFLAGS: -framework CoreGraphics -framework CoreFoundation
+#include <CoreFoundation/CoreFoundation.h>
+#include <CoreGraphics/CoreGraphics.h>
 #include <libproc.h>
+#include <stdint.h>
+#include <stdlib.h>
+
+// lunabox_visible_window_pids enumerates PIDs owning at least one visible,
+// non-transparent, non-empty top-level (layer 0) on-screen window.
+// Returns 1 on success (even if *out_count == 0) and 0 if CoreGraphics could
+// not query the window server.
+static int lunabox_visible_window_pids(uint32_t **out_pids, int *out_count) {
+	*out_pids = NULL;
+	*out_count = 0;
+
+	CFArrayRef windowList = CGWindowListCopyWindowInfo(
+		kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
+		kCGNullWindowID
+	);
+	if (windowList == NULL) {
+		return 0;
+	}
+
+	CFIndex total = CFArrayGetCount(windowList);
+	if (total <= 0) {
+		CFRelease(windowList);
+		return 1;
+	}
+
+	uint32_t *pids = (uint32_t *)malloc((size_t)total * sizeof(uint32_t));
+	if (pids == NULL) {
+		CFRelease(windowList);
+		return 0;
+	}
+
+	int count = 0;
+	for (CFIndex i = 0; i < total; i++) {
+		CFDictionaryRef info = (CFDictionaryRef)CFArrayGetValueAtIndex(windowList, i);
+		if (info == NULL) {
+			continue;
+		}
+
+		// Standard application windows live on layer 0 (kCGNormalWindowLevel).
+		// Menu bar items, overlays, and system chrome sit on other layers.
+		CFNumberRef layerRef = (CFNumberRef)CFDictionaryGetValue(info, kCGWindowLayer);
+		int32_t layer = -1;
+		if (layerRef == NULL || !CFNumberGetValue(layerRef, kCFNumberSInt32Type, &layer) || layer != 0) {
+			continue;
+		}
+
+		CFNumberRef alphaRef = (CFNumberRef)CFDictionaryGetValue(info, kCGWindowAlpha);
+		double alpha = 1.0;
+		if (alphaRef != NULL && CFNumberGetValue(alphaRef, kCFNumberDoubleType, &alpha) && alpha <= 0.0) {
+			continue;
+		}
+
+		CFDictionaryRef boundsRef = (CFDictionaryRef)CFDictionaryGetValue(info, kCGWindowBounds);
+		CGRect bounds;
+		if (boundsRef != NULL && CGRectMakeWithDictionaryRepresentation(boundsRef, &bounds)) {
+			if (bounds.size.width < 1.0 || bounds.size.height < 1.0) {
+				continue;
+			}
+		}
+
+		CFNumberRef pidRef = (CFNumberRef)CFDictionaryGetValue(info, kCGWindowOwnerPID);
+		int32_t pid = 0;
+		if (pidRef == NULL || !CFNumberGetValue(pidRef, kCFNumberSInt32Type, &pid) || pid <= 0) {
+			continue;
+		}
+		pids[count++] = (uint32_t)pid;
+	}
+
+	CFRelease(windowList);
+	if (count == 0) {
+		free(pids);
+		return 1;
+	}
+	*out_pids = pids;
+	*out_count = count;
+	return 1;
+}
 */
 import "C"
 
@@ -144,23 +224,61 @@ func GetRunningProcesses() ([]ProcessInfo, error) {
 }
 
 func GetProcessPIDByName(processName string) (uint32, error) {
+	processes, err := GetProcessesByName(processName)
+	if err != nil {
+		return 0, err
+	}
+	if len(processes) == 0 {
+		return 0, fmt.Errorf("process not found: %s", processName)
+	}
+	return processes[0].PID, nil
+}
+
+func GetProcessesByName(processName string) ([]ProcessInfo, error) {
 	targetName := strings.TrimSpace(processName)
 	if targetName == "" {
-		return 0, fmt.Errorf("process name is empty")
+		return nil, fmt.Errorf("process name is empty")
 	}
 
 	entries, err := getProcessSnapshotEntries()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
+	processes := make([]ProcessInfo, 0, 1)
+	seen := make(map[uint32]bool)
 	for _, entry := range entries {
-		if strings.EqualFold(entry.Name, targetName) {
-			return entry.PID, nil
+		if seen[entry.PID] {
+			continue
+		}
+		matchedName, ok := matchProcessName(entry, targetName)
+		if !ok {
+			continue
+		}
+		seen[entry.PID] = true
+		processes = append(processes, ProcessInfo{Name: matchedName, PID: entry.PID})
+	}
+	sortProcesses(processes)
+	return processes, nil
+}
+
+func matchProcessName(entry processSnapshotEntry, targetName string) (string, bool) {
+	if strings.EqualFold(entry.Name, targetName) {
+		return entry.Name, true
+	}
+	// macOS kinfo_proc.p_comm is truncated to MAXCOMLEN (15 chars + NUL).
+	// When the target name is longer and shares the truncated prefix, check
+	// the full executable basename via proc_pidpath.
+	if len(targetName) > len(entry.Name) && len(entry.Name) >= 15 &&
+		strings.EqualFold(targetName[:len(entry.Name)], entry.Name) {
+		if imagePath, ok := queryProcessImagePath(entry.PID); ok {
+			base := filepath.Base(imagePath)
+			if strings.EqualFold(base, targetName) {
+				return base, true
+			}
 		}
 	}
-
-	return 0, fmt.Errorf("process not found: %s", processName)
+	return "", false
 }
 
 func IsProcessPresentByPID(pid uint32) bool {
@@ -307,15 +425,30 @@ func IsProcessDescendant(rootPID uint32, candidatePID uint32) bool {
 	return false
 }
 
-// GetProcessCreationTime 在 macOS 上暂未实现，进程接力检测会跳过创建时间校验。
+// GetProcessCreationTime queries the process start time via kern.proc.pid.
 func GetProcessCreationTime(pid uint32) (time.Time, error) {
-	return time.Time{}, fmt.Errorf("process creation time is not supported on this platform")
+	if pid == 0 {
+		return time.Time{}, fmt.Errorf("process id is zero")
+	}
+	kp, err := unix.SysctlKinfoProc("kern.proc.pid", int(pid))
+	if err != nil {
+		return time.Time{}, fmt.Errorf("query process %d info: %w", pid, err)
+	}
+	tv := kp.Proc.P_starttime
+	if tv.Sec == 0 && tv.Usec == 0 {
+		return time.Time{}, fmt.Errorf("process %d has zero start time", pid)
+	}
+	return time.Unix(int64(tv.Sec), int64(tv.Usec)*int64(time.Microsecond)), nil
 }
 
 func GetProcessesByExecutableDir(rootDir string) ([]ProcessInfo, error) {
 	normalizedRoot, err := filepath.Abs(filepath.Clean(strings.TrimSpace(rootDir)))
 	if err != nil {
 		return nil, fmt.Errorf("normalize executable dir: %w", err)
+	}
+	resolvedRoot := normalizedRoot
+	if eval, evalErr := filepath.EvalSymlinks(normalizedRoot); evalErr == nil && strings.TrimSpace(eval) != "" {
+		resolvedRoot = eval
 	}
 
 	entries, err := getProcessSnapshotEntries()
@@ -330,24 +463,70 @@ func GetProcessesByExecutableDir(rootDir string) ([]ProcessInfo, error) {
 			continue
 		}
 		imagePath, ok := queryProcessImagePath(entry.PID)
-		if !ok || !isPathUnderDir(imagePath, normalizedRoot) {
+		if !ok || (!isPathUnderDir(imagePath, normalizedRoot) && (resolvedRoot == normalizedRoot || !isPathUnderDir(imagePath, resolvedRoot))) {
 			continue
 		}
 
+		name := entry.Name
+		if base := strings.TrimSpace(filepath.Base(imagePath)); base != "" && base != "." && base != string(filepath.Separator) {
+			name = base
+		}
 		seen[entry.PID] = true
-		processes = append(processes, ProcessInfo{Name: entry.Name, PID: entry.PID})
+		processes = append(processes, ProcessInfo{Name: name, PID: entry.PID})
 	}
 
 	sortProcesses(processes)
 	return processes, nil
 }
 
+// VisibleWindowPIDs returns the set of PIDs currently owning at least one
+// visible top-level window on macOS. The boolean reports whether CoreGraphics
+// window enumeration succeeded.
+func VisibleWindowPIDs() (map[uint32]bool, bool) {
+	var rawPIDs *C.uint32_t
+	var count C.int
+	if C.lunabox_visible_window_pids(&rawPIDs, &count) == 0 {
+		return nil, false
+	}
+	result := make(map[uint32]bool, int(count))
+	if rawPIDs != nil {
+		defer C.free(unsafe.Pointer(rawPIDs))
+		slice := unsafe.Slice((*uint32)(unsafe.Pointer(rawPIDs)), int(count))
+		for _, pid := range slice {
+			if pid != 0 {
+				result[pid] = true
+			}
+		}
+	}
+	return result, true
+}
+
 func FilterProcessesWithVisibleWindows(processes []ProcessInfo) []ProcessInfo {
-	return processes
+	if len(processes) == 0 {
+		return nil
+	}
+	windowPIDs, ok := VisibleWindowPIDs()
+	if !ok {
+		return nil
+	}
+	filtered := make([]ProcessInfo, 0, len(processes))
+	for _, proc := range processes {
+		if windowPIDs[proc.PID] {
+			filtered = append(filtered, proc)
+		}
+	}
+	return filtered
 }
 
 func HasVisibleTopLevelWindow(pid uint32) bool {
-	return IsProcessPresentByPID(pid)
+	if pid == 0 {
+		return false
+	}
+	windowPIDs, ok := VisibleWindowPIDs()
+	if !ok {
+		return false
+	}
+	return windowPIDs[pid]
 }
 
 func IsProcessRunningByPID(pid uint32, ctx context.Context) bool {

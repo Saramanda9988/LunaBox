@@ -185,7 +185,7 @@ func UpdateDialog(c *ui.Context, t *theme.Theme, key string, s *UpdateDialogStat
 	}
 
 	Overlay(c, t, func() {
-		host := ui.Box(c.Key(key)).Absolute().Top(p.TopOffset).Left(0).Right(0).Bottom(0).Modal()
+		host := ui.Box(c.Key(key)).Absolute().Top(t.TopOffset(p.TopOffset)).Left(0).Right(0).Bottom(0).Modal()
 		fade := host.AnimateWith("fade", theme.Bool(visible), updateDialogFade, theme.EaseTailwind)
 		host.Opacity(fade).Children(func() {
 			// 原版的遮罩是带 onClick 的 div（关闭按钮才有 aria-label），所以这里用不可聚焦、没有名称的 Box。

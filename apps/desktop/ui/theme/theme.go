@@ -13,8 +13,10 @@ type Theme struct {
 	Scale float64 // 显示器缩放比例
 	HL    float32 // 一个物理像素的 DIP 宽度，即 1px 边框的实际宽度
 
-	Glass     bool    // 根布局的 data-glass：开启了自定义背景（见 glass.go）
-	BgOpacity float32 // background_opacity：玻璃模式下 main 与侧边栏底色的不透明度
+	Glass                  bool    // 根布局的 data-glass：开启了自定义背景（见 glass.go）
+	BgOpacity              float32 // background_opacity：玻璃模式下 main 与侧边栏底色的不透明度
+	TopbarHidden           bool    // hide_top_bar：隐藏顶部标题栏，浮层、虚拟网格与灵动岛不再让出顶栏高度
+	FloatingControlsHeight float32 // 隐藏顶栏且绘制右上角浮动窗口按钮时的占用高度（macOS 使用原生红绿灯，为 0）
 
 	// BgLocked 为 true 时有主题插件声明了 glass.enabled: false：本帧不使用用户的自定义背景与玻璃模式，
 	// 避免背景图破坏插件的设计配色（见 ApplyPluginOverrides）。
@@ -23,6 +25,14 @@ type Theme struct {
 	// ShapeControl / ShapePanel 是主题插件通过 shape.control / shape.panel 覆盖的圆角（DIP），
 	// 为负表示未覆盖、组件沿用自身的圆角（见 ControlRadius / PanelRadius）。
 	ShapeControl, ShapePanel float32
+}
+
+// TopOffset 返回顶栏占用的偏移高度：隐藏顶栏时为 0，否则返回 offset。
+func (t *Theme) TopOffset(offset float32) float32 {
+	if t != nil && t.TopbarHidden {
+		return 0
+	}
+	return offset
 }
 
 // ControlRadius 返回工具栏图标按钮等控件的圆角：主题插件覆盖了 shape.control 时用覆盖值，否则用 def。
