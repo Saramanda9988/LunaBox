@@ -39,11 +39,11 @@ export function createHeroSection(ctx: Context, store: DetailStore) {
     const activeBannerUrl = activeImg ? activeImg.url : defaultBanner.url;
     const activeBannerSensitive = activeImg ? isMediaSensitive(activeImg) : defaultBanner.sensitive;
 
-    // 翻页加载新头图期间保留上一张背景图，避免瞬间闪黑
+    // 翻页或远程头图加载期间保留上一张背景图，首帧优先回退本地已缓存封面，避免闪黑
     const fallbackBanner =
       prevBannerRef.current && prevBannerRef.current !== activeBannerUrl
         ? prevBannerRef.current
-        : game?.cover_source_url || game?.cover_url || '';
+        : game?.cover_url || game?.cover_source_url || '';
 
     useEffect(() => {
       if (activeBannerUrl) {

@@ -4,27 +4,18 @@
 package pluginui
 
 import (
+	"container/list"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
-	"image"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
-	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
-	_ "golang.org/x/image/webp"
 
 	"lunabox/backend/plugin"
-	"lunabox/backend/utils/httputils"
-	"lunabox/backend/version"
-	"lunabox/desktop/ui/assets"
 	"lunabox/desktop/ui/components"
 	"lunabox/desktop/ui/env"
 )
@@ -82,11 +73,15 @@ type Manager struct {
 	unsubAction func()
 	unsubWinCmd func()
 
-	imgMu      sync.RWMutex
-	imgCache   map[string]*ui.Bitmap
-	svgCache   map[string]*ui.SVG
-	imgLoading map[string]bool
-	imgFailed  map[string]time.Time
+	imgMu       sync.Mutex
+	imgCache    map[string]*list.Element
+	imgLRU      *list.List
+	imgBytes    int64
+	svgCache    map[string]*ui.SVG
+	imgLoading  map[string]bool
+	imgFailed   map[string]time.Time
+	imgDisk     *imageDiskCache
+	decodeSlots chan struct{}
 
 	// 开发模式判断（决定未知组件与错误边界是否展示详细错误信息）
 	DevMode bool
@@ -95,20 +90,31 @@ type Manager struct {
 // New 创建插件界面管理器。
 func New(e *env.Env, cb HostCallbacks) *Manager {
 	return &Manager{
-		env:        e,
-		callbacks:  cb,
-		instances:  make(map[string]*Instance),
-		windows:    make(map[string]*pluginWindow),
-		imgCache:   make(map[string]*ui.Bitmap),
-		svgCache:   make(map[string]*ui.SVG),
-		imgLoading: make(map[string]bool),
-		imgFailed:  make(map[string]time.Time),
-		DevMode:    mygo.IsDev(),
+		env:         e,
+		callbacks:   cb,
+		instances:   make(map[string]*Instance),
+		windows:     make(map[string]*pluginWindow),
+		imgCache:    make(map[string]*list.Element),
+		imgLRU:      list.New(),
+		svgCache:    make(map[string]*ui.SVG),
+		imgLoading:  make(map[string]bool),
+		imgFailed:   make(map[string]time.Time),
+		decodeSlots: make(chan struct{}, pluginImageDecodeCap),
+		DevMode:     mygo.IsDev(),
 	}
 }
 
 // Attach 订阅后端插件服务推送的描述树、UI 注册变更、动作与窗口指令，全部通过 Win.Update 切回界面线程。
 func (m *Manager) Attach(win *mygo.Window) {
+	m.imgMu.Lock()
+	if m.imgDisk == nil {
+		m.imgDisk = openImageDiskCache()
+		if d := m.imgDisk; d != nil {
+			go d.prune(pluginImageDiskBudget)
+		}
+	}
+	m.imgMu.Unlock()
+
 	if m.env == nil || m.env.Svc == nil || m.env.Svc.Plugin == nil {
 		return
 	}
@@ -324,215 +330,6 @@ func (m *Manager) pluginName(pluginID string) string {
 		}
 	}
 	return pluginID
-}
-
-// isImageFailed 返回指定图片来源最近一次加载是否失败（用于 Image 的 onError 去重回调）。
-func (m *Manager) isImageFailed(src string) bool {
-	src = strings.TrimSpace(src)
-	if src == "" {
-		return false
-	}
-	m.imgMu.RLock()
-	_, failed := m.imgFailed[src]
-	m.imgMu.RUnlock()
-	return failed
-}
-
-// LoadImageSource 异步加载本地或远程图标/图片（支持 SVG、PNG、JPEG、GIF、WebP）并缓存为 ui.ImageSource，绝不阻塞界面线程。
-func (m *Manager) LoadImageSource(src string) ui.ImageSource {
-	src = strings.TrimSpace(src)
-	if src == "" {
-		return nil
-	}
-	lowerNoQuery := strings.ToLower(strings.SplitN(src, "?", 2)[0])
-	if strings.HasSuffix(lowerNoQuery, ".svg") {
-		m.imgMu.RLock()
-		if svg, ok := m.svgCache[src]; ok {
-			m.imgMu.RUnlock()
-			if svg != nil {
-				return svg
-			}
-			return nil
-		}
-		if m.imgLoading[src] {
-			m.imgMu.RUnlock()
-			return nil
-		}
-		if failedAt, ok := m.imgFailed[src]; ok && time.Since(failedAt) < 30*time.Second {
-			m.imgMu.RUnlock()
-			return nil
-		}
-		m.imgMu.RUnlock()
-
-		m.imgMu.Lock()
-		if m.imgLoading[src] {
-			m.imgMu.Unlock()
-			return nil
-		}
-		m.imgLoading[src] = true
-		m.imgMu.Unlock()
-
-		go func() {
-			var data []byte
-			var err error
-			if strings.HasPrefix(src, "http://") || strings.HasPrefix(src, "https://") {
-				data, err = m.fetchRemoteBytes(src)
-			} else {
-				data, err = os.ReadFile(src)
-			}
-			var svg *ui.SVG
-			if err == nil && len(data) > 0 {
-				if parsed, perr := ui.ParseSVG(data); perr == nil {
-					svg = parsed
-				}
-			}
-			m.imgMu.Lock()
-			delete(m.imgLoading, src)
-			if svg != nil {
-				m.svgCache[src] = svg
-				delete(m.imgFailed, src)
-			} else {
-				m.imgFailed[src] = time.Now()
-			}
-			m.imgMu.Unlock()
-			if svg != nil && m.env != nil && m.env.Win != nil {
-				m.env.Win.Invalidate()
-			}
-		}()
-		return nil
-	}
-	if bmp := m.loadBitmap(src); bmp != nil {
-		return bmp
-	}
-	return nil
-}
-
-func (m *Manager) newHTTPClient() *http.Client {
-	opts := httputils.ClientOptions{
-		Timeout: 15 * time.Second,
-	}
-	if m.env != nil {
-		opts.ProxyConfig = m.env.Config()
-	}
-	client, _, cerr := httputils.NewClient(opts)
-	if cerr != nil || client == nil {
-		return &http.Client{Timeout: 15 * time.Second}
-	}
-	return client
-}
-
-func (m *Manager) fetchRemoteBytes(src string) ([]byte, error) {
-	client := m.newHTTPClient()
-	req, err := http.NewRequest(http.MethodGet, src, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", version.UserAgent())
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, os.ErrNotExist
-	}
-	var buf []byte
-	tmp := make([]byte, 32*1024)
-	for {
-		n, rerr := resp.Body.Read(tmp)
-		if n > 0 {
-			buf = append(buf, tmp[:n]...)
-			if len(buf) > 16<<20 {
-				return nil, os.ErrInvalid
-			}
-		}
-		if rerr != nil {
-			break
-		}
-	}
-	return buf, nil
-}
-
-// loadBitmap 异步加载本地路径或 http(s) URL 图片并缓存为 *ui.Bitmap，绝不阻塞界面线程。
-func (m *Manager) loadBitmap(src string) *ui.Bitmap {
-	src = strings.TrimSpace(src)
-	if src == "" {
-		return nil
-	}
-	m.imgMu.RLock()
-	if bmp, ok := m.imgCache[src]; ok {
-		m.imgMu.RUnlock()
-		return bmp
-	}
-	if m.imgLoading[src] {
-		m.imgMu.RUnlock()
-		return nil
-	}
-	if failedAt, ok := m.imgFailed[src]; ok && time.Since(failedAt) < 30*time.Second {
-		m.imgMu.RUnlock()
-		return nil
-	}
-	m.imgMu.RUnlock()
-
-	m.imgMu.Lock()
-	if m.imgLoading[src] {
-		m.imgMu.Unlock()
-		return nil
-	}
-	m.imgLoading[src] = true
-	m.imgMu.Unlock()
-
-	go func() {
-		var img image.Image
-		var err error
-		if strings.HasPrefix(src, "http://") || strings.HasPrefix(src, "https://") {
-			client := m.newHTTPClient()
-			req, rerr := http.NewRequest(http.MethodGet, src, nil)
-			if rerr == nil {
-				req.Header.Set("User-Agent", version.UserAgent())
-				resp, derr := client.Do(req)
-				if derr == nil {
-					if resp.StatusCode == http.StatusOK {
-						img, _, err = image.Decode(resp.Body)
-					} else {
-						err = os.ErrNotExist
-					}
-					resp.Body.Close()
-				} else {
-					err = derr
-				}
-			} else {
-				err = rerr
-			}
-		} else {
-			f, ferr := os.Open(src)
-			if ferr == nil {
-				img, _, err = image.Decode(f)
-				f.Close()
-			} else {
-				err = ferr
-			}
-		}
-
-		var bmp *ui.Bitmap
-		if err == nil && img != nil {
-			bmp = ui.NewBitmap(assets.Downscale(img, 1600))
-		}
-		m.imgMu.Lock()
-		delete(m.imgLoading, src)
-		if bmp != nil {
-			m.imgCache[src] = bmp
-			delete(m.imgFailed, src)
-		} else {
-			m.imgFailed[src] = time.Now()
-		}
-		m.imgMu.Unlock()
-
-		if bmp != nil && m.env != nil && m.env.Win != nil {
-			m.env.Win.Invalidate()
-		}
-	}()
-	return nil
 }
 
 func (m *Manager) syncFonts() {

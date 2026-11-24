@@ -200,7 +200,7 @@ export function pickBestBanner(
     };
   }
 
-  const fallback = game?.cover_source_url || game?.cover_url || '';
+  const fallback = game?.cover_url || game?.cover_source_url || '';
   return {
     url: fallback,
     sensitive: Boolean(game?.is_nsfw),

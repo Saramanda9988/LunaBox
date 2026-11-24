@@ -153,7 +153,7 @@ function pickBestBanner(detail, game, blurNsfw) {
       fromCover: true
     };
   }
-  const fallback = game?.cover_source_url || game?.cover_url || "";
+  const fallback = game?.cover_url || game?.cover_source_url || "";
   return {
     url: fallback,
     sensitive: Boolean(game?.is_nsfw),
@@ -510,7 +510,7 @@ function createHeroSection(ctx, store) {
     const activeImg = totalImages > 0 ? sortedImages[safeIdx] : null;
     const activeBannerUrl = activeImg ? activeImg.url : defaultBanner.url;
     const activeBannerSensitive = activeImg ? isMediaSensitive(activeImg) : defaultBanner.sensitive;
-    const fallbackBanner = prevBannerRef.current && prevBannerRef.current !== activeBannerUrl ? prevBannerRef.current : game?.cover_source_url || game?.cover_url || "";
+    const fallbackBanner = prevBannerRef.current && prevBannerRef.current !== activeBannerUrl ? prevBannerRef.current : game?.cover_url || game?.cover_source_url || "";
     useEffect(() => {
       if (activeBannerUrl) {
         prevBannerRef.current = activeBannerUrl;

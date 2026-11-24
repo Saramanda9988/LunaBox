@@ -162,6 +162,20 @@ func (cc *Cache) Accent(g *models.Game) (c ui.Color, ok bool) {
 	return c, ok
 }
 
+// Peek 返回封面缓存中已经解码好的位图（优先大图，其次卡片图），不触发加载；未命中返回 nil。只在主线程调用。
+func (cc *Cache) Peek(src string) *ui.Bitmap {
+	if cc == nil || src == "" {
+		return nil
+	}
+	if el, ok := cc.bitmaps[src+largeSuffix]; ok {
+		return el.Value.(*entry).bmp
+	}
+	if el, ok := cc.bitmaps[src]; ok {
+		return el.Value.(*entry).bmp
+	}
+	return nil
+}
+
 func (cc *Cache) get(req request) *ui.Bitmap {
 	if req.src == "" {
 		return nil
