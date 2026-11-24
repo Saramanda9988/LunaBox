@@ -170,13 +170,44 @@ func (p *Plugin) MountSlotInstance(instanceID, slotName, regID string, props any
 	if !ok || !renderFn.IsObject() {
 		return
 	}
-	propsJSON := "{}"
+	p.mountInternal(instanceID, renderFn, slotPropsJSON(props))
+}
+
+// UpdateSlotInstance 用新的 props 重新渲染已挂载的插槽实例，保留 useState / useEffect 等 hook 状态
+// （等同 React 父组件带着新 props 重渲染）；实例尚未挂载时退化为首次挂载。
+func (p *Plugin) UpdateSlotInstance(instanceID, slotName, regID string, props any) {
+	key := slotCallbackKey(slotName, regID)
+	p.mu.RLock()
+	renderFn, ok := p.renderFns[key]
+	_, mounted := p.instScopes[instanceID]
+	p.mu.RUnlock()
+	if !ok || !renderFn.IsObject() {
+		return
+	}
+	propsJSON := slotPropsJSON(props)
+	if !mounted {
+		p.mountInternal(instanceID, renderFn, propsJSON)
+		return
+	}
+	p.Post(func(rt *moejs.Runtime) {
+		fn, err := rt.Get(engine.ObjectValue(rt.Realm().Global), "__lunabox_ui_update")
+		if err != nil || !fn.IsObject() {
+			p.recordError(fmt.Errorf("__lunabox_ui_update 不可用: %v", err))
+			return
+		}
+		if _, err := rt.CallFunction(fn, moejs.Undefined(), moejs.String(instanceID), renderFn, moejs.String(propsJSON)); err != nil {
+			p.recordError(err)
+		}
+	})
+}
+
+func slotPropsJSON(props any) string {
 	if props != nil {
 		if b, err := json.Marshal(props); err == nil {
-			propsJSON = string(b)
+			return string(b)
 		}
 	}
-	p.mountInternal(instanceID, renderFn, propsJSON)
+	return "{}"
 }
 
 func (p *Plugin) mountInternal(instanceID string, renderFn moejs.Value, propsJSON string) {

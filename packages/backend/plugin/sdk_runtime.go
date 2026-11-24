@@ -842,6 +842,17 @@ globalThis.__lunabox_ui_mount = function(instanceId, renderFn, propsJson) {
   __renderInstance(inst);
 };
 
+// props 变化时原地重渲染，保留 hook 状态；实例不存在（例如插件重载后）时按新实例挂载。
+globalThis.__lunabox_ui_update = function(instanceId, renderFn, propsJson) {
+  const inst = __instances.get(instanceId);
+  if (!inst || inst.disposed) {
+    globalThis.__lunabox_ui_mount(instanceId, renderFn, propsJson);
+    return;
+  }
+  inst.props = propsJson ? JSON.parse(propsJson) : {};
+  __renderInstance(inst);
+};
+
 globalThis.__lunabox_ui_unmount = function(instanceId) {
   const inst = __instances.get(instanceId);
   if (!inst) return;

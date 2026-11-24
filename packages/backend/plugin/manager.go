@@ -597,6 +597,13 @@ func (m *Manager) MountSlot(instanceID, pluginID, slotName, regID string, props 
 	}
 }
 
+// UpdateSlot 以新的 props 重渲染已挂载的插槽实例（保留插件内的 hook 状态）。
+func (m *Manager) UpdateSlot(instanceID, pluginID, slotName, regID string, props any) {
+	if p := m.activePlugin(pluginID); p != nil {
+		p.UpdateSlotInstance(instanceID, slotName, regID, props)
+	}
+}
+
 // UnmountSlot 卸载一个插槽实例。
 func (m *Manager) UnmountSlot(instanceID, pluginID string) {
 	if p := m.activePlugin(pluginID); p != nil {

@@ -165,10 +165,10 @@ export function apply(ctx) {
   });
 
   // 5. UI Slot with useState
-  function CounterPanel() {
+  function CounterPanel(props) {
     const [count, setCount] = useState(0);
     return Column({ gap: 'md', children: [
-      Text({ k: 'cnt', text: 'count=' + count }),
+      Text({ k: 'cnt', text: 'count=' + count + (props.suffix || '') }),
       Button({ k: 'inc', label: 'Add', onPress: () => setCount((c) => c + 1) }),
     ]});
   }
@@ -285,6 +285,27 @@ export function apply(ctx) {
 		}
 	case <-time.After(3 * time.Second):
 		t.Fatalf("timed out waiting for updated UI tree")
+	}
+
+	// props 变化时原地重渲染：新 props 生效，useState 状态保留（不重新挂载）
+	mgr.UpdateSlot(instID, "demo-plugin", SlotSettingsSection, "counter", map[string]any{"suffix": "!"})
+	select {
+	case third := <-treeCh:
+		if third.Tree == nil || third.Tree.Children[0].Props["text"] != "count=1!" {
+			t.Fatalf("expected count=1! after props update, got %+v", third)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatalf("timed out waiting for props-updated UI tree")
+	}
+	// 尚未挂载的实例走首次挂载
+	mgr.UpdateSlot("inst-counter-2", "demo-plugin", SlotSettingsSection, "counter", map[string]any{"suffix": "?"})
+	select {
+	case fresh := <-treeCh:
+		if fresh.InstanceID != "inst-counter-2" || fresh.Tree == nil || fresh.Tree.Children[0].Props["text"] != "count=0?" {
+			t.Fatalf("expected fresh mount count=0?, got %+v", fresh)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatalf("timed out waiting for fallback mount")
 	}
 
 	// 验证卸载彻底撤销（无泄漏）

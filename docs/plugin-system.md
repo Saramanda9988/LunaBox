@@ -478,7 +478,7 @@ export function apply(ctx: Context) {
 1. 界面在宿主点**进入**时挂载实例：Go 新建子作用域，`Post` `mount(instanceId, props)` 到插件线程，插件执行第一次 render。
 2. 第一棵树到达之前，渲染器画占位（不占高度，或使用该插槽规定的骨架）。
 3. 宿主点**离开**时卸载实例：撤销实例作用域（其中包括 `useEffect` 的清理函数），丢弃缓存的树和输入框状态。
-4. props 变化（如切换到另一款游戏）= 先卸载，再挂载。
+4. 切换到另一款游戏时实例 ID（作用域键 `gameId`）变化 = 卸载旧实例、挂载新实例。同一实例的 props 变化（如切换游玩状态后 `game` 更新）= 原地更新：`Post` `update(instanceId, props)` 让插件带着新 props 重新 render，`useState` 等 hook 状态保留；新树到达之前界面继续画上一棵树，不会闪回占位或宿主的回退布局。
 
 MyGo 的界面每帧重建，没法从帧上判断“组件卸载了”，所以**进入和离开绑定到页面已有的 `Open`/`Leave`**（`ui/routes.go` 里 `entered` 时调用的那组方法）。常驻的插槽（如侧边栏项）生命周期等于注册本身。
 

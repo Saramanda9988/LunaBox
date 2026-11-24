@@ -31,6 +31,8 @@ type PluginService interface {
 	SetConfigValues(pluginID string, values map[string]any) error
 
 	MountSlot(instanceID, pluginID, slotName, regID string, props any)
+	// UpdateSlot 把变化后的 props 交给已挂载的插槽实例重渲染，插件内的 hook 状态保留。
+	UpdateSlot(instanceID, pluginID, slotName, regID string, props any)
 	UnmountSlot(instanceID, pluginID string)
 	DispatchEvent(ev plugin.UIEvent)
 	InvokeAction(pluginID, slotName, regID string, payload any)

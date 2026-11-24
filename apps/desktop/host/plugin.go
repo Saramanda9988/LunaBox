@@ -159,6 +159,9 @@ func (b *PluginBridge) GetConfigValues(id string) map[string]any            { re
 func (b *PluginBridge) SetConfigValues(id string, v map[string]any) error   { return b.mgr.SetConfigValues(id, v) }
 func (b *PluginBridge) MountSlot(inst, pid, slot, reg string, props any)    { b.mgr.MountSlot(inst, pid, slot, reg, props) }
 func (b *PluginBridge) UnmountSlot(inst, pid string)                        { b.mgr.UnmountSlot(inst, pid) }
+func (b *PluginBridge) UpdateSlot(inst, pid, slot, reg string, props any) {
+	b.mgr.UpdateSlot(inst, pid, slot, reg, props)
+}
 func (b *PluginBridge) DispatchEvent(ev plugin.UIEvent)                     { b.mgr.DispatchEvent(ev) }
 func (b *PluginBridge) InvokeAction(pid, slot, reg string, payload any)     { b.mgr.InvokeAction(pid, slot, reg, payload) }
 func (b *PluginBridge) CheckActionWhen(pid, slot, reg string, payload any) bool {

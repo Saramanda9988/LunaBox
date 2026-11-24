@@ -273,10 +273,15 @@ func (m *Manager) EnsureMounted(slotName, pluginID, regID, scopeKey string, prop
 	id := InstanceID(slotName, pluginID, regID, scopeKey)
 	pk := propsHash(props)
 	if inst, ok := m.instances[id]; ok {
-		if inst.PropsKey == pk {
-			return inst
+		if inst.PropsKey != pk {
+			// props 变化（如详情页切换游玩状态后 game 更新）时原地重渲染：保留上一棵树直到插件提交新树，
+			// 避免实例重建期间没有内容、页面闪回宿主的回退布局，同时保留插件内的 hook 状态。
+			inst.PropsKey = pk
+			if m.env != nil && m.env.Svc != nil && m.env.Svc.Plugin != nil {
+				m.env.Svc.Plugin.UpdateSlot(id, pluginID, slotName, regID, props)
+			}
 		}
-		m.Unmount(id)
+		return inst
 	}
 	inst := newInstance(id, pluginID, slotName, regID, pk)
 	m.instances[id] = inst
