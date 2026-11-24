@@ -1,4 +1,4 @@
-// examples/hikarinagi-detail/src/format.ts
+// hikarinagi-detail/src/format.ts
 var SITE_GALGAME_BASE = "https://www.hikarinagi.org/galgames/";
 function normalizeHikarinagiId(input) {
   if (input == null) return "";
@@ -216,7 +216,7 @@ function getPrimaryAndSubTitle(detail, game) {
   return { title, subtitle };
 }
 
-// examples/hikarinagi-detail/src/api.ts
+// hikarinagi-detail/src/api.ts
 var API_BASE = "https://api.hikarinagi.org/v3";
 function createHikarinagiApi(ctx) {
   async function resolveToken() {
@@ -298,35 +298,46 @@ function createHikarinagiApi(ctx) {
   };
 }
 
-// examples/hikarinagi-detail/src/components/DetailAside.tsx
+// hikarinagi-detail/src/components/DetailAside.tsx
 import {
   Badge,
   Box,
-  Button,
   Column,
   Divider,
+  Icon,
   IconButton,
   Row,
   Skeleton,
-  Text
+  Text,
+  useEffect,
+  useState
 } from "lunabox";
 import { Fragment, jsx, jsxs } from "lunabox/jsx-runtime";
+var ALIAS_PREVIEW = 3;
 function InfoRow({
   label,
-  value
+  value,
+  children
 }) {
   const v = String(value || "").trim();
-  if (!v) return null;
-  return /* @__PURE__ */ jsxs(Row, { gap: "sm", align: "start", width: "full", children: [
-    /* @__PURE__ */ jsx(Box, { width: 64, shrink: 0, children: /* @__PURE__ */ jsx(Text, { text: label, size: "xs", tone: "muted" }) }),
-    /* @__PURE__ */ jsx(Box, { grow: 1, basis: 0, minWidth: 0, children: /* @__PURE__ */ jsx(Text, { text: v, size: "xs", tone: "strong", selectable: true }) })
+  if (!v && !children) return null;
+  return /* @__PURE__ */ jsxs(Row, { gap: "md", align: "start", width: "full", children: [
+    /* @__PURE__ */ jsx(Box, { width: 44, shrink: 0, children: /* @__PURE__ */ jsx(Text, { text: label, size: "sm", tone: "muted" }) }),
+    /* @__PURE__ */ jsx(Column, { grow: 1, basis: 0, minWidth: 0, gap: 4, children: children ? children : /* @__PURE__ */ jsx(Text, { text: v, size: "sm", tone: "default", selectable: true }) })
   ] });
+}
+function AccentLink({ k, text, onPress }) {
+  return /* @__PURE__ */ jsx(Box, { k, alignSelf: "start", onPress, label: text, children: /* @__PURE__ */ jsx(Text, { text, size: "sm", tone: "accent" }) });
 }
 function createDetailAside(ctx, store) {
   return function DetailAside({ game }) {
     const state = store.useGameDetail(game);
     const detail = state.detail;
     const gameId = game?.id ? String(game.id) : "";
+    const [aliasesOpen, setAliasesOpen] = useState(false);
+    useEffect(() => {
+      setAliasesOpen(false);
+    }, [gameId]);
     if (state.status === "loading" && !detail) {
       return /* @__PURE__ */ jsxs(Column, { k: "aside-loading", gap: "md", width: "full", children: [
         /* @__PURE__ */ jsxs(Row, { justify: "between", align: "center", width: "full", children: [
@@ -339,13 +350,10 @@ function createDetailAside(ctx, store) {
     const links = [];
     if (detail?.id) {
       links.push({
-        label: `Hikarinagi #${detail.id}`,
+        label: "Hikarinagi",
         url: `${SITE_GALGAME_BASE}${detail.id}`,
         icon: "open-in-new"
       });
-    }
-    if (detail?.homepage) {
-      links.push({ label: "\u5B98\u65B9\u7F51\u7AD9", url: String(detail.homepage), icon: "link-variant" });
     }
     if (Array.isArray(detail?.steam_apps)) {
       detail.steam_apps.forEach((sa, idx) => {
@@ -387,13 +395,15 @@ function createDetailAside(ctx, store) {
       const lbl = formatLangLabel(detail.origin_lang);
       if (lbl) langs.push(lbl);
     }
+    const homepage = String(detail?.homepage || "").trim();
+    const aliases = Array.isArray(detail?.aliases) ? detail.aliases.map((a) => String(a || "").trim()).filter(Boolean) : [];
+    const shownAliases = aliasesOpen ? aliases : aliases.slice(0, ALIAS_PREVIEW);
     return /* @__PURE__ */ jsxs(Column, { k: `aside-root-${gameId}`, gap: 20, width: "full", children: [
       /* @__PURE__ */ jsxs(Column, { k: "aside-info-sec", gap: "md", width: "full", children: [
         /* @__PURE__ */ jsxs(Row, { justify: "between", align: "center", width: "full", children: [
           /* @__PURE__ */ jsxs(Row, { gap: "xs", align: "center", children: [
             /* @__PURE__ */ jsx(Text, { text: "\u6E38\u620F\u4FE1\u606F", size: "sm", weight: "semibold", tone: "strong" }),
-            detail?.nsfw ? /* @__PURE__ */ jsx(Badge, { label: "R-18", tone: "danger" }) : null,
-            detail ? /* @__PURE__ */ jsx(Text, { text: `#${detail.id}`, size: "xs", tone: "faint" }) : null
+            detail?.nsfw ? /* @__PURE__ */ jsx(Badge, { label: "R-18", tone: "danger" }) : null
           ] }),
           detail ? /* @__PURE__ */ jsxs(Row, { gap: "xs", align: "center", children: [
             /* @__PURE__ */ jsx(
@@ -439,20 +449,48 @@ function createDetailAside(ctx, store) {
             )
           ] })
         ] }),
-        detail ? /* @__PURE__ */ jsxs(Column, { k: "aside-kv-list", gap: 10, width: "full", children: [
-          /* @__PURE__ */ jsx(InfoRow, { label: "\u539F\u540D", value: detail.origin_title }),
-          /* @__PURE__ */ jsx(InfoRow, { label: "\u8BD1\u540D", value: detail.trans_title }),
-          /* @__PURE__ */ jsx(InfoRow, { label: "\u82F1\u6587\u540D", value: detail.en_title }),
+        detail ? /* @__PURE__ */ jsxs(Column, { k: "aside-kv-list", gap: 12, width: "full", children: [
           /* @__PURE__ */ jsx(InfoRow, { label: "\u5F00\u53D1", value: detail.developer }),
           /* @__PURE__ */ jsx(InfoRow, { label: "\u53D1\u884C", value: detail.publisher }),
           /* @__PURE__ */ jsx(InfoRow, { label: "\u9996\u53D1", value: formatReleaseDate(detail) }),
-          /* @__PURE__ */ jsx(InfoRow, { label: "\u72B6\u6001", value: formatStatusLabel(detail) }),
           /* @__PURE__ */ jsx(InfoRow, { label: "\u7C7B\u578B", value: detail.adv_type }),
           /* @__PURE__ */ jsx(InfoRow, { label: "\u5E73\u53F0", value: platforms.join("\u3001") }),
           /* @__PURE__ */ jsx(InfoRow, { label: "\u8BED\u8A00", value: langs.join("\u3001") }),
           /* @__PURE__ */ jsx(InfoRow, { label: "\u5F15\u64CE", value: detail.engine }),
+          /* @__PURE__ */ jsx(InfoRow, { label: "\u72B6\u6001", value: formatStatusLabel(detail) }),
           /* @__PURE__ */ jsx(InfoRow, { label: "\u5206\u7EA7", value: detail.nsfw ? "R-18 / \u6210\u4EBA\u5411" : "\u5168\u5E74\u9F84" }),
-          prices.length > 0 ? /* @__PURE__ */ jsx(InfoRow, { label: "\u5B9A\u4EF7", value: prices.slice(0, 3).join("\n") }) : null
+          prices.length > 0 ? /* @__PURE__ */ jsx(InfoRow, { label: "\u5B9A\u4EF7", value: prices.slice(0, 3).join("\n") }) : null,
+          homepage ? /* @__PURE__ */ jsx(InfoRow, { label: "\u5B98\u7F51", children: /* @__PURE__ */ jsx(
+            AccentLink,
+            {
+              k: "aside-homepage",
+              text: homepage,
+              onPress: () => ctx.shell.openURL(homepage)
+            }
+          ) }) : null,
+          /* @__PURE__ */ jsx(InfoRow, { label: "\u539F\u540D", value: detail.origin_title }),
+          /* @__PURE__ */ jsx(InfoRow, { label: "\u8BD1\u540D", value: detail.trans_title }),
+          /* @__PURE__ */ jsx(InfoRow, { label: "\u82F1\u6587", value: detail.en_title }),
+          aliases.length > 0 ? /* @__PURE__ */ jsxs(InfoRow, { label: "\u522B\u540D", children: [
+            shownAliases.map((al, idx) => /* @__PURE__ */ jsx(
+              Text,
+              {
+                text: al,
+                size: "sm",
+                tone: "default",
+                selectable: true
+              },
+              `aside-alias-${idx}`
+            )),
+            aliases.length > ALIAS_PREVIEW ? /* @__PURE__ */ jsx(
+              AccentLink,
+              {
+                k: "aside-alias-toggle",
+                text: aliasesOpen ? "\u6536\u8D77" : `\u5C55\u5F00\uFF08\u5171 ${aliases.length} \u4E2A\uFF09`,
+                onPress: () => setAliasesOpen(!aliasesOpen)
+              }
+            ) : null
+          ] }) : null
         ] }) : /* @__PURE__ */ jsxs(Column, { gap: "sm", width: "full", children: [
           /* @__PURE__ */ jsx(
             Text,
@@ -470,14 +508,24 @@ function createDetailAside(ctx, store) {
         /* @__PURE__ */ jsx(Divider, { subtle: true }),
         /* @__PURE__ */ jsxs(Column, { k: "aside-links-sec", gap: "sm", width: "full", children: [
           /* @__PURE__ */ jsx(Text, { text: "\u76F8\u5173\u94FE\u63A5", size: "sm", weight: "semibold", tone: "strong" }),
-          /* @__PURE__ */ jsx(Row, { gap: "xs", wrap: true, width: "full", children: links.map((lk, idx) => /* @__PURE__ */ jsx(
-            Button,
+          /* @__PURE__ */ jsx(Row, { gap: 6, wrap: true, width: "full", children: links.map((lk, idx) => /* @__PURE__ */ jsxs(
+            Row,
             {
+              gap: 6,
+              align: "center",
+              paddingX: 10,
+              paddingY: 5,
+              radius: "md",
+              background: "cardBg",
+              border: 1,
+              borderColor: "cardBorder",
+              hoverBackground: "accentSoft",
               label: lk.label,
-              icon: lk.icon,
-              variant: "secondary",
-              size: "sm",
-              onPress: () => ctx.shell.openURL(lk.url)
+              onPress: () => ctx.shell.openURL(lk.url),
+              children: [
+                /* @__PURE__ */ jsx(Icon, { name: lk.icon, size: 14, tone: "accent" }),
+                /* @__PURE__ */ jsx(Text, { text: lk.label, size: "xs", weight: "medium", tone: "default", wrap: false })
+              ]
             },
             `ext-link-${idx}`
           )) })
@@ -487,8 +535,8 @@ function createDetailAside(ctx, store) {
   };
 }
 
-// examples/hikarinagi-detail/src/components/HeroSection.tsx
-import { HeroBanner, useEffect, useRef, useState } from "lunabox";
+// hikarinagi-detail/src/components/HeroSection.tsx
+import { HeroBanner, useEffect as useEffect2, useRef, useState as useState2 } from "lunabox";
 import { jsx as jsx2 } from "lunabox/jsx-runtime";
 function createHeroSection(ctx, store) {
   return function HeroSection({ game, blurNsfw, contentMaxWidth }) {
@@ -497,9 +545,9 @@ function createHeroSection(ctx, store) {
     const detail = state.detail;
     const shouldBlurNsfw = Boolean(blurNsfw);
     const gameId = game?.id ? String(game.id) : "";
-    const [selectedIdx, setSelectedIdx] = useState(0);
+    const [selectedIdx, setSelectedIdx] = useState2(0);
     const prevBannerRef = useRef("");
-    useEffect(() => {
+    useEffect2(() => {
       setSelectedIdx(0);
       prevBannerRef.current = "";
     }, [gameId]);
@@ -511,7 +559,7 @@ function createHeroSection(ctx, store) {
     const activeBannerUrl = activeImg ? activeImg.url : defaultBanner.url;
     const activeBannerSensitive = activeImg ? isMediaSensitive(activeImg) : defaultBanner.sensitive;
     const fallbackBanner = prevBannerRef.current && prevBannerRef.current !== activeBannerUrl ? prevBannerRef.current : game?.cover_url || game?.cover_source_url || "";
-    useEffect(() => {
+    useEffect2(() => {
       if (activeBannerUrl) {
         prevBannerRef.current = activeBannerUrl;
       }
@@ -586,80 +634,108 @@ function createHeroSection(ctx, store) {
   };
 }
 
-// examples/hikarinagi-detail/src/components/OverviewTab.tsx
-import { Button as Button2, Column as Column2, Divider as Divider2, NativeSlot, Row as Row2, Skeleton as Skeleton2, Text as Text2, useEffect as useEffect2, useState as useState2 } from "lunabox";
-import { Fragment as Fragment2, jsx as jsx3, jsxs as jsxs2 } from "lunabox/jsx-runtime";
+// hikarinagi-detail/src/components/OverviewTab.tsx
+import { Box as Box2, Column as Column2, Divider as Divider2, NativeSlot, Row as Row2, Skeleton as Skeleton2, Text as Text2, useEffect as useEffect3, useState as useState3 } from "lunabox";
+import { jsx as jsx3, jsxs as jsxs2 } from "lunabox/jsx-runtime";
+var INTRO_PREVIEW = 220;
+function Segmented({
+  k,
+  value,
+  items,
+  onChange
+}) {
+  return /* @__PURE__ */ jsx3(Row2, { k, gap: 2, padding: 2, radius: "md", background: "chipBg", align: "center", children: items.map((it) => {
+    const active = it.key === value;
+    return /* @__PURE__ */ jsx3(
+      Box2,
+      {
+        paddingX: 10,
+        paddingY: 3,
+        radius: 6,
+        background: active ? "cardBg" : "transparent",
+        border: active ? 1 : 0,
+        borderColor: "cardBorder",
+        label: it.label,
+        onPress: () => onChange(it.key),
+        children: /* @__PURE__ */ jsx3(
+          Text2,
+          {
+            text: it.label,
+            size: "xs",
+            weight: active ? "semibold" : "medium",
+            tone: active ? "accent" : "muted"
+          }
+        )
+      },
+      `${k}-${it.key}`
+    );
+  }) });
+}
 function createOverviewTab(store) {
   return function OverviewTab({ game }) {
     const state = store.useGameDetail(game);
     const detail = state.detail;
     const gameId = game?.id ? String(game.id) : "";
-    const [introLang, setIntroLang] = useState2("zh");
-    useEffect2(() => {
+    const [introLang, setIntroLang] = useState3("zh");
+    const [introOpen, setIntroOpen] = useState3(false);
+    useEffect3(() => {
       setIntroLang("zh");
+      setIntroOpen(false);
     }, [gameId]);
     const transIntro = String(detail?.trans_intro || "").trim();
     const originIntro = String(detail?.origin_intro || "").trim();
     const hasBothIntros = Boolean(transIntro && originIntro && transIntro !== originIntro);
     const activeIntro = introLang === "origin" ? originIntro || transIntro : transIntro || originIntro;
-    const aliases = Array.isArray(detail?.aliases) ? detail.aliases.map((a) => String(a || "").trim()).filter(Boolean) : [];
+    const introChars = Array.from(activeIntro);
+    const collapsible = introChars.length > INTRO_PREVIEW;
+    const shownIntro = collapsible && !introOpen ? `${introChars.slice(0, INTRO_PREVIEW).join("").trimEnd()}\u2026` : activeIntro;
+    const loading = state.status === "loading" && !detail && !game?.summary;
     return /* @__PURE__ */ jsxs2(Column2, { k: `overview-${gameId}`, gap: 24, width: "full", children: [
-      /* @__PURE__ */ jsxs2(Column2, { k: "ov-intro-sec", gap: "md", width: "full", children: [
+      loading || activeIntro ? /* @__PURE__ */ jsxs2(Column2, { k: "ov-intro-sec", gap: "md", width: "full", children: [
         /* @__PURE__ */ jsxs2(Row2, { justify: "between", align: "center", width: "full", children: [
           /* @__PURE__ */ jsx3(Text2, { text: "\u7B80\u4ECB", size: "lg", weight: "semibold", tone: "strong" }),
-          hasBothIntros ? /* @__PURE__ */ jsxs2(Row2, { gap: "xs", align: "center", children: [
-            /* @__PURE__ */ jsx3(
-              Button2,
-              {
-                k: "ov-lang-zh",
-                label: "\u4E2D\u6587",
-                size: "sm",
-                variant: introLang === "zh" ? "secondary" : "ghost",
-                onPress: () => setIntroLang("zh")
+          hasBothIntros ? /* @__PURE__ */ jsx3(
+            Segmented,
+            {
+              k: "ov-lang",
+              value: introLang,
+              items: [
+                { key: "zh", label: "\u4E2D\u6587" },
+                { key: "origin", label: "\u539F\u6587" }
+              ],
+              onChange: (v) => {
+                setIntroLang(v);
+                setIntroOpen(false);
               }
-            ),
-            /* @__PURE__ */ jsx3(
-              Button2,
-              {
-                k: "ov-lang-origin",
-                label: "\u539F\u6587",
-                size: "sm",
-                variant: introLang === "origin" ? "secondary" : "ghost",
-                onPress: () => setIntroLang("origin")
-              }
-            )
-          ] }) : null
+            }
+          ) : null
         ] }),
-        state.status === "loading" && !detail && !game?.summary ? /* @__PURE__ */ jsx3(Skeleton2, { lines: 4, height: 14 }) : activeIntro ? /* @__PURE__ */ jsx3(Text2, { text: activeIntro, size: "sm", tone: "default", selectable: true }) : /* @__PURE__ */ jsx3(NativeSlot, { k: "ov-native-summary", name: "summary" })
-      ] }),
+        loading ? /* @__PURE__ */ jsx3(Skeleton2, { lines: 4, height: 14 }) : /* @__PURE__ */ jsxs2(Column2, { gap: "sm", width: "full", children: [
+          /* @__PURE__ */ jsx3(Text2, { text: shownIntro, size: "sm", tone: "default", selectable: true }),
+          collapsible ? /* @__PURE__ */ jsx3(
+            Box2,
+            {
+              k: "ov-intro-toggle",
+              alignSelf: "start",
+              label: introOpen ? "\u6536\u8D77" : "\u5C55\u5F00",
+              onPress: () => setIntroOpen(!introOpen),
+              children: /* @__PURE__ */ jsx3(Text2, { text: introOpen ? "\u6536\u8D77" : "\u5C55\u5F00", size: "sm", tone: "accent" })
+            }
+          ) : null
+        ] })
+      ] }) : /* @__PURE__ */ jsx3(NativeSlot, { k: "ov-native-summary", name: "summary" }),
       /* @__PURE__ */ jsx3(Divider2, { subtle: true }),
       /* @__PURE__ */ jsxs2(Column2, { k: "ov-tags-sec", gap: "md", width: "full", children: [
         /* @__PURE__ */ jsx3(Text2, { text: "\u6807\u7B7E", size: "lg", weight: "semibold", tone: "strong" }),
         /* @__PURE__ */ jsx3(NativeSlot, { k: "ov-native-tags", name: "tags" })
-      ] }),
-      aliases.length > 0 ? /* @__PURE__ */ jsxs2(Fragment2, { children: [
-        /* @__PURE__ */ jsx3(Divider2, { subtle: true }),
-        /* @__PURE__ */ jsxs2(Column2, { k: "ov-aliases-sec", gap: "sm", width: "full", children: [
-          /* @__PURE__ */ jsx3(Text2, { text: "\u522B\u540D", size: "base", weight: "semibold", tone: "strong" }),
-          /* @__PURE__ */ jsx3(Row2, { gap: "sm", wrap: true, width: "full", children: aliases.map((al, idx) => /* @__PURE__ */ jsx3(
-            Text2,
-            {
-              text: idx < aliases.length - 1 ? `${al}  /` : al,
-              size: "sm",
-              tone: "muted",
-              selectable: true
-            },
-            `ov-alias-${idx}`
-          )) })
-        ] })
-      ] }) : null
+      ] })
     ] });
   };
 }
 
-// examples/hikarinagi-detail/src/components/ScreenshotsTab.tsx
+// hikarinagi-detail/src/components/ScreenshotsTab.tsx
 import {
-  Button as Button3,
+  Button,
   Column as Column3,
   Empty,
   Grid,
@@ -667,8 +743,8 @@ import {
   Row as Row3,
   Skeleton as Skeleton3,
   Text as Text3,
-  useEffect as useEffect3,
-  useState as useState3
+  useEffect as useEffect4,
+  useState as useState4
 } from "lunabox";
 import { jsx as jsx4, jsxs as jsxs3 } from "lunabox/jsx-runtime";
 function createScreenshotsTab(store) {
@@ -677,9 +753,9 @@ function createScreenshotsTab(store) {
     const detail = state.detail;
     const shouldBlurNsfw = Boolean(blurNsfw);
     const gameId = game?.id ? String(game.id) : "";
-    const [revealNsfw, setRevealNsfw] = useState3(false);
-    const [revealedMap, setRevealedMap] = useState3({});
-    useEffect3(() => {
+    const [revealNsfw, setRevealNsfw] = useState4(false);
+    const [revealedMap, setRevealedMap] = useState4({});
+    useEffect4(() => {
       setRevealNsfw(false);
       setRevealedMap({});
     }, [gameId]);
@@ -700,7 +776,7 @@ function createScreenshotsTab(store) {
           }
         ),
         /* @__PURE__ */ jsx4(
-          Button3,
+          Button,
           {
             k: "ss-retry",
             label: "\u91CD\u65B0\u5339\u914D",
@@ -722,7 +798,7 @@ function createScreenshotsTab(store) {
         ] }),
         /* @__PURE__ */ jsxs3(Row3, { gap: "xs", align: "center", children: [
           shouldBlurNsfw && sensitiveCount > 0 ? /* @__PURE__ */ jsx4(
-            Button3,
+            Button,
             {
               k: "ss-toggle-nsfw",
               label: revealNsfw ? "\u9690\u85CF\u654F\u611F\u622A\u56FE" : "\u663E\u793A\u654F\u611F\u622A\u56FE",
@@ -733,7 +809,7 @@ function createScreenshotsTab(store) {
             }
           ) : null,
           /* @__PURE__ */ jsx4(
-            Button3,
+            Button,
             {
               k: "ss-refresh",
               label: state.refreshing ? "\u5237\u65B0\u4E2D\u2026" : "\u5237\u65B0",
@@ -788,7 +864,7 @@ function createScreenshotsTab(store) {
   };
 }
 
-// examples/hikarinagi-detail/src/db.ts
+// hikarinagi-detail/src/db.ts
 function createCacheDB(ctx) {
   let dbInitPromise = null;
   function ensureDB() {
@@ -893,8 +969,8 @@ function createCacheDB(ctx) {
   };
 }
 
-// examples/hikarinagi-detail/src/store.ts
-import { useEffect as useEffect4, useState as useState4 } from "lunabox";
+// hikarinagi-detail/src/store.ts
+import { useEffect as useEffect5, useState as useState5 } from "lunabox";
 var NEGATIVE_CACHE_MS = 6 * 60 * 60 * 1e3;
 function createEmptyEntry() {
   return {
@@ -1117,8 +1193,8 @@ function createDetailStore(ctx, db, api) {
   }
   function useGameDetail(game) {
     const gameId = game?.id ? String(game.id) : "";
-    const [, setTick] = useState4(0);
-    useEffect4(() => {
+    const [, setTick] = useState5(0);
+    useEffect5(() => {
       if (!gameId) return void 0;
       const unsub = subscribeGame(gameId, () => setTick((n) => n + 1));
       loadGame(game, { force: false });
@@ -1134,7 +1210,7 @@ function createDetailStore(ctx, db, api) {
   };
 }
 
-// examples/hikarinagi-detail/src/index.tsx
+// hikarinagi-detail/src/index.tsx
 function apply(ctx) {
   ctx.config.define({
     title: "Hikarinagi \u8BE6\u60C5\u9875\u91CD\u6784",

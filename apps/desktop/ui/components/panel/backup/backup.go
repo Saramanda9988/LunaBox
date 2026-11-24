@@ -357,7 +357,7 @@ func openFolderButton(c *ui.Context, t *theme.Theme) ui.Element {
 func backupButton(c *ui.Context, t *theme.Theme, busy, noPath bool) ui.Element {
 	btn := ui.ButtonBase(c.Key("backup-now")).Padding(8, 16).Radius(6).Gap(8).AlignItems(ui.Center).FocusRing(false)
 	disabled := busy || noPath
-	g := t.GlassButton(theme.GlassNeutral, theme.BtnColors{Bg: theme.Neutral600, Hover: theme.Neutral700, Text: theme.White})
+	g := t.GlassButton(theme.GlassNeutral, theme.BtnColors{Bg: t.PrimaryBtn, Hover: t.PrimaryBtnHover, Text: t.PrimaryBtnText})
 	bg := g.Bg
 	if btn.Hovered() && !disabled {
 		bg = g.Hover

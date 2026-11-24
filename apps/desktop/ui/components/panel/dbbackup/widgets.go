@@ -53,7 +53,7 @@ func (s *State) actionsCard(c *ui.Context, t *theme.Theme, p panel.Settings, cfg
 // disabled:opacity-50 flex items-center gap-2，备份中前面是 i-mdi-loading animate-spin（1em）。
 func backupButton(c *ui.Context, t *theme.Theme, busy, disabled bool) ui.Element {
 	btn := ui.ButtonBase(c.Key("backup-now")).Padding(8, 16).Radius(6).Gap(8).AlignItems(ui.Center).Shrink(0).FocusRing(false)
-	g := t.GlassButton(theme.GlassNeutral, theme.BtnColors{Bg: theme.Neutral600, Hover: theme.Neutral700, Text: theme.White})
+	g := t.GlassButton(theme.GlassNeutral, theme.BtnColors{Bg: t.PrimaryBtn, Hover: t.PrimaryBtnHover, Text: t.PrimaryBtnText})
 	bg := g.Bg
 	if btn.Hovered() && !disabled {
 		bg = g.Hover

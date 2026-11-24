@@ -551,7 +551,7 @@ func secondaryButton(c *ui.Context, t *theme.Theme, key, label, icon string, spi
 // hover:bg-neutral-700 disabled:opacity-50（授权按钮），等待中图标换成 i-mdi-loading animate-spin。
 func darkButton(c *ui.Context, t *theme.Theme, key, label, icon string, spin, disabled bool) ui.Element {
 	btn := ui.ButtonBase(c.Key(key)).Shrink(0).AlignSelf(ui.Start).Padding(6, 12).Radius(6).Gap(8).AlignItems(ui.Center).FocusRing(false)
-	g := glassButton(t, btn, theme.BtnColors{Bg: theme.Neutral600, Hover: theme.Neutral700, Text: theme.White}, disabled)
+	g := glassButton(t, btn, theme.BtnColors{Bg: t.PrimaryBtn, Hover: t.PrimaryBtnHover, Text: t.PrimaryBtnText}, disabled)
 	if disabled {
 		components.Disable(btn, 0.5)
 	}

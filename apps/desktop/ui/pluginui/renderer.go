@@ -488,7 +488,7 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 					}
 					btn := ui.ButtonBase(c.Key(key+"-tab-"+tk)).Padding(8, 12).Gap(6).AlignItems(ui.Center).FocusRing(false)
 					if active {
-						btn.BorderWidth(0, 0, 2, 0).BorderColor(theme.Primary500)
+						btn.BorderWidth(0, 0, 2, 0).BorderColor(t.Accent)
 					} else if btn.Hovered() {
 						col = t.Text
 					}
@@ -609,7 +609,7 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 		lbl := propStr(p, "label")
 		if propBool(p, "indeterminate") {
 			return ui.Row(c.Key(key)).Gap(8).AlignItems(ui.Center).Children(func() {
-				components.Spinner(c, 16, theme.Primary500)
+				components.Spinner(c, 16, t.Accent)
 				if lbl != "" {
 					components.Text(c, lbl, theme.TextSM, theme.WeightNormal, t.TextMuted)
 				}
@@ -622,7 +622,7 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 		if val < 0 {
 			val = 0
 		}
-		barColor := theme.Primary500
+		barColor := t.Accent
 		switch propStr(p, "tone") {
 		case "success":
 			barColor = theme.Success500
@@ -1455,7 +1455,7 @@ func (m *Manager) renderMarkdown(c *ui.Context, t *theme.Theme, inst *Instance, 
 								ui.ButtonBase(c.Key(bKey+"-link")).FocusRing(false).OnClick(func() {
 									m.dispatch(inst, linkPressID, href)
 								}).Children(func() {
-									components.Text(c, linkText, theme.TextSM, theme.WeightMedium, theme.Primary500)
+									components.Text(c, linkText, theme.TextSM, theme.WeightMedium, t.Accent)
 								})
 							})
 							i++
@@ -1750,9 +1750,13 @@ func resolveColorToken(t *theme.Theme, token string) (ui.Color, bool) {
 	case "textFaint":
 		return t.TextFaint, true
 	case "primary", "brand":
-		return theme.Primary500, true
-	case "accent":
-		return t.Pick(theme.Primary600, theme.Primary400), true
+		return t.Accent, true
+	case "accent", "accentText":
+		return t.AccentText, true
+	case "accentSoft":
+		return t.AccentSoft, true
+	case "accentSoftText":
+		return t.AccentSoftText, true
 	case "success":
 		return theme.Success500, true
 	case "warning":
@@ -1860,9 +1864,9 @@ func mapToneColor(t *theme.Theme, tone string) ui.Color {
 	case "strong":
 		return t.TextStrong
 	case "brand":
-		return theme.Primary500
+		return t.Accent
 	case "accent":
-		return t.Pick(theme.Primary600, theme.Primary400)
+		return t.AccentText
 	case "success":
 		return theme.Success500
 	case "warning":
@@ -1881,7 +1885,7 @@ func mapToneColor(t *theme.Theme, tone string) ui.Color {
 func mapBadgeColors(t *theme.Theme, tone string) (bg, fg ui.Color) {
 	switch tone {
 	case "brand":
-		return t.Pick(theme.Primary100, theme.Primary900), t.Pick(theme.Primary700, theme.Primary300)
+		return t.AccentSoft, t.AccentSoftText
 	case "success":
 		return t.Pick(theme.Success100, theme.Success900), t.Pick(theme.Success700, theme.Success300)
 	case "warning":

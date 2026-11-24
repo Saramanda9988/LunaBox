@@ -52,6 +52,18 @@ function toPalette(r: HinaRoles, isDark: boolean): ThemePaletteTokens {
     primaryBtnHover: r.accentHover,
     primaryBtnText: r.accentOn,
 
+    // 强调色：选中、加载指示、链接；插件 UI（如 hikarinagi-detail）的 brand / accent 令牌也取它们
+    accent: r.accent,
+    accentText: r.accentText,
+    accentSoft: r.accentSoft,
+    accentSoftText: r.accentText,
+
+    // 详情页标签栏（Hina Tabs）：中性文字，选中为 accent 文字 + accent 下划线
+    tabText: r.fgMuted,
+    tabHover: r.fg,
+    tabActive: r.accentText,
+    tabIndicator: r.accent,
+
     // 卡片：surface + 发丝线，悬停加深描边
     cardBg: r.surface,
     cardBorder: r.border,

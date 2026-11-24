@@ -255,7 +255,7 @@ func actionButton(c *ui.Context, t *theme.Theme, key, label string, colors actio
 	btn.Scale(s, s).Transition(theme.ColorsTransition(150 * time.Millisecond))
 	if btn.FocusVisible() {
 		btn.DrawOver(func(pt *ui.Painter, r ui.Rect) {
-			pt.Stroke(ui.Rect{X: r.X - 1, Y: r.Y - 1, W: r.W + 2, H: r.H + 2}, theme.Primary500.Alpha(0.6), r.H/2+1, 2)
+			pt.Stroke(ui.Rect{X: r.X - 1, Y: r.Y - 1, W: r.W + 2, H: r.H + 2}, t.Accent.Alpha(0.6), r.H/2+1, 2)
 		})
 	}
 	if disabled {

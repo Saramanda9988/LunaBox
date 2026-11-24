@@ -274,9 +274,9 @@ func setupStepHeader(c *ui.Context, t *theme.Theme, icon, title, desc string) {
 // busy 时禁用并显示旋转图标。
 func setupPrimaryButton(c *ui.Context, t *theme.Theme, key, label string, busy bool) ui.Element {
 	btn := ui.ButtonBase(c.Key(key)).Padding(10, 24).Radius(8).Gap(8).AlignItems(ui.Center).FocusRing(false)
-	bg := theme.Neutral600
+	bg := t.PrimaryBtn
 	if btn.Hovered() && !busy {
-		bg = theme.Neutral700
+		bg = t.PrimaryBtnHover
 	}
 	btn.Background(bg).Transition(theme.ColorsTransition(150 * time.Millisecond))
 	if !t.Dark {
@@ -287,9 +287,9 @@ func setupPrimaryButton(c *ui.Context, t *theme.Theme, key, label string, busy b
 	}
 	btn.Children(func() {
 		if busy {
-			components.Spinner(c, 16, theme.White)
+			components.Spinner(c, 16, t.PrimaryBtnText)
 		}
-		components.Text(c, label, theme.TextSM, theme.WeightMedium, theme.White).NoWrap()
+		components.Text(c, label, theme.TextSM, theme.WeightMedium, t.PrimaryBtnText).NoWrap()
 	})
 	return btn
 }

@@ -849,12 +849,12 @@ func (p *Page) tabBar(c *ui.Context, t *theme.Theme, hidden map[string]bool) {
 	renderTabBtn := func(tabKey, label string) {
 		btn := ui.ButtonBase(c.Key(tabKey)).Column().Padding(14, 0, 0, 0).FocusRing(false).Label(label)
 		active := tabKey == p.tab
-		color, border := t.Pick(theme.Brand700, theme.Brand400), ui.Transparent
+		color, border := t.TabText, ui.Transparent
 		switch {
 		case active:
-			color, border = t.Pick(theme.Brand700, theme.Neutral400), theme.Neutral500
+			color, border = t.TabActive, t.TabIndicator
 		case btn.Hovered():
-			color, border = t.Pick(theme.Brand750, theme.Brand300), theme.Brand300
+			color, border = t.TabHover, theme.Brand300
 		}
 		btn.OnClick(func() { p.tab = tabKey }).Children(func() {
 			components.TextMargin(c, label, theme.TextSM, theme.WeightMedium, color, 0, 4, 14, 4).NoWrap()

@@ -370,7 +370,7 @@ func (g *GameImport) previewStep(c *ui.Context, t *theme.Theme, cfg importConfig
 		g.previewTable(c, t, merge)
 		ui.Row(c.Key("actions")).Justify(ui.SpaceBetween).Children(func() {
 			outlineButton(c, t, "reselect", "← "+locales.GameImportModalReselect(), false, 20, 10).OnClick(func() { g.step = "select" })
-			btn := solidButton(c, "import", locales.GameImportModalImportCount(strconv.Itoa(importable)), cfg.result, cfg.resultHover, importable == 0, false, 20, 10)
+			btn := solidButton(c, "import", locales.GameImportModalImportCount(strconv.Itoa(importable)), cfg.result, cfg.resultHover, theme.White, importable == 0, false, 20, 10)
 			if importable > 0 {
 				btn.OnClick(func() { g.doImport(c, onComplete) })
 			}

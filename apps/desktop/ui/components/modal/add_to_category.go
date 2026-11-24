@@ -127,9 +127,9 @@ func (m *AddToCategory) View(c *ui.Context, t *theme.Theme, p AddToCategoryProps
 						components.Text(c, locales.CommonCancel(), theme.TextBase, theme.WeightMedium, t.Pick(theme.Brand600, theme.Brand400))
 					})
 					ok := ui.ButtonBase(c.Key("confirm")).Grow(1).Basis(0).Padding(10, 0).Radius(12).Center().FocusRing(false)
-					bg := theme.Neutral600
+					bg := t.PrimaryBtn
 					if ok.Hovered() {
-						bg = theme.Neutral700
+						bg = t.PrimaryBtnHover
 					}
 					ok.Background(bg).Transition(theme.ColorsTransition(150 * time.Millisecond)).OnClick(func() {
 						selected := slices.Clone(m.selected)
@@ -138,7 +138,7 @@ func (m *AddToCategory) View(c *ui.Context, t *theme.Theme, p AddToCategoryProps
 							p.OnSave(selected)
 						}
 					}).Children(func() {
-						components.Text(c, confirm, theme.TextBase, theme.WeightMedium, theme.White)
+						components.Text(c, confirm, theme.TextBase, theme.WeightMedium, t.PrimaryBtnText)
 					})
 				})
 			})
@@ -203,9 +203,9 @@ func (m *AddToCategory) form(c *ui.Context, t *theme.Theme, e *env.Env) {
 		}
 		btn := ui.ButtonBase(c.Key("create")).Size(44, 44).Radius(999).Center().Shrink(0).FocusRing(false).Label(label).
 			Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.05))
-		bg := theme.Neutral600
+		bg := t.PrimaryBtn
 		if btn.Hovered() && !disabled {
-			bg = theme.Neutral700
+			bg = t.PrimaryBtnHover
 		}
 		btn.Background(bg).Transition(theme.ColorsTransition(150 * time.Millisecond))
 		if disabled {
@@ -222,9 +222,9 @@ func (m *AddToCategory) form(c *ui.Context, t *theme.Theme, e *env.Env) {
 			m.query, m.creating = "", true
 		}).Children(func() {
 			if m.busy {
-				components.Spinner(c, 24, theme.White)
+				components.Spinner(c, 24, t.PrimaryBtnText)
 			} else {
-				components.Icon(c, icon, 24, theme.White)
+				components.Icon(c, icon, 24, t.PrimaryBtnText)
 			}
 		})
 	})

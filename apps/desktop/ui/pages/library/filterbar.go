@@ -149,7 +149,7 @@ func (l *Page) addGameButton(c *ui.Context, t *theme.Theme) {
 				Key:           "plugin:" + s.PluginID + "/" + s.ID,
 				Label:         s.Title,
 				Icon:          icon,
-				IconColor:     theme.Primary500,
+				IconColor:     t.Accent,
 				DividerBefore: i == 0,
 				OnClick: func() {
 					svc.InvokeAction(s.PluginID, plugin.SlotLibraryAddMenu, s.ID, nil)

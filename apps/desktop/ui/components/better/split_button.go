@@ -42,11 +42,11 @@ func SplitButton(c *ui.Context, t *theme.Theme, key string, p SplitButtonProps) 
 		main := splitPart(c, t, "main", disabled).Radius(8, 0, 0, 8).Padding(0, 10).Gap(4)
 		main.Children(func() {
 			if p.Loading {
-				components.Spinner(c, 16, theme.White)
+				components.Spinner(c, 16, t.PrimaryBtnText)
 			} else if p.Icon != "" {
-				components.Icon(c, p.Icon, 16, theme.White)
+				components.Icon(c, p.Icon, 16, t.PrimaryBtnText)
 			}
-			components.Text(c, p.Label, theme.TextXS, theme.WeightMedium, theme.White).NoWrap()
+			components.Text(c, p.Label, theme.TextXS, theme.WeightMedium, t.PrimaryBtnText).NoWrap()
 		})
 		if p.OnClick != nil {
 			main.OnClick(p.OnClick)
@@ -54,7 +54,7 @@ func SplitButton(c *ui.Context, t *theme.Theme, key string, p SplitButtonProps) 
 
 		menuBtn = splitPart(c, t, "menu", disabled).Radius(0, 8, 8, 0).Padding(0, 6).Label(p.MenuTitle)
 		menuBtn.OnClick(func() { *open = !*open }).Children(func() {
-			components.Icon(c, "chevron-down", 16, theme.White)
+			components.Icon(c, "chevron-down", 16, t.PrimaryBtnText)
 			// border-l border-white/20 dark:border-neutral-900/15，叠在 neutral-600 边框上。
 			ui.Box(c).Absolute().Left(0).Top(0).Bottom(0).Width(t.HL).PassThrough().
 				Background(t.Pick(theme.White.Alpha(0.2), ui.Hex("#0f172a").Alpha(0.15)))
@@ -83,11 +83,11 @@ func SplitButton(c *ui.Context, t *theme.Theme, key string, p SplitButtonProps) 
 	return row
 }
 
-// splitPart 是两半共用的样式：bg-neutral-600 text-white hover:bg-neutral-700 border border-neutral-600，
+// splitPart 是两半共用的样式：bg-neutral-600 text-white hover:bg-neutral-700 border border-neutral-600（取自 PrimaryBtn* 色板），
 // transition-all duration-200 active:scale-95，disabled:opacity-50；玻璃模式下是 glass-btn-primary。
 func splitPart(c *ui.Context, t *theme.Theme, key string, disabled bool) ui.Element {
 	btn := ui.ButtonBase(c.Key(key)).Height(32).AlignItems(ui.Center).Justify(ui.Center).FocusRing(false)
-	g := t.GlassButton(theme.GlassPrimary, theme.BtnColors{Bg: theme.Neutral600, Hover: theme.Neutral700, Border: theme.Neutral600})
+	g := t.GlassButton(theme.GlassPrimary, theme.BtnColors{Bg: t.PrimaryBtn, Hover: t.PrimaryBtnHover, Border: t.PrimaryBtn})
 	bg := g.Bg
 	if btn.Hovered() && !disabled {
 		bg = g.Hover

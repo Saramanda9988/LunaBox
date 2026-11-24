@@ -110,10 +110,10 @@ func (d *DragDrop) View(c *ui.Context, t *theme.Theme, onComplete func()) {
 func DropOverlay(c *ui.Context, t *theme.Theme, top float32) {
 	ui.Column(c.Key("drop-overlay")).Absolute().Top(top).Left(0).Right(0).Bottom(0).Center().IgnoreInput(true).
 		Material(glass.Blur{Radius: 4}).Children(func() {
-		ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Background(theme.Primary500.Alpha(0.2))
-		ui.Column(c).Gap(16).Padding(32).Radius(16).AlignItems(ui.Center).Border(2, theme.Primary500).BorderStyle(ui.BorderDashed).
+		ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Background(t.Accent.Alpha(0.2))
+		ui.Column(c).Gap(16).Padding(32).Radius(16).AlignItems(ui.Center).Border(2, t.Accent).BorderStyle(ui.BorderDashed).
 			Background(t.Pick(theme.White.Alpha(0.9), theme.Brand800.Alpha(0.9))).Shadow(0, 25, 50, -12, ui.RGBA(0, 0, 0, 0.25)).Children(func() {
-			icon := components.Icon(c, "folder-upload", 60, theme.Primary500)
+			icon := components.Icon(c, "folder-upload", 60, t.Accent)
 			// animate-bounce：每秒一次，开始与结束时上移 25%，中间落回原位（下落 ease-in，上升 ease-out）
 			phase := icon.Loop("bounce", time.Second, ui.Linear)
 			var y float32

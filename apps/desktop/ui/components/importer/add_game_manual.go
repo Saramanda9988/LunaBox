@@ -216,7 +216,7 @@ func (a *AddGame) manualStep(c *ui.Context, t *theme.Theme, onAdded func()) {
 			if a.loading {
 				label = locales.CommonSaving()
 			}
-			primary(c, "save", label, strings.TrimSpace(a.name) == "" || a.loading, func() { a.manualSave(c, onAdded) })
+			primary(c, t, "save", label, strings.TrimSpace(a.name) == "" || a.loading, func() { a.manualSave(c, onAdded) })
 		})
 	})
 }

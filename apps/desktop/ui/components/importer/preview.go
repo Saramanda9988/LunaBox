@@ -393,7 +393,7 @@ func (f *Flow) previewFooter(c *ui.Context, t *theme.Theme, p previewProps, sele
 					if hasErrors {
 						label = locales.BatchImportModalContinueMatching()
 					}
-					solidButton(c, "match", label, theme.Neutral600, theme.Neutral700, false, false, 16, 0).Height(44).OnClick(p.onStartMatch)
+					solidButton(c, "match", label, t.PrimaryBtn, t.PrimaryBtnHover, t.PrimaryBtnText, false, false, 16, 0).Height(44).OnClick(p.onStartMatch)
 				}
 				if matchedSelected > 0 && matchedSelected < selected {
 					// border border-success-300 bg-success-50 px-3 text-success-700 hover:bg-success-100
@@ -409,7 +409,7 @@ func (f *Flow) previewFooter(c *ui.Context, t *theme.Theme, p previewProps, sele
 						components.Text(c, locales.BatchImportModalImportMatchedCount(strconv.Itoa(matchedSelected)), theme.TextSM, theme.WeightMedium, fg).NoWrap()
 					})
 				}
-				imp := solidButton(c, "import", locales.BatchImportModalImportCount(strconv.Itoa(selected)), theme.Success600, theme.Success700, selected == 0, false, 16, 0).Height(44)
+				imp := solidButton(c, "import", locales.BatchImportModalImportCount(strconv.Itoa(selected)), theme.Success600, theme.Success700, theme.White, selected == 0, false, 16, 0).Height(44)
 				if selected > 0 {
 					imp.OnClick(func() { p.onImport(false) })
 				}

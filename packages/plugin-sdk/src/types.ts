@@ -81,9 +81,15 @@ export type ColorToken =
   | 'textStrong'
   | 'textMuted'
   | 'textFaint'
+  /** 实心强调色（跟随主题插件的 accent；默认是宿主紫色） */
   | 'primary'
   | 'brand'
+  /** 浅底上的强调文字 / 图标（跟随 accentText） */
   | 'accent'
+  | 'accentText'
+  /** 柔和强调底（选中、标签）与其上的文字 */
+  | 'accentSoft'
+  | 'accentSoftText'
   | 'success'
   | 'warning'
   | 'warning400'
@@ -588,6 +594,16 @@ export interface ThemePaletteTokens {
   primaryBtn?: string;
   primaryBtnHover?: string;
   primaryBtnText?: string;
+  // 强调色：选中、当前状态与品牌点缀（插件 UI 的 primary / brand / accent / accentSoft 颜色令牌也取它们）
+  accent?: string;
+  accentText?: string;
+  accentSoft?: string;
+  accentSoftText?: string;
+  // 游戏详情页标签栏：默认文字、悬停文字、选中文字、选中下划线
+  tabText?: string;
+  tabHover?: string;
+  tabActive?: string;
+  tabIndicator?: string;
   // 卡片与封面占位
   cardBg?: string;
   cardBorder?: string;

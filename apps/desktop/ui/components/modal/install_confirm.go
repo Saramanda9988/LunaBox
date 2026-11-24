@@ -95,7 +95,7 @@ func InstallConfirmView(c *ui.Context, t *theme.Theme, m *InstallConfirm, p Inst
 			ui.Row(c.Key("header")).AlignItems(ui.Center).Gap(12).Padding(24, 24, 16, 24).Children(func() {
 				// p-2.5 rounded-xl bg-primary-100 dark:bg-primary-900/30 的 i-mdi-download-circle text-2xl
 				ui.Box(c).Padding(10).Radius(12).Shrink(0).Background(t.Pick(theme.Primary100, theme.Primary900.Alpha(0.3))).Children(func() {
-					components.Icon(c, "download-circle", 24, t.Pick(theme.Primary600, theme.Primary400))
+					components.Icon(c, "download-circle", 24, t.AccentText)
 				})
 				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Children(func() {
 					// text-lg font-bold leading-tight
@@ -123,7 +123,7 @@ func InstallConfirmView(c *ui.Context, t *theme.Theme, m *InstallConfirm, p Inst
 func installInfo(c *ui.Context, t *theme.Theme, req *vo.InstallRequest, p InstallConfirmProps) {
 	muted := t.Pick(theme.Brand500, theme.Brand400)
 	plain := t.Pick(theme.Brand700, theme.Brand300)
-	link := t.Pick(theme.Primary600, theme.Primary400)
+	link := t.AccentText
 	row := func(key, label string, top bool, value func()) {
 		r := ui.Row(c.Key(key)).Gap(8).AlignItems(ui.Center)
 		if top {

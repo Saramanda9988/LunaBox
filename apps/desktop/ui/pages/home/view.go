@@ -358,7 +358,7 @@ func (p *Page) noRecord(c *ui.Context, t *theme.Theme) {
 				Label(locales.HomeBrowseLibrary())
 			hovered := btn.Hovered()
 			// glass-btn-neutral
-			g := t.GlassButton(theme.GlassNeutral, theme.BtnColors{Bg: theme.Neutral600, Hover: theme.Neutral700, Text: theme.White})
+			g := t.GlassButton(theme.GlassNeutral, theme.BtnColors{Bg: t.PrimaryBtn, Hover: t.PrimaryBtnHover, Text: t.PrimaryBtnText})
 			bg := g.Bg
 			if hovered {
 				bg = g.Hover

@@ -118,7 +118,7 @@ func (m *processModal) searchInput(c *ui.Context, t *theme.Theme) {
 			in.Font(theme.UIFont)
 		}
 		if in.Focused() {
-			in.Shadow(0, 0, 0, 2, theme.Primary500)
+			in.Shadow(0, 0, 0, 2, t.Accent)
 		}
 		ui.Box(c).Absolute().Left(12).Top(0).Bottom(0).Center().PassThrough().Children(func() {
 			components.Icon(c, "magnify", 16, theme.Brand400)
@@ -147,7 +147,7 @@ func (m *processModal) processList(c *ui.Context, t *theme.Theme) {
 		wrap(box)
 		box.Children(func() {
 			if m.loading {
-				components.Spinner(c, 24, theme.Primary500)
+				components.Spinner(c, 24, t.Accent)
 				components.TextMargin(c, locales.ProcessSelectModalLoading(), theme.TextBase, theme.WeightNormal, t.Pick(theme.Brand600, theme.Brand400), 0, 0, 0, 8)
 				return
 			}

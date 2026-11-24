@@ -109,7 +109,7 @@ func resultStep(c *ui.Context, t *theme.Theme, r service.ImportResult, l resultL
 				t.Pick(theme.Error200, theme.Error800), t.Pick(theme.Error700, theme.Error400), t.Pick(theme.Error600, theme.Error300))
 		}
 		ui.Row(c).Justify(ui.Center).Children(func() {
-			solidButton(c, "complete", l.complete, bg, hover, false, false, 32, 10).OnClick(onComplete)
+			solidButton(c, "complete", l.complete, bg, hover, theme.White, false, false, 32, 10).OnClick(onComplete)
 		})
 	})
 }
@@ -135,7 +135,7 @@ func nameList(c *ui.Context, t *theme.Theme, key, title string, names []string, 
 }
 
 // solidButton 是导入弹窗里 rounded-lg text-sm font-medium text-white 的实色按钮（disabled:opacity-50）。
-func solidButton(c *ui.Context, key, label string, bg, hover ui.Color, disabled, fill bool, padX, padY float32) ui.Element {
+func solidButton(c *ui.Context, key, label string, bg, hover, fg ui.Color, disabled, fill bool, padX, padY float32) ui.Element {
 	btn := ui.ButtonBase(c.Key(key)).Padding(padY, padX).Radius(8).Center().FocusRing(false).Label(label)
 	if fill {
 		btn.FillWidth()
@@ -148,7 +148,7 @@ func solidButton(c *ui.Context, key, label string, bg, hover ui.Color, disabled,
 		components.Disable(btn, 0.5)
 	}
 	btn.Children(func() {
-		components.Text(c, label, theme.TextSM, theme.WeightMedium, theme.White).NoWrap()
+		components.Text(c, label, theme.TextSM, theme.WeightMedium, fg).NoWrap()
 	})
 	return btn
 }

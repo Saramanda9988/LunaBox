@@ -174,9 +174,9 @@ func (p *Page) addSessionForm(c *ui.Context, t *theme.Theme, now time.Time, clos
 				components.Text(c, locales.CommonCancel(), theme.TextBase, theme.WeightNormal, t.Pick(theme.Brand600, theme.Brand400)).NoWrap()
 			})
 			submit := ui.ButtonBase(c.Key("submit")).Padding(8, 16).Radius(6).FocusRing(false)
-			bg := theme.Neutral600
+			bg := t.PrimaryBtn
 			if submit.Hovered() && !m.submitting {
-				bg = theme.Neutral700
+				bg = t.PrimaryBtnHover
 			}
 			submit.Background(bg).Transition(theme.ColorsTransition(150 * time.Millisecond))
 			text := locales.CommonAdd()
@@ -185,7 +185,7 @@ func (p *Page) addSessionForm(c *ui.Context, t *theme.Theme, now time.Time, clos
 				components.Disable(submit, 0.5)
 			}
 			submit.OnClick(func() { p.submitSession(c) }).Children(func() {
-				components.Text(c, text, theme.TextBase, theme.WeightNormal, theme.White).NoWrap()
+				components.Text(c, text, theme.TextBase, theme.WeightNormal, t.PrimaryBtnText).NoWrap()
 			})
 		})
 	})

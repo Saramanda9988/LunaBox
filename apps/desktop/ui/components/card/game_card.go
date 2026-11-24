@@ -109,7 +109,7 @@ func GameCard(c *ui.Context, t *theme.Theme, p GameCardProps) {
 			}
 
 			if !p.Batch {
-				hoverOverlay(c, p, overlay)
+				hoverOverlay(c, t, p, overlay)
 			}
 		})
 
@@ -167,7 +167,7 @@ func sortStrip(c *ui.Context, s string) {
 
 // hoverOverlay：absolute inset-0 bg-black/50，开始游戏 / 详情两个圆形按钮。游戏运行时开始游戏按钮
 // disabled:opacity-65 disabled:hover:scale-100，图标是 i-mdi-gamepad-variant，结束中是 i-mdi-loading animate-spin。
-func hoverOverlay(c *ui.Context, p GameCardProps, opacity float32) {
+func hoverOverlay(c *ui.Context, t *theme.Theme, p GameCardProps, opacity float32) {
 	ov := ui.Column(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Center().Gap(8).
 		Background(ui.RGBA(0, 0, 0, 0.5)).Opacity(opacity)
 	if opacity == 0 {
@@ -181,12 +181,13 @@ func hoverOverlay(c *ui.Context, p GameCardProps, opacity float32) {
 		case p.Running:
 			icon = "gamepad-variant"
 		}
-		play := roundOverlayButton(c, "play", icon, theme.Neutral600, theme.Neutral500, true, p.Running)
+		// 默认色板下悬停是更亮的 neutral-500（压在黑色遮罩上）；插件改了主按钮色时跟随 PrimaryBtnHover。
+		play := roundOverlayButton(c, "play", icon, t.PrimaryBtn, t.PrimaryOr(theme.Neutral500, t.PrimaryBtnHover), t.PrimaryBtnText, true, p.Running)
 		play.Label(locales.GameCardStartGame())
 		if p.OnPlay != nil && !p.Running {
 			play.OnClick(p.OnPlay)
 		}
-		info := roundOverlayButton(c, "info", "information-variant", theme.White.Alpha(0.2), theme.White.Alpha(0.3), false, false)
+		info := roundOverlayButton(c, "info", "information-variant", theme.White.Alpha(0.2), theme.White.Alpha(0.3), theme.White, false, false)
 		info.Label(locales.NativeViewDetails())
 		if p.OnDetail != nil {
 			info.OnClick(p.OnDetail)
@@ -196,7 +197,7 @@ func hoverOverlay(c *ui.Context, p GameCardProps, opacity float32) {
 
 // roundOverlayButton：h-8 w-8 rounded-full，悬停换底色。icon 为 loading 时是旋转的加载图标。
 // 不做悬停缩放：圆角裁剪的封面里一有变换，MyGo 就要为封面与卡片各光栅化一张裁剪蒙版，扫过一排卡片内存就一路上涨。
-func roundOverlayButton(c *ui.Context, key, icon string, bg, bgHover ui.Color, shadow, disabled bool) ui.Element {
+func roundOverlayButton(c *ui.Context, key, icon string, bg, bgHover, fg ui.Color, shadow, disabled bool) ui.Element {
 	btn := ui.ButtonBase(c.Key(key)).Size(32, 32).Radius(999).Center().FocusRing(false)
 	btn.Background(bg)
 	switch {
@@ -210,9 +211,9 @@ func roundOverlayButton(c *ui.Context, key, icon string, bg, bgHover ui.Color, s
 	}
 	btn.Children(func() {
 		if icon == "loading" {
-			components.Spinner(c, 18, theme.White)
+			components.Spinner(c, 18, fg)
 		} else {
-			components.Icon(c, icon, 18, theme.White)
+			components.Icon(c, icon, 18, fg)
 		}
 	})
 	return btn
@@ -224,8 +225,8 @@ func selectionBadge(c *ui.Context, t *theme.Theme, selected bool, onToggle func(
 		Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.05)).FocusRing(false)
 	color := ui.Transparent
 	if selected {
-		badge.Background(theme.Neutral600).Border(t.HL, theme.Neutral600)
-		color = theme.White
+		badge.Background(t.PrimaryBtn).Border(t.HL, t.PrimaryBtn)
+		color = t.PrimaryBtnText
 	} else {
 		badge.Background(t.Pick(theme.White.Alpha(0.9), theme.Brand800.Alpha(0.9))).
 			Border(t.HL, t.Pick(theme.Brand300, theme.Brand600))

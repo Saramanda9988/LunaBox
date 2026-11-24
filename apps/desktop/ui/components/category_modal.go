@@ -68,9 +68,9 @@ func CategoryModal(c *ui.Context, t *theme.Theme, key string, p CategoryModalPro
 					Text(c, locales.CommonCancel(), theme.TextBase, theme.WeightNormal, t.Pick(theme.Brand700, theme.Brand300)).NoWrap()
 				})
 				ok := ui.ButtonBase(c.Key("submit")).Padding(8, 16).Radius(8).FocusRing(false).Label(submit)
-				bg := theme.Neutral600
+				bg := t.PrimaryBtn
 				if ok.Hovered() {
-					bg = theme.Neutral700
+					bg = t.PrimaryBtnHover
 				}
 				ok.Background(bg).Transition(theme.ColorsTransition(150 * time.Millisecond))
 				if strings.TrimSpace(*p.Value) == "" {
@@ -79,7 +79,7 @@ func CategoryModal(c *ui.Context, t *theme.Theme, key string, p CategoryModalPro
 					ok.OnClick(p.OnSubmit)
 				}
 				ok.Children(func() {
-					Text(c, submit, theme.TextBase, theme.WeightNormal, theme.White).NoWrap()
+					Text(c, submit, theme.TextBase, theme.WeightNormal, t.PrimaryBtnText).NoWrap()
 				})
 			})
 		})

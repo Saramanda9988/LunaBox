@@ -48,7 +48,7 @@ func skippedModal(c *ui.Context, t *theme.Theme, cands []Candidate, open *bool) 
 				ui.Row(c.Key("footer")).Padding(16).Justify(ui.End).BorderWidth(t.HL, 0, 0, 0).BorderColor(t.Pick(theme.Brand200, theme.Brand700)).Children(func() {
 					// rounded-lg bg-brand-700 px-5 py-2 text-sm font-medium text-white hover:bg-brand-800
 					// dark:bg-brand-600 dark:hover:bg-brand-500
-					solidButton(c, "close", locales.CommonConfirm(), t.Pick(theme.Brand700, theme.Brand600), t.Pick(theme.Brand800, theme.Brand500), false, false, 20, 8).
+					solidButton(c, "close", locales.CommonConfirm(), t.Pick(theme.Brand700, theme.Brand600), t.Pick(theme.Brand800, theme.Brand500), theme.White, false, false, 20, 8).
 						OnClick(closeModal)
 				})
 			})

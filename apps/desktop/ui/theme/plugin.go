@@ -196,6 +196,22 @@ func applyPaletteToken(p *Palette, key string, c ui.Color) {
 		p.PrimaryBtnHover = c
 	case "primaryBtnText":
 		p.PrimaryBtnText = c
+	case "accent":
+		p.Accent = c
+	case "accentText":
+		p.AccentText = c
+	case "accentSoft":
+		p.AccentSoft = c
+	case "accentSoftText":
+		p.AccentSoftText = c
+	case "tabText":
+		p.TabText = c
+	case "tabHover":
+		p.TabHover = c
+	case "tabActive":
+		p.TabActive = c
+	case "tabIndicator":
+		p.TabIndicator = c
 	case "cardBg":
 		p.CardBg = c
 	case "cardBorder":

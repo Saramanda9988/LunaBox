@@ -183,6 +183,11 @@ type Palette struct {
 
 	PrimaryBtn, PrimaryBtnHover, PrimaryBtnText ui.Color // 主按钮与开关打开时的底色、悬停色、文字色
 
+	// 强调色：选中、当前状态与品牌点缀（插件的 brand / accent 颜色令牌也取它们）。
+	Accent, AccentText, AccentSoft, AccentSoftText ui.Color // 实心强调、浅底上的强调文字、柔和强调底、柔和底上的文字
+
+	TabText, TabHover, TabActive, TabIndicator ui.Color // 详情页标签栏：默认、悬停、选中文字与选中下划线
+
 	CardBg, CardBorder, CardBorderHover, CoverBg ui.Color
 
 	ScrollThumb, ScrollThumbHover ui.Color
@@ -215,6 +220,8 @@ func NewPalette(dark bool) Palette {
 			ToolBtnBg: Brand700, ToolBtnBorder: Brand700, ToolBtnHover: Brand600, ToolBtnIcon: Brand300, ToolBtnText: Brand300,
 			ToolBtnActiveBg: Brand600, ToolBtnActiveBorder: Brand500, ToolBtnActiveText: White,
 			PrimaryBtn: Neutral600, PrimaryBtnHover: Neutral700, PrimaryBtnText: White,
+			Accent: Primary500, AccentText: Primary400, AccentSoft: Primary900, AccentSoftText: Primary300,
+			TabText: Brand400, TabHover: Brand300, TabActive: Neutral400, TabIndicator: Neutral500,
 			CardBg: Brand800, CardBorder: Brand700, CardBorderHover: Brand600, CoverBg: Brand700,
 			ScrollThumb: Brand600, ScrollThumbHover: Brand500,
 			PanelBg: Brand800, PanelBorder: Brand700, Divider: Brand700, MenuHover: Brand700, MenuText: Brand200,
@@ -238,6 +245,8 @@ func NewPalette(dark bool) Palette {
 		ToolBtnBg: Brand150, ToolBtnBorder: Brand200, ToolBtnHover: Brand200, ToolBtnIcon: Brand600, ToolBtnText: Brand700,
 		ToolBtnActiveBg: Brand200, ToolBtnActiveBorder: Brand300, ToolBtnActiveText: Brand900,
 		PrimaryBtn: Neutral600, PrimaryBtnHover: Neutral700, PrimaryBtnText: White,
+		Accent: Primary500, AccentText: Primary600, AccentSoft: Primary100, AccentSoftText: Primary700,
+		TabText: Brand700, TabHover: Brand750, TabActive: Brand700, TabIndicator: Neutral500,
 		CardBg: White, CardBorder: Brand100, CardBorderHover: Brand300, CoverBg: Brand200,
 		ScrollThumb: ui.Hex("#cccccc"), ScrollThumbHover: ui.Hex("#aaaaaa"),
 		PanelBg: White, PanelBorder: Brand200, Divider: Brand200, MenuHover: Brand100, MenuText: Brand700,
@@ -257,4 +266,14 @@ func (p *Palette) Pick(light, dark ui.Color) ui.Color {
 		return dark
 	}
 	return light
+}
+
+// PrimaryOr 在主按钮仍是内置的 neutral-600 时返回 def，否则返回 custom。
+// 用于主按钮周边那些与 PrimaryBtn* 不完全一致的默认取值（更亮的描边、遮罩上的悬停色等），
+// 保持默认外观不变，同时让插件换了主按钮色后跟随。
+func (p *Palette) PrimaryOr(def, custom ui.Color) ui.Color {
+	if p.PrimaryBtn == Neutral600 {
+		return def
+	}
+	return custom
 }

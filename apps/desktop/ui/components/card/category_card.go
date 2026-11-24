@@ -94,7 +94,7 @@ func CategoryCard(c *ui.Context, t *theme.Theme, p CategoryCardProps) {
 			Background(t.IfGlass(t.Pick(theme.Brand150.Alpha(0.65), theme.Brand800.Alpha(0.55)), theme.Brand100.Alpha(0.35), theme.Black.Alpha(0.12)))
 		if p.SelectionMode && p.Selected {
 			// ring-2 ring-primary-500 ring-offset-2 ring-offset-white（dark：ring-primary-400 ring-offset-brand-900）
-			box.Shadow(0, 0, 0, 2, t.Pick(theme.White, theme.Brand900)).Shadow(0, 0, 0, 4, t.Pick(theme.Primary500, theme.Primary400))
+			box.Shadow(0, 0, 0, 2, t.Pick(theme.White, theme.Brand900)).Shadow(0, 0, 0, 4, t.Pick(t.Accent, t.AccentText))
 		}
 		box.Children(func() {
 			btn := ui.ButtonBase(c.Key("open")).Absolute().Top(0).Left(0).Right(0).Bottom(0).Radius(12).FocusRing(false).Label(name)
@@ -236,7 +236,7 @@ func selectButton(c *ui.Context, t *theme.Theme, p CategoryCardProps, name strin
 		inner := ui.Box(c).Absolute().Top(-t.HL).Left(-t.HL).Right(-t.HL).Bottom(-t.HL).Radius(999).Center()
 		color := ui.Transparent
 		if p.Selected {
-			inner.Background(theme.Primary500).Border(t.HL, t.Pick(theme.Primary500, theme.Primary400))
+			inner.Background(t.Accent).Border(t.HL, t.Pick(t.Accent, t.AccentText))
 			color = theme.White
 		} else {
 			inner.Background(t.Pick(theme.White.Alpha(0.9), theme.Brand800.Alpha(0.9))).Border(t.HL, t.Pick(theme.Brand300, theme.Brand600))

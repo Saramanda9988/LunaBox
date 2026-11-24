@@ -301,7 +301,7 @@ func (p *Page) installConfirmModal(c *ui.Context, t *theme.Theme) {
 						components.Text(c, prev.Description, theme.TextSM, theme.WeightNormal, t.TextMuted)
 					}
 					if prev.IsUpgrade {
-						components.Text(c, locales.NativePluginsUpgradeFrom(prev.ExistingVersion, prev.Manifest.Version), theme.TextXS, theme.WeightMedium, theme.Primary500)
+						components.Text(c, locales.NativePluginsUpgradeFrom(prev.ExistingVersion, prev.Manifest.Version), theme.TextXS, theme.WeightMedium, t.Accent)
 					}
 				})
 				// 明确的安全风险提示（docs/plugin-system.md §11 MUST）

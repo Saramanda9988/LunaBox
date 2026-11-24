@@ -489,7 +489,7 @@ func (p *Page) viewMoreButton(c *ui.Context, t *theme.Theme, count int) {
 // 右下角 -rotate-6 的 i-mdi-robot-happy 水印；标题行 mb-4 gap-3 带“思考中”或“联网增强”徽标，
 // 加载时是三行 animate-pulse 的占位条，否则是 whitespace-pre-wrap leading-relaxed 的总结。
 func (p *Page) aiCard(c *ui.Context, t *theme.Theme, summary string, winW float32) {
-	primary := t.Pick(theme.Primary500, theme.Primary400)
+	primary := t.Pick(t.Accent, t.AccentText)
 	// data-glass:bg-white/18 dark:bg-black/22（盖过 glass-card 的底色）
 	box := card(c.Key("ai-summary"), t).Padding(24).Clip()
 	if t.Glass {
@@ -515,7 +515,7 @@ func (p *Page) aiCard(c *ui.Context, t *theme.Theme, summary string, winW float3
 		if t.Glass {
 			primaryGlow = pickF(t, 0.2, 0.3)
 		}
-		glow("glow-primary", theme.Primary500.Alpha(primaryGlow), -48, -48, 0, 0, true, true)
+		glow("glow-primary", t.Accent.Alpha(primaryGlow), -48, -48, 0, 0, true, true)
 		glow("glow-accent", accent500.Alpha(pickF(t, 0.1, 0.2)), 0, 0, -48, -48, false, false)
 		// -right-4 -bottom-6 size-36 -rotate-6 text-primary-500 opacity-[0.06]（dark:text-primary-400 opacity-[0.08]），
 		// data-glass:opacity-[0.12] dark:opacity-[0.16]
@@ -534,7 +534,7 @@ func (p *Page) aiCard(c *ui.Context, t *theme.Theme, summary string, winW float3
 				case p.aiLoading:
 					b := badge(c.Key("thinking"), t.Pick(theme.Primary50, theme.Primary900.Alpha(0.3)), t.Pick(theme.Primary100, theme.Primary800))
 					b.Opacity(components.Pulse(b)).Children(func() {
-						components.Text(c, locales.StatsAiThinking(), theme.TextXS, theme.WeightMedium, t.Pick(theme.Primary600, theme.Primary400))
+						components.Text(c, locales.StatsAiThinking(), theme.TextXS, theme.WeightMedium, t.AccentText)
 					})
 				case p.webSearch:
 					fg := t.Pick(blue600, blue400)

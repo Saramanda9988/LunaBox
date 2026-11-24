@@ -54,9 +54,9 @@ func getToastTone(t *theme.Theme, typ string) toastTone {
 		}
 	}
 	return toastTone{
-		wrap: t.Pick(theme.Primary500.Alpha(0.15), theme.Primary500.Alpha(0.2)),
-		icon: t.Pick(theme.Primary600, theme.Primary400),
-		ring: t.Pick(theme.Primary500, theme.Primary400),
+		wrap: t.Pick(t.Accent.Alpha(0.15), t.Accent.Alpha(0.2)),
+		icon: t.AccentText,
+		ring: t.Pick(t.Accent, t.AccentText),
 	}
 }
 
@@ -326,13 +326,13 @@ func toastCard(c *ui.Context, t *theme.Theme, ts ui.Toast, parts ui.ToastParts, 
 func toastAction(c *ui.Context, t *theme.Theme, label string, parts ui.ToastParts) {
 	btn := parts.ActionButton().Row().AlignItems(ui.Center).AlignSelf(ui.Start).Gap(4).Margin(12, 0, 0, 0).Padding(6, 12).
 		Radius(6).FocusRing(false)
-	bg := theme.Neutral600
+	bg := t.PrimaryBtn
 	if btn.Hovered() {
-		bg = theme.Neutral700
+		bg = t.PrimaryBtnHover
 	}
 	btn.Background(bg).Transition(theme.ColorsTransition(150 * time.Millisecond)).Children(func() {
-		Icon(c, "cog-play-outline", 14, theme.White)
-		Text(c, label, theme.TextXS, theme.WeightMedium, theme.White).NoWrap()
+		Icon(c, "cog-play-outline", 14, t.PrimaryBtnText)
+		Text(c, label, theme.TextXS, theme.WeightMedium, t.PrimaryBtnText).NoWrap()
 	})
 }
 
@@ -351,7 +351,7 @@ func toastDetails(c *ui.Context, t *theme.Theme, details string) {
 			*open = !*open
 			c.AnimationFrame() // 下一帧量详情展开后的高度
 		}
-		color := t.Pick(theme.Primary600, theme.Primary400)
+		color := t.AccentText
 		icon, label := "chevron-down", locales.CommonToastShowDetails()
 		if *open {
 			icon, label = "chevron-up", locales.CommonToastHideDetails()

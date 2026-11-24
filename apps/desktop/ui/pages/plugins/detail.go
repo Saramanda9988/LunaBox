@@ -260,7 +260,7 @@ func (p *Page) infoRow(c *ui.Context, t *theme.Theme, label, value string, onCli
 			btn := ui.ButtonBase(c.Key("info-link-"+label)).FocusRing(false).Label(value).OnClick(onClick)
 			fg := t.TextStrong
 			if btn.Hovered() {
-				fg = theme.Primary500
+				fg = t.Accent
 			}
 			btn.Children(func() {
 				components.Text(c, value, theme.TextSM, theme.WeightNormal, fg).SingleLine()

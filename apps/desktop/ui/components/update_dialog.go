@@ -231,7 +231,7 @@ func UpdateDialog(c *ui.Context, t *theme.Theme, key string, s *UpdateDialogStat
 									}
 									if showGitee {
 										downloadButton(c, t, "gitee", "cloud-download", locales.UpdateDialogGiteeDownload(),
-											theme.Neutral600, theme.Neutral700, theme.White).
+											t.PrimaryBtn, t.PrimaryBtnHover, t.PrimaryBtnText).
 											OnClick(func() {
 												if !s.Updating {
 													handleDownload("gitee")

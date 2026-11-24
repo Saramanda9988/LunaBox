@@ -138,9 +138,9 @@ func ModalTextButton(c *ui.Context, t *theme.Theme, key, label string) ui.Elemen
 // bg-neutral-600（danger 时 bg-error-600），浅色主题带同色系的淡阴影。
 func ModalPrimaryButton(c *ui.Context, t *theme.Theme, key, label string, danger bool) ui.Element {
 	btn := ui.ButtonBase(c.Key(key)).Padding(8, 16).Radius(8).FocusRing(false)
-	bg, hover, shadow := theme.Neutral600, theme.Neutral700, ui.Hex("#e2e8f0")
+	bg, hover, fg, shadow := t.PrimaryBtn, t.PrimaryBtnHover, t.PrimaryBtnText, ui.Hex("#e2e8f0")
 	if danger {
-		bg, hover, shadow = theme.Error600, theme.Error700, ui.Hex("#fecaca")
+		bg, hover, fg, shadow = theme.Error600, theme.Error700, theme.White, ui.Hex("#fecaca")
 	}
 	if btn.Hovered() {
 		bg = hover
@@ -150,7 +150,7 @@ func ModalPrimaryButton(c *ui.Context, t *theme.Theme, key, label string, danger
 		btn.Shadow(0, 1, 2, 0, shadow)
 	}
 	btn.Children(func() {
-		Text(c, label, theme.TextSM, theme.WeightMedium, theme.White).NoWrap()
+		Text(c, label, theme.TextSM, theme.WeightMedium, fg).NoWrap()
 	})
 	return btn
 }

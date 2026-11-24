@@ -88,7 +88,7 @@ func header(c *ui.Context, t *theme.Theme) {
 // restoreHeader 与 header 相同的排版：i-mdi-backup-restore 与“正在恢复数据”、说明。
 func restoreHeader(c *ui.Context, t *theme.Theme) {
 	ui.Row(c).FillWidth().AlignItems(ui.Start).Gap(14).Children(func() {
-		components.Icon(c, "backup-restore", 28, t.Pick(theme.Primary500, theme.Primary400)).Margin(2, 0, 0, 0).Shrink(0)
+		components.Icon(c, "backup-restore", 28, t.Pick(t.Accent, t.AccentText)).Margin(2, 0, 0, 0).Shrink(0)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Children(func() {
 			components.Text(c, locales.NativeStartupRestoreTitle(), textTitle, theme.WeightSemibold, t.Pick(theme.Brand900, theme.White))
 			components.TextMargin(c, locales.NativeStartupRestoreDetail(), textDetail, theme.WeightNormal, t.Pick(theme.Brand500, theme.Brand400), 4, 0, 0, 0)
@@ -132,7 +132,7 @@ func restoreBox(c *ui.Context, t *theme.Theme, pr service.RestoreProgress) {
 				value = float64(max(2, percent)) / 100
 			}
 			ui.Column(c.Key("bar-" + string(pr.Stage))).FillWidth().Children(func() {
-				components.ProgressBar(c, t, value, t.Pick(theme.Primary500, theme.Primary400))
+				components.ProgressBar(c, t, value, t.Pick(t.Accent, t.AccentText))
 			})
 			size := ""
 			if known {

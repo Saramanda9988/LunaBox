@@ -156,7 +156,7 @@ func (p *Page) candidateSearch(c *ui.Context, t *theme.Theme) {
 			m.editedAt = c.Now()
 		}
 		if in.Focused() {
-			in.Shadow(0, 0, 0, 2, theme.Primary500)
+			in.Shadow(0, 0, 0, 2, t.Accent)
 		}
 		ui.Box(c).Absolute().Left(24 + 12).Top(16).Bottom(0).Center().PassThrough().Children(func() {
 			components.Icon(c, "magnify", 16, theme.Brand400)

@@ -312,7 +312,9 @@ func TestHikarinagiDetailPluginSlotsAndCachedRender(t *testing.T) {
 					gotHeroReady = true
 				}
 			case "overview::1":
-				if stringsContainsAll(s, "简介", "标签", "NativeSlot", "樱诗") &&
+				// 没有 Hikarinagi 简介时交给宿主原生简介（自带标题）；别名已移到信息栏
+				if stringsContainsAll(s, "标签", "NativeSlot", `"name":"summary"`) &&
+					!containsStr(s, "樱诗") &&
 					!containsStr(s, "Hikarinagi 社区标签") &&
 					!containsStr(s, "神作") {
 					gotOverviewReady = true
@@ -325,7 +327,9 @@ func TestHikarinagiDetailPluginSlotsAndCachedRender(t *testing.T) {
 					gotTabReady = true
 				}
 			case "aside::1":
-				if stringsContainsAll(s, "游戏信息", "サクラノ詩", "枕", "Bangumi", "VNDB") &&
+				if stringsContainsAll(s, "游戏信息", "サクラノ詩", "枕", "Bangumi", "VNDB", "别名", "樱诗") &&
+					!containsStr(s, "Hikarinagi #") &&
+					!containsStr(s, "#1024") &&
 					!containsStr(s, "社区评分") &&
 					!containsStr(s, "条目关联与缓存") &&
 					!containsStr(s, `"t":"Card"`) {

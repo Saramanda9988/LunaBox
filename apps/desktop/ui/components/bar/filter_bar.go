@@ -359,7 +359,7 @@ func filterButton(c *ui.Context, t *theme.Theme, f *Filters) {
 		ui.Box(c).Size(20, 20).Center().Shrink(0).Children(func() {
 			components.Icon(c, "filter-variant", 18, color)
 			if count > 0 {
-				ui.Box(c).Absolute().Top(0).Right(0).Size(8, 8).Radius(999).Background(theme.Primary500).
+				ui.Box(c).Absolute().Top(0).Right(0).Size(8, 8).Radius(999).Background(t.Accent).
 					Shadow(0, 0, 0, 2, t.Pick(theme.Brand150, theme.Brand700))
 			}
 		})

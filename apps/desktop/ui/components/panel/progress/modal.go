@@ -210,10 +210,10 @@ func textField(c *ui.Context, t *theme.Theme, key string, value *string, placeho
 // 图标 i-mdi-playlist-plus（保存中 i-mdi-loading animate-spin）。
 func submitButton(c *ui.Context, t *theme.Theme, saving, disabled bool) ui.Element {
 	btn := ui.ButtonBase(c.Key("submit")).Padding(8, 16).Radius(8).Gap(8).AlignItems(ui.Center).FocusRing(false)
-	bg, fg := theme.Neutral600, theme.White
-	hover := theme.Neutral700
-	if t.Dark {
-		bg, fg, hover = theme.White, neutral900, neutral200
+	bg, fg := t.PrimaryBtn, t.PrimaryBtnText
+	hover := t.PrimaryBtnHover
+	if t.Dark && t.PrimaryBtn == theme.Neutral600 {
+		bg, fg, hover = theme.White, neutral900, neutral200 // 默认色板下深色主题是反色按钮
 	}
 	if btn.Hovered() && !disabled {
 		bg = hover
