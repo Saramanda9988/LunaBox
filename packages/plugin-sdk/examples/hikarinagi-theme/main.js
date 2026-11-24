@@ -139,6 +139,14 @@ function toPalette(r, isDark) {
     tabHover: r.fg,
     tabActive: r.accentText,
     tabIndicator: r.accent,
+    // 详情页工具栏图标按钮 = Hina IconButton（variant="soft" tone="neutral"）：中性填充 + 默认前景，
+    // 悬停是前景色的状态层（浅色 6% / 深色 9%）预先合成；当前状态用 accent 外圈 + canvas 间隙（同 Hina 的焦点环）
+    actionBtnBg: isDark ? r.inset : r.subtle,
+    actionBtnHover: isDark ? "#383838" : "#e8e8e8",
+    actionBtnIcon: r.fg,
+    actionBtnIconHover: r.fgMax,
+    actionBtnRing: r.accent,
+    actionBtnRingOffset: r.canvas,
     // 卡片：surface + 发丝线，悬停加深描边
     cardBg: r.surface,
     cardBorder: r.border,
@@ -150,8 +158,12 @@ function toPalette(r, isDark) {
     panelBg: r.surface,
     panelBorder: r.border,
     divider: r.border,
-    menuHover: isDark ? neutral[850] : r.subtle,
-    menuText: isDark ? neutral[300] : neutral[700],
+    // 下拉菜单 = Hina DropdownMenu：surface 卡片，条目 text-fg，悬停是前景色状态层（合成到 surface），
+    // 当前项不加底色、只在末尾显示对勾
+    menuHover: isDark ? "#151515" : "#f1f1f1",
+    menuText: r.fg,
+    menuSelected: "#00000000",
+    menuCheck: r.accentText,
     sectionLabel: isDark ? neutral[300] : neutral[700],
     // 筛选标签：选中态用 accent
     chipBg: r.subtle,
@@ -198,6 +210,8 @@ function apply(ctx) {
         light: toPalette(light, false),
         dark: toPalette(dark, true),
         // enabled: false 让宿主跳过用户的自定义背景；不锁定时不声明 glass，保持用户设置
+        // Hina 的 --hn-radius-md / --hn-radius-lg 都是 8px：图标按钮是圆角方形，菜单面板同为 8px
+        shape: { control: 8, panel: 8 },
         ...lock ? { glass: { enabled: false } } : {}
       })
     );

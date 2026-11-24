@@ -188,12 +188,18 @@ type Palette struct {
 
 	TabText, TabHover, TabActive, TabIndicator ui.Color // 详情页标签栏：默认、悬停、选中文字与选中下划线
 
+	// 详情页工具栏的图标按钮（状态、打开目录、攻略等）：底色、悬停底色、图标、悬停图标，
+	// 以及当前状态按钮的外圈与外圈内侧的间隙色（ring-2 ring-offset-1）。
+	ActionBtnBg, ActionBtnHover, ActionBtnIcon, ActionBtnIconHover ui.Color
+	ActionBtnRing, ActionBtnRingOffset                             ui.Color
+
 	CardBg, CardBorder, CardBorderHover, CoverBg ui.Color
 
 	ScrollThumb, ScrollThumbHover ui.Color
 
 	PanelBg, PanelBorder, Divider ui.Color // 下拉菜单、抽屉
 	MenuHover, MenuText           ui.Color
+	MenuSelected, MenuCheck       ui.Color // 下拉菜单当前项的底色与对勾颜色
 	SectionLabel                  ui.Color // text-sm font-medium text-brand-700 dark:text-brand-300
 
 	ChipBg, ChipText, ChipHover, ChipActiveBg, ChipActiveText, ChipRing ui.Color
@@ -222,9 +228,12 @@ func NewPalette(dark bool) Palette {
 			PrimaryBtn: Neutral600, PrimaryBtnHover: Neutral700, PrimaryBtnText: White,
 			Accent: Primary500, AccentText: Primary400, AccentSoft: Primary900, AccentSoftText: Primary300,
 			TabText: Brand400, TabHover: Brand300, TabActive: Neutral400, TabIndicator: Neutral500,
+			ActionBtnBg: Brand700, ActionBtnHover: Brand600, ActionBtnIcon: Brand400, ActionBtnIconHover: Brand100,
+			ActionBtnRing: Brand400, ActionBtnRingOffset: Brand900,
 			CardBg: Brand800, CardBorder: Brand700, CardBorderHover: Brand600, CoverBg: Brand700,
 			ScrollThumb: Brand600, ScrollThumbHover: Brand500,
 			PanelBg: Brand800, PanelBorder: Brand700, Divider: Brand700, MenuHover: Brand700, MenuText: Brand200,
+			MenuSelected: Brand700, MenuCheck: Neutral300,
 			SectionLabel: Brand300,
 			ChipBg:       Brand900.Alpha(0.5), ChipText: Brand400, ChipHover: Brand700.Alpha(0.7),
 			ChipActiveBg: Brand700, ChipActiveText: Brand200, ChipRing: Brand500,
@@ -247,9 +256,12 @@ func NewPalette(dark bool) Palette {
 		PrimaryBtn: Neutral600, PrimaryBtnHover: Neutral700, PrimaryBtnText: White,
 		Accent: Primary500, AccentText: Primary600, AccentSoft: Primary100, AccentSoftText: Primary700,
 		TabText: Brand700, TabHover: Brand750, TabActive: Brand700, TabIndicator: Neutral500,
+		ActionBtnBg: Brand150, ActionBtnHover: Brand200, ActionBtnIcon: Brand500, ActionBtnIconHover: Brand900,
+		ActionBtnRing: Brand400, ActionBtnRingOffset: White,
 		CardBg: White, CardBorder: Brand100, CardBorderHover: Brand300, CoverBg: Brand200,
 		ScrollThumb: ui.Hex("#cccccc"), ScrollThumbHover: ui.Hex("#aaaaaa"),
 		PanelBg: White, PanelBorder: Brand200, Divider: Brand200, MenuHover: Brand100, MenuText: Brand700,
+		MenuSelected: Brand100, MenuCheck: Neutral600,
 		SectionLabel: Brand700,
 		ChipBg:       Brand50, ChipText: Brand500, ChipHover: Brand100,
 		ChipActiveBg: Brand100, ChipActiveText: Brand700, ChipRing: Brand300,

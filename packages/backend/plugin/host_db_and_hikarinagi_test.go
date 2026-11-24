@@ -397,6 +397,12 @@ func TestHikarinagiThemePluginLocksBackground(t *testing.T) {
 	if ov.Light["primaryBtn"] != "#39c5bb" || ov.Light["primaryBtnText"] != "#0a0a0a" || ov.Dark["primaryBtn"] != "#45d4c9" {
 		t.Fatalf("unexpected accent tokens: light=%v dark=%v", ov.Light, ov.Dark)
 	}
+	if ov.Shape == nil || ov.Shape.Control == nil || *ov.Shape.Control != 8 || ov.Shape.Panel == nil || *ov.Shape.Panel != 8 {
+		t.Fatalf("expected shape control/panel = 8, got %+v", ov.Shape)
+	}
+	if ov.Dark["actionBtnRing"] != "#45d4c9" || ov.Light["menuSelected"] != "#00000000" {
+		t.Fatalf("unexpected toolbar/menu tokens: light=%v dark=%v", ov.Light, ov.Dark)
+	}
 
 	// 关闭锁定后应重新注册且不再声明 glass，交还用户的背景设置
 	if err := mgr.SetConfigValues("hikarinagi-theme", map[string]any{"lockBackground": false}); err != nil {

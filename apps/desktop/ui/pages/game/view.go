@@ -611,16 +611,16 @@ func (p *Page) statusButtons(c *ui.Context, t *theme.Theme, current enums.GameSt
 		for _, s := range components.GameStatuses {
 			label := components.GameStatusLabel(s)
 			active := s == current
-			btn := ui.ButtonBase(c.Key(string(s))).Height(32).Padding(0, 12).Radius(999).Gap(6).
+			btn := ui.ButtonBase(c.Key(string(s))).Height(32).Padding(0, 12).Radius(t.ControlRadius(999)).Gap(6).
 				AlignItems(ui.Center).FocusRing(false).Label(label)
 			icon, bg, fg := components.GameStatusStyle(t, s)
 			if active {
 				// 阴影按添加顺序绘制、后加的盖在上面（与 CSS 相反）：先画 ring，再画 ring-offset 盖住内侧 1px。
-				btn.Shadow(0, 0, 0, 3, theme.Brand400).Shadow(0, 0, 0, 1, t.Pick(theme.White, theme.Brand900))
+				btn.Shadow(0, 0, 0, 3, t.ActionBtnRing).Shadow(0, 0, 0, 1, t.ActionBtnRingOffset)
 			} else {
-				bg, fg = t.Pick(theme.Brand150, theme.Brand700), t.Pick(theme.Brand500, theme.Brand400)
+				bg, fg = t.ActionBtnBg, t.ActionBtnIcon
 				if btn.Hovered() {
-					bg = t.Pick(theme.Brand200, theme.Brand600)
+					bg = t.ActionBtnHover
 				}
 			}
 			btn.Background(bg).Transition(theme.ColorsTransition(150 * time.Millisecond))
@@ -640,8 +640,8 @@ func (p *Page) statusButtons(c *ui.Context, t *theme.Theme, current enums.GameSt
 func (p *Page) statusMenu(c *ui.Context, t *theme.Theme, current enums.GameStatus) {
 	label := components.GameStatusLabel(current)
 	icon, bg, fg := components.GameStatusStyle(t, current)
-	trigger := ui.ButtonBase(c.Key("status-menu")).Height(32).Padding(0, 12).Radius(999).Gap(6).AlignItems(ui.Center).
-		InsetShadow(0, 0, 0, 1, theme.Brand400.Alpha(0.5)).FocusRing(false).Label(locales.CommonStatus() + ": " + label)
+	trigger := ui.ButtonBase(c.Key("status-menu")).Height(32).Padding(0, 12).Radius(t.ControlRadius(999)).Gap(6).AlignItems(ui.Center).
+		InsetShadow(0, 0, 0, 1, t.ActionBtnRing.Alpha(0.5)).FocusRing(false).Label(locales.CommonStatus() + ": " + label)
 	if t.Glass {
 		g := t.GlassButton(theme.GlassNeutral, theme.BtnColors{})
 		bg, fg = g.Bg, g.Text
@@ -738,6 +738,7 @@ func (p *Page) sourceButton(c *ui.Context, t *theme.Theme, links []metadataSourc
 }
 
 // actionButton：h-8 w-8 rounded-full bg-brand-150 text-brand-500 的图标按钮，disabled:opacity-45。
+// 颜色取 ActionBtn* 色板，圆角取 ControlRadius（主题插件可改成圆角方形）。
 func actionButton(c *ui.Context, t *theme.Theme, key, icon, label string, disabled bool, onClick func()) {
 	btn := actionBase(c, t, key, disabled).Width(32).Label(label)
 	fg := actionColor(t, btn.Hovered() && !disabled)
@@ -755,10 +756,10 @@ func actionButton(c *ui.Context, t *theme.Theme, key, icon, label string, disabl
 }
 
 func actionBase(c *ui.Context, t *theme.Theme, key string, disabled bool) ui.Element {
-	btn := ui.ButtonBase(c.Key(key)).Height(32).Radius(999).AlignItems(ui.Center).Justify(ui.Center).FocusRing(false)
-	bg := t.Pick(theme.Brand150, theme.Brand700)
+	btn := ui.ButtonBase(c.Key(key)).Height(32).Radius(t.ControlRadius(999)).AlignItems(ui.Center).Justify(ui.Center).FocusRing(false)
+	bg := t.ActionBtnBg
 	if btn.Hovered() && !disabled {
-		bg = t.Pick(theme.Brand200, theme.Brand600)
+		bg = t.ActionBtnHover
 	}
 	btn.Background(bg).Transition(theme.ColorsTransition(150 * time.Millisecond))
 	if disabled {
@@ -769,9 +770,9 @@ func actionBase(c *ui.Context, t *theme.Theme, key string, disabled bool) ui.Ele
 
 func actionColor(t *theme.Theme, hovered bool) ui.Color {
 	if hovered {
-		return t.Pick(theme.Brand900, theme.Brand100)
+		return t.ActionBtnIconHover
 	}
-	return t.Pick(theme.Brand500, theme.Brand400)
+	return t.ActionBtnIcon
 }
 
 // infoGrid：grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-sm（断点按窗口宽度）。

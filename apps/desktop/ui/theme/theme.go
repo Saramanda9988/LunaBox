@@ -19,6 +19,26 @@ type Theme struct {
 	// BgLocked 为 true 时有主题插件声明了 glass.enabled: false：本帧不使用用户的自定义背景与玻璃模式，
 	// 避免背景图破坏插件的设计配色（见 ApplyPluginOverrides）。
 	BgLocked bool
+
+	// ShapeControl / ShapePanel 是主题插件通过 shape.control / shape.panel 覆盖的圆角（DIP），
+	// 为负表示未覆盖、组件沿用自身的圆角（见 ControlRadius / PanelRadius）。
+	ShapeControl, ShapePanel float32
+}
+
+// ControlRadius 返回工具栏图标按钮等控件的圆角：主题插件覆盖了 shape.control 时用覆盖值，否则用 def。
+func (t *Theme) ControlRadius(def float32) float32 {
+	if t.ShapeControl >= 0 {
+		return t.ShapeControl
+	}
+	return def
+}
+
+// PanelRadius 返回下拉菜单等浮层面板的圆角：主题插件覆盖了 shape.panel 时用覆盖值，否则用 def。
+func (t *Theme) PanelRadius(def float32) float32 {
+	if t.ShapePanel >= 0 {
+		return t.ShapePanel
+	}
+	return def
 }
 
 // New 按系统主题和显示器缩放创建 Theme。
@@ -26,7 +46,7 @@ func New(dark bool, scale float64) *Theme {
 	if scale <= 0 {
 		scale = 1
 	}
-	return &Theme{Palette: NewPalette(dark), Scale: scale, HL: Hairline(scale)}
+	return &Theme{Palette: NewPalette(dark), Scale: scale, HL: Hairline(scale), ShapeControl: -1, ShapePanel: -1}
 }
 
 // Gutter 是 style.css 里 9px 滚动条槽吸附到设备像素后的宽度。

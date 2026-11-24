@@ -75,7 +75,7 @@ func DropdownMenu(c *ui.Context, t *theme.Theme, trigger ui.Element, p MenuProps
 	overPanel := false
 	ui.PopoverBase(c, trigger, open, func(panel ui.Element) {
 		components.AttachPopover(panel, trigger, from, to).Top(12).MinWidth(minWidth).
-			Padding(6).Radius(12).Background(t.PanelBg).Border(t.HL, t.PanelBorder)
+			Padding(6).Radius(t.PanelRadius(12)).Background(t.PanelBg).Border(t.HL, t.PanelBorder)
 		if p.Width > 0 {
 			winW, _ := c.Size()
 			panel.Width(min(p.Width, winW-48)) // max-w-[calc(100vw-3rem)]
@@ -185,14 +185,14 @@ func menuItem(c *ui.Context, t *theme.Theme, it MenuItem, wrap bool, choose func
 func pillItem(c *ui.Context, t *theme.Theme, it MenuItem, selected bool, choose func()) {
 	bg, fg := it.PillBg, it.PillText
 	if bg == (ui.Color{}) {
-		bg, fg = t.Pick(theme.Brand100, theme.Brand700), t.Pick(theme.Brand700, theme.Brand300)
+		bg, fg = t.MenuHover, t.Pick(theme.Brand700, theme.Brand300)
 	}
-	item := ui.ButtonBase(c.Key(it.Key)).FillWidth().Padding(6, 10).Radius(999).Gap(6).
+	item := ui.ButtonBase(c.Key(it.Key)).FillWidth().Padding(6, 10).Radius(t.ControlRadius(999)).Gap(6).
 		AlignItems(ui.Center).Justify(ui.Start).Background(bg).FocusRing(false)
 	if it.Disabled {
 		components.Disable(item, 0.5)
 	} else if item.Hovered() {
-		item.Shadow(0, 0, 0, 2, theme.Brand400) // focus 时 ring-2 ring-brand-400
+		item.Shadow(0, 0, 0, 2, t.ActionBtnRing) // focus 时 ring-2 ring-brand-400
 	}
 	item.OnClick(choose).Children(func() {
 		if it.Icon != "" {

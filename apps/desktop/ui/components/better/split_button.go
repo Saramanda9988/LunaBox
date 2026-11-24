@@ -39,7 +39,8 @@ func SplitButton(c *ui.Context, t *theme.Theme, key string, p SplitButtonProps) 
 	}
 	var menuBtn ui.Element
 	row.Children(func() {
-		main := splitPart(c, t, "main", disabled).Radius(8, 0, 0, 8).Padding(0, 10).Gap(4)
+		r := t.ControlRadius(8)
+		main := splitPart(c, t, "main", disabled).Radius(r, 0, 0, r).Padding(0, 10).Gap(4)
 		main.Children(func() {
 			if p.Loading {
 				components.Spinner(c, 16, t.PrimaryBtnText)
@@ -52,12 +53,12 @@ func SplitButton(c *ui.Context, t *theme.Theme, key string, p SplitButtonProps) 
 			main.OnClick(p.OnClick)
 		}
 
-		menuBtn = splitPart(c, t, "menu", disabled).Radius(0, 8, 8, 0).Padding(0, 6).Label(p.MenuTitle)
+		menuBtn = splitPart(c, t, "menu", disabled).Radius(0, r, r, 0).Padding(0, 6).Label(p.MenuTitle)
 		menuBtn.OnClick(func() { *open = !*open }).Children(func() {
 			components.Icon(c, "chevron-down", 16, t.PrimaryBtnText)
-			// border-l border-white/20 dark:border-neutral-900/15，叠在 neutral-600 边框上。
+			// border-l border-white/20 dark:border-neutral-900/15，叠在 neutral-600 边框上；主题插件换了主按钮色时用其文字色的 20%。
 			ui.Box(c).Absolute().Left(0).Top(0).Bottom(0).Width(t.HL).PassThrough().
-				Background(t.Pick(theme.White.Alpha(0.2), ui.Hex("#0f172a").Alpha(0.15)))
+				Background(t.PrimaryOr(t.Pick(theme.White.Alpha(0.2), ui.Hex("#0f172a").Alpha(0.15)), t.PrimaryBtnText.Alpha(0.2)))
 		})
 	})
 
@@ -65,7 +66,7 @@ func SplitButton(c *ui.Context, t *theme.Theme, key string, p SplitButtonProps) 
 	ui.PopoverBase(c, menuBtn, open, func(panel ui.Element) {
 		// absolute left-0 top-full mt-1.5 min-w-full w-max max-w-[22rem] rounded-xl border p-1.5
 		panel.AttachTo(row, ui.AnchorBottomLeft, ui.AnchorTopLeft).Top(6).MinWidth(minW).MaxWidth(352).
-			Padding(6).Radius(12).Background(t.PanelBg).Border(t.HL, t.PanelBorder)
+			Padding(6).Radius(t.PanelRadius(12)).Background(t.PanelBg).Border(t.HL, t.PanelBorder)
 		panel.Children(func() {
 			if p.MenuTitle != "" {
 				components.Text(c, p.MenuTitle, theme.TextXS, theme.WeightMedium, t.TextFaint).Padding(2, 8, 4, 8)
@@ -104,12 +105,16 @@ func splitPart(c *ui.Context, t *theme.Theme, key string, disabled bool) ui.Elem
 	return btn
 }
 
-// splitOption：flex w-full items-center rounded-lg px-3 py-2.5 text-sm，聚焦或选中时 bg-brand-100 dark:bg-brand-700。
+// splitOption：flex w-full items-center rounded-lg px-3 py-2.5 text-sm，聚焦或选中时 bg-brand-100 dark:bg-brand-700
+// （悬停取 MenuHover，选中取 MenuSelected，文字 MenuText，对勾 MenuCheck）。
 func splitOption(c *ui.Context, t *theme.Theme, o SplitOption, selected bool, choose func()) {
 	row := ui.ButtonBase(c.Key(o.Key)).FillWidth().Padding(10, 12).Radius(8).AlignItems(ui.Center).
 		Justify(ui.Start).FocusRing(false)
-	if selected || row.Hovered() {
-		row.Background(t.Pick(theme.Brand100, theme.Brand700))
+	switch {
+	case row.Hovered():
+		row.Background(t.MenuHover)
+	case selected:
+		row.Background(t.MenuSelected)
 	}
 	row.Transition(theme.ColorsTransition(150 * time.Millisecond))
 	icon := o.Icon
@@ -119,14 +124,13 @@ func splitOption(c *ui.Context, t *theme.Theme, o SplitOption, selected bool, ch
 	row.OnClick(choose).Children(func() {
 		components.Icon(c, icon, 20, t.TextFaint).Margin(0, 12, 0, 0)
 		ui.Column(c).Grow(1).Children(func() {
-			text := t.Pick(theme.Brand700, theme.Brand200)
-			components.Text(c, o.Label, theme.FontStep{Size: 14, Line: 17.5}, theme.WeightMedium, text).NoWrap()
+			components.Text(c, o.Label, theme.FontStep{Size: 14, Line: 17.5}, theme.WeightMedium, t.MenuText).NoWrap()
 			if o.Description != "" {
 				components.TextMargin(c, o.Description, theme.FontStep{Size: 12, Line: 15}, theme.WeightNormal, t.TextFaint, 2, 0, 0, 0).NoWrap()
 			}
 		})
 		if selected {
-			components.Icon(c, "check", 18, t.Pick(theme.Neutral600, theme.Neutral300)).Margin(0, 0, 0, 12)
+			components.Icon(c, "check", 18, t.MenuCheck).Margin(0, 0, 0, 12)
 		}
 	})
 }

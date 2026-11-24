@@ -53,6 +53,12 @@ type GlassOverride struct {
 	BackgroundImage string   `json:"backgroundImage,omitempty"`
 }
 
+// ShapeOverride 描述主题插件对宿主控件圆角的覆盖（单位 DIP，未设置时保留组件自身的圆角）。
+type ShapeOverride struct {
+	Control *float64 `json:"control,omitempty"` // 详情页工具栏图标按钮、状态按钮、启动按钮等控件
+	Panel   *float64 `json:"panel,omitempty"`   // 下拉菜单等浮层面板
+}
+
 // ThemeOverride 描述插件通过 ctx.theme.extend 注册的色板覆盖。
 type ThemeOverride struct {
 	PluginID string            `json:"plugin_id"`
@@ -60,6 +66,7 @@ type ThemeOverride struct {
 	Light    map[string]string `json:"light,omitempty"`
 	Dark     map[string]string `json:"dark,omitempty"`
 	Glass    *GlassOverride    `json:"glass,omitempty"`
+	Shape    *ShapeOverride    `json:"shape,omitempty"`
 }
 
 // FontRegistration 描述插件通过 ctx.theme.registerFont 注册的自定义字体。

@@ -62,6 +62,14 @@ func (t *Theme) ApplyPluginOverrides(overrides []plugin.ThemeOverride) (glassBg 
 				glassBg = ov.Glass.BackgroundImage
 			}
 		}
+		if ov.Shape != nil {
+			if v := ov.Shape.Control; v != nil && *v >= 0 {
+				t.ShapeControl = float32(*v)
+			}
+			if v := ov.Shape.Panel; v != nil && *v >= 0 {
+				t.ShapePanel = float32(*v)
+			}
+		}
 	}
 	return glassBg, glassBlur, glassEnabled
 }
@@ -212,6 +220,18 @@ func applyPaletteToken(p *Palette, key string, c ui.Color) {
 		p.TabActive = c
 	case "tabIndicator":
 		p.TabIndicator = c
+	case "actionBtnBg":
+		p.ActionBtnBg = c
+	case "actionBtnHover":
+		p.ActionBtnHover = c
+	case "actionBtnIcon":
+		p.ActionBtnIcon = c
+	case "actionBtnIconHover":
+		p.ActionBtnIconHover = c
+	case "actionBtnRing":
+		p.ActionBtnRing = c
+	case "actionBtnRingOffset":
+		p.ActionBtnRingOffset = c
 	case "cardBg":
 		p.CardBg = c
 	case "cardBorder":
@@ -234,6 +254,10 @@ func applyPaletteToken(p *Palette, key string, c ui.Color) {
 		p.MenuHover = c
 	case "menuText":
 		p.MenuText = c
+	case "menuSelected":
+		p.MenuSelected = c
+	case "menuCheck":
+		p.MenuCheck = c
 	case "sectionLabel":
 		p.SectionLabel = c
 	case "chipBg":

@@ -604,6 +604,13 @@ export interface ThemePaletteTokens {
   tabHover?: string;
   tabActive?: string;
   tabIndicator?: string;
+  // 游戏详情页工具栏的图标按钮（状态、打开目录、攻略等）：底色、悬停底色、图标、悬停图标、当前状态外圈与外圈间隙
+  actionBtnBg?: string;
+  actionBtnHover?: string;
+  actionBtnIcon?: string;
+  actionBtnIconHover?: string;
+  actionBtnRing?: string;
+  actionBtnRingOffset?: string;
   // 卡片与封面占位
   cardBg?: string;
   cardBorder?: string;
@@ -618,6 +625,10 @@ export interface ThemePaletteTokens {
   divider?: string;
   menuHover?: string;
   menuText?: string;
+  /** 下拉菜单当前项的底色（可设为 "#00000000" 只用对勾标记当前项） */
+  menuSelected?: string;
+  /** 下拉菜单当前项的对勾颜色 */
+  menuCheck?: string;
   sectionLabel?: string;
   // 筛选标签（chip）
   chipBg?: string;
@@ -653,6 +664,15 @@ export interface ThemeTokens {
     opacity?: number;
     blur?: number;
     backgroundImage?: string;
+  };
+  /**
+   * 宿主控件圆角（DIP）。未声明的项保留组件自身的圆角。
+   * - control：游戏详情页工具栏的图标按钮、状态按钮、启动按钮与菜单里的胶囊项（默认多为全圆 999）
+   * - panel：下拉菜单等浮层面板（默认 12）
+   */
+  shape?: {
+    control?: number;
+    panel?: number;
   };
 }
 

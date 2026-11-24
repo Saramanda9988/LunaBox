@@ -37,6 +37,7 @@ func (p *Plugin) buildThemeAPI() map[string]any {
 				Light map[string]string `json:"light"`
 				Dark  map[string]string `json:"dark"`
 				Glass *GlassOverride    `json:"glass"`
+				Shape *ShapeOverride    `json:"shape"`
 			}
 			if err := json.Unmarshal(raw, &input); err != nil {
 				return moejs.Undefined(), throwJSError(r, err.Error())
@@ -55,6 +56,7 @@ func (p *Plugin) buildThemeAPI() map[string]any {
 				Light:    input.Light,
 				Dark:     input.Dark,
 				Glass:    input.Glass,
+				Shape:    input.Shape,
 			}))
 			return p.rt.Function("dispose", 0, func(_ *moejs.Realm, _ moejs.Value, _ []moejs.Value) (moejs.Value, error) {
 				dispose()
