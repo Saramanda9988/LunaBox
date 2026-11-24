@@ -308,6 +308,9 @@ func TestHikarinagiDetailPluginSlotsAndCachedRender(t *testing.T) {
 						"9.3",
 						"上一张头图",
 						"下一张头图",
+						// 头图遮罩明暗自适应：浅色主题用偏白的 fadeBg 融出，深色主题保留深色 scrim
+						`"light":"fadeBg@0.90"`,
+						`"dark":"scrim@0.84"`,
 					) {
 					gotHeroReady = true
 				}

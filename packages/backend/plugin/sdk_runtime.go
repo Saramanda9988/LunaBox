@@ -301,6 +301,8 @@ export const NativeSlot = __makeFactory('NativeSlot');
 // 宿主 Go 渲染器不感知 HeroBanner，任何插件也可以直接使用底层原语自由定制自己的头图布局。
 export function HeroBanner(props) {
   const p = props || {};
+  // 明暗自适应颜色：浅色主题下头图用偏白的融出遮罩与深色文字，深色主题保持深色遮罩与白色文字
+  const ad = (light, dark) => ({ light, dark });
   const key = p.k != null ? String(p.k) : 'hero';
   const rawH = Number(p.height);
   const bannerH = Number.isFinite(rawH) && rawH >= 280 ? Math.min(760, rawH) : 560;
@@ -387,18 +389,18 @@ export function HeroBanner(props) {
     const subLine = subtitle && subtitle !== title ? (title ? title + '  ·  ' + subtitle : subtitle) : title;
     if (subLine) {
       leftChildren.push(
-        jsx(Text, { text: subLine, size: 'base', weight: 'medium', color: 'white@0.86', selectable: true })
+        jsx(Text, { text: subLine, size: 'base', weight: 'medium', color: ad('text', 'white@0.86'), selectable: true })
       );
     }
   } else {
     if (title) {
       leftChildren.push(
-        jsx(Text, { text: title, size: 34, lineHeight: 42, weight: 'bold', tone: 'light', selectable: true })
+        jsx(Text, { text: title, size: 34, lineHeight: 42, weight: 'bold', color: ad('textStrong', 'white'), selectable: true })
       );
     }
     if (subtitle && subtitle !== title) {
       leftChildren.push(
-        jsx(Text, { text: subtitle, size: 'sm', weight: 'normal', color: 'white@0.80', selectable: true })
+        jsx(Text, { text: subtitle, size: 'sm', weight: 'normal', color: ad('textMuted', 'white@0.80'), selectable: true })
       );
     }
   }
@@ -415,8 +417,8 @@ export function HeroBanner(props) {
             gap: 5,
             align: 'center',
             children: [
-              item.icon ? jsx(Icon, { name: item.icon, fallback: '', size: 14, color: 'white@0.72' }) : null,
-              jsx(Text, { text: item.text, size: 'xs', weight: 'normal', color: 'white@0.90', wrap: false }),
+              item.icon ? jsx(Icon, { name: item.icon, fallback: '', size: 14, color: ad('textMuted', 'white@0.72') }) : null,
+              jsx(Text, { text: item.text, size: 'xs', weight: 'normal', color: ad('text', 'white@0.90'), wrap: false }),
             ],
           })
         ),
@@ -429,7 +431,7 @@ export function HeroBanner(props) {
     const starNodes = [];
     for (let i = 1; i <= 5; i++) {
       let iconName = 'star-outline';
-      let col = 'white@0.35';
+      let col = ad('textFaint', 'white@0.35');
       if (stars >= i - 0.25) {
         iconName = 'star';
         col = 'warning400';
@@ -450,13 +452,13 @@ export function HeroBanner(props) {
         align: 'center',
         marginY: 2,
         children: [
-          jsx(Text, { text: ratingScore.toFixed(1), size: 34, lineHeight: 38, weight: 'bold', tone: 'light', wrap: false }),
+          jsx(Text, { text: ratingScore.toFixed(1), size: 34, lineHeight: 38, weight: 'bold', color: ad('textStrong', 'white'), wrap: false }),
           jsx(Column, {
             gap: 2,
             children: [
               jsx(Row, { gap: 2, align: 'center', children: starNodes }),
               statParts.length > 0
-                ? jsx(Text, { text: statParts.join('   '), size: 'xs', weight: 'normal', color: 'white@0.75', wrap: false })
+                ? jsx(Text, { text: statParts.join('   '), size: 'xs', weight: 'normal', color: ad('textMuted', 'white@0.75'), wrap: false })
                 : null,
             ],
           }),
@@ -486,9 +488,9 @@ export function HeroBanner(props) {
           shrink: 0,
           radius: 10,
           clip: true,
-          shadow: { x: 0, y: 14, blur: 32, spread: 0, color: 'black@0.45' },
+          shadow: { x: 0, y: 14, blur: 32, spread: 0, color: ad('black@0.18', 'black@0.45') },
           border: true,
-          borderColor: 'white@0.18',
+          borderColor: ad('black@0.06', 'white@0.18'),
           children: jsx(NativeSlot, { name: coverSlot, width: coverW }),
         })
       );
@@ -502,9 +504,9 @@ export function HeroBanner(props) {
           gap: 2,
           padding: 3,
           radius: 'full',
-          background: 'black@0.42',
+          background: ad('white@0.72', 'black@0.42'),
           border: true,
-          borderColor: 'white@0.16',
+          borderColor: ad('black@0.08', 'white@0.16'),
           children: [
             jsx(Box, {
               k: key + '-pager-prev',
@@ -513,18 +515,18 @@ export function HeroBanner(props) {
               radius: 'full',
               align: 'center',
               justify: 'center',
-              hoverBackground: 'white@0.18',
+              hoverBackground: ad('black@0.06', 'white@0.18'),
               label: '上一张头图',
               disabled: !onPrev,
               onPress: onPrev,
-              children: jsx(Icon, { name: 'chevron-left', fallback: '', size: 18, color: onPrev ? 'white@0.92' : 'white@0.32' }),
+              children: jsx(Icon, { name: 'chevron-left', fallback: '', size: 18, color: onPrev ? ad('textStrong', 'white@0.92') : ad('textFaint', 'white@0.32') }),
             }),
             pagerTotal > 0
               ? jsx(Text, {
                   text: pagerCurrent + ' / ' + pagerTotal,
                   size: 'xs',
                   weight: 'medium',
-                  color: 'white@0.84',
+                  color: ad('text', 'white@0.84'),
                   wrap: false,
                   marginX: 6,
                 })
@@ -536,11 +538,11 @@ export function HeroBanner(props) {
               radius: 'full',
               align: 'center',
               justify: 'center',
-              hoverBackground: 'white@0.18',
+              hoverBackground: ad('black@0.06', 'white@0.18'),
               label: '下一张头图',
               disabled: !onNext,
               onPress: onNext,
-              children: jsx(Icon, { name: 'chevron-right', fallback: '', size: 18, color: onNext ? 'white@0.92' : 'white@0.32' }),
+              children: jsx(Icon, { name: 'chevron-right', fallback: '', size: 18, color: onNext ? ad('textStrong', 'white@0.92') : ad('textFaint', 'white@0.32') }),
             }),
           ],
         })
@@ -576,7 +578,7 @@ export function HeroBanner(props) {
     gradient: {
       angle: 135,
       stops: [
-        { color: { light: 'brand700', dark: 'brand800' }, at: 0 },
+        { color: ad('chipBg', 'brand800'), at: 0 },
         { color: 'fadeBg', at: 1 },
       ],
     },
@@ -604,10 +606,10 @@ export function HeroBanner(props) {
         gradient: {
           angle: 90,
           stops: [
-            { color: 'scrim@0.84', at: 0 },
-            { color: 'scrim@0.56', at: 0.42 },
-            { color: 'scrim@0.18', at: 0.76 },
-            { color: 'scrim@0.06', at: 1 },
+            { color: ad('fadeBg@0.90', 'scrim@0.84'), at: 0 },
+            { color: ad('fadeBg@0.66', 'scrim@0.56'), at: 0.42 },
+            { color: ad('fadeBg@0.16', 'scrim@0.18'), at: 0.76 },
+            { color: ad('fadeBg@0.02', 'scrim@0.06'), at: 1 },
           ],
         },
       }),
@@ -620,11 +622,11 @@ export function HeroBanner(props) {
         gradient: {
           angle: 180,
           stops: [
-            { color: 'black@0.24', at: 0 },
-            { color: 'black@0.04', at: 0.24 },
-            { color: 'black@0.12', at: 0.48 },
-            { color: { light: 'scrim@0.56', dark: 'fadeBg@0.56' }, at: 0.72 },
-            { color: { light: 'scrim@0.84', dark: 'fadeBg@0.92' }, at: 0.91 },
+            { color: ad('fadeBg@0.28', 'black@0.24'), at: 0 },
+            { color: ad('fadeBg@0.04', 'black@0.04'), at: 0.24 },
+            { color: ad('fadeBg@0.10', 'black@0.12'), at: 0.48 },
+            { color: 'fadeBg@0.56', at: 0.72 },
+            { color: ad('fadeBg@0.88', 'fadeBg@0.92'), at: 0.91 },
             { color: 'fadeBg', at: 1 },
           ],
         },

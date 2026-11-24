@@ -183,7 +183,7 @@ function createAIChatStore(
 
 ### 3.4 SDK 组合模板组件：`HeroBanner`
 
-`HeroBanner` 在 SDK JS 层完全使用 `Stack` / `Box` / `Column` / `Row` / `Image` / `Text` / `Icon` / `NativeSlot` 组合而成，提供标准全宽头图 + 双层渐变遮罩 + 返回胶囊 + 透明徽标自适应 + 元信息行 + 五星评分 + 启动栏 + 右侧封面与头图翻页器布局。
+`HeroBanner` 在 SDK JS 层完全使用 `Stack` / `Box` / `Column` / `Row` / `Image` / `Text` / `Icon` / `NativeSlot` 组合而成，提供标准全宽头图 + 双层渐变遮罩 + 返回胶囊 + 透明徽标自适应 + 元信息行 + 五星评分 + 启动栏 + 右侧封面与头图翻页器布局。遮罩与文字明暗自适应：浅色主题下头图向页面底色（偏白）融出、文字为深色，深色主题下为深色遮罩与白色文字。
 
 ```ts
 interface HeroBannerMetaItem {
