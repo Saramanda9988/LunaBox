@@ -38,13 +38,13 @@ my-plugin/
 
 ### 2.2 入口函数与 `tsconfig.json`
 
-插件入口默认导出启动函数 `setup(ctx: Context)`，可返回清理函数（也可用 `ctx.effect` 与各注册 API 返回的 `Disposer` 自动在卸载/重载时回收）：
+插件入口必须具名导出 `apply(ctx: Context)`（也接受默认导出一个带 `apply` 方法的对象；直接默认导出函数不会被调用）。`apply` 可以是 async，须在 10 秒内完成；返回值除 Promise 外都被忽略，清理逻辑交给 `ctx.effect` 与各注册 API 返回的 `Disposer`，它们会在卸载/重载时自动回收：
 
 ```tsx
 import type { Context } from 'lunabox';
 import { Column, Text } from 'lunabox';
 
-export default function setup(ctx: Context) {
+export function apply(ctx: Context) {
   ctx.ui.slot('game.detail.aside', {
     id: 'my-aside',
     render: ({ game }) => (
