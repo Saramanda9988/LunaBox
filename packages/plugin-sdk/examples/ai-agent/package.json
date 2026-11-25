@@ -1,0 +1,15 @@
+{
+  "name": "lunabox-example-ai-agent",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "LunaBox AI library agent: chat UI + game library tools, powered by pi (pi-ai + pi-agent-core)",
+  "scripts": {
+    "build": "node ../../bin/lunabox-plugin.mjs build . --minify",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@earendil-works/pi-agent-core": "1.6.0",
+    "@earendil-works/pi-ai": "1.6.0"
+  }
+}

@@ -333,7 +333,7 @@ type ShadowSpec =
 | 组件 | Props 接口 | 关键属性与事件 |
 | --- | --- | --- |
 | `Text` | `TextProps` | `text`、`size`、`lineHeight`、`weight`、`tone`、`color`、`wrap`、`maxLines`、`selectable`、`label`、`margin*`、`centerX` |
-| `Markdown` | `MarkdownProps` | `content`、`onLinkPress(href)` |
+| `Markdown` | `MarkdownProps` | `content`、`streaming`、`onLinkPress(href)`。由 MyGo `ui/markdown` 渲染：CommonMark + GitHub 扩展（表格、任务列表、删除线、自动链接）、代码高亮与复制；`streaming: true` 时按 AI 流式回复显示（增量解析、未写完的语法先按最终样子显示、逐词淡入）。不传 `onLinkPress` 时宿主直接打开 http/https/mailto 链接 |
 | `CodeBlock` | `CodeBlockProps` | `code`、`language`、`copyable` |
 
 ### 5.3 表单与交互控件
@@ -685,4 +685,5 @@ ctx.on('launch/plan', async ({ game, plan }) => {
 | `float-ball` | `ctx.window.open` 无边框透明置顶悬浮窗、`dragWindow` |
 | `pomodoro-overlay` | 独立悬浮计时器与插件自定义 SVG 图标 |
 | `whale-pet` | `Box(springPress)` 原生弹簧按压动画与 `ctx.audio.play` 音效 |
-| `ai-assistant` | `workspace.drawer`、`ctx.ai.stream`、`createAIChatStore` 与 Tool Call |
+| `ai-assistant` | 最简 AI 对话：`workspace.drawer`、宿主 Go 侧的 `ctx.ai.stream`、`createAIChatStore` 与 Tool Call |
+| `ai-agent` | 完整的 AI 游戏库助手（类 Claude / Codex 桌面端）：打包 pi（`@earendil-works/pi-ai` + `pi-agent-core`）自带 agent 循环，支持 OpenAI 兼容与 Anthropic；`sidebar.page`（会话列表 + 对话）、`workspace.drawer`、`topbar.item`、`library.toolbar`、`game.actions`；流式 `Markdown`、可展开的工具调用卡片、`ctx.ui.confirm` 写操作确认；工具覆盖游戏库查询与增删改、收藏夹、元数据搜索入库、`web_fetch` 刮削网页、`run_command`（`ctx.process`）；会话持久化到 `ctx.storage` |

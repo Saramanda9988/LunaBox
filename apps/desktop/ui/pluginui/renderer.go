@@ -302,7 +302,7 @@ func (m *Manager) renderNode(c *ui.Context, t *theme.Theme, inst *Instance, n *p
 		return el
 
 	case "Markdown":
-		return m.renderMarkdown(c, t, inst, key, propStr(p, "content"), eventID(n, "linkPress"))
+		return m.renderMarkdown(c, t, inst, key, propStr(p, "content"), eventID(n, "linkPress"), propBool(p, "streaming"))
 
 	case "CodeBlock":
 		return m.renderCodeBlock(c, t, key, propStr(p, "code"), propStr(p, "language"), propBool(p, "copyable"))
@@ -1348,125 +1348,6 @@ func (m *Manager) renderCodeBlock(c *ui.Context, t *theme.Theme, key, code, lang
 				el.Font(mf)
 			}
 		})
-	})
-}
-
-// renderMarkdown 将结构化 Markdown 内容解析为原生组件树（标题、列表、代码块、引用、分隔线、图片、段落）。
-func (m *Manager) renderMarkdown(c *ui.Context, t *theme.Theme, inst *Instance, key, content, linkPressID string) ui.Element {
-	lines := strings.Split(strings.ReplaceAll(content, "\r\n", "\n"), "\n")
-	return ui.Column(c.Key(key)).FillWidth().Gap(8).Children(func() {
-		i := 0
-		blockIdx := 0
-		for i < len(lines) {
-			line := lines[i]
-			trimmed := strings.TrimSpace(line)
-			if trimmed == "" {
-				i++
-				continue
-			}
-			blockIdx++
-			bKey := fmt.Sprintf("%s-md%d", key, blockIdx)
-
-			// 围栏代码块 ```
-			if strings.HasPrefix(trimmed, "```") {
-				lang := strings.TrimSpace(strings.TrimPrefix(trimmed, "```"))
-				i++
-				var codeLines []string
-				for i < len(lines) && !strings.HasPrefix(strings.TrimSpace(lines[i]), "```") {
-					codeLines = append(codeLines, lines[i])
-					i++
-				}
-				if i < len(lines) {
-					i++
-				}
-				m.renderCodeBlock(c, t, bKey, strings.Join(codeLines, "\n"), lang, true)
-				continue
-			}
-			// 标题 # / ## / ###
-			if strings.HasPrefix(trimmed, "#") {
-				level := 0
-				for level < len(trimmed) && trimmed[level] == '#' {
-					level++
-				}
-				if level <= 6 && level < len(trimmed) && trimmed[level] == ' ' {
-					title := strings.TrimSpace(trimmed[level+1:])
-					step := theme.TextBase
-					switch level {
-					case 1:
-						step = theme.TextXL
-					case 2:
-						step = theme.TextLG
-					}
-					components.Text(c, title, step, theme.WeightBold, t.TextStrong).Selectable()
-					i++
-					continue
-				}
-			}
-			// 分隔线
-			if trimmed == "---" || trimmed == "***" {
-				ui.Box(c.Key(bKey)).FillWidth().Height(t.HL).Background(t.Divider)
-				i++
-				continue
-			}
-			// 引用块 >
-			if strings.HasPrefix(trimmed, ">") {
-				var quoteLines []string
-				for i < len(lines) && strings.HasPrefix(strings.TrimSpace(lines[i]), ">") {
-					quoteLines = append(quoteLines, strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(lines[i]), ">")))
-					i++
-				}
-				ui.Box(c.Key(bKey)).FillWidth().Padding(6, 12).BorderWidth(0, 0, 0, 3).
-					BorderColor(theme.Primary400).Background(t.ChipBg).Children(func() {
-					components.Text(c, strings.Join(quoteLines, "\n"), theme.TextSM, theme.WeightNormal, t.TextMuted).Selectable()
-				})
-				continue
-			}
-			// 图片 ![alt](url)
-			if strings.HasPrefix(trimmed, "![") && strings.Contains(trimmed, "](") && strings.HasSuffix(trimmed, ")") {
-				openIdx := strings.Index(trimmed, "](")
-				imgURL := trimmed[openIdx+2 : len(trimmed)-1]
-				if bmp := m.loadBitmap(imgURL); bmp != nil {
-					ui.Image(c, bmp).FillWidth().Height(200).Radius(8).Fit(ui.Contain)
-				}
-				i++
-				continue
-			}
-			// 无序列表
-			if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") {
-				ui.Row(c.Key(bKey)).FillWidth().Gap(8).AlignItems(ui.Start).Children(func() {
-					components.Text(c, "•", theme.TextSM, theme.WeightBold, t.TextMuted)
-					components.Text(c, strings.TrimSpace(trimmed[2:]), theme.TextSM, theme.WeightNormal, t.Text).Selectable().Grow(1)
-				})
-				i++
-				continue
-			}
-			// 普通段落（附带简单链接点击提取）
-			if linkPressID != "" && strings.Contains(trimmed, "](") {
-				if openText := strings.Index(trimmed, "["); openText >= 0 {
-					if mid := strings.Index(trimmed[openText:], "]("); mid > 0 {
-						end := strings.Index(trimmed[openText+mid+2:], ")")
-						if end > 0 {
-							linkText := trimmed[openText+1 : openText+mid]
-							href := trimmed[openText+mid+2 : openText+mid+2+end]
-							ui.Row(c.Key(bKey)).Gap(4).Children(func() {
-								if openText > 0 {
-									components.Text(c, trimmed[:openText], theme.TextSM, theme.WeightNormal, t.Text)
-								}
-								ui.ButtonBase(c.Key(bKey+"-link")).FocusRing(false).OnClick(func() {
-									m.dispatch(inst, linkPressID, href)
-								}).Children(func() {
-									components.Text(c, linkText, theme.TextSM, theme.WeightMedium, t.Accent)
-								})
-							})
-							i++
-							continue
-						}
-					}
-				}
-			}
-			components.Text(c, line, theme.TextSM, theme.WeightNormal, t.Text).Selectable()
-			i++
-		}
 	})
 }
 

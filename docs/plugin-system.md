@@ -389,6 +389,7 @@ const floatWin = ctx.window.open('float-ball', {
 面向**AI 类插件**（AI 帮搜资源、AI 帮整理游戏库，交互形式类似 Claude Code Desktop 的多轮 Agent 工作台）：
 
 - **自带 agent 运行时（推荐）**：宿主只提供基础能力（流式 `fetch`、`ctx.process`、`ctx.fs`、`ctx.storage`、`ctx.ui.confirm`），模型适配与 agent 循环交给插件打包进来的 JS 库，宿主不再维护各家协议与多轮工具调用。
+  - 完整示例见 `packages/plugin-sdk/examples/ai-agent`（端到端测试 `plugin/ai_agent_example_test.go` 用 httptest 模拟流式接口）。
   - 已验证 [pi](https://github.com/earendil-works/pi)（`@earendil-works/pi-ai` + `@earendil-works/pi-agent-core`）不加任何补丁即可在 moejs 中运行：OpenAI 兼容端点与 Anthropic 端点的流式输出、工具调用、`agent.abort()` 都正常，超过 30 秒的长流不会被截断。打包需 `platform: 'browser'`（`lunabox-plugin build` 默认值），两个 provider 一起约 2 MB（`--minify` 后约 770 KB），加载约 0.1 秒。
   - `ctx.ai.getCredentials()` 返回宿主设置页配置的 `{ configured, provider, baseUrl, apiKey, model }`（插件完全信任，直接给明文 Key），插件不必再让用户重复填写。
   - pi 自带的 bash / read / edit 工具依赖 Node 接口，在插件里不可用；改用 `ctx.process` / `ctx.fs` 实现同名工具即可。
@@ -732,6 +733,7 @@ GitHub 上维护一个索引仓库（`index.json`：id、版本、下载地址�
   - `theme-mascot`：自定义主题色板、字体与右下角角色立绘水印（`ctx.theme`）
   - `float-ball`：桌面置顶透明悬浮球（`ctx.window.open` + `dragWindow`）
   - `ai-assistant`：AI 找资源与整理游戏库工作台（`sidebar.page` + `workspace.drawer` + `ctx.ai.stream`）
+  - `ai-agent`：完整的 AI 游戏库助手，自带 pi agent 运行时（§7.5），流式回复、工具调用卡片、写操作确认、会话持久化
 - 调试：`console.log` 写入应用日志；开发模式下界面错误直接显示在占位里。
 
 ## 13. 版本与兼容

@@ -46,6 +46,7 @@ type Instance struct {
 	Inputs        map[string]*InputState
 	Scrolls       map[string]*components.ScrollBar
 	Collapsibles  map[string]*bool
+	Markdowns     map[string]*markdownState
 	ImageNotified map[string]string
 	PreviewSrc    string
 	PreviewOpen   bool

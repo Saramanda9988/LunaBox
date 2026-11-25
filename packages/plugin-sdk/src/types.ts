@@ -251,7 +251,14 @@ export interface TextProps {
 }
 
 export interface MarkdownProps {
+  /** CommonMark + GitHub 扩展（表格、任务列表、删除线、自动链接）、代码高亮 */
   content: string;
+  /**
+   * 内容仍在流式追加（如 AI 回复）：只解析新增部分，未写完的语法（`**加粗`、未闭合的代码块）先按最终样子显示，
+   * 文字逐词淡入。回复结束后改回 false，同一个 k 下的视图会接着显示。
+   */
+  streaming?: boolean;
+  /** 传入时由插件处理链接点击；否则宿主直接打开 http / https / mailto 链接 */
   onLinkPress?: (href: string) => void;
 }
 
