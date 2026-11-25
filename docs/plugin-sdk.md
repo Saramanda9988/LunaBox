@@ -75,6 +75,15 @@ export default function setup(ctx: Context) {
 ### 2.3 CLI 命令
 
 ```bash
+# 从模板仓库新建插件项目（默认 umbrae-lab/lunabox-plugins 的 main 分支，不需要 git）
+# 交互式询问模板、插件 id、显示名称，最后可选安装 AI skill；--yes 跳过所有询问（模板默认 basic）
+# --source 也可以是本地目录（离线或编写模板时用）；私有仓库或触发 GitHub 限流时设置 GITHUB_TOKEN
+lunabox-plugin init [dir] [--template=<name>] [--id=<id>] [--name=<显示名称>]
+                    [--source=<owner/repo[#ref]|dir>] [--skills|--no-skills] [--yes] [--force]
+
+# 给已有插件项目安装 AI skill（等同于 npx skills add umbrae-lab/lunabox-plugins）
+lunabox-plugin skills [dir] [--source=<owner/repo|dir>] [--yes]
+
 # 使用 esbuild 打包 src/index.tsx|ts -> manifest.main（默认 main.js）
 # 自动将 lunabox、lunabox/jsx-runtime、node:buffer 标为 external
 # 默认 platform=browser（moejs 提供的是 Web API 而不是 Node 内置模块，OpenAI / Anthropic SDK 等会选用浏览器版实现）
@@ -84,6 +93,17 @@ lunabox-plugin build [dir] [--minify] [--platform=browser|neutral]
 # 打包为 <id>-<version>.zip（包含 plugin.json、main.js、locales/、assets/ 及自定义 icon）
 lunabox-plugin pack [dir]
 ```
+
+`init` 和 `skills` 读取的模板仓库需要按下面的目录约定组织：
+
+```text
+umbrae-lab/lunabox-plugins/
+├── templates/<name>/          # 每个模板是一个完整插件项目，必须有 plugin.json
+│                              # 复制时跳过 node_modules、.git 与 *.zip；plugin.json 的 description 会显示在模板列表里
+└── skills/<skill>/SKILL.md    # 供 npx skills add 发现的 agent skill
+```
+
+`init` 会把 `plugin.json` 的 `id` 改成新插件 id，把 `name` 里每种语言都改成显示名称，并把 `package.json`（如果有）的 `name` 改成插件 id。
 
 ### 2.4 `PluginManifest`（`plugin.json`）
 
@@ -672,7 +692,7 @@ ctx.on('launch/plan', async ({ game, plan }) => {
 
 ## 8. 示例插件索引
 
-示例插件在独立仓库维护（本仓库不再跟踪 `packages/plugin-sdk/examples/`，也不再对它们跑集成测试）：
+示例插件在独立仓库 [umbrae-lab/lunabox-plugins](https://github.com/umbrae-lab/lunabox-plugins) 维护（本仓库不再跟踪 `packages/plugin-sdk/examples/`，也不再对它们跑集成测试）：
 
 | 示例目录 | 演示核心能力 |
 | --- | --- |

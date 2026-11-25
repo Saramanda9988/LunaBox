@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { initCommand, skillsCommand } from './init.mjs';
 
 const [, , cmd, ...rest] = process.argv;
 const flags = new Set(rest.filter((a) => a.startsWith('--')));
@@ -78,18 +79,26 @@ function packPlugin() {
 }
 
 async function main() {
-  if (cmd === 'build') {
+  if (cmd === 'init') {
+    await initCommand(rest);
+  } else if (cmd === 'skills') {
+    await skillsCommand(rest);
+  } else if (cmd === 'build') {
     await buildPlugin();
   } else if (cmd === 'pack') {
     packPlugin();
   } else {
-    console.log('Usage: lunabox-plugin build [dir] [--minify] [--platform=browser|neutral]');
+    console.log('Usage: lunabox-plugin init [dir] [--template=<name>] [--id=<id>] [--name=<name>]');
+    console.log('                           [--source=<owner/repo[#ref]|dir>] [--skills|--no-skills] [--yes] [--force]');
+    console.log('       lunabox-plugin skills [dir] [--source=<owner/repo|dir>] [--yes]');
+    console.log('       lunabox-plugin build [dir] [--minify] [--platform=browser|neutral]');
     console.log('       lunabox-plugin pack [dir]');
     process.exit(1);
   }
 }
 
 main().catch((err) => {
-  console.error(err);
-  process.exit(1);
+  console.error(process.env.DEBUG || !(err instanceof Error) ? err : `Error: ${err.message}`);
+  // process.exit() while fetch sockets are closing trips a libuv assertion on Windows.
+  process.exitCode = 1;
 });

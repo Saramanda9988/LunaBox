@@ -389,7 +389,7 @@ const floatWin = ctx.window.open('float-ball', {
 面向**AI 类插件**（AI 帮搜资源、AI 帮整理游戏库，交互形式类似 Claude Code Desktop 的多轮 Agent 工作台）：
 
 - **自带 agent 运行时（推荐）**：宿主只提供基础能力（流式 `fetch`、`ctx.process`、`ctx.fs`、`ctx.storage`、`ctx.ui.confirm`），模型适配与 agent 循环交给插件打包进来的 JS 库，宿主不再维护各家协议与多轮工具调用。
-  - 完整示例见示例插件仓库里的 `ai-agent`。
+  - 完整示例见 `umbrae-lab/lunabox-plugins` 里的 `ai-agent`。
   - 已验证 [pi](https://github.com/earendil-works/pi)（`@earendil-works/pi-ai` + `@earendil-works/pi-agent-core`）不加任何补丁即可在 moejs 中运行：OpenAI 兼容端点与 Anthropic 端点的流式输出、工具调用、`agent.abort()` 都正常，超过 30 秒的长流不会被截断。打包需 `platform: 'browser'`（`lunabox-plugin build` 默认值），两个 provider 一起约 2 MB（`--minify` 后约 770 KB），加载约 0.1 秒。
   - `ctx.ai.getCredentials()` 返回宿主设置页配置的 `{ configured, provider, baseUrl, apiKey, model }`（插件完全信任，直接给明文 Key），插件不必再让用户重复填写。
   - pi 自带的 bash / read / edit 工具依赖 Node 接口，在插件里不可用；改用 `ctx.process` / `ctx.fs` 实现同名工具即可。
@@ -725,8 +725,8 @@ GitHub 上维护一个索引仓库（`index.json`：id、版本、下载地址�
   - `ctx`（含 `games`、`categories`、`metadata`、`downloads`、`import`、`theme`、`window`、`ai`、`http`、`ui`）和全部事件、插槽、`MetadataResult`、`ThemeTokens` 的 TS 类型。
   - JSX 运行时、hooks（`useState`、`useEffect`、`useRef`、`useMemo`）、组件工厂（`Column`、`Grid`、`ScrollArea`、`Markdown`、`Button`……只是返回描述节点的函数）。
   - 高阶辅助工具（SDK 内置纯 JS 封装）：`createAIChatStore`（管理多轮消息、流式拼接与 Tool Call 状态）、`createPagination`（配合 `ScrollArea(ReachBottom)` 的分页器）、`defineThemePreset`（主题色板与水印装饰类型校验）。
-  - CLI：`lunabox-plugin build` 用 esbuild 打包（`format: esm`、`platform: neutral`、`target: es2022`，把依赖全部打进去，`lunabox` 标记为 external），`lunabox-plugin pack` 打成 zip。
-- 示例插件（独立仓库维护，本仓库不跟踪）：
+  - CLI：`lunabox-plugin init` 从模板仓库 `umbrae-lab/lunabox-plugins` 新建插件项目并可选安装 AI skill，`lunabox-plugin skills` 单独安装 skill，`lunabox-plugin build` 用 esbuild 打包（`format: esm`、`platform: browser`、`target: es2022`，把依赖全部打进去，`lunabox` 标记为 external），`lunabox-plugin pack` 打成 zip。用法见 [plugin-sdk.md](plugin-sdk.md) §2.3。
+- 示例插件（在 `umbrae-lab/lunabox-plugins` 维护，本仓库不跟踪）：
   - `metadata-source`：自定义元数据源（§8）
   - `resource-hub`：资源站浏览与一键下载入库（TouchGal 场景，`sidebar.page` + `ctx.downloads.requestInstall`）
   - `site-detail`：扩展站点详情页（KunGal 场景，`game.detail.tab` + `Markdown`）
