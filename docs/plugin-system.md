@@ -139,9 +139,11 @@ moejs 的内置对象由所有运行时共享冻结，每个运行时约 81 KiB�
 
 | 能力 | 配置 |
 | --- | --- |
-| `fetch` | 安装 `webapi`。`Client` 用 `httputils.NewClient`，走 `proxyutils` 的代理；**默认 User-Agent 取 `version.UserAgent()`**（AGENTS.md 的 MUST），插件显式设置时才覆盖。`Allow` 为 nil（不限制目标）。 |
+| `fetch` | 安装 `webapi`。`Client` 用 `httputils.NewClient`，走 `proxyutils` 的代理；**默认 User-Agent 取 `version.UserAgent()`**（AGENTS.md 的 MUST），插件显式设置时才覆盖。`Allow` 为 nil（不限制目标）。**不设 `Client.Timeout`**（它把读取响应体也算在内，会截断 LLM 等长时间的流式响应），只限制等待响应头 30 秒（`plugin/http_fetch.go`）；中途取消靠 `AbortSignal` 与插件作用域。 |
+| Web 兼容层 | `plugin/globals.go` 在插件代码运行前补齐 moejs 缺少、常见 npm 库（OpenAI / Anthropic 官方 SDK、pi）会用到的全局对象：`FinalizationRegistry`（空实现）、`crypto.getRandomValues` / `crypto.randomUUID`（Go `crypto/rand`）、`Blob` / `File` / `FormData`（可构造、可读写；`fetch` 暂不支持把它们作为请求体发出 multipart 上传）。 |
 | 定时器 | 安装 `eventloop`（`setTimeout`/`setInterval`/`setImmediate`）。 |
 | 文件访问与 Buffer | 安装 `node:buffer`（全局 `Buffer`）；因 `moejs/node` 的 `node:fs` 仅面向单根目录 `os.Root` 沙箱，完全信任的文件读写由 Go 直接实现为 `ctx.fs`（`readFile`/`writeFile`/`exists`/`readDir`/`mkdir`/`remove`）。 |
+| 进程 | 不安装 `node:child_process`；由 Go 实现为 `ctx.process`（§7.6）。 |
 | `eval` / `new Function` | 不禁用。 |
 | `MemoryLimit` | 256 MiB。只为防止插件 bug 拖垮主进程，不是安全边界。 |
 | `console.*` | 映射到 `ctx.logger`。 |
@@ -212,19 +214,21 @@ export function apply(ctx: Context) {
 | `ctx.i18n` | `language`、`t(key, args?)`、`onChange(fn)` | 插件 `locales/*.json`，语言取 `AppConfig.Language` |
 | `ctx.storage` | `get/set/delete/keys`（值为 JSON） | `plugins-data/<id>/storage.json`，写入时防抖落盘 |
 | `ctx.config` | `define(schema)`、`get()`、`onChange(fn)` | 存在 `ctx.storage` 的保留键里；有 schema 时宿主自动生成设置分区（§10） |
-| `ctx.games` | `list(query)`、`get(id)`、`findBySource(source, sourceId)`、`update(id, patch)`、`batchUpdate(patches)`、`setTags(id, tags)`、`start(id)`、`onChanged(fn)` | 包装 `GameService` / `StartService` 已有的公开方法；`update` 只开放白名单字段 |
-| `ctx.categories` | `list()`、`create(input)`、`update(id, patch)`、`delete(id)`、`addGames(id, gameIds)`、`removeGames(id, gameIds)` | 包装 `CategoryService`（供 AI 整理游戏库等场景操作收藏夹） |
+| `ctx.games` | `list`、`get`、`findBySource`、`create`、`update`、`batchUpdate`、`delete`、`batchDelete`、`setTags`、`refreshMetadata`、`setCoverFromURL`、`start(id, options?)`、`onChanged`；子命名空间 `tags`、`sources`（元数据来源）、`sessions`（游玩记录）、`progress`、`review` | 包装 `GameService`、`TagService`、`SessionService`、`GameProgressService`、`GameReviewService`、`StartService` 的公开方法；写入字段见 §7.5.1。写操作后发出 `plugin:library-changed`，界面重新加载游戏库与首页 |
+| `ctx.categories` | `list()`、`get(id)`、`listByGame(gameId)`、`games(id)`、`create(input)`、`update(id, patch)`、`delete(id)`、`addGames(id, gameIds)`、`removeGames(id, gameIds)` | 包装 `CategoryService` |
 | `ctx.metadata` | `registerSource(def)`、`search(name, opts?)`、`fetch(source, sourceId, opts?)` | `metadata.Registry`（§8）+ 宿主元数据查询能力 |
 | `ctx.downloads` | `requestInstall(req)`、`list()`、`getImportStates(reqs)`、`onProgress(fn)`、`onImported(fn)` | 包装 `DownloadService` + 唤起 `InstallConfirmModal`（走完整下载 → 解压 → 自动入库流程） |
 | `ctx.import` | `openModal(path?)`、`fromPath(req)` | 包装 `ImportService` 与导入弹窗（供插件自定义下载后移交本地路径入库） |
 | `ctx.theme` | `extend(tokens)`、`registerFont(def)`、`registerDecoration(def)` | 接入 `ui/theme`（色板覆盖、字体加载）与 `ui/app.go`（背景/前景装饰层，如右下角角色水印） |
 | `ctx.window` | `open(id, opts)`、`main.show()/focus()/minimize()` | 包装 `mygo.NewWindow`（支持 `Frameless`、`Transparent`、`AlwaysOnTop`、`SkipTaskbar`），随作用域自动销毁 |
-| `ctx.ai` | `getConfig()`、`complete(req)`、`stream(req, handlers)` | 复用宿主 `AiService` 配置或插件自定义模型配置，Go 侧处理 SSE 流式解析与 tool calls 回调 |
+| `ctx.ai` | `getConfig()`、`getCredentials()`、`complete(req)`、`stream(req, handlers)` | 复用宿主 `AiService` 配置；`getCredentials` 把配置的端点与 API Key 交给插件自带的 agent 运行时（§7.5） |
 | `ctx.http` | `sse(url, init, handlers)` | 基于 `httputils.NewClient` 的流式 SSE 读取，按事件投递回插件线程 |
-| `ctx.on` | 事件与钩子（§7.1） | `hooks.Bus` |
-| `ctx.ui` | `slot(name, def)`、`toast(msg, type?)`、`navigate(path, params?)`、`openDrawer(id, props?)`、`closeDrawer()` | `plugin.Slots` + 界面（§9、§10） |
+| `ctx.on` | 事件、钩子与拦截器（§7.1） | `hooks.Bus` |
+| `ctx.ui` | `slot(name, def)`、`toast(msg, type?)`、`navigate(path, params?)`、`openDrawer(id, props?)`、`closeDrawer()`、`confirm(opts)`、`select(opts)` | `plugin.Slots` + 界面（§9、§10）；对话框见 §7.7 |
+| `ctx.process` | `platform`、`exec(command, args?, opts?)`、`spawn(command, args?, opts?)` | `os/exec`（§7.6） |
 | `ctx.html` | `parse(html)` → `select(css)` → `text()/attr()/html()` | goquery（后端已经依赖） |
 | `ctx.shell` | `openURL(url)`、`openPath(path)` | `appruntime.Runtime` / `apputils` |
+| `ctx.fs` | `readFile`、`writeFile`、`exists`、`readDir`、`mkdir`、`remove` | `os` |
 | `ctx.paths` | `plugin`（插件目录）、`data`（插件数据目录） | |
 | `ctx.effect` | `effect(setup)` | `Scope.Effect` |
 
@@ -243,8 +247,24 @@ export function apply(ctx: Context) {
 | `emit` | 依次投递给监听者，不等返回值 | 记录日志，继续 |
 | `waterfall` | 按顺序调用，每个监听者收到上一个的返回值；返回 `undefined` 表示不改 | 跳过该监听者，沿用上一个值 |
 | `bail` | 按顺序调用，第一个返回非 `undefined` 的结果生效 | 视为 `undefined` |
+| `intercept` | 拦截器：按顺序调用，返回 `undefined` 表示不改，返回对象则**深合并**进当前载荷（对象递归合并，数组与 `null` 整体替换）；合并后 `cancel: true` 时立即停止并取消操作。每个拦截器单独计时 | 跳过该拦截器，沿用上一个值 |
 
-顺序：带 `{ prepend: true }` 的先执行，其余按插件管理页里的插件顺序。
+顺序：带 `{ prepend: true }` 的先执行，其余按插件管理页里的插件顺序。拦截器可在注册时声明 `{ timeout }`（毫秒，默认 3000，最多 600000），需要等用户操作（如 `ctx.ui.select` 选账号）的拦截器用它放宽超时。
+
+**启动流程**：会改变启动行为的只有两个拦截器；其余阶段都是通知（emit），插件只能感知、不能阻断。
+
+```text
+startGame
+ ├─ launch/prepare  (intercept) 改启动选项（是否走 Steam、转区、管理员等）或取消
+ ├─ 解析可执行文件 → 启动前同步云存档 → 选择启动策略 → 生成启动计划
+ ├─ launch/plan     (intercept) 改 file / args / dir / env / run_as_admin 或取消
+ ├─ game/before-launch (emit)    进程即将启动
+ ├─ 启动进程，创建游玩记录
+ ├─ game/launched   (emit)
+ ├─ 识别到实际游戏进程（或进程交接）
+ ├─ game/running    (emit)
+ └─ 游玩结束 → session/ended (emit)
+```
 
 | 事件 | 方式 | 参数 → 返回 | 超时 | 触发点 |
 | --- | --- | --- | --- | --- |
@@ -252,17 +272,42 @@ export function apply(ctx: Context) {
 | `game/added` | emit | `Game` | — | 导入或添加游戏成功后（`ImportService`、`GameService`） |
 | `game/updated` | emit | `Game` | — | `GameService` 保存后 |
 | `game/deleted` | emit | `{ id }` | — | `GameService` 删除后 |
-| `game/before-launch` | bail | `Game` → `{ cancel: true, reason } \| undefined` | 3s | `StartService.startGame` 解析启动策略之前 |
+| `launch/prepare` | intercept | `{ game, options }` → `{ options } \| { cancel, reason? } \| undefined` | 默认 3s，可声明 | `StartService.startGame` 读到游戏之后、解析启动方式之前 |
+| `launch/plan` | intercept | `{ game, plan }` → `{ plan } \| { cancel, reason? } \| undefined` | 默认 3s，可声明 | 启动计划生成之后、启动进程之前 |
+| `game/before-launch` | emit | `{ game, plan }` | — | 拦截器都已执行，进程即将启动 |
 | `game/launched` | emit | `{ game, sessionId }` | — | 进入监控流程后 |
+| `game/running` | emit | `{ game, sessionId, pid, processName, reason }` | — | 识别到实际游戏进程（`process-detected`）、只监控启动器（`launcher-monitoring`）或进程交接到新进程 |
 | `session/ended` | emit | `{ gameId, sessionId, duration }` | — | 游玩记录结束时 |
 | `metadata/before-search` | waterfall | `{ name, source }` → `{ name }` | 2s | 按名称搜索元数据之前 |
 | `metadata/after-fetch` | waterfall | `{ source, result }` → `result` | 3s | 拉到元数据之后、写入之前 |
+
+启动拦截器的约定：
+
+- `game` 只读，改了也不会写回。`options` 字段为 `null` 表示沿用游戏自身配置（见 `hooks.LaunchOptions`）。
+- `plan` 只开放 `file`、`args`、`dir`、`env`（追加的环境变量）、`run_as_admin`；进程检测相关字段不开放，免得插件改坏游玩时长统计。`file` 改为空串时保留原值。`env` 在 Windows 上不生效（经 `ShellExecuteEx` 启动）。
+- 取消时 `reason` 显示给用户，缺省为“启动被插件取消”。
+- 界面侧 `StartGame` 本来就在后台执行并显示“启动中”，拦截器等待用户期间不会卡住界面；没有总超时，只有每个拦截器自己的超时。
+- 示例（多 Steam 账号：启动前选择账号）：
+
+  ```ts
+  ctx.on('launch/plan', async ({ game, plan }) => {
+    if (!plan.file.toLowerCase().endsWith('steam.exe')) return
+    const account = await ctx.ui.select({
+      title: `用哪个账号启动《${game.name}》？`,
+      options: accounts.map((a) => ({ value: a.login, label: a.name, description: a.login })),
+      default: lastUsed,
+    })
+    if (account === null) return { cancel: true, reason: '已取消选择 Steam 账号' }
+    await switchSteamAccount(account) // 用 ctx.process 结束 Steam、写 AutoLoginUser
+  }, { timeout: 120_000 })
+  ```
 
 **实现约束**
 
 - 服务通过 `SetHookBus(...)` 注入 `hooks.Bus`（遵循 [backend.md](backend.md) 的 `SetXxxService` 约定）。接口定义在 `packages/backend/common/hooks`，服务不依赖 `plugin` 包。没有插件时注入 `hooks.Nop`。
 - **没有监听者时必须直接返回**，不做 JSON 序列化：批量导入 2800 款游戏时钩子在热路径上。
 - `emit` 在后台 goroutine 中投递，不阻塞调用方。
+- 启动拦截器的转换与写回在 `service/start_hooks.go`。
 
 ### 7.2 下载与导入 SDK（`ctx.downloads` / `ctx.import`）
 
@@ -343,9 +388,13 @@ const floatWin = ctx.window.open('float-ball', {
 
 面向**AI 类插件**（AI 帮搜资源、AI 帮整理游戏库，交互形式类似 Claude Code Desktop 的多轮 Agent 工作台）：
 
-- **模型调用（`ctx.ai`）**：
-  - `ctx.ai.getConfig()`：读取宿主设置页已配置的 AI 服务状态（是否已配置模型、当前模型名称，不暴露明文 API Key）。
-  - `ctx.ai.stream(req, handlers)` / `ctx.ai.complete(req)`：在 Go 侧发起流式请求（复用宿主的 `AiService` 配置，或使用插件在 `ctx.config` 中自定义的 OpenAI / Anthropic 兼容端点），支持传入 `tools`（JSON Schema 工具定义）：
+- **自带 agent 运行时（推荐）**：宿主只提供基础能力（流式 `fetch`、`ctx.process`、`ctx.fs`、`ctx.storage`、`ctx.ui.confirm`），模型适配与 agent 循环交给插件打包进来的 JS 库，宿主不再维护各家协议与多轮工具调用。
+  - 已验证 [pi](https://github.com/earendil-works/pi)（`@earendil-works/pi-ai` + `@earendil-works/pi-agent-core`）不加任何补丁即可在 moejs 中运行：OpenAI 兼容端点与 Anthropic 端点的流式输出、工具调用、`agent.abort()` 都正常，超过 30 秒的长流不会被截断。打包需 `platform: 'browser'`（`lunabox-plugin build` 默认值），两个 provider 一起约 2 MB（`--minify` 后约 770 KB），加载约 0.1 秒。
+  - `ctx.ai.getCredentials()` 返回宿主设置页配置的 `{ configured, provider, baseUrl, apiKey, model }`（插件完全信任，直接给明文 Key），插件不必再让用户重复填写。
+  - pi 自带的 bash / read / edit 工具依赖 Node 接口，在插件里不可用；改用 `ctx.process` / `ctx.fs` 实现同名工具即可。
+- **宿主 Go 侧的模型调用（`ctx.ai.stream` / `complete`）**：保留给只需要简单对话、不想打包 agent 库的插件。
+  - `ctx.ai.getConfig()`：读取宿主设置页已配置的 AI 服务状态（是否已配置模型、当前模型名称）。
+  - `ctx.ai.stream(req, handlers)` / `ctx.ai.complete(req)`：在 Go 侧发起流式请求（只支持 OpenAI 兼容的 `/chat/completions`；复用宿主的 `AiService` 配置，或按请求覆盖 `model` / `baseUrl` / `apiKey`），支持传入 `tools`（JSON Schema 工具定义）与 `maxTurns`（默认 5）：
 
     ```ts
     const abort = ctx.ai.stream(
@@ -364,10 +413,47 @@ const floatWin = ctx.window.open('float-ball', {
     ```
 
   - Go 侧对高频 token 流做 30ms 节流合并后再投递到插件线程，配合描述树的 `ScrollArea(autoScrollBottom)`、`Markdown` 与 `Collapsible`（展示 AI 正在执行的工具调用和参数，像 Claude Code 一样可展开查看详情），保证流式输出时界面维持 60fps。
-- **游戏库读写与批量整理原语**：
-  - `ctx.games` 提供 `list(query)`（支持按未分类、缺失标签、来源、关键字筛选）、`batchUpdate(patches)`、`setTags(id, tags)`。
-  - `ctx.categories` 提供 `list()`、`create()`、`update()`、`addGames(categoryId, gameIds)`、`removeGames(categoryId, gameIds)`。
-  - 插件可在对话流里先用 `Card` / `Table` 渲染“待应用的整理方案预览（Diff）”，用户点击卡片上的“确认应用”按钮后再调用批量接口落库。
+- **刮削新游戏（webfetch 场景）**：用户给出官网地址时，用 `fetch` + `ctx.html.parse` 实现 webfetch 工具，AI 抽取信息后调用 `ctx.games.create` 入库、`ctx.games.setCoverFromURL` 下载封面。需要执行 JS 才能渲染内容的网站暂不支持。
+- **游戏库读写与批量整理原语**：见 §7.5.1。插件可在对话流里先用 `Card` / `Table` 渲染“待应用的整理方案预览（Diff）”，或用 `ctx.ui.confirm` 弹出确认，用户确认后再调用批量接口落库。
+
+#### 7.5.1 游戏库全量读写（`ctx.games` / `ctx.categories`）
+
+| 数据 | 接口 | 说明 |
+| --- | --- | --- |
+| 游戏 | `list`、`get`、`findBySource`、`create(input)`、`update(id, patch)`、`batchUpdate`、`delete`、`batchDelete` | `create` 可同时带 `tags`（用户标签）、`metadata_sources`、`category_ids`；不走导入向导 |
+| 标签 | `setTags(id, tags)`、`tags.list/add/remove/search/gameIds` | `setTags` 只替换用户标签，刮削标签不受影响 |
+| 元数据来源 | `sources.list/upsert/setDefault/remove`、`refreshMetadata(id, { source?, fields? })` | |
+| 封面 | `setCoverFromURL(id, url)` | 下载远程封面并替换为本地托管路径 |
+| 游玩记录 | `sessions.list/add/update/remove` | `add(gameId, { start_time, duration })`，时长单位秒 |
+| 进度与评价 | `progress.get/list/save/clear`、`review.get/save` | |
+| 收藏夹 | `ctx.categories.*`，含 `listByGame(gameId)`、`games(categoryId)` | |
+| 启动 | `start(id, options?)` | 传入 `LaunchOptions` 时覆盖游戏自身的启动配置；同样经过启动拦截器 |
+
+写入字段（`update` / `batchUpdate` / `create`）：`name`、`aliases`、`cover_url`、`company`、`summary`、`rating`、`release_date`、`path`、`game_directory`、`save_path`、`process_name`、`wine_runner`、`wine_args`、`wine_prefix`、`launch_mode`、`steam_launch_options`、`status`、`source_type`、`source_id`、`use_locale_emulator`、`use_magpie`、`is_nsfw`、`metadata_locked`。系统维护的字段（`id`、时间戳、`last_played_at`、`cover_source_url`、`metadata_sources`、Steam 关联的 `steam_launch_id/kind`、`steam_user_id`）静默忽略；**未知字段报错**，方便 AI 工具调用尽早发现字段名写错。`batchUpdate` 返回 `{ updated, failed: [{ id, error }] }`。
+
+写操作完成后宿主发出 `plugin:library-changed`，游戏库页与首页重新加载。删除等危险操作是否先确认由插件决定，宿主不拦截。
+
+### 7.6 进程（`ctx.process`）
+
+插件完全信任，与主程序同权限，所以可以执行本机命令。**宿主不做沙箱**：插件本身就能读写任意文件，真正的风险在 AI——抓来的网页可能藏着诱导 AI 执行危险命令的内容（提示注入），这属于 agent 的权限管理，由插件负责：让 AI 调用命令的插件 MUST 在执行前用 `ctx.ui.confirm` 展示完整命令并让用户确认（可提供“本会话内信任此命令”之类的白名单）。系统级沙箱需要三个平台各做一套（AppContainer / sandbox-exec / bwrap），成本不划算，不做。
+
+| 成员 | 说明 |
+| --- | --- |
+| `platform` | `windows` / `darwin` / `linux` |
+| `exec(command, args?, opts?)` | 运行到结束，返回 `{ code, stdout, stderr, timedOut, truncated }`；非零退出码与超时都正常返回，只有命令无法启动时 reject。默认超时 60 秒（`timeout: 0` 不限），每路输出最多保留 8 MiB |
+| `spawn(command, args?, opts?)` | 返回 `{ pid, onStdout, onStderr, onExit, write, closeStdin, kill }`；输出按块（尽量在换行处切分）投递，注册回调之前的输出会缓存补发。插件卸载时结束整个进程树 |
+
+`opts`：`cwd`、`env`（追加）、`timeout`、`input`（写入标准输入）、`shell`（为 `true` 时 `command` 是一整行命令，交给 Windows `cmd.exe` 或 `/bin/sh`）、`encoding`（默认 `auto`：合法 UTF-8 原样返回，否则按系统代码页解码，如中文 Windows 的 GBK）。
+
+实现（`plugin/host_process*.go`）：Windows 隐藏控制台窗口（`CREATE_NO_WINDOW`），`shell` 模式直接写 `CmdLine` 避免 Go 的引号转义；结束进程树在 Windows 用 `taskkill /T /F`，其他平台用进程组。
+
+### 7.7 对话框（`ctx.ui.confirm` / `ctx.ui.select`）
+
+- `confirm({ title?, message?, confirmText?, cancelText?, danger? })` → `Promise<boolean>`。
+- `select({ ...同上, options: [{ value, label, description?, icon? }], default? })` → `Promise<string | null>`，取消为 `null`。
+- 宿主用原生弹窗显示（`ui/pluginui/dialog.go`，挂在 `#app-modal-root`），注明来自哪个插件；多个对话框按请求顺序逐个显示。主窗口隐藏时（例如从桌面快捷方式启动游戏、启动拦截器弹出账号选择）先显示主窗口。
+- 插件卸载时，未作答的对话框自动关闭并按取消处理。
+- 流程：插件 `UIAction{type: "dialog"}` → 界面显示 → 用户作答后 `PluginService.ResolveDialog(pluginID, dialogID, result)` → settle 插件里的 Promise。
 
 ## 8. 元数据源插件
 
@@ -659,14 +745,15 @@ GitHub 上维护一个索引仓库（`index.json`：id、版本、下载地址�
 
 | 路径 | 内容 |
 | --- | --- |
-| `packages/backend/plugin/` | `manifest.go`、`manager.go`（发现、加载、卸载、状态）、`runtime.go`（moejs 适配、插件线程）、`scope.go`、`host_*.go`（`games`/`categories`/`metadata`/`downloads`/`import`/`theme`/`window`/`ai`/`http` 等 `ctx` 服务）、`slots.go`（插槽注册表）、`uitree.go`（描述树类型、解码与校验，不依赖 MyGo） |
+| `packages/backend/plugin/` | `manifest.go`、`manager.go`（发现、加载、卸载、状态）、`runtime.go`（moejs 适配、插件线程）、`scope.go`、`host_*.go`（`games`/`categories`/`metadata`/`downloads`/`import`/`theme`/`window`/`ai`/`http`/`process`/`ui` 对话框等 `ctx` 服务）、`host_hooks.go`（`HookBus`，含拦截器 `Intercept`）、`http_fetch.go`（全局 `fetch` 的 HTTP 客户端）、`globals.go`（Web 兼容层）、`slots.go`（插槽注册表）、`uitree.go`（描述树类型、解码与校验，不依赖 MyGo） |
 | `packages/backend/common/hooks/` | `Bus` 接口、`Nop`、事件名常量与 payload 类型 |
+| `packages/backend/service/start_hooks.go` | 启动拦截器（`launch/prepare`、`launch/plan`）与 `game/running` 通知的接入 |
 | `packages/backend/utils/metadata/registry.go` | 外部元数据源注册表 |
 | `packages/backend/bootstrap/services.go` | 创建 `plugin.Manager`，向服务注入 `hooks.Bus` |
 | `packages/backend/appconf/` | `Plugins`、`PluginDevPaths` 及规范化 |
 | `api/` | `PluginService` 接口：列表、启用、重载、安装、卸载、插槽实例的挂载与卸载、事件投递、订阅新树、主题覆盖与子窗口请求 |
 | `host/` | 开发目录监听；把插件线程产出的树、主题变更与 `ctx.window.open` 请求桥接到界面线程 |
-| `ui/pluginui/` | `Instance`、缓存、渲染器（树 → 组件，含 `Markdown`/`Grid`/`ScrollArea`）、输入框状态、错误占位、`window.go`（插件独立悬浮窗管理）、`decoration.go`（前景/背景水印装饰层） |
+| `ui/pluginui/` | `Instance`、缓存、渲染器（树 → 组件，含 `Markdown`/`Grid`/`ScrollArea`）、输入框状态、错误占位、`window.go`（插件独立悬浮窗管理）、`decoration.go`（前景/背景水印装饰层）、`dialog.go`（`ctx.ui.confirm` / `select` 对话框） |
 | `ui/theme/` | 支持叠加插件注册的 `Palette` 覆盖与自定义字体 |
 | `ui/app.go`、`ui/pages/plugins/`、`ui/pages/*`、`ui/components/bar`、`ui/routes.go` | 插槽宿主点（侧边栏页、右侧抽屉、顶栏按钮、游戏库菜单与批量栏、详情页标签与页头、下载页头、全局装饰层）、独立插件管理页（`/plugins`） |
 | `ui/metasource` | 加上插件来源 |

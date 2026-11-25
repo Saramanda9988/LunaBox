@@ -497,24 +497,184 @@ export interface HeroBannerProps {
   label?: string;
 }
 
+export type GameStatus = 'not_started' | 'want_to_play' | 'playing' | 'completed' | 'on_hold' | 'dropped';
+export type LaunchMode = 'normal' | 'admin' | 'steam' | 'compatibility';
+
+export interface GameMetadataSource {
+  game_id: string;
+  source_type: string;
+  source_id: string;
+  cached_at?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Game {
   id: string;
   name: string;
   aliases?: string[];
   cover_url?: string;
+  /** 刮削封面的远程源地址（系统维护，只读） */
   cover_source_url?: string;
   company?: string;
   summary?: string;
+  /** 评分，统一按 10 分制 */
   rating?: number;
   release_date?: string;
+  /** 启动路径 */
   path?: string;
+  /** 游戏根目录 */
   game_directory?: string;
-  status?: string;
+  /** 存档目录 */
+  save_path?: string;
+  /** 实际监控的进程名（启动器与游戏进程不同时使用） */
+  process_name?: string;
+  /** macOS / Linux：兼容层类型、追加参数与 prefix */
+  wine_runner?: string;
+  wine_args?: string;
+  wine_prefix?: string;
+  launch_mode?: LaunchMode;
+  /** Steam 关联（由 Steam 集成维护，只读） */
+  steam_launch_id?: string;
+  steam_launch_kind?: string;
+  steam_user_id?: string;
+  steam_launch_options?: string;
+  status?: GameStatus | string;
+  /** 默认元数据来源 */
   source_type?: string;
   source_id?: string;
+  /** 全部元数据来源（只读；增删改用 ctx.games.sources） */
+  metadata_sources?: GameMetadataSource[];
+  use_locale_emulator?: boolean;
+  use_magpie?: boolean;
   is_nsfw?: boolean;
   metadata_locked?: boolean;
+  cached_at?: string;
+  created_at?: string;
+  updated_at?: string;
+  last_played_at?: string;
 }
+
+/**
+ * ctx.games.update / batchUpdate / create 可写的字段。
+ * id、时间戳、cover_source_url、metadata_sources 与 Steam 关联字段会被忽略；未知字段会报错。
+ */
+export type GamePatch = Partial<
+  Pick<
+    Game,
+    | 'name'
+    | 'aliases'
+    | 'cover_url'
+    | 'company'
+    | 'summary'
+    | 'rating'
+    | 'release_date'
+    | 'path'
+    | 'game_directory'
+    | 'save_path'
+    | 'process_name'
+    | 'wine_runner'
+    | 'wine_args'
+    | 'wine_prefix'
+    | 'launch_mode'
+    | 'steam_launch_options'
+    | 'status'
+    | 'source_type'
+    | 'source_id'
+    | 'use_locale_emulator'
+    | 'use_magpie'
+    | 'is_nsfw'
+    | 'metadata_locked'
+  >
+>;
+
+export interface GameCreateInput extends GamePatch {
+  name: string;
+  /** 用户标签 */
+  tags?: string[];
+  /** 关联的元数据来源 */
+  metadata_sources?: Array<{ source: string; source_id: string }>;
+  /** 加入的收藏夹 */
+  category_ids?: string[];
+}
+
+export interface GameTag {
+  id: string;
+  game_id: string;
+  name: string;
+  /** 'user' 为用户标签，其余为刮削来源 */
+  source: string;
+  weight: number;
+  is_spoiler: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PlaySession {
+  id: string;
+  game_id: string;
+  start_time: string;
+  end_time?: string;
+  /** 秒 */
+  duration: number;
+  updated_at?: string;
+}
+
+export interface GameProgress {
+  id?: string;
+  game_id: string;
+  chapter?: string;
+  route?: string;
+  progress_note?: string;
+  spoiler_boundary?: 'none' | 'chapter_end' | 'route_end' | 'full';
+  updated_at?: string;
+}
+
+export interface GameReview {
+  game_id: string;
+  /** 1–10，null 表示未评分 */
+  rating: number | null;
+  content: string;
+  is_spoiler: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type MetadataUpdateField = 'name' | 'aliases' | 'cover' | 'company' | 'summary' | 'rating' | 'release_date' | 'tags';
+
+/** 启动选项：null / 缺省表示沿用游戏自身的配置 */
+export interface LaunchOptions {
+  use_locale_emulator?: boolean | null;
+  use_magpie?: boolean | null;
+  run_as_admin?: boolean | null;
+  wine_runner?: string | null;
+  wine_args?: string | null;
+  wine_prefix?: string | null;
+  use_steam?: boolean | null;
+  use_compatibility?: boolean | null;
+}
+
+/** launch/plan 拦截器可以修改的启动计划 */
+export interface LaunchPlan {
+  /** 要启动的程序（Steam 游戏是 steam.exe） */
+  file: string;
+  args: string[];
+  /** 工作目录 */
+  dir: string;
+  /** 追加的环境变量；Windows 经 ShellExecuteEx 启动，不生效 */
+  env: Record<string, string>;
+  run_as_admin: boolean;
+}
+
+/** 拦截器返回值：undefined 表示不改；cancel 为 true 时取消启动并停止后续拦截器 */
+export interface InterceptCancel {
+  cancel: true;
+  /** 显示给用户的原因；缺省为“启动被插件取消” */
+  reason?: string;
+}
+
+export type LaunchPrepareResult = { options?: LaunchOptions } | InterceptCancel | undefined;
+export type LaunchPlanResult = { plan?: Partial<LaunchPlan> } | InterceptCancel | undefined;
 
 export interface TagItem {
   name: string;
@@ -865,11 +1025,75 @@ export interface EventMap {
   'game/added': (game: Game) => void;
   'game/updated': (game: Game) => void;
   'game/deleted': (payload: { id: string }) => void;
-  'game/before-launch': (game: Game) => { cancel: true; reason?: string } | undefined | Promise<{ cancel: true; reason?: string } | undefined>;
+  /**
+   * 启动拦截器：解析启动方式之前调用，可改写启动选项或取消启动。game 只读。
+   * 需要等用户操作（如弹出 ctx.ui.select）时，注册时传入 `{ timeout }` 放宽超时（默认 3 秒，最多 10 分钟）。
+   */
+  'launch/prepare': (payload: { game: Game; options: LaunchOptions }) => LaunchPrepareResult | Promise<LaunchPrepareResult>;
+  /**
+   * 启动拦截器：启动计划生成之后、启动进程之前调用，可改写程序、参数、工作目录、环境变量，或取消启动。game 只读。
+   * 返回的对象会深合并进当前载荷（数组整体替换），多个插件按插件顺序依次执行。
+   */
+  'launch/plan': (payload: { game: Game; plan: LaunchPlan }) => LaunchPlanResult | Promise<LaunchPlanResult>;
+  /** 通知：拦截器都已执行，进程即将启动 */
+  'game/before-launch': (payload: { game: Game; plan: LaunchPlan }) => void;
+  /** 通知：进程已启动，游玩记录已创建 */
   'game/launched': (payload: { game: Game; sessionId: string }) => void;
+  /** 通知：识别到实际运行的游戏进程（或进程交接到新进程） */
+  'game/running': (payload: { game: Game; sessionId: string; pid: number; processName: string; reason: string }) => void;
   'session/ended': (payload: { gameId: string; sessionId: string; duration: number }) => void;
   'metadata/before-search': (payload: { name: string; source: string }) => { name: string } | undefined;
   'metadata/after-fetch': (payload: { source: string; result: MetadataResult }) => MetadataResult | undefined;
+}
+
+export interface ProcessOptions {
+  /** 工作目录 */
+  cwd?: string;
+  /** 追加的环境变量 */
+  env?: Record<string, string>;
+  /** 毫秒；exec 默认 60000，0 表示不限。spawn 不使用 */
+  timeout?: number;
+  /** 写入标准输入的内容 */
+  input?: string;
+  /** 为 true 时 command 是一整行命令，交给系统 shell（Windows 为 cmd.exe，其他平台为 /bin/sh） */
+  shell?: boolean;
+  /** 输出编码：auto（默认，非 UTF-8 时按系统代码页解码，如 GBK）| utf8 | gbk | big5 | shift_jis | euc-kr */
+  encoding?: string;
+}
+
+export interface ExecResult {
+  /** 退出码；未能取得时为 -1 */
+  code: number;
+  stdout: string;
+  stderr: string;
+  timedOut: boolean;
+  /** 输出超过 8 MiB 被截断 */
+  truncated: boolean;
+}
+
+export interface ProcessHandle {
+  pid: number;
+  onStdout(fn: (text: string) => void): void;
+  onStderr(fn: (text: string) => void): void;
+  onExit(fn: (result: { code: number; error?: string }) => void): void;
+  write(data: string): void;
+  closeStdin(): void;
+  /** 结束进程及其子进程 */
+  kill(): void;
+}
+
+export interface ConfirmOptions {
+  title?: string;
+  message?: string;
+  confirmText?: string;
+  cancelText?: string;
+  danger?: boolean;
+}
+
+export interface SelectOptions extends ConfirmOptions {
+  options: Array<{ value: string; label: string; description?: string; icon?: string }>;
+  /** 默认选中的 value */
+  default?: string;
 }
 
 export interface Context {
@@ -905,14 +1129,59 @@ export interface Context {
     list(query?: Record<string, unknown>): Promise<{ games: Game[]; total: number }>;
     get(id: string): Promise<Game>;
     findBySource(source: string, sourceId: string): Promise<Game | null>;
-    update(id: string, patch: Partial<Game>): Promise<Game>;
-    batchUpdate(patches: Array<{ id: string; patch: Partial<Game> }>): Promise<{ updated: number }>;
-    setTags(id: string, tags: string[]): Promise<unknown[]>;
-    start(id: string): Promise<boolean>;
+    /** 新增游戏（不走导入向导）；返回入库后的游戏 */
+    create(input: GameCreateInput): Promise<Game>;
+    update(id: string, patch: GamePatch): Promise<Game>;
+    batchUpdate(patches: Array<{ id: string; patch: GamePatch }>): Promise<{ updated: number; failed?: Array<{ id: string; error: string }> }>;
+    delete(id: string): Promise<void>;
+    batchDelete(ids: string[]): Promise<{ deleted: number }>;
+    /** 把用户标签设为给定列表（刮削标签不受影响） */
+    setTags(id: string, tags: string[]): Promise<GameTag[]>;
+    /** 重新拉取元数据：指定 source 时只用该来源，指定 fields 时只更新这些字段 */
+    refreshMetadata(id: string, opts?: { source?: string; fields?: MetadataUpdateField[] }): Promise<Game>;
+    /** 下载远程封面并设为本地封面，返回本地路径 */
+    setCoverFromURL(id: string, url: string): Promise<string>;
+    /** 启动游戏；传入 options 时覆盖游戏自身的启动配置 */
+    start(id: string, options?: LaunchOptions): Promise<boolean>;
     onChanged(fn: (payload: unknown) => void): Disposer;
+    tags: {
+      list(gameId: string): Promise<GameTag[]>;
+      add(gameId: string, name: string): Promise<GameTag[]>;
+      remove(tagId: string): Promise<void>;
+      /** 按关键字搜索库内已有的标签名 */
+      search(query: string): Promise<string[]>;
+      gameIds(tagName: string): Promise<string[]>;
+    };
+    sources: {
+      list(gameId: string): Promise<GameMetadataSource[]>;
+      upsert(gameId: string, source: string, sourceId: string): Promise<GameMetadataSource[]>;
+      setDefault(gameId: string, source: string): Promise<void>;
+      remove(gameId: string, source: string): Promise<void>;
+    };
+    sessions: {
+      list(gameId: string): Promise<PlaySession[]>;
+      add(gameId: string, input: { start_time: string; duration: number }): Promise<PlaySession>;
+      update(session: PlaySession): Promise<void>;
+      remove(sessionId: string): Promise<void>;
+    };
+    progress: {
+      get(gameId: string): Promise<GameProgress | null>;
+      list(gameId: string): Promise<GameProgress[]>;
+      save(progress: GameProgress): Promise<GameProgress>;
+      clear(gameId: string): Promise<void>;
+    };
+    review: {
+      get(gameId: string): Promise<GameReview | null>;
+      save(review: GameReview): Promise<GameReview>;
+    };
   };
   categories: {
     list(): Promise<Category[]>;
+    get(id: string): Promise<Category>;
+    /** 游戏所在的收藏夹 */
+    listByGame(gameId: string): Promise<Category[]>;
+    /** 收藏夹里的游戏 */
+    games(categoryId: string): Promise<Game[]>;
     create(input: { name: string; emoji?: string }): Promise<Category | null>;
     update(id: string, patch: { name?: string; emoji?: string }): Promise<void>;
     delete(id: string): Promise<void>;
@@ -952,6 +1221,11 @@ export interface Context {
   };
   ai: {
     getConfig(): { configured: boolean; provider: string; model: string };
+    /**
+     * 宿主设置页配置的 AI 服务凭据（OpenAI 兼容端点），供插件自带的 agent 运行时（如 pi）直接使用。
+     * 未配置时 configured 为 false、apiKey 为空。
+     */
+    getCredentials(): { configured: boolean; provider: string; baseUrl: string; apiKey: string; model: string };
     complete(req: AIStreamRequest): Promise<{ content: string; toolCalls?: unknown[]; usage?: Record<string, unknown> }>;
     stream(req: AIStreamRequest, handlers: AIStreamHandlers): Disposer;
   };
@@ -962,13 +1236,20 @@ export interface Context {
       handlers: { onEvent?: (ev: { event: string; id: string; data: string }) => void; onDone?: () => void; onError?: (err: { message: string }) => void }
     ): Disposer;
   };
-  on<K extends keyof EventMap>(event: K, listener: EventMap[K], opts?: { prepend?: boolean }): Disposer;
+  /**
+   * 注册事件监听或拦截器。timeout（毫秒）只对拦截器（launch/*）生效：默认 3000，最多 600000。
+   */
+  on<K extends keyof EventMap>(event: K, listener: EventMap[K], opts?: { prepend?: boolean; timeout?: number }): Disposer;
   ui: {
     slot(name: SlotName, def: SlotDef | DecorationOptions): Disposer;
     toast(msg: string, type?: 'info' | 'success' | 'error' | 'loading'): void;
     navigate(path: string, params?: Record<string, unknown>): void;
     openDrawer(id: string, props?: Record<string, unknown>): void;
     closeDrawer(): void;
+    /** 确认对话框：确认为 true，取消（或插件卸载）为 false。主窗口隐藏时会先显示主窗口 */
+    confirm(opts: ConfirmOptions): Promise<boolean>;
+    /** 单选对话框：返回选中项的 value，取消为 null */
+    select(opts: SelectOptions): Promise<string | null>;
   };
   html: {
     parse(html: string): HTMLSelection;
@@ -988,6 +1269,18 @@ export interface Context {
     readDir(path: string): Promise<Array<{ name: string; is_dir: boolean }>>;
     mkdir(path: string): Promise<void>;
     remove(path: string): Promise<void>;
+  };
+  /**
+   * 执行本机命令（插件完全信任，与主程序同权限；宿主不做沙箱）。
+   * 让 AI 调用命令的插件应先用 ctx.ui.confirm 让用户逐条确认。插件卸载时 spawn 的进程树会被结束。
+   */
+  process: {
+    /** 当前系统：windows | darwin | linux */
+    platform: string;
+    exec(command: string, opts?: ProcessOptions): Promise<ExecResult>;
+    exec(command: string, args: string[], opts?: ProcessOptions): Promise<ExecResult>;
+    spawn(command: string, opts?: ProcessOptions): ProcessHandle;
+    spawn(command: string, args: string[], opts?: ProcessOptions): ProcessHandle;
   };
   paths: {
     plugin: string;

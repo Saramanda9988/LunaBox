@@ -77,7 +77,9 @@ export default function setup(ctx: Context) {
 ```bash
 # 使用 esbuild 打包 src/index.tsx|ts -> manifest.main（默认 main.js）
 # 自动将 lunabox、lunabox/jsx-runtime、node:buffer 标为 external
-lunabox-plugin build [dir]
+# 默认 platform=browser（moejs 提供的是 Web API 而不是 Node 内置模块，OpenAI / Anthropic SDK 等会选用浏览器版实现）
+# --minify 压缩输出；--platform=neutral 恢复旧行为
+lunabox-plugin build [dir] [--minify] [--platform=browser|neutral]
 
 # 打包为 <id>-<version>.zip（包含 plugin.json、main.js、locales/、assets/ 及自定义 icon）
 lunabox-plugin pack [dir]
@@ -504,37 +506,30 @@ ctx.config.onChange<T = Record<string, unknown>>(fn: (next: T) => void): Dispose
 
 ### 7.4 游戏库与分类：`ctx.games` / `ctx.categories`
 
+类型 `Game`、`GamePatch`、`GameCreateInput`、`GameTag`、`PlaySession`、`GameProgress`、`GameReview`、`GameMetadataSource`、`LaunchOptions` 见 `src/types.ts`。
+
+- `ctx.games`
+  - 查询：`list(query?)`、`get(id)`、`findBySource(source, sourceId)`
+  - 增删改：`create(input)`、`update(id, patch)`、`batchUpdate(patches)`（返回 `{ updated, failed }`）、`delete(id)`、`batchDelete(ids)`
+  - 标签：`setTags(id, tags)`（只替换用户标签）、`tags.list/add/remove/search/gameIds`
+  - 元数据：`sources.list/upsert/setDefault/remove`、`refreshMetadata(id, { source?, fields? })`、`setCoverFromURL(id, url)`
+  - 游玩记录：`sessions.list/add/update/remove`；进度：`progress.get/list/save/clear`；评价：`review.get/save`
+  - 其他：`start(id, options?)`、`onChanged(fn)`
+- `ctx.categories`：`list()`、`get(id)`、`listByGame(gameId)`、`games(categoryId)`、`create({ name, emoji? })`、`update(id, patch)`、`delete(id)`、`addGames(categoryId, gameIds)`、`removeGames(categoryId, gameIds)`
+
+可写字段与规则见 [plugin-system.md §7.5.1](plugin-system.md)：只读字段静默忽略，未知字段报错。写操作后游戏库页与首页自动刷新。
+
 ```ts
-interface Game {
-  id: string;
-  name: string;
-  aliases?: string[];
-  cover_url?: string;
-  cover_source_url?: string;
-  company?: string;
-  summary?: string;
-  rating?: number;
-  release_date?: string;
-  path?: string;
-  game_directory?: string;
-  status?: string;
-  source_type?: string;
-  source_id?: string;
-  is_nsfw?: boolean;
-  metadata_locked?: boolean;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  emoji: string;
-  is_system?: boolean;
-  game_count?: number;
-}
+const game = await ctx.games.create({
+  name: '星之终途',
+  company: 'Key',
+  path: 'D:/Games/Stella/Stella.exe',
+  tags: ['已通关'],
+  metadata_sources: [{ source: 'vndb', source_id: 'v26437' }],
+});
+await ctx.games.setCoverFromURL(game.id, 'https://example.com/cover.jpg');
+await ctx.games.update(game.id, { status: 'playing', use_locale_emulator: true });
 ```
-
-- `ctx.games`：`list(query?)`、`get(id)`、`findBySource(source, sourceId)`、`update(id, patch)`、`batchUpdate(patches)`、`setTags(id, tags)`、`start(id)`、`onChanged(fn)`
-- `ctx.categories`：`list()`、`create({ name, emoji? })`、`update(id, patch)`、`delete(id)`、`addGames(categoryId, gameIds)`、`removeGames(categoryId, gameIds)`
 
 ### 7.5 元数据与认证令牌：`ctx.metadata`
 
@@ -601,38 +596,77 @@ interface MetadataSourceDef {
 
 ### 7.9 AI 与网络：`ctx.ai` / `ctx.http` / `fetch`
 
-- **全局 `fetch`**：遵循宿主代理配置，默认注入 LunaBox 统一 `User-Agent`。
+- **全局 `fetch`**：遵循宿主代理配置，默认注入 LunaBox 统一 `User-Agent`；只限制等待响应头 30 秒，流式响应体不限时长，用 `AbortSignal` 中止。
+- **Web 兼容层**：宿主补齐了 `FinalizationRegistry`、`crypto.getRandomValues` / `crypto.randomUUID`、`Blob` / `File` / `FormData`（`fetch` 暂不支持 multipart 上传）。
 - **`ctx.http.sse(url, init, handlers): Disposer`**：Server-Sent Events 流式订阅（`onEvent` / `onDone` / `onError`）。
-- **`ctx.ai`**：复用宿主已配置的 AI Provider（也可按请求覆盖 `model`/`baseUrl`/`apiKey`）：
-  - `getConfig(): { configured: boolean; provider: string; model: string }`
-  - `complete(req: AIStreamRequest)`
-  - `stream(req: AIStreamRequest, handlers: AIStreamHandlers): Disposer`（支持多轮 `maxTurns` 与 `onToolCall` 工具调用）
+- **`ctx.ai`**：
+  - `getConfig(): { configured, provider, model }`
+  - `getCredentials(): { configured, provider, baseUrl, apiKey, model }`：宿主设置页配置的凭据，给插件自带的 agent 运行时使用
+  - `complete(req)` / `stream(req, handlers): Disposer`：宿主 Go 侧的 OpenAI 兼容调用（支持 `tools`、`maxTurns` 与 `onToolCall`）
 
-### 7.10 宿主事件钩子：`ctx.on`（`EventMap`）
+**自带 agent 运行时（推荐）**：直接打包 [pi](https://github.com/earendil-works/pi)，模型适配与 agent 循环都在插件里，支持 OpenAI 兼容与 Anthropic 端点：
 
 ```ts
-ctx.on<K extends keyof EventMap>(event: K, listener: EventMap[K], opts?: { prepend?: boolean }): Disposer;
+import { Agent } from '@earendil-works/pi-agent-core';
+
+const cred = ctx.ai.getCredentials();
+// 用 cred.baseUrl / cred.apiKey / cred.model 创建 provider，
+// 工具实现调用 ctx.games.* / fetch + ctx.html.parse / ctx.process（先 ctx.ui.confirm）
 ```
 
-| 事件名 | 载荷 | 返回值作用 |
-| --- | --- | --- |
-| `app/ready` | 无 | — |
-| `game/added` | `Game` | — |
-| `game/updated` | `Game` | — |
-| `game/deleted` | `{ id: string }` | — |
-| `game/before-launch` | `Game` | 返回 `{ cancel: true, reason? }` 可拦截启动（支持异步 Promise） |
-| `game/launched` | `{ game: Game; sessionId: string }` | — |
-| `session/ended` | `{ gameId: string; sessionId: string; duration: number }` | — |
-| `metadata/before-search` | `{ name: string; source: string }` | 返回 `{ name }` 可改写搜索关键词 |
-| `metadata/after-fetch` | `{ source: string; result: MetadataResult }` | 返回新的 `MetadataResult` 可加工/补全抓取结果 |
+pi 自带的 bash / read / edit 工具依赖 Node 接口，在插件里不可用，用 `ctx.process` / `ctx.fs` 实现同名工具。
+
+
+### 7.10 宿主事件钩子与启动拦截器：`ctx.on`（`EventMap`）
+
+```ts
+ctx.on<K extends keyof EventMap>(event: K, listener: EventMap[K], opts?: { prepend?: boolean; timeout?: number }): Disposer;
+```
+
+| 事件名 | 类型 | 载荷 | 返回值作用 |
+| --- | --- | --- | --- |
+| `app/ready` | 通知 | 无 | — |
+| `game/added` | 通知 | `Game` | — |
+| `game/updated` | 通知 | `Game` | — |
+| `game/deleted` | 通知 | `{ id: string }` | — |
+| `launch/prepare` | 拦截器 | `{ game, options: LaunchOptions }` | 返回 `{ options }` 改启动选项，`{ cancel: true, reason? }` 取消启动 |
+| `launch/plan` | 拦截器 | `{ game, plan: LaunchPlan }` | 返回 `{ plan }` 改 `file` / `args` / `dir` / `env` / `run_as_admin`，`{ cancel: true, reason? }` 取消启动 |
+| `game/before-launch` | 通知 | `{ game, plan }` | —（拦截器都已执行，进程即将启动） |
+| `game/launched` | 通知 | `{ game: Game; sessionId: string }` | — |
+| `game/running` | 通知 | `{ game, sessionId, pid, processName, reason }` | —（识别到实际游戏进程） |
+| `session/ended` | 通知 | `{ gameId: string; sessionId: string; duration: number }` | — |
+| `metadata/before-search` | waterfall | `{ name: string; source: string }` | 返回 `{ name }` 可改写搜索关键词 |
+| `metadata/after-fetch` | waterfall | `{ source: string; result: MetadataResult }` | 返回新的 `MetadataResult` 可加工/补全抓取结果 |
+
+拦截器的返回值会**深合并**进载荷（数组整体替换），多个插件按插件顺序依次执行，任一返回 `cancel: true` 即停止。默认超时 3 秒，需要等用户操作时用 `{ timeout }` 放宽（最多 10 分钟），例如启动前选择 Steam 账号：
+
+```ts
+ctx.on('launch/plan', async ({ game, plan }) => {
+  if (!plan.file.toLowerCase().endsWith('steam.exe')) return;
+  const login = await ctx.ui.select({
+    title: `用哪个账号启动《${game.name}》？`,
+    options: accounts.map((a) => ({ value: a.login, label: a.name })),
+  });
+  if (login === null) return { cancel: true, reason: '已取消' };
+  await ctx.process.exec('taskkill /IM steam.exe /F', { shell: true });
+  await ctx.process.exec('reg', ['add', 'HKCU\\Software\\Valve\\Steam', '/v', 'AutoLoginUser', '/d', login, '/f']);
+}, { timeout: 120_000 });
+```
+
 
 ### 7.11 界面操作、HTML 解析、系统与文件
 
-- **`ctx.ui`**：`slot(name, def)`、`toast(msg, type?)`、`navigate(path, params?)`、`openDrawer(id, props?)`、`closeDrawer()`
+- **`ctx.ui`**：`slot(name, def)`、`toast(msg, type?)`、`navigate(path, params?)`、`openDrawer(id, props?)`、`closeDrawer()`、`confirm(opts): Promise<boolean>`、`select(opts): Promise<string | null>`（原生对话框；主窗口隐藏时会先显示主窗口；插件卸载时自动按取消关闭）
 - **`ctx.html.parse(html): HTMLSelection`**：提供类 jQuery / CSS 选择器链式查询（`select`、`first`、`eq`、`length`、`text`、`attr`、`html`、`map`）
 - **`ctx.shell`**：`openURL(url)`、`openPath(path)`
 - **`ctx.audio`**：`play(src, opts?: { volume?: number } | number)`、`stop(src?)`
 - **`ctx.fs`**：`readFile(path)`、`writeFile(path, content)`、`exists(path)`、`readDir(path)`、`mkdir(path)`、`remove(path)`
+- **`ctx.process`**（完全信任，宿主不做沙箱）：
+  - `platform`：`windows` / `darwin` / `linux`
+  - `exec(command, args?, opts?) → Promise<{ code, stdout, stderr, timedOut, truncated }>`：非零退出码不 reject，命令无法启动才 reject；默认超时 60 秒
+  - `spawn(command, args?, opts?) → { pid, onStdout, onStderr, onExit, write, closeStdin, kill }`：插件卸载时结束整个进程树
+  - `opts`：`cwd`、`env`、`timeout`、`input`、`shell`（整行命令交给 `cmd.exe` / `/bin/sh`）、`encoding`（默认 `auto`，非 UTF-8 输出按系统代码页解码）
+  - 让 AI 调用命令时，MUST 先用 `ctx.ui.confirm` 展示完整命令让用户确认
 
 ---
 

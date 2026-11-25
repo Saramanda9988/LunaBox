@@ -33,6 +33,9 @@ type Dependencies struct {
 	Import        *service.ImportService
 	AI            *service.AiService
 	Hikarinagi    *service.HikarinagiService
+	Session       *service.SessionService
+	Progress      *service.GameProgressService
+	Review        *service.GameReviewService
 	Runtime       appruntime.Runtime
 	// DataDir 为空时默认使用 apputils.GetDataDir()。
 	DataDir string
@@ -623,6 +626,13 @@ func (m *Manager) UnmountSlot(instanceID, pluginID string) {
 func (m *Manager) DispatchEvent(ev UIEvent) {
 	if p := m.activePlugin(ev.PluginID); p != nil {
 		p.DispatchUIEvent(ev)
+	}
+}
+
+// ResolveDialog 把用户对 ctx.ui.confirm / select 对话框的回答交还插件（result 为 JSON；取消时传 nil）。
+func (m *Manager) ResolveDialog(pluginID, dialogID string, result json.RawMessage) {
+	if p := m.activePlugin(pluginID); p != nil {
+		p.resolveDialog(dialogID, result)
 	}
 }
 

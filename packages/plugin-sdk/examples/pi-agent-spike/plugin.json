@@ -1,0 +1,14 @@
+{
+  "id": "example-pi-agent-spike",
+  "version": "0.0.1",
+  "apiVersion": 1,
+  "engines": { "lunabox": ">=2.1.0 <3" },
+  "main": "main.js",
+  "name": { "zh-CN": "pi Agent 可行性验证", "en-US": "pi Agent Spike" },
+  "description": {
+    "zh-CN": "可行性验证：在插件运行时中直接运行 pi-ai + pi-agent-core（OpenAI 兼容与 Anthropic 提供方、工具调用循环）。",
+    "en-US": "Feasibility spike: run pi-ai + pi-agent-core (OpenAI-compatible and Anthropic providers, tool loop) inside the plugin runtime."
+  },
+  "author": "LunaBox Team",
+  "icon": "robot-happy"
+}

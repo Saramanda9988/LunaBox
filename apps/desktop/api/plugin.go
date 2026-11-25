@@ -40,6 +40,8 @@ type PluginService interface {
 	InvokeAction(pluginID, slotName, regID string, payload any)
 	CheckActionWhen(pluginID, slotName, regID string, payload any) bool
 	NotifyWindowEvent(pluginID, windowID, event string, payload map[string]any)
+	// ResolveDialog 把用户对插件对话框的回答交还插件；result 为 nil 表示取消。
+	ResolveDialog(pluginID, dialogID string, result any)
 
 	SubscribeState(fn func()) func()
 	SubscribeUIChanges(fn func()) func()

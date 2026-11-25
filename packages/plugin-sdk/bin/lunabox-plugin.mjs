@@ -3,8 +3,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-const [, , cmd, targetArg] = process.argv;
+const [, , cmd, ...rest] = process.argv;
+const flags = new Set(rest.filter((a) => a.startsWith('--')));
+const positional = rest.filter((a) => !a.startsWith('--'));
+const targetArg = positional[0];
 const cwd = targetArg ? path.resolve(targetArg) : process.cwd();
+
+function flagValue(name, fallback) {
+  const prefix = `--${name}=`;
+  const hit = rest.find((a) => a.startsWith(prefix));
+  return hit ? hit.slice(prefix.length) : fallback;
+}
 
 async function buildPlugin() {
   const esbuild = await import('esbuild');
@@ -24,8 +33,11 @@ async function buildPlugin() {
     outfile: outFile,
     bundle: true,
     format: 'esm',
-    platform: 'neutral',
+    // moejs provides Web APIs (fetch, streams, TextDecoder...), not Node built-ins:
+    // "browser" lets packages such as the OpenAI / Anthropic SDKs pick their browser builds.
+    platform: flagValue('platform', 'browser'),
     target: 'es2022',
+    minify: flags.has('--minify'),
     jsx: 'automatic',
     jsxImportSource: 'lunabox',
     external: ['lunabox', 'lunabox/jsx-runtime', 'node:buffer'],
@@ -71,7 +83,8 @@ async function main() {
   } else if (cmd === 'pack') {
     packPlugin();
   } else {
-    console.log('Usage: lunabox-plugin <build|pack> [dir]');
+    console.log('Usage: lunabox-plugin build [dir] [--minify] [--platform=browser|neutral]');
+    console.log('       lunabox-plugin pack [dir]');
     process.exit(1);
   }
 }

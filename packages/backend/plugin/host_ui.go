@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/MoeForge/moejs"
@@ -16,7 +17,7 @@ func slotCallbackKey(slotName, id string) string {
 }
 
 func (p *Plugin) buildUIAPI() map[string]any {
-	return map[string]any{
+	api := map[string]any{
 		"slot": p.safeNative("ui.slot", func(r *moejs.Realm, _ moejs.Value, args []moejs.Value) (moejs.Value, error) {
 			slotName := strings.TrimSpace(argString(args, 0))
 			def := moejs.Arg(args, 1)
@@ -159,6 +160,10 @@ func (p *Plugin) buildUIAPI() map[string]any {
 			return moejs.Undefined(), nil
 		}),
 	}
+	for k, v := range p.buildDialogAPI() {
+		api[k] = v
+	}
+	return api
 }
 
 // MountSlotInstance 在插件线程挂载一个插槽实例，新建子作用域并触发首次 render。
@@ -332,4 +337,118 @@ func (p *Plugin) CheckSlotWhen(slotName, regID string, payload any) bool {
 		return res
 	}
 	return true
+}
+
+// ─────────────────────────── ctx.ui.confirm / select ───────────────────────────
+
+// openDialog 请求界面显示对话框，返回在用户作答（或插件卸载）时 settle 的 Promise。
+// cancelValue 是取消或卸载时的结果；toResult 把界面回传的 JSON 转成 JS 返回值。
+func (p *Plugin) openDialog(spec DialogSpec, cancelValue any, toResult func(raw json.RawMessage) any) moejs.Value {
+	promise, settle := p.loop.NewPromise()
+	p.mu.Lock()
+	p.nextDialog++
+	id := fmt.Sprintf("%s-dialog-%d", p.ID, p.nextDialog)
+	p.mu.Unlock()
+
+	var settled atomic.Bool
+	// finish 只生效一次，返回是否由这次调用 settle
+	finish := func(raw json.RawMessage) bool {
+		if !settled.CompareAndSwap(false, true) {
+			return false
+		}
+		p.mu.Lock()
+		delete(p.dialogs, id)
+		p.mu.Unlock()
+		value := cancelValue
+		if len(raw) > 0 && string(raw) != "null" {
+			value = toResult(raw)
+		}
+		settle(func(rt *moejs.Runtime) (moejs.Value, error) {
+			return toJSValue(rt, value)
+		})
+		return true
+	}
+	// 插件卸载时关闭界面上的对话框，并按取消处理
+	dispose := p.scope.Effect(func() {
+		if finish(nil) {
+			p.manager.ui.EmitAction(UIAction{Type: "closeDialog", PluginID: p.ID, DialogID: id})
+		}
+	})
+	p.mu.Lock()
+	p.dialogs[id] = func(raw json.RawMessage) {
+		if finish(raw) {
+			dispose() // 已作答：撤销卸载清理（finish 再次调用为空操作）
+		}
+	}
+	p.mu.Unlock()
+
+	// 主窗口隐藏时（如从快捷方式启动游戏、启动拦截器弹出账号选择）先把它显示出来
+	if visible := p.manager.mainWindowVisible; visible != nil && !visible() {
+		if rt := p.manager.deps.Runtime; rt != nil {
+			rt.ShowWindow()
+		}
+	}
+	p.manager.ui.EmitAction(UIAction{Type: "dialog", PluginID: p.ID, DialogID: id, Dialog: &spec})
+	return promise
+}
+
+func (p *Plugin) resolveDialog(id string, result json.RawMessage) {
+	p.mu.RLock()
+	finish := p.dialogs[id]
+	p.mu.RUnlock()
+	if finish != nil {
+		finish(result)
+	}
+}
+
+func (p *Plugin) parseDialogSpec(r *moejs.Realm, v moejs.Value, kind string) (DialogSpec, error) {
+	var spec DialogSpec
+	if !v.IsObject() {
+		return spec, throwJSError(r, "ui."+kind+" 需要选项对象")
+	}
+	raw, err := p.rt.AppendJSON(nil, v)
+	if err != nil {
+		return spec, throwJSError(r, err.Error())
+	}
+	if err := json.Unmarshal(raw, &spec); err != nil {
+		return spec, throwJSError(r, "ui."+kind+" 选项格式错误: "+err.Error())
+	}
+	spec.Kind = kind
+	if strings.TrimSpace(spec.Title) == "" {
+		spec.Title = p.Manifest.DisplayName(p.manager.currentLanguage())
+	}
+	return spec, nil
+}
+
+func (p *Plugin) buildDialogAPI() map[string]any {
+	return map[string]any{
+		"confirm": p.safeNative("ui.confirm", func(r *moejs.Realm, _ moejs.Value, args []moejs.Value) (moejs.Value, error) {
+			spec, err := p.parseDialogSpec(r, moejs.Arg(args, 0), "confirm")
+			if err != nil {
+				return moejs.Undefined(), err
+			}
+			return p.openDialog(spec, false, func(raw json.RawMessage) any {
+				var ok bool
+				_ = json.Unmarshal(raw, &ok)
+				return ok
+			}), nil
+		}),
+		"select": p.safeNative("ui.select", func(r *moejs.Realm, _ moejs.Value, args []moejs.Value) (moejs.Value, error) {
+			spec, err := p.parseDialogSpec(r, moejs.Arg(args, 0), "select")
+			if err != nil {
+				return moejs.Undefined(), err
+			}
+			if len(spec.Options) == 0 {
+				return moejs.Undefined(), throwJSError(r, "ui.select 至少需要一个选项")
+			}
+			// 取消时返回 null（Go 的 nil 会变成 undefined）
+			return p.openDialog(spec, json.RawMessage("null"), func(raw json.RawMessage) any {
+				var value string
+				if json.Unmarshal(raw, &value) != nil {
+					return nil
+				}
+				return value
+			}), nil
+		}),
+	}
 }

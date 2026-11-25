@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"path/filepath"
 	"slices"
@@ -170,6 +171,13 @@ func (b *PluginBridge) CheckActionWhen(pid, slot, reg string, payload any) bool 
 }
 func (b *PluginBridge) NotifyWindowEvent(pid, wid, ev string, payload map[string]any) {
 	b.mgr.NotifyWindowEvent(pid, wid, ev, payload)
+}
+func (b *PluginBridge) ResolveDialog(pid, did string, result any) {
+	var raw json.RawMessage
+	if result != nil {
+		raw, _ = json.Marshal(result)
+	}
+	b.mgr.ResolveDialog(pid, did, raw)
 }
 func (b *PluginBridge) SubscribeState(fn func()) func() { return b.mgr.SubscribeState(fn) }
 func (b *PluginBridge) SubscribeUIChanges(fn func()) func() {

@@ -94,6 +94,8 @@ type Plugin struct {
 	whenFns     map[string]moejs.Value // slot key -> JS when(game) function
 	winHandlers map[string]*windowCallbacks
 	instScopes  map[string]*Scope
+	dialogs     map[string]func(result json.RawMessage) // 等待用户作答的对话框
+	nextDialog  uint64
 
 	// 待发送描述树合并槽（同一实例在发送前仅保留最新一棵树）
 	pendingMu    sync.Mutex
@@ -155,6 +157,7 @@ func startPluginRuntime(m *Manager, manifest Manifest, dir, dataDir string, isDe
 		whenFns:      make(map[string]moejs.Value),
 		winHandlers:  make(map[string]*windowCallbacks),
 		instScopes:   make(map[string]*Scope),
+		dialogs:      make(map[string]func(result json.RawMessage)),
 		pendingTrees: make(map[string]UITreeUpdate),
 	}
 
@@ -203,7 +206,7 @@ func startPluginRuntime(m *Manager, manifest Manifest, dir, dataDir string, isDe
 	}
 	p.loop = loop
 
-	httpClient := m.newPluginHTTPClient(30 * time.Second)
+	httpClient := m.newPluginFetchClient()
 	webAPI, err := webapi.Install(loop, webapi.Options{
 		Client:  httpClient,
 		Allow:   nil, // 完全信任，不限制目标
@@ -264,6 +267,9 @@ func startPluginRuntime(m *Manager, manifest Manifest, dir, dataDir string, isDe
 
 	if err := p.runSync(initCtx, func(rt *moejs.Runtime) error {
 		if err := p.installGlobals(rt); err != nil {
+			return err
+		}
+		if err := p.installWebCompat(rt); err != nil {
 			return err
 		}
 		if err := rt.Load(linkedMod); err != nil {
@@ -758,6 +764,7 @@ func (p *Plugin) buildContextObject(rt *moejs.Runtime) (moejs.Value, error) {
 		"shell":      p.buildShellAPI(),
 		"audio":      p.buildAudioAPI(),
 		"fs":         p.buildFSAPI(),
+		"process":    p.buildProcessAPI(),
 		"paths": map[string]any{
 			"plugin": p.Dir,
 			"data":   p.DataDir,

@@ -87,6 +87,26 @@ func (p *Plugin) buildAIAPI() map[string]any {
 				"model":      model,
 			})
 		}),
+		// getCredentials 把宿主设置页配置的 AI 凭据交给插件（插件完全信任），
+		// 供插件自带的 agent 运行时（如 pi）直接调用模型，宿主不必维护各家协议适配。
+		"getCredentials": p.safeNative("ai.getCredentials", func(_ *moejs.Realm, _ moejs.Value, _ []moejs.Value) (moejs.Value, error) {
+			out := map[string]any{"configured": false, "provider": "", "baseUrl": "", "apiKey": "", "model": ""}
+			if cfg := p.manager.deps.Config; cfg != nil {
+				baseURL := strings.TrimRight(strings.TrimSpace(cfg.AIBaseURL), "/")
+				if baseURL == "" {
+					baseURL = "https://api.openai.com/v1"
+				}
+				apiKey := strings.TrimSpace(cfg.AIAPIKey)
+				out = map[string]any{
+					"configured": apiKey != "",
+					"provider":   cfg.AIProvider,
+					"baseUrl":    baseURL,
+					"apiKey":     apiKey,
+					"model":      strings.TrimSpace(cfg.AIModel),
+				}
+			}
+			return toJSValue(p.rt, out)
+		}),
 		"complete": p.asyncNative("ai.complete", func(ctx context.Context, args []json.RawMessage) (any, error) {
 			var req aiStreamRequest
 			if len(args) > 0 {

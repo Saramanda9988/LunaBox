@@ -26,7 +26,8 @@ const (
 	eventDownloadImportFailed = "download:game-import-failed"
 	eventDownloadMetaFailed   = "download:metadata-failed"
 	eventCoverImageDownload   = "cover-image:download"
-	eventUpdateProgress       = "update:progress" // UpdateService.DownloadAndApplyUpdate，交给正在更新的 UpdateDialog
+	eventPluginLibrary        = "plugin:library-changed" // 插件经 ctx.games / ctx.categories 改动了游戏库
+	eventUpdateProgress       = "update:progress"        // UpdateService.DownloadAndApplyUpdate，交给正在更新的 UpdateDialog
 )
 
 // accountEvents 是有授权状态（<name>:auth-status-changed）与游玩状态推送失败事件（<name>:status-push-failed）的账号来源。
@@ -103,6 +104,10 @@ func (a *App) subscribe() {
 	}
 	svc.Events.On(eventDownloadProgress, a.downloadProgress)
 	svc.Events.On(eventDownloadImported, func(any) {
+		a.library.Reload()
+		a.home.Refresh()
+	})
+	svc.Events.On(eventPluginLibrary, func(any) {
 		a.library.Reload()
 		a.home.Refresh()
 	})

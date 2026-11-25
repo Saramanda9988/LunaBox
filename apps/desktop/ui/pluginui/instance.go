@@ -66,6 +66,7 @@ type Manager struct {
 
 	instances map[string]*Instance // instanceID -> *Instance
 	windows   map[string]*pluginWindow
+	dialogs   []*pendingDialog // ctx.ui.confirm / select，按请求顺序逐个显示
 
 	unsubTree   func()
 	unsubUI     func()
@@ -234,6 +235,10 @@ func (m *Manager) handleAction(a plugin.UIAction) {
 		if m.callbacks.OnOpenImportModal != nil {
 			m.callbacks.OnOpenImportModal(a.Props)
 		}
+	case "dialog":
+		m.openDialog(a)
+	case "closeDialog":
+		m.removeDialog(a.PluginID, a.DialogID)
 	}
 }
 

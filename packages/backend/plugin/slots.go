@@ -146,9 +146,29 @@ type WindowCommand struct {
 	AlwaysOnTop bool              `json:"always_on_top,omitempty"`
 }
 
-// UIAction 是插件发起的宿主界面操作（toast / navigate / drawer / importModal）。
+// DialogOption 是 ctx.ui.select 的一个选项。
+type DialogOption struct {
+	Value       string `json:"value"`
+	Label       string `json:"label"`
+	Description string `json:"description,omitempty"`
+	Icon        string `json:"icon,omitempty"`
+}
+
+// DialogSpec 是插件请求宿主显示的对话框（ctx.ui.confirm / ctx.ui.select）。
+type DialogSpec struct {
+	Kind        string         `json:"kind"` // confirm | select
+	Title       string         `json:"title"`
+	Message     string         `json:"message,omitempty"`
+	ConfirmText string         `json:"confirmText,omitempty"`
+	CancelText  string         `json:"cancelText,omitempty"`
+	Danger      bool           `json:"danger,omitempty"`
+	Options     []DialogOption `json:"options,omitempty"`
+	Default     string         `json:"default,omitempty"`
+}
+
+// UIAction 是插件发起的宿主界面操作（toast / navigate / drawer / importModal / dialog）。
 type UIAction struct {
-	Type     string          `json:"type"` // toast | navigate | openDrawer | closeDrawer | openImportModal
+	Type     string          `json:"type"` // toast | navigate | openDrawer | closeDrawer | openImportModal | dialog | closeDialog
 	PluginID string          `json:"plugin_id"`
 	Message  string          `json:"message,omitempty"`
 	Level    string          `json:"level,omitempty"` // info | success | warning | error
@@ -156,6 +176,8 @@ type UIAction struct {
 	Params   map[string]any  `json:"params,omitempty"`
 	DrawerID string          `json:"drawer_id,omitempty"`
 	Props    json.RawMessage `json:"props,omitempty"`
+	DialogID string          `json:"dialog_id,omitempty"`
+	Dialog   *DialogSpec     `json:"dialog,omitempty"`
 }
 
 // UIRegistry 管理全部插件注册的插槽、主题、字体、装饰层与子窗口状态，供界面只读快照与变更订阅。

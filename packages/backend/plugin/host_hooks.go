@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/MoeForge/moejs"
 
@@ -18,7 +19,13 @@ type hookListener struct {
 	fn       moejs.Value
 	prepend  bool
 	sequence uint64
+	timeout  time.Duration // 仅拦截器使用；0 表示默认值
 }
+
+const (
+	defaultInterceptTimeout = 3 * time.Second
+	maxInterceptTimeout     = 10 * time.Minute
+)
 
 // HookBus 实现 hooks.Bus 接口，管理所有插件的事件监听与钩子执行顺序。
 type HookBus struct {
@@ -36,6 +43,10 @@ func newHookBus(m *Manager) *HookBus {
 }
 
 func (b *HookBus) add(p *Plugin, event string, fn moejs.Value, prepend bool) func() {
+	return b.addWithTimeout(p, event, fn, prepend, 0)
+}
+
+func (b *HookBus) addWithTimeout(p *Plugin, event string, fn moejs.Value, prepend bool, timeout time.Duration) func() {
 	b.mu.Lock()
 	b.nextID++
 	l := &hookListener{
@@ -45,6 +56,7 @@ func (b *HookBus) add(p *Plugin, event string, fn moejs.Value, prepend bool) fun
 		fn:       fn,
 		prepend:  prepend,
 		sequence: b.nextID,
+		timeout:  timeout,
 	}
 	b.listeners[event] = append(b.listeners[event], l)
 	b.mu.Unlock()
@@ -191,6 +203,58 @@ func (b *HookBus) Bail(ctx context.Context, event string, payload any) (json.Raw
 	return nil, false, nil
 }
 
+func (b *HookBus) Intercept(ctx context.Context, event string, payload any) (json.RawMessage, error) {
+	list := b.orderedListeners(event)
+	if len(list) == 0 {
+		return nil, nil
+	}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	var cur map[string]any
+	if err := json.Unmarshal(raw, &cur); err != nil {
+		return nil, err
+	}
+	for _, l := range list {
+		if ctx.Err() != nil {
+			break
+		}
+		timeout := l.timeout
+		if timeout <= 0 {
+			timeout = defaultInterceptTimeout
+		}
+		callCtx, cancel := context.WithTimeout(ctx, timeout)
+		res, callErr := l.plugin.Call(callCtx, l.fn, cur)
+		cancel()
+		if callErr != nil || len(res) == 0 || string(res) == "undefined" {
+			continue
+		}
+		var patch map[string]any
+		if json.Unmarshal(res, &patch) != nil {
+			continue
+		}
+		mergeJSONObject(cur, patch)
+		if cancelled, _ := cur["cancel"].(bool); cancelled {
+			break
+		}
+	}
+	return json.Marshal(cur)
+}
+
+// mergeJSONObject 把 patch 深合并进 dst：两边都是对象时递归，其余（含数组与 null）整体替换。
+func mergeJSONObject(dst, patch map[string]any) {
+	for k, v := range patch {
+		if pv, ok := v.(map[string]any); ok {
+			if dv, ok := dst[k].(map[string]any); ok {
+				mergeJSONObject(dv, pv)
+				continue
+			}
+		}
+		dst[k] = v
+	}
+}
+
 var _ hooks.Bus = (*HookBus)(nil)
 
 func (p *Plugin) buildOnFunc() moejs.NativeFunc {
@@ -201,12 +265,17 @@ func (p *Plugin) buildOnFunc() moejs.NativeFunc {
 			return moejs.Undefined(), throwJSError(r, "ctx.on 需要事件名和监听函数")
 		}
 		prepend := false
+		var timeout time.Duration
 		if len(args) > 2 && args[2].IsObject() {
 			if v, err := p.rt.Get(args[2], "prepend"); err == nil && v.IsBool() {
 				prepend = v.AsBool()
 			}
+			// timeout 只对拦截器（launch/*）生效：需要等用户操作的拦截器可以放宽到最多 10 分钟
+			if v, err := p.rt.Get(args[2], "timeout"); err == nil && v.IsNumber() && v.AsNumber() > 0 {
+				timeout = min(time.Duration(v.AsNumber())*time.Millisecond, maxInterceptTimeout)
+			}
 		}
-		dispose := p.scope.Effect(p.manager.hooks.add(p, event, fn, prepend))
+		dispose := p.scope.Effect(p.manager.hooks.addWithTimeout(p, event, fn, prepend, timeout))
 		return p.rt.Function("dispose", 0, func(_ *moejs.Realm, _ moejs.Value, _ []moejs.Value) (moejs.Value, error) {
 			dispose()
 			return moejs.Undefined(), nil

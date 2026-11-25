@@ -447,6 +447,7 @@ func (a *App) appModals(c *ui.Context, t *theme.Theme) {
 		OnDone:    func() { a.setupPreview = false },
 	})
 	modal.InstallConfirmView(c, t, &a.install, modal.InstallConfirmProps{Env: a.env, TopOffset: env.TopbarHeight})
+	a.plugins.DialogView(c, t, env.TopbarHeight)
 }
 
 // playingIsland 对应根布局的 <PlayingIsland />：显示 activeGameRuntimeId 的运行状态。

@@ -158,9 +158,9 @@ export function apply(ctx) {
     image: 'assets/mascot.png',
   });
 
-  // 4. Hooks: waterfall & bail
+  // 4. Hooks: waterfall & launch interceptor
   ctx.on('metadata/before-search', (payload) => ({ name: payload.name + ' [hooked]' }));
-  ctx.on('game/before-launch', (game) => {
+  ctx.on('launch/plan', ({ game }) => {
     if (game.id === 'blocked') return { cancel: true, reason: 'blocked by plugin' };
   });
 
@@ -234,9 +234,9 @@ export function apply(ctx) {
 	if err != nil || !strings.Contains(string(wfRaw), "Clannad [hooked]") {
 		t.Fatalf("waterfall failed: raw=%s err=%v", string(wfRaw), err)
 	}
-	bailRaw, matched, err := mgr.HookBus().Bail(context.Background(), hooks.EventGameBeforeLaunch, map[string]any{"id": "blocked"})
-	if err != nil || !matched || !strings.Contains(string(bailRaw), "blocked by plugin") {
-		t.Fatalf("bail failed: raw=%s matched=%v err=%v", string(bailRaw), matched, err)
+	cancelRaw, err := mgr.HookBus().Intercept(context.Background(), hooks.EventLaunchPlan, map[string]any{"game": map[string]any{"id": "blocked"}, "plan": map[string]any{"file": "game.exe"}})
+	if err != nil || !strings.Contains(string(cancelRaw), "blocked by plugin") || !strings.Contains(string(cancelRaw), `"cancel":true`) {
+		t.Fatalf("launch/plan cancel failed: raw=%s err=%v", string(cancelRaw), err)
 	}
 
 	// 验证描述树挂载、按钮点击事件与 useState 更新

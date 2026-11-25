@@ -164,6 +164,9 @@ func (s *Services) Init(ctx context.Context, db *sql.DB, config *appconf.AppConf
 		Import:        s.Import,
 		AI:            s.AI,
 		Hikarinagi:    s.Hikarinagi,
+		Session:       s.Session,
+		Progress:      s.GameProgress,
+		Review:        s.GameReview,
 	})
 	hookBus := s.Plugin.HookBus()
 	s.Game.SetHookBus(hookBus)

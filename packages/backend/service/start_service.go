@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"lunabox/backend/appconf"
@@ -260,6 +259,13 @@ func (s *StartService) startGame(gameID string, options launcherpkg.LaunchOption
 		applog.LogErrorf(s.ctx, "failed to get game path: %v", err)
 		return false, fmt.Errorf("failed to get game path: %w", err)
 	}
+	if bus := hooks.SafeBus(s.hookBus); bus.HasListeners(hooks.EventLaunchPrepare) {
+		next, cancelled, reason := s.interceptLaunchPrepare(bus, game, options)
+		if cancelled {
+			return false, errors.New(reason)
+		}
+		options = next
+	}
 	path := game.Path
 	processName := game.ProcessName
 	useSteamLaunch := launcherpkg.SupportsSteamLaunch(&game, options)
@@ -312,22 +318,6 @@ func (s *StartService) startGame(gameID string, options launcherpkg.LaunchOption
 		}
 	}
 
-	if bus := hooks.SafeBus(s.hookBus); bus.HasListeners(hooks.EventGameBeforeLaunch) {
-		bctx, cancel := context.WithTimeout(s.ctx, 3*time.Second)
-		raw, matched, err := bus.Bail(bctx, hooks.EventGameBeforeLaunch, game)
-		cancel()
-		if err == nil && matched && len(raw) > 0 {
-			var res hooks.GameBeforeLaunchResult
-			if json.Unmarshal(raw, &res) == nil && res.Cancel {
-				reason := strings.TrimSpace(res.Reason)
-				if reason == "" {
-					reason = "启动被插件取消"
-				}
-				return false, errors.New(reason)
-			}
-		}
-	}
-
 	strategy, err := launcherpkg.SelectLauncherStrategy(&game, options, s.config)
 	if err != nil {
 		applog.LogErrorf(s.ctx, "failed to select launcher strategy: %v", err)
@@ -337,6 +327,12 @@ func (s *StartService) startGame(gameID string, options launcherpkg.LaunchOption
 	if err != nil {
 		applog.LogErrorf(s.ctx, "failed to build launch plan: %v", err)
 		return false, err
+	}
+	if bus := hooks.SafeBus(s.hookBus); bus.HasListeners(hooks.EventLaunchPlan) {
+		cancelled, reason := s.interceptLaunchPlan(bus, game, &plan)
+		if cancelled {
+			return false, errors.New(reason)
+		}
 	}
 	if strings.TrimSpace(plan.DisplayName) == "" {
 		plan.DisplayName = filepath.Base(plan.File)
@@ -348,6 +344,13 @@ func (s *StartService) startGame(gameID string, options launcherpkg.LaunchOption
 		plan.ExitWatch.DetectionDir = plan.DetectionDir
 	}
 	launcherExeName := filepath.Base(plan.File)
+
+	if bus := hooks.SafeBus(s.hookBus); bus.HasListeners(hooks.EventGameBeforeLaunch) {
+		bus.Emit(hooks.EventGameBeforeLaunch, hooks.GameBeforeLaunchPayload{
+			Game: game,
+			Plan: toHookLaunchPlan(plan),
+		})
+	}
 
 	var startedProcess *processutils.StartedProcess
 	if plan.RunAsAdmin {
@@ -486,6 +489,7 @@ func (s *StartService) detectAndMonitorProcess(session *activePlaySession, launc
 	}
 
 	s.emitGameRuntimePlaying(session, "process-detected")
+	s.emitGameRunning(session, result.ProcessID, result.ProcessName, "process-detected")
 	s.startGameFocusTracking(sessionID, gameID, result.ProcessID, plan.ActiveTrack)
 
 	if result.UseLauncherHandle && launcher.Handle != 0 {
@@ -518,6 +522,7 @@ func (s *StartService) closeLauncherHandle(launcher launchedProcess) {
 
 func (s *StartService) monitorLauncherOnly(session *activePlaySession, launcher launchedProcess, plan launcherpkg.LaunchPlan) {
 	s.emitGameRuntimePlaying(session, "launcher-monitoring")
+	s.emitGameRunning(session, launcher.PID, launcher.Name, "launcher-monitoring")
 	s.startGameFocusTracking(session.sessionID, session.gameID, launcher.PID, plan.ActiveTrack)
 	var handoff *processHandoffState
 	if plan.EnableProcessHandoff {
@@ -773,6 +778,7 @@ func (s *StartService) continueMonitoringProcess(session *activePlaySession, nex
 	}
 
 	s.emitGameRuntimePlaying(session, reason)
+	s.emitGameRunning(session, next.PID, next.Name, reason)
 	s.monitorProcessByPID(session, next.PID, next.Name, handoff)
 }
 
