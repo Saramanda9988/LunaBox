@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"lunabox/backend/appconf"
@@ -68,6 +69,8 @@ type Manager struct {
 
 	mainWindowVisible func() bool
 	audioPlayer       AudioPlayer
+
+	started atomic.Bool // StartAsync 已加载完启动时启用的插件
 
 	subMu      sync.RWMutex
 	nextSubID  uint64
@@ -154,10 +157,15 @@ func (m *Manager) StartAsync() {
 	go func() {
 		m.Discover()
 		m.loadEnabledPlugins()
+		m.started.Store(true)
+		m.ui.notifyChange() // 让界面在插件加载完后重新读取主题覆盖与 Started
 		m.hooks.Emit(hooks.EventAppReady, nil)
 		m.notifyDevDirs()
 	}()
 }
+
+// Started 报告启动时启用的插件是否已全部加载：之前读到的主题覆盖等注册还不完整。
+func (m *Manager) Started() bool { return m.started.Load() }
 
 // Discover 扫描 <DataDir>/plugins/* 与 AppConfig.PluginDevPaths 中的插件。
 func (m *Manager) Discover() {

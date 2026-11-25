@@ -30,6 +30,13 @@ type Theme struct {
 	// 为空时使用内置的 LunaBox 标志；HideBrandWordmark / HideBrandIcon 隐藏侧边栏与顶栏里对应的部分。
 	BrandWordmark, BrandIcon         string
 	HideBrandWordmark, HideBrandIcon bool
+
+	// SidebarMaterial 是主题插件通过 material.sidebar 请求的侧边栏材质（"acrylic" | "mica"），空为不使用；
+	// SidebarTint 是叠在材质上的有色半透明层。窗口真正显示出材质时 App 置 MaterialOn：根布局不画底色、
+	// 侧边栏改画 SidebarTint，让系统材质从侧边栏透出来（见 ApplyPluginOverrides 与 App.syncMaterial）。
+	SidebarMaterial string
+	SidebarTint     ui.Color
+	MaterialOn      bool
 }
 
 // TopOffset 返回顶栏占用的偏移高度：隐藏顶栏时为 0，否则返回 offset。

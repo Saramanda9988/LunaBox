@@ -1,7 +1,7 @@
-// hikarinagi-theme/src/index.ts
+// examples/hikarinagi-theme/src/index.ts
 import { defineThemePreset } from "lunabox";
 
-// hikarinagi-theme/src/hina.ts
+// examples/hikarinagi-theme/src/hina.ts
 var brand = {
   50: "#eefdfb",
   100: "#d5faf5",
@@ -89,7 +89,7 @@ var dark = {
   neutralSolidOn: neutral[950]
 };
 
-// hikarinagi-theme/src/index.ts
+// examples/hikarinagi-theme/src/index.ts
 function toPalette(r, isDark) {
   return {
     // 文本
@@ -185,6 +185,17 @@ function toPalette(r, isDark) {
     tooltipBorder: isDark ? neutral[200] : "#ffffff1a"
   };
 }
+var sidebarTint = { light: "#ffffffe0", dark: "#000000e0" };
+function sidebarOnMaterial(isDark) {
+  return {
+    sidebarBorder: isDark ? "#ffffff1a" : "#00000014",
+    // --hn-border
+    navHover: isDark ? "#ffffff14" : "#0000000a",
+    // 前景色状态层
+    navActiveBg: isDark ? "#45d4c93d" : "#39c5bb29"
+    // accent 24% / 16%
+  };
+}
 function apply(ctx) {
   ctx.config.define({
     title: "Hikarinagi \u4E3B\u9898",
@@ -211,6 +222,18 @@ function apply(ctx) {
         label: "\u663E\u793A\u5E94\u7528\u56FE\u6807",
         description: "\u4FA7\u8FB9\u680F\u5B57\u6807\u524D\u7684\u6708\u4EAE\u56FE\u6807\uFF1BHikarinagi \u5B57\u6807\u81EA\u5E26\u8BC6\u522B\u5EA6\uFF0C\u9ED8\u8BA4\u9690\u85CF\u3002",
         default: false
+      },
+      {
+        key: "sidebarMaterial",
+        type: "enum",
+        label: "\u4FA7\u8FB9\u680F\u6750\u8D28",
+        description: "\u4FA7\u8FB9\u680F\u900F\u51FA\u7CFB\u7EDF\u7684\u534A\u900F\u660E\u78E8\u7802\u6750\u8D28\uFF0C\u4FDD\u6301 Hina \u7684\u9ED1\u767D\u914D\u8272\uFF08Windows 11 22H2 \u53CA\u4EE5\u4E0A\u3001macOS\uFF1BLinux \u4FDD\u6301\u4E0D\u900F\u660E\uFF09\u3002Windows \u4E0A\u7B2C\u4E00\u6B21\u5F00\u542F\u9700\u91CD\u542F LunaBox \u540E\u751F\u6548\uFF1B\u5F00\u542F\u81EA\u5B9A\u4E49\u80CC\u666F\u65F6\u4E0D\u751F\u6548\u3002",
+        default: "acrylic",
+        options: [
+          { value: "acrylic", label: "\u78E8\u7802\uFF08Acrylic\uFF09" },
+          { value: "mica", label: "\u4E91\u6BCD\uFF08Mica\uFF0C\u53D6\u58C1\u7EB8\u8272\u8C03\uFF09" },
+          { value: "off", label: "\u5173\u95ED\uFF08\u4E0D\u900F\u660E\uFF09" }
+        ]
       }
     ]
   });
@@ -218,11 +241,13 @@ function apply(ctx) {
   const applyTheme = (cfg) => {
     dispose?.();
     const lock = cfg.lockBackground !== false;
+    const material = cfg.sidebarMaterial === "mica" || cfg.sidebarMaterial === "off" ? cfg.sidebarMaterial : "acrylic";
+    const onMaterial = material !== "off";
     dispose = ctx.theme.extend(
       defineThemePreset({
         id: "hikarinagi-hina",
-        light: toPalette(light, false),
-        dark: toPalette(dark, true),
+        light: { ...toPalette(light, false), ...onMaterial ? sidebarOnMaterial(false) : {} },
+        dark: { ...toPalette(dark, true), ...onMaterial ? sidebarOnMaterial(true) : {} },
         // enabled: false 让宿主跳过用户的自定义背景；不锁定时不声明 glass，保持用户设置
         // Hina 的 --hn-radius-md / --hn-radius-lg 都是 8px：图标按钮是圆角方形，菜单面板同为 8px
         shape: { control: 8, panel: 8 },
@@ -232,6 +257,8 @@ function apply(ctx) {
           hideWordmark: cfg.showWordmark === false,
           hideIcon: cfg.showIcon !== true
         },
+        // 侧边栏的半透明磨砂：宿主在窗口显示出系统材质时才启用，否则侧边栏仍是上面的不透明 surface
+        ...onMaterial ? { material: { sidebar: material, tint: sidebarTint.light, tintDark: sidebarTint.dark } } : {},
         ...lock ? { glass: { enabled: false } } : {}
       })
     );

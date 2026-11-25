@@ -113,13 +113,17 @@ type SideBarProps struct {
 }
 
 // SideBar 对应 SideBar.tsx。开启自定义背景时底色是 rgba(var(--sidebar-bg-rgb), bgOpacity)，
-// 右边框 border-white/20 dark:border-white/10（没有 backdrop-blur）。
+// 右边框 border-white/20 dark:border-white/10（没有 backdrop-blur）。主题插件请求的窗口材质显示出来时
+// （t.MaterialOn），底色换成插件的有色半透明着色，透出后面的系统磨砂材质。
 func SideBar(c *ui.Context, t *theme.Theme, p SideBarProps) {
 	s := p.State
 	now := c.Now()
 
 	bg, border := t.SidebarBg, t.SidebarBorder
-	if t.Glass {
+	switch {
+	case t.MaterialOn:
+		bg = t.SidebarTint
+	case t.Glass:
 		bg, border = t.SidebarBg.Alpha(t.BgOpacity), t.Pick(theme.White.Alpha(0.2), theme.White.Alpha(0.1))
 	}
 	aside := ui.Column(c).Shrink(0).Background(bg).BorderWidth(0, t.HL, 0, 0).BorderColor(border)

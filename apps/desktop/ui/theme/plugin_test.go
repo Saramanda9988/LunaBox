@@ -168,3 +168,49 @@ func TestThemedFollowsOnlyOverriddenTokens(t *testing.T) {
 		t.Fatal("a fresh theme should not carry overrides")
 	}
 }
+
+func TestPluginMaterialOverride(t *testing.T) {
+	ov := []plugin.ThemeOverride{{
+		PluginID: "p", ID: "t",
+		Light:    map[string]string{"sidebarBg": "#ffffff"},
+		Material: &plugin.MaterialOverride{Sidebar: "acrylic", Tint: "#e8f7f5a8", TintDark: "#071c1ab3"},
+	}}
+
+	def := New(false, 1)
+	if def.SidebarMaterial != "" || def.MaterialOn {
+		t.Fatalf("default theme requests a material: %q %v", def.SidebarMaterial, def.MaterialOn)
+	}
+
+	light := New(false, 1)
+	light.ApplyPluginOverrides(ov)
+	if light.SidebarMaterial != MaterialAcrylic || light.SidebarTint != ui.Hex("#e8f7f5a8") {
+		t.Fatalf("light material = %q tint %v", light.SidebarMaterial, light.SidebarTint)
+	}
+	if light.MaterialOn {
+		t.Fatal("MaterialOn is set by App once the window shows the material, not by the overrides")
+	}
+
+	dark := New(true, 1)
+	dark.ApplyPluginOverrides(ov)
+	if dark.SidebarTint != ui.Hex("#071c1ab3") {
+		t.Fatalf("dark tint = %v", dark.SidebarTint)
+	}
+
+	// 没给着色时取最终 sidebarBg 的默认不透明度；未知的材质视为不使用
+	noTint := New(false, 1)
+	noTint.ApplyPluginOverrides([]plugin.ThemeOverride{{
+		PluginID: "p", ID: "t", Light: map[string]string{"sidebarBg": "#123456"},
+		Material: &plugin.MaterialOverride{Sidebar: "mica"},
+	}})
+	if noTint.SidebarMaterial != MaterialMica || noTint.SidebarTint != ui.Hex("#123456").Alpha(defaultSidebarTintAlpha) {
+		t.Fatalf("default tint = %q %v", noTint.SidebarMaterial, noTint.SidebarTint)
+	}
+
+	// 后注册的插件以未知值关掉材质
+	off := New(false, 1)
+	off.ApplyPluginOverrides(append(ov, plugin.ThemeOverride{PluginID: "q", ID: "t",
+		Material: &plugin.MaterialOverride{Sidebar: "liquid"}}))
+	if off.SidebarMaterial != "" {
+		t.Fatalf("unknown material kept: %q", off.SidebarMaterial)
+	}
+}

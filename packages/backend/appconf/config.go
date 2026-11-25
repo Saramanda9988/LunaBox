@@ -173,7 +173,10 @@ type AppConfig struct {
 	WindowHeight     int     `json:"window_height"`      // 窗口高度
 	WindowMaximised  bool    `json:"window_maximised"`   // 窗口是否最大化
 	WindowZoomFactor float64 `json:"window_zoom_factor"` // 应用界面缩放倍率
-	LaunchAtLogin    bool    `json:"launch_at_login"`    // Windows 登录后自动启动应用
+	// WindowMaterial 是上次运行时主题插件请求的侧边栏材质（"acrylic" | "mica"，空为不使用）。
+	// Windows 的窗口只有创建时带上材质，之后才能开关它，所以启动时按这里创建主窗口。
+	WindowMaterial string `json:"window_material,omitempty"`
+	LaunchAtLogin  bool   `json:"launch_at_login"` // Windows 登录后自动启动应用
 	// 活跃时间追踪配置
 	RecordActiveTimeOnly       bool `json:"record_active_time_only"`       // 仅记录活跃游玩时长（窗口在前台时）
 	PauseActiveTimeWhenIdle    bool `json:"pause_active_time_when_idle"`   // 仅记录活跃时长时，长时间无输入也暂停计时

@@ -291,7 +291,9 @@ func (a *app) newMainWindow() *mygo.Window {
 		TitleBarStyle:     mygo.TitleBarHidden,
 		HideWindowButtons: true,
 		BackgroundColor:   bg,
-		Content:           mygoui.View(a.ui.View),
+		// 上次运行时主题插件请求了侧边栏材质时，Windows 的窗口要创建时就带上它，之后才能开关（见 ui.CreationVibrancy）。
+		Vibrancy: ui.CreationVibrancy(cfg),
+		Content:  mygoui.View(a.ui.View),
 	}
 	switch runtime.GOOS {
 	case "darwin":

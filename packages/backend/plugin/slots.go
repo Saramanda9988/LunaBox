@@ -70,6 +70,15 @@ type BrandOverride struct {
 	HideIcon     *bool  `json:"hideIcon,omitempty"`
 }
 
+// MaterialOverride 描述主题插件请求的窗口材质。Sidebar 是侧边栏透出的系统材质："acrylic"（磨砂模糊）
+// 或 "mica"（云母），其他值视为不使用；Tint / TintDark 是叠在材质上的着色（#RRGGBBAA，透明度决定材质透出多少），
+// TintDark 为深色模式专用，未设置时深浅色共用 Tint，两者都未设置时宿主按 sidebarBg 取默认。
+type MaterialOverride struct {
+	Sidebar  string `json:"sidebar,omitempty"`
+	Tint     string `json:"tint,omitempty"`
+	TintDark string `json:"tintDark,omitempty"`
+}
+
 // ThemeOverride 描述插件通过 ctx.theme.extend 注册的色板覆盖。
 type ThemeOverride struct {
 	PluginID string            `json:"plugin_id"`
@@ -79,6 +88,7 @@ type ThemeOverride struct {
 	Glass    *GlassOverride    `json:"glass,omitempty"`
 	Shape    *ShapeOverride    `json:"shape,omitempty"`
 	Brand    *BrandOverride    `json:"brand,omitempty"`
+	Material *MaterialOverride `json:"material,omitempty"`
 }
 
 // FontRegistration 描述插件通过 ctx.theme.registerFont 注册的自定义字体。

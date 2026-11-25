@@ -122,6 +122,12 @@ type App struct {
 	drawerRegID    string
 	drawerProps    json.RawMessage
 	drawerWidth    float32
+
+	// 主题插件请求的窗口材质（见 syncMaterial）：vibrancy 是主窗口当前的材质，materialSaved 是本次运行
+	// 最后一次记进配置的 WindowMaterial（materialSaving 为 true 时有效）。
+	vibrancy       mygo.Vibrancy
+	materialSaved  string
+	materialSaving bool
 }
 
 // New 创建应用；list 是游戏库的列表查询，svc 是其余页面用的后端服务。
@@ -220,6 +226,7 @@ func applyConfig(prev, next appconf.AppConfig) {
 // Attach 在窗口创建后调用：开始加载数据与封面，订阅应用级事件，并跟踪最大化状态与缩放。
 func (a *App) Attach(win *mygo.Window) {
 	a.env.Win = win
+	a.vibrancy = CreationVibrancy(a.env.Config()) // 与 newMainWindow 创建窗口时带上的材质一致
 	a.subscribe()
 	a.startup()
 	if a.plugins != nil {
@@ -313,6 +320,12 @@ func (a *App) View(c *ui.Context) {
 		if pluginGlassBlur > 0 {
 			bgReq.Blur = float32(pluginGlassBlur)
 		}
+	}
+	// 主题插件请求的窗口材质：显示出来时根布局不画底色，材质只从（画半透明着色的）侧边栏透出，
+	// 顶栏、主内容区与抽屉仍是各自的不透明底色。
+	a.syncMaterial(c, t, cfg, t.Glass || bgReq.Src != "")
+	if t.MaterialOn {
+		root.Background(ui.Transparent)
 	}
 	if bmp := a.env.Covers.Background(bgReq); bmp != nil {
 		root.Draw(func(p *ui.Painter, r ui.Rect) { p.Image(bmp, r, ui.Cover) })

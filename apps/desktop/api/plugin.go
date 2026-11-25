@@ -22,6 +22,8 @@ type PluginService interface {
 	RemoveDevPath(dir string) error
 	DevPaths() []string
 
+	// Started 报告启动时启用的插件是否已全部加载（之前读到的主题覆盖还不完整）。
+	Started() bool
 	Slots(slotName string) []plugin.SlotRegistration
 	ThemeOverrides() []plugin.ThemeOverride
 	Fonts() []plugin.FontRegistration

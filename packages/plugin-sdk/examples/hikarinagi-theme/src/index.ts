@@ -121,6 +121,25 @@ interface HinaConfig {
   lockBackground?: boolean;
   showWordmark?: boolean;
   showIcon?: boolean;
+  sidebarMaterial?: 'acrylic' | 'mica' | 'off';
+}
+
+/**
+ * 侧边栏的半透明磨砂：叠在系统材质上的 Hina surface（浅色纯白、深色纯黑），保持黑白配色，透明度决定材质透出多少。
+ * 两者都是 88% 不透明：平常看起来就是不透光的白 / 黑，只有窗口后面足够亮的颜色会隐隐透出来。
+ */
+const sidebarTint = { light: '#ffffffe0', dark: '#000000e0' };
+
+/**
+ * 材质模式下侧边栏的发丝线与导航状态改用 Hina 的原始半透明写法：叠在不透明 surface 上与 toPalette 里预先合成的
+ * 颜色一致，叠在着色上也看得清（预先合成的不透明色在半透明底上会显得发灰、发闷）。
+ */
+function sidebarOnMaterial(isDark: boolean): ThemePaletteTokens {
+  return {
+    sidebarBorder: isDark ? '#ffffff1a' : '#00000014', // --hn-border
+    navHover: isDark ? '#ffffff14' : '#0000000a', // 前景色状态层
+    navActiveBg: isDark ? '#45d4c93d' : '#39c5bb29', // accent 24% / 16%
+  };
 }
 
 export function apply(ctx: Context) {
@@ -150,6 +169,19 @@ export function apply(ctx: Context) {
         description: '侧边栏字标前的月亮图标；Hikarinagi 字标自带识别度，默认隐藏。',
         default: false,
       },
+      {
+        key: 'sidebarMaterial',
+        type: 'enum',
+        label: '侧边栏材质',
+        description:
+          '侧边栏透出系统的半透明磨砂材质，保持 Hina 的黑白配色（Windows 11 22H2 及以上、macOS；Linux 保持不透明）。Windows 上第一次开启需重启 LunaBox 后生效；开启自定义背景时不生效。',
+        default: 'acrylic',
+        options: [
+          { value: 'acrylic', label: '磨砂（Acrylic）' },
+          { value: 'mica', label: '云母（Mica，取壁纸色调）' },
+          { value: 'off', label: '关闭（不透明）' },
+        ],
+      },
     ],
   });
 
@@ -157,11 +189,13 @@ export function apply(ctx: Context) {
   const applyTheme = (cfg: HinaConfig) => {
     dispose?.();
     const lock = cfg.lockBackground !== false;
+    const material = cfg.sidebarMaterial === 'mica' || cfg.sidebarMaterial === 'off' ? cfg.sidebarMaterial : 'acrylic';
+    const onMaterial = material !== 'off';
     dispose = ctx.theme.extend(
       defineThemePreset({
         id: 'hikarinagi-hina',
-        light: toPalette(light, false),
-        dark: toPalette(dark, true),
+        light: { ...toPalette(light, false), ...(onMaterial ? sidebarOnMaterial(false) : {}) },
+        dark: { ...toPalette(dark, true), ...(onMaterial ? sidebarOnMaterial(true) : {}) },
         // enabled: false 让宿主跳过用户的自定义背景；不锁定时不声明 glass，保持用户设置
         // Hina 的 --hn-radius-md / --hn-radius-lg 都是 8px：图标按钮是圆角方形，菜单面板同为 8px
         shape: { control: 8, panel: 8 },
@@ -171,6 +205,8 @@ export function apply(ctx: Context) {
           hideWordmark: cfg.showWordmark === false,
           hideIcon: cfg.showIcon !== true,
         },
+        // 侧边栏的半透明磨砂：宿主在窗口显示出系统材质时才启用，否则侧边栏仍是上面的不透明 surface
+        ...(onMaterial ? { material: { sidebar: material, tint: sidebarTint.light, tintDark: sidebarTint.dark } } : {}),
         ...(lock ? { glass: { enabled: false } } : {}),
       }),
     );

@@ -697,6 +697,20 @@ export interface ThemeTokens {
     hideWordmark?: boolean;
     hideIcon?: boolean;
   };
+  /**
+   * 窗口材质：让侧边栏透出系统的半透明磨砂材质，再叠一层有色半透明着色。
+   * - sidebar：'acrylic' 磨砂（模糊窗口后面的内容）或 'mica' 云母（取桌面壁纸色调，不模糊），未声明时不使用。
+   *   Windows 11 22H2 起支持两者；macOS 统一用系统侧边栏材质；Linux、旧版 Windows 没有材质，侧边栏保持不透明的 sidebarBg。
+   * - tint / tintDark：叠在材质上的着色（#RRGGBBAA，透明度决定材质透出多少），tintDark 为深色模式专用；
+   *   都未设置时取 sidebarBg 的 60% 不透明度。
+   * 用户开启自定义背景（玻璃模式）时背景图盖住材质，不启用。Windows 上第一次启用需重启应用才显示
+   * （窗口要在创建时带上材质），之后开关即时生效。多个插件声明时以后注册者为准。
+   */
+  material?: {
+    sidebar?: 'acrylic' | 'mica';
+    tint?: string;
+    tintDark?: string;
+  };
 }
 
 export interface DecorationOptions {

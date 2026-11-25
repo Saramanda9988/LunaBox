@@ -151,6 +151,7 @@ func (b *PluginBridge) SelectDevDir() (string, error)                       { re
 func (b *PluginBridge) AddDevPath(dir string) error                         { return b.mgr.AddDevPath(dir) }
 func (b *PluginBridge) RemoveDevPath(dir string) error                      { return b.mgr.RemoveDevPath(dir) }
 func (b *PluginBridge) DevPaths() []string                                  { return slices.Clone(b.mgr.DevPaths()) }
+func (b *PluginBridge) Started() bool                                       { return b.mgr.Started() }
 func (b *PluginBridge) Slots(slotName string) []plugin.SlotRegistration     { return b.mgr.UI().Slots(slotName) }
 func (b *PluginBridge) ThemeOverrides() []plugin.ThemeOverride              { return b.mgr.UI().ThemeOverrides() }
 func (b *PluginBridge) Fonts() []plugin.FontRegistration                    { return b.mgr.UI().Fonts() }

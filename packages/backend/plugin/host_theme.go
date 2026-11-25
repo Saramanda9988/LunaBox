@@ -33,12 +33,13 @@ func (p *Plugin) buildThemeAPI() map[string]any {
 				return moejs.Undefined(), throwJSError(r, err.Error())
 			}
 			var input struct {
-				ID    string            `json:"id"`
-				Light map[string]string `json:"light"`
-				Dark  map[string]string `json:"dark"`
-				Glass *GlassOverride    `json:"glass"`
-				Shape *ShapeOverride    `json:"shape"`
-				Brand *BrandOverride    `json:"brand"`
+				ID       string            `json:"id"`
+				Light    map[string]string `json:"light"`
+				Dark     map[string]string `json:"dark"`
+				Glass    *GlassOverride    `json:"glass"`
+				Shape    *ShapeOverride    `json:"shape"`
+				Brand    *BrandOverride    `json:"brand"`
+				Material *MaterialOverride `json:"material"`
 			}
 			if err := json.Unmarshal(raw, &input); err != nil {
 				return moejs.Undefined(), throwJSError(r, err.Error())
@@ -65,6 +66,7 @@ func (p *Plugin) buildThemeAPI() map[string]any {
 				Glass:    input.Glass,
 				Shape:    input.Shape,
 				Brand:    input.Brand,
+				Material: input.Material,
 			}))
 			return p.rt.Function("dispose", 0, func(_ *moejs.Realm, _ moejs.Value, _ []moejs.Value) (moejs.Value, error) {
 				dispose()

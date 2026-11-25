@@ -21,7 +21,9 @@ var (
 // ApplyPluginOverrides 按插件注册顺序将色板覆盖叠加到当前帧的 *Theme 上。
 // 语义名与 Palette 字段一一对应（camelCase）。glass.enabled 显式为 false 时设置 t.BgLocked，
 // 由调用方跳过用户的自定义背景（后注册的 glass.enabled 覆盖先注册的）。
+// material 同样以后注册者为准，着色未设置或无效时取 sidebarBg 的 defaultSidebarTintAlpha。
 func (t *Theme) ApplyPluginOverrides(overrides []plugin.ThemeOverride) (glassBg string, glassBlur int, glassEnabled *bool) {
+	var tint string
 	for _, ov := range overrides {
 		tokens := ov.Light
 		if t.Dark {
@@ -84,9 +86,38 @@ func (t *Theme) ApplyPluginOverrides(overrides []plugin.ThemeOverride) (glassBg 
 				t.HideBrandIcon = *b.HideIcon
 			}
 		}
+		if m := ov.Material; m != nil {
+			switch m.Sidebar {
+			case MaterialAcrylic, MaterialMica:
+				t.SidebarMaterial = m.Sidebar
+			default:
+				t.SidebarMaterial = ""
+			}
+			tint = m.Tint
+			if t.Dark && strings.TrimSpace(m.TintDark) != "" {
+				tint = m.TintDark
+			}
+		}
+	}
+	if t.SidebarMaterial != "" {
+		// 着色在色板覆盖都叠完之后再定：默认值取最终的 sidebarBg
+		if col, ok := parsePluginColor(tint); ok {
+			t.SidebarTint = col
+		} else {
+			t.SidebarTint = t.SidebarBg.Alpha(defaultSidebarTintAlpha)
+		}
 	}
 	return glassBg, glassBlur, glassEnabled
 }
+
+// 主题插件可请求的侧边栏材质（material.sidebar）。
+const (
+	MaterialAcrylic = "acrylic" // 磨砂：模糊窗口后面的内容
+	MaterialMica    = "mica"    // 云母：取桌面壁纸的色调，不模糊
+)
+
+// defaultSidebarTintAlpha 是插件没有给出着色时，sidebarBg 叠在材质上的不透明度。
+const defaultSidebarTintAlpha = 0.6
 
 // pickBrandImage 返回当前深浅色下的品牌图片：深色模式优先用 dark 专用图，没有时与浅色共用 base。
 // 远程 URL 不支持（品牌标志每帧绘制，只接受插件目录里的本地图片）。

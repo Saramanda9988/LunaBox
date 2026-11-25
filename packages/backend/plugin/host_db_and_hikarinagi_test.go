@@ -415,12 +415,35 @@ func TestHikarinagiThemePluginLocksBackground(t *testing.T) {
 	if _, err := os.Stat(wantMark); err != nil {
 		t.Fatalf("wordmark asset missing: %v", err)
 	}
+	// 侧边栏材质：默认磨砂，着色是 88% 的纯白 / 纯黑，导航状态改用半透明色
+	if m := ov.Material; m == nil || m.Sidebar != "acrylic" || m.Tint != "#ffffffe0" || m.TintDark != "#000000e0" {
+		t.Fatalf("unexpected material override: %+v", ov.Material)
+	}
+	if ov.Light["navActiveBg"] != "#39c5bb29" || ov.Dark["sidebarBorder"] != "#ffffff1a" {
+		t.Fatalf("unexpected sidebar tokens on material: light=%v dark=%v", ov.Light, ov.Dark)
+	}
+
+	// 关闭材质后重新注册：不再声明 material，导航状态回到预先合成的不透明色
+	if err := mgr.SetConfigValues("hikarinagi-theme", map[string]any{"sidebarMaterial": "off"}); err != nil {
+		t.Fatalf("SetConfigValues failed: %v", err)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		ovs = mgr.UI().ThemeOverrides()
+		if len(ovs) == 1 && ovs[0].Material == nil && ovs[0].Light["navActiveBg"] == "#e7f8f7" {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("sidebarMaterial=off not applied: %+v", ovs)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 
 	// 关闭字标后重新注册，hideWordmark 为 true
 	if err := mgr.SetConfigValues("hikarinagi-theme", map[string]any{"showWordmark": false}); err != nil {
 		t.Fatalf("SetConfigValues failed: %v", err)
 	}
-	deadline := time.Now().Add(3 * time.Second)
+	deadline = time.Now().Add(3 * time.Second)
 	for {
 		ovs = mgr.UI().ThemeOverrides()
 		if len(ovs) == 1 && ovs[0].Brand != nil && ovs[0].Brand.HideWordmark != nil && *ovs[0].Brand.HideWordmark {
