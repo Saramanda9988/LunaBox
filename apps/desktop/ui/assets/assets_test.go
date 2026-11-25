@@ -50,22 +50,3 @@ func TestLocalImage(t *testing.T) {
 		t.Fatal("undecodable file should return nil")
 	}
 }
-
-// 仓库里 hikarinagi-theme 示例插件的字标能被 MyGo 完整绘制。
-func TestHikarinagiWordmarkParses(t *testing.T) {
-	path := filepath.Join("..", "..", "..", "..", "packages", "plugin-sdk", "examples", "hikarinagi-theme", "assets", "hikarinagi-wordmark.svg")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Skip("wordmark not found:", err)
-	}
-	s, err := ui.ParseSVG(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if missing := s.Unsupported(); len(missing) > 0 {
-		t.Fatalf("wordmark uses unsupported SVG features: %v", missing)
-	}
-	if w, h := s.Size(); w != 792 || h != 191 {
-		t.Fatalf("wordmark size = %vx%v", w, h)
-	}
-}

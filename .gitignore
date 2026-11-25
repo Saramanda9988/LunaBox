@@ -17,3 +17,6 @@ lunabox-docs
 参考项目
 go.work
 go.work.sum
+
+# 示例插件在独立仓库维护
+packages/plugin-sdk/examples/

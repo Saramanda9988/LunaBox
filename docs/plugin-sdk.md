@@ -670,9 +670,9 @@ ctx.on('launch/plan', async ({ game, plan }) => {
 
 ---
 
-## 8. 内置示例插件索引
+## 8. 示例插件索引
 
-所有示例位于 [packages/plugin-sdk/examples/](../packages/plugin-sdk/examples/)：
+示例插件在独立仓库维护（本仓库不再跟踪 `packages/plugin-sdk/examples/`，也不再对它们跑集成测试）：
 
 | 示例目录 | 演示核心能力 |
 | --- | --- |

@@ -13,5 +13,5 @@
       "lunabox/jsx-runtime": ["./src/jsx-runtime.ts"]
     }
   },
-  "include": ["src/**/*.ts", "examples/**/*.ts", "examples/**/*.tsx"]
+  "include": ["src/**/*.ts"]
 }
